@@ -1,4 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## Yoga-GO
+
+##API Routes
+
+### GUEST ROUTES
+- GET /data/experts/
+- GET /data/experts/{expertId}
+- GET /data/courses/
+- GET /data/courses/{courseId}
+- GET /data/courses/{courseId}/progress/{savePoint}
+
+### AUTH ROUTES
+- GET /data/app/courses/
+- GET /data/app/courses/{courseId}
+- GET /data/app/courses/{courseId}/progress/{savePoint}
+- GET /data/app/user/{userId}/details
+
+
+## UI Routes
+- / (guest)
+  - Home
+  - landing page
+  - header
+  - hero section
+  - carousel with courses
+  - carousel with experts
+  - testimonials section
+  - pricing details
+  - footer section
+- /experts/{expertId}
+  - expert profile page
+- /courses/{courseId}
+  - course details with free content  
+- /app (when logged in)
+  - user dashboard
+  - course progress section
+  - new courses upsell section
+- /app/courses/{id}
+  - course content
+
 
 ## Getting Started
 
@@ -14,7 +53,7 @@ pnpm dev
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3111](http://localhost:3111) with your browser to see the result.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
