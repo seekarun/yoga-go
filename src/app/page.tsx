@@ -1,103 +1,409 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const coursesRes = await fetch('/data/courses');
+        const coursesData = await coursesRes.json();
+        setCourses(coursesData.data?.slice(0, 3) || []);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  return (
+    <div style={{ paddingTop: '64px' }}>
+      {/* Hero Section */}
+      <section style={{ 
+        minHeight: 'calc(100vh - 64px)',
+        display: 'flex',
+        alignItems: 'center',
+        padding: '80px 0'
+      }}>
+        <div className="container" style={{ textAlign: 'center' }}>
+          <h1 style={{ 
+            fontSize: '48px',
+            fontWeight: '600',
+            lineHeight: '1.2',
+            marginBottom: '24px'
+          }}>
+            Transform Your<br />
+            Mind & Body
+          </h1>
+          <p style={{ 
+            fontSize: '20px',
+            color: '#666',
+            maxWidth: '600px',
+            margin: '0 auto 32px',
+            lineHeight: '1.6'
+          }}>
+            Expert-led yoga courses designed for every level. Join thousands on their journey to better health.
+          </p>
+          <div style={{ 
+            display: 'flex',
+            gap: '16px',
+            justifyContent: 'center',
+            flexWrap: 'wrap'
+          }}>
+            <Link href="/courses" style={{
+              display: 'inline-block',
+              padding: '12px 32px',
+              background: '#000',
+              color: '#fff',
+              borderRadius: '100px',
+              textDecoration: 'none',
+              fontWeight: '500',
+              fontSize: '16px'
+            }}>
+              Start Your Journey
+            </Link>
+            <Link href="#pricing" style={{
+              display: 'inline-block',
+              padding: '12px 32px',
+              background: '#fff',
+              color: '#000',
+              border: '1px solid #e0e0e0',
+              borderRadius: '100px',
+              textDecoration: 'none',
+              fontWeight: '500',
+              fontSize: '16px'
+            }}>
+              View Pricing
+            </Link>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </section>
+
+      {/* Courses Section */}
+      <section style={{ 
+        background: '#f8f8f8',
+        padding: '80px 0'
+      }}>
+        <div className="container">
+          <h2 style={{
+            fontSize: '36px',
+            fontWeight: '600',
+            textAlign: 'center',
+            marginBottom: '16px'
+          }}>Popular Courses</h2>
+          <p style={{
+            fontSize: '16px',
+            color: '#666',
+            textAlign: 'center',
+            marginBottom: '48px'
+          }}>Start with our most loved courses</p>
+          
+          <div style={{ 
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+            gap: '32px'
+          }}>
+            {loading ? (
+              <>
+                {[1, 2, 3].map(i => (
+                  <div key={i} style={{
+                    background: '#fff',
+                    borderRadius: '16px',
+                    padding: '32px',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                  }}>
+                    <div style={{ height: '200px', background: '#f0f0f0', borderRadius: '8px', marginBottom: '16px' }} />
+                    <div style={{ height: '20px', background: '#f0f0f0', borderRadius: '4px', marginBottom: '8px' }} />
+                    <div style={{ height: '16px', background: '#f0f0f0', borderRadius: '4px', width: '60%' }} />
+                  </div>
+                ))}
+              </>
+            ) : (
+              <>
+                {courses.map((course: { id: string; level: string; duration: string; title: string; description: string; rating: number; totalStudents: number; price: number }) => (
+                  <Link key={course.id} href={`/courses/${course.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <div style={{
+                      background: '#fff',
+                      borderRadius: '16px',
+                      padding: '32px',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                      height: '100%',
+                      cursor: 'pointer',
+                      transition: 'box-shadow 0.2s',
+                    }}>
+                      <div style={{ 
+                        height: '200px', 
+                        background: '#f5f5f5', 
+                        borderRadius: '8px', 
+                        marginBottom: '20px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '48px',
+                        opacity: 0.2
+                      }}>
+                        🧘‍♀️
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>
+                        {course.level} • {course.duration}
+                      </div>
+                      <h3 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '12px' }}>{course.title}</h3>
+                      <p style={{ color: '#666', marginBottom: '20px', lineHeight: '1.6' }}>
+                        {course.description}
+                      </p>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span style={{ color: '#FFB800' }}>★</span>
+                          <span style={{ fontWeight: '600' }}>{course.rating}</span>
+                          <span style={{ color: '#666', fontSize: '14px' }}>({course.totalStudents})</span>
+                        </div>
+                        <div style={{ fontSize: '24px', fontWeight: '600' }}>${course.price}</div>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section id="pricing" style={{ padding: '80px 0' }}>
+        <div className="container">
+          <h2 style={{
+            fontSize: '36px',
+            fontWeight: '600',
+            textAlign: 'center',
+            marginBottom: '16px'
+          }}>Simple Pricing</h2>
+          <p style={{
+            fontSize: '16px',
+            color: '#666',
+            textAlign: 'center',
+            marginBottom: '48px'
+          }}>Choose the plan that works for you</p>
+          
+          <div style={{ 
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: '32px',
+            maxWidth: '1000px',
+            margin: '0 auto'
+          }}>
+            {/* Free Plan */}
+            <div style={{ 
+              background: '#fff',
+              borderRadius: '16px',
+              padding: '40px',
+              border: '1px solid #e0e0e0',
+              position: 'relative'
+            }}>
+              <h3 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '24px' }}>Free</h3>
+              <div style={{ marginBottom: '32px' }}>
+                <span style={{ fontSize: '48px', fontWeight: '600' }}>$0</span>
+              </div>
+              <ul style={{ listStyle: 'none', padding: 0, marginBottom: '32px' }}>
+                <li style={{ padding: '12px 0', display: 'flex', alignItems: 'start', gap: '12px' }}>
+                  <span style={{ color: '#00C851' }}>✓</span>
+                  <span>Access to free lessons</span>
+                </li>
+                <li style={{ padding: '12px 0', display: 'flex', alignItems: 'start', gap: '12px' }}>
+                  <span style={{ color: '#00C851' }}>✓</span>
+                  <span>Basic progress tracking</span>
+                </li>
+                <li style={{ padding: '12px 0', display: 'flex', alignItems: 'start', gap: '12px' }}>
+                  <span style={{ color: '#00C851' }}>✓</span>
+                  <span>Community support</span>
+                </li>
+                <li style={{ padding: '12px 0', display: 'flex', alignItems: 'start', gap: '12px' }}>
+                  <span style={{ color: '#00C851' }}>✓</span>
+                  <span>Mobile app access</span>
+                </li>
+              </ul>
+              <button style={{
+                width: '100%',
+                padding: '12px 32px',
+                background: '#fff',
+                color: '#000',
+                border: '1px solid #e0e0e0',
+                borderRadius: '100px',
+                fontSize: '16px',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}>
+                Get Started
+              </button>
+            </div>
+
+            {/* Premium Plan */}
+            <div style={{ 
+              background: '#000',
+              color: '#fff',
+              borderRadius: '16px',
+              padding: '40px',
+              position: 'relative',
+              transform: 'scale(1.05)'
+            }}>
+              <div style={{
+                position: 'absolute',
+                top: '-12px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                background: '#fff',
+                color: '#000',
+                padding: '4px 16px',
+                borderRadius: '100px',
+                fontSize: '12px',
+                fontWeight: '600',
+                textTransform: 'uppercase'
+              }}>
+                Most Popular
+              </div>
+              <h3 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '24px', color: '#fff' }}>Premium</h3>
+              <div style={{ marginBottom: '32px' }}>
+                <span style={{ fontSize: '48px', fontWeight: '600' }}>$19</span>
+                <span style={{ fontSize: '18px', opacity: 0.7 }}>/month</span>
+              </div>
+              <ul style={{ listStyle: 'none', padding: 0, marginBottom: '32px' }}>
+                <li style={{ padding: '12px 0', display: 'flex', alignItems: 'start', gap: '12px' }}>
+                  <span>✓</span>
+                  <span>All Free features</span>
+                </li>
+                <li style={{ padding: '12px 0', display: 'flex', alignItems: 'start', gap: '12px' }}>
+                  <span>✓</span>
+                  <span>Unlimited course access</span>
+                </li>
+                <li style={{ padding: '12px 0', display: 'flex', alignItems: 'start', gap: '12px' }}>
+                  <span>✓</span>
+                  <span>Downloadable content</span>
+                </li>
+                <li style={{ padding: '12px 0', display: 'flex', alignItems: 'start', gap: '12px' }}>
+                  <span>✓</span>
+                  <span>Priority support</span>
+                </li>
+                <li style={{ padding: '12px 0', display: 'flex', alignItems: 'start', gap: '12px' }}>
+                  <span>✓</span>
+                  <span>Certificates of completion</span>
+                </li>
+                <li style={{ padding: '12px 0', display: 'flex', alignItems: 'start', gap: '12px' }}>
+                  <span>✓</span>
+                  <span>Advanced analytics</span>
+                </li>
+              </ul>
+              <button style={{ 
+                width: '100%',
+                padding: '12px 32px',
+                background: '#fff',
+                color: '#000',
+                border: 'none',
+                borderRadius: '100px',
+                fontSize: '16px',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}>
+                Start Free Trial
+              </button>
+            </div>
+
+            {/* Lifetime Plan */}
+            <div style={{ 
+              background: '#fff',
+              borderRadius: '16px',
+              padding: '40px',
+              border: '1px solid #e0e0e0',
+              position: 'relative'
+            }}>
+              <h3 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '24px' }}>Lifetime</h3>
+              <div style={{ marginBottom: '32px' }}>
+                <span style={{ fontSize: '48px', fontWeight: '600' }}>$299</span>
+                <span style={{ fontSize: '18px', opacity: 0.7 }}>one-time</span>
+              </div>
+              <ul style={{ listStyle: 'none', padding: 0, marginBottom: '32px' }}>
+                <li style={{ padding: '12px 0', display: 'flex', alignItems: 'start', gap: '12px' }}>
+                  <span style={{ color: '#00C851' }}>✓</span>
+                  <span>All Premium features</span>
+                </li>
+                <li style={{ padding: '12px 0', display: 'flex', alignItems: 'start', gap: '12px' }}>
+                  <span style={{ color: '#00C851' }}>✓</span>
+                  <span>Lifetime access</span>
+                </li>
+                <li style={{ padding: '12px 0', display: 'flex', alignItems: 'start', gap: '12px' }}>
+                  <span style={{ color: '#00C851' }}>✓</span>
+                  <span>Future courses included</span>
+                </li>
+                <li style={{ padding: '12px 0', display: 'flex', alignItems: 'start', gap: '12px' }}>
+                  <span style={{ color: '#00C851' }}>✓</span>
+                  <span>1-on-1 sessions (2/year)</span>
+                </li>
+                <li style={{ padding: '12px 0', display: 'flex', alignItems: 'start', gap: '12px' }}>
+                  <span style={{ color: '#00C851' }}>✓</span>
+                  <span>Exclusive workshops</span>
+                </li>
+                <li style={{ padding: '12px 0', display: 'flex', alignItems: 'start', gap: '12px' }}>
+                  <span style={{ color: '#00C851' }}>✓</span>
+                  <span>Early access to new content</span>
+                </li>
+              </ul>
+              <button style={{
+                width: '100%',
+                padding: '12px 32px',
+                background: '#000',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '100px',
+                fontSize: '16px',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}>
+                Get Lifetime Access
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section style={{ 
+        background: '#000',
+        color: '#fff',
+        padding: '80px 0'
+      }}>
+        <div className="container" style={{ textAlign: 'center' }}>
+          <h2 style={{ 
+            fontSize: '36px',
+            fontWeight: '600',
+            color: '#fff',
+            marginBottom: '16px'
+          }}>Ready to Transform Your Life?</h2>
+          <p style={{ 
+            fontSize: '20px',
+            opacity: 0.8,
+            marginBottom: '32px'
+          }}>
+            Join over 10,000 students already practicing with Yoga-GO
+          </p>
+          <Link href="/courses" style={{
+            display: 'inline-block',
+            padding: '12px 32px',
+            background: '#fff',
+            color: '#000',
+            borderRadius: '100px',
+            textDecoration: 'none',
+            fontWeight: '500',
+            fontSize: '16px'
+          }}>
+            Start Your Free Trial
+          </Link>
+        </div>
+      </section>
     </div>
   );
 }
