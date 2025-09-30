@@ -6,40 +6,28 @@ export async function GET() {
   
   const experts: Expert[] = [
     {
-      id: 'expert-1',
-      name: 'Sarah Johnson',
-      title: 'Vinyasa Flow Master',
-      bio: 'With over 15 years of experience, Sarah specializes in dynamic Vinyasa flow sequences.',
-      avatar: '/avatars/sarah.jpg',
+      id: 'deepak',
+      name: 'Deepak',
+      title: 'Yoga Master & Wellness Coach',
+      bio: 'Deepak brings over 20 years of experience in traditional yoga practices, specializing in holistic wellness and mindful movement for modern lifestyles.',
+      avatar: '/experts/ygo.deepak.png',
       rating: 4.9,
-      totalCourses: 12,
-      totalStudents: 2500,
-      specializations: ['Vinyasa', 'Power Yoga', 'Meditation'],
+      totalCourses: 15,
+      totalStudents: 3200,
+      specializations: ['Hatha Yoga', 'Ashtanga', 'Meditation', 'Pranayama'],
       featured: true
     },
     {
-      id: 'expert-2', 
-      name: 'Michael Chen',
-      title: 'Yin Yoga & Meditation Expert',
-      bio: 'Michael brings ancient wisdom to modern practice with deep yin yoga and mindfulness.',
-      avatar: '/avatars/michael.jpg',
-      rating: 4.8,
-      totalCourses: 8,
-      totalStudents: 1800,
-      specializations: ['Yin Yoga', 'Meditation', 'Pranayama'],
-      featured: true
-    },
-    {
-      id: 'expert-3',
-      name: 'Emma Rodriguez',
-      title: 'Prenatal & Restorative Yoga',
-      bio: 'Certified in prenatal and postnatal yoga, Emma helps mothers through their journey.',
-      avatar: '/avatars/emma.jpg',
+      id: 'kavitha',
+      name: 'Kavitha',
+      title: 'Vinyasa Flow & Therapeutic Yoga Expert',
+      bio: 'Kavitha is a certified therapeutic yoga instructor with expertise in healing practices, helping students find balance through gentle yet powerful sequences.',
+      avatar: '/experts/ygo.kavitha.jpeg',
       rating: 5.0,
-      totalCourses: 6,
-      totalStudents: 900,
-      specializations: ['Prenatal', 'Postnatal', 'Restorative'],
-      featured: false
+      totalCourses: 12,
+      totalStudents: 2800,
+      specializations: ['Vinyasa Flow', 'Therapeutic Yoga', 'Restorative', 'Yin Yoga'],
+      featured: true
     }
   ];
 

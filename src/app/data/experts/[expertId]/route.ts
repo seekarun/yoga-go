@@ -9,118 +9,96 @@ export async function GET(
   console.log(`[DBG][experts/[expertId]/route.ts] GET /data/experts/${expertId} called`);
 
   const expertsData: Record<string, Expert> = {
-    'expert-1': {
-      id: 'expert-1',
-      name: 'Sarah Johnson',
-      title: 'Vinyasa Flow Master',
-      bio: 'With over 15 years of experience, Sarah specializes in dynamic Vinyasa flow sequences that build strength, flexibility, and mindfulness.',
-      avatar: '/avatars/sarah.jpg',
+    'deepak': {
+      id: 'deepak',
+      name: 'Deepak',
+      title: 'Yoga Master & Wellness Coach',
+      bio: 'Deepak brings over 20 years of experience in traditional yoga practices, specializing in holistic wellness and mindful movement for modern lifestyles.',
+      avatar: '/experts/ygo.deepak.png',
       rating: 4.9,
-      totalCourses: 12,
-      totalStudents: 2500,
-      specializations: ['Vinyasa', 'Power Yoga', 'Meditation'],
+      totalCourses: 15,
+      totalStudents: 3200,
+      specializations: ['Hatha Yoga', 'Ashtanga', 'Meditation', 'Pranayama'],
       featured: true,
       certifications: [
         'RYT-500 Yoga Alliance',
         'E-RYT 200',
-        'YACEP Continuing Education Provider'
+        'Traditional Yoga Master Certification',
+        'Ayurveda Wellness Consultant'
+      ],
+      experience: '20+ years',
+      courses: [
+        {
+          id: 'course-deepak-1',
+          title: 'Traditional Hatha Yoga Practice',
+          level: 'All Levels',
+          duration: '8 weeks',
+          students: 1200
+        },
+        {
+          id: 'course-deepak-2',
+          title: 'Ashtanga Primary Series',
+          level: 'Intermediate',
+          duration: '12 weeks',
+          students: 800
+        },
+        {
+          id: 'course-deepak-3',
+          title: 'Meditation & Pranayama Mastery',
+          level: 'All Levels',
+          duration: '6 weeks',
+          students: 1200
+        }
+      ],
+      socialLinks: {
+        instagram: '@deepakyoga',
+        website: 'deepakyogawellness.com'
+      }
+    },
+    'kavitha': {
+      id: 'kavitha',
+      name: 'Kavitha',
+      title: 'Vinyasa Flow & Therapeutic Yoga Expert',
+      bio: 'Kavitha is a certified therapeutic yoga instructor with expertise in healing practices, helping students find balance through gentle yet powerful sequences.',
+      avatar: '/experts/ygo.kavitha.jpeg',
+      rating: 5.0,
+      totalCourses: 12,
+      totalStudents: 2800,
+      specializations: ['Vinyasa Flow', 'Therapeutic Yoga', 'Restorative', 'Yin Yoga'],
+      featured: true,
+      certifications: [
+        'RYT-500 Yoga Alliance',
+        'Certified Yoga Therapist (C-IAYT)',
+        'Restorative Yoga Teacher Training',
+        'Yin Yoga Certification'
       ],
       experience: '15+ years',
       courses: [
         {
-          id: 'course-1',
-          title: '30-Day Vinyasa Challenge',
-          level: 'All Levels',
-          duration: '30 days',
-          students: 850
-        },
-        {
-          id: 'course-2',
-          title: 'Power Flow Fundamentals',
+          id: 'course-kavitha-1',
+          title: 'Gentle Vinyasa Flow',
           level: 'Beginner',
           duration: '6 weeks',
-          students: 650
-        }
-      ],
-      socialLinks: {
-        instagram: '@sarahjohnsonyoga',
-        youtube: 'SarahYogaFlow'
-      }
-    },
-    'expert-2': {
-      id: 'expert-2',
-      name: 'Michael Chen',
-      title: 'Yin Yoga & Meditation Expert',
-      bio: 'Michael brings ancient wisdom to modern practice with deep yin yoga and mindfulness techniques.',
-      avatar: '/avatars/michael.jpg',
-      rating: 4.8,
-      totalCourses: 8,
-      totalStudents: 1800,
-      specializations: ['Yin Yoga', 'Meditation', 'Pranayama'],
-      featured: true,
-      certifications: [
-        'RYT-500 Yoga Alliance',
-        'Certified Meditation Teacher',
-        'Pranayama Specialist'
-      ],
-      experience: '12+ years',
-      courses: [
+          students: 950
+        },
         {
-          id: 'course-3',
-          title: 'Deep Yin Practice',
+          id: 'course-kavitha-2',
+          title: 'Therapeutic Yoga for Back Pain',
+          level: 'All Levels',
+          duration: '4 weeks',
+          students: 750
+        },
+        {
+          id: 'course-kavitha-3',
+          title: 'Deep Yin & Restorative Practice',
           level: 'All Levels',
           duration: '8 weeks',
-          students: 420
-        },
-        {
-          id: 'course-4',
-          title: 'Meditation Mastery',
-          level: 'Beginner to Advanced',
-          duration: '4 weeks',
-          students: 580
+          students: 1100
         }
       ],
       socialLinks: {
-        instagram: '@michaelchenyoga',
-        website: 'michaelchenyoga.com'
-      }
-    },
-    'expert-3': {
-      id: 'expert-3',
-      name: 'Emma Rodriguez',
-      title: 'Prenatal & Restorative Yoga',
-      bio: 'Certified in prenatal and postnatal yoga, Emma helps mothers through their journey with gentle, supportive practices.',
-      avatar: '/avatars/emma.jpg',
-      rating: 5.0,
-      totalCourses: 6,
-      totalStudents: 900,
-      specializations: ['Prenatal', 'Postnatal', 'Restorative'],
-      featured: false,
-      certifications: [
-        'RYT-200 Yoga Alliance',
-        'RPYT Registered Prenatal Yoga Teacher',
-        'Restorative Yoga Certification'
-      ],
-      experience: '8+ years',
-      courses: [
-        {
-          id: 'course-5',
-          title: 'Prenatal Yoga Journey',
-          level: 'All Trimesters',
-          duration: '12 weeks',
-          students: 350
-        },
-        {
-          id: 'course-6',
-          title: 'Postnatal Recovery',
-          level: 'New Mothers',
-          duration: '6 weeks',
-          students: 280
-        }
-      ],
-      socialLinks: {
-        instagram: '@emmayogamom',
-        facebook: 'EmmaRodriguezYoga'
+        instagram: '@kavithayoga',
+        facebook: 'KavithaTherapeuticYoga'
       }
     }
   };
