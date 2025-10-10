@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { Lesson, ApiResponse } from '@/types';
-import { mockLessons } from '@/data/mockData';
+import { getCourseItemsByCourseId } from '@/store/courseItems';
 
 export async function GET(request: Request, { params }: { params: Promise<{ courseId: string }> }) {
   const { courseId } = await params;
@@ -8,7 +8,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
     `[DBG][courses/[courseId]/items/route.ts] GET /data/courses/${courseId}/items called`
   );
 
-  const items = mockLessons[courseId];
+  const items = getCourseItemsByCourseId(courseId);
 
   if (!items) {
     const errorResponse: ApiResponse<never> = {

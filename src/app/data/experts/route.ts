@@ -1,14 +1,16 @@
 import { NextResponse } from 'next/server';
 import type { ApiResponse } from '@/types';
-import { allExperts } from '@/data/mockData';
+import { getAllExperts } from '@/store/experts';
 
 export async function GET() {
   console.log('[DBG][experts/route.ts] GET /data/experts called');
 
-  const response: ApiResponse<typeof allExperts> = {
+  const experts = getAllExperts();
+
+  const response: ApiResponse<typeof experts> = {
     success: true,
-    data: allExperts,
-    total: allExperts.length,
+    data: experts,
+    total: experts.length,
   };
 
   return NextResponse.json(response);

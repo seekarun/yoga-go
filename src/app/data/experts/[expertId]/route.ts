@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import type { ApiResponse } from '@/types';
-import { mockExperts } from '@/data/mockData';
+import { getExpertById } from '@/store/experts';
 
 export async function GET(request: Request, { params }: { params: Promise<{ expertId: string }> }) {
   const { expertId } = await params;
   console.log(`[DBG][experts/[expertId]/route.ts] GET /data/experts/${expertId} called`);
 
-  const expert = mockExperts[expertId];
+  const expert = getExpertById(expertId);
 
   if (!expert) {
     const errorResponse: ApiResponse<never> = {
