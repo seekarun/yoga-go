@@ -21,6 +21,8 @@
 
 ## UI Routes
 
+### Guest Routes
+
 - / (guest)
   - Home
   - landing page
@@ -31,16 +33,38 @@
   - testimonials section
   - pricing details
   - footer section
+- /experts
+  - Expert listing page
 - /experts/{expertId}
-  - expert profile page
-- /courses/{courseId}
-  - course details with free content
-- /app (when logged in)
-  - user dashboard
-  - course progress section
-  - new courses upsell section
+  - Expert profile page
+
+### Student Routes (Authenticated)
+
+- /app
+  - User dashboard
+  - Course progress section
+  - New courses upsell section
 - /app/courses/{id}
-  - course content
+  - Course content player
+
+### Expert Portal (Public - Auth to be added)
+
+- /srv
+  - Expert portal home
+  - List of all experts with dashboard access
+- /srv/{expertId}
+  - Expert dashboard
+  - Course engagement metrics
+  - Subscriber statistics
+  - Revenue analytics
+  - Recent activity feed
+  - Student demographics
+- /srv/{expertId}/courses/{courseId}
+  - Course management interface
+  - Upload course items (videos)
+  - Manage item metadata (title, description, duration)
+  - Order course items
+  - Edit/delete course items
 
 ## Getting Started
 
