@@ -3,20 +3,24 @@
 ##API Routes
 
 ### GUEST ROUTES
+
 - GET /data/experts/
 - GET /data/experts/{expertId}
 - GET /data/courses/
 - GET /data/courses/{courseId}
 - GET /data/courses/{courseId}/progress/{savePoint}
+- GET /data/courses/{courseId}/items
+- GET /data/courses/{courseId}/items/{itemId}
 
 ### AUTH ROUTES
+
 - GET /data/app/courses/
 - GET /data/app/courses/{courseId}
 - GET /data/app/courses/{courseId}/progress/{savePoint}
 - GET /data/app/user/{userId}/details
 
-
 ## UI Routes
+
 - / (guest)
   - Home
   - landing page
@@ -30,7 +34,7 @@
 - /experts/{expertId}
   - expert profile page
 - /courses/{courseId}
-  - course details with free content  
+  - course details with free content
 - /app (when logged in)
   - user dashboard
   - course progress section
@@ -38,24 +42,30 @@
 - /app/courses/{id}
   - course content
 
-
 ## Getting Started
 
-First, run the development server:
+### Development
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run dev        # Start development server on port 3111
+npm run build      # Build production bundle
+npm run start      # Start production server
 ```
 
 Open [http://localhost:3111](http://localhost:3111) with your browser to see the result.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+
+### Code Quality
+
+```bash
+npm run lint           # Run ESLint
+npm run lint:fix       # Fix ESLint issues automatically
+npm run format         # Format all files with Prettier
+npm run format:check   # Check if files are formatted
+```
+
+**Pre-commit Hook**: The project uses Husky to automatically lint and format code before each commit.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 

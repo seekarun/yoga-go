@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server';
-import { ProgressData, ApiResponse } from '@/types';
+import type { ProgressData, ApiResponse } from '@/types';
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ courseId: string; savePoint: string }> }
 ) {
   const { courseId, savePoint } = await params;
-  console.log(`[DBG][courses/[courseId]/progress/[savePoint]/route.ts] GET /data/courses/${courseId}/progress/${savePoint} called`);
+  console.log(
+    `[DBG][courses/[courseId]/progress/[savePoint]/route.ts] GET /data/courses/${courseId}/progress/${savePoint} called`
+  );
 
   const progressData: ProgressData = {
     courseId,
@@ -21,7 +23,7 @@ export async function GET(
       currentLesson: {
         id: `lesson-${savePoint}`,
         title: 'Current Lesson',
-        duration: '30 min'
+        duration: '30 min',
       },
       lastAccessed: new Date().toISOString(),
       totalTimeSpent: 120,
@@ -29,8 +31,8 @@ export async function GET(
         {
           lessonId: 'lesson-1',
           note: 'Great introduction to the basics',
-          timestamp: '2024-01-15T10:30:00Z'
-        }
+          timestamp: '2024-01-15T10:30:00Z',
+        },
       ],
       achievements: [
         {
@@ -38,31 +40,31 @@ export async function GET(
           title: 'First Step',
           description: 'Completed your first lesson',
           icon: '🎯',
-          unlockedAt: '2024-01-15T10:00:00Z'
-        }
-      ]
+          unlockedAt: '2024-01-15T10:00:00Z',
+        },
+      ],
     },
     nextLesson: {
       id: `lesson-${parseInt(savePoint) + 1}`,
       title: 'Next Lesson Title',
       duration: '30 min',
-      description: 'Continue your journey with the next lesson'
+      description: 'Continue your journey with the next lesson',
     },
     recommendations: [
       {
         type: 'tip',
-        message: 'Remember to practice daily for best results'
+        message: 'Remember to practice daily for best results',
       },
       {
         type: 'suggestion',
-        message: 'Try incorporating breathing exercises between lessons'
-      }
-    ]
+        message: 'Try incorporating breathing exercises between lessons',
+      },
+    ],
   };
 
   const response: ApiResponse<ProgressData> = {
     success: true,
-    data: progressData
+    data: progressData,
   };
 
   return NextResponse.json(response);

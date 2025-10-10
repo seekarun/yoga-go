@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Expert } from '@/types';
+import type { Expert } from '@/types';
 
 export default function Home() {
   const [experts, setExperts] = useState<Expert[]>([]);
@@ -31,7 +31,7 @@ export default function Home() {
   useEffect(() => {
     if (experts.length > 0) {
       const timer = setInterval(() => {
-        setCurrentSlide((prev) => (prev + 1) % experts.length);
+        setCurrentSlide(prev => (prev + 1) % experts.length);
       }, 5000); // Auto-advance every 5 seconds
 
       return () => clearInterval(timer);
@@ -43,49 +43,61 @@ export default function Home() {
   };
 
   const nextSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % experts.length);
+    setCurrentSlide(prev => (prev + 1) % experts.length);
   };
 
   const prevSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + experts.length) % experts.length);
+    setCurrentSlide(prev => (prev - 1 + experts.length) % experts.length);
   };
 
   return (
-    <div style={{ 
-      paddingTop: '64px',
-      minHeight: '100vh',
-      display: 'flex',
-      flexDirection: 'column'
-    }}>
+    <div
+      style={{
+        paddingTop: '64px',
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       {/* Full Screen Carousel */}
-      <section style={{ 
-        flex: 1,
-        minHeight: 'calc(100vh - 64px)',
-        position: 'relative',
-        background: '#ffffff',
-        overflow: 'hidden'
-      }}>
+      <section
+        style={{
+          flex: 1,
+          minHeight: 'calc(100vh - 64px)',
+          position: 'relative',
+          background: '#ffffff',
+          overflow: 'hidden',
+        }}
+      >
         {loading ? (
-          <div style={{
-            height: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: '#f5f5f5'
-          }}>
-            <div style={{
-              fontSize: '16px',
-              color: '#666'
-            }}>Loading experts...</div>
+          <div
+            style={{
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: '#f5f5f5',
+            }}
+          >
+            <div
+              style={{
+                fontSize: '16px',
+                color: '#666',
+              }}
+            >
+              Loading experts...
+            </div>
           </div>
         ) : experts.length > 0 ? (
           <>
             {/* Slides */}
-            <div style={{
-              position: 'relative',
-              height: '100%',
-              width: '100%'
-            }}>
+            <div
+              style={{
+                position: 'relative',
+                height: '100%',
+                width: '100%',
+              }}
+            >
               {experts.map((expert, index) => (
                 <div
                   key={expert.id}
@@ -102,29 +114,31 @@ export default function Home() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     background: '#ffffff',
-                    padding: '40px 20px'
+                    padding: '40px 20px',
                   }}
                 >
                   {/* Expert Name */}
-                  <h1 style={{
-                    fontSize: '48px',
-                    fontWeight: '600',
-                    marginBottom: '32px',
-                    color: '#000'
-                  }}>
+                  <h1
+                    style={{
+                      fontSize: '48px',
+                      fontWeight: '600',
+                      marginBottom: '32px',
+                      color: '#000',
+                    }}
+                  >
                     {expert.name}
                   </h1>
 
                   {/* Expert Image */}
-                  <img 
-                    src={expert.avatar} 
+                  <img
+                    src={expert.avatar}
                     alt={expert.name}
                     style={{
                       width: '100%',
                       maxWidth: '800px',
                       height: 'auto',
                       borderRadius: '16px',
-                      objectFit: 'cover'
+                      objectFit: 'cover',
                     }}
                   />
                 </div>
@@ -149,17 +163,17 @@ export default function Home() {
                 justifyContent: 'center',
                 cursor: 'pointer',
                 boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                transition: 'background 0.2s'
+                transition: 'background 0.2s',
               }}
-              onMouseEnter={(e) => {
+              onMouseEnter={e => {
                 e.currentTarget.style.background = '#f7fafc';
               }}
-              onMouseLeave={(e) => {
+              onMouseLeave={e => {
                 e.currentTarget.style.background = '#fff';
               }}
             >
               <svg width="24" height="24" fill="#4a5568" viewBox="0 0 24 24">
-                <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+                <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
               </svg>
             </button>
 
@@ -180,29 +194,31 @@ export default function Home() {
                 justifyContent: 'center',
                 cursor: 'pointer',
                 boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                transition: 'background 0.2s'
+                transition: 'background 0.2s',
               }}
-              onMouseEnter={(e) => {
+              onMouseEnter={e => {
                 e.currentTarget.style.background = '#f7fafc';
               }}
-              onMouseLeave={(e) => {
+              onMouseLeave={e => {
                 e.currentTarget.style.background = '#fff';
               }}
             >
               <svg width="24" height="24" fill="#4a5568" viewBox="0 0 24 24">
-                <path d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z"/>
+                <path d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z" />
               </svg>
             </button>
 
             {/* Dots Indicator */}
-            <div style={{
-              position: 'absolute',
-              bottom: '40px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              display: 'flex',
-              gap: '8px'
-            }}>
+            <div
+              style={{
+                position: 'absolute',
+                bottom: '40px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                display: 'flex',
+                gap: '8px',
+              }}
+            >
               {experts.map((_, index) => (
                 <button
                   key={index}
@@ -214,23 +230,27 @@ export default function Home() {
                     background: currentSlide === index ? '#000' : '#e2e8f0',
                     border: 'none',
                     cursor: 'pointer',
-                    transition: 'all 0.3s'
+                    transition: 'all 0.3s',
                   }}
                 />
               ))}
             </div>
           </>
         ) : (
-          <div style={{
-            height: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: '#f5f5f5'
-          }}>
-            <div style={{
-              textAlign: 'center'
-            }}>
+          <div
+            style={{
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: '#f5f5f5',
+            }}
+          >
+            <div
+              style={{
+                textAlign: 'center',
+              }}
+            >
               <h2 style={{ fontSize: '24px', marginBottom: '16px' }}>No experts available</h2>
               <p style={{ color: '#666' }}>Please check back later</p>
             </div>

@@ -39,8 +39,24 @@ export interface Expert extends BaseEntity {
 }
 
 // Course Related Types
-export type CourseLevel = 'Beginner' | 'Intermediate' | 'Advanced' | 'All Levels' | 'All Trimesters' | 'New Mothers' | 'Beginner to Advanced';
-export type CourseCategory = 'Vinyasa' | 'Power Yoga' | 'Yin Yoga' | 'Meditation' | 'Prenatal' | 'Postnatal' | 'Restorative' | 'Hatha' | 'Ashtanga';
+export type CourseLevel =
+  | 'Beginner'
+  | 'Intermediate'
+  | 'Advanced'
+  | 'All Levels'
+  | 'All Trimesters'
+  | 'New Mothers'
+  | 'Beginner to Advanced';
+export type CourseCategory =
+  | 'Vinyasa'
+  | 'Power Yoga'
+  | 'Yin Yoga'
+  | 'Meditation'
+  | 'Prenatal'
+  | 'Postnatal'
+  | 'Restorative'
+  | 'Hatha'
+  | 'Ashtanga';
 
 export interface Instructor {
   id: string;
@@ -354,10 +370,12 @@ export interface UserCourseData extends Course {
   curriculum?: Array<{
     week: number;
     title: string;
-    lessons: Array<Lesson & {
-      completed: boolean;
-      completedAt?: string;
-    }>;
+    lessons: Array<
+      Lesson & {
+        completed: boolean;
+        completedAt?: string;
+      }
+    >;
   }>;
   notes?: Array<{
     lessonId: string;

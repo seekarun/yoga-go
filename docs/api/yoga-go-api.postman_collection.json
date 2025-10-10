@@ -1,0 +1,301 @@
+{
+  "info": {
+    "name": "Yoga-GO API",
+    "description": "Complete API collection for Yoga-GO platform",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "yoga-go-api-v1"
+  },
+  "item": [
+    {
+      "name": "Guest Routes",
+      "item": [
+        {
+          "name": "Experts",
+          "item": [
+            {
+              "name": "Get All Experts",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/data/experts",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["data", "experts"]
+                },
+                "description": "Retrieve list of all yoga experts/instructors"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Expert by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/data/experts/:expertId",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["data", "experts", ":expertId"],
+                  "variable": [
+                    {
+                      "key": "expertId",
+                      "value": "deepak",
+                      "description": "Expert ID (e.g., deepak, kavitha)"
+                    }
+                  ]
+                },
+                "description": "Retrieve detailed information about a specific expert including their courses, certifications, and social links"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Courses",
+          "item": [
+            {
+              "name": "Get All Courses",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/data/courses",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["data", "courses"]
+                },
+                "description": "Retrieve list of all available yoga courses"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Course by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/data/courses/:courseId",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["data", "courses", ":courseId"],
+                  "variable": [
+                    {
+                      "key": "courseId",
+                      "value": "course-deepak-1",
+                      "description": "Course ID (e.g., course-deepak-1, course-deepak-2, course-kavitha-1, course-kavitha-2)"
+                    }
+                  ]
+                },
+                "description": "Retrieve detailed information about a specific course including curriculum, reviews, and requirements"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Course Items",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/data/courses/:courseId/items",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["data", "courses", ":courseId", "items"],
+                  "variable": [
+                    {
+                      "key": "courseId",
+                      "value": "course-deepak-1",
+                      "description": "Course ID"
+                    }
+                  ]
+                },
+                "description": "Retrieve all lessons/videos for a specific course"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Course Item by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/data/courses/:courseId/items/:itemId",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["data", "courses", ":courseId", "items", ":itemId"],
+                  "variable": [
+                    {
+                      "key": "courseId",
+                      "value": "course-deepak-1",
+                      "description": "Course ID"
+                    },
+                    {
+                      "key": "itemId",
+                      "value": "deepak-1-item-1",
+                      "description": "Course item/lesson ID"
+                    }
+                  ]
+                },
+                "description": "Retrieve detailed information about a specific course lesson/video"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Course Progress",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/data/courses/:courseId/progress/:savePoint",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["data", "courses", ":courseId", "progress", ":savePoint"],
+                  "variable": [
+                    {
+                      "key": "courseId",
+                      "value": "course-deepak-1",
+                      "description": "Course ID"
+                    },
+                    {
+                      "key": "savePoint",
+                      "value": "lesson-5",
+                      "description": "Progress save point/lesson ID"
+                    }
+                  ]
+                },
+                "description": "Retrieve progress information for a course at a specific save point (guest mode)"
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Auth Routes",
+      "item": [
+        {
+          "name": "User Courses",
+          "item": [
+            {
+              "name": "Get User Courses",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/data/app/courses",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["data", "app", "courses"]
+                },
+                "description": "Retrieve all courses enrolled by the authenticated user"
+              },
+              "response": []
+            },
+            {
+              "name": "Get User Course by ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/data/app/courses/:courseId",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["data", "app", "courses", ":courseId"],
+                  "variable": [
+                    {
+                      "key": "courseId",
+                      "value": "course-deepak-1",
+                      "description": "Course ID"
+                    }
+                  ]
+                },
+                "description": "Retrieve detailed information about a specific enrolled course for the authenticated user"
+              },
+              "response": []
+            },
+            {
+              "name": "Get User Course Progress",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/data/app/courses/:courseId/progress/:savePoint",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["data", "app", "courses", ":courseId", "progress", ":savePoint"],
+                  "variable": [
+                    {
+                      "key": "courseId",
+                      "value": "course-deepak-1",
+                      "description": "Course ID"
+                    },
+                    {
+                      "key": "savePoint",
+                      "value": "lesson-5",
+                      "description": "Progress save point/lesson ID"
+                    }
+                  ]
+                },
+                "description": "Retrieve progress information for an enrolled course at a specific save point (authenticated user)"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "User",
+          "item": [
+            {
+              "name": "Get User Details",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/data/app/user/:userId/details",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["data", "app", "user", ":userId", "details"],
+                  "variable": [
+                    {
+                      "key": "userId",
+                      "value": "user-123",
+                      "description": "User ID"
+                    }
+                  ]
+                },
+                "description": "Retrieve detailed user profile information including membership, statistics, enrolled courses, and achievements"
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3111",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "your-auth-token-here",
+      "type": "string"
+    }
+  ]
+}
