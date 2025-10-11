@@ -1,34 +1,21 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function Header() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { user, isAuthenticated, login, logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-
-  useEffect(() => {
-    const checkAuth = () => {
-      const token = localStorage.getItem('authToken');
-      setIsLoggedIn(!!token);
-    };
-
-    checkAuth();
-    window.addEventListener('storage', checkAuth);
-
-    return () => {
-      window.removeEventListener('storage', checkAuth);
-    };
-  }, []);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   const handleLogin = () => {
-    localStorage.setItem('authToken', 'mock-token');
-    setIsLoggedIn(true);
+    login('mock-token');
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('authToken');
-    setIsLoggedIn(false);
+    logout();
+    setIsUserMenuOpen(false);
   };
 
   return (
@@ -128,15 +115,17 @@ export default function Header() {
 
         {/* Auth Button */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          {isLoggedIn ? (
+          {isAuthenticated ? (
             <div style={{ position: 'relative' }}>
               <button
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                 style={{
                   width: '36px',
                   height: '36px',
                   borderRadius: '50%',
                   background: '#000',
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
                   border: 'none',
                   cursor: 'pointer',
                   display: 'flex',
@@ -144,12 +133,14 @@ export default function Header() {
                   justifyContent: 'center',
                 }}
               >
-                <svg width="20" height="20" fill="#fff" viewBox="0 0 24 24">
-                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                </svg>
+                {!user?.profile?.avatar && (
+                  <svg width="20" height="20" fill="#fff" viewBox="0 0 24 24">
+                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                  </svg>
+                )}
               </button>
 
-              {isMenuOpen && (
+              {isUserMenuOpen && (
                 <div
                   style={{
                     position: 'absolute',
@@ -163,6 +154,19 @@ export default function Header() {
                     border: '1px solid #e0e0e0',
                   }}
                 >
+                  <div
+                    style={{
+                      padding: '12px 20px',
+                      borderBottom: '1px solid #e0e0e0',
+                    }}
+                  >
+                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#000' }}>
+                      {user?.profile?.name || 'User'}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#666' }}>
+                      {user?.profile?.email || 'user@example.com'}
+                    </div>
+                  </div>
                   <Link
                     href="/app"
                     style={{
@@ -172,9 +176,22 @@ export default function Header() {
                       color: '#000',
                       fontSize: '14px',
                     }}
-                    onClick={() => setIsMenuOpen(false)}
+                    onClick={() => setIsUserMenuOpen(false)}
                   >
-                    Dashboard
+                    My Dashboard
+                  </Link>
+                  <Link
+                    href="/app/my-courses"
+                    style={{
+                      display: 'block',
+                      padding: '12px 20px',
+                      textDecoration: 'none',
+                      color: '#000',
+                      fontSize: '14px',
+                    }}
+                    onClick={() => setIsUserMenuOpen(false)}
+                  >
+                    My Courses
                   </Link>
                   <Link
                     href="/app/profile"
@@ -185,7 +202,7 @@ export default function Header() {
                       color: '#000',
                       fontSize: '14px',
                     }}
-                    onClick={() => setIsMenuOpen(false)}
+                    onClick={() => setIsUserMenuOpen(false)}
                   >
                     Profile
                   </Link>
@@ -193,7 +210,7 @@ export default function Header() {
                   <button
                     onClick={() => {
                       handleLogout();
-                      setIsMenuOpen(false);
+                      setIsUserMenuOpen(false);
                     }}
                     style={{
                       display: 'block',

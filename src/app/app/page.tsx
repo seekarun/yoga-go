@@ -1,0 +1,470 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
+import type { UserCoursesData } from '@/types';
+
+export default function Dashboard() {
+  const { user, isAuthenticated } = useAuth();
+  const [userCourses, setUserCourses] = useState<UserCoursesData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUserCourses = async () => {
+      try {
+        const response = await fetch('/data/app/courses');
+        const data = await response.json();
+
+        if (data.success) {
+          setUserCourses(data.data);
+        }
+      } catch (error) {
+        console.error('[dashboard] Error fetching user courses:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (isAuthenticated) {
+      fetchUserCourses();
+    }
+  }, [isAuthenticated]);
+
+  if (!user) {
+    return (
+      <div style={{ padding: '80px 20px', textAlign: 'center' }}>
+        <div style={{ fontSize: '16px', color: '#666' }}>Loading user data...</div>
+      </div>
+    );
+  }
+
+  const formatTime = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours > 0) {
+      return `${hours}h ${mins}m`;
+    }
+    return `${mins}m`;
+  };
+
+  const enrolledCourses = userCourses?.enrolled || [];
+  const inProgressCourses = enrolledCourses.filter(
+    course => course.percentComplete > 0 && course.percentComplete < 100
+  );
+
+  return (
+    <div style={{ paddingTop: '64px', minHeight: '100vh' }}>
+      {/* Welcome Section */}
+      <section
+        style={{
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: '#fff',
+          padding: '60px 20px',
+        }}
+      >
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '32px' }}>
+            <div
+              style={{
+                width: '80px',
+                height: '80px',
+                borderRadius: '50%',
+                background: user.profile.avatar ? `url(${user.profile.avatar})` : '#fff',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '32px',
+                fontWeight: 'bold',
+                color: '#764ba2',
+              }}
+            >
+              {!user.profile.avatar && user.profile.name.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <h1
+                style={{
+                  fontSize: '36px',
+                  fontWeight: '600',
+                  marginBottom: '8px',
+                }}
+              >
+                Welcome back, {user.profile.name.split(' ')[0]}! 🧘‍♀️
+              </h1>
+              <p style={{ fontSize: '18px', opacity: 0.9 }}>Ready to continue your yoga journey?</p>
+            </div>
+          </div>
+
+          {/* Quick Stats */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '24px',
+            }}
+          >
+            <div
+              style={{
+                background: 'rgba(255,255,255,0.1)',
+                borderRadius: '12px',
+                padding: '24px',
+                textAlign: 'center',
+              }}
+            >
+              <div style={{ fontSize: '32px', fontWeight: '700', marginBottom: '8px' }}>
+                {user.statistics.currentStreak}
+              </div>
+              <div style={{ fontSize: '14px', opacity: 0.9 }}>Day Streak 🔥</div>
+            </div>
+            <div
+              style={{
+                background: 'rgba(255,255,255,0.1)',
+                borderRadius: '12px',
+                padding: '24px',
+                textAlign: 'center',
+              }}
+            >
+              <div style={{ fontSize: '32px', fontWeight: '700', marginBottom: '8px' }}>
+                {formatTime(user.statistics.totalPracticeTime)}
+              </div>
+              <div style={{ fontSize: '14px', opacity: 0.9 }}>Total Practice Time</div>
+            </div>
+            <div
+              style={{
+                background: 'rgba(255,255,255,0.1)',
+                borderRadius: '12px',
+                padding: '24px',
+                textAlign: 'center',
+              }}
+            >
+              <div style={{ fontSize: '32px', fontWeight: '700', marginBottom: '8px' }}>
+                {user.statistics.completedCourses}
+              </div>
+              <div style={{ fontSize: '14px', opacity: 0.9 }}>Courses Completed</div>
+            </div>
+            <div
+              style={{
+                background: 'rgba(255,255,255,0.1)',
+                borderRadius: '12px',
+                padding: '24px',
+                textAlign: 'center',
+              }}
+            >
+              <div style={{ fontSize: '32px', fontWeight: '700', marginBottom: '8px' }}>
+                {user.achievements.length}
+              </div>
+              <div style={{ fontSize: '14px', opacity: 0.9 }}>Achievements</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Continue Learning Section */}
+      <section style={{ padding: '60px 20px' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '32px',
+            }}
+          >
+            <h2
+              style={{
+                fontSize: '28px',
+                fontWeight: '600',
+                marginBottom: '8px',
+              }}
+            >
+              Continue Learning
+            </h2>
+            {inProgressCourses.length > 0 && (
+              <Link
+                href="/app/my-courses"
+                style={{
+                  color: '#764ba2',
+                  textDecoration: 'none',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                }}
+              >
+                View All →
+              </Link>
+            )}
+          </div>
+
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '40px' }}>
+              <div style={{ fontSize: '16px', color: '#666' }}>Loading your courses...</div>
+            </div>
+          ) : inProgressCourses.length > 0 ? (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+                gap: '24px',
+              }}
+            >
+              {inProgressCourses.map(course => (
+                <Link
+                  key={course.id}
+                  href={`/app/courses/${course.id}`}
+                  style={{ textDecoration: 'none', color: 'inherit' }}
+                >
+                  <div
+                    style={{
+                      background: '#fff',
+                      borderRadius: '12px',
+                      overflow: 'hidden',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                      transition: 'transform 0.2s, box-shadow 0.2s',
+                      cursor: 'pointer',
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.transform = 'translateY(-4px)';
+                      e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.15)';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                    }}
+                  >
+                    {/* Course Thumbnail */}
+                    <div
+                      style={{
+                        height: '180px',
+                        backgroundImage: `url(${course.thumbnail})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        position: 'relative',
+                      }}
+                    >
+                      {/* Progress Bar */}
+                      <div
+                        style={{
+                          position: 'absolute',
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          height: '4px',
+                          background: 'rgba(0,0,0,0.2)',
+                        }}
+                      >
+                        <div
+                          style={{
+                            height: '100%',
+                            width: `${course.percentComplete}%`,
+                            background: '#48bb78',
+                            transition: 'width 0.3s ease',
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Course Info */}
+                    <div style={{ padding: '20px' }}>
+                      <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                        <span
+                          style={{
+                            padding: '4px 8px',
+                            background: '#f7fafc',
+                            borderRadius: '4px',
+                            fontSize: '11px',
+                            color: '#764ba2',
+                            fontWeight: '600',
+                          }}
+                        >
+                          {course.category}
+                        </span>
+                        <span
+                          style={{
+                            padding: '4px 8px',
+                            background: '#f7fafc',
+                            borderRadius: '4px',
+                            fontSize: '11px',
+                            color: '#4a5568',
+                          }}
+                        >
+                          {course.level}
+                        </span>
+                      </div>
+
+                      <h3
+                        style={{
+                          fontSize: '18px',
+                          fontWeight: '600',
+                          marginBottom: '8px',
+                          lineHeight: '1.4',
+                        }}
+                      >
+                        {course.title}
+                      </h3>
+
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          marginBottom: '16px',
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '50%',
+                            backgroundImage: `url(${course.instructor.avatar})`,
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
+                          }}
+                        />
+                        <span style={{ fontSize: '13px', color: '#4a5568' }}>
+                          {course.instructor.name}
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          paddingTop: '12px',
+                          borderTop: '1px solid #e2e8f0',
+                        }}
+                      >
+                        <div style={{ fontSize: '14px', color: '#666' }}>
+                          {course.completedLessons} of {course.totalLessons} lessons
+                        </div>
+                        <div
+                          style={{
+                            padding: '6px 12px',
+                            background: '#764ba2',
+                            color: '#fff',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            fontWeight: '600',
+                          }}
+                        >
+                          Continue
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div
+              style={{
+                background: '#fff',
+                borderRadius: '12px',
+                padding: '60px',
+                textAlign: 'center',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              }}
+            >
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>📚</div>
+              <h3 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '8px' }}>
+                No courses in progress
+              </h3>
+              <p style={{ color: '#666', marginBottom: '24px' }}>
+                Start your yoga journey by enrolling in a course
+              </p>
+              <Link
+                href="/courses"
+                style={{
+                  padding: '12px 24px',
+                  background: '#764ba2',
+                  color: '#fff',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  textDecoration: 'none',
+                  display: 'inline-block',
+                }}
+              >
+                Browse Courses
+              </Link>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Recent Achievements */}
+      {user.achievements.length > 0 && (
+        <section style={{ padding: '60px 20px', background: '#fff' }}>
+          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+            <h2
+              style={{
+                fontSize: '28px',
+                fontWeight: '600',
+                marginBottom: '32px',
+                textAlign: 'center',
+              }}
+            >
+              Recent Achievements
+            </h2>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                gap: '24px',
+              }}
+            >
+              {user.achievements.slice(0, 4).map(achievement => (
+                <div
+                  key={achievement.id}
+                  style={{
+                    background: '#f8f8f8',
+                    borderRadius: '12px',
+                    padding: '24px',
+                    textAlign: 'center',
+                    border: '2px solid #e2e8f0',
+                  }}
+                >
+                  <div style={{ fontSize: '32px', marginBottom: '12px' }}>{achievement.icon}</div>
+                  <h3
+                    style={{
+                      fontSize: '16px',
+                      fontWeight: '600',
+                      marginBottom: '8px',
+                    }}
+                  >
+                    {achievement.title}
+                  </h3>
+                  <p
+                    style={{
+                      fontSize: '12px',
+                      color: '#666',
+                      lineHeight: '1.4',
+                    }}
+                  >
+                    {achievement.description}
+                  </p>
+                </div>
+              ))}
+            </div>
+            {user.achievements.length > 4 && (
+              <div style={{ textAlign: 'center', marginTop: '24px' }}>
+                <Link
+                  href="/app/achievements"
+                  style={{
+                    color: '#764ba2',
+                    textDecoration: 'none',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                  }}
+                >
+                  View All Achievements →
+                </Link>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
