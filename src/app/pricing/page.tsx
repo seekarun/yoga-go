@@ -1,6 +1,11 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { usePayment } from '@/contexts/PaymentContext';
+import { PAYMENT_CONFIG } from '@/config/payment';
+import { formatPrice } from '@/lib/geolocation';
+import PaymentModal from '@/components/payment/PaymentModal';
 
 const testimonials = [
   {
@@ -51,7 +56,11 @@ const testimonials = [
 ];
 
 export default function PricingPage() {
+  const router = useRouter();
+  const { currency, loading: locationLoading } = usePayment();
   const testimonialsScrollRef = useRef<HTMLDivElement>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<'curious' | 'committed' | null>(null);
 
   const scroll = (ref: React.RefObject<HTMLDivElement | null>, direction: 'left' | 'right') => {
     if (ref.current) {
@@ -62,6 +71,21 @@ export default function PricingPage() {
       });
     }
   };
+
+  const handlePlanSelect = (plan: 'curious' | 'committed') => {
+    setSelectedPlan(plan);
+    setShowPaymentModal(true);
+  };
+
+  const handleBrowseCourses = () => {
+    router.push('/courses');
+  };
+
+  // Get localized pricing
+  const curiousPrice =
+    currency === 'INR' ? PAYMENT_CONFIG.plans.curious.inr : PAYMENT_CONFIG.plans.curious.usd;
+  const committedPrice =
+    currency === 'INR' ? PAYMENT_CONFIG.plans.committed.inr : PAYMENT_CONFIG.plans.committed.usd;
 
   return (
     <div style={{ paddingTop: '64px', minHeight: '100vh', background: '#fff' }}>
@@ -176,6 +200,7 @@ export default function PricingPage() {
                 </li>
               </ul>
               <button
+                onClick={handleBrowseCourses}
                 style={{
                   width: '100%',
                   padding: '16px',
@@ -257,7 +282,7 @@ export default function PricingPage() {
                     marginBottom: '8px',
                   }}
                 >
-                  $299
+                  {locationLoading ? '...' : formatPrice(curiousPrice, currency)}
                   <span style={{ fontSize: '18px', color: '#666', fontWeight: '400' }}>/year</span>
                 </div>
                 <div style={{ fontSize: '14px', color: '#666' }}>One course token per month</div>
@@ -292,26 +317,28 @@ export default function PricingPage() {
                 </li>
               </ul>
               <button
+                onClick={() => handlePlanSelect('curious')}
+                disabled={locationLoading}
                 style={{
                   width: '100%',
                   padding: '16px',
-                  background: '#764ba2',
+                  background: locationLoading ? '#ccc' : '#764ba2',
                   color: '#fff',
                   border: 'none',
                   borderRadius: '8px',
                   fontSize: '16px',
                   fontWeight: '600',
-                  cursor: 'pointer',
+                  cursor: locationLoading ? 'not-allowed' : 'pointer',
                   transition: 'opacity 0.2s',
                 }}
                 onMouseEnter={e => {
-                  e.currentTarget.style.opacity = '0.9';
+                  if (!locationLoading) e.currentTarget.style.opacity = '0.9';
                 }}
                 onMouseLeave={e => {
-                  e.currentTarget.style.opacity = '1';
+                  if (!locationLoading) e.currentTarget.style.opacity = '1';
                 }}
               >
-                Get Started
+                {locationLoading ? 'Loading...' : 'Get Started'}
               </button>
             </div>
 
@@ -353,7 +380,7 @@ export default function PricingPage() {
                     marginBottom: '8px',
                   }}
                 >
-                  $599
+                  {locationLoading ? '...' : formatPrice(committedPrice, currency)}
                   <span
                     style={{
                       fontSize: '18px',
@@ -406,26 +433,28 @@ export default function PricingPage() {
                 </li>
               </ul>
               <button
+                onClick={() => handlePlanSelect('committed')}
+                disabled={locationLoading}
                 style={{
                   width: '100%',
                   padding: '16px',
-                  background: '#fff',
+                  background: locationLoading ? '#ccc' : '#fff',
                   color: '#764ba2',
                   border: 'none',
                   borderRadius: '8px',
                   fontSize: '16px',
                   fontWeight: '600',
-                  cursor: 'pointer',
+                  cursor: locationLoading ? 'not-allowed' : 'pointer',
                   transition: 'opacity 0.2s',
                 }}
                 onMouseEnter={e => {
-                  e.currentTarget.style.opacity = '0.9';
+                  if (!locationLoading) e.currentTarget.style.opacity = '0.9';
                 }}
                 onMouseLeave={e => {
-                  e.currentTarget.style.opacity = '1';
+                  if (!locationLoading) e.currentTarget.style.opacity = '1';
                 }}
               >
-                Go Premium
+                {locationLoading ? 'Loading...' : 'Go Premium'}
               </button>
             </div>
           </div>
@@ -642,6 +671,23 @@ export default function PricingPage() {
           </div>
         </div>
       </section>
+
+      {/* Payment Modal */}
+      {selectedPlan && (
+        <PaymentModal
+          isOpen={showPaymentModal}
+          onClose={() => {
+            setShowPaymentModal(false);
+            setSelectedPlan(null);
+          }}
+          type="subscription"
+          item={{
+            id: selectedPlan,
+            title: PAYMENT_CONFIG.plans[selectedPlan].name,
+            planType: selectedPlan,
+          }}
+        />
+      )}
     </div>
   );
 }
