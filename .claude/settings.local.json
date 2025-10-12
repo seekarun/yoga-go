@@ -5,7 +5,8 @@
       "Bash(npm install:*)",
       "Bash(npx husky init:*)",
       "Bash(npm run format:*)",
-      "Bash(npm run lint:*)"
+      "Bash(npm run lint:*)",
+      "Bash(npx tsx:*)"
     ],
     "deny": [],
     "ask": []
