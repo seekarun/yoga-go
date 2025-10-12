@@ -14,7 +14,12 @@ const LessonSchema = new Schema<LessonDocument>(
     duration: { type: String, required: true },
     isFree: { type: Boolean, default: false },
     description: String,
-    videoUrl: String,
+    videoUrl: String, // Deprecated: use cloudflareVideoId instead
+    cloudflareVideoId: String, // Cloudflare Stream video UID
+    cloudflareVideoStatus: {
+      type: String,
+      enum: ['uploading', 'processing', 'ready', 'error'],
+    },
     resources: [{ type: String }],
     completed: { type: Boolean, default: false },
     completedAt: String,

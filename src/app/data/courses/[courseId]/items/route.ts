@@ -109,7 +109,9 @@ export async function POST(
       duration: body.duration,
       isFree: body.isFree || false,
       description: body.description || '',
-      videoUrl: body.videoUrl || '',
+      videoUrl: body.videoUrl || '', // Deprecated but keep for backwards compatibility
+      cloudflareVideoId: body.cloudflareVideoId || '',
+      cloudflareVideoStatus: body.cloudflareVideoStatus || undefined,
       resources: body.resources || [],
       completed: false,
       locked: body.locked || false,

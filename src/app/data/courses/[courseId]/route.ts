@@ -102,6 +102,9 @@ export async function PUT(request: Request, { params }: { params: Promise<{ cour
     if (body.instructor !== undefined) updateData.instructor = body.instructor;
     if (body.thumbnail !== undefined) updateData.thumbnail = body.thumbnail;
     if (body.promoVideo !== undefined) updateData.promoVideo = body.promoVideo;
+    if (body.promoVideoCloudflareId !== undefined)
+      updateData.promoVideoCloudflareId = body.promoVideoCloudflareId;
+    if (body.promoVideoStatus !== undefined) updateData.promoVideoStatus = body.promoVideoStatus;
     if (body.level !== undefined) updateData.level = body.level;
     if (body.duration !== undefined) updateData.duration = body.duration;
     if (body.totalLessons !== undefined) updateData.totalLessons = body.totalLessons;
@@ -114,6 +117,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ cour
     if (body.tags !== undefined) updateData.tags = body.tags;
     if (body.featured !== undefined) updateData.featured = body.featured;
     if (body.isNew !== undefined) updateData.isNew = body.isNew;
+    if (body.status !== undefined) updateData.status = body.status;
     if (body.requirements !== undefined) updateData.requirements = body.requirements;
     if (body.whatYouWillLearn !== undefined) updateData.whatYouWillLearn = body.whatYouWillLearn;
     if (body.reviews !== undefined) updateData.reviews = body.reviews;

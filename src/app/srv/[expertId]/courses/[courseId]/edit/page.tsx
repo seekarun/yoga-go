@@ -3,11 +3,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import type { Course } from '@/types';
 
-export default function CreateCoursePage() {
+export default function EditCoursePage() {
   const params = useParams();
   const router = useRouter();
   const expertId = params.expertId as string;
+  const courseId = params.courseId as string;
 
   const [formData, setFormData] = useState({
     title: '',
@@ -29,12 +31,18 @@ export default function CreateCoursePage() {
     whatYouWillLearn: '',
   });
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedPromoFile, setSelectedPromoFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [pollingVideoId, setPollingVideoId] = useState<string | null>(null);
+
+  // Fetch existing course data on mount
+  useEffect(() => {
+    fetchCourseData();
+  }, [courseId]);
 
   // Poll video status for processing promo videos
   useEffect(() => {
@@ -42,7 +50,7 @@ export default function CreateCoursePage() {
 
     const pollInterval = setInterval(async () => {
       try {
-        console.log('[DBG][create-course] Polling video status for:', pollingVideoId);
+        console.log('[DBG][edit-course] Polling video status for:', pollingVideoId);
 
         const response = await fetch(`/api/cloudflare/video-status/${pollingVideoId}`);
         const data = await response.json();
@@ -51,7 +59,7 @@ export default function CreateCoursePage() {
           const videoStatus = data.data.status;
           const isReady = data.data.readyToStream;
 
-          console.log('[DBG][create-course] Video status:', videoStatus, 'Ready:', isReady);
+          console.log('[DBG][edit-course] Video status:', videoStatus, 'Ready:', isReady);
 
           // Update formData if this is the currently uploading video
           if (formData.promoVideoCloudflareId === pollingVideoId) {
@@ -64,18 +72,66 @@ export default function CreateCoursePage() {
 
             // If ready or error, stop polling
             if (isReady || videoStatus === 'error') {
-              console.log('[DBG][create-course] Video processing complete, stopping poll');
+              console.log('[DBG][edit-course] Video processing complete, stopping poll');
               setPollingVideoId(null);
             }
           }
         }
       } catch (err) {
-        console.error('[DBG][create-course] Error polling video status:', err);
+        console.error('[DBG][edit-course] Error polling video status:', err);
       }
     }, 10000); // Poll every 10 seconds
 
     return () => clearInterval(pollInterval);
   }, [pollingVideoId, formData.promoVideoCloudflareId]);
+
+  const fetchCourseData = async () => {
+    try {
+      setLoading(true);
+      console.log('[DBG][edit-course] Fetching course data:', courseId);
+
+      const response = await fetch(`/data/courses/${courseId}`);
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to load course');
+      }
+
+      const course: Course = result.data;
+      console.log('[DBG][edit-course] Course loaded:', course);
+
+      // Populate form with existing data
+      setFormData({
+        title: course.title || '',
+        description: course.description || '',
+        longDescription: course.longDescription || '',
+        thumbnail: course.thumbnail || '',
+        promoVideo: course.promoVideo || '',
+        promoVideoCloudflareId: course.promoVideoCloudflareId || '',
+        promoVideoStatus: course.promoVideoStatus || '',
+        level: course.level || 'Beginner',
+        duration: course.duration || '',
+        totalLessons: course.totalLessons || 0,
+        freeLessons: course.freeLessons || 0,
+        price: course.price?.toString() || '',
+        category: course.category || 'Yoga',
+        tags: course.tags?.join(', ') || '',
+        featured: course.featured || false,
+        requirements: course.requirements?.join('\n') || '',
+        whatYouWillLearn: course.whatYouWillLearn?.join('\n') || '',
+      });
+
+      // If promo video is processing, start polling
+      if (course.promoVideoCloudflareId && course.promoVideoStatus === 'processing') {
+        setPollingVideoId(course.promoVideoCloudflareId);
+      }
+    } catch (err) {
+      console.error('[DBG][edit-course] Error loading course:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load course');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -95,7 +151,7 @@ export default function CreateCoursePage() {
   const handlePromoFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      console.log('[DBG][create-course] Promo video file selected:', file.name, file.size);
+      console.log('[DBG][edit-course] Promo video file selected:', file.name, file.size);
       setSelectedPromoFile(file);
     }
   };
@@ -111,7 +167,7 @@ export default function CreateCoursePage() {
     setError(null);
 
     try {
-      console.log('[DBG][create-course] Starting promo video upload');
+      console.log('[DBG][edit-course] Starting promo video upload');
 
       // Step 1: Get upload URL from our API
       const uploadUrlResponse = await fetch('/api/cloudflare/upload-url', {
@@ -126,7 +182,7 @@ export default function CreateCoursePage() {
       }
 
       const { uploadURL, uid } = uploadUrlData.data;
-      console.log('[DBG][create-course] Got upload URL for promo video:', uid);
+      console.log('[DBG][edit-course] Got upload URL for promo video:', uid);
 
       // Step 2: Upload video to Cloudflare using tus protocol
       const formDataUpload = new FormData();
@@ -138,7 +194,7 @@ export default function CreateCoursePage() {
         if (e.lengthComputable) {
           const percentComplete = Math.round((e.loaded / e.total) * 100);
           setUploadProgress(percentComplete);
-          console.log('[DBG][create-course] Upload progress:', percentComplete, '%');
+          console.log('[DBG][edit-course] Upload progress:', percentComplete, '%');
         }
       });
 
@@ -159,7 +215,7 @@ export default function CreateCoursePage() {
         xhr.send(formDataUpload);
       });
 
-      console.log('[DBG][create-course] Promo video uploaded successfully:', uid);
+      console.log('[DBG][edit-course] Promo video uploaded successfully:', uid);
 
       // Step 3: Update form data with video ID
       setFormData(prev => ({
@@ -171,12 +227,12 @@ export default function CreateCoursePage() {
       setUploadProgress(100);
 
       // Start polling for video status
-      console.log('[DBG][create-course] Starting status polling for:', uid);
+      console.log('[DBG][edit-course] Starting status polling for:', uid);
       setPollingVideoId(uid);
 
       alert('Promo video uploaded successfully! Processing status will update automatically.');
     } catch (err) {
-      console.error('[DBG][create-course] Error uploading promo video:', err);
+      console.error('[DBG][edit-course] Error uploading promo video:', err);
       setError(err instanceof Error ? err.message : 'Failed to upload promo video');
     } finally {
       setIsUploading(false);
@@ -185,10 +241,10 @@ export default function CreateCoursePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setSaving(true);
     setError(null);
 
-    console.log('[DBG][create-course] Submitting course creation form');
+    console.log('[DBG][edit-course] Submitting course update form');
 
     try {
       // Prepare the data
@@ -196,11 +252,6 @@ export default function CreateCoursePage() {
         title: formData.title,
         description: formData.description,
         longDescription: formData.longDescription || formData.description,
-        instructor: {
-          id: expertId,
-          name: expertId.charAt(0).toUpperCase() + expertId.slice(1), // Capitalize first letter
-          title: 'Yoga Expert',
-        },
         thumbnail: formData.thumbnail || '/images/default-course.jpg',
         promoVideo: formData.promoVideo || undefined,
         promoVideoCloudflareId: formData.promoVideoCloudflareId || undefined,
@@ -210,26 +261,22 @@ export default function CreateCoursePage() {
         totalLessons: formData.totalLessons,
         freeLessons: formData.freeLessons,
         price: parseFloat(formData.price),
-        rating: 5.0,
-        totalStudents: 0,
         category: formData.category,
         tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()) : [],
         featured: formData.featured,
-        isNew: true,
         requirements: formData.requirements
           ? formData.requirements.split('\n').filter(r => r.trim())
           : [],
         whatYouWillLearn: formData.whatYouWillLearn
           ? formData.whatYouWillLearn.split('\n').filter(w => w.trim())
           : [],
-        curriculum: [],
       };
 
-      console.log('[DBG][create-course] Course data:', courseData);
+      console.log('[DBG][edit-course] Course data:', courseData);
 
-      // Call the POST endpoint
-      const response = await fetch('/data/courses', {
-        method: 'POST',
+      // Call the PUT endpoint to update the course
+      const response = await fetch(`/data/courses/${courseId}`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -239,19 +286,30 @@ export default function CreateCoursePage() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to create course');
+        throw new Error(result.error || 'Failed to update course');
       }
 
-      console.log('[DBG][create-course] Course created successfully:', result.data);
+      console.log('[DBG][edit-course] Course updated successfully:', result.data);
 
-      // Redirect to lesson management page to add course items
-      router.push(`/srv/${expertId}/courses/${result.data.id}/lessons`);
+      // Redirect back to expert dashboard
+      router.push(`/srv/${expertId}`);
     } catch (err) {
-      console.error('[DBG][create-course] Error creating course:', err);
-      setError(err instanceof Error ? err.message : 'Failed to create course');
-      setLoading(false);
+      console.error('[DBG][edit-course] Error updating course:', err);
+      setError(err instanceof Error ? err.message : 'Failed to update course');
+      setSaving(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
+          <p className="mt-4 text-gray-600">Loading course...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -264,8 +322,8 @@ export default function CreateCoursePage() {
           >
             ← Back to Dashboard
           </Link>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Create New Course</h1>
-          <p className="text-gray-600 mt-2">Fill in the details below to create your new course</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Edit Course</h1>
+          <p className="text-gray-600 mt-2">Update the details of your course</p>
         </div>
       </div>
 
@@ -277,7 +335,7 @@ export default function CreateCoursePage() {
                 <span className="text-red-400 text-xl">⚠️</span>
               </div>
               <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">Error creating course</h3>
+                <h3 className="text-sm font-medium text-red-800">Error updating course</h3>
                 <p className="text-sm text-red-700 mt-1">{error}</p>
               </div>
             </div>
@@ -681,17 +739,17 @@ export default function CreateCoursePage() {
             </Link>
             <button
               type="submit"
-              disabled={loading}
+              disabled={saving}
               className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              {loading ? (
+              {saving ? (
                 <>
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
-                  Creating...
+                  Saving...
                 </>
               ) : (
                 <>
-                  <span>Create Course</span>
+                  <span>Save Changes</span>
                 </>
               )}
             </button>

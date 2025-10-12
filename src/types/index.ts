@@ -39,6 +39,8 @@ export interface Expert extends BaseEntity {
 }
 
 // Course Related Types
+export type CourseStatus = 'IN_PROGRESS' | 'PUBLISHED' | 'ARCHIVED';
+
 export type CourseLevel =
   | 'Beginner'
   | 'Intermediate'
@@ -75,7 +77,9 @@ export interface Lesson {
   notes?: string;
   locked?: boolean;
   description?: string;
-  videoUrl?: string;
+  videoUrl?: string; // Deprecated: use cloudflareVideoId instead
+  cloudflareVideoId?: string; // Cloudflare Stream video UID
+  cloudflareVideoStatus?: 'uploading' | 'processing' | 'ready' | 'error';
   resources?: string[];
 }
 
@@ -101,7 +105,9 @@ export interface Course extends BaseEntity {
   longDescription?: string;
   instructor: Instructor;
   thumbnail: string;
-  promoVideo?: string;
+  promoVideo?: string; // Deprecated: use promoVideoCloudflareId instead
+  promoVideoCloudflareId?: string; // Cloudflare Stream video UID for promo video
+  promoVideoStatus?: 'uploading' | 'processing' | 'ready' | 'error';
   level: CourseLevel;
   duration: string;
   totalLessons: number;
@@ -114,6 +120,7 @@ export interface Course extends BaseEntity {
   tags: string[];
   featured?: boolean;
   isNew?: boolean;
+  status?: CourseStatus;
   requirements?: string[];
   whatYouWillLearn?: string[];
   curriculum?: Curriculum[];

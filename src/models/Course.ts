@@ -46,7 +46,12 @@ const CourseSchema = new Schema<CourseDocument>(
     longDescription: String,
     instructor: { type: InstructorSchema, required: true },
     thumbnail: { type: String, required: true },
-    promoVideo: String,
+    promoVideo: String, // Deprecated: use promoVideoCloudflareId instead
+    promoVideoCloudflareId: String, // Cloudflare Stream video UID for promo video
+    promoVideoStatus: {
+      type: String,
+      enum: ['uploading', 'processing', 'ready', 'error'],
+    },
     level: { type: String, required: true },
     duration: { type: String, required: true },
     totalLessons: { type: Number, required: true },
@@ -59,6 +64,11 @@ const CourseSchema = new Schema<CourseDocument>(
     tags: [{ type: String }],
     featured: { type: Boolean, default: false },
     isNew: { type: Boolean, default: false },
+    status: {
+      type: String,
+      enum: ['IN_PROGRESS', 'PUBLISHED', 'ARCHIVED'],
+      default: 'IN_PROGRESS',
+    },
     requirements: [{ type: String }],
     whatYouWillLearn: [{ type: String }],
     curriculum: [CurriculumSchema],
@@ -73,6 +83,7 @@ const CourseSchema = new Schema<CourseDocument>(
 // Indexes for common queries
 CourseSchema.index({ featured: 1 });
 CourseSchema.index({ category: 1 });
+CourseSchema.index({ status: 1 });
 CourseSchema.index({ 'instructor.id': 1 });
 
 // Prevent model recompilation in development

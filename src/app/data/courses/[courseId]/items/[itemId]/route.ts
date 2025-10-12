@@ -86,7 +86,10 @@ export async function PUT(
     if (body.duration !== undefined) updateData.duration = body.duration;
     if (body.isFree !== undefined) updateData.isFree = body.isFree;
     if (body.description !== undefined) updateData.description = body.description;
-    if (body.videoUrl !== undefined) updateData.videoUrl = body.videoUrl;
+    if (body.videoUrl !== undefined) updateData.videoUrl = body.videoUrl; // Deprecated
+    if (body.cloudflareVideoId !== undefined) updateData.cloudflareVideoId = body.cloudflareVideoId;
+    if (body.cloudflareVideoStatus !== undefined)
+      updateData.cloudflareVideoStatus = body.cloudflareVideoStatus;
     if (body.resources !== undefined) updateData.resources = body.resources;
     if (body.completed !== undefined) updateData.completed = body.completed;
     if (body.completedAt !== undefined) updateData.completedAt = body.completedAt;

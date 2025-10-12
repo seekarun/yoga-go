@@ -28,6 +28,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Always verify build succeeds before pushing to git remote
 - Use logging extensively with `[DBG][$filename]` prefix to understand issues
 - Code is automatically formatted and linted on commit via pre-commit hook
+- Always keep the postman collection in /docs/api when changes to api are made (Eg. new endpoints added, updates)
 
 ## Architecture
 

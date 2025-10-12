@@ -10,14 +10,33 @@ function generateCourseId(instructorId: string): string {
   return `course-${instructorId}-${timestamp}-${random}`;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   console.log('[DBG][courses/route.ts] GET /data/courses called');
 
   try {
     await connectToDatabase();
 
-    // Fetch all courses from MongoDB
-    const courseDocs = await CourseModel.find({}).lean().exec();
+    // Check for query parameters
+    const { searchParams } = new URL(request.url);
+    const instructorId = searchParams.get('instructorId');
+    const includeAll = searchParams.get('includeAll') === 'true';
+
+    const query: any = {};
+
+    // If instructorId is provided, filter by instructor
+    if (instructorId) {
+      query['instructor.id'] = instructorId;
+      // For expert dashboard, include IN_PROGRESS and PUBLISHED courses
+      if (includeAll) {
+        query.status = { $in: ['IN_PROGRESS', 'PUBLISHED'] };
+      }
+    } else {
+      // For public course listing, only show PUBLISHED courses
+      query.status = 'PUBLISHED';
+    }
+
+    // Fetch courses from MongoDB
+    const courseDocs = await CourseModel.find(query).lean().exec();
 
     // Transform MongoDB documents to Course type
     const courses: Course[] = courseDocs.map((doc: any) => ({
@@ -107,6 +126,8 @@ export async function POST(request: Request) {
       instructor: body.instructor,
       thumbnail: body.thumbnail || '/images/default-course.jpg',
       promoVideo: body.promoVideo || undefined,
+      promoVideoCloudflareId: body.promoVideoCloudflareId || undefined,
+      promoVideoStatus: body.promoVideoStatus || undefined,
       level: body.level,
       duration: body.duration,
       totalLessons: body.totalLessons !== undefined ? body.totalLessons : 0,
@@ -119,6 +140,7 @@ export async function POST(request: Request) {
       tags: body.tags || [],
       featured: body.featured || false,
       isNew: body.isNew !== undefined ? body.isNew : true,
+      status: 'IN_PROGRESS' as const, // New courses start as IN_PROGRESS
       requirements: body.requirements || [],
       whatYouWillLearn: body.whatYouWillLearn || [],
       curriculum,
