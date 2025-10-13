@@ -3,9 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import type { Lesson } from '@/types';
-import { mockLessons } from '@/data/mockData';
-import { mockCourses } from '@/data/mockData';
+import type { Lesson, Course } from '@/types';
 
 export default function CourseManagement() {
   const params = useParams();
@@ -13,20 +11,47 @@ export default function CourseManagement() {
   const courseId = params.courseId as string;
 
   const [items, setItems] = useState<Lesson[]>([]);
-  const [course, setCourse] = useState<any>(null);
-  const [showUploadForm, setShowUploadForm] = useState(false);
+  const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      const courseData = mockCourses[courseId];
-      const itemsData = mockLessons[courseId] || [];
-      setCourse(courseData);
-      setItems(itemsData);
-      setLoading(false);
-    }, 300);
+    fetchCourseAndItems();
   }, [courseId]);
+
+  const fetchCourseAndItems = async () => {
+    try {
+      setLoading(true);
+      console.log('[DBG][course-management] Fetching course:', courseId);
+
+      // Fetch course details
+      const courseRes = await fetch(`/data/courses/${courseId}`);
+      const courseData = await courseRes.json();
+
+      if (!courseData.success) {
+        setError('Course not found');
+        setLoading(false);
+        return;
+      }
+
+      setCourse(courseData.data);
+
+      // Fetch course items/lessons
+      const itemsRes = await fetch(`/data/courses/${courseId}/items`);
+      const itemsData = await itemsRes.json();
+
+      if (itemsData.success) {
+        setItems(itemsData.data || []);
+        console.log('[DBG][course-management] Items loaded:', itemsData.data?.length || 0);
+      }
+
+      setLoading(false);
+    } catch (err) {
+      console.error('[DBG][course-management] Error fetching data:', err);
+      setError('Failed to load course data');
+      setLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -39,11 +64,11 @@ export default function CourseManagement() {
     );
   }
 
-  if (!course) {
+  if (error || !course) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Course Not Found</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">{error || 'Course Not Found'}</h1>
           <Link
             href={`/srv/${expertId}`}
             className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700"
@@ -71,12 +96,12 @@ export default function CourseManagement() {
               <h1 className="text-3xl font-bold text-gray-900">{course.title}</h1>
               <p className="text-gray-600 mt-1">{course.description}</p>
             </div>
-            <button
-              onClick={() => setShowUploadForm(true)}
+            <Link
+              href={`/srv/${expertId}/courses/${courseId}/lessons`}
               className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
             >
-              + Add New Item
-            </button>
+              + Manage Lessons
+            </Link>
           </div>
         </div>
       </div>
@@ -114,13 +139,13 @@ export default function CourseManagement() {
           <div className="divide-y divide-gray-200">
             {items.length === 0 ? (
               <div className="p-12 text-center">
-                <p className="text-gray-500 mb-4">No items added yet</p>
-                <button
-                  onClick={() => setShowUploadForm(true)}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                <p className="text-gray-500 mb-4">No lessons added yet</p>
+                <Link
+                  href={`/srv/${expertId}/courses/${courseId}/lessons`}
+                  className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
-                  Add Your First Item
-                </button>
+                  Add Your First Lesson
+                </Link>
               </div>
             ) : (
               items.map((item, index) => (
@@ -160,182 +185,6 @@ export default function CourseManagement() {
             )}
           </div>
         </div>
-      </div>
-
-      {/* Upload Form Modal */}
-      {showUploadForm && (
-        <UploadItemForm
-          courseId={courseId}
-          onClose={() => setShowUploadForm(false)}
-          onSuccess={newItem => {
-            setItems([...items, newItem]);
-            setShowUploadForm(false);
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-function UploadItemForm({
-  courseId,
-  onClose,
-  onSuccess,
-}: {
-  courseId: string;
-  onClose: () => void;
-  onSuccess: (item: Lesson) => void;
-}) {
-  const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    duration: '',
-    isFree: false,
-    videoFile: null as File | null,
-  });
-  const [uploading, setUploading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setUploading(true);
-
-    // Simulate upload
-    setTimeout(() => {
-      const newItem: Lesson = {
-        id: `${courseId}-item-${Date.now()}`,
-        title: formData.title,
-        description: formData.description,
-        duration: formData.duration,
-        isFree: formData.isFree,
-        videoUrl: formData.videoFile ? `/videos/${courseId}/${formData.videoFile.name}` : undefined,
-      };
-
-      setUploading(false);
-      onSuccess(newItem);
-    }, 2000);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-2xl font-bold text-gray-900">Add New Course Item</h2>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Title */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Item Title <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              required
-              value={formData.title}
-              onChange={e => setFormData({ ...formData, title: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="e.g., Introduction to Sun Salutations"
-            />
-          </div>
-
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Description <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              required
-              value={formData.description}
-              onChange={e => setFormData({ ...formData, description: e.target.value })}
-              rows={3}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Brief description of this lesson..."
-            />
-          </div>
-
-          {/* Duration */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Duration <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              required
-              value={formData.duration}
-              onChange={e => setFormData({ ...formData, duration: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="e.g., 15 min"
-            />
-          </div>
-
-          {/* Video Upload */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Video File <span className="text-red-500">*</span>
-            </label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
-              <input
-                type="file"
-                accept="video/*"
-                required
-                onChange={e => setFormData({ ...formData, videoFile: e.target.files?.[0] || null })}
-                className="hidden"
-                id="video-upload"
-              />
-              <label htmlFor="video-upload" className="cursor-pointer">
-                <div className="text-4xl mb-2">🎥</div>
-                {formData.videoFile ? (
-                  <p className="text-sm text-gray-900 font-medium">{formData.videoFile.name}</p>
-                ) : (
-                  <>
-                    <p className="text-sm text-gray-600">Click to upload video</p>
-                    <p className="text-xs text-gray-500 mt-1">MP4, MOV, AVI (max 500MB)</p>
-                  </>
-                )}
-              </label>
-            </div>
-          </div>
-
-          {/* Free Access */}
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="isFree"
-              checked={formData.isFree}
-              onChange={e => setFormData({ ...formData, isFree: e.target.checked })}
-              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-            />
-            <label htmlFor="isFree" className="ml-2 text-sm text-gray-700">
-              Make this item available for free (preview)
-            </label>
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={uploading}
-              className="px-6 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={uploading}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
-            >
-              {uploading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                  <span>Uploading...</span>
-                </>
-              ) : (
-                'Upload Item'
-              )}
-            </button>
-          </div>
-        </form>
       </div>
     </div>
   );

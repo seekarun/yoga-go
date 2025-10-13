@@ -3,23 +3,41 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import type { ExpertDashboardData } from '@/types/expertStats';
-import { expertDashboardData } from '@/data/expertStatsData';
+import type { Course } from '@/types';
 
 export default function ExpertDashboard() {
   const params = useParams();
   const expertId = params.expertId as string;
-  const [dashboardData, setDashboardData] = useState<ExpertDashboardData | null>(null);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      const data = expertDashboardData[expertId];
-      setDashboardData(data || null);
-      setLoading(false);
-    }, 300);
+    fetchExpertCourses();
   }, [expertId]);
+
+  const fetchExpertCourses = async () => {
+    try {
+      setLoading(true);
+      console.log('[DBG][expert-dashboard] Fetching courses for expert:', expertId);
+
+      // Fetch all courses for this instructor (both IN_PROGRESS and PUBLISHED)
+      const response = await fetch(`/data/courses?instructorId=${expertId}&includeAll=true`);
+      const data = await response.json();
+
+      if (data.success) {
+        setCourses(data.data || []);
+        console.log('[DBG][expert-dashboard] Courses loaded:', data.data);
+      } else {
+        setError('Failed to load courses');
+      }
+    } catch (err) {
+      console.error('[DBG][expert-dashboard] Error fetching courses:', err);
+      setError('Failed to load courses');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -32,27 +50,12 @@ export default function ExpertDashboard() {
     );
   }
 
-  if (!dashboardData) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Expert Not Found</h1>
-          <p className="text-gray-600 mb-6">
-            The expert dashboard you&apos;re looking for doesn&apos;t exist.
-          </p>
-          <Link
-            href="/srv"
-            className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700"
-          >
-            Back to Expert Portal
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  const { overview, courseEngagement, subscriberStats, revenueStats, engagementMetrics } =
-    dashboardData;
+  // Calculate statistics from courses
+  const publishedCourses = courses.filter(c => c.status === 'PUBLISHED');
+  const inProgressCourses = courses.filter(c => c.status === 'IN_PROGRESS');
+  const totalStudents = courses.reduce((sum, c) => sum + (c.totalStudents || 0), 0);
+  const averageRating =
+    courses.length > 0 ? courses.reduce((sum, c) => sum + (c.rating || 0), 0) / courses.length : 0;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -63,9 +66,7 @@ export default function ExpertDashboard() {
             ← Back to Expert Portal
           </Link>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-              {dashboardData.expertName}&apos;s Dashboard
-            </h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Expert Dashboard</h1>
             <div className="text-left sm:text-right">
               <p className="text-sm text-gray-500">Last updated</p>
               <p className="text-sm font-medium text-gray-900">Just now</p>
@@ -75,6 +76,20 @@ export default function ExpertDashboard() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <span className="text-red-400 text-xl">⚠️</span>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">Error</h3>
+                <p className="text-sm text-red-700 mt-1">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Overview Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow p-6">
@@ -82,31 +97,27 @@ export default function ExpertDashboard() {
               <p className="text-sm text-gray-600">Total Students</p>
               <span className="text-2xl">👥</span>
             </div>
-            <p className="text-3xl font-bold text-gray-900">
-              {overview.totalStudents.toLocaleString()}
-            </p>
-            <p className="text-sm text-green-600 mt-1">
-              +{subscriberStats.subscriberGrowth}% this month
-            </p>
+            <p className="text-3xl font-bold text-gray-900">{totalStudents.toLocaleString()}</p>
+            <p className="text-sm text-gray-500 mt-1">Across all courses</p>
           </div>
 
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-gray-600">Total Revenue</p>
-              <span className="text-2xl">💰</span>
-            </div>
-            <p className="text-3xl font-bold text-gray-900">
-              ${overview.totalRevenue.toLocaleString()}
-            </p>
-            <p className="text-sm text-green-600 mt-1">+{revenueStats.revenueGrowth}% this month</p>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-gray-600">Active Courses</p>
+              <p className="text-sm text-gray-600">Total Courses</p>
               <span className="text-2xl">📚</span>
             </div>
-            <p className="text-3xl font-bold text-gray-900">{overview.totalCourses}</p>
+            <p className="text-3xl font-bold text-gray-900">{courses.length}</p>
+            <p className="text-sm text-gray-500 mt-1">
+              {publishedCourses.length} published, {inProgressCourses.length} in progress
+            </p>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm text-gray-600">Published</p>
+              <span className="text-2xl">✅</span>
+            </div>
+            <p className="text-3xl font-bold text-gray-900">{publishedCourses.length}</p>
             <p className="text-sm text-gray-500 mt-1">Live courses</p>
           </div>
 
@@ -115,208 +126,125 @@ export default function ExpertDashboard() {
               <p className="text-sm text-gray-600">Average Rating</p>
               <span className="text-2xl">⭐</span>
             </div>
-            <p className="text-3xl font-bold text-gray-900">{overview.averageRating.toFixed(1)}</p>
+            <p className="text-3xl font-bold text-gray-900">
+              {courses.length > 0 ? averageRating.toFixed(1) : '—'}
+            </p>
             <p className="text-sm text-gray-500 mt-1">Across all courses</p>
           </div>
         </div>
 
-        {/* Course Engagement */}
+        {/* Add New Course Section */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg shadow mb-8 border border-blue-200">
+          <div className="p-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Create New Course</h2>
+                <p className="text-gray-600">
+                  Share your expertise by creating a new course for your students
+                </p>
+              </div>
+              <Link
+                href={`/srv/${expertId}/courses/create`}
+                className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-md hover:shadow-lg"
+              >
+                <span className="text-xl mr-2">+</span>
+                Add New Course
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* My Courses */}
         <div className="bg-white rounded-lg shadow mb-8">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900">Course Engagement</h2>
+          <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h2 className="text-xl font-bold text-gray-900">My Courses</h2>
+            <span className="text-sm text-gray-500">{courses.length} courses</span>
           </div>
           <div className="p-6">
-            <div className="space-y-6">
-              {courseEngagement.map(course => (
-                <div key={course.courseId} className="border-b border-gray-200 pb-6 last:border-0">
-                  <div className="mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      {course.courseName}
-                    </h3>
-                    <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600 mb-3">
-                      <span>{course.totalEnrollments.toLocaleString()} enrollments</span>
-                      <span>•</span>
-                      <span>{course.activeStudents.toLocaleString()} active</span>
-                      <span>•</span>
-                      <span>
-                        ⭐ {course.rating} ({course.totalReviews} reviews)
-                      </span>
+            {courses.length > 0 ? (
+              <div className="space-y-6">
+                {courses.map(course => (
+                  <div
+                    key={course.id}
+                    className="border border-gray-200 rounded-lg p-6 hover:border-blue-300 transition-colors"
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-lg font-semibold text-gray-900">{course.title}</h3>
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                              course.status === 'PUBLISHED'
+                                ? 'bg-green-100 text-green-800'
+                                : course.status === 'IN_PROGRESS'
+                                  ? 'bg-yellow-100 text-yellow-800'
+                                  : 'bg-gray-100 text-gray-800'
+                            }`}
+                          >
+                            {course.status || 'DRAFT'}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-3">{course.description}</p>
+                        <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
+                          <span>⭐ {course.rating.toFixed(1)}</span>
+                          <span>•</span>
+                          <span>👥 {course.totalStudents.toLocaleString()} students</span>
+                          <span>•</span>
+                          <span>📚 {course.totalLessons} lessons</span>
+                          <span>•</span>
+                          <span>💰 ${course.price}</span>
+                        </div>
+                      </div>
                     </div>
+
                     <div className="flex flex-wrap items-center gap-3">
+                      {course.status === 'IN_PROGRESS' ? (
+                        <Link
+                          href={`/srv/${expertId}/courses/${course.id}/lessons`}
+                          className="px-4 py-2 bg-yellow-600 text-white text-sm rounded-lg hover:bg-yellow-700 transition-colors font-medium"
+                        >
+                          Continue Setup
+                        </Link>
+                      ) : (
+                        <Link
+                          href={`/srv/${expertId}/courses/${course.id}`}
+                          className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                        >
+                          Manage Course
+                        </Link>
+                      )}
                       <Link
-                        href={`/srv/${expertId}/courses/${course.courseId}`}
-                        className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                        href={`/srv/${expertId}/courses/${course.id}/edit`}
+                        className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors font-medium"
                       >
-                        Manage Course
+                        Edit
                       </Link>
-                      <span
-                        className={`px-3 py-1 rounded-full text-sm ${
-                          course.trend === 'up'
-                            ? 'bg-green-100 text-green-800'
-                            : course.trend === 'down'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-gray-100 text-gray-800'
-                        }`}
+                      <Link
+                        href={`/courses/${course.id}`}
+                        className="px-4 py-2 border border-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors font-medium"
                       >
-                        {course.trend === 'up'
-                          ? '📈 Growing'
-                          : course.trend === 'down'
-                            ? '📉 Declining'
-                            : '➡️ Stable'}
-                      </span>
+                        View as Student
+                      </Link>
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-600 mb-2">Completion Rate</p>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-blue-600 h-2 rounded-full"
-                            style={{ width: `${course.completionRate}%` }}
-                          />
-                        </div>
-                        <span className="text-sm font-medium text-gray-900 w-10 text-right">
-                          {course.completionRate}%
-                        </span>
-                      </div>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-gray-600 mb-2">Avg. Progress</p>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-green-600 h-2 rounded-full"
-                            style={{ width: `${course.averageProgress}%` }}
-                          />
-                        </div>
-                        <span className="text-sm font-medium text-gray-900 w-10 text-right">
-                          {course.averageProgress}%
-                        </span>
-                      </div>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-gray-600 mb-2">Revenue</p>
-                      <p className="text-lg font-semibold text-gray-900">
-                        ${course.totalRevenue.toLocaleString()}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-gray-600 mb-2">Per Student</p>
-                      <p className="text-lg font-semibold text-gray-900">
-                        ${(course.totalRevenue / course.totalEnrollments).toFixed(2)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          {/* Subscriber Stats */}
-          <div className="bg-white rounded-lg shadow">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-gray-900">Subscriber Statistics</h2>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Active Subscribers</span>
-                <span className="text-lg font-semibold text-gray-900">
-                  {subscriberStats.activeSubscribers.toLocaleString()}
-                </span>
+                ))}
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">New This Month</span>
-                <span className="text-lg font-semibold text-green-600">
-                  +{subscriberStats.newSubscribersThisMonth}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Churn Rate</span>
-                <span className="text-lg font-semibold text-gray-900">
-                  {subscriberStats.churnRate}%
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Avg. Lifetime Value</span>
-                <span className="text-lg font-semibold text-gray-900">
-                  ${subscriberStats.averageLifetimeValue}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Engagement Metrics */}
-          <div className="bg-white rounded-lg shadow">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-gray-900">Engagement Metrics</h2>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Lessons Watched</span>
-                <span className="text-lg font-semibold text-gray-900">
-                  {engagementMetrics.totalLessonsWatched.toLocaleString()}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Avg. Watch Time</span>
-                <span className="text-lg font-semibold text-gray-900">
-                  {engagementMetrics.averageWatchTime} min
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Completion Rate</span>
-                <span className="text-lg font-semibold text-gray-900">
-                  {engagementMetrics.completionRate}%
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Peak Day</span>
-                <span className="text-lg font-semibold text-gray-900">
-                  {engagementMetrics.peakEngagementDay}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Recent Activity */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900">Recent Activity</h2>
-          </div>
-          <div className="p-6">
-            <div className="space-y-4">
-              {dashboardData.recentActivity.map(activity => (
-                <div
-                  key={activity.id}
-                  className="flex items-start gap-4 pb-4 border-b last:border-0"
+            ) : (
+              <div className="text-center py-12">
+                <div className="text-4xl mb-4">📚</div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No courses yet</h3>
+                <p className="text-gray-600 mb-4">
+                  Create your first course to start sharing your expertise
+                </p>
+                <Link
+                  href={`/srv/${expertId}/courses/create`}
+                  className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  <span className="text-2xl">
-                    {activity.type === 'enrollment'
-                      ? '📝'
-                      : activity.type === 'completion'
-                        ? '✅'
-                        : activity.type === 'review'
-                          ? '⭐'
-                          : '🎉'}
-                  </span>
-                  <div className="flex-1">
-                    <p className="text-gray-900">{activity.message}</p>
-                    <p className="text-sm text-gray-500 mt-1">
-                      {new Date(activity.timestamp).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  <span className="text-xl mr-2">+</span>
+                  Create First Course
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </div>

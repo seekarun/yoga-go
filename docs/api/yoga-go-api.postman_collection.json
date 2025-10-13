@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Yoga-GO API",
-    "description": "Complete API collection for Yoga-GO platform",
+    "description": "Complete API collection for Yoga-GO platform with Cloudflare Stream video integration",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "yoga-go-api-v1"
   },
@@ -88,6 +88,82 @@
               "response": []
             },
             {
+              "name": "Create Course",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Advanced Vinyasa Flow\",\n  \"description\": \"Master advanced vinyasa sequences and transitions\",\n  \"longDescription\": \"Detailed description here...\",\n  \"instructor\": {\n    \"id\": \"deepak\",\n    \"name\": \"Deepak Kumar\",\n    \"title\": \"Senior Yoga Instructor\",\n    \"bio\": \"Expert bio...\",\n    \"avatar\": \"/images/deepak.jpg\"\n  },\n  \"level\": \"Advanced\",\n  \"duration\": \"12 weeks\",\n  \"price\": 149,\n  \"category\": \"Vinyasa Yoga\",\n  \"tags\": [\"vinyasa\", \"flow\", \"advanced\"],\n  \"thumbnail\": \"/images/course-thumbnail.jpg\",\n  \"totalLessons\": 0,\n  \"freeLessons\": 0,\n  \"requirements\": [\"Prior yoga experience\", \"Yoga mat\"],\n  \"whatYouWillLearn\": [\"Advanced poses\", \"Complex transitions\"],\n  \"featured\": false,\n  \"isNew\": true\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/data/courses",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["data", "courses"]
+                },
+                "description": "Create a new course. Course starts with status 'IN_PROGRESS'. Required fields: title, description, instructor (with id and name), level, duration, price, category."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Course",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Advanced Vinyasa Flow - Updated\",\n  \"description\": \"Updated description\",\n  \"price\": 129,\n  \"status\": \"PUBLISHED\",\n  \"totalLessons\": 12,\n  \"featured\": true\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/data/courses/:courseId",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["data", "courses", ":courseId"],
+                  "variable": [
+                    {
+                      "key": "courseId",
+                      "value": "course-deepak-1",
+                      "description": "Course ID"
+                    }
+                  ]
+                },
+                "description": "Update an existing course. Can update any field including status. Set status to 'PUBLISHED' to make course publicly visible."
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Course",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/data/courses/:courseId",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["data", "courses", ":courseId"],
+                  "variable": [
+                    {
+                      "key": "courseId",
+                      "value": "course-deepak-1",
+                      "description": "Course ID"
+                    }
+                  ]
+                },
+                "description": "Delete a course and all associated lessons. Returns the count of deleted lessons."
+              },
+              "response": []
+            },
+            {
               "name": "Get Course Items",
               "request": {
                 "method": "GET",
@@ -104,7 +180,7 @@
                     }
                   ]
                 },
-                "description": "Retrieve all lessons/videos for a specific course"
+                "description": "Retrieve all lessons/videos for a specific course. Includes cloudflareVideoId and cloudflareVideoStatus for Cloudflare Stream videos."
               },
               "response": []
             },
@@ -130,7 +206,7 @@
                     }
                   ]
                 },
-                "description": "Retrieve detailed information about a specific course lesson/video"
+                "description": "Retrieve detailed information about a specific course lesson/video. Includes cloudflareVideoId and cloudflareVideoStatus."
               },
               "response": []
             },
@@ -157,6 +233,99 @@
                   ]
                 },
                 "description": "Retrieve progress information for a course at a specific save point (guest mode)"
+              },
+              "response": []
+            },
+            {
+              "name": "Create Course Lesson",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Introduction to Sun Salutation\",\n  \"duration\": \"15:30\",\n  \"description\": \"Learn the basics of Sun Salutation (Surya Namaskar)\",\n  \"cloudflareVideoId\": \"abc123def456\",\n  \"cloudflareVideoStatus\": \"ready\",\n  \"isFree\": true\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/data/courses/:courseId/items",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["data", "courses", ":courseId", "items"],
+                  "variable": [
+                    {
+                      "key": "courseId",
+                      "value": "course-deepak-1",
+                      "description": "Course ID"
+                    }
+                  ]
+                },
+                "description": "Create a new lesson for a course. Use cloudflareVideoId from the video upload endpoint. Status can be 'uploading', 'processing', 'ready', or 'error'."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Course Lesson",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Introduction to Sun Salutation - Updated\",\n  \"duration\": \"16:00\",\n  \"description\": \"Updated description\",\n  \"cloudflareVideoStatus\": \"ready\",\n  \"isFree\": true\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/data/courses/:courseId/items/:itemId",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["data", "courses", ":courseId", "items", ":itemId"],
+                  "variable": [
+                    {
+                      "key": "courseId",
+                      "value": "course-deepak-1",
+                      "description": "Course ID"
+                    },
+                    {
+                      "key": "itemId",
+                      "value": "deepak-1-item-1",
+                      "description": "Lesson ID"
+                    }
+                  ]
+                },
+                "description": "Update an existing course lesson. Can update title, duration, description, cloudflareVideoStatus, or isFree flag."
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Course Lesson",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/data/courses/:courseId/items/:itemId",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["data", "courses", ":courseId", "items", ":itemId"],
+                  "variable": [
+                    {
+                      "key": "courseId",
+                      "value": "course-deepak-1",
+                      "description": "Course ID"
+                    },
+                    {
+                      "key": "itemId",
+                      "value": "deepak-1-item-1",
+                      "description": "Lesson ID"
+                    }
+                  ]
+                },
+                "description": "Delete a course lesson. This will also remove the lesson from the course curriculum."
               },
               "response": []
             }
@@ -282,6 +451,57 @@
               "response": []
             }
           ]
+        }
+      ]
+    },
+    {
+      "name": "Cloudflare Stream",
+      "description": "Video upload and management endpoints using Cloudflare Stream",
+      "item": [
+        {
+          "name": "Generate Upload URL",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"maxDurationSeconds\": 7200\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/cloudflare/upload-url",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "cloudflare", "upload-url"]
+            },
+            "description": "Generate a direct upload URL for Cloudflare Stream. Use this URL to upload video files directly from the client. Returns uploadURL and video uid.\n\nParameters:\n- maxDurationSeconds (optional): Maximum video duration in seconds. Default: 3600 (1 hour)\n\nResponse:\n{\n  \"success\": true,\n  \"data\": {\n    \"uploadURL\": \"https://upload.cloudflarestream.com/...\",\n    \"uid\": \"abc123def456\"\n  }\n}"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Video Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cloudflare/video-status/:videoId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "cloudflare", "video-status", ":videoId"],
+              "variable": [
+                {
+                  "key": "videoId",
+                  "value": "abc123def456",
+                  "description": "Video UID from upload response"
+                }
+              ]
+            },
+            "description": "Check the processing status of an uploaded video. Poll this endpoint after upload to check when video is ready.\n\nResponse:\n{\n  \"success\": true,\n  \"data\": {\n    \"uid\": \"abc123def456\",\n    \"status\": \"ready\",\n    \"readyToStream\": true,\n    \"duration\": 123.45,\n    \"thumbnail\": \"https://...\",\n    \"preview\": \"https://...\",\n    \"playback\": { ... }\n  }\n}\n\nStatus values:\n- queued: Video is queued for processing\n- inprogress: Video is being processed\n- ready: Video is ready to stream\n- error: Processing failed"
+          },
+          "response": []
         }
       ]
     }
