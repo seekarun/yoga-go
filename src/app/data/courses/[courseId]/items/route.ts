@@ -32,9 +32,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
     }
 
     // Transform MongoDB documents to Lesson type
-    const items: Lesson[] = lessonDocs.map(doc => ({
-      ...(doc as unknown as Lesson),
-      id: (doc as { _id: string })._id,
+    const items: Lesson[] = lessonDocs.map((doc: any) => ({
+      ...doc,
+      id: doc._id as string,
     }));
 
     const response: ApiResponse<Lesson[]> = {

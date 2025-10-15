@@ -29,8 +29,8 @@ export async function GET(
 
     // Transform MongoDB document to Lesson type
     const item: Lesson = {
-      ...(lessonDoc as unknown as Lesson),
-      id: (lessonDoc as { _id: string })._id,
+      ...(lessonDoc as any),
+      id: (lessonDoc as any)._id as string,
     };
 
     const response: ApiResponse<Lesson> = {
@@ -110,8 +110,8 @@ export async function PUT(
 
     // Transform response
     const item: Lesson = {
-      ...(updatedLesson as unknown as Lesson),
-      id: (updatedLesson as { _id: string })._id,
+      ...(updatedLesson as any),
+      id: (updatedLesson as any)._id as string,
     };
 
     const response: ApiResponse<Lesson> = {

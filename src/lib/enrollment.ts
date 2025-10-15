@@ -41,12 +41,7 @@ export async function enrollUserInCourse(
     }
 
     const course = {
-      ...(courseDoc as unknown as {
-        title: string;
-        instructor: { name: string };
-        price: number;
-        totalLessons: number;
-      }),
+      ...(courseDoc as any),
       id: courseDoc._id as string,
     };
 

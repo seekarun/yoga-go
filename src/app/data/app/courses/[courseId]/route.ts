@@ -59,9 +59,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
 
     // Fetch all lessons for this course and populate curriculum
     const lessonDocs = await LessonModel.find({ courseId }).lean().exec();
-    const lessons: Lesson[] = lessonDocs.map(doc => ({
-      ...(doc as unknown as Lesson),
-      id: (doc as { _id: string })._id,
+    const lessons: Lesson[] = lessonDocs.map((doc: any) => ({
+      ...doc,
+      id: doc._id as string,
     }));
 
     // Build curriculum with actual lessons (access curriculum from raw doc before casting to Course)
@@ -101,8 +101,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
 
     // Transform to Course type
     const course: Course = {
-      ...(courseDoc as unknown as Course),
-      id: (courseDoc as { _id: string })._id,
+      ...(courseDoc as any),
+      id: (courseDoc as any)._id as string,
     };
 
     // Build user course data

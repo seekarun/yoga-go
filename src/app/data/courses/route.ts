@@ -39,9 +39,9 @@ export async function GET(request: Request) {
     const courseDocs = await CourseModel.find(query).lean().exec();
 
     // Transform MongoDB documents to Course type
-    const courses: Course[] = courseDocs.map(doc => ({
-      ...(doc as unknown as Course),
-      id: (doc as { _id: string })._id,
+    const courses: Course[] = courseDocs.map((doc: any) => ({
+      ...doc,
+      id: doc._id as string,
     }));
 
     const response: ApiResponse<Course[]> = {
@@ -154,7 +154,7 @@ export async function POST(request: Request) {
 
     // Return created course
     const createdCourse: Course = {
-      ...(courseData as unknown as Course),
+      ...(courseData as any),
       id: courseId,
     };
 

@@ -41,9 +41,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
           .exec();
 
         // Transform lessons
-        const lessons: Lesson[] = lessonDocs.map(doc => ({
-          ...(doc as unknown as Lesson),
-          id: (doc as { _id: string })._id,
+        const lessons: Lesson[] = lessonDocs.map((doc: any) => ({
+          ...doc,
+          id: doc._id as string,
         }));
 
         return {
@@ -56,8 +56,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
 
     // Transform MongoDB document to Course type
     const course: Course = {
-      ...(courseDoc as unknown as Course),
-      id: (courseDoc as { _id: string })._id,
+      ...(courseDoc as any),
+      id: (courseDoc as any)._id as string,
       curriculum: populatedCurriculum,
     };
 
@@ -149,8 +149,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ cour
 
     // Transform response
     const course: Course = {
-      ...(updatedCourse as unknown as Course),
-      id: (updatedCourse as { _id: string })._id,
+      ...(updatedCourse as any),
+      id: (updatedCourse as any)._id as string,
     };
 
     const response: ApiResponse<Course> = {

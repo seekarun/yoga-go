@@ -23,8 +23,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ expe
 
     // Transform MongoDB document to Expert type
     const expert: Expert = {
-      ...(expertDoc as unknown as Expert),
-      id: (expertDoc as { _id: string })._id,
+      ...(expertDoc as any),
+      id: (expertDoc as any)._id as string,
     };
 
     const response: ApiResponse<Expert> = {

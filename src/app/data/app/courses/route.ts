@@ -63,8 +63,8 @@ export async function GET() {
 
       // Transform to Course type
       const course: Course = {
-        ...(courseDoc as unknown as Course),
-        id: (courseDoc as { _id: string })._id,
+        ...(courseDoc as any),
+        id: (courseDoc as any)._id as string,
       };
 
       // Get progress from MongoDB
@@ -120,9 +120,9 @@ export async function GET() {
 
     // Fetch all published courses from MongoDB
     const allCourseDocs = await CourseModel.find({ status: 'PUBLISHED' }).lean().exec();
-    const allCourses: Course[] = allCourseDocs.map(doc => ({
-      ...(doc as unknown as Course),
-      id: (doc as { _id: string })._id,
+    const allCourses: Course[] = allCourseDocs.map((doc: any) => ({
+      ...doc,
+      id: doc._id as string,
     }));
 
     const notEnrolledCourses = allCourses.filter(c => !enrolledIds.includes(c.id));

@@ -13,9 +13,9 @@ export async function GET() {
     const expertDocs = await ExpertModel.find({}).lean().exec();
 
     // Transform MongoDB documents to Expert type
-    const experts: Expert[] = expertDocs.map(doc => ({
-      ...(doc as unknown as Expert),
-      id: (doc as { _id: string })._id,
+    const experts: Expert[] = expertDocs.map((doc: any) => ({
+      ...doc,
+      id: doc._id as string,
     }));
 
     const response: ApiResponse<Expert[]> = {
