@@ -206,11 +206,11 @@ export default function CoursesPage() {
                       e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
                     }}
                   >
-                    {/* Course Thumbnail */}
+                    {/* Course Cover Image or Thumbnail */}
                     <div
                       style={{
                         height: '200px',
-                        backgroundImage: `url(${course.thumbnail})`,
+                        backgroundImage: `url(${course.coverImage || course.thumbnail})`,
                         backgroundSize: 'cover',
                         backgroundPosition: 'center',
                         position: 'relative',
@@ -330,12 +330,15 @@ export default function CoursesPage() {
                             width: '32px',
                             height: '32px',
                             borderRadius: '50%',
-                            backgroundImage: `url(${course.instructor.avatar})`,
+                            backgroundImage: `url(${course.instructor.avatar || '/images/default-avatar.jpg'})`,
                             backgroundSize: 'cover',
                             backgroundPosition: 'center',
+                            backgroundColor: '#e2e8f0',
+                            border: '2px solid #fff',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
                           }}
                         />
-                        <div style={{ fontSize: '14px', color: '#4a5568' }}>
+                        <div style={{ fontSize: '14px', color: '#4a5568', fontWeight: '500' }}>
                           {course.instructor.name}
                         </div>
                       </div>

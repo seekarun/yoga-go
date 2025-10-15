@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { ApiResponse, Course } from '@/types';
 import { connectToDatabase } from '@/lib/mongodb';
 import CourseModel from '@/models/Course';
+import ExpertModel from '@/models/Expert';
 
 // Generate a unique course ID
 function generateCourseId(instructorId: string): string {
@@ -38,11 +39,35 @@ export async function GET(request: Request) {
     // Fetch courses from MongoDB
     const courseDocs = await CourseModel.find(query).lean().exec();
 
-    // Transform MongoDB documents to Course type
-    const courses: Course[] = courseDocs.map((doc: any) => ({
-      ...doc,
-      id: doc._id as string,
-    }));
+    // Fetch all unique instructor IDs
+    const instructorIds = [
+      ...new Set(courseDocs.map((doc: any) => doc.instructor?.id).filter(Boolean)),
+    ];
+
+    // Fetch expert data for all instructors
+    const experts = await ExpertModel.find({ _id: { $in: instructorIds } })
+      .lean()
+      .exec();
+    const expertMap = new Map(experts.map((expert: any) => [expert._id, expert]));
+
+    // Transform MongoDB documents to Course type and populate instructor avatar
+    const courses: Course[] = courseDocs.map((doc: any) => {
+      const course = {
+        ...doc,
+        id: doc._id as string,
+      };
+
+      // Populate instructor avatar from expert data
+      if (doc.instructor?.id && expertMap.has(doc.instructor.id)) {
+        const expert = expertMap.get(doc.instructor.id);
+        course.instructor = {
+          ...doc.instructor,
+          avatar: expert.avatar || doc.instructor.avatar,
+        };
+      }
+
+      return course;
+    });
 
     const response: ApiResponse<Course[]> = {
       success: true,
@@ -125,6 +150,7 @@ export async function POST(request: Request) {
       longDescription: body.longDescription || body.description,
       instructor: body.instructor,
       thumbnail: body.thumbnail || '/images/default-course.jpg',
+      coverImage: body.coverImage || undefined,
       promoVideo: body.promoVideo || undefined,
       promoVideoCloudflareId: body.promoVideoCloudflareId || undefined,
       promoVideoStatus: body.promoVideoStatus || undefined,
