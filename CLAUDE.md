@@ -30,6 +30,42 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Code is automatically formatted and linted on commit via pre-commit hook
 - Always keep the postman collection in /docs/api when changes to api are made (Eg. new endpoints added, updates)
 
+### Authentication & Database
+
+**Auth0 Setup:**
+This app uses Auth0 for authentication. To set it up:
+
+1. Create an Auth0 account at https://manage.auth0.com/
+2. Create a new Regular Web Application
+3. Configure Allowed Callback URLs: `http://localhost:3111/api/auth/callback`
+4. Configure Allowed Logout URLs: `http://localhost:3111`
+5. Copy the following credentials to `.env.local`:
+   - Domain → `AUTH0_ISSUER_BASE_URL`
+   - Client ID → `AUTH0_CLIENT_ID`
+   - Client Secret → `AUTH0_CLIENT_SECRET`
+6. Generate AUTH0_SECRET: `openssl rand -hex 32`
+7. Set `AUTH0_BASE_URL=http://localhost:3111` (update for production)
+
+**MongoDB Setup:**
+User data is stored in MongoDB. To set it up:
+
+1. Create a MongoDB Atlas account at https://www.mongodb.com/cloud/atlas
+2. Create a new cluster (free tier M0 is sufficient for development)
+3. Create a database user with read/write permissions
+4. Whitelist your IP address (or use 0.0.0.0/0 for development)
+5. Get your connection string and add it to `.env.local` as `MONGODB_URI`
+6. User model is defined in `src/models/User.ts`
+7. Users are automatically created on first login via Auth0
+
+**Authentication Flow:**
+
+- User logs in via `/api/auth/login` (redirects to Auth0)
+- After authentication, Auth0 calls `/api/auth/callback`
+- User data is synced to MongoDB in the callback
+- Protected routes (`/app/*`, `/srv/*`) require authentication via middleware
+- Client-side auth state is managed by `AuthContext` (`src/contexts/AuthContext.tsx`)
+- API routes use `getSession()` from `src/lib/auth.ts` to verify authentication
+
 ## Architecture
 
 ### Project Structure

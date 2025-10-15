@@ -37,6 +37,7 @@ export default function CourseLessonsPage() {
 
   useEffect(() => {
     fetchCourseAndLessons();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId]);
 
   // Poll video status for processing videos
@@ -116,6 +117,7 @@ export default function CourseLessonsPage() {
     }, 10000); // Poll every 10 seconds
 
     return () => clearInterval(pollInterval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pollingVideoId, formData.cloudflareVideoId, editingLessonId, lessons, courseId]);
 
   const fetchCourseAndLessons = async () => {
@@ -767,6 +769,7 @@ export default function CourseLessonsPage() {
                                 onClick={() => setExpandedVideoId(lesson.id)}
                                 className="relative group w-full max-w-md"
                               >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
                                   src={`https://customer-iq7mgkvtb3bwxqf5.cloudflarestream.com/${lesson.cloudflareVideoId}/thumbnails/thumbnail.jpg?time=0s&height=300`}
                                   alt={lesson.title}

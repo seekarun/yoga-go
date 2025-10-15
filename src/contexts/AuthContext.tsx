@@ -8,7 +8,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (token: string) => void;
+  login: () => void;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -20,21 +20,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchUserDetails = async (userId: string = 'user-123') => {
+  const fetchUserDetails = async () => {
     try {
-      const response = await fetch(`/data/app/user/${userId}/details`);
+      console.log('[DBG][AuthContext] Fetching user details from /api/auth/me');
+      const response = await fetch('/api/auth/me');
       const data = await response.json();
 
-      if (data.success && data.data) {
+      if (response.ok && data.success && data.data) {
+        console.log('[DBG][AuthContext] User authenticated:', data.data.id);
         setUser(data.data);
         setIsAuthenticated(true);
       } else {
-        console.error('[AuthContext] Failed to fetch user details');
+        console.log('[DBG][AuthContext] User not authenticated:', data.error);
         setUser(null);
         setIsAuthenticated(false);
       }
     } catch (error) {
-      console.error('[AuthContext] Error fetching user details:', error);
+      console.error('[DBG][AuthContext] Error fetching user details:', error);
       setUser(null);
       setIsAuthenticated(false);
     } finally {
@@ -42,41 +44,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const login = (token: string) => {
-    localStorage.setItem('authToken', token);
-    fetchUserDetails();
+  const login = () => {
+    console.log('[DBG][AuthContext] Redirecting to Auth0 login');
+    // Redirect to Auth0 login page (handled by middleware)
+    window.location.href = '/auth/login';
   };
 
-  const logout = () => {
-    localStorage.removeItem('authToken');
+  const logout = async () => {
+    console.log('[DBG][AuthContext] Logging out');
     setUser(null);
     setIsAuthenticated(false);
+    // Redirect to Auth0 logout endpoint (handled by middleware)
+    window.location.href = '/auth/logout';
   };
 
   const refreshUser = async () => {
-    if (isAuthenticated) {
-      await fetchUserDetails();
-    }
+    console.log('[DBG][AuthContext] Refreshing user data');
+    await fetchUserDetails();
   };
 
   useEffect(() => {
-    const checkAuth = () => {
-      const token = localStorage.getItem('authToken');
-      if (token) {
-        fetchUserDetails();
-      } else {
-        setIsAuthenticated(false);
-        setUser(null);
-        setIsLoading(false);
-      }
-    };
-
-    checkAuth();
-    window.addEventListener('storage', checkAuth);
-
-    return () => {
-      window.removeEventListener('storage', checkAuth);
-    };
+    console.log('[DBG][AuthContext] Checking authentication status');
+    fetchUserDetails();
   }, []);
 
   const value = {

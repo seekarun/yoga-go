@@ -15,7 +15,11 @@ import PaymentModal from './PaymentModal';
 // ============================================
 // EXAMPLE 1: Course Card with Payment
 // ============================================
-export function CourseCardWithPayment({ course }: { course: any }) {
+export function CourseCardWithPayment({
+  course,
+}: {
+  course: { id: string; title: string; price: number };
+}) {
   const [showPayment, setShowPayment] = useState(false);
 
   return (

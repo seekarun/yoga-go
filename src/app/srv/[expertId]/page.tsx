@@ -14,6 +14,7 @@ export default function ExpertDashboard() {
 
   useEffect(() => {
     fetchExpertCourses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expertId]);
 
   const fetchExpertCourses = async () => {

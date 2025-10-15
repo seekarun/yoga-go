@@ -17,6 +17,7 @@ export default function CourseManagement() {
 
   useEffect(() => {
     fetchCourseAndItems();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId]);
 
   const fetchCourseAndItems = async () => {

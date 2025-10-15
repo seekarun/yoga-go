@@ -1,5 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
-import type { Course, Instructor, Curriculum, CourseReview } from '@/types';
+import type { Course, Instructor, CourseReview } from '@/types';
 
 export interface CourseDocument extends Omit<Course, 'id'> {
   _id: string;

@@ -32,9 +32,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
     }
 
     // Transform MongoDB documents to Lesson type
-    const items: Lesson[] = lessonDocs.map((doc: any) => ({
-      ...doc,
-      id: doc._id as string,
+    const items: Lesson[] = lessonDocs.map(doc => ({
+      ...(doc as unknown as Lesson),
+      id: (doc as { _id: string })._id,
     }));
 
     const response: ApiResponse<Lesson[]> = {
@@ -70,7 +70,7 @@ export async function POST(
     await connectToDatabase();
 
     // Check if course exists
-    const course = await CourseModel.findById(courseId).lean().exec();
+    const course = await CourseModel.findOne({ _id: courseId }).lean().exec();
     if (!course) {
       return NextResponse.json(
         {
@@ -125,7 +125,12 @@ export async function POST(
     // Optionally add lesson to course curriculum if week is specified
     if (body.week !== undefined) {
       const weekIndex = body.week - 1;
-      const curriculum = (course as any).curriculum || [];
+      const curriculum =
+        ((course as Record<string, unknown>).curriculum as {
+          week: number;
+          title: string;
+          lessonIds: string[];
+        }[]) || [];
 
       // Ensure the week exists in curriculum
       if (curriculum[weekIndex]) {
@@ -136,10 +141,13 @@ export async function POST(
         curriculum[weekIndex].lessonIds.push(lessonId);
 
         // Update course
-        await CourseModel.findByIdAndUpdate(courseId, {
-          curriculum,
-          totalLessons: (course as any).totalLessons + 1,
-        });
+        await CourseModel.findOneAndUpdate(
+          { _id: courseId },
+          {
+            curriculum,
+            totalLessons: ((course as Record<string, unknown>).totalLessons as number) + 1,
+          }
+        );
 
         console.log(`[DBG][courses/[courseId]/items/route.ts] ✓ Added lesson to week ${body.week}`);
       }
