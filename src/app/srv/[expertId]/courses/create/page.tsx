@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import ImageUploadCrop from '@/components/ImageUploadCrop';
+import type { Asset } from '@/types';
 
 export default function CreateCoursePage() {
   const params = useParams();
@@ -14,6 +16,7 @@ export default function CreateCoursePage() {
     description: '',
     longDescription: '',
     thumbnail: '',
+    coverImage: '',
     promoVideo: '',
     promoVideoCloudflareId: '',
     promoVideoStatus: '' as 'uploading' | 'processing' | 'ready' | 'error' | '',
@@ -31,6 +34,8 @@ export default function CreateCoursePage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState('');
+  const [coverImageAsset, setCoverImageAsset] = useState<Asset | null>(null);
   const [selectedPromoFile, setSelectedPromoFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
@@ -98,6 +103,21 @@ export default function CreateCoursePage() {
       console.log('[DBG][create-course] Promo video file selected:', file.name, file.size);
       setSelectedPromoFile(file);
     }
+  };
+
+  const handleCoverImageUpload = (asset: Asset) => {
+    console.log('[DBG][create-course] Cover image uploaded:', asset);
+    setCoverImageAsset(asset);
+    setFormData(prev => ({
+      ...prev,
+      coverImage: asset.croppedUrl || asset.originalUrl,
+    }));
+    setUploadError('');
+  };
+
+  const handleImageUploadError = (error: string) => {
+    console.error('[DBG][create-course] Image upload error:', error);
+    setUploadError(error);
   };
 
   const handlePromoVideoUpload = async () => {
@@ -202,6 +222,7 @@ export default function CreateCoursePage() {
           title: 'Yoga Expert',
         },
         thumbnail: formData.thumbnail || '/images/default-course.jpg',
+        coverImage: formData.coverImage || undefined,
         promoVideo: formData.promoVideo || undefined,
         promoVideoCloudflareId: formData.promoVideoCloudflareId || undefined,
         promoVideoStatus: formData.promoVideoStatus || undefined,
@@ -522,6 +543,41 @@ export default function CreateCoursePage() {
                   placeholder="/images/courses/my-course.jpg"
                 />
                 <p className="text-sm text-gray-500 mt-1">Leave empty to use default image</p>
+              </div>
+
+              {/* Cover Image Upload */}
+              <div>
+                <ImageUploadCrop
+                  width={1200}
+                  height={600}
+                  category="course"
+                  label="Cover Image (1200x600px)"
+                  onUploadComplete={handleCoverImageUpload}
+                  onError={handleImageUploadError}
+                  relatedTo={
+                    formData.title
+                      ? {
+                          type: 'course',
+                          id: formData.title.toLowerCase().replace(/\s+/g, '-'),
+                        }
+                      : undefined
+                  }
+                  currentImageUrl={formData.coverImage}
+                />
+                {coverImageAsset && (
+                  <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-sm text-green-800">✓ Cover image uploaded successfully</p>
+                  </div>
+                )}
+                {uploadError && (
+                  <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-800">{uploadError}</p>
+                  </div>
+                )}
+                <p className="text-sm text-gray-500 mt-2">
+                  This image will be displayed in course cards and as the hero banner on the course
+                  page. Recommended size: 1200x600px (2:1 aspect ratio)
+                </p>
               </div>
 
               <div>

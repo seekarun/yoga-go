@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import type { Course } from '@/types';
+import type { Course, Asset } from '@/types';
+import ImageUploadCrop from '@/components/ImageUploadCrop';
 
 export default function EditCoursePage() {
   const params = useParams();
@@ -16,6 +17,7 @@ export default function EditCoursePage() {
     description: '',
     longDescription: '',
     thumbnail: '',
+    coverImage: '',
     promoVideo: '',
     promoVideoCloudflareId: '',
     promoVideoStatus: '' as 'uploading' | 'processing' | 'ready' | 'error' | '',
@@ -38,6 +40,8 @@ export default function EditCoursePage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [pollingVideoId, setPollingVideoId] = useState<string | null>(null);
+  const [coverImageAsset, setCoverImageAsset] = useState<Asset | null>(null);
+  const [uploadError, setUploadError] = useState('');
 
   // Fetch existing course data on mount
   useEffect(() => {
@@ -107,6 +111,7 @@ export default function EditCoursePage() {
         description: course.description || '',
         longDescription: course.longDescription || '',
         thumbnail: course.thumbnail || '',
+        coverImage: course.coverImage || '',
         promoVideo: course.promoVideo || '',
         promoVideoCloudflareId: course.promoVideoCloudflareId || '',
         promoVideoStatus: course.promoVideoStatus || '',
@@ -155,6 +160,21 @@ export default function EditCoursePage() {
       console.log('[DBG][edit-course] Promo video file selected:', file.name, file.size);
       setSelectedPromoFile(file);
     }
+  };
+
+  const handleCoverImageUpload = (asset: Asset) => {
+    console.log('[DBG][edit-course] Cover image uploaded:', asset);
+    setCoverImageAsset(asset);
+    setFormData(prev => ({
+      ...prev,
+      coverImage: asset.croppedUrl || asset.originalUrl,
+    }));
+    setUploadError('');
+  };
+
+  const handleImageUploadError = (error: string) => {
+    console.error('[DBG][edit-course] Image upload error:', error);
+    setUploadError(error);
   };
 
   const handlePromoVideoUpload = async () => {
@@ -254,6 +274,7 @@ export default function EditCoursePage() {
         description: formData.description,
         longDescription: formData.longDescription || formData.description,
         thumbnail: formData.thumbnail || '/images/default-course.jpg',
+        coverImage: formData.coverImage || undefined,
         promoVideo: formData.promoVideo || undefined,
         promoVideoCloudflareId: formData.promoVideoCloudflareId || undefined,
         promoVideoStatus: formData.promoVideoStatus || undefined,
@@ -567,6 +588,28 @@ export default function EditCoursePage() {
             <h2 className="text-xl font-bold text-gray-900 mb-6">Media</h2>
 
             <div className="space-y-4">
+              {/* Cover Image Upload */}
+              <div>
+                <ImageUploadCrop
+                  width={1200}
+                  height={600}
+                  category="course"
+                  label="Cover Image (1200x600px)"
+                  onUploadComplete={handleCoverImageUpload}
+                  onError={handleImageUploadError}
+                  relatedTo={{
+                    type: 'course',
+                    id: courseId,
+                  }}
+                  currentImageUrl={formData.coverImage}
+                />
+                {uploadError && <p className="text-sm text-red-600 mt-2">{uploadError}</p>}
+                <p className="text-sm text-gray-500 mt-2">
+                  Upload a cover image for your course (shown on course cards and as hero banner).
+                  Recommended size: 1200x600px
+                </p>
+              </div>
+
               <div>
                 <label htmlFor="thumbnail" className="block text-sm font-medium text-gray-700 mb-2">
                   Thumbnail URL

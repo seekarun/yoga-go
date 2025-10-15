@@ -144,6 +144,51 @@ export default function CourseDetailPage() {
 
   return (
     <div style={{ paddingTop: '64px', minHeight: '100vh', background: '#f8f8f8' }}>
+      {/* Cover Image Banner */}
+      {course.coverImage && (
+        <section
+          style={{
+            height: '400px',
+            backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url(${course.coverImage})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            position: 'relative',
+          }}
+        >
+          <div
+            style={{
+              textAlign: 'center',
+              color: '#fff',
+              maxWidth: '800px',
+              padding: '0 20px',
+            }}
+          >
+            <h1
+              style={{
+                fontSize: '56px',
+                fontWeight: '700',
+                marginBottom: '16px',
+                textShadow: '2px 2px 4px rgba(0,0,0,0.5)',
+                lineHeight: '1.2',
+              }}
+            >
+              {course.title}
+            </h1>
+            <p
+              style={{
+                fontSize: '20px',
+                textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
+              }}
+            >
+              {course.description}
+            </p>
+          </div>
+        </section>
+      )}
+
       {/* Hero Section */}
       <section
         style={{

@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import type { Expert } from '@/types';
+import ExpertCard from '@/components/ExpertCard';
 
 export default function ExpertsPage() {
   const [experts, setExperts] = useState<Expert[]>([]);
@@ -83,153 +83,7 @@ export default function ExpertsPage() {
               }}
             >
               {experts.map(expert => (
-                <Link
-                  key={expert.id}
-                  href={`/experts/${expert.id}`}
-                  style={{ textDecoration: 'none', color: 'inherit' }}
-                >
-                  <div
-                    style={{
-                      background: '#fff',
-                      borderRadius: '16px',
-                      overflow: 'hidden',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                      transition: 'transform 0.2s, box-shadow 0.2s',
-                      cursor: 'pointer',
-                      height: '100%',
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.transform = 'translateY(-4px)';
-                      e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.15)';
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
-                    }}
-                  >
-                    {/* Expert Image */}
-                    <div
-                      style={{
-                        height: '300px',
-                        backgroundImage: `url(${expert.avatar})`,
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                      }}
-                    />
-
-                    {/* Expert Info */}
-                    <div style={{ padding: '32px' }}>
-                      <h2
-                        style={{
-                          fontSize: '28px',
-                          fontWeight: '600',
-                          marginBottom: '8px',
-                        }}
-                      >
-                        {expert.name}
-                      </h2>
-                      <p
-                        style={{
-                          fontSize: '16px',
-                          color: '#764ba2',
-                          marginBottom: '16px',
-                          fontWeight: '500',
-                        }}
-                      >
-                        {expert.title}
-                      </p>
-                      <p
-                        style={{
-                          fontSize: '16px',
-                          color: '#666',
-                          lineHeight: '1.6',
-                          marginBottom: '24px',
-                        }}
-                      >
-                        {expert.bio}
-                      </p>
-
-                      {/* Stats */}
-                      <div
-                        style={{
-                          display: 'flex',
-                          gap: '24px',
-                          marginBottom: '24px',
-                          paddingBottom: '24px',
-                          borderBottom: '1px solid #e2e8f0',
-                        }}
-                      >
-                        <div>
-                          <div
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              marginBottom: '4px',
-                            }}
-                          >
-                            <span style={{ color: '#FFB800' }}>★</span>
-                            <span style={{ fontWeight: '600' }}>{expert.rating}</span>
-                          </div>
-                          <div style={{ fontSize: '14px', color: '#666' }}>Rating</div>
-                        </div>
-                        <div>
-                          <div style={{ fontWeight: '600', marginBottom: '4px' }}>
-                            {expert.totalStudents.toLocaleString()}
-                          </div>
-                          <div style={{ fontSize: '14px', color: '#666' }}>Students</div>
-                        </div>
-                        <div>
-                          <div style={{ fontWeight: '600', marginBottom: '4px' }}>
-                            {expert.totalCourses}
-                          </div>
-                          <div style={{ fontSize: '14px', color: '#666' }}>Courses</div>
-                        </div>
-                      </div>
-
-                      {/* Specializations */}
-                      {expert.specializations && expert.specializations.length > 0 && (
-                        <div
-                          style={{
-                            display: 'flex',
-                            gap: '8px',
-                            flexWrap: 'wrap',
-                          }}
-                        >
-                          {expert.specializations.slice(0, 3).map((spec, idx) => (
-                            <span
-                              key={idx}
-                              style={{
-                                padding: '6px 16px',
-                                background: '#f7fafc',
-                                borderRadius: '100px',
-                                fontSize: '14px',
-                                color: '#4a5568',
-                                border: '1px solid #e2e8f0',
-                              }}
-                            >
-                              {spec}
-                            </span>
-                          ))}
-                          {expert.specializations.length > 3 && (
-                            <span
-                              style={{
-                                padding: '6px 16px',
-                                background: '#f7fafc',
-                                borderRadius: '100px',
-                                fontSize: '14px',
-                                color: '#4a5568',
-                                border: '1px solid #e2e8f0',
-                              }}
-                            >
-                              +{expert.specializations.length - 3} more
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </Link>
+                <ExpertCard key={expert.id} expert={expert} variant="full" />
               ))}
             </div>
           ) : (

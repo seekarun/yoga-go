@@ -10,8 +10,6 @@ export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [enrolledCourseIds, setEnrolledCourseIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [selectedLevel, setSelectedLevel] = useState<string>('all');
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -59,136 +57,10 @@ export default function CoursesPage() {
     fetchEnrolledCourses();
   }, [isAuthenticated]);
 
-  // Get unique categories and levels
-  const categories = ['all', ...new Set(courses.map(c => c.category))];
-  const levels = ['all', ...new Set(courses.map(c => c.level))];
-
-  // Filter courses
-  const filteredCourses = courses.filter(course => {
-    const categoryMatch = selectedCategory === 'all' || course.category === selectedCategory;
-    const levelMatch = selectedLevel === 'all' || course.level === selectedLevel;
-    return categoryMatch && levelMatch;
-  });
-
   return (
     <div style={{ paddingTop: '64px', minHeight: '100vh', background: '#f8f8f8' }}>
-      {/* Header Section */}
-      <section
-        style={{
-          padding: '80px 20px',
-          background: '#fff',
-          textAlign: 'center',
-          borderBottom: '1px solid #e2e8f0',
-        }}
-      >
-        <h1
-          style={{
-            fontSize: '48px',
-            fontWeight: '600',
-            marginBottom: '16px',
-          }}
-        >
-          All Courses
-        </h1>
-        <p
-          style={{
-            fontSize: '20px',
-            color: '#666',
-            maxWidth: '600px',
-            margin: '0 auto',
-          }}
-        >
-          Discover our complete collection of yoga courses taught by expert instructors.
-        </p>
-      </section>
-
-      {/* Filters Section */}
-      <section
-        style={{ padding: '40px 20px', background: '#fff', borderBottom: '1px solid #e2e8f0' }}
-      >
-        <div className="container" style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <div style={{ display: 'flex', gap: '24px', flexWrap: 'wrap', alignItems: 'center' }}>
-            <div style={{ flex: '1', minWidth: '200px' }}>
-              <label
-                htmlFor="category"
-                style={{
-                  display: 'block',
-                  marginBottom: '8px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: '#4a5568',
-                }}
-              >
-                Category
-              </label>
-              <select
-                id="category"
-                value={selectedCategory}
-                onChange={e => setSelectedCategory(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '8px',
-                  fontSize: '16px',
-                  backgroundColor: '#fff',
-                  cursor: 'pointer',
-                }}
-              >
-                {categories.map(cat => (
-                  <option key={cat} value={cat}>
-                    {cat === 'all' ? 'All Categories' : cat}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div style={{ flex: '1', minWidth: '200px' }}>
-              <label
-                htmlFor="level"
-                style={{
-                  display: 'block',
-                  marginBottom: '8px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: '#4a5568',
-                }}
-              >
-                Level
-              </label>
-              <select
-                id="level"
-                value={selectedLevel}
-                onChange={e => setSelectedLevel(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '8px',
-                  fontSize: '16px',
-                  backgroundColor: '#fff',
-                  cursor: 'pointer',
-                }}
-              >
-                {levels.map(level => (
-                  <option key={level} value={level}>
-                    {level === 'all' ? 'All Levels' : level}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div style={{ flex: '0 0 auto', alignSelf: 'flex-end' }}>
-              <div style={{ fontSize: '14px', color: '#666' }}>
-                Showing {filteredCourses.length} of {courses.length} courses
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Courses Grid */}
-      <section style={{ padding: '80px 20px' }}>
+      <section style={{ padding: '40px 20px' }}>
         <div className="container" style={{ maxWidth: '1200px', margin: '0 auto' }}>
           {loading ? (
             <div
@@ -199,7 +71,7 @@ export default function CoursesPage() {
             >
               <div style={{ fontSize: '16px', color: '#666' }}>Loading courses...</div>
             </div>
-          ) : filteredCourses.length > 0 ? (
+          ) : courses.length > 0 ? (
             <div
               style={{
                 display: 'grid',
@@ -207,7 +79,7 @@ export default function CoursesPage() {
                 gap: '32px',
               }}
             >
-              {filteredCourses.map(course => {
+              {courses.map(course => {
                 const isEnrolled = enrolledCourseIds.includes(course.id);
 
                 return (

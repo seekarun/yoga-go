@@ -46,6 +46,7 @@ const CourseSchema = new Schema<CourseDocument>(
     longDescription: String,
     instructor: { type: InstructorSchema, required: true },
     thumbnail: { type: String, required: true },
+    coverImage: String, // Cover image URL for course cards and hero banner
     promoVideo: String, // Deprecated: use promoVideoCloudflareId instead
     promoVideoCloudflareId: String, // Cloudflare Stream video UID for promo video
     promoVideoStatus: {

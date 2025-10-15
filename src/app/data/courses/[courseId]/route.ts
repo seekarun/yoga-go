@@ -3,6 +3,7 @@ import type { ApiResponse, Course, Lesson } from '@/types';
 import { connectToDatabase } from '@/lib/mongodb';
 import CourseModel from '@/models/Course';
 import LessonModel from '@/models/Lesson';
+import ExpertModel from '@/models/Expert';
 
 export async function GET(request: Request, { params }: { params: Promise<{ courseId: string }> }) {
   const { courseId } = await params;
@@ -54,10 +55,25 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
       })
     );
 
+    // Fetch instructor/expert data to get current avatar
+    let instructorData = (courseDoc as any).instructor;
+    if ((courseDoc as any).instructor?.id) {
+      const expert = await ExpertModel.findById((courseDoc as any).instructor.id)
+        .lean()
+        .exec();
+      if (expert) {
+        instructorData = {
+          ...(courseDoc as any).instructor,
+          avatar: (expert as any).avatar || (courseDoc as any).instructor.avatar,
+        };
+      }
+    }
+
     // Transform MongoDB document to Course type
     const course: Course = {
       ...(courseDoc as any),
       id: (courseDoc as any)._id as string,
+      instructor: instructorData,
       curriculum: populatedCurriculum,
     };
 
@@ -107,6 +123,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ cour
     if (body.longDescription !== undefined) updateData.longDescription = body.longDescription;
     if (body.instructor !== undefined) updateData.instructor = body.instructor;
     if (body.thumbnail !== undefined) updateData.thumbnail = body.thumbnail;
+    if (body.coverImage !== undefined) updateData.coverImage = body.coverImage;
     if (body.promoVideo !== undefined) updateData.promoVideo = body.promoVideo;
     if (body.promoVideoCloudflareId !== undefined)
       updateData.promoVideoCloudflareId = body.promoVideoCloudflareId;

@@ -105,6 +105,7 @@ export interface Course extends BaseEntity {
   longDescription?: string;
   instructor: Instructor;
   thumbnail: string;
+  coverImage?: string; // Cover image URL for course cards and hero banner
   promoVideo?: string; // Deprecated: use promoVideoCloudflareId instead
   promoVideoCloudflareId?: string; // Cloudflare Stream video UID for promo video
   promoVideoStatus?: 'uploading' | 'processing' | 'ready' | 'error';
@@ -422,6 +423,43 @@ export interface UserCoursesData {
     totalTimeSpent: number;
     currentStreak: number;
   };
+}
+
+// Asset Related Types
+export type AssetType = 'image' | 'video' | 'document';
+export type AssetCategory = 'avatar' | 'banner' | 'thumbnail' | 'course' | 'lesson' | 'other';
+
+export interface AssetDimensions {
+  width: number;
+  height: number;
+}
+
+export interface CropData {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  zoom?: number;
+}
+
+export interface Asset extends BaseEntity {
+  filename: string;
+  originalUrl: string; // Cloudflare Images URL for original
+  croppedUrl?: string; // Cloudflare Images URL for cropped version
+  cloudflareImageId: string; // Original image ID
+  croppedCloudflareImageId?: string; // Cropped image ID
+  type: AssetType;
+  category: AssetCategory;
+  dimensions: AssetDimensions;
+  cropData?: CropData;
+  size: number; // in bytes
+  mimeType: string;
+  uploadedBy?: string; // User ID
+  relatedTo?: {
+    type: 'expert' | 'user' | 'course' | 'lesson';
+    id: string;
+  };
+  metadata?: Record<string, any>;
 }
 
 // API Response Types

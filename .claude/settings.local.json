@@ -8,7 +8,8 @@
       "Bash(npm run lint:*)",
       "Bash(npx tsx:*)",
       "Bash(npx tsc:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(SKIP_LINT=true npx next build)"
     ],
     "deny": [],
     "ask": []
