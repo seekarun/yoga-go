@@ -46,6 +46,7 @@ export default function EditCoursePage() {
   // Fetch existing course data on mount
   useEffect(() => {
     fetchCourseData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId]);
 
   // Poll video status for processing promo videos

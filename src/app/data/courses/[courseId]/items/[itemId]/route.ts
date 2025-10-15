@@ -80,7 +80,7 @@ export async function PUT(
     const body = await request.json();
 
     // Build update object - only include provided fields
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
 
     if (body.title !== undefined) updateData.title = body.title;
     if (body.duration !== undefined) updateData.duration = body.duration;
@@ -163,18 +163,23 @@ export async function DELETE(
     console.log(`[DBG][courses/[courseId]/items/[itemId]/route.ts] ✓ Deleted lesson: ${itemId}`);
 
     // Remove lesson from course curriculum
-    const course = await CourseModel.findById(courseId).lean().exec();
+    const course = await CourseModel.findOne({ _id: courseId }).lean().exec();
     if (course) {
-      const curriculum = (course as any).curriculum || [];
+      const curriculum =
+        ((course as Record<string, unknown>).curriculum as {
+          week: number;
+          title: string;
+          lessonIds?: string[];
+        }[]) || [];
       let lessonRemoved = false;
 
       // Remove lesson ID from all weeks in curriculum
-      const updatedCurriculum = curriculum.map((week: any) => {
+      const updatedCurriculum = curriculum.map(week => {
         if (week.lessonIds && week.lessonIds.includes(itemId)) {
           lessonRemoved = true;
           return {
             ...week,
-            lessonIds: week.lessonIds.filter((id: string) => id !== itemId),
+            lessonIds: week.lessonIds.filter(id => id !== itemId),
           };
         }
         return week;
@@ -182,10 +187,16 @@ export async function DELETE(
 
       // Update course if lesson was removed from curriculum
       if (lessonRemoved) {
-        await CourseModel.findByIdAndUpdate(courseId, {
-          curriculum: updatedCurriculum,
-          totalLessons: Math.max(0, (course as any).totalLessons - 1),
-        });
+        await CourseModel.findOneAndUpdate(
+          { _id: courseId },
+          {
+            curriculum: updatedCurriculum,
+            totalLessons: Math.max(
+              0,
+              ((course as Record<string, unknown>).totalLessons as number) - 1
+            ),
+          }
+        );
         console.log(
           `[DBG][courses/[courseId]/items/[itemId]/route.ts] ✓ Removed lesson from course curriculum`
         );

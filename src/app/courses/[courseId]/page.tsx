@@ -1,16 +1,22 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
+import PaymentModal from '@/components/payment/PaymentModal';
 import type { Course, Lesson } from '@/types';
 
 export default function CourseDetailPage() {
   const params = useParams();
+  const router = useRouter();
+  const { user, isAuthenticated } = useAuth();
   const courseId = params.courseId as string;
   const [course, setCourse] = useState<Course | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [isEnrolled, setIsEnrolled] = useState(false);
 
   useEffect(() => {
     const fetchCourseData = async () => {
@@ -52,6 +58,31 @@ export default function CourseDetailPage() {
       fetchCourseData();
     }
   }, [courseId]);
+
+  // Check enrollment status
+  useEffect(() => {
+    if (isAuthenticated && user && courseId) {
+      const enrolled = user.enrolledCourses?.some(ec => ec.courseId === courseId);
+      setIsEnrolled(enrolled || false);
+    }
+  }, [isAuthenticated, user, courseId]);
+
+  const handleEnrollClick = () => {
+    if (!isAuthenticated) {
+      // Redirect to login
+      router.push('/auth/login');
+      return;
+    }
+
+    if (isEnrolled) {
+      // Already enrolled, go to course player
+      router.push(`/app/courses/${courseId}`);
+      return;
+    }
+
+    // Show payment modal
+    setShowPaymentModal(true);
+  };
 
   if (loading) {
     return (
@@ -302,9 +333,10 @@ export default function CourseDetailPage() {
                 <div style={{ fontSize: '16px', color: '#666' }}>{course.totalLessons} lessons</div>
                 <div style={{ fontSize: '16px', color: '#666' }}>{course.duration}</div>
                 <button
+                  onClick={handleEnrollClick}
                   style={{
                     padding: '12px 24px',
-                    background: '#764ba2',
+                    background: isEnrolled ? '#48bb78' : '#764ba2',
                     color: '#fff',
                     border: 'none',
                     borderRadius: '8px',
@@ -315,13 +347,17 @@ export default function CourseDetailPage() {
                     marginLeft: 'auto',
                   }}
                   onMouseEnter={e => {
-                    e.currentTarget.style.background = '#5a3a82';
+                    if (!isEnrolled) {
+                      e.currentTarget.style.background = '#5a3a82';
+                    }
                   }}
                   onMouseLeave={e => {
-                    e.currentTarget.style.background = '#764ba2';
+                    if (!isEnrolled) {
+                      e.currentTarget.style.background = '#764ba2';
+                    }
                   }}
                 >
-                  Enroll Now - ${course.price}
+                  {isEnrolled ? 'Start Learning' : `Enroll Now - $${course.price}`}
                 </button>
               </div>
             </div>
@@ -628,6 +664,7 @@ export default function CourseDetailPage() {
                         {/* Video Thumbnail */}
                         {lesson.cloudflareVideoId && (
                           <div style={{ position: 'relative' }}>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={`https://customer-iq7mgkvtb3bwxqf5.cloudflarestream.com/${lesson.cloudflareVideoId}/thumbnails/thumbnail.jpg?time=0s&height=300`}
                               alt={lesson.title}
@@ -1000,6 +1037,20 @@ export default function CourseDetailPage() {
           }
         }
       `}</style>
+
+      {/* Payment Modal */}
+      {course && (
+        <PaymentModal
+          isOpen={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          type="course"
+          item={{
+            id: course.id,
+            title: course.title,
+            price: course.price,
+          }}
+        />
+      )}
     </div>
   );
 }

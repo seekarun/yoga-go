@@ -16,6 +16,7 @@ interface RazorpayCheckoutProps {
 // Extend Window interface for Razorpay
 declare global {
   interface Window {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     Razorpay: any;
   }
 }
@@ -102,7 +103,11 @@ export default function RazorpayCheckout({
         theme: {
           color: '#764ba2',
         },
-        handler: async function (response: any) {
+        handler: async function (response: {
+          razorpay_order_id: string;
+          razorpay_payment_id: string;
+          razorpay_signature: string;
+        }) {
           // Step 3: Verify payment on backend
           try {
             const verifyResponse = await fetch('/api/payment/razorpay/verify', {

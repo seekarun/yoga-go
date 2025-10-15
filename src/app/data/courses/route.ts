@@ -22,7 +22,7 @@ export async function GET(request: Request) {
     const instructorId = searchParams.get('instructorId');
     const includeAll = searchParams.get('includeAll') === 'true';
 
-    const query: any = {};
+    const query: Record<string, unknown> = {};
 
     // If instructorId is provided, filter by instructor
     if (instructorId) {
@@ -135,7 +135,7 @@ export async function POST(request: Request) {
 
     // Transform curriculum to use lessonIds if provided
     const curriculum = body.curriculum
-      ? body.curriculum.map((week: any) => ({
+      ? (body.curriculum as { week: number; title: string; lessonIds?: string[] }[]).map(week => ({
           week: week.week,
           title: week.title,
           lessonIds: week.lessonIds || [],
@@ -180,7 +180,7 @@ export async function POST(request: Request) {
 
     // Return created course
     const createdCourse: Course = {
-      ...courseData,
+      ...(courseData as any),
       id: courseId,
     };
 

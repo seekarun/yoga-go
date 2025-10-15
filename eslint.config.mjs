@@ -36,7 +36,7 @@ const eslintConfig = [
       ],
       "react/self-closing-comp": "warn",
       "react/jsx-curly-brace-presence": ["warn", { props: "never", children: "never" }],
-      "no-console": ["warn", { allow: ["warn", "error"] }],
+      "no-console": ["warn", { allow: ["log", "warn", "error"] }],
       "prefer-const": "error",
       "no-var": "error",
     },

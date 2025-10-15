@@ -25,8 +25,8 @@ interface StripeCheckoutProps {
 export default function StripeCheckout({
   amount,
   currency,
-  itemName,
-  onSuccess,
+  itemName: _itemName,
+  onSuccess: _onSuccess,
   onFailure,
 }: StripeCheckoutProps) {
   const handlePayment = () => {

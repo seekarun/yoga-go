@@ -71,7 +71,7 @@ export async function POST(request: Request) {
   }
 }
 
-async function handlePaymentCaptured(payment: any) {
+async function handlePaymentCaptured(payment: Record<string, unknown>) {
   console.log('[Razorpay Webhook] Payment captured:', payment.id);
 
   // TODO: Update payment status in database
@@ -85,7 +85,7 @@ async function handlePaymentCaptured(payment: any) {
   // This is a backup in case the frontend verification didn't complete
 }
 
-async function handlePaymentFailed(payment: any) {
+async function handlePaymentFailed(payment: Record<string, unknown>) {
   console.log('[Razorpay Webhook] Payment failed:', payment.id);
 
   // TODO: Update payment status
@@ -101,7 +101,7 @@ async function handlePaymentFailed(payment: any) {
   // TODO: Send failure notification email
 }
 
-async function handleSubscriptionCharged(subscription: any) {
+async function handleSubscriptionCharged(subscription: Record<string, unknown>) {
   console.log('[Razorpay Webhook] Subscription charged:', subscription.id);
 
   // TODO: Record subscription payment
@@ -109,7 +109,7 @@ async function handleSubscriptionCharged(subscription: any) {
   // TODO: Send invoice email
 }
 
-async function handleSubscriptionCancelled(subscription: any) {
+async function handleSubscriptionCancelled(subscription: Record<string, unknown>) {
   console.log('[Razorpay Webhook] Subscription cancelled:', subscription.id);
 
   // TODO: Update subscription status

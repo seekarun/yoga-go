@@ -13,7 +13,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
     await connectToDatabase();
 
     // Fetch course from MongoDB
-    const courseDoc = await CourseModel.findById(courseId).lean().exec();
+    const courseDoc = await CourseModel.findOne({ _id: courseId }).lean().exec();
 
     if (!courseDoc) {
       const errorResponse: ApiResponse<never> = {
@@ -25,7 +25,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
 
     // Populate curriculum with actual lesson data
     const populatedCurriculum = await Promise.all(
-      ((courseDoc as any).curriculum || []).map(async (week: any) => {
+      (
+        ((courseDoc as Record<string, unknown>).curriculum as {
+          week: number;
+          title: string;
+          lessonIds: string[];
+        }[]) || []
+      ).map(async week => {
         if (!week.lessonIds || week.lessonIds.length === 0) {
           return { ...week, lessons: [] };
         }
@@ -95,7 +101,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ cour
     await connectToDatabase();
 
     // Check if course exists
-    const existingCourse = await CourseModel.findById(courseId).lean().exec();
+    const existingCourse = await CourseModel.findOne({ _id: courseId }).lean().exec();
     if (!existingCourse) {
       return NextResponse.json(
         {
@@ -110,7 +116,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ cour
     const body = await request.json();
 
     // Build update object - only include provided fields
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
 
     if (body.title !== undefined) updateData.title = body.title;
     if (body.description !== undefined) updateData.description = body.description;
@@ -141,7 +147,9 @@ export async function PUT(request: Request, { params }: { params: Promise<{ cour
 
     // Handle curriculum update - transform to use lessonIds
     if (body.curriculum !== undefined) {
-      updateData.curriculum = body.curriculum.map((week: any) => ({
+      updateData.curriculum = (
+        body.curriculum as { week: number; title: string; lessonIds?: string[] }[]
+      ).map(week => ({
         week: week.week,
         title: week.title,
         lessonIds: week.lessonIds || [],
@@ -149,7 +157,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ cour
     }
 
     // Update course
-    const updatedCourse = await CourseModel.findByIdAndUpdate(courseId, updateData, {
+    const updatedCourse = await CourseModel.findOneAndUpdate({ _id: courseId }, updateData, {
       new: true,
       lean: true,
     }).exec();
@@ -190,7 +198,7 @@ export async function DELETE(
     await connectToDatabase();
 
     // Check if course exists
-    const existingCourse = await CourseModel.findById(courseId).lean().exec();
+    const existingCourse = await CourseModel.findOne({ _id: courseId }).lean().exec();
     if (!existingCourse) {
       return NextResponse.json(
         {
@@ -208,7 +216,7 @@ export async function DELETE(
     );
 
     // Delete the course
-    await CourseModel.findByIdAndDelete(courseId).exec();
+    await CourseModel.findOneAndDelete({ _id: courseId }).exec();
     console.log(`[DBG][courses/[courseId]/route.ts] ✓ Deleted course: ${courseId}`);
 
     const response: ApiResponse<{ deletedCourse: string; deletedLessons: number }> = {

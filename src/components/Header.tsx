@@ -10,7 +10,7 @@ export default function Header() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   const handleLogin = () => {
-    login('mock-token');
+    login();
   };
 
   const handleLogout = () => {

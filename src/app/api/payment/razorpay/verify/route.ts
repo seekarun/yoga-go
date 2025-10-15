@@ -31,38 +31,64 @@ export async function POST(request: Request) {
 
     console.log('[Razorpay] Payment verified successfully:', paymentId);
 
-    // TODO: Update database
-    // 1. Mark payment as successful
-    // await db.payments.update({
-    //   where: { orderId },
-    //   data: {
-    //     paymentId,
-    //     status: 'success',
-    //     verifiedAt: new Date(),
-    //   },
-    // });
-
-    // 2. Grant access based on type
+    // Grant access based on type
     if (type === 'course') {
-      // TODO: Create enrollment
-      // await db.enrollments.create({
-      //   userId,
-      //   courseId: itemId,
-      //   paymentId,
-      //   enrolledAt: new Date(),
-      // });
+      // Enroll user in course
+      const { enrollUserInCourse } = await import('@/lib/enrollment');
+      const enrollResult = await enrollUserInCourse(userId, itemId, paymentId);
+
+      if (!enrollResult.success) {
+        console.error('[Razorpay] Enrollment failed:', enrollResult.error);
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Payment verified but enrollment failed: ${enrollResult.error}`,
+          },
+          { status: 500 }
+        );
+      }
+
       console.log(`[Razorpay] Enrolled user ${userId} in course ${itemId}`);
     } else if (type === 'subscription') {
-      // TODO: Update user membership
-      // await db.users.update({
-      //   where: { id: userId },
-      //   data: {
-      //     membershipType: itemId, // 'curious' or 'committed'
-      //     membershipStatus: 'active',
-      //     membershipStartDate: new Date(),
-      //     membershipEndDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
-      //   },
-      // });
+      // Update user membership
+      const { connectToDatabase } = await import('@/lib/mongodb');
+      const User = (await import('@/models/User')).default;
+
+      await connectToDatabase();
+      const user = await User.findById(userId);
+
+      if (user) {
+        const now = new Date().toISOString();
+        const oneYearFromNow = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
+
+        user.membership = {
+          type: itemId as 'free' | 'basic' | 'premium' | 'lifetime',
+          status: 'active',
+          startDate: now,
+          renewalDate: oneYearFromNow,
+          benefits: [],
+        };
+
+        // Add payment to history
+        if (!user.billing) {
+          user.billing = { paymentHistory: [] };
+        }
+        if (!user.billing.paymentHistory) {
+          user.billing.paymentHistory = [];
+        }
+
+        user.billing.paymentHistory.push({
+          date: now,
+          amount: 0, // Amount should come from payment gateway
+          method: 'online',
+          status: 'paid',
+          description: `Subscription: ${itemId}`,
+          invoice: paymentId,
+        });
+
+        await user.save();
+      }
+
       console.log(`[Razorpay] Updated user ${userId} subscription to ${itemId}`);
     }
 
