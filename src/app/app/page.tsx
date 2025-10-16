@@ -13,14 +13,24 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchUserCourses = async () => {
       try {
-        const response = await fetch('/data/app/courses');
+        console.log('[DBG][dashboard] Fetching user courses...');
+        setLoading(true);
+        // Add timestamp to prevent caching
+        const response = await fetch(`/data/app/courses?t=${Date.now()}`);
         const data = await response.json();
 
         if (data.success) {
+          console.log(
+            '[DBG][dashboard] Received',
+            data.data.enrolled?.length || 0,
+            'enrolled courses'
+          );
           setUserCourses(data.data);
+        } else {
+          console.error('[DBG][dashboard] Failed to fetch courses:', data.error);
         }
       } catch (error) {
-        console.error('[dashboard] Error fetching user courses:', error);
+        console.error('[DBG][dashboard] Error fetching user courses:', error);
       } finally {
         setLoading(false);
       }
@@ -29,7 +39,7 @@ export default function Dashboard() {
     if (isAuthenticated) {
       fetchUserCourses();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user?.id]); // Also refetch when user ID changes
 
   if (!user) {
     return (
@@ -49,9 +59,11 @@ export default function Dashboard() {
   };
 
   const enrolledCourses = userCourses?.enrolled || [];
-  const inProgressCourses = enrolledCourses.filter(
-    course => course.percentComplete > 0 && course.percentComplete < 100
-  );
+  // Show all enrolled courses that aren't completed (including newly enrolled with 0% progress)
+  const inProgressCourses = enrolledCourses.filter(course => course.percentComplete < 100);
+
+  console.log('[DBG][dashboard] Total enrolled:', enrolledCourses.length);
+  console.log('[DBG][dashboard] In progress (< 100%):', inProgressCourses.length);
 
   return (
     <div style={{ paddingTop: '64px', minHeight: '100vh' }}>
@@ -179,7 +191,7 @@ export default function Dashboard() {
                 marginBottom: '8px',
               }}
             >
-              Continue Learning
+              Your Courses
             </h2>
             {inProgressCourses.length > 0 && (
               <Link
@@ -348,7 +360,7 @@ export default function Dashboard() {
                             fontWeight: '600',
                           }}
                         >
-                          Continue
+                          {course.percentComplete === 0 ? 'Start' : 'Continue'}
                         </div>
                       </div>
                     </div>
@@ -368,7 +380,7 @@ export default function Dashboard() {
             >
               <div style={{ fontSize: '48px', marginBottom: '16px' }}>📚</div>
               <h3 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '8px' }}>
-                No courses in progress
+                No courses enrolled
               </h3>
               <p style={{ color: '#666', marginBottom: '24px' }}>
                 Start your yoga journey by enrolling in a course

@@ -179,6 +179,16 @@ export async function getUserByAuth0Id(auth0Id: string): Promise<UserType | null
     return null;
   }
 
+  console.log('[DBG][auth] Found user:', userDoc._id);
+  console.log('[DBG][auth] User has', userDoc.enrolledCourses.length, 'enrolled courses');
+  console.log(
+    '[DBG][auth] Enrolled courses:',
+    userDoc.enrolledCourses.map((ec: { courseId: string; title: string }) => ({
+      id: ec.courseId,
+      title: ec.title,
+    }))
+  );
+
   const user: UserType = {
     id: userDoc._id,
     profile: userDoc.profile,

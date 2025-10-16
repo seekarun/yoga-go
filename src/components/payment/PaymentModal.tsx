@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import { usePayment } from '@/contexts/PaymentContext';
 import { PAYMENT_CONFIG } from '@/config/payment';
 import { formatPrice } from '@/lib/geolocation';
@@ -22,6 +23,7 @@ interface PaymentModalProps {
 
 export default function PaymentModal({ isOpen, onClose, type, item }: PaymentModalProps) {
   const router = useRouter();
+  const { refreshUser } = useAuth();
   const { gateway, currency, loading: locationLoading } = usePayment();
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
@@ -43,9 +45,14 @@ export default function PaymentModal({ isOpen, onClose, type, item }: PaymentMod
 
   const amount = getAmount();
 
-  const handleSuccess = (paymentId: string) => {
+  const handleSuccess = async (paymentId: string) => {
     setPaymentStatus('success');
-    console.log('[PaymentModal] Payment successful:', paymentId);
+    console.log('[DBG][PaymentModal] Payment successful:', paymentId);
+
+    // Refresh user data to get updated enrollments
+    console.log('[DBG][PaymentModal] Refreshing user data...');
+    await refreshUser();
+    console.log('[DBG][PaymentModal] User data refreshed');
 
     // Redirect after success
     setTimeout(() => {
@@ -54,6 +61,7 @@ export default function PaymentModal({ isOpen, onClose, type, item }: PaymentMod
       } else {
         router.push('/app/profile');
       }
+      router.refresh(); // Force refresh the page data
       onClose();
     }, 2000);
   };

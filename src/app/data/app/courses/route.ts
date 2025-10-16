@@ -28,12 +28,16 @@ export async function GET() {
     // Get user from MongoDB
     const user = await getUserByAuth0Id(session.user.sub);
     if (!user) {
+      console.error('[DBG][app/courses/route.ts] User not found for auth0Id:', session.user.sub);
       const response: ApiResponse<null> = {
         success: false,
         error: 'User not found',
       };
       return NextResponse.json(response, { status: 404 });
     }
+
+    console.log('[DBG][app/courses/route.ts] Found user:', user.id);
+    console.log('[DBG][app/courses/route.ts] User profile:', user.profile.email);
 
     // Connect to MongoDB for course data
     await connectToDatabase();
@@ -43,7 +47,7 @@ export async function GET() {
 
     console.log(
       `[DBG][app/courses/route.ts] User has ${user.enrolledCourses.length} enrolled courses:`,
-      user.enrolledCourses.map(ec => ec.courseId)
+      user.enrolledCourses.map(ec => ({ courseId: ec.courseId, title: ec.title }))
     );
 
     for (const enrolledCourse of user.enrolledCourses) {

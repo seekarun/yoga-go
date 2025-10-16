@@ -4,30 +4,53 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import type { UserCourseData } from '@/types';
+import type { UserCourseData, Lesson } from '@/types';
 
 export default function CoursePlayer() {
   const { isAuthenticated } = useAuth();
   const params = useParams();
   const courseId = params.id as string;
   const [courseData, setCourseData] = useState<UserCourseData | null>(null);
+  const [courseItems, setCourseItems] = useState<Lesson[]>([]);
+  const [selectedItem, setSelectedItem] = useState<Lesson | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'resources' | 'notes' | 'reviews'>(
-    'overview'
-  );
-  const [currentLesson, setCurrentLesson] = useState(0);
 
   useEffect(() => {
     const fetchCourseData = async () => {
       try {
-        const response = await fetch(`/data/app/courses/${courseId}`);
-        const data = await response.json();
+        console.log('[DBG][course-player] Fetching course data for:', courseId);
 
-        if (data.success) {
-          setCourseData(data.data);
+        // Fetch course details
+        const courseResponse = await fetch(`/data/app/courses/${courseId}`);
+        const courseDataResult = await courseResponse.json();
+
+        if (courseDataResult.success) {
+          setCourseData(courseDataResult.data);
+          console.log('[DBG][course-player] Course data loaded:', courseDataResult.data.title);
+        }
+
+        // Fetch course items (lessons/videos)
+        const itemsResponse = await fetch(`/data/courses/${courseId}/items`);
+        const itemsResult = await itemsResponse.json();
+
+        console.log('[DBG][course-player] Items API response:', itemsResult);
+
+        if (itemsResult.success && itemsResult.data) {
+          // The API returns data as an array directly, not nested in data.items
+          const items = Array.isArray(itemsResult.data) ? itemsResult.data : [];
+          console.log('[DBG][course-player] Loaded', items.length, 'course items');
+          setCourseItems(items);
+
+          // Auto-select first item
+          if (items.length > 0) {
+            setSelectedItem(items[0]);
+            console.log('[DBG][course-player] Auto-selected first item:', items[0].title);
+          }
+        } else {
+          console.error('[DBG][course-player] Failed to load items:', itemsResult.error);
         }
       } catch (error) {
-        console.error('[course-player] Error fetching course data:', error);
+        console.error('[DBG][course-player] Error fetching course data:', error);
       } finally {
         setLoading(false);
       }
@@ -37,6 +60,19 @@ export default function CoursePlayer() {
       fetchCourseData();
     }
   }, [courseId, isAuthenticated]);
+
+  const handleMarkComplete = async () => {
+    if (!selectedItem) return;
+
+    try {
+      console.log('[DBG][course-player] Marking lesson complete:', selectedItem.id);
+      // TODO: Call API to mark lesson as complete
+      // For now, just show success
+      alert(`Lesson "${selectedItem.title}" marked as complete! 🎉`);
+    } catch (error) {
+      console.error('[DBG][course-player] Error marking complete:', error);
+    }
+  };
 
   if (loading) {
     return (
@@ -77,22 +113,20 @@ export default function CoursePlayer() {
     );
   }
 
-  const curriculum = courseData.curriculum || [];
-  const allLessons = curriculum.flatMap(week => week.lessons);
-  const currentLessonData = allLessons[currentLesson];
-
-  const handleLessonComplete = (lessonId: string) => {
-    // In a real app, this would make an API call to mark the lesson as complete
-    // For now, we'll just show a success message
-    alert(`Lesson ${lessonId} marked as complete! 🎉`);
-  };
-
   return (
     <div style={{ paddingTop: '64px', minHeight: '100vh', background: '#f8f8f8' }}>
-      {/* Course Header */}
+      {/* Top Navigation Bar */}
       <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px 20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
+        <div
+          style={{
+            maxWidth: '100%',
+            padding: '16px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <Link
               href="/app"
               style={{
@@ -102,225 +136,319 @@ export default function CoursePlayer() {
                 fontWeight: '500',
               }}
             >
-              ← Back to Dashboard
+              ← Dashboard
             </Link>
+            <div style={{ height: '20px', width: '1px', background: '#e2e8f0' }} />
+            <h1
+              style={{
+                fontSize: '18px',
+                fontWeight: '600',
+                margin: 0,
+              }}
+            >
+              {courseData.title}
+            </h1>
           </div>
-          <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-                <span
-                  style={{
-                    padding: '4px 12px',
-                    background: '#f7fafc',
-                    borderRadius: '6px',
-                    fontSize: '12px',
-                    color: '#764ba2',
-                    fontWeight: '600',
-                  }}
-                >
-                  {courseData.category}
-                </span>
-                <span
-                  style={{
-                    padding: '4px 12px',
-                    background: '#f7fafc',
-                    borderRadius: '6px',
-                    fontSize: '12px',
-                    color: '#4a5568',
-                  }}
-                >
-                  {courseData.level}
-                </span>
-              </div>
-              <h1
-                style={{
-                  fontSize: '32px',
-                  fontWeight: '600',
-                  marginBottom: '8px',
-                  lineHeight: '1.2',
-                }}
-              >
-                {courseData.title}
-              </h1>
-              <p
-                style={{
-                  fontSize: '16px',
-                  color: '#666',
-                  lineHeight: '1.6',
-                  marginBottom: '16px',
-                }}
-              >
-                {courseData.description}
-              </p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div
-                    style={{
-                      width: '32px',
-                      height: '32px',
-                      borderRadius: '50%',
-                      backgroundImage: `url(${courseData.instructor.avatar})`,
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center',
-                    }}
-                  />
-                  <span style={{ fontSize: '14px', color: '#4a5568' }}>
-                    {courseData.instructor.name}
-                  </span>
-                </div>
-                <div style={{ fontSize: '14px', color: '#666' }}>
-                  {courseData.completedLessons} of {courseData.totalLessons} lessons completed
-                </div>
-              </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+            <div style={{ fontSize: '14px', color: '#666' }}>
+              {courseData.completedLessons} / {courseData.totalLessons} lessons completed
             </div>
-            <div style={{ width: '200px' }}>
-              {/* Progress Ring */}
-              <div
-                style={{
-                  width: '120px',
-                  height: '120px',
-                  borderRadius: '50%',
-                  background: `conic-gradient(#48bb78 0deg ${courseData.percentComplete * 3.6}deg, #e2e8f0 ${courseData.percentComplete * 3.6}deg 360deg)`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto',
-                }}
-              >
-                <div
-                  style={{
-                    width: '80px',
-                    height: '80px',
-                    borderRadius: '50%',
-                    background: '#fff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '18px',
-                    fontWeight: '600',
-                    color: '#48bb78',
-                  }}
-                >
-                  {courseData.percentComplete}%
-                </div>
-              </div>
+            <div style={{ fontSize: '14px', fontWeight: '600', color: '#48bb78' }}>
+              {courseData.percentComplete}% complete
             </div>
           </div>
         </div>
       </div>
 
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px 20px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '32px' }}>
-          {/* Main Content */}
-          <div>
-            {/* Video Player */}
-            <div
-              style={{
-                background: '#000',
-                borderRadius: '12px',
-                aspectRatio: '16/9',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: '24px',
-                position: 'relative',
-                overflow: 'hidden',
-              }}
-            >
-              <div style={{ textAlign: 'center', color: '#fff' }}>
-                <div style={{ fontSize: '48px', marginBottom: '16px' }}>▶️</div>
-                <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>
-                  {currentLessonData?.title || 'Select a lesson to begin'}
-                </div>
-                <div style={{ fontSize: '14px', opacity: 0.8 }}>
-                  {currentLessonData?.duration || 'Video player coming soon'}
-                </div>
-              </div>
-            </div>
+      {/* Main Layout: Left Sidebar + Right Content */}
+      <div style={{ display: 'flex', height: 'calc(100vh - 128px)' }}>
+        {/* LEFT PANE: Course Items List */}
+        <div
+          style={{
+            width: '380px',
+            background: '#fff',
+            borderRight: '1px solid #e2e8f0',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}
+        >
+          {/* Sidebar Header */}
+          <div
+            style={{
+              padding: '20px 24px',
+              borderBottom: '1px solid #e2e8f0',
+              background: '#f8f8f8',
+            }}
+          >
+            <h2 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '4px' }}>
+              Course Content
+            </h2>
+            <div style={{ fontSize: '13px', color: '#666' }}>{courseItems.length} lessons</div>
+          </div>
 
-            {/* Tabs */}
-            <div
-              style={{
-                background: '#fff',
-                borderRadius: '12px',
-                overflow: 'hidden',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  borderBottom: '1px solid #e2e8f0',
-                }}
-              >
-                {[
-                  { id: 'overview' as const, label: 'Overview' },
-                  { id: 'resources' as const, label: 'Resources' },
-                  { id: 'notes' as const, label: 'Notes' },
-                  { id: 'reviews' as const, label: 'Reviews' },
-                ].map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
+          {/* Course Items List */}
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            {courseItems.length === 0 ? (
+              <div style={{ padding: '40px 24px', textAlign: 'center', color: '#666' }}>
+                <div style={{ fontSize: '32px', marginBottom: '12px' }}>📚</div>
+                <div style={{ fontSize: '14px' }}>No lessons available yet</div>
+              </div>
+            ) : (
+              courseItems.map((item, index) => {
+                const isSelected = selectedItem?.id === item.id;
+                const isCompleted = item.completed || false;
+
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => setSelectedItem(item)}
                     style={{
-                      flex: 1,
-                      padding: '16px',
-                      background: 'none',
-                      border: 'none',
+                      padding: '16px 24px',
+                      borderBottom: '1px solid #e2e8f0',
                       cursor: 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      color: activeTab === tab.id ? '#764ba2' : '#666',
-                      borderBottom:
-                        activeTab === tab.id ? '2px solid #764ba2' : '2px solid transparent',
+                      background: isSelected ? '#f0f4ff' : 'transparent',
+                      transition: 'background 0.2s',
+                    }}
+                    onMouseEnter={e => {
+                      if (!isSelected) {
+                        e.currentTarget.style.background = '#fafafa';
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      if (!isSelected) {
+                        e.currentTarget.style.background = 'transparent';
+                      }
                     }}
                   >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-
-              <div style={{ padding: '24px' }}>
-                {activeTab === 'overview' && (
-                  <div>
-                    <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
-                      Course Overview
-                    </h3>
-                    <p style={{ color: '#666', lineHeight: '1.6', marginBottom: '16px' }}>
-                      {courseData.longDescription || courseData.description}
-                    </p>
-                    {courseData.whatYouWillLearn && (
-                      <div>
-                        <h4 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>
-                          What you&apos;ll learn:
-                        </h4>
-                        <ul style={{ color: '#666', lineHeight: '1.6' }}>
-                          {courseData.whatYouWillLearn.map((item, index) => (
-                            <li key={index} style={{ marginBottom: '8px' }}>
-                              ✓ {item}
-                            </li>
-                          ))}
-                        </ul>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                      {/* Index/Checkmark */}
+                      <div
+                        style={{
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: '50%',
+                          background: isCompleted ? '#48bb78' : isSelected ? '#764ba2' : '#e2e8f0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '11px',
+                          fontWeight: '600',
+                          color: '#fff',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {isCompleted ? '✓' : index + 1}
                       </div>
-                    )}
+
+                      {/* Lesson Info */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div
+                          style={{
+                            fontSize: '14px',
+                            fontWeight: isSelected ? '600' : '500',
+                            marginBottom: '6px',
+                            color: isSelected ? '#764ba2' : '#000',
+                            lineHeight: '1.4',
+                          }}
+                        >
+                          {item.title}
+                        </div>
+                        {item.description && (
+                          <div
+                            style={{
+                              fontSize: '12px',
+                              color: '#666',
+                              marginBottom: '6px',
+                              lineHeight: '1.4',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                            }}
+                          >
+                            {item.description}
+                          </div>
+                        )}
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            fontSize: '12px',
+                            color: '#999',
+                          }}
+                        >
+                          <span>⏱️ {item.duration || '30 min'}</span>
+                          <span>•</span>
+                          <span>🎥 Video</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* RIGHT PANE: Video Player & Content */}
+        <div
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}
+        >
+          {selectedItem ? (
+            <>
+              {/* Video Player */}
+              <div
+                style={{
+                  background: '#000',
+                  aspectRatio: '16/9',
+                  maxHeight: '70vh',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  position: 'relative',
+                }}
+              >
+                {selectedItem.cloudflareVideoId ? (
+                  <iframe
+                    src={`https://customer-iq7mgkvtb3bwxqf5.cloudflarestream.com/${selectedItem.cloudflareVideoId}/iframe?preload=true&poster=https%3A%2F%2Fcustomer-iq7mgkvtb3bwxqf5.cloudflarestream.com%2F${selectedItem.cloudflareVideoId}%2Fthumbnails%2Fthumbnail.jpg%3Ftime%3D0s%26height%3D600`}
+                    title={selectedItem.title}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      border: 'none',
+                    }}
+                    allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+                    allowFullScreen
+                  />
+                ) : selectedItem.videoUrl ? (
+                  <iframe
+                    src={selectedItem.videoUrl}
+                    title={selectedItem.title}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      border: 'none',
+                    }}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : (
+                  <div style={{ textAlign: 'center', color: '#fff', padding: '40px' }}>
+                    <div style={{ fontSize: '64px', marginBottom: '16px' }}>▶️</div>
+                    <div style={{ fontSize: '20px', fontWeight: '600', marginBottom: '8px' }}>
+                      {selectedItem.title}
+                    </div>
+                    <div style={{ fontSize: '14px', opacity: 0.7 }}>
+                      Video will appear here once uploaded
+                    </div>
                   </div>
                 )}
+              </div>
 
-                {activeTab === 'resources' && (
-                  <div>
-                    <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
-                      Course Resources
-                    </h3>
-                    {courseData.resources && courseData.resources.length > 0 ? (
-                      <div>
-                        {courseData.resources.map(resource => (
+              {/* Lesson Details */}
+              <div style={{ flex: 1, overflowY: 'auto', background: '#fff' }}>
+                <div style={{ padding: '32px 40px' }}>
+                  {/* Lesson Header */}
+                  <div style={{ marginBottom: '24px' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        marginBottom: '12px',
+                      }}
+                    >
+                      <span
+                        style={{
+                          padding: '4px 12px',
+                          background: '#f0f4ff',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          color: '#764ba2',
+                          fontWeight: '600',
+                        }}
+                      >
+                        VIDEO
+                      </span>
+                      <span style={{ fontSize: '14px', color: '#666' }}>
+                        ⏱️ {selectedItem.duration || '30 min'}
+                      </span>
+                    </div>
+                    <h2
+                      style={{
+                        fontSize: '28px',
+                        fontWeight: '600',
+                        marginBottom: '12px',
+                        lineHeight: '1.3',
+                      }}
+                    >
+                      {selectedItem.title}
+                    </h2>
+                    {selectedItem.description && (
+                      <p style={{ fontSize: '16px', color: '#666', lineHeight: '1.6' }}>
+                        {selectedItem.description}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div style={{ display: 'flex', gap: '12px', marginBottom: '32px' }}>
+                    <button
+                      onClick={handleMarkComplete}
+                      disabled={selectedItem.completed}
+                      style={{
+                        padding: '12px 24px',
+                        background: selectedItem.completed ? '#48bb78' : '#764ba2',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        cursor: selectedItem.completed ? 'default' : 'pointer',
+                        opacity: selectedItem.completed ? 0.8 : 1,
+                      }}
+                    >
+                      {selectedItem.completed ? '✓ Completed' : 'Mark as Complete'}
+                    </button>
+                    {selectedItem.resources && selectedItem.resources.length > 0 && (
+                      <button
+                        style={{
+                          padding: '12px 24px',
+                          background: '#fff',
+                          color: '#764ba2',
+                          border: '1px solid #764ba2',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        📎 Resources ({selectedItem.resources.length})
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Resources */}
+                  {selectedItem.resources && selectedItem.resources.length > 0 && (
+                    <div>
+                      <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
+                        Resources
+                      </h3>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        {selectedItem.resources.map(resource => (
                           <div
-                            key={resource.id}
+                            key={resource}
                             style={{
                               padding: '16px',
                               border: '1px solid #e2e8f0',
                               borderRadius: '8px',
-                              marginBottom: '12px',
                               display: 'flex',
                               alignItems: 'center',
                               gap: '12px',
@@ -329,10 +457,7 @@ export default function CoursePlayer() {
                             <div style={{ fontSize: '24px' }}>📄</div>
                             <div style={{ flex: 1 }}>
                               <div style={{ fontWeight: '600', marginBottom: '4px' }}>
-                                {resource.title}
-                              </div>
-                              <div style={{ fontSize: '12px', color: '#666' }}>
-                                {resource.type} • {resource.size}
+                                {resource}
                               </div>
                             </div>
                             <button
@@ -351,236 +476,32 @@ export default function CoursePlayer() {
                           </div>
                         ))}
                       </div>
-                    ) : (
-                      <p style={{ color: '#666' }}>No resources available for this course.</p>
-                    )}
-                  </div>
-                )}
-
-                {activeTab === 'notes' && (
-                  <div>
-                    <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
-                      Your Notes
-                    </h3>
-                    {courseData.notes && courseData.notes.length > 0 ? (
-                      <div>
-                        {courseData.notes.map(note => (
-                          <div
-                            key={note.lessonId}
-                            style={{
-                              padding: '16px',
-                              background: '#f8f8f8',
-                              borderRadius: '8px',
-                              marginBottom: '12px',
-                            }}
-                          >
-                            <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>
-                              {new Date(note.createdAt).toLocaleDateString()}
-                            </div>
-                            <div>{note.note}</div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p style={{ color: '#666' }}>
-                        No notes yet. Start taking notes as you learn!
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {activeTab === 'reviews' && (
-                  <div>
-                    <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
-                      Student Reviews
-                    </h3>
-                    {courseData.reviews && courseData.reviews.length > 0 ? (
-                      <div>
-                        {courseData.reviews.map(review => (
-                          <div
-                            key={review.id}
-                            style={{
-                              padding: '16px',
-                              border: '1px solid #e2e8f0',
-                              borderRadius: '8px',
-                              marginBottom: '12px',
-                            }}
-                          >
-                            <div
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                marginBottom: '8px',
-                              }}
-                            >
-                              <div style={{ fontWeight: '600' }}>{review.user}</div>
-                              <div style={{ display: 'flex', gap: '2px' }}>
-                                {[...Array(5)].map((_, i) => (
-                                  <span
-                                    key={i}
-                                    style={{
-                                      color: i < review.rating ? '#FFB800' : '#e2e8f0',
-                                      fontSize: '14px',
-                                    }}
-                                  >
-                                    ★
-                                  </span>
-                                ))}
-                              </div>
-                              <div style={{ fontSize: '12px', color: '#666' }}>
-                                {new Date(review.date).toLocaleDateString()}
-                              </div>
-                            </div>
-                            <p style={{ color: '#666', lineHeight: '1.6' }}>{review.comment}</p>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p style={{ color: '#666' }}>
-                        No reviews yet. Be the first to review this course!
-                      </p>
-                    )}
-                  </div>
-                )}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          </div>
-
-          {/* Sidebar */}
-          <div>
+            </>
+          ) : (
             <div
               style={{
-                background: '#fff',
-                borderRadius: '12px',
-                overflow: 'hidden',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                position: 'sticky',
-                top: '84px',
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: '#fafafa',
               }}
             >
-              <div
-                style={{
-                  padding: '20px',
-                  borderBottom: '1px solid #e2e8f0',
-                  background: '#f8f8f8',
-                }}
-              >
-                <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
-                  Course Curriculum
-                </h3>
-                <div style={{ fontSize: '12px', color: '#666' }}>
-                  {courseData.completedLessons} of {courseData.totalLessons} lessons completed
+              <div style={{ textAlign: 'center', color: '#666' }}>
+                <div style={{ fontSize: '64px', marginBottom: '16px' }}>📚</div>
+                <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>
+                  Select a lesson to begin
+                </div>
+                <div style={{ fontSize: '14px' }}>
+                  Choose a lesson from the sidebar to start learning
                 </div>
               </div>
-
-              <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
-                {curriculum.map((week, weekIndex) => (
-                  <div key={weekIndex}>
-                    <div
-                      style={{
-                        padding: '16px 20px',
-                        background: '#f8f8f8',
-                        borderBottom: '1px solid #e2e8f0',
-                        fontSize: '14px',
-                        fontWeight: '600',
-                      }}
-                    >
-                      Week {week.week}: {week.title}
-                    </div>
-                    {week.lessons.map((lesson, lessonIndex) => {
-                      const globalIndex =
-                        curriculum
-                          .slice(0, weekIndex)
-                          .reduce((acc, w) => acc + w.lessons.length, 0) + lessonIndex;
-                      const isActive = globalIndex === currentLesson;
-                      const isCompleted = lesson.completed;
-
-                      return (
-                        <div
-                          key={lesson.id}
-                          style={{
-                            padding: '12px 20px',
-                            borderBottom: '1px solid #e2e8f0',
-                            cursor: 'pointer',
-                            background: isActive ? '#f0f4ff' : 'transparent',
-                            transition: 'background 0.2s',
-                          }}
-                          onClick={() => setCurrentLesson(globalIndex)}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div
-                              style={{
-                                width: '20px',
-                                height: '20px',
-                                borderRadius: '50%',
-                                background: isCompleted
-                                  ? '#48bb78'
-                                  : isActive
-                                    ? '#764ba2'
-                                    : '#e2e8f0',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: '12px',
-                                color: '#fff',
-                                flexShrink: 0,
-                              }}
-                            >
-                              {isCompleted ? '✓' : globalIndex + 1}
-                            </div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div
-                                style={{
-                                  fontSize: '14px',
-                                  fontWeight: isActive ? '600' : '500',
-                                  marginBottom: '4px',
-                                  color: isActive ? '#764ba2' : '#000',
-                                }}
-                              >
-                                {lesson.title}
-                              </div>
-                              <div style={{ fontSize: '12px', color: '#666' }}>
-                                {lesson.duration}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
-
-              {currentLessonData && (
-                <div
-                  style={{
-                    padding: '20px',
-                    borderTop: '1px solid #e2e8f0',
-                    background: '#f8f8f8',
-                  }}
-                >
-                  <button
-                    onClick={() => handleLessonComplete(currentLessonData.id)}
-                    disabled={currentLessonData.completed}
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      background: currentLessonData.completed ? '#48bb78' : '#764ba2',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      cursor: currentLessonData.completed ? 'default' : 'pointer',
-                    }}
-                  >
-                    {currentLessonData.completed ? '✓ Completed' : 'Mark as Complete'}
-                  </button>
-                </div>
-              )}
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

@@ -57,10 +57,20 @@ export async function enrollUserInCourse(
       enrolledAt: now,
     };
 
+    console.log(
+      '[DBG][enrollment] Before push - enrolledCourses count:',
+      user.enrolledCourses.length
+    );
     user.enrolledCourses.push(enrolledCourse);
+    console.log(
+      '[DBG][enrollment] After push - enrolledCourses count:',
+      user.enrolledCourses.length
+    );
+    console.log('[DBG][enrollment] Enrolled course data:', JSON.stringify(enrolledCourse, null, 2));
 
     // Update user statistics
     user.statistics.totalCourses = (user.statistics.totalCourses || 0) + 1;
+    console.log('[DBG][enrollment] Updated totalCourses to:', user.statistics.totalCourses);
 
     // Add payment to billing history if payment ID provided
     if (paymentId) {
@@ -82,6 +92,8 @@ export async function enrollUserInCourse(
 
       user.billing.lastPayment =
         user.billing.paymentHistory[user.billing.paymentHistory.length - 1];
+
+      console.log('[DBG][enrollment] Added payment to billing history');
     }
 
     // Add "First Course" achievement if this is their first enrollment
@@ -95,9 +107,16 @@ export async function enrollUserInCourse(
         points: 50,
       };
       user.achievements.push(firstCourseAchievement);
+      console.log('[DBG][enrollment] Added first course achievement');
     }
 
-    await user.save();
+    console.log('[DBG][enrollment] About to save user document...');
+    const savedUser = await user.save();
+    console.log(
+      '[DBG][enrollment] User saved successfully! enrolledCourses count:',
+      savedUser.enrolledCourses.length
+    );
+    console.log('[DBG][enrollment] Saved user ID:', savedUser._id);
 
     // Create course progress record
     const progressId = `${userId}_${courseId}`;
