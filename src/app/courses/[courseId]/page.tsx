@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import PaymentModal from '@/components/payment/PaymentModal';
+import { trackCourseView, trackSubscriptionClick } from '@/lib/analytics';
 import type { Course, Lesson } from '@/types';
 
 export default function CourseDetailPage() {
@@ -56,6 +57,11 @@ export default function CourseDetailPage() {
 
     if (courseId) {
       fetchCourseData();
+
+      // Track course view
+      trackCourseView(courseId).catch(err => {
+        console.error('[DBG][course-detail] Failed to track course view:', err);
+      });
     }
   }, [courseId]);
 
@@ -68,6 +74,11 @@ export default function CourseDetailPage() {
   }, [isAuthenticated, user, courseId]);
 
   const handleEnrollClick = () => {
+    // Track subscription click
+    trackSubscriptionClick(courseId).catch(err => {
+      console.error('[DBG][course-detail] Failed to track subscription click:', err);
+    });
+
     if (!isAuthenticated) {
       // Redirect to login
       router.push('/auth/login');

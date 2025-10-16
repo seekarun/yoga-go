@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { PAYMENT_CONFIG } from '@/config/payment';
+import { connectToDatabase } from '@/lib/mongodb';
+import Payment from '@/models/Payment';
 
 function getStripeInstance() {
   if (!PAYMENT_CONFIG.stripe.secretKey) {
@@ -31,6 +33,20 @@ export async function POST(request: Request) {
     // Verify payment was successful
     if (paymentIntent.status !== 'succeeded') {
       console.error('[DBG][stripe] Payment not succeeded:', paymentIntent.status);
+
+      // Update payment status to failed
+      await connectToDatabase();
+      await Payment.updateOne(
+        { paymentIntentId },
+        {
+          $set: {
+            status: 'failed',
+            failedAt: new Date(),
+            'metadata.errorMessage': `Payment status: ${paymentIntent.status}`,
+          },
+        }
+      );
+
       return NextResponse.json(
         { success: false, error: `Payment not completed. Status: ${paymentIntent.status}` },
         { status: 400 }
@@ -51,6 +67,19 @@ export async function POST(request: Request) {
     }
 
     console.log('[DBG][stripe] Payment verified successfully:', paymentIntentId);
+
+    // Update payment status to succeeded
+    await connectToDatabase();
+    await Payment.updateOne(
+      { paymentIntentId },
+      {
+        $set: {
+          status: 'succeeded',
+          completedAt: new Date(),
+          'metadata.chargeId': paymentIntent.latest_charge,
+        },
+      }
+    );
 
     // Grant access based on type
     if (type === 'course') {

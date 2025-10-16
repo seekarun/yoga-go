@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePayment } from '@/contexts/PaymentContext';
 import { PAYMENT_CONFIG } from '@/config/payment';
 import { formatPrice } from '@/lib/geolocation';
+import { trackPaymentModalOpen, trackEnrollmentComplete } from '@/lib/analytics';
 import RazorpayCheckout from './RazorpayCheckout';
 import StripeCheckout from './StripeCheckout';
 
@@ -28,6 +29,15 @@ export default function PaymentModal({ isOpen, onClose, type, item }: PaymentMod
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
 
+  // Track payment modal open
+  useEffect(() => {
+    if (isOpen && type === 'course') {
+      trackPaymentModalOpen(item.id).catch(err => {
+        console.error('[DBG][PaymentModal] Failed to track payment modal open:', err);
+      });
+    }
+  }, [isOpen, type, item.id]);
+
   if (!isOpen) return null;
 
   // Calculate amount based on type
@@ -48,6 +58,13 @@ export default function PaymentModal({ isOpen, onClose, type, item }: PaymentMod
   const handleSuccess = async (paymentId: string) => {
     setPaymentStatus('success');
     console.log('[DBG][PaymentModal] Payment successful:', paymentId);
+
+    // Track enrollment completion
+    if (type === 'course') {
+      trackEnrollmentComplete(item.id, paymentId).catch(err => {
+        console.error('[DBG][PaymentModal] Failed to track enrollment complete:', err);
+      });
+    }
 
     // Refresh user data to get updated enrollments
     console.log('[DBG][PaymentModal] Refreshing user data...');

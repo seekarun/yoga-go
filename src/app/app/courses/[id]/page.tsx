@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { trackLessonView, trackLessonComplete } from '@/lib/analytics';
 import type { UserCourseData, Lesson } from '@/types';
 
 export default function CoursePlayer() {
@@ -61,11 +62,26 @@ export default function CoursePlayer() {
     }
   }, [courseId, isAuthenticated]);
 
+  // Track lesson view when lesson is selected
+  useEffect(() => {
+    if (selectedItem && courseId) {
+      trackLessonView(courseId, selectedItem.id).catch(err => {
+        console.error('[DBG][course-player] Failed to track lesson view:', err);
+      });
+    }
+  }, [selectedItem, courseId]);
+
   const handleMarkComplete = async () => {
     if (!selectedItem) return;
 
     try {
       console.log('[DBG][course-player] Marking lesson complete:', selectedItem.id);
+
+      // Track lesson complete
+      trackLessonComplete(courseId, selectedItem.id).catch(err => {
+        console.error('[DBG][course-player] Failed to track lesson complete:', err);
+      });
+
       // TODO: Call API to mark lesson as complete
       // For now, just show success
       alert(`Lesson "${selectedItem.title}" marked as complete! 🎉`);

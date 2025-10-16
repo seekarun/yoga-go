@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { PAYMENT_CONFIG } from '@/config/payment';
+import { connectToDatabase } from '@/lib/mongodb';
+import Payment from '@/models/Payment';
+import { nanoid } from 'nanoid';
 
 function getStripeInstance() {
   if (!PAYMENT_CONFIG.stripe.secretKey) {
@@ -41,23 +44,36 @@ export async function POST(request: Request) {
 
     console.log('[DBG][stripe] PaymentIntent created:', paymentIntent.id);
 
-    // TODO: Store payment intent in database
-    // await db.payments.create({
-    //   paymentIntentId: paymentIntent.id,
-    //   userId,
-    //   amount,
-    //   currency,
-    //   type,
-    //   itemId,
-    //   status: 'pending',
-    //   gateway: 'stripe',
-    // });
+    // Store payment record in database
+    await connectToDatabase();
+    const paymentId = nanoid();
+
+    const payment = new Payment({
+      _id: paymentId,
+      userId,
+      courseId: type === 'course' ? itemId : undefined,
+      itemType: type === 'course' ? 'course_enrollment' : 'subscription',
+      itemId,
+      amount,
+      currency: currency.toUpperCase(),
+      gateway: 'stripe',
+      status: 'initiated',
+      paymentIntentId: paymentIntent.id,
+      initiatedAt: new Date(),
+      metadata: {
+        userAgent: request.headers.get('user-agent') || undefined,
+      },
+    });
+
+    await payment.save();
+    console.log('[DBG][stripe] Payment record saved:', paymentId);
 
     return NextResponse.json({
       success: true,
       data: {
         clientSecret: paymentIntent.client_secret,
         paymentIntentId: paymentIntent.id,
+        paymentId,
       },
     });
   } catch (error) {
