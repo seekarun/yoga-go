@@ -3,6 +3,7 @@ import { getSession, getUserByAuth0Id } from '@/lib/auth';
 import { getCourseProgress } from '@/lib/enrollment';
 import { connectToDatabase } from '@/lib/mongodb';
 import CourseModel from '@/models/Course';
+import ExpertModel from '@/models/Expert';
 import type {
   UserCoursesData,
   ApiResponse,
@@ -50,10 +51,36 @@ export async function GET() {
       user.enrolledCourses.map(ec => ({ courseId: ec.courseId, title: ec.title }))
     );
 
+    // Fetch all enrolled courses at once
+    const enrolledCourseIds = user.enrolledCourses.map(ec => ec.courseId);
+    const courseDocs = await CourseModel.find({ _id: { $in: enrolledCourseIds } })
+      .lean()
+      .exec();
+
+    // Fetch all published courses to get all possible instructor IDs
+    const allCourseDocs = await CourseModel.find({ status: 'PUBLISHED' }).lean().exec();
+
+    // Collect all unique instructor IDs from both enrolled and all published courses
+    const allInstructorIds = [
+      ...new Set(
+        [
+          ...courseDocs.map((doc: any) => doc.instructor?.id),
+          ...allCourseDocs.map((doc: any) => doc.instructor?.id),
+        ].filter(Boolean)
+      ),
+    ];
+
+    // Fetch expert data for all instructors
+    const experts = await ExpertModel.find({ _id: { $in: allInstructorIds } })
+      .lean()
+      .exec();
+    const expertMap = new Map(experts.map((expert: any) => [expert._id, expert]));
+
+    console.log('[DBG][app/courses/route.ts] Fetched expert data for avatars:', allInstructorIds);
+
     for (const enrolledCourse of user.enrolledCourses) {
-      // Fetch course from MongoDB using findOne (since _id is a String, not ObjectId)
-      console.log(`[DBG][app/courses/route.ts] Fetching course: ${enrolledCourse.courseId}`);
-      const courseDoc = await CourseModel.findOne({ _id: enrolledCourse.courseId }).lean().exec();
+      // Find the course doc
+      const courseDoc = courseDocs.find((doc: any) => doc._id === enrolledCourse.courseId);
       if (!courseDoc) {
         console.error(
           `[DBG][app/courses/route.ts] Course ${enrolledCourse.courseId} not found in MongoDB`
@@ -65,11 +92,20 @@ export async function GET() {
         `[DBG][app/courses/route.ts] Found course: ${(courseDoc as { _id: string })._id}`
       );
 
-      // Transform to Course type
+      // Transform to Course type and populate instructor avatar from expert data
       const course: Course = {
         ...(courseDoc as any),
         id: (courseDoc as any)._id as string,
       };
+
+      // Populate instructor avatar from expert data (use Cloudflare URLs)
+      if ((courseDoc as any).instructor?.id && expertMap.has((courseDoc as any).instructor.id)) {
+        const expert = expertMap.get((courseDoc as any).instructor.id);
+        course.instructor = {
+          ...(courseDoc as any).instructor,
+          avatar: expert.avatar || (courseDoc as any).instructor.avatar,
+        };
+      }
 
       // Get progress from MongoDB
       const progress = await getCourseProgress(user.id, enrolledCourse.courseId);
@@ -122,12 +158,24 @@ export async function GET() {
     // Get recommended courses (courses user hasn't enrolled in)
     const enrolledIds = user.enrolledCourses.map(ec => ec.courseId);
 
-    // Fetch all published courses from MongoDB
-    const allCourseDocs = await CourseModel.find({ status: 'PUBLISHED' }).lean().exec();
-    const allCourses: Course[] = allCourseDocs.map((doc: any) => ({
-      ...doc,
-      id: doc._id as string,
-    }));
+    // Populate instructor avatars for all courses using the expert map (allCourseDocs already fetched above)
+    const allCourses: Course[] = allCourseDocs.map((doc: any) => {
+      const course = {
+        ...doc,
+        id: doc._id as string,
+      };
+
+      // Populate instructor avatar from expert data
+      if (doc.instructor?.id && expertMap.has(doc.instructor.id)) {
+        const expert = expertMap.get(doc.instructor.id);
+        course.instructor = {
+          ...doc.instructor,
+          avatar: expert.avatar || doc.instructor.avatar,
+        };
+      }
+
+      return course;
+    });
 
     const notEnrolledCourses = allCourses.filter(c => !enrolledIds.includes(c.id));
 

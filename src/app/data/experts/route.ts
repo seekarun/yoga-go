@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import type { ApiResponse, Expert } from '@/types';
 import { connectToDatabase } from '@/lib/mongodb';
 import ExpertModel from '@/models/Expert';
+import CourseModel from '@/models/Course';
+import PaymentModel from '@/models/Payment';
 
 export async function GET() {
   console.log('[DBG][experts/route.ts] GET /data/experts called');
@@ -12,16 +14,54 @@ export async function GET() {
     // Fetch all experts from MongoDB
     const expertDocs = await ExpertModel.find({}).lean().exec();
 
-    // Transform MongoDB documents to Expert type
-    const experts: Expert[] = expertDocs.map((doc: any) => ({
-      ...doc,
-      id: doc._id as string,
-    }));
+    // Calculate dynamic stats for each expert
+    const expertsWithStats = await Promise.all(
+      expertDocs.map(async (doc: any) => {
+        const expertId = doc._id as string;
+
+        // Get actual number of published courses
+        const totalCourses = await CourseModel.countDocuments({
+          'instructor.id': expertId,
+          status: 'PUBLISHED',
+        });
+
+        // Get all courses for this expert (for calculating students)
+        const expertCourses = await CourseModel.find(
+          {
+            'instructor.id': expertId,
+            status: 'PUBLISHED',
+          },
+          { _id: 1 }
+        ).lean();
+
+        const courseIds = expertCourses.map(c => c._id);
+
+        // Get actual number of unique students (from successful payments)
+        const totalStudents =
+          courseIds.length > 0
+            ? await PaymentModel.distinct('userId', {
+                courseId: { $in: courseIds },
+                status: 'succeeded',
+              }).then(users => users.length)
+            : 0;
+
+        console.log(
+          `[DBG][experts/route.ts] Expert ${(doc as any).name}: ${totalCourses} courses, ${totalStudents} students`
+        );
+
+        return {
+          ...doc,
+          id: expertId,
+          totalCourses,
+          totalStudents,
+        };
+      })
+    );
 
     const response: ApiResponse<Expert[]> = {
       success: true,
-      data: experts,
-      total: experts.length,
+      data: expertsWithStats,
+      total: expertsWithStats.length,
     };
 
     return NextResponse.json(response);

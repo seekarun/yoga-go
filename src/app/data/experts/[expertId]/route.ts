@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import type { ApiResponse, Expert } from '@/types';
 import { connectToDatabase } from '@/lib/mongodb';
 import ExpertModel from '@/models/Expert';
+import CourseModel from '@/models/Course';
+import PaymentModel from '@/models/Payment';
 
 export async function GET(request: Request, { params }: { params: Promise<{ expertId: string }> }) {
   const { expertId } = await params;
@@ -21,10 +23,43 @@ export async function GET(request: Request, { params }: { params: Promise<{ expe
       return NextResponse.json(errorResponse, { status: 404 });
     }
 
-    // Transform MongoDB document to Expert type
+    // Calculate dynamic stats
+    // Get actual number of published courses
+    const totalCourses = await CourseModel.countDocuments({
+      'instructor.id': expertId,
+      status: 'PUBLISHED',
+    });
+
+    // Get all courses for this expert (for calculating students)
+    const expertCourses = await CourseModel.find(
+      {
+        'instructor.id': expertId,
+        status: 'PUBLISHED',
+      },
+      { _id: 1 }
+    ).lean();
+
+    const courseIds = expertCourses.map(c => c._id);
+
+    // Get actual number of unique students (from successful payments)
+    const totalStudents =
+      courseIds.length > 0
+        ? await PaymentModel.distinct('userId', {
+            courseId: { $in: courseIds },
+            status: 'succeeded',
+          }).then(users => users.length)
+        : 0;
+
+    console.log(
+      `[DBG][experts/[expertId]/route.ts] Expert ${(expertDoc as any).name}: ${totalCourses} courses, ${totalStudents} students`
+    );
+
+    // Transform MongoDB document to Expert type with dynamic stats
     const expert: Expert = {
       ...(expertDoc as any),
-      id: (expertDoc as any)._id as string,
+      id: expertId,
+      totalCourses,
+      totalStudents,
     };
 
     const response: ApiResponse<Expert> = {
