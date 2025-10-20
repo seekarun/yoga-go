@@ -553,87 +553,6 @@ export default function CourseDetailPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '40px' }}>
           {/* Main Content */}
           <div>
-            {/* What You'll Learn */}
-            {course.whatYouWillLearn && course.whatYouWillLearn.length > 0 && (
-              <section
-                style={{
-                  background: '#fff',
-                  padding: '32px',
-                  borderRadius: '12px',
-                  marginBottom: '32px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                }}
-              >
-                <h2
-                  style={{
-                    fontSize: '24px',
-                    fontWeight: '600',
-                    marginBottom: '20px',
-                  }}
-                >
-                  What You&apos;ll Learn
-                </h2>
-                <ul
-                  style={{
-                    listStyle: 'none',
-                    padding: 0,
-                    margin: 0,
-                  }}
-                >
-                  {course.whatYouWillLearn.map((item, idx) => (
-                    <li
-                      key={idx}
-                      style={{
-                        padding: '12px 0',
-                        borderBottom:
-                          idx < course.whatYouWillLearn!.length - 1 ? '1px solid #e2e8f0' : 'none',
-                        display: 'flex',
-                        alignItems: 'start',
-                        gap: '12px',
-                      }}
-                    >
-                      <span style={{ color: '#48bb78', fontSize: '20px', marginTop: '2px' }}>
-                        ✓
-                      </span>
-                      <span style={{ fontSize: '16px', lineHeight: '1.6', color: '#4a5568' }}>
-                        {item}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-
-            {/* Description */}
-            <section
-              style={{
-                background: '#fff',
-                padding: '32px',
-                borderRadius: '12px',
-                marginBottom: '32px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-              }}
-            >
-              <h2
-                style={{
-                  fontSize: '24px',
-                  fontWeight: '600',
-                  marginBottom: '20px',
-                }}
-              >
-                About This Course
-              </h2>
-              <p
-                style={{
-                  fontSize: '16px',
-                  lineHeight: '1.8',
-                  color: '#4a5568',
-                }}
-              >
-                {course.longDescription || course.description}
-              </p>
-            </section>
-
             {/* Lessons List */}
             {lessons.length > 0 && (
               <section
@@ -897,50 +816,6 @@ export default function CourseDetailPage() {
 
           {/* Sidebar */}
           <div>
-            {/* Requirements */}
-            {course.requirements && course.requirements.length > 0 && (
-              <section
-                style={{
-                  background: '#fff',
-                  padding: '24px',
-                  borderRadius: '12px',
-                  marginBottom: '24px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                }}
-              >
-                <h3
-                  style={{
-                    fontSize: '18px',
-                    fontWeight: '600',
-                    marginBottom: '16px',
-                  }}
-                >
-                  Requirements
-                </h3>
-                <ul
-                  style={{
-                    listStyle: 'disc',
-                    paddingLeft: '20px',
-                    margin: 0,
-                  }}
-                >
-                  {course.requirements.map((req, idx) => (
-                    <li
-                      key={idx}
-                      style={{
-                        fontSize: '14px',
-                        lineHeight: '1.6',
-                        color: '#4a5568',
-                        marginBottom: '8px',
-                      }}
-                    >
-                      {req}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
-
             {/* Tags */}
             {course.tags && course.tags.length > 0 && (
               <section
@@ -979,61 +854,6 @@ export default function CourseDetailPage() {
                 </div>
               </section>
             )}
-
-            {/* Instructor Card */}
-            <section
-              style={{
-                background: '#fff',
-                padding: '24px',
-                borderRadius: '12px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-              }}
-            >
-              <h3
-                style={{
-                  fontSize: '18px',
-                  fontWeight: '600',
-                  marginBottom: '16px',
-                }}
-              >
-                Instructor
-              </h3>
-              <div style={{ textAlign: 'center' }}>
-                <div
-                  style={{
-                    width: '80px',
-                    height: '80px',
-                    borderRadius: '50%',
-                    backgroundImage: `url(${course.instructor.avatar || '/images/default-avatar.jpg'})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    margin: '0 auto 16px',
-                  }}
-                />
-                <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '4px' }}>
-                  {course.instructor.name}
-                </div>
-                <div style={{ fontSize: '14px', color: '#666', marginBottom: '16px' }}>
-                  {course.instructor.title}
-                </div>
-                <Link
-                  href={`/experts/${course.instructor.id}`}
-                  style={{
-                    display: 'inline-block',
-                    padding: '10px 20px',
-                    background: '#f7fafc',
-                    color: '#764ba2',
-                    borderRadius: '6px',
-                    textDecoration: 'none',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  View Profile
-                </Link>
-              </div>
-            </section>
           </div>
         </div>
       </div>

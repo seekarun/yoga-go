@@ -60,11 +60,11 @@ export default function Dashboard() {
   };
 
   const enrolledCourses = userCourses?.enrolled || [];
-  // Show all enrolled courses that aren't completed (including newly enrolled with 0% progress)
-  const inProgressCourses = enrolledCourses.filter(course => course.percentComplete < 100);
+  // Show all enrolled courses including completed ones
+  const displayCourses = enrolledCourses;
 
   console.log('[DBG][dashboard] Total enrolled:', enrolledCourses.length);
-  console.log('[DBG][dashboard] In progress (< 100%):', inProgressCourses.length);
+  console.log('[DBG][dashboard] Displaying:', displayCourses.length);
 
   return (
     <div style={{ paddingTop: '64px', minHeight: '100vh' }}>
@@ -194,7 +194,7 @@ export default function Dashboard() {
             >
               Your Courses
             </h2>
-            {inProgressCourses.length > 0 && (
+            {displayCourses.length > 0 && (
               <Link
                 href="/app/my-courses"
                 style={{
@@ -213,7 +213,7 @@ export default function Dashboard() {
             <div style={{ textAlign: 'center', padding: '40px' }}>
               <div style={{ fontSize: '16px', color: '#666' }}>Loading your courses...</div>
             </div>
-          ) : inProgressCourses.length > 0 ? (
+          ) : displayCourses.length > 0 ? (
             <div
               style={{
                 display: 'grid',
@@ -221,7 +221,7 @@ export default function Dashboard() {
                 gap: '24px',
               }}
             >
-              {inProgressCourses.map(course => (
+              {displayCourses.map(course => (
                 <CourseCard key={course.id} course={course} variant="enrolled" />
               ))}
             </div>

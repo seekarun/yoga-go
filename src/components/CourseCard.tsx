@@ -4,6 +4,7 @@ import type { Course, UserCourseData } from '@/types';
 interface CourseCardProps {
   course: Course | UserCourseData;
   variant?: 'compact' | 'full' | 'enrolled';
+  isEnrolled?: boolean;
 }
 
 export default function CourseCard({ course, variant = 'full' }: CourseCardProps) {
@@ -146,14 +147,18 @@ export default function CourseCard({ course, variant = 'full' }: CourseCardProps
               <div
                 style={{
                   padding: '6px 12px',
-                  background: '#764ba2',
+                  background: enrolledCourse.percentComplete === 100 ? '#48bb78' : '#764ba2',
                   color: '#fff',
                   borderRadius: '6px',
                   fontSize: '12px',
                   fontWeight: '600',
                 }}
               >
-                {enrolledCourse.percentComplete === 0 ? 'Start' : 'Continue'}
+                {enrolledCourse.percentComplete === 0
+                  ? 'Start'
+                  : enrolledCourse.percentComplete === 100
+                    ? 'Re-visit'
+                    : 'Continue'}
               </div>
             </div>
           </div>
@@ -500,7 +505,7 @@ export default function CourseCard({ course, variant = 'full' }: CourseCardProps
             <div style={{ fontSize: '14px', color: '#666' }}>{course.duration}</div>
           </div>
 
-          {/* Price */}
+          {/* Price or Enrolled Badge */}
           <div
             style={{
               display: 'flex',
@@ -508,12 +513,41 @@ export default function CourseCard({ course, variant = 'full' }: CourseCardProps
               justifyContent: 'space-between',
             }}
           >
-            <div style={{ fontSize: '24px', fontWeight: '600', color: '#764ba2' }}>
-              ${course.price}
-            </div>
-            <div style={{ fontSize: '12px', color: '#48bb78' }}>
-              {course.freeLessons} free lessons
-            </div>
+            {isEnrolled ? (
+              <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                <Link
+                  href={`/app/courses/${course.id}`}
+                  style={{
+                    padding: '8px 16px',
+                    background: '#2563eb',
+                    color: '#fff',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    textDecoration: 'none',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                    transition: 'background 0.2s',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = '#1d4ed8';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = '#2563eb';
+                  }}
+                >
+                  ENROLLED
+                </Link>
+              </div>
+            ) : (
+              <>
+                <div style={{ fontSize: '24px', fontWeight: '600', color: '#764ba2' }}>
+                  ${course.price}
+                </div>
+                <div style={{ fontSize: '12px', color: '#48bb78' }}>
+                  {course.freeLessons} free lessons
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Course } from '@/types';
 import CourseCard from '@/components/CourseCard';
@@ -84,29 +83,8 @@ export default function CoursesPage() {
                 const isEnrolled = enrolledCourseIds.includes(course.id);
 
                 return (
-                  <div key={course.id} style={{ position: 'relative' }}>
-                    {isEnrolled && (
-                      <Link
-                        href={`/app/courses/${course.id}`}
-                        style={{
-                          position: 'absolute',
-                          top: '16px',
-                          left: '16px',
-                          zIndex: 10,
-                          padding: '6px 12px',
-                          background: '#2563eb',
-                          color: '#fff',
-                          borderRadius: '6px',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          textDecoration: 'none',
-                          boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                        }}
-                      >
-                        ENROLLED - Continue →
-                      </Link>
-                    )}
-                    <CourseCard course={course} variant="full" />
+                  <div key={course.id}>
+                    <CourseCard course={course} variant="full" isEnrolled={isEnrolled} />
                   </div>
                 );
               })}
