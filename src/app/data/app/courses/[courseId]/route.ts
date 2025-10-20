@@ -124,7 +124,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
         : undefined,
       progress: {
         totalLessons: progress?.totalLessons || course.totalLessons,
-        completedLessons: progress?.completedLessons.length || 0,
+        completedLessons: Array.isArray(progress?.completedLessons)
+          ? progress.completedLessons
+          : [], // Return the actual array of lesson IDs
         percentComplete: progress?.percentComplete || enrolledCourse.progress,
         currentLesson: progress?.currentLessonId
           ? {
@@ -138,7 +140,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
         totalTimeSpent: progress?.totalTimeSpent || 0,
         averageSessionTime: progress?.averageSessionTime || 0,
         lastCompletedLesson:
-          progress?.completedLessons.length > 0
+          progress?.completedLessons && progress.completedLessons.length > 0
             ? {
                 id: progress.completedLessons[progress.completedLessons.length - 1],
                 title: 'Last Completed',

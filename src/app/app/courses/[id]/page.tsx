@@ -21,13 +21,29 @@ export default function CoursePlayer() {
       try {
         console.log('[DBG][course-player] Fetching course data for:', courseId);
 
-        // Fetch course details
+        // Fetch course details and progress
         const courseResponse = await fetch(`/data/app/courses/${courseId}`);
         const courseDataResult = await courseResponse.json();
+
+        let completedLessonIds: string[] = [];
 
         if (courseDataResult.success) {
           setCourseData(courseDataResult.data);
           console.log('[DBG][course-player] Course data loaded:', courseDataResult.data.title);
+          console.log('[DBG][course-player] Full course data:', courseDataResult.data);
+
+          // Extract completed lesson IDs from progress
+          const progressData = courseDataResult.data.progress;
+          if (progressData?.completedLessons) {
+            if (Array.isArray(progressData.completedLessons)) {
+              completedLessonIds = progressData.completedLessons;
+            }
+          }
+          console.log('[DBG][course-player] Completed lesson IDs:', completedLessonIds);
+          console.log(
+            '[DBG][course-player] Number of completed lessons:',
+            completedLessonIds.length
+          );
         }
 
         // Fetch course items (lessons/videos)
@@ -39,13 +55,23 @@ export default function CoursePlayer() {
         if (itemsResult.success && itemsResult.data) {
           // The API returns data as an array directly, not nested in data.items
           const items = Array.isArray(itemsResult.data) ? itemsResult.data : [];
-          console.log('[DBG][course-player] Loaded', items.length, 'course items');
-          setCourseItems(items);
 
-          // Auto-select first item
-          if (items.length > 0) {
-            setSelectedItem(items[0]);
-            console.log('[DBG][course-player] Auto-selected first item:', items[0].title);
+          // Mark lessons as completed based on progress
+          const itemsWithCompletion = items.map((item: Lesson) => ({
+            ...item,
+            completed: completedLessonIds.includes(item.id),
+          }));
+
+          console.log('[DBG][course-player] Loaded', itemsWithCompletion.length, 'course items');
+          setCourseItems(itemsWithCompletion);
+
+          // Auto-select first incomplete item, or first item if all complete
+          const firstIncomplete = itemsWithCompletion.find((item: Lesson) => !item.completed);
+          const itemToSelect = firstIncomplete || itemsWithCompletion[0];
+
+          if (itemToSelect) {
+            setSelectedItem(itemToSelect);
+            console.log('[DBG][course-player] Auto-selected item:', itemToSelect.title);
           }
         } else {
           console.error('[DBG][course-player] Failed to load items:', itemsResult.error);
@@ -71,7 +97,7 @@ export default function CoursePlayer() {
     }
   }, [selectedItem, courseId]);
 
-  const handleMarkComplete = async () => {
+  const handleMarkComplete = async (moveToNext = false) => {
     if (!selectedItem) return;
 
     try {
@@ -82,13 +108,76 @@ export default function CoursePlayer() {
         console.error('[DBG][course-player] Failed to track lesson complete:', err);
       });
 
-      // TODO: Call API to mark lesson as complete
-      // For now, just show success
-      alert(`Lesson "${selectedItem.title}" marked as complete! 🎉`);
+      // Call API to mark lesson as complete
+      const response = await fetch('/api/enrollment/complete-lesson', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          courseId,
+          lessonId: selectedItem.id,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        console.log('[DBG][course-player] Lesson marked complete successfully');
+
+        // Update local state
+        const updatedItems = courseItems.map(item =>
+          item.id === selectedItem.id ? { ...item, completed: true } : item
+        );
+        setCourseItems(updatedItems);
+        setSelectedItem({ ...selectedItem, completed: true });
+
+        // Refetch course data to update progress in top bar
+        const courseResponse = await fetch(`/data/app/courses/${courseId}`);
+        const courseDataResult = await courseResponse.json();
+        if (courseDataResult.success) {
+          setCourseData(courseDataResult.data);
+        }
+
+        // Move to next lesson if requested
+        if (moveToNext) {
+          handleNavigateNext();
+        }
+      } else {
+        console.error('[DBG][course-player] Failed to mark complete:', result.error);
+        alert('Failed to mark lesson as complete. Please try again.');
+      }
     } catch (error) {
       console.error('[DBG][course-player] Error marking complete:', error);
+      alert('An error occurred. Please try again.');
     }
   };
+
+  const handleNavigatePrev = () => {
+    if (!selectedItem || courseItems.length === 0) return;
+
+    const currentIndex = courseItems.findIndex(item => item.id === selectedItem.id);
+    if (currentIndex > 0) {
+      setSelectedItem(courseItems[currentIndex - 1]);
+    }
+  };
+
+  const handleNavigateNext = () => {
+    if (!selectedItem || courseItems.length === 0) return;
+
+    const currentIndex = courseItems.findIndex(item => item.id === selectedItem.id);
+    if (currentIndex < courseItems.length - 1) {
+      setSelectedItem(courseItems[currentIndex + 1]);
+    }
+  };
+
+  const getCurrentLessonIndex = () => {
+    if (!selectedItem) return -1;
+    return courseItems.findIndex(item => item.id === selectedItem.id);
+  };
+
+  const hasPrevLesson = getCurrentLessonIndex() > 0;
+  const hasNextLesson = getCurrentLessonIndex() < courseItems.length - 1;
 
   if (loading) {
     return (
@@ -368,6 +457,143 @@ export default function CoursePlayer() {
                 )}
               </div>
 
+              {/* Navigation Controls */}
+              <div
+                style={{
+                  background: '#fff',
+                  borderTop: '1px solid #e2e8f0',
+                  borderBottom: '1px solid #e2e8f0',
+                  padding: '16px 40px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                <button
+                  onClick={handleNavigatePrev}
+                  disabled={!hasPrevLesson}
+                  style={{
+                    padding: '12px 24px',
+                    background: hasPrevLesson ? '#fff' : '#f5f5f5',
+                    color: hasPrevLesson ? '#764ba2' : '#ccc',
+                    border: `1px solid ${hasPrevLesson ? '#764ba2' : '#e2e8f0'}`,
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: hasPrevLesson ? 'pointer' : 'not-allowed',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={e => {
+                    if (hasPrevLesson) {
+                      e.currentTarget.style.background = '#764ba2';
+                      e.currentTarget.style.color = '#fff';
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    if (hasPrevLesson) {
+                      e.currentTarget.style.background = '#fff';
+                      e.currentTarget.style.color = '#764ba2';
+                    }
+                  }}
+                >
+                  ← Previous Lesson
+                </button>
+
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button
+                    onClick={() => handleMarkComplete(false)}
+                    disabled={selectedItem.completed}
+                    style={{
+                      padding: '12px 24px',
+                      background: selectedItem.completed ? '#48bb78' : '#fff',
+                      color: selectedItem.completed ? '#fff' : '#48bb78',
+                      border: `1px solid #48bb78`,
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: selectedItem.completed ? 'default' : 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={e => {
+                      if (!selectedItem.completed) {
+                        e.currentTarget.style.background = '#48bb78';
+                        e.currentTarget.style.color = '#fff';
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      if (!selectedItem.completed) {
+                        e.currentTarget.style.background = '#fff';
+                        e.currentTarget.style.color = '#48bb78';
+                      }
+                    }}
+                  >
+                    {selectedItem.completed ? '✓ Completed' : 'Mark Complete'}
+                  </button>
+
+                  {hasNextLesson && !selectedItem.completed && (
+                    <button
+                      onClick={() => handleMarkComplete(true)}
+                      style={{
+                        padding: '12px 24px',
+                        background: '#764ba2',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        transition: 'all 0.2s',
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = '#6a3f92';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = '#764ba2';
+                      }}
+                    >
+                      Complete & Next →
+                    </button>
+                  )}
+                </div>
+
+                <button
+                  onClick={handleNavigateNext}
+                  disabled={!hasNextLesson}
+                  style={{
+                    padding: '12px 24px',
+                    background: hasNextLesson ? '#764ba2' : '#f5f5f5',
+                    color: hasNextLesson ? '#fff' : '#ccc',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: hasNextLesson ? 'pointer' : 'not-allowed',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={e => {
+                    if (hasNextLesson) {
+                      e.currentTarget.style.background = '#6a3f92';
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    if (hasNextLesson) {
+                      e.currentTarget.style.background = '#764ba2';
+                    }
+                  }}
+                >
+                  Next Lesson →
+                </button>
+              </div>
+
               {/* Lesson Details */}
               <div style={{ flex: 1, overflowY: 'auto', background: '#fff' }}>
                 <div style={{ padding: '32px 40px' }}>
@@ -414,26 +640,9 @@ export default function CoursePlayer() {
                     )}
                   </div>
 
-                  {/* Action Buttons */}
-                  <div style={{ display: 'flex', gap: '12px', marginBottom: '32px' }}>
-                    <button
-                      onClick={handleMarkComplete}
-                      disabled={selectedItem.completed}
-                      style={{
-                        padding: '12px 24px',
-                        background: selectedItem.completed ? '#48bb78' : '#764ba2',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '8px',
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        cursor: selectedItem.completed ? 'default' : 'pointer',
-                        opacity: selectedItem.completed ? 0.8 : 1,
-                      }}
-                    >
-                      {selectedItem.completed ? '✓ Completed' : 'Mark as Complete'}
-                    </button>
-                    {selectedItem.resources && selectedItem.resources.length > 0 && (
+                  {/* Resources Button */}
+                  {selectedItem.resources && selectedItem.resources.length > 0 && (
+                    <div style={{ marginBottom: '32px' }}>
                       <button
                         style={{
                           padding: '12px 24px',
@@ -448,8 +657,8 @@ export default function CoursePlayer() {
                       >
                         📎 Resources ({selectedItem.resources.length})
                       </button>
-                    )}
-                  </div>
+                    </div>
+                  )}
 
                   {/* Resources */}
                   {selectedItem.resources && selectedItem.resources.length > 0 && (
