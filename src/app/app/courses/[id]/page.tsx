@@ -15,6 +15,7 @@ export default function CoursePlayer() {
   const [courseItems, setCourseItems] = useState<Lesson[]>([]);
   const [selectedItem, setSelectedItem] = useState<Lesson | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     const fetchCourseData = async () => {
@@ -225,13 +226,14 @@ export default function CoursePlayer() {
         <div
           style={{
             maxWidth: '100%',
-            padding: '16px 24px',
+            padding: '12px 16px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            gap: '8px',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
             <Link
               href="/app"
               style={{
@@ -239,44 +241,117 @@ export default function CoursePlayer() {
                 textDecoration: 'none',
                 fontSize: '14px',
                 fontWeight: '500',
+                flexShrink: 0,
               }}
             >
               ← Dashboard
             </Link>
-            <div style={{ height: '20px', width: '1px', background: '#e2e8f0' }} />
+            <div
+              style={{
+                height: '20px',
+                width: '1px',
+                background: '#e2e8f0',
+                flexShrink: 0,
+                display: 'none',
+              }}
+              className="hide-mobile"
+            />
             <h1
               style={{
-                fontSize: '18px',
+                fontSize: '16px',
                 fontWeight: '600',
                 margin: 0,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
               }}
             >
               {courseData.title}
             </h1>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-            <div style={{ fontSize: '14px', color: '#666' }}>
-              {courseData.completedLessons} / {courseData.totalLessons} lessons completed
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              flexShrink: 0,
+            }}
+          >
+            <div style={{ fontSize: '12px', color: '#666' }} className="hide-on-small-mobile">
+              {courseData.completedLessons} / {courseData.totalLessons}
             </div>
-            <div style={{ fontSize: '14px', fontWeight: '600', color: '#48bb78' }}>
-              {courseData.percentComplete}% complete
+            <div style={{ fontSize: '13px', fontWeight: '600', color: '#48bb78' }}>
+              {courseData.percentComplete}%
             </div>
           </div>
         </div>
       </div>
 
+      {/* Mobile Menu Button */}
+      <button
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        style={{
+          position: 'fixed',
+          top: '80px',
+          left: '16px',
+          zIndex: 1001,
+          padding: '12px',
+          background: '#764ba2',
+          color: '#fff',
+          border: 'none',
+          borderRadius: '8px',
+          fontSize: '20px',
+          cursor: 'pointer',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '48px',
+          height: '48px',
+        }}
+        className="mobile-menu-btn"
+        aria-label="Toggle lesson list"
+      >
+        {isSidebarOpen ? '✕' : '☰'}
+      </button>
+
+      {/* Sidebar Overlay (mobile only) */}
+      {isSidebarOpen && (
+        <div
+          onClick={() => setIsSidebarOpen(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            zIndex: 999,
+          }}
+          className="sidebar-overlay"
+        />
+      )}
+
       {/* Main Layout: Left Sidebar + Right Content */}
-      <div style={{ display: 'flex', height: 'calc(100vh - 128px)' }}>
+      <div style={{ display: 'flex', height: 'calc(100vh - 128px)', position: 'relative' }}>
         {/* LEFT PANE: Course Items List */}
         <div
           style={{
-            width: '380px',
+            width: '100%',
+            maxWidth: '380px',
             background: '#fff',
             borderRight: '1px solid #e2e8f0',
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
+            position: 'fixed',
+            top: '128px',
+            left: isSidebarOpen ? '0' : '-100%',
+            bottom: 0,
+            zIndex: 1000,
+            transition: 'left 0.3s ease-in-out',
           }}
+          className="lesson-sidebar"
         >
           {/* Sidebar Header */}
           <div
@@ -463,28 +538,32 @@ export default function CoursePlayer() {
                   background: '#fff',
                   borderTop: '1px solid #e2e8f0',
                   borderBottom: '1px solid #e2e8f0',
-                  padding: '16px 40px',
+                  padding: '12px 16px',
                   display: 'flex',
+                  flexWrap: 'wrap',
                   justifyContent: 'space-between',
                   alignItems: 'center',
+                  gap: '8px',
                 }}
+                className="navigation-controls"
               >
                 <button
                   onClick={handleNavigatePrev}
                   disabled={!hasPrevLesson}
                   style={{
-                    padding: '12px 24px',
+                    padding: '10px 16px',
                     background: hasPrevLesson ? '#fff' : '#f5f5f5',
                     color: hasPrevLesson ? '#764ba2' : '#ccc',
                     border: `1px solid ${hasPrevLesson ? '#764ba2' : '#e2e8f0'}`,
                     borderRadius: '8px',
-                    fontSize: '14px',
+                    fontSize: '13px',
                     fontWeight: '600',
                     cursor: hasPrevLesson ? 'pointer' : 'not-allowed',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px',
+                    gap: '6px',
                     transition: 'all 0.2s',
+                    flexShrink: 0,
                   }}
                   onMouseEnter={e => {
                     if (hasPrevLesson) {
@@ -499,23 +578,32 @@ export default function CoursePlayer() {
                     }
                   }}
                 >
-                  ← Previous Lesson
+                  <span className="hide-text-mobile">← Prev</span>
+                  <span className="show-text-mobile">←</span>
                 </button>
 
-                <div style={{ display: 'flex', gap: '12px' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: '8px',
+                    flexWrap: 'wrap',
+                    justifyContent: 'center',
+                  }}
+                >
                   <button
                     onClick={() => handleMarkComplete(false)}
                     disabled={selectedItem.completed}
                     style={{
-                      padding: '12px 24px',
+                      padding: '10px 16px',
                       background: selectedItem.completed ? '#48bb78' : '#fff',
                       color: selectedItem.completed ? '#fff' : '#48bb78',
                       border: `1px solid #48bb78`,
                       borderRadius: '8px',
-                      fontSize: '14px',
+                      fontSize: '13px',
                       fontWeight: '600',
                       cursor: selectedItem.completed ? 'default' : 'pointer',
                       transition: 'all 0.2s',
+                      whiteSpace: 'nowrap',
                     }}
                     onMouseEnter={e => {
                       if (!selectedItem.completed) {
@@ -530,25 +618,26 @@ export default function CoursePlayer() {
                       }
                     }}
                   >
-                    {selectedItem.completed ? '✓ Completed' : 'Mark Complete'}
+                    {selectedItem.completed ? '✓' : 'Complete'}
                   </button>
 
                   {hasNextLesson && !selectedItem.completed && (
                     <button
                       onClick={() => handleMarkComplete(true)}
                       style={{
-                        padding: '12px 24px',
+                        padding: '10px 16px',
                         background: '#764ba2',
                         color: '#fff',
                         border: 'none',
                         borderRadius: '8px',
-                        fontSize: '14px',
+                        fontSize: '13px',
                         fontWeight: '600',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '8px',
+                        gap: '6px',
                         transition: 'all 0.2s',
+                        whiteSpace: 'nowrap',
                       }}
                       onMouseEnter={e => {
                         e.currentTarget.style.background = '#6a3f92';
@@ -556,8 +645,10 @@ export default function CoursePlayer() {
                       onMouseLeave={e => {
                         e.currentTarget.style.background = '#764ba2';
                       }}
+                      className="complete-next-btn"
                     >
-                      Complete & Next →
+                      <span className="hide-text-mobile">Complete & Next →</span>
+                      <span className="show-text-mobile">✓ & →</span>
                     </button>
                   )}
                 </div>
@@ -566,18 +657,19 @@ export default function CoursePlayer() {
                   onClick={handleNavigateNext}
                   disabled={!hasNextLesson}
                   style={{
-                    padding: '12px 24px',
+                    padding: '10px 16px',
                     background: hasNextLesson ? '#764ba2' : '#f5f5f5',
                     color: hasNextLesson ? '#fff' : '#ccc',
                     border: 'none',
                     borderRadius: '8px',
-                    fontSize: '14px',
+                    fontSize: '13px',
                     fontWeight: '600',
                     cursor: hasNextLesson ? 'pointer' : 'not-allowed',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px',
+                    gap: '6px',
                     transition: 'all 0.2s',
+                    flexShrink: 0,
                   }}
                   onMouseEnter={e => {
                     if (hasNextLesson) {
@@ -590,13 +682,14 @@ export default function CoursePlayer() {
                     }
                   }}
                 >
-                  Next Lesson →
+                  <span className="hide-text-mobile">Next →</span>
+                  <span className="show-text-mobile">→</span>
                 </button>
               </div>
 
               {/* Lesson Details */}
               <div style={{ flex: 1, overflowY: 'auto', background: '#fff' }}>
-                <div style={{ padding: '32px 40px' }}>
+                <div style={{ padding: '24px 20px' }} className="lesson-details">
                   {/* Lesson Header */}
                   <div style={{ marginBottom: '24px' }}>
                     <div
@@ -729,6 +822,65 @@ export default function CoursePlayer() {
           )}
         </div>
       </div>
+
+      {/* Mobile-responsive CSS */}
+      <style jsx>{`
+        /* Desktop: show sidebar, hide menu button */
+        @media (min-width: 769px) {
+          .mobile-menu-btn {
+            display: none !important;
+          }
+          .sidebar-overlay {
+            display: none !important;
+          }
+          .lesson-sidebar {
+            position: static !important;
+            left: 0 !important;
+            width: 380px !important;
+            max-width: 380px !important;
+          }
+          .hide-mobile {
+            display: block !important;
+          }
+          .show-text-mobile {
+            display: none !important;
+          }
+          .lesson-details {
+            padding: 32px 40px !important;
+          }
+          .navigation-controls {
+            padding: 16px 40px !important;
+          }
+        }
+
+        /* Mobile: hide sidebar by default, show toggle button */
+        @media (max-width: 768px) {
+          .hide-text-mobile {
+            display: inline !important;
+          }
+          .show-text-mobile {
+            display: none !important;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .hide-text-mobile {
+            display: none !important;
+          }
+          .show-text-mobile {
+            display: inline !important;
+          }
+          .hide-on-small-mobile {
+            display: none !important;
+          }
+          .navigation-controls {
+            padding: 8px 12px !important;
+          }
+          .lesson-details {
+            padding: 20px 16px !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

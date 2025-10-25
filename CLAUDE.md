@@ -24,6 +24,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Important
 
+- After making changes do not start the application, let user start and verify changes
 - After every request iteration, build the app with `npm run build` to confirm it works
 - Always verify build succeeds before pushing to git remote
 - Use logging extensively with `[DBG][$filename]` prefix to understand issues
