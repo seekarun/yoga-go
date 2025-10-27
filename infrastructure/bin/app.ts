@@ -29,6 +29,7 @@ const config = {
   domains: {
     primary: process.env.PRIMARY_DOMAIN || 'yogago.com',
     expertKavitha: process.env.EXPERT_DOMAIN_KAVITHA || 'kavithayoga.com',
+    expertDeepak: process.env.EXPERT_DOMAIN_DEEPAK || 'deepakyoga.com',
   },
 };
 

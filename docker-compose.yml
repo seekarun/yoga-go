@@ -1,5 +1,25 @@
 version: '3.8'
 
+# Testing Expert Domain Isolation Locally:
+#
+# The app uses hostname-based routing to isolate expert content by domain.
+# To test locally, you have 3 options:
+#
+# Option 1: Edit /etc/hosts (Recommended)
+#   Add these lines to /etc/hosts:
+#     127.0.0.1 kavithayoga.local
+#     127.0.0.1 deepakyoga.local
+#   Then visit:
+#     - http://kavithayoga.local:3111 (Kavitha's isolated site)
+#     - http://deepakyoga.local:3111 (Deepak's isolated site)
+#     - http://localhost:3111 (Full platform)
+#
+# Option 2: Use curl with Host header
+#   curl -H "Host: kavithayoga.com" http://localhost:3111/
+#
+# Option 3: Use browser extension to modify Host header
+#   Install "ModHeader" or similar extension and set Host header
+
 services:
   # MongoDB database service
   mongodb:

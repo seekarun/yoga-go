@@ -12,5 +12,6 @@ export interface InfraConfig {
   domains: {
     primary: string;
     expertKavitha: string;
+    expertDeepak: string;
   };
 }

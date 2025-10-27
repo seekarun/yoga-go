@@ -94,12 +94,43 @@ export class LoadBalancerStack extends cdk.Stack {
       deregistrationDelay: cdk.Duration.seconds(30),
     });
 
-    // Create HTTP Listener (port 80)
+    // Create HTTP Listener (port 80) with default action
     this.httpListener = this.loadBalancer.addListener('HttpListener', {
       port: 80,
       protocol: elbv2.ApplicationProtocol.HTTP,
+      // Default action for primary domain (yogago.com) or unmatched hosts
       defaultAction: elbv2.ListenerAction.forward([this.targetGroup]),
     });
+
+    // Add host-based routing rules for expert domains
+    // Rule 1: kavithayoga.com → forward with custom header X-Expert-Domain: kavitha
+    this.httpListener.addAction('KavithaYogaHttpRule', {
+      priority: 10,
+      conditions: [elbv2.ListenerCondition.hostHeaders([config.domains.expertKavitha])],
+      action: elbv2.ListenerAction.forward([this.targetGroup], {
+        stickinessDuration: cdk.Duration.seconds(0),
+      }),
+    });
+
+    // Rule 2: deepakyoga.com → forward with custom header X-Expert-Domain: deepak
+    this.httpListener.addAction('DeepakYogaHttpRule', {
+      priority: 20,
+      conditions: [elbv2.ListenerCondition.hostHeaders([config.domains.expertDeepak])],
+      action: elbv2.ListenerAction.forward([this.targetGroup], {
+        stickinessDuration: cdk.Duration.seconds(0),
+      }),
+    });
+
+    // Rule 3: Primary domain (yogago.com) → forward to default target group
+    this.httpListener.addAction('YogaGoHttpRule', {
+      priority: 30,
+      conditions: [elbv2.ListenerCondition.hostHeaders([config.domains.primary])],
+      action: elbv2.ListenerAction.forward([this.targetGroup]),
+    });
+
+    // Note: ALB cannot add custom headers directly to forwarded requests
+    // Instead, we rely on the Host header which Next.js middleware can read
+    // The middleware will check request.headers.get('host') to determine the expert domain
 
     // Note: SSL/TLS Certificate Setup
     // To enable HTTPS, you need to:
@@ -208,7 +239,7 @@ export class LoadBalancerStack extends cdk.Stack {
 
     // Output instructions for DNS setup
     new cdk.CfnOutput(this, 'DnsSetupInstructions', {
-      value: `Point your domains (${config.domains.primary}, ${config.domains.expertKavitha}) to ${this.loadBalancer.loadBalancerDnsName}`,
+      value: `Point your domains (${config.domains.primary}, ${config.domains.expertKavitha}, ${config.domains.expertDeepak}) to ${this.loadBalancer.loadBalancerDnsName}`,
       description: 'DNS Setup Instructions',
     });
   }
