@@ -45,6 +45,16 @@ const CustomLandingPageConfigSchema = new Schema<CustomLandingPageConfig>(
     about: {
       bio: String,
       highlights: [String],
+      layoutType: { type: String, enum: ['video', 'image-text'] },
+      videoCloudflareId: String,
+      videoStatus: { type: String, enum: ['uploading', 'processing', 'ready', 'error'] },
+      imageUrl: String,
+      text: String,
+    },
+    act: {
+      imageUrl: String,
+      title: String,
+      text: String,
     },
     featuredCourses: [String],
     testimonials: [

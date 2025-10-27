@@ -264,26 +264,25 @@ export default function ExpertDetailPage() {
             {/* CTA Button */}
             {!expertMode.isExpertMode && (
               <a
-                href="#courses"
+                href={customHero?.ctaLink || '#courses'}
                 style={{
                   display: 'inline-block',
-                  padding: '18px 48px',
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  color: '#fff',
+                  padding: '16px 48px',
+                  background: '#fcd34d',
+                  color: '#1f2937',
                   fontSize: '18px',
                   fontWeight: '600',
-                  borderRadius: '50px',
+                  borderRadius: '8px',
                   textDecoration: 'none',
-                  boxShadow: '0 10px 30px rgba(118, 75, 162, 0.3)',
-                  transition: 'all 0.3s ease',
+                  transition: 'transform 0.2s, background 0.2s',
                 }}
                 onMouseEnter={e => {
                   e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 15px 40px rgba(118, 75, 162, 0.4)';
+                  e.currentTarget.style.background = '#fbbf24';
                 }}
                 onMouseLeave={e => {
                   e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 10px 30px rgba(118, 75, 162, 0.3)';
+                  e.currentTarget.style.background = '#fcd34d';
                 }}
               >
                 {heroCtaText}
@@ -367,17 +366,25 @@ export default function ExpertDetailPage() {
           {/* CTA Button */}
           {!expertMode.isExpertMode && (
             <a
-              href="#courses"
+              href={customHero?.ctaLink || '#courses'}
               style={{
                 display: 'inline-block',
                 padding: '14px 32px',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                color: '#fff',
+                background: '#fcd34d',
+                color: '#1f2937',
                 fontSize: '16px',
                 fontWeight: '600',
-                borderRadius: '50px',
+                borderRadius: '8px',
                 textDecoration: 'none',
-                boxShadow: '0 10px 30px rgba(118, 75, 162, 0.3)',
+                transition: 'transform 0.2s, background 0.2s',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.background = '#fbbf24';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.background = '#fcd34d';
               }}
             >
               {heroCtaText}
@@ -469,241 +476,181 @@ export default function ExpertDetailPage() {
           </section>
         )}
 
-      {/* Promo Video Section */}
-      {expert.promoVideoCloudflareId && expert.promoVideoStatus === 'ready' && (
-        <section
-          style={{
-            padding: '60px 0',
-            background: '#f8f8f8',
-          }}
-        >
-          <div className="container" style={{ padding: '0 20px' }}>
-            <div
-              style={{
-                maxWidth: '1000px',
-                margin: '0 auto',
-                borderRadius: '12px',
-                overflow: 'hidden',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-              }}
-            >
-              <div
-                style={{
-                  position: 'relative',
-                  paddingBottom: '56.25%', // 16:9 aspect ratio
-                  height: 0,
-                  overflow: 'hidden',
-                }}
-              >
-                <iframe
-                  src={`https://customer-${process.env.NEXT_PUBLIC_CF_SUBDOMAIN || 'placeholder'}.cloudflarestream.com/${expert.promoVideoCloudflareId}/iframe?preload=auto&poster=https%3A%2F%2Fcustomer-${process.env.NEXT_PUBLIC_CF_SUBDOMAIN || 'placeholder'}.cloudflarestream.com%2F${expert.promoVideoCloudflareId}%2Fthumbnails%2Fthumbnail.jpg%3Ftime%3D1s%26height%3D600`}
+      {/* About Section */}
+      {expert.customLandingPage?.about &&
+        (expert.customLandingPage.about.layoutType === 'video' ||
+          expert.customLandingPage.about.layoutType === 'image-text') && (
+          <section
+            style={{
+              padding: '60px 20px',
+              background: '#f8f8f8',
+            }}
+          >
+            <div className="container" style={{ maxWidth: '1200px', margin: '0 auto' }}>
+              {expert.customLandingPage.about.layoutType === 'video' &&
+              expert.customLandingPage.about.videoCloudflareId &&
+              expert.customLandingPage.about.videoStatus === 'ready' ? (
+                // Video Layout - Centered
+                <div
                   style={{
-                    border: 'none',
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    height: '100%',
-                    width: '100%',
+                    maxWidth: '900px',
+                    margin: '0 auto',
+                    borderRadius: '12px',
+                    overflow: 'hidden',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
                   }}
-                  allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
-                  allowFullScreen
-                  title={`${expert.name} Introduction Video`}
-                />
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* Bio Section */}
-      <section
-        style={{
-          padding: '60px 0',
-          background: '#fff',
-        }}
-      >
-        <div className="container" style={{ padding: '0 20px' }}>
-          <h2
-            style={{
-              fontSize: '32px',
-              fontWeight: '600',
-              marginBottom: '24px',
-            }}
-          >
-            About {expert.name}
-          </h2>
-          <p
-            style={{
-              fontSize: '18px',
-              lineHeight: '1.8',
-              color: '#4a5568',
-              maxWidth: '800px',
-            }}
-          >
-            {expert.bio}
-          </p>
-
-          {/* Specializations */}
-          {expert.specializations && expert.specializations.length > 0 && (
-            <>
-              <h3
-                style={{
-                  fontSize: '24px',
-                  fontWeight: '600',
-                  marginTop: '40px',
-                  marginBottom: '20px',
-                }}
-              >
-                Specializations
-              </h3>
-              <div
-                style={{
-                  display: 'flex',
-                  gap: '12px',
-                  flexWrap: 'wrap',
-                }}
-              >
-                {expert.specializations.map((spec, idx) => (
-                  <span
-                    key={idx}
-                    style={{
-                      padding: '10px 24px',
-                      background: '#f7fafc',
-                      borderRadius: '100px',
-                      fontSize: '16px',
-                      color: '#4a5568',
-                      border: '1px solid #e2e8f0',
-                    }}
-                  >
-                    {spec}
-                  </span>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      </section>
-
-      {/* Courses Section */}
-      <section
-        id="courses"
-        style={{
-          padding: '60px 0',
-          background: '#f8f8f8',
-        }}
-      >
-        <div className="container" style={{ padding: '0 20px' }}>
-          <h2
-            style={{
-              fontSize: '32px',
-              fontWeight: '600',
-              marginBottom: '32px',
-            }}
-          >
-            Courses by {expert.name}
-          </h2>
-
-          {courses.length > 0 ? (
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-                gap: '24px',
-              }}
-            >
-              {courses.map(course => (
-                <Link
-                  key={course.id}
-                  href={`/courses/${course.id}`}
-                  style={{ textDecoration: 'none', color: 'inherit' }}
+                >
+                  <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0 }}>
+                    <iframe
+                      src={`https://customer-${process.env.NEXT_PUBLIC_CF_SUBDOMAIN || 'placeholder'}.cloudflarestream.com/${expert.customLandingPage.about.videoCloudflareId}/iframe?preload=auto&poster=https%3A%2F%2Fcustomer-${process.env.NEXT_PUBLIC_CF_SUBDOMAIN || 'placeholder'}.cloudflarestream.com%2F${expert.customLandingPage.about.videoCloudflareId}%2Fthumbnails%2Fthumbnail.jpg%3Ftime%3D1s%26height%3D600`}
+                      style={{
+                        border: 'none',
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        height: '100%',
+                        width: '100%',
+                      }}
+                      allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+                      allowFullScreen={true}
+                    />
+                  </div>
+                </div>
+              ) : expert.customLandingPage.about.layoutType === 'image-text' ? (
+                // Image + Text Layout - Side by Side
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                    gap: '48px',
+                    alignItems: 'center',
+                  }}
                 >
                   <div
                     style={{
-                      background: '#fff',
                       borderRadius: '12px',
-                      padding: '24px',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                      transition: 'all 0.2s',
-                      cursor: 'pointer',
-                      height: '100%',
+                      overflow: 'hidden',
+                      boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
                     }}
                   >
-                    <div
+                    <img
+                      src={expert.customLandingPage.about.imageUrl}
+                      alt="About"
                       style={{
-                        fontSize: '12px',
-                        color: '#666',
-                        marginBottom: '8px',
+                        width: '100%',
+                        height: 'auto',
+                        display: 'block',
                       }}
-                    >
-                      {course.level} • {course.duration}
-                    </div>
-                    <h3
-                      style={{
-                        fontSize: '20px',
-                        fontWeight: '600',
-                        marginBottom: '12px',
-                      }}
-                    >
-                      {course.title}
-                    </h3>
-                    <p
-                      style={{
-                        color: '#666',
-                        marginBottom: '20px',
-                        lineHeight: '1.6',
-                      }}
-                    >
-                      {course.description}
-                    </p>
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                        }}
-                      >
-                        <span style={{ color: '#FFB800' }}>★</span>
-                        <span style={{ fontWeight: '600' }}>{course.rating}</span>
-                        <span style={{ color: '#666', fontSize: '14px' }}>
-                          ({course.totalStudents})
-                        </span>
-                      </div>
-                      <div
-                        style={{
-                          fontSize: '24px',
-                          fontWeight: '600',
-                        }}
-                      >
-                        ${course.price}
-                      </div>
-                    </div>
+                    />
                   </div>
-                </Link>
-              ))}
+                  <div
+                    style={{
+                      fontSize: '18px',
+                      lineHeight: '1.8',
+                      color: '#4a5568',
+                    }}
+                  >
+                    {expert.customLandingPage.about.text}
+                  </div>
+                </div>
+              ) : null}
             </div>
-          ) : (
-            <div
-              style={{
-                textAlign: 'center',
-                padding: '60px 20px',
-                background: '#fff',
-                borderRadius: '12px',
-              }}
-            >
-              <p style={{ fontSize: '18px', color: '#666' }}>
-                No courses available from this instructor yet.
-              </p>
+          </section>
+        )}
+
+      {/* Act Section - Image Left, Content Right */}
+      {expert.customLandingPage?.act &&
+        (expert.customLandingPage.act.imageUrl ||
+          expert.customLandingPage.act.title ||
+          expert.customLandingPage.act.text) && (
+          <section style={{ padding: '80px 20px', background: '#374151' }}>
+            <div className="container" style={{ maxWidth: '1400px', margin: '0 auto' }}>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '60px',
+                  alignItems: 'center',
+                }}
+              >
+                {/* Left: Image */}
+                <div
+                  style={{
+                    width: '100%',
+                    height: '400px',
+                    borderRadius: '12px',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <img
+                    src={
+                      expert.customLandingPage.act.imageUrl ||
+                      'https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&h=600&fit=crop'
+                    }
+                    alt={expert.customLandingPage.act.title || 'Act section'}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                    }}
+                  />
+                </div>
+
+                {/* Right: Content */}
+                <div>
+                  <h2
+                    style={{
+                      fontSize: '48px',
+                      fontWeight: '700',
+                      marginBottom: '24px',
+                      color: '#fff',
+                      lineHeight: '1.2',
+                    }}
+                  >
+                    {expert.customLandingPage.act.title || "Let's uncover the power of your brand."}
+                  </h2>
+                  <p
+                    style={{
+                      fontSize: '18px',
+                      lineHeight: '1.8',
+                      color: '#d1d5db',
+                      marginBottom: '32px',
+                    }}
+                  >
+                    {expert.customLandingPage.act.text ||
+                      "Take the guesswork out of your branding and marketing today with this rapid questionnaire. At the end you'll receive a personalised report with data insights and key suggestions to help you move forward with your business in a new light."}
+                  </p>
+                  {!expertMode.isExpertMode && (
+                    <Link
+                      href={customHero?.ctaLink || '#courses'}
+                      style={{
+                        padding: '16px 48px',
+                        background: '#fcd34d',
+                        color: '#1f2937',
+                        borderRadius: '8px',
+                        fontSize: '18px',
+                        fontWeight: '600',
+                        textDecoration: 'none',
+                        display: 'inline-block',
+                        transition: 'transform 0.2s, background 0.2s',
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.background = '#fbbf24';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.background = '#fcd34d';
+                      }}
+                    >
+                      {customHero?.ctaText || 'Get Your Results'}
+                    </Link>
+                  )}
+                </div>
+              </div>
             </div>
-          )}
-        </div>
-      </section>
+          </section>
+        )}
 
       {/* CTA Section - Hidden in expert mode */}
       {!expertMode.isExpertMode && (

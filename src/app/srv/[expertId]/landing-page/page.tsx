@@ -16,23 +16,87 @@ export default function EditLandingPage() {
   const [error, setError] = useState('');
   const [uploadError, setUploadError] = useState('');
   const [heroImageAsset, setHeroImageAsset] = useState<Asset | null>(null);
+  const [aboutImageAsset, setAboutImageAsset] = useState<Asset | null>(null);
+  const [actImageAsset, setActImageAsset] = useState<Asset | null>(null);
+  const [selectedAboutVideoFile, setSelectedAboutVideoFile] = useState<File | null>(null);
+  const [isUploadingAboutVideo, setIsUploadingAboutVideo] = useState(false);
+  const [aboutVideoUploadProgress, setAboutVideoUploadProgress] = useState(0);
+  const [pollingAboutVideoId, setPollingAboutVideoId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     heroImage: '',
     headline: '',
     description: '',
     ctaText: '',
+    ctaLink: '',
     alignment: 'center' as 'center' | 'left' | 'right',
     valueType: 'list' as 'paragraph' | 'list',
     valueContent: '',
     valueItem1: '',
     valueItem2: '',
     valueItem3: '',
+    aboutLayoutType: '' as '' | 'video' | 'image-text',
+    aboutVideoCloudflareId: '',
+    aboutVideoStatus: '' as '' | 'uploading' | 'processing' | 'ready' | 'error',
+    aboutImageUrl: '',
+    aboutText: '',
+    actImageUrl: '',
+    actTitle: '',
+    actText: '',
   });
 
   useEffect(() => {
     fetchExpertData();
   }, [expertId]);
+
+  // Poll video status for processing about videos
+  useEffect(() => {
+    if (!pollingAboutVideoId) return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        console.log(
+          '[DBG][landing-page-edit] Polling about video status for:',
+          pollingAboutVideoId
+        );
+
+        const response = await fetch(`/api/cloudflare/video-status/${pollingAboutVideoId}`);
+        const data = await response.json();
+
+        if (data.success) {
+          const videoStatus = data.data.status;
+          const isReady = data.data.readyToStream;
+
+          console.log(
+            '[DBG][landing-page-edit] About video status:',
+            videoStatus,
+            'Ready:',
+            isReady
+          );
+
+          if (formData.aboutVideoCloudflareId === pollingAboutVideoId) {
+            const newStatus = isReady ? 'ready' : videoStatus === 'error' ? 'error' : 'processing';
+
+            setFormData(prev => ({
+              ...prev,
+              aboutVideoStatus: newStatus as 'uploading' | 'processing' | 'ready' | 'error',
+            }));
+
+            if (isReady || videoStatus === 'error') {
+              console.log(
+                '[DBG][landing-page-edit] About video processing complete, stopping poll'
+              );
+              setPollingAboutVideoId(null);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[DBG][landing-page-edit] Error polling about video status:', err);
+      }
+    }, 5000);
+
+    return () => clearInterval(pollInterval);
+  }, [pollingAboutVideoId, formData.aboutVideoCloudflareId]);
 
   const fetchExpertData = async () => {
     try {
@@ -53,11 +117,14 @@ export default function EditLandingPage() {
 
       // Populate form with existing landing page data
       const valueProps = expert.customLandingPage?.valuePropositions;
+      const aboutData = expert.customLandingPage?.about;
+      const actData = expert.customLandingPage?.act;
       const loadedData = {
         heroImage: expert.customLandingPage?.hero?.heroImage || '',
         headline: expert.customLandingPage?.hero?.headline || '',
         description: expert.customLandingPage?.hero?.description || '',
         ctaText: expert.customLandingPage?.hero?.ctaText || 'Explore Courses',
+        ctaLink: expert.customLandingPage?.hero?.ctaLink || '',
         alignment: (expert.customLandingPage?.hero?.alignment || 'center') as
           | 'center'
           | 'left'
@@ -67,6 +134,19 @@ export default function EditLandingPage() {
         valueItem1: valueProps?.items?.[0] || '',
         valueItem2: valueProps?.items?.[1] || '',
         valueItem3: valueProps?.items?.[2] || '',
+        aboutLayoutType: (aboutData?.layoutType || '') as '' | 'video' | 'image-text',
+        aboutVideoCloudflareId: aboutData?.videoCloudflareId || '',
+        aboutVideoStatus: (aboutData?.videoStatus || '') as
+          | ''
+          | 'uploading'
+          | 'processing'
+          | 'ready'
+          | 'error',
+        aboutImageUrl: aboutData?.imageUrl || '',
+        aboutText: aboutData?.text || '',
+        actImageUrl: actData?.imageUrl || '',
+        actTitle: actData?.title || '',
+        actText: actData?.text || '',
       };
       console.log('[DBG][landing-page-edit] Setting form data:', loadedData);
       setFormData(loadedData);
@@ -104,6 +184,115 @@ export default function EditLandingPage() {
     setUploadError('');
   };
 
+  const handleAboutImageUpload = (asset: Asset) => {
+    console.log('[DBG][landing-page-edit] About image uploaded:', asset);
+    const imageUrl = asset.croppedUrl || asset.originalUrl;
+    console.log('[DBG][landing-page-edit] Setting aboutImageUrl to:', imageUrl);
+    setAboutImageAsset(asset);
+    setFormData(prev => ({
+      ...prev,
+      aboutImageUrl: imageUrl,
+    }));
+    setUploadError('');
+  };
+
+  const handleActImageUpload = (asset: Asset) => {
+    console.log('[DBG][landing-page-edit] Act image uploaded:', asset);
+    const imageUrl = asset.croppedUrl || asset.originalUrl;
+    console.log('[DBG][landing-page-edit] Setting actImageUrl to:', imageUrl);
+    setActImageAsset(asset);
+    setFormData(prev => ({
+      ...prev,
+      actImageUrl: imageUrl,
+    }));
+    setUploadError('');
+  };
+
+  const handleAboutVideoFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      console.log('[DBG][landing-page-edit] About video file selected:', file.name, file.size);
+      setSelectedAboutVideoFile(file);
+    }
+  };
+
+  const handleAboutVideoUpload = async () => {
+    if (!selectedAboutVideoFile) {
+      setError('Please select a video file');
+      return;
+    }
+
+    setIsUploadingAboutVideo(true);
+    setAboutVideoUploadProgress(0);
+    setError('');
+
+    try {
+      console.log('[DBG][landing-page-edit] Starting about video upload');
+
+      const uploadUrlResponse = await fetch('/api/cloudflare/upload-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ maxDurationSeconds: 300 }),
+      });
+
+      const uploadUrlData = await uploadUrlResponse.json();
+      if (!uploadUrlData.success) {
+        throw new Error(uploadUrlData.error || 'Failed to get upload URL');
+      }
+
+      const { uploadURL, uid } = uploadUrlData.data;
+      console.log('[DBG][landing-page-edit] Got upload URL, uid:', uid);
+
+      const formDataUpload = new FormData();
+      formDataUpload.append('file', selectedAboutVideoFile);
+
+      await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+
+        xhr.upload.addEventListener('progress', e => {
+          if (e.lengthComputable) {
+            const percentComplete = (e.loaded / e.total) * 100;
+            setAboutVideoUploadProgress(percentComplete);
+            console.log('[DBG][landing-page-edit] About video upload progress:', percentComplete);
+          }
+        });
+
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve(xhr.response);
+          } else {
+            reject(new Error('Upload failed with status: ' + xhr.status));
+          }
+        });
+
+        xhr.addEventListener('error', () => {
+          reject(new Error('Upload failed'));
+        });
+
+        xhr.open('POST', uploadURL);
+        xhr.send(formDataUpload);
+      });
+
+      console.log('[DBG][landing-page-edit] About video uploaded successfully:', uid);
+
+      setFormData(prev => ({
+        ...prev,
+        aboutVideoCloudflareId: uid,
+        aboutVideoStatus: 'processing',
+      }));
+
+      setAboutVideoUploadProgress(100);
+      setPollingAboutVideoId(uid);
+
+      alert('About video uploaded successfully! Processing status will update automatically.');
+    } catch (err) {
+      console.error('[DBG][landing-page-edit] Error uploading about video:', err);
+      setError(err instanceof Error ? err.message : 'Failed to upload about video');
+    } finally {
+      setIsUploadingAboutVideo(false);
+    }
+  };
+
   const handleUploadError = (error: string) => {
     console.error('[DBG][landing-page-edit] Upload error:', error);
     setUploadError(error);
@@ -128,6 +317,34 @@ export default function EditLandingPage() {
           ? { type: 'paragraph' as const, content: formData.valueContent.trim() || undefined }
           : { type: 'list' as const, items: valueItems.length > 0 ? valueItems : undefined };
 
+      // Prepare about section data
+      const aboutSection =
+        formData.aboutLayoutType === 'video' && formData.aboutVideoCloudflareId.trim()
+          ? {
+              layoutType: 'video' as const,
+              videoCloudflareId: formData.aboutVideoCloudflareId.trim(),
+              videoStatus: formData.aboutVideoStatus || undefined,
+            }
+          : formData.aboutLayoutType === 'image-text' &&
+              formData.aboutImageUrl.trim() &&
+              formData.aboutText.trim()
+            ? {
+                layoutType: 'image-text' as const,
+                imageUrl: formData.aboutImageUrl.trim(),
+                text: formData.aboutText.trim(),
+              }
+            : undefined;
+
+      // Prepare act section data
+      const actSection =
+        formData.actImageUrl.trim() || formData.actTitle.trim() || formData.actText.trim()
+          ? {
+              imageUrl: formData.actImageUrl.trim() || undefined,
+              title: formData.actTitle.trim() || undefined,
+              text: formData.actText.trim() || undefined,
+            }
+          : undefined;
+
       // Prepare landing page data
       const landingPageData = {
         customLandingPage: {
@@ -136,6 +353,7 @@ export default function EditLandingPage() {
             headline: formData.headline.trim() || undefined,
             description: formData.description.trim() || undefined,
             ctaText: formData.ctaText.trim() || 'Explore Courses',
+            ctaLink: formData.ctaLink.trim() || undefined,
             alignment: formData.alignment || 'center',
           },
           valuePropositions:
@@ -143,6 +361,8 @@ export default function EditLandingPage() {
             (valuePropositions.items && valuePropositions.items.length > 0)
               ? valuePropositions
               : undefined,
+          about: aboutSection,
+          act: actSection,
         },
       };
 
@@ -325,6 +545,25 @@ export default function EditLandingPage() {
                 </p>
               </div>
 
+              {/* CTA Button Link */}
+              <div>
+                <label htmlFor="ctaLink" className="block text-sm font-medium text-gray-700 mb-2">
+                  Call-to-Action Button Link
+                </label>
+                <input
+                  type="text"
+                  id="ctaLink"
+                  name="ctaLink"
+                  value={formData.ctaLink}
+                  onChange={handleChange}
+                  placeholder="e.g., /questionnaire or #courses"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Where the CTA button should link to (used in both Hero and Act sections)
+                </p>
+              </div>
+
               {/* Text Alignment */}
               <div>
                 <label htmlFor="alignment" className="block text-sm font-medium text-gray-700 mb-2">
@@ -447,6 +686,239 @@ export default function EditLandingPage() {
                   </div>
                 </>
               )}
+            </div>
+          </div>
+
+          {/* About Section */}
+          <div className="border-b border-gray-200 pb-8">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-2">About Section</h2>
+            <p className="text-sm text-gray-600 mb-6">
+              Add an about section with either a video or image + text layout
+            </p>
+
+            <div className="space-y-6">
+              {/* Layout Type Selection */}
+              <div>
+                <label
+                  htmlFor="aboutLayoutType"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Layout Type
+                </label>
+                <select
+                  id="aboutLayoutType"
+                  name="aboutLayoutType"
+                  value={formData.aboutLayoutType}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">None - Don&apos;t show about section</option>
+                  <option value="video">Video (centered)</option>
+                  <option value="image-text">Image + Text (side by side)</option>
+                </select>
+              </div>
+
+              {/* Video Layout Fields */}
+              {formData.aboutLayoutType === 'video' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    About Video
+                  </label>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Upload a video to display in your about section
+                  </p>
+
+                  {formData.aboutVideoCloudflareId ? (
+                    <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-green-600">✓</span>
+                        <span className="text-sm font-medium text-green-800">
+                          About video uploaded
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-1">
+                        Video ID: {formData.aboutVideoCloudflareId}
+                      </p>
+                      {formData.aboutVideoStatus && (
+                        <p className="text-sm text-gray-600 mb-2">
+                          Status: <span className="capitalize">{formData.aboutVideoStatus}</span>
+                        </p>
+                      )}
+                      {formData.aboutVideoStatus === 'ready' && (
+                        <div className="mt-3 rounded-lg overflow-hidden">
+                          <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0 }}>
+                            <iframe
+                              src={`https://customer-${process.env.NEXT_PUBLIC_CF_SUBDOMAIN || 'placeholder'}.cloudflarestream.com/${formData.aboutVideoCloudflareId}/iframe?preload=auto&poster=https%3A%2F%2Fcustomer-${process.env.NEXT_PUBLIC_CF_SUBDOMAIN || 'placeholder'}.cloudflarestream.com%2F${formData.aboutVideoCloudflareId}%2Fthumbnails%2Fthumbnail.jpg%3Ftime%3D1s%26height%3D600`}
+                              style={{
+                                border: 'none',
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                height: '100%',
+                                width: '100%',
+                              }}
+                              allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+                              allowFullScreen={true}
+                            />
+                          </div>
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormData(prev => ({
+                            ...prev,
+                            aboutVideoCloudflareId: '',
+                            aboutVideoStatus: '',
+                          }));
+                          setSelectedAboutVideoFile(null);
+                        }}
+                        className="mt-3 text-sm text-red-600 hover:text-red-700"
+                      >
+                        Remove video
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <input
+                        type="file"
+                        accept="video/*"
+                        onChange={handleAboutVideoFileSelect}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                      />
+                      {selectedAboutVideoFile && (
+                        <div className="mt-3">
+                          <p className="text-sm text-gray-600">
+                            Selected: {selectedAboutVideoFile.name} (
+                            {(selectedAboutVideoFile.size / 1024 / 1024).toFixed(2)} MB)
+                          </p>
+                          <button
+                            type="button"
+                            onClick={handleAboutVideoUpload}
+                            disabled={isUploadingAboutVideo}
+                            className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed text-sm font-medium"
+                          >
+                            {isUploadingAboutVideo ? 'Uploading...' : 'Upload About Video'}
+                          </button>
+                        </div>
+                      )}
+                      {isUploadingAboutVideo && (
+                        <div className="mt-3">
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${aboutVideoUploadProgress}%` }}
+                            />
+                          </div>
+                          <p className="text-sm text-gray-600 mt-1">
+                            Uploading: {Math.round(aboutVideoUploadProgress)}%
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Image + Text Layout Fields */}
+              {formData.aboutLayoutType === 'image-text' && (
+                <>
+                  <div>
+                    <ImageUploadCrop
+                      width={800}
+                      height={600}
+                      category="about"
+                      label="About Image (800x600px recommended)"
+                      onUploadComplete={handleAboutImageUpload}
+                      onError={handleUploadError}
+                      relatedTo={{
+                        type: 'expert',
+                        id: expertId,
+                      }}
+                      currentImageUrl={formData.aboutImageUrl}
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="aboutText"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
+                      About Text
+                    </label>
+                    <textarea
+                      id="aboutText"
+                      name="aboutText"
+                      rows={6}
+                      value={formData.aboutText}
+                      onChange={handleChange}
+                      placeholder="e.g., Share your story, expertise, philosophy, or what makes your approach unique..."
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Tell your story or describe what makes your approach unique
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Act Section */}
+          <div className="border-b border-gray-200 pb-8">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">Act Section</h2>
+            <p className="text-gray-600 mb-6">
+              Add a call-to-action section with an image and text. The CTA button will use the same
+              text and link from your Hero section.
+            </p>
+            <div className="space-y-6">
+              <div>
+                <ImageUploadCrop
+                  width={800}
+                  height={600}
+                  category="about"
+                  label="Act Section Image (800x600px recommended)"
+                  onUploadComplete={handleActImageUpload}
+                  onError={handleUploadError}
+                  relatedTo={{
+                    type: 'expert',
+                    id: expertId,
+                  }}
+                  currentImageUrl={formData.actImageUrl}
+                />
+              </div>
+              <div>
+                <label htmlFor="actTitle" className="block text-sm font-medium text-gray-700 mb-2">
+                  Act Section Title
+                </label>
+                <input
+                  type="text"
+                  id="actTitle"
+                  name="actTitle"
+                  value={formData.actTitle}
+                  onChange={handleChange}
+                  placeholder="e.g., Let's uncover the power of your brand."
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <p className="mt-1 text-xs text-gray-500">Main heading for the act section</p>
+              </div>
+              <div>
+                <label htmlFor="actText" className="block text-sm font-medium text-gray-700 mb-2">
+                  Act Section Text
+                </label>
+                <textarea
+                  id="actText"
+                  name="actText"
+                  rows={4}
+                  value={formData.actText}
+                  onChange={handleChange}
+                  placeholder="e.g., Take the guesswork out of your branding and marketing..."
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Description text for the act section. The CTA button will use your Hero
+                  section&apos;s CTA text and link.
+                </p>
+              </div>
             </div>
           </div>
 

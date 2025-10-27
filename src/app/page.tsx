@@ -399,6 +399,92 @@ export default function Home() {
               )}
             </div>
           </section>
+
+          {/* Act Section - Image Left, Content Right */}
+          <section style={{ padding: '80px 20px', background: '#374151' }}>
+            <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '60px',
+                  alignItems: 'center',
+                }}
+              >
+                {/* Left: Image */}
+                <div
+                  style={{
+                    width: '100%',
+                    height: '400px',
+                    borderRadius: '12px',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <img
+                    src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&h=600&fit=crop"
+                    alt="Team collaboration"
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                    }}
+                  />
+                </div>
+
+                {/* Right: Content */}
+                <div>
+                  <h2
+                    style={{
+                      fontSize: '48px',
+                      fontWeight: '700',
+                      marginBottom: '24px',
+                      color: '#fff',
+                      lineHeight: '1.2',
+                    }}
+                  >
+                    Let&apos;s uncover the power of your brand.
+                  </h2>
+                  <p
+                    style={{
+                      fontSize: '18px',
+                      lineHeight: '1.8',
+                      color: '#d1d5db',
+                      marginBottom: '32px',
+                    }}
+                  >
+                    Take the guesswork out of your branding and marketing today with this rapid
+                    questionnaire. At the end you&apos;ll receive a personalised report with data
+                    insights and key suggestions to help you move forward with your business in a
+                    new light.
+                  </p>
+                  <Link
+                    href="/questionnaire"
+                    style={{
+                      padding: '16px 48px',
+                      background: '#fcd34d',
+                      color: '#1f2937',
+                      borderRadius: '8px',
+                      fontSize: '18px',
+                      fontWeight: '600',
+                      textDecoration: 'none',
+                      display: 'inline-block',
+                      transition: 'transform 0.2s, background 0.2s',
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.background = '#fbbf24';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.background = '#fcd34d';
+                    }}
+                  >
+                    Get Your Results
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </section>
         </>
       )}
     </div>

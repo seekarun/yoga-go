@@ -42,6 +42,16 @@ export interface CustomLandingPageConfig {
   about?: {
     bio?: string;
     highlights?: string[];
+    layoutType?: 'video' | 'image-text'; // Layout type for about section
+    videoCloudflareId?: string; // Cloudflare Stream video UID for video layout
+    videoStatus?: 'uploading' | 'processing' | 'ready' | 'error';
+    imageUrl?: string; // Image URL for image-text layout
+    text?: string; // Text content for image-text layout
+  };
+  act?: {
+    imageUrl?: string; // Act section image URL
+    title?: string; // Act section title
+    text?: string; // Act section description text
   };
   featuredCourses?: string[]; // Array of course IDs
   testimonials?: Array<{
@@ -475,7 +485,14 @@ export interface UserCoursesData {
 
 // Asset Related Types
 export type AssetType = 'image' | 'video' | 'document';
-export type AssetCategory = 'avatar' | 'banner' | 'thumbnail' | 'course' | 'lesson' | 'other';
+export type AssetCategory =
+  | 'avatar'
+  | 'banner'
+  | 'thumbnail'
+  | 'course'
+  | 'lesson'
+  | 'about'
+  | 'other';
 
 export interface AssetDimensions {
   width: number;
