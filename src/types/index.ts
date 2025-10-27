@@ -129,8 +129,9 @@ export interface Course extends BaseEntity {
 }
 
 // User Related Types
-export type MembershipType = 'free' | 'basic' | 'premium' | 'lifetime';
+export type MembershipType = 'free' | 'curious' | 'committed' | 'lifetime';
 export type MembershipStatus = 'active' | 'expired' | 'cancelled' | 'paused';
+export type BillingInterval = 'monthly' | 'yearly';
 
 export interface UserProfile {
   name: string;
@@ -150,6 +151,13 @@ export interface Membership {
   renewalDate?: string;
   cancelledAt?: string;
   benefits: string[];
+
+  // Subscription-specific fields
+  subscriptionId?: string; // Reference to Subscription document
+  billingInterval?: BillingInterval; // 'monthly' | 'yearly'
+  currentPeriodEnd?: string; // When current billing period ends
+  cancelAtPeriodEnd?: boolean; // True if user has cancelled but still has access
+  paymentGateway?: 'stripe' | 'razorpay';
 }
 
 export interface UserStatistics {
@@ -211,6 +219,8 @@ export interface Billing {
   lastPayment?: Payment;
   nextPayment?: Payment;
   paymentHistory?: Payment[];
+  stripeCustomerId?: string;
+  razorpayCustomerId?: string;
 }
 
 export interface SavedItem {

@@ -58,6 +58,10 @@ export async function POST(request: Request) {
       return NextResponse.json(response, { status: 500 });
     }
 
+    // TODO: Add PostHog server-side tracking here
+    // Install posthog-node and track: 'course_enrolled'
+    // posthog.capture({ distinctId: user.id, event: 'course_enrolled', properties: { courseId, paymentId } })
+
     const response: ApiResponse<{ courseId: string }> = {
       success: true,
       data: { courseId },

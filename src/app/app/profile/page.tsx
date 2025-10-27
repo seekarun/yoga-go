@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { posthog } from '@/providers/PostHogProvider';
 
 export default function Profile() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [activeTab, setActiveTab] = useState<
     'profile' | 'membership' | 'preferences' | 'achievements'
   >('profile');
@@ -16,6 +17,8 @@ export default function Profile() {
     bio: user?.profile?.bio || '',
     location: user?.profile?.location || '',
   });
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
+  const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
 
   if (!user) {
     return (
@@ -41,6 +44,105 @@ export default function Profile() {
       location: user.profile.location || '',
     });
     setIsEditing(false);
+  };
+
+  const handleCancelSubscription = async (reason?: string) => {
+    if (!user?.membership?.subscriptionId) return;
+
+    setSubscriptionLoading(true);
+    setSubscriptionError(null);
+
+    try {
+      const gateway = user.membership.paymentGateway || 'stripe';
+      const endpoint = `/api/payment/${gateway}/cancel-subscription`;
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subscriptionId: user.membership.subscriptionId,
+          userId: user.id,
+          reason,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to cancel subscription');
+      }
+
+      // PostHog analytics
+      posthog.capture('subscription_cancelled', {
+        subscriptionId: user.membership.subscriptionId,
+        planType: user.membership.type,
+        billingInterval: user.membership.billingInterval,
+        reason,
+        gateway,
+        currentPeriodEnd: user.membership.currentPeriodEnd,
+      });
+
+      // Refresh user data to show updated subscription status
+      await refreshUser();
+      alert(
+        'Subscription cancelled successfully. You will have access until the end of your billing period.'
+      );
+    } catch (error) {
+      console.error('[DBG][profile] Cancel subscription error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to cancel subscription';
+      setSubscriptionError(errorMessage);
+      alert(`Error: ${errorMessage}`);
+    } finally {
+      setSubscriptionLoading(false);
+    }
+  };
+
+  const handleReactivateSubscription = async () => {
+    if (!user?.membership?.subscriptionId) return;
+
+    setSubscriptionLoading(true);
+    setSubscriptionError(null);
+
+    try {
+      const gateway = user.membership.paymentGateway || 'stripe';
+      const endpoint = `/api/payment/${gateway}/cancel-subscription`;
+
+      const response = await fetch(endpoint, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subscriptionId: user.membership.subscriptionId,
+          userId: user.id,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to reactivate subscription');
+      }
+
+      // PostHog analytics
+      posthog.capture('subscription_reactivated', {
+        subscriptionId: user.membership.subscriptionId,
+        planType: user.membership.type,
+        billingInterval: user.membership.billingInterval,
+        gateway,
+        currentPeriodEnd: user.membership.currentPeriodEnd,
+      });
+
+      // Refresh user data to show updated subscription status
+      await refreshUser();
+      alert('Subscription reactivated successfully!');
+    } catch (error) {
+      console.error('[DBG][profile] Reactivate subscription error:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to reactivate subscription';
+      setSubscriptionError(errorMessage);
+      alert(`Error: ${errorMessage}`);
+    } finally {
+      setSubscriptionLoading(false);
+    }
   };
 
   return (
@@ -418,6 +520,35 @@ export default function Profile() {
                 </div>
 
                 <div style={{ padding: '24px' }}>
+                  {/* Subscription Status Alert */}
+                  {user.membership.cancelAtPeriodEnd && (
+                    <div
+                      style={{
+                        background: '#fff3cd',
+                        border: '1px solid #ffc107',
+                        borderRadius: '8px',
+                        padding: '16px',
+                        marginBottom: '24px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'start', gap: '12px' }}>
+                        <span style={{ fontSize: '20px' }}>⚠️</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: '600', marginBottom: '4px', color: '#856404' }}>
+                            Subscription Cancelled
+                          </div>
+                          <div style={{ fontSize: '14px', color: '#856404' }}>
+                            Your subscription will end on{' '}
+                            {user.membership.currentPeriodEnd
+                              ? new Date(user.membership.currentPeriodEnd).toLocaleDateString()
+                              : 'the end of your billing period'}
+                            . You will still have access until then.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div
                     style={{
                       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -452,13 +583,24 @@ export default function Profile() {
                         {user.membership.status.toUpperCase()}
                       </span>
                     </div>
-                    <p style={{ opacity: 0.9, marginBottom: '16px' }}>
-                      Member since {new Date(user.membership.startDate).toLocaleDateString()}
-                    </p>
-                    {user.membership.renewalDate && (
-                      <p style={{ fontSize: '14px', opacity: 0.8 }}>
-                        Next billing: {new Date(user.membership.renewalDate).toLocaleDateString()}
-                      </p>
+
+                    <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '8px' }}>
+                      <strong>Billing:</strong> {user.membership.billingInterval || 'yearly'} · via{' '}
+                      {user.membership.paymentGateway || 'payment gateway'}
+                    </div>
+
+                    <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '8px' }}>
+                      <strong>Member since:</strong>{' '}
+                      {new Date(user.membership.startDate).toLocaleDateString()}
+                    </div>
+
+                    {user.membership.currentPeriodEnd && (
+                      <div style={{ fontSize: '14px', opacity: 0.9 }}>
+                        <strong>
+                          {user.membership.cancelAtPeriodEnd ? 'Access until' : 'Next billing'}:
+                        </strong>{' '}
+                        {new Date(user.membership.currentPeriodEnd).toLocaleDateString()}
+                      </div>
                     )}
                   </div>
 
@@ -479,35 +621,93 @@ export default function Profile() {
                     </div>
                   </div>
 
-                  <div style={{ marginTop: '24px', display: 'flex', gap: '12px' }}>
-                    <button
-                      style={{
-                        padding: '12px 24px',
-                        background: '#764ba2',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '8px',
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Upgrade Plan
-                    </button>
-                    <button
-                      style={{
-                        padding: '12px 24px',
-                        background: 'transparent',
-                        color: '#764ba2',
-                        border: '1px solid #764ba2',
-                        borderRadius: '8px',
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Manage Billing
-                    </button>
+                  {/* Subscription Actions */}
+                  <div style={{ marginTop: '24px' }}>
+                    {user.membership.subscriptionId && (
+                      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                        {user.membership.cancelAtPeriodEnd ? (
+                          <button
+                            onClick={handleReactivateSubscription}
+                            disabled={subscriptionLoading}
+                            style={{
+                              padding: '12px 24px',
+                              background: subscriptionLoading ? '#ccc' : '#48bb78',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '8px',
+                              fontSize: '14px',
+                              fontWeight: '600',
+                              cursor: subscriptionLoading ? 'not-allowed' : 'pointer',
+                            }}
+                          >
+                            {subscriptionLoading ? 'Processing...' : 'Reactivate Subscription'}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              if (
+                                confirm(
+                                  'Are you sure you want to cancel? You will still have access until the end of your billing period.'
+                                )
+                              ) {
+                                handleCancelSubscription();
+                              }
+                            }}
+                            disabled={subscriptionLoading}
+                            style={{
+                              padding: '12px 24px',
+                              background: 'transparent',
+                              color: subscriptionLoading ? '#ccc' : '#dc3545',
+                              border: `1px solid ${subscriptionLoading ? '#ccc' : '#dc3545'}`,
+                              borderRadius: '8px',
+                              fontSize: '14px',
+                              fontWeight: '600',
+                              cursor: subscriptionLoading ? 'not-allowed' : 'pointer',
+                            }}
+                          >
+                            {subscriptionLoading ? 'Processing...' : 'Cancel Subscription'}
+                          </button>
+                        )}
+
+                        <Link
+                          href="/pricing"
+                          style={{
+                            padding: '12px 24px',
+                            background: 'transparent',
+                            color: '#764ba2',
+                            border: '1px solid #764ba2',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            textDecoration: 'none',
+                            display: 'inline-block',
+                          }}
+                        >
+                          Change Plan
+                        </Link>
+                      </div>
+                    )}
+
+                    {!user.membership.subscriptionId && user.membership.type === 'free' && (
+                      <Link
+                        href="/pricing"
+                        style={{
+                          padding: '12px 24px',
+                          background: '#764ba2',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          textDecoration: 'none',
+                          display: 'inline-block',
+                        }}
+                      >
+                        Upgrade to Premium
+                      </Link>
+                    )}
                   </div>
                 </div>
               </div>

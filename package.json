@@ -29,6 +29,7 @@
     "mongoose": "^8.19.1",
     "nanoid": "^5.1.6",
     "next": "15.5.3",
+    "posthog-js": "^1.280.1",
     "razorpay": "^2.9.6",
     "react": "19.1.0",
     "react-dom": "19.1.0",

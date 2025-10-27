@@ -9,6 +9,7 @@ import { formatPrice } from '@/lib/geolocation';
 import { trackPaymentModalOpen, trackEnrollmentComplete } from '@/lib/analytics';
 import RazorpayCheckout from './RazorpayCheckout';
 import StripeCheckout from './StripeCheckout';
+import { posthog } from '@/providers/PostHogProvider';
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ interface PaymentModalProps {
     title: string;
     price?: number; // For courses
     planType?: 'curious' | 'committed'; // For subscriptions
+    billingInterval?: 'monthly' | 'yearly'; // For subscriptions
   };
 }
 
@@ -31,12 +33,29 @@ export default function PaymentModal({ isOpen, onClose, type, item }: PaymentMod
 
   // Track payment modal open
   useEffect(() => {
-    if (isOpen && type === 'course') {
-      trackPaymentModalOpen(item.id).catch(err => {
-        console.error('[DBG][PaymentModal] Failed to track payment modal open:', err);
+    if (isOpen) {
+      // Custom analytics (existing)
+      if (type === 'course') {
+        trackPaymentModalOpen(item.id).catch(err => {
+          console.error('[DBG][PaymentModal] Failed to track payment modal open:', err);
+        });
+      }
+
+      // PostHog analytics
+      const amount = getAmount();
+      posthog.capture('payment_modal_opened', {
+        type,
+        itemId: item.id,
+        itemTitle: item.title,
+        planType: item.planType,
+        billingInterval: item.billingInterval,
+        amount,
+        currency,
+        gateway,
       });
     }
-  }, [isOpen, type, item.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, type, item.id, item.title, item.planType, item.billingInterval, currency, gateway]);
 
   if (!isOpen) return null;
 
@@ -48,7 +67,8 @@ export default function PaymentModal({ isOpen, onClose, type, item }: PaymentMod
     } else if (type === 'subscription' && item.planType) {
       // Subscription price from config
       const plan = PAYMENT_CONFIG.plans[item.planType];
-      return currency === 'INR' ? plan.inr : plan.usd;
+      const interval = item.billingInterval || 'yearly';
+      return currency === 'INR' ? plan[interval].inr : plan[interval].usd;
     }
     return 0;
   };
@@ -59,12 +79,25 @@ export default function PaymentModal({ isOpen, onClose, type, item }: PaymentMod
     setPaymentStatus('success');
     console.log('[DBG][PaymentModal] Payment successful:', paymentId);
 
-    // Track enrollment completion
+    // Track enrollment completion (custom analytics)
     if (type === 'course') {
       trackEnrollmentComplete(item.id, paymentId).catch(err => {
         console.error('[DBG][PaymentModal] Failed to track enrollment complete:', err);
       });
     }
+
+    // PostHog analytics
+    posthog.capture('payment_success', {
+      type,
+      itemId: item.id,
+      itemTitle: item.title,
+      planType: item.planType,
+      billingInterval: item.billingInterval,
+      paymentId,
+      amount,
+      currency,
+      gateway,
+    });
 
     // Refresh user data to get updated enrollments
     console.log('[DBG][PaymentModal] Refreshing user data...');
@@ -87,6 +120,19 @@ export default function PaymentModal({ isOpen, onClose, type, item }: PaymentMod
     setPaymentStatus('error');
     setErrorMessage(error);
     console.error('[PaymentModal] Payment failed:', error);
+
+    // PostHog analytics
+    posthog.capture('payment_failed', {
+      type,
+      itemId: item.id,
+      itemTitle: item.title,
+      planType: item.planType,
+      billingInterval: item.billingInterval,
+      error,
+      amount,
+      currency,
+      gateway,
+    });
   };
 
   const handleClose = () => {
@@ -263,6 +309,8 @@ export default function PaymentModal({ isOpen, onClose, type, item }: PaymentMod
                     type={type}
                     itemId={item.id}
                     itemName={item.title}
+                    planType={item.planType}
+                    billingInterval={item.billingInterval}
                     onSuccess={handleSuccess}
                     onFailure={handleFailure}
                   />
