@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
-import Link from 'next/link';
-import type { Expert, Course } from '@/types';
 import { getClientExpertContext } from '@/lib/domainContext';
+import type { Course, Expert } from '@/types';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 export default function ExpertDetailPage() {
   const params = useParams();
@@ -68,7 +68,6 @@ export default function ExpertDetailPage() {
     return (
       <div
         style={{
-          paddingTop: '64px',
           minHeight: '100vh',
           display: 'flex',
           alignItems: 'center',
@@ -85,7 +84,6 @@ export default function ExpertDetailPage() {
     return (
       <div
         style={{
-          paddingTop: '64px',
           minHeight: '100vh',
           display: 'flex',
           alignItems: 'center',
@@ -112,19 +110,74 @@ export default function ExpertDetailPage() {
     );
   }
 
+  // Get custom landing page data or use defaults
+  const customHero = expert.customLandingPage?.hero;
+  const hasCustomHero = !!(
+    customHero?.heroImage ||
+    customHero?.headline ||
+    customHero?.description
+  );
+
+  console.log('[DBG][expert-detail] Custom hero data:', {
+    customHero,
+    hasCustomHero,
+    fullLandingPage: expert.customLandingPage,
+  });
+
+  const heroHeadline = customHero?.headline || `Transform Your\nPractice with ${expert.name}`;
+  const heroDescription = customHero?.description || expert.bio;
+  const heroCtaText = customHero?.ctaText || 'Explore Courses';
+  const heroImage = customHero?.heroImage;
+  const heroAlignment = customHero?.alignment || 'center';
+
+  console.log('[DBG][expert-detail] Hero display values:', {
+    heroHeadline,
+    heroDescription,
+    heroCtaText,
+    heroImage,
+    heroAlignment,
+  });
+
   return (
-    <div style={{ paddingTop: '64px', minHeight: '100vh' }}>
-      {/* Hero Section with Banner */}
+    <div style={{ minHeight: '100vh' }}>
+      <style>{`
+        @media (max-width: 768px) {
+          .hero-section-desktop {
+            display: none !important;
+          }
+          .hero-section-mobile {
+            display: block !important;
+          }
+          .value-props-grid {
+            grid-template-columns: 1fr !important;
+            gap: 20px !important;
+          }
+        }
+        @media (min-width: 769px) {
+          .hero-section-desktop {
+            display: block !important;
+          }
+          .hero-section-mobile {
+            display: none !important;
+          }
+        }
+      `}</style>
+
+      {/* Desktop Hero Section */}
       <section
+        className="hero-section-desktop"
         style={{
-          height: '400px',
+          minHeight: '600px',
           position: 'relative',
-          backgroundImage: `url(${expert.avatar})`,
+          background: heroImage
+            ? `url(${heroImage})`
+            : 'linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
+          overflow: 'hidden',
         }}
       >
+        {/* Gradient Overlay */}
         <div
           style={{
             position: 'absolute',
@@ -132,7 +185,10 @@ export default function ExpertDetailPage() {
             left: 0,
             width: '100%',
             height: '100%',
-            background: 'rgba(0, 0, 0, 0.4)',
+            background: heroImage
+              ? 'rgba(0, 0, 0, 0.5)'
+              : 'radial-gradient(circle at 20% 50%, rgba(118, 75, 162, 0.2) 0%, transparent 50%)',
+            pointerEvents: 'none',
           }}
         />
 
@@ -141,48 +197,323 @@ export default function ExpertDetailPage() {
           style={{
             position: 'relative',
             height: '100%',
+            minHeight: '600px',
             display: 'flex',
             flexDirection: 'column',
-            justifyContent: 'flex-end',
-            padding: '60px 20px',
-            color: '#fff',
+            alignItems:
+              heroAlignment === 'left'
+                ? 'flex-start'
+                : heroAlignment === 'right'
+                  ? 'flex-end'
+                  : 'center',
+            justifyContent: 'center',
+            padding: '0 20px 80px 20px',
+            textAlign: heroAlignment === 'center' ? 'center' : heroAlignment,
+          }}
+        >
+          <div
+            style={{
+              zIndex: 10,
+              maxWidth: heroAlignment === 'center' ? '900px' : '600px',
+              width: heroAlignment === 'center' ? '100%' : '50%',
+            }}
+          >
+            <h1
+              style={{
+                fontSize: '64px',
+                fontWeight: '700',
+                lineHeight: '1.1',
+                marginBottom: '24px',
+                color: '#fff',
+                letterSpacing: '-0.02em',
+                whiteSpace: 'pre-line',
+              }}
+            >
+              {customHero?.headline ? (
+                heroHeadline
+              ) : (
+                <>
+                  Transform Your
+                  <br />
+                  <span
+                    style={{
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text',
+                    }}
+                  >
+                    Practice
+                  </span>{' '}
+                  with {expert.name}
+                </>
+              )}
+            </h1>
+
+            <p
+              style={{
+                fontSize: '20px',
+                lineHeight: '1.6',
+                marginBottom: '40px',
+                color: 'rgba(255, 255, 255, 0.85)',
+              }}
+            >
+              {heroDescription}
+            </p>
+
+            {/* CTA Button */}
+            {!expertMode.isExpertMode && (
+              <a
+                href="#courses"
+                style={{
+                  display: 'inline-block',
+                  padding: '18px 48px',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  color: '#fff',
+                  fontSize: '18px',
+                  fontWeight: '600',
+                  borderRadius: '50px',
+                  textDecoration: 'none',
+                  boxShadow: '0 10px 30px rgba(118, 75, 162, 0.3)',
+                  transition: 'all 0.3s ease',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 15px 40px rgba(118, 75, 162, 0.4)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 10px 30px rgba(118, 75, 162, 0.3)';
+                }}
+              >
+                {heroCtaText}
+              </a>
+            )}
+          </div>
+        </div>
+
+        {/* Decorative Elements */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            width: '100%',
+            height: '100px',
+            background: 'linear-gradient(to top, rgba(0,0,0,0.3), transparent)',
+            pointerEvents: 'none',
+          }}
+        />
+      </section>
+
+      {/* Mobile Hero Section */}
+      <section className="hero-section-mobile" style={{ display: 'none' }}>
+        {/* Hero Image */}
+        {heroImage ? (
+          <div style={{ width: '100%', height: '300px', overflow: 'hidden' }}>
+            <img
+              src={heroImage}
+              alt={expert.name}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                objectPosition: 'center',
+              }}
+            />
+          </div>
+        ) : (
+          <div
+            style={{
+              width: '100%',
+              height: '300px',
+              background: 'linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%)',
+            }}
+          />
+        )}
+
+        {/* Content Below Image */}
+        <div
+          style={{
+            padding: '40px 20px',
+            background: '#fff',
+            textAlign: 'center',
           }}
         >
           <h1
             style={{
-              fontSize: '48px',
-              fontWeight: '600',
-              marginBottom: '16px',
+              fontSize: '32px',
+              fontWeight: '700',
+              lineHeight: '1.2',
+              marginBottom: '20px',
+              color: '#1a202c',
+              letterSpacing: '-0.02em',
             }}
           >
-            {expert.name}
+            {customHero?.headline ? heroHeadline : <>Transform Your Practice with {expert.name}</>}
           </h1>
+
           <p
             style={{
-              fontSize: '24px',
-              marginBottom: '24px',
-              opacity: 0.95,
-            }}
-          >
-            {expert.title}
-          </p>
-          <div
-            style={{
-              display: 'flex',
-              gap: '32px',
-              flexWrap: 'wrap',
               fontSize: '16px',
+              lineHeight: '1.6',
+              marginBottom: '32px',
+              color: '#4a5568',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ color: '#FFD700', fontSize: '20px' }}>★</span>
-              <span>{expert.rating} Rating</span>
-            </div>
-            <div>{expert.totalStudents.toLocaleString()} Students</div>
-            <div>{expert.totalCourses} Courses</div>
-          </div>
+            {heroDescription}
+          </p>
+
+          {/* CTA Button */}
+          {!expertMode.isExpertMode && (
+            <a
+              href="#courses"
+              style={{
+                display: 'inline-block',
+                padding: '14px 32px',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: '#fff',
+                fontSize: '16px',
+                fontWeight: '600',
+                borderRadius: '50px',
+                textDecoration: 'none',
+                boxShadow: '0 10px 30px rgba(118, 75, 162, 0.3)',
+              }}
+            >
+              {heroCtaText}
+            </a>
+          )}
         </div>
       </section>
+
+      {/* Value Propositions Section */}
+      {expert.customLandingPage?.valuePropositions &&
+        (expert.customLandingPage.valuePropositions.content ||
+          (expert.customLandingPage.valuePropositions.items &&
+            expert.customLandingPage.valuePropositions.items.length > 0)) && (
+          <section
+            style={{
+              padding: '60px 20px',
+              background: '#fff',
+            }}
+          >
+            <div className="container" style={{ maxWidth: '1000px', margin: '0 auto' }}>
+              {expert.customLandingPage.valuePropositions.type === 'paragraph' ? (
+                <p
+                  style={{
+                    fontSize: '18px',
+                    lineHeight: '1.8',
+                    color: '#4a5568',
+                    textAlign: 'center',
+                  }}
+                >
+                  {expert.customLandingPage.valuePropositions.content}
+                </p>
+              ) : (
+                <div
+                  className="value-props-grid"
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns:
+                      expert.customLandingPage.valuePropositions.items?.length === 3
+                        ? 'repeat(3, 1fr)'
+                        : 'repeat(auto-fit, minmax(280px, 1fr))',
+                    gap: '32px',
+                    maxWidth: '1000px',
+                    margin: '0 auto',
+                  }}
+                >
+                  {expert.customLandingPage.valuePropositions.items?.map((item, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        padding: '32px 24px',
+                        background: '#f7fafc',
+                        borderRadius: '12px',
+                        textAlign: 'center',
+                        border: '1px solid #e2e8f0',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '56px',
+                          height: '56px',
+                          borderRadius: '50%',
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          margin: '0 auto 20px',
+                          color: '#fff',
+                          fontSize: '24px',
+                          fontWeight: '600',
+                        }}
+                      >
+                        {idx + 1}
+                      </div>
+                      <p
+                        style={{
+                          fontSize: '16px',
+                          lineHeight: '1.6',
+                          color: '#2d3748',
+                          fontWeight: '500',
+                        }}
+                      >
+                        {item}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+      {/* Promo Video Section */}
+      {expert.promoVideoCloudflareId && expert.promoVideoStatus === 'ready' && (
+        <section
+          style={{
+            padding: '60px 0',
+            background: '#f8f8f8',
+          }}
+        >
+          <div className="container" style={{ padding: '0 20px' }}>
+            <div
+              style={{
+                maxWidth: '1000px',
+                margin: '0 auto',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+              }}
+            >
+              <div
+                style={{
+                  position: 'relative',
+                  paddingBottom: '56.25%', // 16:9 aspect ratio
+                  height: 0,
+                  overflow: 'hidden',
+                }}
+              >
+                <iframe
+                  src={`https://customer-${process.env.NEXT_PUBLIC_CF_SUBDOMAIN || 'placeholder'}.cloudflarestream.com/${expert.promoVideoCloudflareId}/iframe?preload=auto&poster=https%3A%2F%2Fcustomer-${process.env.NEXT_PUBLIC_CF_SUBDOMAIN || 'placeholder'}.cloudflarestream.com%2F${expert.promoVideoCloudflareId}%2Fthumbnails%2Fthumbnail.jpg%3Ftime%3D1s%26height%3D600`}
+                  style={{
+                    border: 'none',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    height: '100%',
+                    width: '100%',
+                  }}
+                  allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+                  allowFullScreen
+                  title={`${expert.name} Introduction Video`}
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Bio Section */}
       <section
@@ -255,6 +586,7 @@ export default function ExpertDetailPage() {
 
       {/* Courses Section */}
       <section
+        id="courses"
         style={{
           padding: '60px 0',
           background: '#f8f8f8',

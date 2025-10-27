@@ -8,7 +8,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: () => void;
+  login: (returnTo?: string) => void;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -44,17 +44,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const login = () => {
+  const login = (returnTo?: string) => {
     console.log('[DBG][AuthContext] Redirecting to Auth0 login');
-    // Redirect to Auth0 login page (handled by middleware)
-    window.location.href = '/auth/login';
+    const returnPath = returnTo || '/app';
+    window.location.href = `/auth/login?returnTo=${encodeURIComponent(returnPath)}`;
   };
 
   const logout = async () => {
     console.log('[DBG][AuthContext] Logging out');
     setUser(null);
     setIsAuthenticated(false);
-    // Redirect to Auth0 logout endpoint (handled by middleware)
+    // Redirect to Auth0 logout endpoint
     window.location.href = '/auth/logout';
   };
 

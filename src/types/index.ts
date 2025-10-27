@@ -5,6 +5,9 @@ export interface BaseEntity {
   updatedAt?: string;
 }
 
+// User Role Types
+export type UserRole = 'learner' | 'expert';
+
 // Expert Related Types
 export interface SocialLinks {
   instagram?: string;
@@ -22,6 +25,43 @@ export interface ExpertCourse {
   students: number;
 }
 
+export interface CustomLandingPageConfig {
+  hero?: {
+    heroImage?: string; // Hero background image URL
+    headline?: string; // Custom headline (problem hook)
+    description?: string; // Custom description (results hook)
+    ctaText?: string; // Call to action button text
+    ctaLink?: string;
+    alignment?: 'center' | 'left' | 'right'; // Text alignment
+  };
+  valuePropositions?: {
+    type?: 'paragraph' | 'list'; // Display as paragraph or list
+    content?: string; // Paragraph text (when type is 'paragraph')
+    items?: string[]; // List items (when type is 'list')
+  };
+  about?: {
+    bio?: string;
+    highlights?: string[];
+  };
+  featuredCourses?: string[]; // Array of course IDs
+  testimonials?: Array<{
+    id: string;
+    name: string;
+    avatar?: string;
+    text: string;
+    rating?: number;
+  }>;
+  theme?: {
+    primaryColor?: string;
+    secondaryColor?: string;
+  };
+  contact?: {
+    email?: string;
+    phone?: string;
+    bookingUrl?: string;
+  };
+}
+
 export interface Expert extends BaseEntity {
   name: string;
   title: string;
@@ -36,6 +76,12 @@ export interface Expert extends BaseEntity {
   experience?: string;
   courses?: ExpertCourse[];
   socialLinks?: SocialLinks;
+  userId?: string; // Link to User account
+  customLandingPage?: CustomLandingPageConfig;
+  onboardingCompleted?: boolean;
+  promoVideo?: string; // Deprecated: use promoVideoCloudflareId instead
+  promoVideoCloudflareId?: string; // Cloudflare Stream video UID for expert promo
+  promoVideoStatus?: 'uploading' | 'processing' | 'ready' | 'error';
 }
 
 // Course Related Types
@@ -233,6 +279,8 @@ export interface UserSocial {
 }
 
 export interface User extends BaseEntity {
+  role: UserRole; // User role: learner or expert
+  expertProfile?: string; // Expert ID if user is an expert
   profile: UserProfile;
   membership: Membership;
   statistics: UserStatistics;

@@ -1,6 +1,7 @@
 import mongoose, { Schema } from 'mongoose';
 import type {
   User,
+  UserRole,
   UserProfile,
   Membership,
   UserStatistics,
@@ -171,6 +172,13 @@ const UserSchema = new Schema<UserDocument>(
   {
     _id: { type: String, required: true },
     auth0Id: { type: String, required: true, unique: true, index: true },
+    role: {
+      type: String,
+      enum: ['learner', 'expert'],
+      default: 'learner',
+      required: true,
+    },
+    expertProfile: { type: String, index: true }, // Expert ID if user is an expert
     profile: { type: UserProfileSchema, required: true },
     membership: { type: MembershipSchema, required: true },
     statistics: { type: UserStatisticsSchema, required: true },
@@ -191,6 +199,7 @@ const UserSchema = new Schema<UserDocument>(
 UserSchema.index({ 'profile.email': 1 });
 UserSchema.index({ 'membership.type': 1 });
 UserSchema.index({ 'membership.status': 1 });
+UserSchema.index({ role: 1 });
 
 // Prevent model recompilation in development
 export default mongoose.models.User || mongoose.model<UserDocument>('User', UserSchema);

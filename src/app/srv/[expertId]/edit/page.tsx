@@ -16,6 +16,10 @@ export default function EditExpertPage() {
   const [error, setError] = useState('');
   const [uploadError, setUploadError] = useState('');
   const [avatarAsset, setAvatarAsset] = useState<Asset | null>(null);
+  const [selectedPromoFile, setSelectedPromoFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+  const [pollingVideoId, setPollingVideoId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     title: '',
@@ -28,6 +32,9 @@ export default function EditExpertPage() {
     featured: false,
     certifications: '',
     experience: '',
+    promoVideo: '',
+    promoVideoCloudflareId: '',
+    promoVideoStatus: '' as 'uploading' | 'processing' | 'ready' | 'error' | '',
     socialLinks: {
       instagram: '',
       youtube: '',
@@ -40,6 +47,45 @@ export default function EditExpertPage() {
   useEffect(() => {
     fetchExpertData();
   }, [expertId]);
+
+  // Poll video status for processing promo videos
+  useEffect(() => {
+    if (!pollingVideoId) return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        console.log('[DBG][expert-edit] Polling video status for:', pollingVideoId);
+
+        const response = await fetch(`/api/cloudflare/video-status/${pollingVideoId}`);
+        const data = await response.json();
+
+        if (data.success) {
+          const videoStatus = data.data.status;
+          const isReady = data.data.readyToStream;
+
+          console.log('[DBG][expert-edit] Video status:', videoStatus, 'Ready:', isReady);
+
+          if (formData.promoVideoCloudflareId === pollingVideoId) {
+            const newStatus = isReady ? 'ready' : videoStatus === 'error' ? 'error' : 'processing';
+
+            setFormData(prev => ({
+              ...prev,
+              promoVideoStatus: newStatus,
+            }));
+
+            if (isReady || videoStatus === 'error') {
+              console.log('[DBG][expert-edit] Video processing complete, stopping poll');
+              setPollingVideoId(null);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[DBG][expert-edit] Error polling video status:', err);
+      }
+    }, 10000);
+
+    return () => clearInterval(pollInterval);
+  }, [pollingVideoId, formData.promoVideoCloudflareId]);
 
   const fetchExpertData = async () => {
     try {
@@ -69,6 +115,9 @@ export default function EditExpertPage() {
         featured: expert.featured || false,
         certifications: expert.certifications?.join(', ') || '',
         experience: expert.experience || '',
+        promoVideo: expert.promoVideo || '',
+        promoVideoCloudflareId: expert.promoVideoCloudflareId || '',
+        promoVideoStatus: expert.promoVideoStatus || '',
         socialLinks: {
           instagram: expert.socialLinks?.instagram || '',
           youtube: expert.socialLinks?.youtube || '',
@@ -121,6 +170,91 @@ export default function EditExpertPage() {
     setUploadError(error);
   };
 
+  const handlePromoFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      console.log('[DBG][expert-edit] Promo video file selected:', file.name, file.size);
+      setSelectedPromoFile(file);
+    }
+  };
+
+  const handlePromoVideoUpload = async () => {
+    if (!selectedPromoFile) {
+      setError('Please select a video file');
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadProgress(0);
+    setError('');
+
+    try {
+      console.log('[DBG][expert-edit] Starting promo video upload');
+
+      const uploadUrlResponse = await fetch('/api/cloudflare/upload-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ maxDurationSeconds: 300 }),
+      });
+
+      const uploadUrlData = await uploadUrlResponse.json();
+      if (!uploadUrlData.success) {
+        throw new Error(uploadUrlData.error || 'Failed to get upload URL');
+      }
+
+      const { uploadURL, uid } = uploadUrlData.data;
+      console.log('[DBG][expert-edit] Got upload URL for promo video:', uid);
+
+      const formDataUpload = new FormData();
+      formDataUpload.append('file', selectedPromoFile);
+
+      const xhr = new XMLHttpRequest();
+
+      xhr.upload.addEventListener('progress', e => {
+        if (e.lengthComputable) {
+          const percentComplete = Math.round((e.loaded / e.total) * 100);
+          setUploadProgress(percentComplete);
+          console.log('[DBG][expert-edit] Upload progress:', percentComplete, '%');
+        }
+      });
+
+      await new Promise<void>((resolve, reject) => {
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve();
+          } else {
+            reject(new Error(`Upload failed with status ${xhr.status}`));
+          }
+        });
+
+        xhr.addEventListener('error', () => {
+          reject(new Error('Upload failed'));
+        });
+
+        xhr.open('POST', uploadURL);
+        xhr.send(formDataUpload);
+      });
+
+      console.log('[DBG][expert-edit] Promo video uploaded successfully:', uid);
+
+      setFormData(prev => ({
+        ...prev,
+        promoVideoCloudflareId: uid,
+        promoVideoStatus: 'processing',
+      }));
+
+      setUploadProgress(100);
+      setPollingVideoId(uid);
+
+      alert('Promo video uploaded successfully! Processing status will update automatically.');
+    } catch (err) {
+      console.error('[DBG][expert-edit] Error uploading promo video:', err);
+      setError(err instanceof Error ? err.message : 'Failed to upload promo video');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -155,6 +289,9 @@ export default function EditExpertPage() {
           .map(c => c.trim())
           .filter(Boolean),
         experience: formData.experience.trim(),
+        promoVideo: formData.promoVideo.trim() || undefined,
+        promoVideoCloudflareId: formData.promoVideoCloudflareId || undefined,
+        promoVideoStatus: formData.promoVideoStatus || undefined,
         socialLinks: {
           instagram: formData.socialLinks.instagram.trim() || undefined,
           youtube: formData.socialLinks.youtube.trim() || undefined,
@@ -442,6 +579,108 @@ export default function EditExpertPage() {
                 </label>
               </div>
             </div>
+          </div>
+
+          {/* Promo Video */}
+          <div className="border-b border-gray-200 pb-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Promo Video</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Upload a short promotional video to introduce yourself to potential students. This
+              will be displayed prominently on your expert profile page.
+            </p>
+
+            {formData.promoVideoCloudflareId ? (
+              <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-green-600">✓</span>
+                  <span className="text-sm font-medium text-green-800">Promo video uploaded</span>
+                </div>
+                <p className="text-sm text-gray-600 mb-1">
+                  Video ID: {formData.promoVideoCloudflareId}
+                </p>
+                {formData.promoVideoStatus && (
+                  <p className="text-sm text-gray-600 mb-2">
+                    Status: <span className="capitalize">{formData.promoVideoStatus}</span>
+                  </p>
+                )}
+                {formData.promoVideoStatus === 'ready' && (
+                  <div className="mt-3 rounded-lg overflow-hidden">
+                    <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0 }}>
+                      <iframe
+                        src={`https://customer-${process.env.NEXT_PUBLIC_CF_SUBDOMAIN || 'placeholder'}.cloudflarestream.com/${formData.promoVideoCloudflareId}/iframe?preload=auto&poster=https%3A%2F%2Fcustomer-${process.env.NEXT_PUBLIC_CF_SUBDOMAIN || 'placeholder'}.cloudflarestream.com%2F${formData.promoVideoCloudflareId}%2Fthumbnails%2Fthumbnail.jpg%3Ftime%3D1s%26height%3D600`}
+                        style={{
+                          border: 'none',
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          height: '100%',
+                          width: '100%',
+                        }}
+                        allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+                        allowFullScreen={true}
+                      />
+                    </div>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormData(prev => ({
+                      ...prev,
+                      promoVideoCloudflareId: '',
+                      promoVideoStatus: '',
+                    }));
+                    setSelectedPromoFile(null);
+                    setUploadProgress(0);
+                  }}
+                  className="mt-3 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  Upload different video
+                </button>
+              </div>
+            ) : (
+              <>
+                <input
+                  type="file"
+                  id="promoVideoFile"
+                  accept="video/*"
+                  onChange={handlePromoFileSelect}
+                  disabled={isUploading}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                />
+                {selectedPromoFile && (
+                  <div className="mt-3">
+                    <p className="text-sm text-gray-600">
+                      Selected: {selectedPromoFile.name} (
+                      {(selectedPromoFile.size / 1024 / 1024).toFixed(2)} MB)
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handlePromoVideoUpload}
+                      disabled={isUploading}
+                      className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed text-sm font-medium"
+                    >
+                      {isUploading ? 'Uploading...' : 'Upload Promo Video'}
+                    </button>
+                  </div>
+                )}
+                {isUploading && (
+                  <div className="mt-3">
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1">{uploadProgress}% uploaded</p>
+                  </div>
+                )}
+              </>
+            )}
+            <p className="text-xs text-gray-500 mt-3">
+              Recommended: Keep your video under 2 minutes. Introduce yourself, share your
+              expertise, and explain what makes your teaching unique. Max duration: 5 minutes.
+            </p>
           </div>
 
           {/* Social Links */}

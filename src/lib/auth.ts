@@ -1,7 +1,7 @@
 import { auth0 } from './auth0';
 import { connectToDatabase } from './mongodb';
 import User from '@/models/User';
-import type { User as UserType, MembershipType } from '@/types';
+import type { User as UserType, MembershipType, UserRole } from '@/types';
 import { nanoid } from 'nanoid';
 
 /**
@@ -20,14 +20,19 @@ export async function getSession() {
 /**
  * Get or create user in MongoDB from Auth0 profile
  * This is called after Auth0 authentication to sync user data
+ *
+ * @param role - Optional role to assign to new users. Defaults to 'learner'
  */
-export async function getOrCreateUser(auth0User: {
-  sub: string;
-  email: string;
-  name?: string;
-  picture?: string;
-}): Promise<UserType> {
-  console.log('[DBG][auth] Getting or creating user for auth0Id:', auth0User.sub);
+export async function getOrCreateUser(
+  auth0User: {
+    sub: string;
+    email: string;
+    name?: string;
+    picture?: string;
+  },
+  role?: UserRole
+): Promise<UserType> {
+  console.log('[DBG][auth] Getting or creating user for auth0Id:', auth0User.sub, 'role:', role);
 
   await connectToDatabase();
 
@@ -35,7 +40,7 @@ export async function getOrCreateUser(auth0User: {
   let userDoc = await User.findOne({ auth0Id: auth0User.sub });
 
   if (userDoc) {
-    console.log('[DBG][auth] Found existing user:', userDoc._id);
+    console.log('[DBG][auth] Found existing user:', userDoc._id, 'role:', userDoc.role);
 
     // Update profile if email or name changed in Auth0
     if (
@@ -51,7 +56,7 @@ export async function getOrCreateUser(auth0User: {
       console.log('[DBG][auth] Updated user profile');
     }
   } else {
-    console.log('[DBG][auth] Creating new user');
+    console.log('[DBG][auth] Creating new user with role:', role || 'learner');
 
     // Create new user with default values
     const userId = nanoid(16);
@@ -60,6 +65,7 @@ export async function getOrCreateUser(auth0User: {
     userDoc = await User.create({
       _id: userId,
       auth0Id: auth0User.sub,
+      role: role || ('learner' as UserRole),
       profile: {
         name: auth0User.name || auth0User.email,
         email: auth0User.email,
@@ -81,6 +87,7 @@ export async function getOrCreateUser(auth0User: {
         currentStreak: 0,
         longestStreak: 0,
         averageSessionTime: 0,
+        lastPractice: now,
       },
       achievements: [
         {
@@ -119,6 +126,8 @@ export async function getOrCreateUser(auth0User: {
   // Convert MongoDB document to User type
   const user: UserType = {
     id: userDoc._id,
+    role: userDoc.role,
+    expertProfile: userDoc.expertProfile,
     profile: userDoc.profile,
     membership: userDoc.membership,
     statistics: userDoc.statistics,
@@ -150,6 +159,8 @@ export async function getUserById(userId: string): Promise<UserType | null> {
 
   const user: UserType = {
     id: userDoc._id,
+    role: userDoc.role,
+    expertProfile: userDoc.expertProfile,
     profile: userDoc.profile,
     membership: userDoc.membership,
     statistics: userDoc.statistics,
@@ -179,7 +190,7 @@ export async function getUserByAuth0Id(auth0Id: string): Promise<UserType | null
     return null;
   }
 
-  console.log('[DBG][auth] Found user:', userDoc._id);
+  console.log('[DBG][auth] Found user:', userDoc._id, 'role:', userDoc.role);
   console.log('[DBG][auth] User has', userDoc.enrolledCourses.length, 'enrolled courses');
   console.log(
     '[DBG][auth] Enrolled courses:',
@@ -191,6 +202,8 @@ export async function getUserByAuth0Id(auth0Id: string): Promise<UserType | null
 
   const user: UserType = {
     id: userDoc._id,
+    role: userDoc.role,
+    expertProfile: userDoc.expertProfile,
     profile: userDoc.profile,
     membership: userDoc.membership,
     statistics: userDoc.statistics,
@@ -217,4 +230,28 @@ export async function requireAuth() {
   }
 
   return session;
+}
+
+/**
+ * Require expert authentication - throws error if not authenticated as expert
+ * Use this in API routes to protect expert-only routes
+ */
+export async function requireExpertAuth(): Promise<{ session: any; user: UserType }> {
+  const session = await getSession();
+
+  if (!session || !session.user) {
+    throw new Error('Unauthorized');
+  }
+
+  const user = await getUserByAuth0Id(session.user.sub);
+
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  if (user.role !== 'expert') {
+    throw new Error('Forbidden - Expert access required');
+  }
+
+  return { session, user };
 }

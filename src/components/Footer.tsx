@@ -11,14 +11,20 @@ export default function Footer() {
     expertId: null,
   });
 
-  // Detect expert mode on mount
+  // Detect expert mode on mount AND when viewing /experts/[expertId] pages
   useEffect(() => {
     const context = getClientExpertContext();
+    const isOnExpertPage = window.location.pathname.startsWith('/experts/');
     setExpertMode({
-      isExpertMode: context.isExpertMode,
+      isExpertMode: context.isExpertMode || isOnExpertPage,
       expertId: context.expertId,
     });
   }, []);
+
+  // Don't render footer at all on expert pages
+  if (expertMode.isExpertMode) {
+    return null;
+  }
 
   return (
     <footer

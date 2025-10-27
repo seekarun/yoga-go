@@ -4,6 +4,8 @@ import { connectToDatabase } from '@/lib/mongodb';
 import ExpertModel from '@/models/Expert';
 import CourseModel from '@/models/Course';
 import PaymentModel from '@/models/Payment';
+import UserModel from '@/models/User';
+import { getSession } from '@/lib/auth';
 
 export async function GET() {
   console.log('[DBG][experts/route.ts] GET /data/experts called');
@@ -79,6 +81,15 @@ export async function POST(request: Request) {
   console.log('[DBG][experts/route.ts] POST /data/experts called');
 
   try {
+    // Check authentication
+    const session = await getSession();
+    if (!session || !session.user) {
+      console.log('[DBG][experts/route.ts] Unauthorized - no session');
+      return NextResponse.json({ success: false, error: 'Unauthorized' } as ApiResponse<Expert>, {
+        status: 401,
+      });
+    }
+
     const body = await request.json();
     console.log('[DBG][experts/route.ts] Received expert data:', body);
 
@@ -96,6 +107,28 @@ export async function POST(request: Request) {
 
     await connectToDatabase();
 
+    // Get user to link expert profile
+    const userDoc = await UserModel.findOne({ auth0Id: session.user.sub }).exec();
+
+    if (!userDoc) {
+      console.log('[DBG][experts/route.ts] User not found');
+      return NextResponse.json({ success: false, error: 'User not found' } as ApiResponse<Expert>, {
+        status: 404,
+      });
+    }
+
+    // Check if user already has an expert profile
+    if (userDoc.expertProfile) {
+      console.log('[DBG][experts/route.ts] User already has an expert profile');
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'User already has an expert profile',
+        } as ApiResponse<Expert>,
+        { status: 409 }
+      );
+    }
+
     // Check if expert with this ID already exists
     const existingExpert = await ExpertModel.findById(body.id).exec();
     if (existingExpert) {
@@ -109,6 +142,7 @@ export async function POST(request: Request) {
     // Create new expert with defaults
     const newExpertData = {
       _id: body.id,
+      userId: userDoc._id, // Link to user account
       name: body.name,
       title: body.title,
       bio: body.bio,
@@ -122,12 +156,20 @@ export async function POST(request: Request) {
       experience: body.experience || '',
       courses: body.courses || [],
       socialLinks: body.socialLinks || {},
+      onboardingCompleted: true, // Mark as completed since they filled the form
     };
 
     const newExpert = new ExpertModel(newExpertData);
     await newExpert.save();
 
     console.log('[DBG][experts/route.ts] Expert created successfully:', newExpert._id);
+
+    // Update user to set role to expert and link expert profile
+    userDoc.role = 'expert';
+    userDoc.expertProfile = newExpert._id as string;
+    await userDoc.save();
+
+    console.log('[DBG][experts/route.ts] User updated with expert profile');
 
     // Transform to Expert type for response
     const expert: Expert = {

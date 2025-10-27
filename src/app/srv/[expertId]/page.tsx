@@ -97,6 +97,20 @@ export default function ExpertDashboard() {
                 </svg>
                 Edit Profile
               </Link>
+              <Link
+                href={`/srv/${expertId}/landing-page`}
+                className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all font-medium inline-flex items-center"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"
+                  />
+                </svg>
+                Edit Landing Page
+              </Link>
               <div className="text-left sm:text-right">
                 <p className="text-sm text-gray-500">Last updated</p>
                 <p className="text-sm font-medium text-gray-900">Just now</p>

@@ -400,6 +400,8 @@ export const mockExperts: Record<string, Expert> = {
       'Ayurveda Wellness Consultant',
     ],
     experience: '20+ years',
+    promoVideoCloudflareId: 'deepak-promo-video-id',
+    promoVideoStatus: 'ready',
     courses: [
       {
         id: 'course-deepak-1',
@@ -440,6 +442,8 @@ export const mockExperts: Record<string, Expert> = {
       'Yin Yoga Certification',
     ],
     experience: '15+ years',
+    promoVideoCloudflareId: 'kavitha-promo-video-id',
+    promoVideoStatus: 'ready',
     courses: [
       {
         id: 'course-kavitha-1',
