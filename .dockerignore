@@ -1,0 +1,80 @@
+# Dependencies
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Next.js
+.next
+out
+dist
+
+# Production
+build
+
+# Misc
+.DS_Store
+*.pem
+
+# Debug
+*.log
+.pnpm-debug.log*
+.yarn-integrity
+
+# Local env files
+.env
+.env*.local
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Git
+.git
+.gitignore
+.github
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Testing
+coverage
+.nyc_output
+
+# Documentation
+*.md
+!README.md
+
+# Scripts and utilities
+scripts
+docs
+
+# Husky
+.husky
+
+# MongoDB local data
+mongodb-data
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# AWS CDK
+infrastructure
+cdk.out
+
+# Temporary files
+tmp
+temp
+*.tmp

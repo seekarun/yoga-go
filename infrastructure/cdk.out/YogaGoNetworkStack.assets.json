@@ -1,0 +1,36 @@
+{
+  "version": "48.0.0",
+  "files": {
+    "7fa1e366ee8a9ded01fc355f704cff92bfd179574e6f9cfee800a3541df1b200": {
+      "displayName": "YogaGoNetworkStack/Custom::VpcRestrictDefaultSGCustomResourceProvider Code",
+      "source": {
+        "path": "asset.7fa1e366ee8a9ded01fc355f704cff92bfd179574e6f9cfee800a3541df1b200",
+        "packaging": "zip"
+      },
+      "destinations": {
+        "313060311593-ap-southeast-2-20637ca2": {
+          "bucketName": "cdk-hnb659fds-assets-313060311593-ap-southeast-2",
+          "objectKey": "7fa1e366ee8a9ded01fc355f704cff92bfd179574e6f9cfee800a3541df1b200.zip",
+          "region": "ap-southeast-2",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::313060311593:role/cdk-hnb659fds-file-publishing-role-313060311593-ap-southeast-2"
+        }
+      }
+    },
+    "4bdd570313f6d242498b1b3ff96eebf67a831515726bcb15f3468f518c2df3bf": {
+      "displayName": "YogaGoNetworkStack Template",
+      "source": {
+        "path": "YogaGoNetworkStack.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "313060311593-ap-southeast-2-8ebcfac4": {
+          "bucketName": "cdk-hnb659fds-assets-313060311593-ap-southeast-2",
+          "objectKey": "4bdd570313f6d242498b1b3ff96eebf67a831515726bcb15f3468f518c2df3bf.json",
+          "region": "ap-southeast-2",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::313060311593:role/cdk-hnb659fds-file-publishing-role-313060311593-ap-southeast-2"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

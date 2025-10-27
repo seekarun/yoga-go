@@ -57,7 +57,7 @@ function CheckoutForm({
   currency,
   type,
   itemId,
-  itemName,
+  itemName: _itemName,
   onSuccess,
   onFailure,
 }: StripeCheckoutProps) {
