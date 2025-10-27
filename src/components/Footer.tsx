@@ -1,9 +1,24 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { getClientExpertContext } from '@/lib/domainContext';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
+  const [expertMode, setExpertMode] = useState<{ isExpertMode: boolean; expertId: string | null }>({
+    isExpertMode: false,
+    expertId: null,
+  });
+
+  // Detect expert mode on mount
+  useEffect(() => {
+    const context = getClientExpertContext();
+    setExpertMode({
+      isExpertMode: context.isExpertMode,
+      expertId: context.expertId,
+    });
+  }, []);
 
   return (
     <footer
@@ -151,153 +166,157 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Practice */}
-          <div>
-            <h3
-              style={{
-                fontWeight: '600',
-                fontSize: '16px',
-                marginBottom: '20px',
-                color: '#000',
-              }}
-            >
-              Practice
-            </h3>
-            <ul
-              style={{
-                listStyle: 'none',
-                padding: 0,
-                margin: 0,
-              }}
-            >
-              <li style={{ marginBottom: '12px' }}>
-                <Link
-                  href="/courses"
-                  style={{
-                    color: '#666',
-                    fontSize: '14px',
-                    textDecoration: 'none',
-                    transition: 'color 0.2s',
-                  }}
-                >
-                  All Courses
-                </Link>
-              </li>
-              <li style={{ marginBottom: '12px' }}>
-                <Link
-                  href="/courses?level=beginner"
-                  style={{
-                    color: '#666',
-                    fontSize: '14px',
-                    textDecoration: 'none',
-                    transition: 'color 0.2s',
-                  }}
-                >
-                  Beginner
-                </Link>
-              </li>
-              <li style={{ marginBottom: '12px' }}>
-                <Link
-                  href="/courses?level=intermediate"
-                  style={{
-                    color: '#666',
-                    fontSize: '14px',
-                    textDecoration: 'none',
-                    transition: 'color 0.2s',
-                  }}
-                >
-                  Intermediate
-                </Link>
-              </li>
-              <li style={{ marginBottom: '12px' }}>
-                <Link
-                  href="/courses?level=advanced"
-                  style={{
-                    color: '#666',
-                    fontSize: '14px',
-                    textDecoration: 'none',
-                    transition: 'color 0.2s',
-                  }}
-                >
-                  Advanced
-                </Link>
-              </li>
-            </ul>
-          </div>
+          {/* Practice - Hidden in expert mode */}
+          {!expertMode.isExpertMode && (
+            <div>
+              <h3
+                style={{
+                  fontWeight: '600',
+                  fontSize: '16px',
+                  marginBottom: '20px',
+                  color: '#000',
+                }}
+              >
+                Practice
+              </h3>
+              <ul
+                style={{
+                  listStyle: 'none',
+                  padding: 0,
+                  margin: 0,
+                }}
+              >
+                <li style={{ marginBottom: '12px' }}>
+                  <Link
+                    href="/courses"
+                    style={{
+                      color: '#666',
+                      fontSize: '14px',
+                      textDecoration: 'none',
+                      transition: 'color 0.2s',
+                    }}
+                  >
+                    All Courses
+                  </Link>
+                </li>
+                <li style={{ marginBottom: '12px' }}>
+                  <Link
+                    href="/courses?level=beginner"
+                    style={{
+                      color: '#666',
+                      fontSize: '14px',
+                      textDecoration: 'none',
+                      transition: 'color 0.2s',
+                    }}
+                  >
+                    Beginner
+                  </Link>
+                </li>
+                <li style={{ marginBottom: '12px' }}>
+                  <Link
+                    href="/courses?level=intermediate"
+                    style={{
+                      color: '#666',
+                      fontSize: '14px',
+                      textDecoration: 'none',
+                      transition: 'color 0.2s',
+                    }}
+                  >
+                    Intermediate
+                  </Link>
+                </li>
+                <li style={{ marginBottom: '12px' }}>
+                  <Link
+                    href="/courses?level=advanced"
+                    style={{
+                      color: '#666',
+                      fontSize: '14px',
+                      textDecoration: 'none',
+                      transition: 'color 0.2s',
+                    }}
+                  >
+                    Advanced
+                  </Link>
+                </li>
+              </ul>
+            </div>
+          )}
 
-          {/* Company */}
-          <div>
-            <h3
-              style={{
-                fontWeight: '600',
-                fontSize: '16px',
-                marginBottom: '20px',
-                color: '#000',
-              }}
-            >
-              Company
-            </h3>
-            <ul
-              style={{
-                listStyle: 'none',
-                padding: 0,
-                margin: 0,
-              }}
-            >
-              <li style={{ marginBottom: '12px' }}>
-                <Link
-                  href="/about"
-                  style={{
-                    color: '#666',
-                    fontSize: '14px',
-                    textDecoration: 'none',
-                    transition: 'color 0.2s',
-                  }}
-                >
-                  About Us
-                </Link>
-              </li>
-              <li style={{ marginBottom: '12px' }}>
-                <Link
-                  href="/experts"
-                  style={{
-                    color: '#666',
-                    fontSize: '14px',
-                    textDecoration: 'none',
-                    transition: 'color 0.2s',
-                  }}
-                >
-                  Our Experts
-                </Link>
-              </li>
-              <li style={{ marginBottom: '12px' }}>
-                <Link
-                  href="/blog"
-                  style={{
-                    color: '#666',
-                    fontSize: '14px',
-                    textDecoration: 'none',
-                    transition: 'color 0.2s',
-                  }}
-                >
-                  Blog
-                </Link>
-              </li>
-              <li style={{ marginBottom: '12px' }}>
-                <Link
-                  href="/contact"
-                  style={{
-                    color: '#666',
-                    fontSize: '14px',
-                    textDecoration: 'none',
-                    transition: 'color 0.2s',
-                  }}
-                >
-                  Contact
-                </Link>
-              </li>
-            </ul>
-          </div>
+          {/* Company - Hidden in expert mode */}
+          {!expertMode.isExpertMode && (
+            <div>
+              <h3
+                style={{
+                  fontWeight: '600',
+                  fontSize: '16px',
+                  marginBottom: '20px',
+                  color: '#000',
+                }}
+              >
+                Company
+              </h3>
+              <ul
+                style={{
+                  listStyle: 'none',
+                  padding: 0,
+                  margin: 0,
+                }}
+              >
+                <li style={{ marginBottom: '12px' }}>
+                  <Link
+                    href="/about"
+                    style={{
+                      color: '#666',
+                      fontSize: '14px',
+                      textDecoration: 'none',
+                      transition: 'color 0.2s',
+                    }}
+                  >
+                    About Us
+                  </Link>
+                </li>
+                <li style={{ marginBottom: '12px' }}>
+                  <Link
+                    href="/experts"
+                    style={{
+                      color: '#666',
+                      fontSize: '14px',
+                      textDecoration: 'none',
+                      transition: 'color 0.2s',
+                    }}
+                  >
+                    Our Experts
+                  </Link>
+                </li>
+                <li style={{ marginBottom: '12px' }}>
+                  <Link
+                    href="/blog"
+                    style={{
+                      color: '#666',
+                      fontSize: '14px',
+                      textDecoration: 'none',
+                      transition: 'color 0.2s',
+                    }}
+                  >
+                    Blog
+                  </Link>
+                </li>
+                <li style={{ marginBottom: '12px' }}>
+                  <Link
+                    href="/contact"
+                    style={{
+                      color: '#666',
+                      fontSize: '14px',
+                      textDecoration: 'none',
+                      transition: 'color 0.2s',
+                    }}
+                  >
+                    Contact
+                  </Link>
+                </li>
+              </ul>
+            </div>
+          )}
 
           {/* Support */}
           <div>

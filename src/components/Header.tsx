@@ -1,13 +1,27 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { getClientExpertContext } from '@/lib/domainContext';
 
 export default function Header() {
   const { user, isAuthenticated, login, logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [expertMode, setExpertMode] = useState<{ isExpertMode: boolean; expertId: string | null }>({
+    isExpertMode: false,
+    expertId: null,
+  });
+
+  // Detect expert mode on mount
+  useEffect(() => {
+    const context = getClientExpertContext();
+    setExpertMode({
+      isExpertMode: context.isExpertMode,
+      expertId: context.expertId,
+    });
+  }, []);
 
   const handleLogin = () => {
     login();
@@ -17,6 +31,9 @@ export default function Header() {
     logout();
     setIsUserMenuOpen(false);
   };
+
+  // In expert mode, logo should not link to home
+  const logoHref = expertMode.isExpertMode ? '#' : '/';
 
   return (
     <header
@@ -42,13 +59,19 @@ export default function Header() {
       >
         {/* Logo */}
         <Link
-          href="/"
+          href={logoHref}
           style={{
             display: 'flex',
             alignItems: 'center',
             gap: '12px',
             textDecoration: 'none',
             color: '#000',
+            cursor: expertMode.isExpertMode ? 'default' : 'pointer',
+          }}
+          onClick={e => {
+            if (expertMode.isExpertMode) {
+              e.preventDefault();
+            }
           }}
         >
           <div
@@ -70,48 +93,50 @@ export default function Header() {
           <span style={{ fontSize: '20px', fontWeight: '600' }}>Yoga-GO</span>
         </Link>
 
-        {/* Desktop Nav */}
-        <nav
-          style={{
-            display: 'none',
-            gap: '40px',
-          }}
-          className="desktop-nav"
-        >
-          <Link
-            href="/courses"
+        {/* Desktop Nav - Hidden in expert mode */}
+        {!expertMode.isExpertMode && (
+          <nav
             style={{
-              textDecoration: 'none',
-              color: '#666',
-              fontSize: '16px',
-              transition: 'color 0.2s',
+              display: 'none',
+              gap: '40px',
             }}
+            className="desktop-nav"
           >
-            Courses
-          </Link>
-          <Link
-            href="/experts"
-            style={{
-              textDecoration: 'none',
-              color: '#666',
-              fontSize: '16px',
-              transition: 'color 0.2s',
-            }}
-          >
-            Experts
-          </Link>
-          <Link
-            href="/pricing"
-            style={{
-              textDecoration: 'none',
-              color: '#666',
-              fontSize: '16px',
-              transition: 'color 0.2s',
-            }}
-          >
-            Pricing
-          </Link>
-        </nav>
+            <Link
+              href="/courses"
+              style={{
+                textDecoration: 'none',
+                color: '#666',
+                fontSize: '16px',
+                transition: 'color 0.2s',
+              }}
+            >
+              Courses
+            </Link>
+            <Link
+              href="/experts"
+              style={{
+                textDecoration: 'none',
+                color: '#666',
+                fontSize: '16px',
+                transition: 'color 0.2s',
+              }}
+            >
+              Experts
+            </Link>
+            <Link
+              href="/pricing"
+              style={{
+                textDecoration: 'none',
+                color: '#666',
+                fontSize: '16px',
+                transition: 'color 0.2s',
+              }}
+            >
+              Pricing
+            </Link>
+          </nav>
+        )}
 
         {/* Auth Button */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -239,22 +264,24 @@ export default function Header() {
             </button>
           )}
 
-          {/* Mobile menu button */}
-          <button
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            style={{
-              display: 'block',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '8px',
-            }}
-            className="mobile-menu-btn"
-          >
-            <svg width="24" height="24" fill="#000" viewBox="0 0 24 24">
-              <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
-            </svg>
-          </button>
+          {/* Mobile menu button - Hidden in expert mode */}
+          {!expertMode.isExpertMode && (
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              style={{
+                display: 'block',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '8px',
+              }}
+              className="mobile-menu-btn"
+            >
+              <svg width="24" height="24" fill="#000" viewBox="0 0 24 24">
+                <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
 

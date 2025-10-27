@@ -52,6 +52,9 @@ const eslintConfig = [
       "next-env.d.ts",
       "*.config.js",
       "*.config.mjs",
+      "infrastructure/**/*.js",
+      "infrastructure/**/*.d.ts",
+      "infrastructure/cdk.out/**",
     ],
   },
 ];

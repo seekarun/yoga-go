@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import type { Expert, Course } from '@/types';
+import { getClientExpertContext } from '@/lib/domainContext';
 
 export default function ExpertDetailPage() {
   const params = useParams();
@@ -11,6 +12,19 @@ export default function ExpertDetailPage() {
   const [expert, setExpert] = useState<Expert | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expertMode, setExpertMode] = useState<{ isExpertMode: boolean; expertId: string | null }>({
+    isExpertMode: false,
+    expertId: null,
+  });
+
+  // Detect expert mode on mount
+  useEffect(() => {
+    const context = getClientExpertContext();
+    setExpertMode({
+      isExpertMode: context.isExpertMode,
+      expertId: context.expertId,
+    });
+  }, []);
 
   useEffect(() => {
     const fetchExpertData = async () => {
@@ -81,15 +95,18 @@ export default function ExpertDetailPage() {
       >
         <div style={{ textAlign: 'center' }}>
           <h2 style={{ fontSize: '24px', marginBottom: '16px' }}>Expert not found</h2>
-          <Link
-            href="/experts"
-            style={{
-              color: '#764ba2',
-              textDecoration: 'underline',
-            }}
-          >
-            View all experts
-          </Link>
+          {/* Hide "View all experts" link in expert mode */}
+          {!expertMode.isExpertMode && (
+            <Link
+              href="/experts"
+              style={{
+                color: '#764ba2',
+                textDecoration: 'underline',
+              }}
+            >
+              View all experts
+            </Link>
+          )}
         </div>
       </div>
     );
@@ -356,51 +373,53 @@ export default function ExpertDetailPage() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section
-        style={{
-          padding: '80px 20px',
-          background: '#000',
-          color: '#fff',
-          textAlign: 'center',
-        }}
-      >
-        <h2
+      {/* CTA Section - Hidden in expert mode */}
+      {!expertMode.isExpertMode && (
+        <section
           style={{
-            fontSize: '36px',
-            fontWeight: '600',
-            marginBottom: '16px',
+            padding: '80px 20px',
+            background: '#000',
+            color: '#fff',
+            textAlign: 'center',
           }}
         >
-          Ready to Start Learning?
-        </h2>
-        <p
-          style={{
-            fontSize: '20px',
-            opacity: 0.9,
-            marginBottom: '32px',
-            maxWidth: '600px',
-            margin: '0 auto 32px',
-          }}
-        >
-          Join thousands of students learning from {expert.name}
-        </p>
-        <Link
-          href="/courses"
-          style={{
-            display: 'inline-block',
-            padding: '14px 40px',
-            background: '#fff',
-            color: '#000',
-            borderRadius: '100px',
-            textDecoration: 'none',
-            fontWeight: '600',
-            fontSize: '16px',
-          }}
-        >
-          Browse All Courses
-        </Link>
-      </section>
+          <h2
+            style={{
+              fontSize: '36px',
+              fontWeight: '600',
+              marginBottom: '16px',
+            }}
+          >
+            Ready to Start Learning?
+          </h2>
+          <p
+            style={{
+              fontSize: '20px',
+              opacity: 0.9,
+              marginBottom: '32px',
+              maxWidth: '600px',
+              margin: '0 auto 32px',
+            }}
+          >
+            Join thousands of students learning from {expert.name}
+          </p>
+          <Link
+            href="/courses"
+            style={{
+              display: 'inline-block',
+              padding: '14px 40px',
+              background: '#fff',
+              color: '#000',
+              borderRadius: '100px',
+              textDecoration: 'none',
+              fontWeight: '600',
+              fontSize: '16px',
+            }}
+          >
+            Browse All Courses
+          </Link>
+        </section>
+      )}
     </div>
   );
 }

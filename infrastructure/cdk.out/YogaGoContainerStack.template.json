@@ -1,0 +1,1157 @@
+{
+  "Description": "ECS Fargate container infrastructure for Yoga-GO application",
+  "Resources": {
+    "YogaGoEcsClusterEAE50111": {
+      "Type": "AWS::ECS::Cluster",
+      "Properties": {
+        "ClusterName": "yoga-go-cluster",
+        "ClusterSettings": [
+          {
+            "Name": "containerInsights",
+            "Value": "disabled"
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": "production"
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "CDK"
+          },
+          {
+            "Key": "Project",
+            "Value": "yoga-go"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "YogaGoContainerStack/YogaGoEcsCluster/Resource"
+      }
+    },
+    "YogaGoEcsCluster2E438D52": {
+      "Type": "AWS::ECS::ClusterCapacityProviderAssociations",
+      "Properties": {
+        "CapacityProviders": [
+          {
+            "Ref": "AsgCapacityProvider760D11D9"
+          }
+        ],
+        "Cluster": {
+          "Ref": "YogaGoEcsClusterEAE50111"
+        },
+        "DefaultCapacityProviderStrategy": []
+      },
+      "Metadata": {
+        "aws:cdk:path": "YogaGoContainerStack/YogaGoEcsCluster/YogaGoEcsCluster"
+      }
+    },
+    "YogaGoLogGroupA50893EA": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/ecs/yoga-go",
+        "RetentionInDays": 7,
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": "production"
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "CDK"
+          },
+          {
+            "Key": "Project",
+            "Value": "yoga-go"
+          }
+        ]
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "YogaGoContainerStack/YogaGoLogGroup/Resource"
+      }
+    },
+    "TaskExecutionRole250D2532": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ecs-tasks.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+              ]
+            ]
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": "production"
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "CDK"
+          },
+          {
+            "Key": "Project",
+            "Value": "yoga-go"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "YogaGoContainerStack/TaskExecutionRole/Resource"
+      }
+    },
+    "TaskExecutionRoleDefaultPolicyA84DD1B0": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": ["secretsmanager:DescribeSecret", "secretsmanager:GetSecretValue"],
+              "Effect": "Allow",
+              "Resource": "arn:aws:secretsmanager:ap-southeast-2:313060311593:secret:yoga-go/app-secrets-??????"
+            },
+            {
+              "Action": [
+                "ecr:BatchCheckLayerAvailability",
+                "ecr:BatchGetImage",
+                "ecr:GetDownloadUrlForLayer"
+              ],
+              "Effect": "Allow",
+              "Resource": "arn:aws:ecr:ap-southeast-2:313060311593:repository/yoga-go"
+            },
+            {
+              "Action": "ecr:GetAuthorizationToken",
+              "Effect": "Allow",
+              "Resource": "*"
+            },
+            {
+              "Action": ["logs:CreateLogStream", "logs:PutLogEvents"],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": ["YogaGoLogGroupA50893EA", "Arn"]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "TaskExecutionRoleDefaultPolicyA84DD1B0",
+        "Roles": [
+          {
+            "Ref": "TaskExecutionRole250D2532"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "YogaGoContainerStack/TaskExecutionRole/DefaultPolicy/Resource"
+      }
+    },
+    "TaskRole30FC0FBB": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ecs-tasks.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": "production"
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "CDK"
+          },
+          {
+            "Key": "Project",
+            "Value": "yoga-go"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "YogaGoContainerStack/TaskRole/Resource"
+      }
+    },
+    "YogaGoInstanceSecurityGroupFF7DFB36": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Security group for Yoga-GO ECS EC2 instances",
+        "SecurityGroupEgress": [
+          {
+            "CidrIp": "0.0.0.0/0",
+            "Description": "Allow all outbound traffic by default",
+            "IpProtocol": "-1"
+          }
+        ],
+        "SecurityGroupIngress": [
+          {
+            "CidrIp": "0.0.0.0/0",
+            "Description": "Allow HTTP traffic from ALB on ephemeral ports for dynamic port mapping",
+            "FromPort": 32768,
+            "IpProtocol": "tcp",
+            "ToPort": 65535
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": "production"
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "CDK"
+          },
+          {
+            "Key": "Project",
+            "Value": "yoga-go"
+          }
+        ],
+        "VpcId": {
+          "Fn::ImportValue": "YogaGoNetworkStack:ExportsOutputRefYogaGoVpcF15D70276593FDC4"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "YogaGoContainerStack/YogaGoInstanceSecurityGroup/Resource"
+      }
+    },
+    "YogaGoAutoScalingGroupInstanceRole0DC092B6": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ec2.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": "production"
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "CDK"
+          },
+          {
+            "Key": "Name",
+            "Value": "YogaGoContainerStack/YogaGoAutoScalingGroup"
+          },
+          {
+            "Key": "Project",
+            "Value": "yoga-go"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "YogaGoContainerStack/YogaGoAutoScalingGroup/InstanceRole/Resource"
+      }
+    },
+    "YogaGoAutoScalingGroupInstanceRoleDefaultPolicy1B9BFBB3": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "ecs:DeregisterContainerInstance",
+                "ecs:RegisterContainerInstance",
+                "ecs:Submit*"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": ["YogaGoEcsClusterEAE50111", "Arn"]
+              }
+            },
+            {
+              "Action": ["ecs:Poll", "ecs:StartTelemetrySession"],
+              "Condition": {
+                "ArnEquals": {
+                  "ecs:cluster": {
+                    "Fn::GetAtt": ["YogaGoEcsClusterEAE50111", "Arn"]
+                  }
+                }
+              },
+              "Effect": "Allow",
+              "Resource": "*"
+            },
+            {
+              "Action": [
+                "ecr:GetAuthorizationToken",
+                "ecs:DiscoverPollEndpoint",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "YogaGoAutoScalingGroupInstanceRoleDefaultPolicy1B9BFBB3",
+        "Roles": [
+          {
+            "Ref": "YogaGoAutoScalingGroupInstanceRole0DC092B6"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "YogaGoContainerStack/YogaGoAutoScalingGroup/InstanceRole/DefaultPolicy/Resource"
+      }
+    },
+    "YogaGoAutoScalingGroupInstanceProfile077D8C2C": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "Roles": [
+          {
+            "Ref": "YogaGoAutoScalingGroupInstanceRole0DC092B6"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "YogaGoContainerStack/YogaGoAutoScalingGroup/InstanceProfile"
+      }
+    },
+    "YogaGoAutoScalingGroupLaunchTemplate642BF507": {
+      "Type": "AWS::EC2::LaunchTemplate",
+      "Properties": {
+        "LaunchTemplateData": {
+          "IamInstanceProfile": {
+            "Arn": {
+              "Fn::GetAtt": ["YogaGoAutoScalingGroupInstanceProfile077D8C2C", "Arn"]
+            }
+          },
+          "ImageId": {
+            "Ref": "SsmParameterValueawsserviceecsoptimizedamiamazonlinux2recommendedimageidC96584B6F00A464EAD1953AFF4B05118Parameter"
+          },
+          "InstanceType": "t3.small",
+          "Monitoring": {
+            "Enabled": false
+          },
+          "NetworkInterfaces": [
+            {
+              "AssociatePublicIpAddress": true,
+              "DeviceIndex": 0,
+              "Groups": [
+                {
+                  "Fn::GetAtt": ["YogaGoInstanceSecurityGroupFF7DFB36", "GroupId"]
+                }
+              ]
+            }
+          ],
+          "TagSpecifications": [
+            {
+              "ResourceType": "instance",
+              "Tags": [
+                {
+                  "Key": "Environment",
+                  "Value": "production"
+                },
+                {
+                  "Key": "ManagedBy",
+                  "Value": "CDK"
+                },
+                {
+                  "Key": "Name",
+                  "Value": "YogaGoContainerStack/YogaGoAutoScalingGroup/LaunchTemplate"
+                },
+                {
+                  "Key": "Project",
+                  "Value": "yoga-go"
+                }
+              ]
+            },
+            {
+              "ResourceType": "volume",
+              "Tags": [
+                {
+                  "Key": "Environment",
+                  "Value": "production"
+                },
+                {
+                  "Key": "ManagedBy",
+                  "Value": "CDK"
+                },
+                {
+                  "Key": "Name",
+                  "Value": "YogaGoContainerStack/YogaGoAutoScalingGroup/LaunchTemplate"
+                },
+                {
+                  "Key": "Project",
+                  "Value": "yoga-go"
+                }
+              ]
+            }
+          ],
+          "UserData": {
+            "Fn::Base64": {
+              "Fn::Join": [
+                "",
+                [
+                  "#!/bin/bash\necho ECS_CLUSTER=",
+                  {
+                    "Ref": "YogaGoEcsClusterEAE50111"
+                  },
+                  " >> /etc/ecs/ecs.config\nsudo iptables --insert FORWARD 1 --in-interface docker+ --destination 169.254.169.254/32 --jump DROP\nsudo service iptables save\necho ECS_AWSVPC_BLOCK_IMDS=true >> /etc/ecs/ecs.config"
+                ]
+              ]
+            }
+          }
+        },
+        "TagSpecifications": [
+          {
+            "ResourceType": "launch-template",
+            "Tags": [
+              {
+                "Key": "Environment",
+                "Value": "production"
+              },
+              {
+                "Key": "ManagedBy",
+                "Value": "CDK"
+              },
+              {
+                "Key": "Name",
+                "Value": "YogaGoContainerStack/YogaGoAutoScalingGroup/LaunchTemplate"
+              },
+              {
+                "Key": "Project",
+                "Value": "yoga-go"
+              }
+            ]
+          }
+        ]
+      },
+      "DependsOn": [
+        "YogaGoAutoScalingGroupInstanceRoleDefaultPolicy1B9BFBB3",
+        "YogaGoAutoScalingGroupInstanceRole0DC092B6"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "YogaGoContainerStack/YogaGoAutoScalingGroup/LaunchTemplate/Resource"
+      }
+    },
+    "YogaGoAutoScalingGroupASGAF9BC45B": {
+      "Type": "AWS::AutoScaling::AutoScalingGroup",
+      "Properties": {
+        "DesiredCapacity": "1",
+        "LaunchTemplate": {
+          "LaunchTemplateId": {
+            "Ref": "YogaGoAutoScalingGroupLaunchTemplate642BF507"
+          },
+          "Version": {
+            "Fn::GetAtt": ["YogaGoAutoScalingGroupLaunchTemplate642BF507", "LatestVersionNumber"]
+          }
+        },
+        "MaxSize": "1",
+        "MinSize": "1",
+        "Tags": [
+          {
+            "Key": "Environment",
+            "PropagateAtLaunch": true,
+            "Value": "production"
+          },
+          {
+            "Key": "ManagedBy",
+            "PropagateAtLaunch": true,
+            "Value": "CDK"
+          },
+          {
+            "Key": "Name",
+            "PropagateAtLaunch": true,
+            "Value": "YogaGoContainerStack/YogaGoAutoScalingGroup"
+          },
+          {
+            "Key": "Project",
+            "PropagateAtLaunch": true,
+            "Value": "yoga-go"
+          }
+        ],
+        "VPCZoneIdentifier": [
+          {
+            "Fn::ImportValue": "YogaGoNetworkStack:ExportsOutputRefYogaGoVpcPublicSubnet1SubnetD3F314A23F3D8C9E"
+          },
+          {
+            "Fn::ImportValue": "YogaGoNetworkStack:ExportsOutputRefYogaGoVpcPublicSubnet2SubnetB712836A30A7A460"
+          }
+        ]
+      },
+      "UpdatePolicy": {
+        "AutoScalingScheduledAction": {
+          "IgnoreUnmodifiedGroupSizeProperties": true
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "YogaGoContainerStack/YogaGoAutoScalingGroup/ASG"
+      }
+    },
+    "YogaGoAutoScalingGroupDrainECSHookFunctionServiceRoleCCB0C77D": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+              ]
+            ]
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": "production"
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "CDK"
+          },
+          {
+            "Key": "Name",
+            "Value": "YogaGoContainerStack/YogaGoAutoScalingGroup"
+          },
+          {
+            "Key": "Project",
+            "Value": "yoga-go"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "YogaGoContainerStack/YogaGoAutoScalingGroup/DrainECSHook/Function/ServiceRole/Resource"
+      }
+    },
+    "YogaGoAutoScalingGroupDrainECSHookFunctionServiceRoleDefaultPolicy1D48F04D": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "ec2:DescribeHosts",
+                "ec2:DescribeInstanceAttribute",
+                "ec2:DescribeInstanceStatus",
+                "ec2:DescribeInstances"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            },
+            {
+              "Action": "autoscaling:CompleteLifecycleAction",
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:aws:autoscaling:ap-southeast-2:313060311593:autoScalingGroup:*:autoScalingGroupName/",
+                    {
+                      "Ref": "YogaGoAutoScalingGroupASGAF9BC45B"
+                    }
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": [
+                "ecs:DescribeContainerInstances",
+                "ecs:DescribeTasks",
+                "ecs:ListTasks",
+                "ecs:UpdateContainerInstancesState"
+              ],
+              "Condition": {
+                "ArnEquals": {
+                  "ecs:cluster": {
+                    "Fn::GetAtt": ["YogaGoEcsClusterEAE50111", "Arn"]
+                  }
+                }
+              },
+              "Effect": "Allow",
+              "Resource": "*"
+            },
+            {
+              "Action": [
+                "ecs:ListContainerInstances",
+                "ecs:SubmitContainerStateChange",
+                "ecs:SubmitTaskStateChange"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": ["YogaGoEcsClusterEAE50111", "Arn"]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "YogaGoAutoScalingGroupDrainECSHookFunctionServiceRoleDefaultPolicy1D48F04D",
+        "Roles": [
+          {
+            "Ref": "YogaGoAutoScalingGroupDrainECSHookFunctionServiceRoleCCB0C77D"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "YogaGoContainerStack/YogaGoAutoScalingGroup/DrainECSHook/Function/ServiceRole/DefaultPolicy/Resource"
+      }
+    },
+    "YogaGoAutoScalingGroupDrainECSHookFunction962A7529": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "ZipFile": "import boto3, json, os, time\n\necs = boto3.client('ecs')\nautoscaling = boto3.client('autoscaling')\n\n\ndef lambda_handler(event, context):\n  print(json.dumps(dict(event, ResponseURL='...')))\n  cluster = os.environ['CLUSTER']\n  snsTopicArn = event['Records'][0]['Sns']['TopicArn']\n  lifecycle_event = json.loads(event['Records'][0]['Sns']['Message'])\n  instance_id = lifecycle_event.get('EC2InstanceId')\n  if not instance_id:\n    print(f\"Got event without EC2InstanceId: { json.dumps(dict(event, ResponseURL='...')) }\")\n    return\n\n  instance_arn = container_instance_arn(cluster, instance_id)\n  print('Instance %s has container instance ARN %s' % (lifecycle_event['EC2InstanceId'], instance_arn))\n\n  if not instance_arn:\n    return\n\n  task_arns = container_instance_task_arns(cluster, instance_arn)\n\n  if task_arns:\n    print('Instance ARN %s has task ARNs %s' % (instance_arn, ', '.join(task_arns)))\n\n  while has_tasks(cluster, instance_arn, task_arns):\n    time.sleep(10)\n\n  try:\n    print('Terminating instance %s' % instance_id)\n    autoscaling.complete_lifecycle_action(\n        LifecycleActionResult='CONTINUE',\n        **pick(lifecycle_event, 'LifecycleHookName', 'LifecycleActionToken', 'AutoScalingGroupName'))\n  except Exception as e:\n    # Lifecycle action may have already completed.\n    print(str(e))\n\n\ndef container_instance_arn(cluster, instance_id):\n  \"\"\"Turn an instance ID into a container instance ARN.\"\"\"\n  arns = ecs.list_container_instances(cluster=cluster, filter='ec2InstanceId==' + instance_id)['containerInstanceArns']\n  if not arns:\n    return None\n  return arns[0]\n\ndef container_instance_task_arns(cluster, instance_arn):\n  \"\"\"Fetch tasks for a container instance ARN.\"\"\"\n  arns = ecs.list_tasks(cluster=cluster, containerInstance=instance_arn)['taskArns']\n  return arns\n\ndef has_tasks(cluster, instance_arn, task_arns):\n  \"\"\"Return True if the instance is running tasks for the given cluster.\"\"\"\n  instances = ecs.describe_container_instances(cluster=cluster, containerInstances=[instance_arn])['containerInstances']\n  if not instances:\n    return False\n  instance = instances[0]\n\n  if instance['status'] == 'ACTIVE':\n    # Start draining, then try again later\n    set_container_instance_to_draining(cluster, instance_arn)\n    return True\n\n  task_count = None\n\n  if task_arns:\n    # Fetch details for tasks running on the container instance\n    tasks = ecs.describe_tasks(cluster=cluster, tasks=task_arns)['tasks']\n    if tasks:\n      # Consider any non-stopped tasks as running\n      task_count = sum(task['lastStatus'] != 'STOPPED' for task in tasks) + instance['pendingTasksCount']\n\n  if not task_count:\n    # Fallback to instance task counts if detailed task information is unavailable\n    task_count = instance['runningTasksCount'] + instance['pendingTasksCount']\n\n  print('Instance %s has %s tasks' % (instance_arn, task_count))\n\n  return task_count > 0\n\ndef set_container_instance_to_draining(cluster, instance_arn):\n  ecs.update_container_instances_state(\n      cluster=cluster,\n      containerInstances=[instance_arn], status='DRAINING')\n\n\ndef pick(dct, *keys):\n  \"\"\"Pick a subset of a dict.\"\"\"\n  return {k: v for k, v in dct.items() if k in keys}\n"
+        },
+        "Environment": {
+          "Variables": {
+            "CLUSTER": {
+              "Ref": "YogaGoEcsClusterEAE50111"
+            }
+          }
+        },
+        "Handler": "index.lambda_handler",
+        "Role": {
+          "Fn::GetAtt": ["YogaGoAutoScalingGroupDrainECSHookFunctionServiceRoleCCB0C77D", "Arn"]
+        },
+        "Runtime": "python3.13",
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": "production"
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "CDK"
+          },
+          {
+            "Key": "Name",
+            "Value": "YogaGoContainerStack/YogaGoAutoScalingGroup"
+          },
+          {
+            "Key": "Project",
+            "Value": "yoga-go"
+          }
+        ],
+        "Timeout": 310
+      },
+      "DependsOn": [
+        "YogaGoAutoScalingGroupDrainECSHookFunctionServiceRoleDefaultPolicy1D48F04D",
+        "YogaGoAutoScalingGroupDrainECSHookFunctionServiceRoleCCB0C77D"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "YogaGoContainerStack/YogaGoAutoScalingGroup/DrainECSHook/Function/Resource"
+      }
+    },
+    "YogaGoAutoScalingGroupDrainECSHookFunctionAllowInvokeYogaGoContainerStackYogaGoAutoScalingGroupLifecycleHookDrainHookTopic5F9B6D8DE1B5C85D": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": ["YogaGoAutoScalingGroupDrainECSHookFunction962A7529", "Arn"]
+        },
+        "Principal": "sns.amazonaws.com",
+        "SourceArn": {
+          "Ref": "YogaGoAutoScalingGroupLifecycleHookDrainHookTopic66F92E13"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "YogaGoContainerStack/YogaGoAutoScalingGroup/DrainECSHook/Function/AllowInvoke:YogaGoContainerStackYogaGoAutoScalingGroupLifecycleHookDrainHookTopic5F9B6D8D"
+      }
+    },
+    "YogaGoAutoScalingGroupDrainECSHookFunctionTopicEB4EB960": {
+      "Type": "AWS::SNS::Subscription",
+      "Properties": {
+        "Endpoint": {
+          "Fn::GetAtt": ["YogaGoAutoScalingGroupDrainECSHookFunction962A7529", "Arn"]
+        },
+        "Protocol": "lambda",
+        "TopicArn": {
+          "Ref": "YogaGoAutoScalingGroupLifecycleHookDrainHookTopic66F92E13"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "YogaGoContainerStack/YogaGoAutoScalingGroup/DrainECSHook/Function/Topic/Resource"
+      }
+    },
+    "YogaGoAutoScalingGroupLifecycleHookDrainHookTopic66F92E13": {
+      "Type": "AWS::SNS::Topic",
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": "production"
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "CDK"
+          },
+          {
+            "Key": "Name",
+            "Value": "YogaGoContainerStack/YogaGoAutoScalingGroup"
+          },
+          {
+            "Key": "Project",
+            "Value": "yoga-go"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "YogaGoContainerStack/YogaGoAutoScalingGroup/LifecycleHookDrainHook/Topic/Resource"
+      }
+    },
+    "YogaGoAutoScalingGroupLifecycleHookDrainHookRole62298876": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "autoscaling.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": "production"
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "CDK"
+          },
+          {
+            "Key": "Name",
+            "Value": "YogaGoContainerStack/YogaGoAutoScalingGroup"
+          },
+          {
+            "Key": "Project",
+            "Value": "yoga-go"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "YogaGoContainerStack/YogaGoAutoScalingGroup/LifecycleHookDrainHook/Role/Resource"
+      }
+    },
+    "YogaGoAutoScalingGroupLifecycleHookDrainHookRoleDefaultPolicy4E3282A8": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sns:Publish",
+              "Effect": "Allow",
+              "Resource": {
+                "Ref": "YogaGoAutoScalingGroupLifecycleHookDrainHookTopic66F92E13"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "YogaGoAutoScalingGroupLifecycleHookDrainHookRoleDefaultPolicy4E3282A8",
+        "Roles": [
+          {
+            "Ref": "YogaGoAutoScalingGroupLifecycleHookDrainHookRole62298876"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "YogaGoContainerStack/YogaGoAutoScalingGroup/LifecycleHookDrainHook/Role/DefaultPolicy/Resource"
+      }
+    },
+    "YogaGoAutoScalingGroupLifecycleHookDrainHookA2C80F2D": {
+      "Type": "AWS::AutoScaling::LifecycleHook",
+      "Properties": {
+        "AutoScalingGroupName": {
+          "Ref": "YogaGoAutoScalingGroupASGAF9BC45B"
+        },
+        "DefaultResult": "CONTINUE",
+        "HeartbeatTimeout": 300,
+        "LifecycleTransition": "autoscaling:EC2_INSTANCE_TERMINATING",
+        "NotificationTargetARN": {
+          "Ref": "YogaGoAutoScalingGroupLifecycleHookDrainHookTopic66F92E13"
+        },
+        "RoleARN": {
+          "Fn::GetAtt": ["YogaGoAutoScalingGroupLifecycleHookDrainHookRole62298876", "Arn"]
+        }
+      },
+      "DependsOn": [
+        "YogaGoAutoScalingGroupLifecycleHookDrainHookRoleDefaultPolicy4E3282A8",
+        "YogaGoAutoScalingGroupLifecycleHookDrainHookRole62298876"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "YogaGoContainerStack/YogaGoAutoScalingGroup/LifecycleHookDrainHook/Resource"
+      }
+    },
+    "AsgCapacityProvider760D11D9": {
+      "Type": "AWS::ECS::CapacityProvider",
+      "Properties": {
+        "AutoScalingGroupProvider": {
+          "AutoScalingGroupArn": {
+            "Ref": "YogaGoAutoScalingGroupASGAF9BC45B"
+          },
+          "ManagedScaling": {
+            "Status": "ENABLED",
+            "TargetCapacity": 100
+          },
+          "ManagedTerminationProtection": "DISABLED"
+        },
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": "production"
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "CDK"
+          },
+          {
+            "Key": "Project",
+            "Value": "yoga-go"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "YogaGoContainerStack/AsgCapacityProvider/AsgCapacityProvider"
+      }
+    },
+    "YogaGoTaskDefinition2183261A": {
+      "Type": "AWS::ECS::TaskDefinition",
+      "Properties": {
+        "ContainerDefinitions": [
+          {
+            "Environment": [
+              {
+                "Name": "NODE_ENV",
+                "Value": "production"
+              },
+              {
+                "Name": "PORT",
+                "Value": "3000"
+              },
+              {
+                "Name": "AUTH0_BASE_URL",
+                "Value": "https://yogago.com"
+              },
+              {
+                "Name": "AUTH0_ISSUER_BASE_URL",
+                "Value": "https://dev-38rb20a0538gqfxt.us.auth0.com"
+              },
+              {
+                "Name": "AUTH0_CLIENT_ID",
+                "Value": "MZdlRJIVEzHenW7hCvzjcJ87x5ZeKKar"
+              },
+              {
+                "Name": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+                "Value": "pk_test_51RYOTuFplNdXQtSqfczKFS1wTrWKxa5MEd5UF3QVt4Mjcv4eeLBO5bR4GTTIv6blqm6ttXyt1ctfi6GzndEx65h600R7gdp133"
+              },
+              {
+                "Name": "NEXT_PUBLIC_RAZORPAY_KEY_ID",
+                "Value": "rzp_test_RSCnNdx9dagMuG"
+              },
+              {
+                "Name": "CLOUDFLARE_ACCOUNT_ID",
+                "Value": "98f8ca5559ee6d766683c76e1b3cac22"
+              },
+              {
+                "Name": "CLOUDFLARE_IMAGES_ACCOUNT_HASH",
+                "Value": "customer-iq7mgkvtb3bwxqf5.cloudflarestream.com"
+              }
+            ],
+            "Essential": true,
+            "HealthCheck": {
+              "Command": ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"],
+              "Interval": 30,
+              "Retries": 3,
+              "StartPeriod": 60,
+              "Timeout": 10
+            },
+            "Image": {
+              "Fn::Join": [
+                "",
+                [
+                  "313060311593.dkr.ecr.ap-southeast-2.",
+                  {
+                    "Ref": "AWS::URLSuffix"
+                  },
+                  "/yoga-go:latest"
+                ]
+              ]
+            },
+            "LogConfiguration": {
+              "LogDriver": "awslogs",
+              "Options": {
+                "awslogs-group": {
+                  "Ref": "YogaGoLogGroupA50893EA"
+                },
+                "awslogs-stream-prefix": "yoga-go",
+                "awslogs-region": "ap-southeast-2"
+              }
+            },
+            "MemoryReservation": 512,
+            "Name": "yoga-go",
+            "PortMappings": [
+              {
+                "ContainerPort": 3000,
+                "HostPort": 0,
+                "Protocol": "tcp"
+              }
+            ],
+            "Secrets": [
+              {
+                "Name": "MONGODB_URI",
+                "ValueFrom": "arn:aws:secretsmanager:ap-southeast-2:313060311593:secret:yoga-go/app-secrets:MONGODB_URI::"
+              },
+              {
+                "Name": "AUTH0_SECRET",
+                "ValueFrom": "arn:aws:secretsmanager:ap-southeast-2:313060311593:secret:yoga-go/app-secrets:AUTH0_SECRET::"
+              },
+              {
+                "Name": "AUTH0_CLIENT_SECRET",
+                "ValueFrom": "arn:aws:secretsmanager:ap-southeast-2:313060311593:secret:yoga-go/app-secrets:AUTH0_CLIENT_SECRET::"
+              },
+              {
+                "Name": "CLOUDFLARE_API_TOKEN",
+                "ValueFrom": "arn:aws:secretsmanager:ap-southeast-2:313060311593:secret:yoga-go/app-secrets:CLOUDFLARE_API_TOKEN::"
+              },
+              {
+                "Name": "STRIPE_SECRET_KEY",
+                "ValueFrom": "arn:aws:secretsmanager:ap-southeast-2:313060311593:secret:yoga-go/app-secrets:STRIPE_SECRET_KEY::"
+              },
+              {
+                "Name": "RAZORPAY_KEY_SECRET",
+                "ValueFrom": "arn:aws:secretsmanager:ap-southeast-2:313060311593:secret:yoga-go/app-secrets:RAZORPAY_KEY_SECRET::"
+              }
+            ]
+          }
+        ],
+        "ExecutionRoleArn": {
+          "Fn::GetAtt": ["TaskExecutionRole250D2532", "Arn"]
+        },
+        "Family": "yoga-go-task",
+        "NetworkMode": "bridge",
+        "RequiresCompatibilities": ["EC2"],
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": "production"
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "CDK"
+          },
+          {
+            "Key": "Project",
+            "Value": "yoga-go"
+          }
+        ],
+        "TaskRoleArn": {
+          "Fn::GetAtt": ["TaskRole30FC0FBB", "Arn"]
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "YogaGoContainerStack/YogaGoTaskDefinition/Resource"
+      }
+    },
+    "YogaGoEcsService00483882": {
+      "Type": "AWS::ECS::Service",
+      "Properties": {
+        "CapacityProviderStrategy": [
+          {
+            "CapacityProvider": {
+              "Ref": "AsgCapacityProvider760D11D9"
+            },
+            "Weight": 1
+          }
+        ],
+        "Cluster": {
+          "Ref": "YogaGoEcsClusterEAE50111"
+        },
+        "DeploymentConfiguration": {
+          "DeploymentCircuitBreaker": {
+            "Enable": true,
+            "Rollback": false
+          },
+          "MaximumPercent": 200,
+          "MinimumHealthyPercent": 50
+        },
+        "DesiredCount": 0,
+        "EnableECSManagedTags": false,
+        "HealthCheckGracePeriodSeconds": 120,
+        "LoadBalancers": [
+          {
+            "ContainerName": "yoga-go",
+            "ContainerPort": 3000,
+            "TargetGroupArn": {
+              "Fn::ImportValue": "YogaGoLoadBalancerStack:ExportsOutputRefYogaGoTargetGroupC2485A7A64B60202"
+            }
+          }
+        ],
+        "SchedulingStrategy": "REPLICA",
+        "ServiceName": "yoga-go-service",
+        "Tags": [
+          {
+            "Key": "Environment",
+            "Value": "production"
+          },
+          {
+            "Key": "ManagedBy",
+            "Value": "CDK"
+          },
+          {
+            "Key": "Project",
+            "Value": "yoga-go"
+          }
+        ],
+        "TaskDefinition": {
+          "Ref": "YogaGoTaskDefinition2183261A"
+        }
+      },
+      "DependsOn": ["TaskRole30FC0FBB"],
+      "Metadata": {
+        "aws:cdk:path": "YogaGoContainerStack/YogaGoEcsService/Service"
+      }
+    },
+    "CDKMetadata": {
+      "Type": "AWS::CDK::Metadata",
+      "Properties": {
+        "Analytics": "v2:deflate64:H4sIAAAAAAAA/2WRzW4qMQyFn6X7kLbTvgClvxJSRwz7K2MMdcnEozihGkV592qG0gt05ePPPmdhV7aqbu3NFXzpBNe7ieOVzU0E3Bn40n+ZMNgFdaIcJfQPoGQI1eaZSxopmNnG/5Uz6AA59nWQPa8pTFUFGSKLVzPV7eV8tF6yJ6yWoLtH2rDnwTpsXRLxEdhTOGFPWDUU9ow0GH5kMU62avNcti9BUjeMjroYhtbmhbjRMdZaHGM/tP/Vm9cIHqkOsmFHxRBWNjeEKXDsf2PPwRySx48ltZ2DOOafk2IgRVEEx35r8zRFaQ7Nb+AfNucNYY+OXkV2Y+QpKMZBu1qDzc/J4/Fwp7qm0LIqiy9GvdrcpJVi4O64cNYvpWMcbz+IUsyCVFI4nLeGAC39fP89xS7FYrysyX7q9b66t3f25upTmSch+cgt2cWhfgPHNtA5eAIAAA=="
+      },
+      "Metadata": {
+        "aws:cdk:path": "YogaGoContainerStack/CDKMetadata/Default"
+      }
+    }
+  },
+  "Parameters": {
+    "SsmParameterValueawsserviceecsoptimizedamiamazonlinux2recommendedimageidC96584B6F00A464EAD1953AFF4B05118Parameter": {
+      "Type": "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>",
+      "Default": "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id"
+    },
+    "BootstrapVersion": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/cdk-bootstrap/hnb659fds/version",
+      "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+    }
+  },
+  "Outputs": {
+    "EcrRepositoryUri": {
+      "Description": "ECR Repository URI",
+      "Value": {
+        "Fn::Join": [
+          "",
+          [
+            "313060311593.dkr.ecr.ap-southeast-2.",
+            {
+              "Ref": "AWS::URLSuffix"
+            },
+            "/yoga-go"
+          ]
+        ]
+      },
+      "Export": {
+        "Name": "yoga-go-ecr-uri"
+      }
+    },
+    "EcsClusterName": {
+      "Description": "ECS Cluster Name",
+      "Value": {
+        "Ref": "YogaGoEcsClusterEAE50111"
+      },
+      "Export": {
+        "Name": "yoga-go-cluster-name"
+      }
+    },
+    "EcsServiceName": {
+      "Description": "ECS Service Name",
+      "Value": {
+        "Fn::GetAtt": ["YogaGoEcsService00483882", "Name"]
+      },
+      "Export": {
+        "Name": "yoga-go-service-name"
+      }
+    },
+    "SecretsManagerArn": {
+      "Description": "Secrets Manager ARN",
+      "Value": "arn:aws:secretsmanager:ap-southeast-2:313060311593:secret:yoga-go/app-secrets",
+      "Export": {
+        "Name": "yoga-go-secrets-arn"
+      }
+    },
+    "AutoScalingGroupName": {
+      "Description": "Auto Scaling Group Name",
+      "Value": {
+        "Ref": "YogaGoAutoScalingGroupASGAF9BC45B"
+      }
+    }
+  },
+  "Rules": {
+    "CheckBootstrapVersion": {
+      "Assertions": [
+        {
+          "Assert": {
+            "Fn::Not": [
+              {
+                "Fn::Contains": [
+                  ["1", "2", "3", "4", "5"],
+                  {
+                    "Ref": "BootstrapVersion"
+                  }
+                ]
+              }
+            ]
+          },
+          "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+        }
+      ]
+    }
+  }
+}

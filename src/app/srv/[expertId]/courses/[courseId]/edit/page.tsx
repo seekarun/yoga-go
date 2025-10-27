@@ -40,7 +40,7 @@ export default function EditCoursePage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [pollingVideoId, setPollingVideoId] = useState<string | null>(null);
-  const [coverImageAsset, setCoverImageAsset] = useState<Asset | null>(null);
+  const [_coverImageAsset, setCoverImageAsset] = useState<Asset | null>(null);
   const [uploadError, setUploadError] = useState('');
 
   // Fetch existing course data on mount
