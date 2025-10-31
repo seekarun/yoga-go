@@ -39,7 +39,15 @@ const AssetSchema = new Schema<AssetDocument>(
     },
     category: {
       type: String,
-      enum: ['avatar', 'banner', 'thumbnail', 'course', 'lesson', 'other'] as AssetCategory[],
+      enum: [
+        'avatar',
+        'banner',
+        'thumbnail',
+        'course',
+        'lesson',
+        'about',
+        'other',
+      ] as AssetCategory[],
       required: true,
     },
     dimensions: { type: AssetDimensionsSchema, required: true },

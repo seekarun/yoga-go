@@ -1,8 +1,6 @@
 {
   "permissions": {
-    "allow": [
-      "Bash(AWS_PROFILE=yoga aws cloudformation describe-stack-events --stack-name YogaGoContainerStack --region ap-southeast-2 --max-items 5 --output json --query 'StackEvents[*].{Time:Timestamp,Status:ResourceStatus,Type:ResourceType,Id:LogicalResourceId}')"
-    ],
+    "allow": ["Bash(npm run build:*)", "Bash(npm run lint:fix:*)"],
     "deny": [],
     "ask": []
   }

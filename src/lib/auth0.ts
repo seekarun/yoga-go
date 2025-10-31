@@ -1,6 +1,9 @@
 /**
  * Auth0 Client Configuration
  * This creates the Auth0 client instance used throughout the application
+ *
+ * Note: User database sync happens in /api/auth/me route, not in middleware,
+ * because middleware runs in Edge Runtime which doesn't support Mongoose.
  */
 import { Auth0Client } from '@auth0/nextjs-auth0/server';
 

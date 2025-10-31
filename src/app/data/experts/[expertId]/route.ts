@@ -99,6 +99,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ expe
 
     // Parse request body
     const body = await request.json();
+    console.log(`[DBG][experts/[expertId]/route.ts] Received body:`, body);
+    console.log(`[DBG][experts/[expertId]/route.ts] customLandingPage:`, body.customLandingPage);
 
     // Build update object - only include provided fields
     const updateData: any = {};
@@ -116,6 +118,17 @@ export async function PUT(request: Request, { params }: { params: Promise<{ expe
     if (body.experience !== undefined) updateData.experience = body.experience;
     if (body.courses !== undefined) updateData.courses = body.courses;
     if (body.socialLinks !== undefined) updateData.socialLinks = body.socialLinks;
+    if (body.promoVideo !== undefined) updateData.promoVideo = body.promoVideo;
+    if (body.promoVideoCloudflareId !== undefined)
+      updateData.promoVideoCloudflareId = body.promoVideoCloudflareId;
+    if (body.promoVideoStatus !== undefined) updateData.promoVideoStatus = body.promoVideoStatus;
+    if (body.customLandingPage !== undefined) updateData.customLandingPage = body.customLandingPage;
+
+    console.log(`[DBG][experts/[expertId]/route.ts] Update data:`, updateData);
+    console.log(
+      `[DBG][experts/[expertId]/route.ts] customLandingPage to save:`,
+      updateData.customLandingPage
+    );
 
     // Update expert
     const updatedExpert = await ExpertModel.findByIdAndUpdate(expertId, updateData, {
@@ -124,6 +137,10 @@ export async function PUT(request: Request, { params }: { params: Promise<{ expe
     }).exec();
 
     console.log(`[DBG][experts/[expertId]/route.ts] ✓ Updated expert: ${expertId}`);
+    console.log(
+      `[DBG][experts/[expertId]/route.ts] Saved customLandingPage:`,
+      (updatedExpert as any)?.customLandingPage
+    );
 
     // Transform response
     const expert: Expert = {

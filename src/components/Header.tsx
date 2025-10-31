@@ -14,11 +14,12 @@ export default function Header() {
     expertId: null,
   });
 
-  // Detect expert mode on mount
+  // Detect expert mode on mount AND when viewing /experts/[expertId] pages
   useEffect(() => {
     const context = getClientExpertContext();
+    const isOnExpertPage = window.location.pathname.startsWith('/experts/');
     setExpertMode({
-      isExpertMode: context.isExpertMode,
+      isExpertMode: context.isExpertMode || isOnExpertPage,
       expertId: context.expertId,
     });
   }, []);
@@ -32,8 +33,13 @@ export default function Header() {
     setIsUserMenuOpen(false);
   };
 
-  // In expert mode, logo should not link to home
+  // In expert mode or on expert pages, logo should not link to home
   const logoHref = expertMode.isExpertMode ? '#' : '/';
+
+  // Don't render header at all on expert pages
+  if (expertMode.isExpertMode) {
+    return null;
+  }
 
   return (
     <header
@@ -135,12 +141,24 @@ export default function Header() {
             >
               Pricing
             </Link>
+            <Link
+              href="/srv"
+              style={{
+                textDecoration: 'none',
+                color: '#764ba2',
+                fontSize: '16px',
+                fontWeight: '500',
+                transition: 'color 0.2s',
+              }}
+            >
+              For Experts
+            </Link>
           </nav>
         )}
 
-        {/* Auth Button */}
+        {/* Auth Button - Hidden in expert mode */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          {isAuthenticated ? (
+          {!expertMode.isExpertMode && isAuthenticated ? (
             <div style={{ position: 'relative' }}>
               <button
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
@@ -231,6 +249,25 @@ export default function Header() {
                   >
                     Profile
                   </Link>
+                  {user?.role === 'expert' && (
+                    <>
+                      <div style={{ height: '1px', background: '#e0e0e0', margin: '8px 0' }} />
+                      <Link
+                        href="/srv"
+                        style={{
+                          display: 'block',
+                          padding: '12px 20px',
+                          textDecoration: 'none',
+                          color: '#764ba2',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                        }}
+                        onClick={() => setIsUserMenuOpen(false)}
+                      >
+                        Expert Dashboard
+                      </Link>
+                    </>
+                  )}
                   <div style={{ height: '1px', background: '#e0e0e0', margin: '8px 0' }} />
                   <button
                     onClick={() => {
@@ -254,7 +291,7 @@ export default function Header() {
                 </div>
               )}
             </div>
-          ) : (
+          ) : !expertMode.isExpertMode ? (
             <button
               onClick={handleLogin}
               className="btn btn-primary"
@@ -262,7 +299,7 @@ export default function Header() {
             >
               Sign In
             </button>
-          )}
+          ) : null}
 
           {/* Mobile menu button - Hidden in expert mode */}
           {!expertMode.isExpertMode && (
