@@ -104,6 +104,9 @@ const ExpertSchema = new Schema<ExpertDocument>(
       type: String,
       enum: ['uploading', 'processing', 'ready', 'error'],
     },
+    liveStreamingEnabled: { type: Boolean, default: true },
+    totalLiveSessions: { type: Number, default: 0 },
+    upcomingLiveSessions: { type: Number, default: 0 },
   },
   {
     timestamps: true,

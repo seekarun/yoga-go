@@ -60,6 +60,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ expe
       id: expertId,
       totalCourses,
       totalStudents,
+      // Ensure liveStreamingEnabled is always present (default to true if not set)
+      liveStreamingEnabled: (expertDoc as any).liveStreamingEnabled ?? true,
+      totalLiveSessions: (expertDoc as any).totalLiveSessions ?? 0,
+      upcomingLiveSessions: (expertDoc as any).upcomingLiveSessions ?? 0,
     };
 
     const response: ApiResponse<Expert> = {

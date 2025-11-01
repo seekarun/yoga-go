@@ -1,6 +1,7 @@
 import { auth0 } from './auth0';
 import { connectToDatabase } from './mongodb';
 import User from '@/models/User';
+import CourseModel from '@/models/Course';
 import type { User as UserType, MembershipType, UserRole } from '@/types';
 import { nanoid } from 'nanoid';
 
@@ -254,4 +255,90 @@ export async function requireExpertAuth(): Promise<{ session: any; user: UserTyp
   }
 
   return { session, user };
+}
+
+/**
+ * Require expert ownership - validates that the authenticated expert owns the requested profile
+ * Returns the user if valid, throws error if not
+ *
+ * @param expertId The expert profile ID being accessed
+ * @returns The authenticated user
+ */
+export async function requireExpertOwnership(expertId: string): Promise<UserType> {
+  console.log('[DBG][auth] Checking expert ownership for expertId:', expertId);
+
+  const session = await getSession();
+
+  if (!session || !session.user) {
+    throw new Error('Unauthorized');
+  }
+
+  const user = await getUserByAuth0Id(session.user.sub);
+
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  if (user.role !== 'expert') {
+    throw new Error('Forbidden - Expert access required');
+  }
+
+  if (user.expertProfile !== expertId) {
+    console.log(
+      `[DBG][auth] Ownership check failed: user.expertProfile=${user.expertProfile}, requested expertId=${expertId}`
+    );
+    throw new Error('Forbidden - You do not own this expert profile');
+  }
+
+  console.log('[DBG][auth] Ownership check passed');
+  return user;
+}
+
+/**
+ * Require course ownership - validates that the authenticated expert owns the requested course
+ * Returns the user if valid, throws error if not
+ *
+ * @param courseId The course ID being accessed
+ * @returns The authenticated user
+ */
+export async function requireCourseOwnership(courseId: string): Promise<UserType> {
+  console.log('[DBG][auth] Checking course ownership for courseId:', courseId);
+
+  const session = await getSession();
+
+  if (!session || !session.user) {
+    throw new Error('Unauthorized');
+  }
+
+  const user = await getUserByAuth0Id(session.user.sub);
+
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  if (user.role !== 'expert') {
+    throw new Error('Forbidden - Expert access required');
+  }
+
+  if (!user.expertProfile) {
+    throw new Error('Expert profile not found');
+  }
+
+  // Check if course exists and belongs to this expert
+  await connectToDatabase();
+  const course = await CourseModel.findById(courseId);
+
+  if (!course) {
+    throw new Error('Course not found');
+  }
+
+  if (course.instructor.id !== user.expertProfile) {
+    console.log(
+      `[DBG][auth] Course ownership check failed: course.instructor.id=${course.instructor.id}, user.expertProfile=${user.expertProfile}`
+    );
+    throw new Error('Forbidden - You do not own this course');
+  }
+
+  console.log('[DBG][auth] Course ownership check passed');
+  return user;
 }

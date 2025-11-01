@@ -1,11 +1,12 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { usePayment } from '@/contexts/PaymentContext';
 import { PAYMENT_CONFIG } from '@/config/payment';
 import { formatPrice } from '@/lib/geolocation';
 import PaymentModal from '@/components/payment/PaymentModal';
+import { posthog } from '@/providers/PostHogProvider';
 
 const testimonials = [
   {
@@ -61,6 +62,16 @@ export default function PricingPage() {
   const testimonialsScrollRef = useRef<HTMLDivElement>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<'curious' | 'committed' | null>(null);
+  const [billingInterval, setBillingInterval] = useState<'monthly' | 'yearly'>('yearly');
+  const [selectedInterval, setSelectedInterval] = useState<'monthly' | 'yearly'>('yearly');
+
+  // Track pricing page view
+  useEffect(() => {
+    posthog.capture('pricing_page_viewed', {
+      currency,
+      defaultInterval: 'yearly',
+    });
+  }, []); // Only track once on mount
 
   const scroll = (ref: React.RefObject<HTMLDivElement | null>, direction: 'left' | 'right') => {
     if (ref.current) {
@@ -73,7 +84,17 @@ export default function PricingPage() {
   };
 
   const handlePlanSelect = (plan: 'curious' | 'committed') => {
+    // Track plan selection
+    const planPrice = plan === 'curious' ? curiousPrice : committedPrice;
+    posthog.capture('plan_selected', {
+      plan,
+      billingInterval,
+      currency,
+      amount: planPrice,
+    });
+
     setSelectedPlan(plan);
+    setSelectedInterval(billingInterval);
     setShowPaymentModal(true);
   };
 
@@ -81,11 +102,21 @@ export default function PricingPage() {
     router.push('/courses');
   };
 
-  // Get localized pricing
+  // Get localized pricing based on billing interval
   const curiousPrice =
-    currency === 'INR' ? PAYMENT_CONFIG.plans.curious.inr : PAYMENT_CONFIG.plans.curious.usd;
+    currency === 'INR'
+      ? PAYMENT_CONFIG.plans.curious[billingInterval].inr
+      : PAYMENT_CONFIG.plans.curious[billingInterval].usd;
   const committedPrice =
-    currency === 'INR' ? PAYMENT_CONFIG.plans.committed.inr : PAYMENT_CONFIG.plans.committed.usd;
+    currency === 'INR'
+      ? PAYMENT_CONFIG.plans.committed[billingInterval].inr
+      : PAYMENT_CONFIG.plans.committed[billingInterval].usd;
+
+  // Calculate effective monthly rate for yearly plans (for display)
+  const curiousMonthlyRate =
+    billingInterval === 'yearly' ? Math.round(curiousPrice / 12) : curiousPrice;
+  const committedMonthlyRate =
+    billingInterval === 'yearly' ? Math.round(committedPrice / 12) : committedPrice;
 
   return (
     <div style={{ paddingTop: '64px', minHeight: '100vh', background: '#fff' }}>
@@ -124,6 +155,89 @@ export default function PricingPage() {
       {/* Pricing Cards */}
       <section style={{ padding: '80px 20px', background: '#f8f8f8' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+          {/* Billing Interval Toggle */}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              marginBottom: '48px',
+            }}
+          >
+            <div
+              style={{
+                display: 'inline-flex',
+                background: '#fff',
+                borderRadius: '12px',
+                padding: '6px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                gap: '4px',
+              }}
+            >
+              <button
+                onClick={() => {
+                  posthog.capture('billing_interval_toggled', {
+                    from: billingInterval,
+                    to: 'monthly',
+                    currency,
+                  });
+                  setBillingInterval('monthly');
+                }}
+                style={{
+                  padding: '12px 32px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: billingInterval === 'monthly' ? '#764ba2' : 'transparent',
+                  color: billingInterval === 'monthly' ? '#fff' : '#4a5568',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+              >
+                Monthly
+              </button>
+              <button
+                onClick={() => {
+                  posthog.capture('billing_interval_toggled', {
+                    from: billingInterval,
+                    to: 'yearly',
+                    currency,
+                  });
+                  setBillingInterval('yearly');
+                }}
+                style={{
+                  padding: '12px 32px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: billingInterval === 'yearly' ? '#764ba2' : 'transparent',
+                  color: billingInterval === 'yearly' ? '#fff' : '#4a5568',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  position: 'relative',
+                }}
+              >
+                Yearly
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: '-8px',
+                    right: '-8px',
+                    background: '#48bb78',
+                    color: '#fff',
+                    padding: '2px 8px',
+                    borderRadius: '100px',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                  }}
+                >
+                  Save 20%
+                </span>
+              </button>
+            </div>
+          </div>
+
           <div
             style={{
               display: 'grid',
@@ -283,9 +397,15 @@ export default function PricingPage() {
                   }}
                 >
                   {locationLoading ? '...' : formatPrice(curiousPrice, currency)}
-                  <span style={{ fontSize: '18px', color: '#666', fontWeight: '400' }}>/year</span>
+                  <span style={{ fontSize: '18px', color: '#666', fontWeight: '400' }}>
+                    /{billingInterval === 'monthly' ? 'month' : 'year'}
+                  </span>
                 </div>
-                <div style={{ fontSize: '14px', color: '#666' }}>One course token per month</div>
+                <div style={{ fontSize: '14px', color: '#666' }}>
+                  {billingInterval === 'yearly'
+                    ? `~${formatPrice(curiousMonthlyRate, currency)}/mo · Billed annually`
+                    : '12 course tokens per year (1 per month)'}
+                </div>
               </div>
               <ul
                 style={{
@@ -345,13 +465,12 @@ export default function PricingPage() {
             {/* Committed */}
             <div
               style={{
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                background: '#fff',
                 borderRadius: '16px',
                 padding: '40px',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                 display: 'flex',
                 flexDirection: 'column',
-                color: '#fff',
               }}
             >
               <div
@@ -366,7 +485,7 @@ export default function PricingPage() {
               <div
                 style={{
                   fontSize: '14px',
-                  color: 'rgba(255,255,255,0.9)',
+                  color: '#666',
                   marginBottom: '24px',
                 }}
               >
@@ -377,6 +496,7 @@ export default function PricingPage() {
                   style={{
                     fontSize: '48px',
                     fontWeight: '700',
+                    color: '#764ba2',
                     marginBottom: '8px',
                   }}
                 >
@@ -384,15 +504,17 @@ export default function PricingPage() {
                   <span
                     style={{
                       fontSize: '18px',
-                      color: 'rgba(255,255,255,0.9)',
+                      color: '#666',
                       fontWeight: '400',
                     }}
                   >
-                    /year
+                    /{billingInterval === 'monthly' ? 'month' : 'year'}
                   </span>
                 </div>
-                <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.9)' }}>
-                  Unlimited access to everything
+                <div style={{ fontSize: '14px', color: '#666' }}>
+                  {billingInterval === 'yearly'
+                    ? `~${formatPrice(committedMonthlyRate, currency)}/mo · Billed annually`
+                    : 'Unlimited access to everything'}
                 </div>
               </div>
               <ul
@@ -404,32 +526,32 @@ export default function PricingPage() {
                 }}
               >
                 <li style={{ marginBottom: '16px', display: 'flex', gap: '12px' }}>
-                  <span style={{ fontSize: '20px' }}>✓</span>
-                  <span>All courses included</span>
+                  <span style={{ color: '#48bb78', fontSize: '20px' }}>✓</span>
+                  <span style={{ color: '#4a5568' }}>All courses included</span>
                 </li>
                 <li style={{ marginBottom: '16px', display: 'flex', gap: '12px' }}>
-                  <span style={{ fontSize: '20px' }}>✓</span>
-                  <span>Unlimited streaming access</span>
+                  <span style={{ color: '#48bb78', fontSize: '20px' }}>✓</span>
+                  <span style={{ color: '#4a5568' }}>Unlimited streaming access</span>
                 </li>
                 <li style={{ marginBottom: '16px', display: 'flex', gap: '12px' }}>
-                  <span style={{ fontSize: '20px' }}>✓</span>
-                  <span>Early access to new courses</span>
+                  <span style={{ color: '#48bb78', fontSize: '20px' }}>✓</span>
+                  <span style={{ color: '#4a5568' }}>Early access to new courses</span>
                 </li>
                 <li style={{ marginBottom: '16px', display: 'flex', gap: '12px' }}>
-                  <span style={{ fontSize: '20px' }}>✓</span>
-                  <span>Priority support</span>
+                  <span style={{ color: '#48bb78', fontSize: '20px' }}>✓</span>
+                  <span style={{ color: '#4a5568' }}>Priority support</span>
                 </li>
                 <li style={{ marginBottom: '16px', display: 'flex', gap: '12px' }}>
-                  <span style={{ fontSize: '20px' }}>✓</span>
-                  <span>Certificate of completion</span>
+                  <span style={{ color: '#48bb78', fontSize: '20px' }}>✓</span>
+                  <span style={{ color: '#4a5568' }}>Certificate of completion</span>
                 </li>
                 <li style={{ marginBottom: '16px', display: 'flex', gap: '12px' }}>
-                  <span style={{ fontSize: '20px' }}>✓</span>
-                  <span>Exclusive community access</span>
+                  <span style={{ color: '#48bb78', fontSize: '20px' }}>✓</span>
+                  <span style={{ color: '#4a5568' }}>Exclusive community access</span>
                 </li>
                 <li style={{ marginBottom: '16px', display: 'flex', gap: '12px' }}>
-                  <span style={{ fontSize: '20px' }}>✓</span>
-                  <span>Monthly live Q&A with experts</span>
+                  <span style={{ color: '#48bb78', fontSize: '20px' }}>✓</span>
+                  <span style={{ color: '#4a5568' }}>Monthly live Q&A with experts</span>
                 </li>
               </ul>
               <button
@@ -438,8 +560,8 @@ export default function PricingPage() {
                 style={{
                   width: '100%',
                   padding: '16px',
-                  background: locationLoading ? '#ccc' : '#fff',
-                  color: '#764ba2',
+                  background: locationLoading ? '#ccc' : '#764ba2',
+                  color: '#fff',
                   border: 'none',
                   borderRadius: '8px',
                   fontSize: '16px',
@@ -454,7 +576,7 @@ export default function PricingPage() {
                   if (!locationLoading) e.currentTarget.style.opacity = '1';
                 }}
               >
-                {locationLoading ? 'Loading...' : 'Go Premium'}
+                {locationLoading ? 'Loading...' : 'Get Started'}
               </button>
             </div>
           </div>
@@ -685,6 +807,7 @@ export default function PricingPage() {
             id: selectedPlan,
             title: PAYMENT_CONFIG.plans[selectedPlan].name,
             planType: selectedPlan,
+            billingInterval: selectedInterval,
           }}
         />
       )}
