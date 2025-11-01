@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
+import { requireExpertOwnership } from '@/lib/auth';
 import Course from '@/models/Course';
 import CourseAnalyticsEvent from '@/models/CourseAnalyticsEvent';
 import Payment from '@/models/Payment';
@@ -18,6 +19,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ expe
   console.log('[DBG][srv/expert-analytics] GET request for expert:', expertId);
 
   try {
+    // Verify expert ownership
+    await requireExpertOwnership(expertId);
+
     // Parse query params
     const url = new URL(request.url);
     const period = url.searchParams.get('period') || '30d';
@@ -326,6 +330,17 @@ export async function GET(request: Request, { params }: { params: Promise<{ expe
     return NextResponse.json(response);
   } catch (error) {
     console.error('[DBG][srv/expert-analytics] Error:', error);
+
+    // Handle authorization errors
+    if (error instanceof Error) {
+      if (error.message === 'Unauthorized') {
+        return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 });
+      }
+      if (error.message.includes('Forbidden')) {
+        return NextResponse.json({ success: false, error: error.message }, { status: 403 });
+      }
+    }
+
     const response: ApiResponse<null> = {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to fetch analytics',

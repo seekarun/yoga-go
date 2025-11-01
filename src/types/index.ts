@@ -92,6 +92,11 @@ export interface Expert extends BaseEntity {
   promoVideo?: string; // Deprecated: use promoVideoCloudflareId instead
   promoVideoCloudflareId?: string; // Cloudflare Stream video UID for expert promo
   promoVideoStatus?: 'uploading' | 'processing' | 'ready' | 'error';
+
+  // Live streaming capabilities
+  liveStreamingEnabled?: boolean;
+  totalLiveSessions?: number;
+  upcomingLiveSessions?: number;
 }
 
 // Course Related Types
@@ -552,4 +557,109 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]> {
   totalPages: number;
   hasNext: boolean;
   hasPrevious: boolean;
+}
+
+// Live Session Related Types
+export type LiveSessionType = '1-on-1' | 'group' | 'workshop';
+export type LiveSessionStatus = 'scheduled' | 'live' | 'ended' | 'cancelled';
+
+export interface LiveSessionMetadata {
+  tags?: string[];
+  difficulty?: string;
+  equipment?: string[];
+  category?: CourseCategory;
+}
+
+export interface LiveSessionHMSDetails {
+  roomId: string; // 100ms room ID
+  roomCode: string; // Room code for joining
+  sessionId?: string; // 100ms session ID (created when first person joins)
+  recordingId?: string; // If recording is enabled
+}
+
+export interface LiveSession extends BaseEntity {
+  expertId: string;
+  expertName: string; // Denormalized for quick display
+  expertAvatar?: string; // Denormalized for quick display
+
+  title: string;
+  description: string;
+  thumbnail?: string;
+
+  sessionType: LiveSessionType;
+  scheduledStartTime: string; // ISO date string
+  scheduledEndTime: string; // ISO date string
+  actualStartTime?: string;
+  actualEndTime?: string;
+
+  maxParticipants?: number; // null for unlimited
+  currentViewers?: number; // Live viewer count
+
+  price: number; // Can be 0 for free sessions
+  currency?: string; // Default 'INR'
+
+  // 100ms Integration
+  hmsDetails?: LiveSessionHMSDetails;
+
+  // Status
+  status: LiveSessionStatus;
+
+  // Recording
+  recordingS3Key?: string;
+  recordedLessonId?: string; // Links to Lesson document after processing
+  recordingAvailable?: boolean;
+
+  // Participants
+  enrolledCount: number;
+  attendedCount: number;
+
+  // Metadata
+  metadata?: LiveSessionMetadata;
+
+  // Additional
+  featured?: boolean;
+  isFree?: boolean; // Quick access flag (price === 0)
+}
+
+export interface LiveSessionParticipant extends BaseEntity {
+  sessionId: string;
+  userId: string;
+  userName: string; // Denormalized
+  userEmail: string; // Denormalized
+  userAvatar?: string; // Denormalized
+
+  enrolledAt: string;
+  attended: boolean;
+  joinedAt?: string;
+  leftAt?: string;
+  watchTime?: number; // in seconds
+
+  // Payment
+  paid: boolean;
+  paymentId?: string;
+  paymentGateway?: 'stripe' | 'razorpay';
+  amountPaid?: number;
+
+  // Interaction
+  chatMessages?: number;
+  feedbackRating?: number;
+  feedbackComment?: string;
+}
+
+// Expert Availability Types
+export interface ExpertAvailability extends BaseEntity {
+  expertId: string;
+  dayOfWeek?: number; // 0=Sunday, 6=Saturday, null for one-time slots
+  date?: string; // ISO date for one-time slots
+  startTime: string; // "09:00" (24-hour format)
+  endTime: string; // "17:00" (24-hour format)
+  isRecurring: boolean; // true for weekly recurring, false for one-time
+  isActive: boolean; // soft delete flag
+}
+
+export interface AvailableSlot {
+  startTime: string; // ISO datetime string
+  endTime: string; // ISO datetime string
+  duration: number; // in minutes
+  available: boolean;
 }

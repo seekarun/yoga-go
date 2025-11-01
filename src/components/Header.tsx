@@ -237,6 +237,19 @@ export default function Header() {
                     My Courses
                   </Link>
                   <Link
+                    href="/app/live"
+                    style={{
+                      display: 'block',
+                      padding: '12px 20px',
+                      textDecoration: 'none',
+                      color: '#000',
+                      fontSize: '14px',
+                    }}
+                    onClick={() => setIsUserMenuOpen(false)}
+                  >
+                    Browse Live Sessions
+                  </Link>
+                  <Link
                     href="/app/profile"
                     style={{
                       display: 'block',
@@ -252,6 +265,18 @@ export default function Header() {
                   {user?.role === 'expert' && (
                     <>
                       <div style={{ height: '1px', background: '#e0e0e0', margin: '8px 0' }} />
+                      <div
+                        style={{
+                          padding: '8px 20px 4px',
+                          fontSize: '11px',
+                          fontWeight: '600',
+                          color: '#999',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                        }}
+                      >
+                        Expert Tools
+                      </div>
                       <Link
                         href="/srv"
                         style={{
@@ -264,8 +289,24 @@ export default function Header() {
                         }}
                         onClick={() => setIsUserMenuOpen(false)}
                       >
-                        Expert Dashboard
+                        📊 Expert Dashboard
                       </Link>
+                      {user?.expertProfile && (
+                        <Link
+                          href={`/srv/${user.expertProfile}/live`}
+                          style={{
+                            display: 'block',
+                            padding: '12px 20px',
+                            textDecoration: 'none',
+                            color: '#764ba2',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                          }}
+                          onClick={() => setIsUserMenuOpen(false)}
+                        >
+                          🎥 Manage My Sessions
+                        </Link>
+                      )}
                     </>
                   )}
                   <div style={{ height: '1px', background: '#e0e0e0', margin: '8px 0' }} />

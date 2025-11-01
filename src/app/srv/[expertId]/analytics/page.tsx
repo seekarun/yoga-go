@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import type { User } from '@/types';
 
 interface AnalyticsData {
   expertId: string;
@@ -38,16 +39,76 @@ interface AnalyticsData {
 
 export default function AnalyticsDashboard() {
   const params = useParams();
+  const router = useRouter();
   const expertId = params.expertId as string;
   const [period, setPeriod] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [authChecking, setAuthChecking] = useState(true);
+
+  // Check authorization first
+  useEffect(() => {
+    checkAuthorization();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expertId]);
 
   useEffect(() => {
-    fetchAnalytics();
+    if (!authChecking) {
+      fetchAnalytics();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expertId, period]);
+  }, [expertId, period, authChecking]);
+
+  const checkAuthorization = async () => {
+    try {
+      console.log('[DBG][analytics-dashboard] Checking authorization for expertId:', expertId);
+
+      // Fetch current user
+      const response = await fetch('/api/auth/me');
+      const data = await response.json();
+
+      if (!data.success || !data.data) {
+        console.log('[DBG][analytics-dashboard] Not authenticated, redirecting to login');
+        router.push('/');
+        return;
+      }
+
+      const user: User = data.data;
+
+      // Check if user is an expert
+      if (user.role !== 'expert') {
+        console.log('[DBG][analytics-dashboard] User is not an expert, redirecting to home');
+        router.push('/');
+        return;
+      }
+
+      // Check if expert profile is set up
+      if (!user.expertProfile) {
+        console.log(
+          '[DBG][analytics-dashboard] Expert profile not set up yet, redirecting to onboarding'
+        );
+        router.push('/srv');
+        return;
+      }
+
+      // Check if user owns this expert profile
+      if (user.expertProfile !== expertId) {
+        console.log(
+          `[DBG][analytics-dashboard] User doesn't own this profile. user.expertProfile=${user.expertProfile}, requested=${expertId}`
+        );
+        console.log('[DBG][analytics-dashboard] Redirecting to own dashboard:', user.expertProfile);
+        router.push(`/srv/${user.expertProfile}`);
+        return;
+      }
+
+      console.log('[DBG][analytics-dashboard] Authorization check passed');
+      setAuthChecking(false);
+    } catch (err) {
+      console.error('[DBG][analytics-dashboard] Error checking authorization:', err);
+      router.push('/');
+    }
+  };
 
   const fetchAnalytics = async () => {
     try {
@@ -80,12 +141,14 @@ export default function AnalyticsDashboard() {
     }).format(amount / 100); // Convert from cents
   };
 
-  if (loading) {
+  if (authChecking || loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
-          <p className="mt-4 text-gray-600">Loading analytics...</p>
+          <p className="mt-4 text-gray-600">
+            {authChecking ? 'Verifying access...' : 'Loading analytics...'}
+          </p>
         </div>
       </div>
     );

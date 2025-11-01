@@ -111,11 +111,12 @@ export const config = {
     // Protected app routes
     '/app/:path*',
     '/srv/:path*',
+    // API routes (need session for authentication)
+    '/api/:path*',
     // Protected API routes
     '/data/app/:path*',
     /*
      * Match all request paths except:
-     * - api routes that don't need auth
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico, sitemap.xml, robots.txt (metadata files)

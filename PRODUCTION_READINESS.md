@@ -1483,6 +1483,211 @@ For questions about this roadmap or implementation guidance:
 - Schedule architecture review sessions with senior developers
 - Join relevant Discord/Slack communities for tech stack
 
+### Monthly Costs
+
+1️⃣ Mobile App with 100ms - YES! ✅
+
+100ms supports native mobile apps with dedicated SDKs:
+
+Available SDKs:
+
+- iOS (Swift/Objective-C) - Native iPhone/iPad apps
+- Android (Kotlin/Java) - Native Android apps
+- React Native - Cross-platform (iOS + Android)
+- Flutter - Cross-platform (iOS + Android)
+
+Mobile App is Actually BETTER than Web:
+
+- ✅ Better performance (native code vs browser)
+- ✅ Better battery optimization
+- ✅ Background support (can minimize app and stay connected)
+- ✅ Picture-in-Picture mode
+- ✅ Push notifications when session starts
+- ✅ Better camera/mic control
+- ✅ No browser limitations
+
+Example - React Native:
+
+npm install @100mslive/react-native-hms
+Same concepts, just native components instead of web.
+
+So YES, if you build a yoga-go mobile app, 100ms will work even better!
+
+---
+
+2️⃣ Why AWS Account? - You DON'T Need It! ❌
+
+Short answer: You don't need AWS anymore since we switched to 100ms.
+
+What We Removed:
+
+- ❌ Amazon IVS (live streaming) - Replaced with 100ms
+- ❌ IVS Chat - Replaced with 100ms built-in chat
+
+What You're Currently Using:
+
+- ✅ 100ms - Video conferencing (NOT AWS)
+- ✅ MongoDB Atlas - Database (NOT AWS, it's MongoDB's cloud)
+- ✅ Auth0 - Authentication (NOT AWS, it's Auth0's cloud)
+- ✅ Cloudflare Stream - Pre-recorded videos (NOT AWS, it's Cloudflare)
+
+The Confusion:
+
+Your CLAUDE.md file mentions "AWS infrastructure" and "Stick to AWS free-tier" - this is outdated.
+That was written when you were planning to use AWS services. Now you're using:
+
+- 100ms for live video
+- Cloudflare for recorded videos
+- MongoDB Atlas for database
+- Auth0 for login
+
+None of these are AWS!
+
+When You WOULD Need AWS:
+
+Only if you want to:
+
+1. Deploy your Next.js app to AWS EC2/ECS (but you could use Vercel instead)
+2. Store recordings in AWS S3 (but you could use Cloudflare R2 instead)
+3. Use AWS Lambda for serverless functions (Next.js has its own API routes)
+
+Bottom line: AWS is optional, not required.
+
+---
+
+3️⃣ Expected Costs
+
+💰 100ms Pricing (What You're Using)
+
+Free Tier:
+
+- 10,000 minutes/month video conferencing
+- 10,000 minutes/month live streaming
+- 300 minutes/month recording
+- 300 minutes/month transcription
+
+What This Means:
+
+- 10,000 participant-minutes = 166 hours of video
+- If each session is 60 min with 5 students = 300 participant-minutes per session
+- Free tier = ~33 yoga sessions per month
+
+Paid Pricing (after free tier):
+Video Conferencing: $0.004 per participant-minute
+Audio Only: $0.001 per participant-minute (75% cheaper)
+Recording: $0.0135 per minute
+Live Streaming: $0.0012 per viewer-minute
+
+Example Monthly Cost:
+Scenario: 100 yoga sessions/month, avg 5 students, 60 min each
+= 100 sessions × 5 students × 60 min
+= 30,000 participant-minutes
+
+Free tier covers: 10,000 minutes
+You pay for: 20,000 minutes
+Cost: 20,000 × $0.004 = $80/month
+
+Scaling:
+Light usage (10 sessions/month): FREE
+Medium usage (50 sessions/month): $40/month
+Heavy usage (100 sessions/month): $80/month
+Very heavy (500 sessions/month): $480/month
+
+💡 Cost Saving Tips:
+
+1. Audio-only option for students (75% cheaper) - yoga doesn't always need student video
+2. Limit session duration (charge per hour)
+3. Use volume pricing: negotiate custom pricing at $5k+/month (up to 50% off)
+
+---
+
+💰 AWS Pricing (What You're NOT Using)
+
+Since you removed AWS IVS and aren't using AWS infrastructure:
+
+Current AWS costs: $0/month ✅
+
+If you WERE using AWS IVS (old approach):
+IVS Video Input (SD): $0.02 per stream-minute
+IVS Video Delivery (SD): $0.015 per viewer-minute
+IVS Chat: $0.0014 per message
+
+Example:
+60-min class with 5 students
+Input: 60 min × $0.02 = $1.20
+Delivery: 60 min × 5 students × $0.015 = $4.50
+Total: $5.70 per session (vs $1.20 with 100ms)
+
+100 sessions/month = $570 vs $80 with 100ms
+
+AWS IVS is 7x more expensive than 100ms! That's why we switched.
+
+---
+
+💰 Other Services You're Using
+
+MongoDB Atlas:
+Free tier: 512MB storage (good for 1000s of users)
+Paid: $9/month for 2GB (if you outgrow free tier)
+
+Auth0:
+Free tier: 7,500 active users/month
+Paid: $35/month for 1,000 MAU (monthly active users)
+
+Cloudflare Stream (pre-recorded videos):
+$5/month + $1 per 1,000 minutes stored + $1 per 1,000 minutes watched
+Very cheap for pre-recorded content
+
+---
+
+📊 Total Expected Monthly Costs
+
+Startup Phase (0-100 users, 10-20 live sessions/month):
+
+100ms: FREE (within free tier)
+MongoDB: FREE (within free tier)
+Auth0: FREE (within free tier)
+Cloudflare: ~$10-20/month
+Domain: ~$12/year
+Hosting (Vercel): FREE
+
+TOTAL: ~$10-20/month 🎉
+
+Growth Phase (500 users, 100 live sessions/month):
+
+100ms: $80/month
+MongoDB: $9/month (if needed)
+Auth0: FREE or $35/month (if >7,500 users)
+Cloudflare: ~$30-50/month
+Hosting: FREE (Vercel) or $20/month (if upgraded)
+
+TOTAL: ~$120-200/month
+
+Scale Phase (5,000 users, 500 live sessions/month):
+
+100ms: $480/month
+MongoDB: $57/month
+Auth0: ~$175/month
+Cloudflare: ~$100/month
+Hosting: $20/month
+
+TOTAL: ~$832/month
+
+---
+
+✅ Summary
+
+1. Mobile App: YES, 100ms works great on mobile apps (even better than web)
+2. AWS Account: NO, you don't need it anymore since you're using 100ms
+3. Expected Costs:
+   - Starting out: ~$10-20/month (almost free!)
+   - Growing (100 sessions/month): ~$120-200/month
+   - 100ms is 7x cheaper than AWS IVS
+
+Your current stack is perfect and cost-effective! 🎉
+
+Any other questions about scaling, costs, or mobile development?
+
 ---
 
 **Document Version:** 1.0
