@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   selectIsConnectedToRoom,
   selectPeers,
@@ -39,6 +39,10 @@ export default function StudentVideoRoom({ authToken, sessionId, onLeave }: Stud
         await hmsActions.join({
           userName: localPeer?.name || 'Student',
           authToken: authToken,
+          settings: {
+            isAudioMuted: false, // Start with audio enabled
+            isVideoMuted: false, // Start with video enabled
+          },
         });
         console.log('[DBG][StudentVideoRoom] Successfully joined room');
       } catch (err: any) {
@@ -60,10 +64,22 @@ export default function StudentVideoRoom({ authToken, sessionId, onLeave }: Stud
   }, [authToken, hmsActions, isConnected, isJoining, localPeer?.name]);
 
   const toggleAudio = async () => {
+    console.log(
+      '[DBG][StudentVideoRoom] Toggling audio from',
+      isLocalAudioEnabled,
+      'to',
+      !isLocalAudioEnabled
+    );
     await hmsActions.setLocalAudioEnabled(!isLocalAudioEnabled);
   };
 
   const toggleVideo = async () => {
+    console.log(
+      '[DBG][StudentVideoRoom] Toggling video from',
+      isLocalVideoEnabled,
+      'to',
+      !isLocalVideoEnabled
+    );
     await hmsActions.setLocalVideoEnabled(!isLocalVideoEnabled);
   };
 
@@ -241,6 +257,22 @@ function VideoTile({
     trackId: peer?.videoTrack,
   });
 
+  // Add audio rendering for remote peers
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  useEffect(() => {
+    if (audioRef.current && peer?.audioTrack && !isLocal) {
+      const audioTrack = peer.audioTrack;
+      if (audioTrack) {
+        const stream = new MediaStream([audioTrack]);
+        audioRef.current.srcObject = stream;
+        audioRef.current.play().catch(err => {
+          console.error('[DBG][VideoTile] Error playing audio:', err);
+        });
+      }
+    }
+  }, [peer?.audioTrack, isLocal]);
+
   return (
     <div
       style={{
@@ -288,6 +320,9 @@ function VideoTile({
           </div>
         </div>
       )}
+
+      {/* Audio element for remote peers (hidden but playing) */}
+      {!isLocal && peer?.audioTrack && <audio ref={audioRef} autoPlay playsInline />}
 
       {/* Name Tag */}
       <div
