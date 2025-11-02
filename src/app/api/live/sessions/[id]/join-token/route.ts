@@ -73,8 +73,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     console.log('[DBG][api/live/sessions/[id]/join-token] User role:', role);
 
-    // If not expert, check if user is enrolled
-    if (!isExpert) {
+    // For instant meetings, skip enrollment check (anyone can join with the code)
+    const isInstantMeeting = liveSession.sessionType === 'instant';
+
+    // If not expert and not an instant meeting, check if user is enrolled
+    if (!isExpert && !isInstantMeeting) {
       const participant = await LiveSessionParticipant.findOne({
         sessionId: sessionId,
         userId: user.id,

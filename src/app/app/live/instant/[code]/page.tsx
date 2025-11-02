@@ -45,7 +45,7 @@ export default function InstantMeetingPage({ params }: { params: Promise<{ code:
 
     try {
       console.log('[DBG][instant-meeting] Generating auth token for session:', session.id);
-      const response = await fetch(`/api/live/sessions/${session.id}/join`, {
+      const response = await fetch(`/api/live/sessions/${session.id}/join-token`, {
         method: 'POST',
       });
 
@@ -56,7 +56,7 @@ export default function InstantMeetingPage({ params }: { params: Promise<{ code:
       }
 
       console.log('[DBG][instant-meeting] Auth token generated, joining room');
-      setAuthToken(data.data.authToken);
+      setAuthToken(data.data.token);
       setJoined(true);
     } catch (err) {
       console.error('[DBG][instant-meeting] Error joining meeting:', err);
