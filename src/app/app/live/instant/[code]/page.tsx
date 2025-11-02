@@ -2,6 +2,7 @@
 
 import { use, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { HMSRoomProvider } from '@100mslive/react-sdk';
 import StudentVideoRoom from '@/components/StudentVideoRoom';
 import type { LiveSession } from '@/types';
 
@@ -145,7 +146,11 @@ export default function InstantMeetingPage({ params }: { params: Promise<{ code:
   }
 
   if (joined && session && authToken) {
-    return <StudentVideoRoom sessionId={session.id} authToken={authToken} onLeave={handleLeave} />;
+    return (
+      <HMSRoomProvider>
+        <StudentVideoRoom sessionId={session.id} authToken={authToken} onLeave={handleLeave} />
+      </HMSRoomProvider>
+    );
   }
 
   return (
