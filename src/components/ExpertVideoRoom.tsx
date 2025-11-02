@@ -30,6 +30,15 @@ export default function ExpertVideoRoom({ authToken, sessionId, onLeave }: Exper
   const [isJoining, setIsJoining] = useState(false);
   const [error, setError] = useState('');
 
+  // Debug audio state changes
+  useEffect(() => {
+    console.log('[DBG][ExpertVideoRoom] Audio state changed:', isLocalAudioEnabled);
+  }, [isLocalAudioEnabled]);
+
+  useEffect(() => {
+    console.log('[DBG][ExpertVideoRoom] Video state changed:', isLocalVideoEnabled);
+  }, [isLocalVideoEnabled]);
+
   useEffect(() => {
     const joinRoom = async () => {
       if (isJoining || isConnected) return;
@@ -38,7 +47,7 @@ export default function ExpertVideoRoom({ authToken, sessionId, onLeave }: Exper
       try {
         console.log('[DBG][ExpertVideoRoom] Joining room with token');
         await hmsActions.join({
-          userName: localPeer?.name || 'Expert',
+          userName: localPeer?.name || 'Instructor',
           authToken: authToken,
           settings: {
             isAudioMuted: false, // Start with audio enabled
@@ -46,6 +55,8 @@ export default function ExpertVideoRoom({ authToken, sessionId, onLeave }: Exper
           },
         });
         console.log('[DBG][ExpertVideoRoom] Successfully joined room');
+        console.log('[DBG][ExpertVideoRoom] Audio enabled:', isLocalAudioEnabled);
+        console.log('[DBG][ExpertVideoRoom] Video enabled:', isLocalVideoEnabled);
       } catch (err: any) {
         console.error('[DBG][ExpertVideoRoom] Error joining room:', err);
         setError(err?.message || 'Failed to join room');

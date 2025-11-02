@@ -69,7 +69,8 @@ export default function ExpertLiveDashboard({ params }: { params: Promise<{ expe
 
   const handleJoinMeeting = () => {
     if (meetingCreated) {
-      router.push(`/app/live/instant/${meetingCreated.roomCode}`);
+      // Expert should join as host, not through the student page
+      router.push(`/app/live/host/${meetingCreated.sessionId}`);
     }
   };
 

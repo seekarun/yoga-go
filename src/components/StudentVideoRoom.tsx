@@ -30,6 +30,15 @@ export default function StudentVideoRoom({ authToken, sessionId, onLeave }: Stud
   const [isJoining, setIsJoining] = useState(false);
   const [error, setError] = useState('');
 
+  // Debug audio state changes
+  useEffect(() => {
+    console.log('[DBG][StudentVideoRoom] Audio state changed:', isLocalAudioEnabled);
+  }, [isLocalAudioEnabled]);
+
+  useEffect(() => {
+    console.log('[DBG][StudentVideoRoom] Video state changed:', isLocalVideoEnabled);
+  }, [isLocalVideoEnabled]);
+
   useEffect(() => {
     const joinRoom = async () => {
       if (isJoining || isConnected) return;
