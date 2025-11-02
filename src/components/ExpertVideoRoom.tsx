@@ -10,6 +10,7 @@ import {
   selectIsLocalAudioEnabled,
   selectIsLocalVideoEnabled,
   useVideo,
+  selectAudioTrackByID,
 } from '@100mslive/react-sdk';
 
 interface ExpertVideoRoomProps {
@@ -239,21 +240,30 @@ function VideoTile({ peer, isLocal }: { peer: any; isLocal: boolean }) {
     trackId: peer?.videoTrack,
   });
 
-  // Add audio rendering for remote peers
+  // Get the actual audio track using HMS selector
+  const audioTrack = useHMSStore(selectAudioTrackByID(peer?.audioTrack));
   const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
-    if (audioRef.current && peer?.audioTrack && !isLocal) {
-      const audioTrack = peer.audioTrack;
-      if (audioTrack) {
-        const stream = new MediaStream([audioTrack]);
-        audioRef.current.srcObject = stream;
-        audioRef.current.play().catch(err => {
+    const attachAudio = async () => {
+      if (audioRef.current && audioTrack && !isLocal) {
+        try {
+          // Try to get the underlying media stream track
+          const track = (audioTrack as any).track;
+          if (track) {
+            const stream = new MediaStream([track]);
+            audioRef.current.srcObject = stream;
+            await audioRef.current.play();
+            console.log('[DBG][VideoTile] Audio playing for peer');
+          }
+        } catch (err) {
           console.error('[DBG][VideoTile] Error playing audio:', err);
-        });
+        }
       }
-    }
-  }, [peer?.audioTrack, isLocal]);
+    };
+
+    attachAudio();
+  }, [audioTrack, isLocal]);
 
   return (
     <div
@@ -297,7 +307,7 @@ function VideoTile({ peer, isLocal }: { peer: any; isLocal: boolean }) {
       )}
 
       {/* Audio element for remote peers (hidden but playing) */}
-      {!isLocal && peer?.audioTrack && <audio ref={audioRef} autoPlay playsInline />}
+      {!isLocal && audioTrack && <audio ref={audioRef} autoPlay playsInline />}
 
       {/* Name Tag */}
       <div
