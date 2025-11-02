@@ -587,6 +587,7 @@ export interface LiveSession extends BaseEntity {
   thumbnail?: string;
 
   sessionType: LiveSessionType;
+  instantMeetingCode?: string; // Shareable code for instant meetings
   scheduledStartTime: string; // ISO date string
   scheduledEndTime: string; // ISO date string
   actualStartTime?: string;

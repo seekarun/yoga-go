@@ -38,9 +38,10 @@ const LiveSessionSchema = new Schema<LiveSessionDocument>(
 
     sessionType: {
       type: String,
-      enum: ['1-on-1', 'group', 'workshop'],
+      enum: ['1-on-1', 'group', 'workshop', 'instant'],
       required: true,
     },
+    instantMeetingCode: String, // Shareable code for instant meetings
     scheduledStartTime: { type: String, required: true, index: true },
     scheduledEndTime: { type: String, required: true },
     actualStartTime: String,
