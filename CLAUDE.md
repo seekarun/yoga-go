@@ -38,7 +38,7 @@ This app uses Auth0 for authentication. To set it up:
 
 1. Create an Auth0 account at https://manage.auth0.com/
 2. Create a new Regular Web Application
-3. Configure Allowed Callback URLs: `http://localhost:3111/api/auth/callback`
+3. Configure Allowed Callback URLs: `http://localhost:3111/auth/callback`
 4. Configure Allowed Logout URLs: `http://localhost:3111`
 5. Copy the following credentials to `.env.local`:
    - Domain → `AUTH0_ISSUER_BASE_URL`
@@ -60,11 +60,12 @@ User data is stored in MongoDB. To set it up:
 
 **Authentication Flow:**
 
-- User logs in via `/api/auth/login` (redirects to Auth0)
-- After authentication, Auth0 calls `/api/auth/callback`
-- User data is synced to MongoDB in the callback
+- User logs in via `/auth/login` (redirects to Auth0)
+- After authentication, Auth0 calls `/auth/callback`
+- User data is synced to MongoDB via middleware callback hook
 - Protected routes (`/app/*`, `/srv/*`) require authentication via middleware
 - Client-side auth state is managed by `AuthContext` (`src/contexts/AuthContext.tsx`)
+- Auth0 routes are automatically mounted by the middleware (v4 SDK)
 - API routes use `getSession()` from `src/lib/auth.ts` to verify authentication
 
 ## Architecture
@@ -133,8 +134,6 @@ All API routes use centralized mock data from `src/data/mockData.ts` which expor
 - Use reusable components (Header, Footer, etc.)
 - Prefix log messages: `console.log('[DBG][$filename] message')`
 
-### AWS/Infrastructure
+### Deployment
 
-- Stick to AWS free-tier features only
-- Double-confirm before using any paid features
-- Deploy infra: `npm run deploy:infra`
+- This app is deployed to Vercel

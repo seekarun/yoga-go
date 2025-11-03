@@ -1,6 +1,14 @@
 {
   "permissions": {
-    "allow": ["Bash(npm run build:*)", "Bash(npm run lint:fix:*)"],
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(npm run lint:fix:*)",
+      "Bash(npx tsc:*)",
+      "Bash(cat:*)",
+      "WebSearch",
+      "Bash(npm run format:*)",
+      "Read(//Users/arunsubramaniam/garage/**)"
+    ],
     "deny": [],
     "ask": []
   }
