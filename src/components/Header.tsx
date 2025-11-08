@@ -13,15 +13,18 @@ export default function Header() {
     isExpertMode: false,
     expertId: null,
   });
+  const [isOnSrvPage, setIsOnSrvPage] = useState(false);
 
   // Detect expert mode on mount AND when viewing /experts/[expertId] pages
   useEffect(() => {
     const context = getClientExpertContext();
     const isOnExpertPage = window.location.pathname.startsWith('/experts/');
+    const isOnSrv = window.location.pathname.startsWith('/srv');
     setExpertMode({
       isExpertMode: context.isExpertMode || isOnExpertPage,
       expertId: context.expertId,
     });
+    setIsOnSrvPage(isOnSrv);
   }, []);
 
   const handleLogin = () => {
@@ -108,51 +111,55 @@ export default function Header() {
             }}
             className="desktop-nav"
           >
-            <Link
-              href="/courses"
-              style={{
-                textDecoration: 'none',
-                color: '#666',
-                fontSize: '16px',
-                transition: 'color 0.2s',
-              }}
-            >
-              Courses
-            </Link>
-            <Link
-              href="/experts"
-              style={{
-                textDecoration: 'none',
-                color: '#666',
-                fontSize: '16px',
-                transition: 'color 0.2s',
-              }}
-            >
-              Experts
-            </Link>
-            <Link
-              href="/pricing"
-              style={{
-                textDecoration: 'none',
-                color: '#666',
-                fontSize: '16px',
-                transition: 'color 0.2s',
-              }}
-            >
-              Pricing
-            </Link>
-            <Link
-              href="/srv"
-              style={{
-                textDecoration: 'none',
-                color: '#764ba2',
-                fontSize: '16px',
-                fontWeight: '500',
-                transition: 'color 0.2s',
-              }}
-            >
-              For Experts
-            </Link>
+            {!(isOnSrvPage && isAuthenticated) && (
+              <>
+                <Link
+                  href="/courses"
+                  style={{
+                    textDecoration: 'none',
+                    color: '#666',
+                    fontSize: '16px',
+                    transition: 'color 0.2s',
+                  }}
+                >
+                  Courses
+                </Link>
+                <Link
+                  href="/experts"
+                  style={{
+                    textDecoration: 'none',
+                    color: '#666',
+                    fontSize: '16px',
+                    transition: 'color 0.2s',
+                  }}
+                >
+                  Experts
+                </Link>
+                <Link
+                  href="/pricing"
+                  style={{
+                    textDecoration: 'none',
+                    color: '#666',
+                    fontSize: '16px',
+                    transition: 'color 0.2s',
+                  }}
+                >
+                  Pricing
+                </Link>
+                <Link
+                  href="/srv"
+                  style={{
+                    textDecoration: 'none',
+                    color: '#764ba2',
+                    fontSize: '16px',
+                    fontWeight: '500',
+                    transition: 'color 0.2s',
+                  }}
+                >
+                  For Experts
+                </Link>
+              </>
+            )}
           </nav>
         )}
 
