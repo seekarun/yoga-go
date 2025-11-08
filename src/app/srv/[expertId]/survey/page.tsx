@@ -619,24 +619,48 @@ export default function EditSurveyPage() {
           )}
         </div>
 
-        {/* Preview Link */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-          <div className="flex items-start">
-            <div className="flex-shrink-0">
-              <span className="text-blue-400 text-xl">ℹ️</span>
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-blue-800">Preview Your Survey</h3>
-              <p className="text-sm text-blue-700 mt-1">
-                After saving, you can preview how your survey looks to users by visiting{' '}
+        {/* Survey Actions */}
+        <div className="space-y-4 mb-6">
+          {/* View Responses */}
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <span className="text-green-400 text-xl">📊</span>
+              </div>
+              <div className="ml-3 flex-1">
+                <h3 className="text-sm font-medium text-green-800">View Survey Responses</h3>
+                <p className="text-sm text-green-700 mt-1">
+                  Track, filter, and manage responses from users who have completed your survey.
+                </p>
                 <Link
-                  href={`/experts/${expertId}/survey`}
-                  className="underline font-medium"
-                  target="_blank"
+                  href={`/srv/${expertId}/survey/responses`}
+                  className="inline-block mt-2 px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors font-medium"
                 >
-                  /experts/{expertId}/survey
+                  View Responses Dashboard
                 </Link>
-              </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Preview Link */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <span className="text-blue-400 text-xl">ℹ️</span>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-blue-800">Preview Your Survey</h3>
+                <p className="text-sm text-blue-700 mt-1">
+                  After saving, you can preview how your survey looks to users by visiting{' '}
+                  <Link
+                    href={`/experts/${expertId}/survey`}
+                    className="underline font-medium"
+                    target="_blank"
+                  >
+                    /experts/{expertId}/survey
+                  </Link>
+                </p>
+              </div>
             </div>
           </div>
         </div>
