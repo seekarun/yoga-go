@@ -2,13 +2,12 @@ import { NextResponse } from 'next/server';
 import { getSession, getUserByAuth0Id } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/mongodb';
 import LiveSession from '@/models/LiveSession';
-import Expert from '@/models/Expert';
-import { endHMSRoom } from '@/lib/hms';
 import type { ApiResponse } from '@/types';
 
 /**
  * POST /api/live/sessions/[id]/end
- * End a live session and disable the room (Expert only)
+ * End a live session (Expert only)
+ * Changes status from 'live' to 'ended'
  */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: sessionId } = await params;
@@ -52,7 +51,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (liveSession.expertId !== user.expertProfile) {
       const response: ApiResponse<null> = {
         success: false,
-        error: 'Only the session expert can end the stream',
+        error: 'Only the session expert can end the session',
       };
       return NextResponse.json(response, { status: 403 });
     }
@@ -66,57 +65,24 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       return NextResponse.json(response, { status: 400 });
     }
 
-    // Disable 100ms room if active
-    if (liveSession.hmsDetails?.roomId) {
-      try {
-        await endHMSRoom(liveSession.hmsDetails.roomId);
-        console.log('[DBG][api/live/sessions/[id]/end] 100ms room disabled');
-      } catch (hmsError) {
-        console.error('[DBG][api/live/sessions/[id]/end] Error disabling room:', hmsError);
-        // Continue with session ending even if room disable fails
-      }
-    }
-
-    // Update session status
+    // Update session status to ended
     liveSession.status = 'ended';
     liveSession.actualEndTime = new Date().toISOString();
-    liveSession.currentViewers = 0;
+    liveSession.currentViewers = 0; // Reset viewer count
     await liveSession.save();
-
-    // Update expert's upcoming session count
-    const expert = await Expert.findById(liveSession.expertId);
-    if (expert) {
-      expert.upcomingLiveSessions = Math.max(0, (expert.upcomingLiveSessions || 1) - 1);
-      await expert.save();
-    }
 
     console.log('[DBG][api/live/sessions/[id]/end] Session ended successfully');
 
-    // TODO: Trigger recording processing if recording was enabled
-    // This would involve:
-    // 1. Waiting for 100ms to finish recording
-    // 2. Processing the recording (convert, trim, etc.)
-    // 3. Uploading to Cloudflare Stream
-    // 4. Creating a Lesson document
-    // 5. Updating liveSession.recordedLessonId
-
     const response: ApiResponse<{
       sessionId: string;
-      duration: number; // in minutes
+      status: string;
     }> = {
       success: true,
       data: {
         sessionId: liveSession._id,
-        duration:
-          liveSession.actualStartTime && liveSession.actualEndTime
-            ? Math.round(
-                (new Date(liveSession.actualEndTime).getTime() -
-                  new Date(liveSession.actualStartTime).getTime()) /
-                  60000
-              )
-            : 0,
+        status: liveSession.status,
       },
-      message: 'Session ended successfully',
+      message: 'Session ended successfully.',
     };
 
     return NextResponse.json(response);

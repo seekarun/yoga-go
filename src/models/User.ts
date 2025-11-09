@@ -203,6 +203,13 @@ const UserSchema = new Schema<UserDocument>(
     billing: BillingSchema,
     savedItems: SavedItemSchema,
     social: UserSocialSchema,
+
+    // Expert meeting settings (for live sessions)
+    defaultMeetingLink: String,
+    defaultMeetingPlatform: {
+      type: String,
+      enum: ['zoom', 'google-meet', 'other'],
+    },
   },
   {
     timestamps: true,

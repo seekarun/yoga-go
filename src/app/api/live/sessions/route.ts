@@ -48,6 +48,8 @@ export async function POST(request: Request) {
     const {
       title,
       description,
+      meetingLink,
+      meetingPlatform,
       sessionType,
       scheduledStartTime,
       scheduledEndTime,
@@ -68,11 +70,20 @@ export async function POST(request: Request) {
       return NextResponse.json(response, { status: 400 });
     }
 
-    // Validate session type
-    if (!['1-on-1', 'group', 'workshop'].includes(sessionType)) {
+    // Validate meeting link
+    if (!meetingLink || !meetingLink.trim()) {
       const response: ApiResponse<null> = {
         success: false,
-        error: 'Invalid session type. Must be: 1-on-1, group, or workshop',
+        error: 'Meeting link is required',
+      };
+      return NextResponse.json(response, { status: 400 });
+    }
+
+    // Validate session type
+    if (!['1-on-1', 'group'].includes(sessionType)) {
+      const response: ApiResponse<null> = {
+        success: false,
+        error: 'Invalid session type. Must be: 1-on-1 or group',
       };
       return NextResponse.json(response, { status: 400 });
     }
@@ -110,6 +121,8 @@ export async function POST(request: Request) {
       description,
       thumbnail,
       sessionType,
+      meetingLink: meetingLink.trim(),
+      meetingPlatform: meetingPlatform || 'other',
       scheduledStartTime,
       scheduledEndTime,
       maxParticipants,
@@ -121,6 +134,10 @@ export async function POST(request: Request) {
       currentViewers: 0,
       metadata,
       isFree: (price || 0) === 0,
+      // Track who created this session
+      scheduledByUserId: user.id,
+      scheduledByName: user.profile.name,
+      scheduledByRole: 'expert',
     });
 
     await liveSession.save();
@@ -236,6 +253,7 @@ export async function GET(request: Request) {
       description: session.description,
       thumbnail: session.thumbnail,
       sessionType: session.sessionType,
+      instantMeetingCode: session.instantMeetingCode,
       scheduledStartTime: session.scheduledStartTime,
       scheduledEndTime: session.scheduledEndTime,
       actualStartTime: session.actualStartTime,
@@ -244,12 +262,18 @@ export async function GET(request: Request) {
       currentViewers: session.currentViewers,
       price: session.price,
       currency: session.currency,
+      meetingLink: session.meetingLink,
+      meetingPlatform: session.meetingPlatform,
+      hmsDetails: session.hmsDetails,
       status: session.status,
       recordingAvailable: session.recordingAvailable,
       recordedLessonId: session.recordedLessonId,
       enrolledCount: session.enrolledCount,
       attendedCount: session.attendedCount,
       metadata: session.metadata,
+      scheduledByUserId: session.scheduledByUserId,
+      scheduledByName: session.scheduledByName,
+      scheduledByRole: session.scheduledByRole,
       featured: session.featured,
       isFree: session.isFree,
       createdAt: session.createdAt,

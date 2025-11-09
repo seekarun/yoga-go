@@ -47,9 +47,17 @@ export default function ExpertLiveSessions({ expertId }: ExpertLiveSessionsProps
       const data = await response.json();
 
       if (data.success) {
-        // Navigate to expert video room
-        window.open(`/app/live/host/${sessionId}`, '_blank');
-        // Refresh session list
+        // Show success message
+        alert(
+          `Session started successfully! Opening your meeting link.\n\nPlatform: ${data.data.meetingPlatform}\n\nStudents can now join the session.`
+        );
+
+        // Open meeting link in new tab if available
+        if (data.data.meetingLink) {
+          window.open(data.data.meetingLink, '_blank', 'noopener,noreferrer');
+        }
+
+        // Refresh session list to show updated status
         fetchSessions();
       } else {
         alert(data.error || 'Failed to start session');
@@ -87,53 +95,8 @@ export default function ExpertLiveSessions({ expertId }: ExpertLiveSessionsProps
   });
 
   return (
-    <div style={{ padding: '40px 20px' }}>
+    <div>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        {/* Header */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '32px',
-          }}
-        >
-          <div>
-            <h2
-              style={{
-                fontSize: '28px',
-                fontWeight: '700',
-                color: '#2d3748',
-                marginBottom: '8px',
-              }}
-            >
-              Live Sessions
-            </h2>
-            <p style={{ fontSize: '16px', color: '#718096' }}>
-              Manage your scheduled and live streaming sessions
-            </p>
-          </div>
-
-          <Link
-            href={`/srv/${expertId}/live/create`}
-            style={{
-              padding: '12px 24px',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: '#fff',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: '600',
-              textDecoration: 'none',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-            }}
-          >
-            <span style={{ fontSize: '18px' }}>+</span>
-            Create Session
-          </Link>
-        </div>
-
         {/* Filter Tabs */}
         <div
           style={{
@@ -262,47 +225,6 @@ export default function ExpertLiveSessions({ expertId }: ExpertLiveSessionsProps
                 onEnd={handleEndSession}
               />
             ))}
-          </div>
-        )}
-
-        {/* Info Box */}
-        {!loading && sessions.length > 0 && (
-          <div
-            style={{
-              marginTop: '40px',
-              padding: '20px',
-              background: '#f7fafc',
-              borderLeft: '4px solid #667eea',
-              borderRadius: '8px',
-            }}
-          >
-            <h4
-              style={{
-                margin: '0 0 8px 0',
-                fontSize: '16px',
-                fontWeight: '600',
-                color: '#2d3748',
-              }}
-            >
-              💡 Live Streaming Tips
-            </h4>
-            <ul
-              style={{
-                margin: 0,
-                paddingLeft: '20px',
-                fontSize: '14px',
-                color: '#4a5568',
-                lineHeight: '1.8',
-              }}
-            >
-              <li>Test your stream before going live with students</li>
-              <li>Use OBS Studio for the best streaming experience</li>
-              <li>Ensure you have a stable internet connection (min 5 Mbps upload)</li>
-              <li>Engage with students using the live chat feature</li>
-              <li>
-                Sessions are automatically recorded and can be made available to students later
-              </li>
-            </ul>
           </div>
         )}
       </div>

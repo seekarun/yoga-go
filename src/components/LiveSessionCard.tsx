@@ -121,7 +121,7 @@ export default function LiveSessionCard({
   const sessionTypeColor = {
     '1-on-1': '#805ad5',
     group: '#48bb78',
-    workshop: '#ed8936',
+    instant: '#3b82f6',
   };
 
   return (
@@ -172,25 +172,6 @@ export default function LiveSessionCard({
         >
           {getStatusBadge()}
         </div>
-
-        {/* Live Viewer Count */}
-        {isLive && session.currentViewers !== undefined && (
-          <div
-            style={{
-              position: 'absolute',
-              top: '12px',
-              right: '12px',
-              padding: '6px 12px',
-              background: 'rgba(0, 0, 0, 0.7)',
-              borderRadius: '20px',
-              fontSize: '12px',
-              color: '#fff',
-              fontWeight: '600',
-            }}
-          >
-            👁️ {session.currentViewers} watching
-          </div>
-        )}
 
         {/* Session Type */}
         <div
@@ -323,6 +304,13 @@ export default function LiveSessionCard({
               </span>
             </div>
           )}
+          {/* Scheduled By - Show for expert view on 1-on-1 sessions */}
+          {isExpertView && session.scheduledByName && session.scheduledByRole === 'student' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>📝</span>
+              <span>Booked by: {session.scheduledByName}</span>
+            </div>
+          )}
         </div>
 
         {/* Price & CTA */}
@@ -433,7 +421,14 @@ export default function LiveSessionCard({
             ) : (
               <>
                 {isLive && (
-                  <Link href={`/app/live/join/${session.id}`} style={{ textDecoration: 'none' }}>
+                  <Link
+                    href={
+                      session.sessionType === 'instant' && session.instantMeetingCode
+                        ? `/app/live/instant/${session.instantMeetingCode}`
+                        : `/app/live/join/${session.id}`
+                    }
+                    style={{ textDecoration: 'none' }}
+                  >
                     <button
                       style={{
                         padding: '10px 24px',
@@ -457,7 +452,7 @@ export default function LiveSessionCard({
                     </button>
                   </Link>
                 )}
-                {isUpcoming && onEnroll && (
+                {session.status === 'scheduled' && onEnroll && (
                   <button
                     onClick={e => {
                       e.preventDefault();

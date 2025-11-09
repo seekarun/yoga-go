@@ -14,7 +14,9 @@ export default function CreateLiveSessionPage({
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    sessionType: 'group' as '1-on-1' | 'group' | 'workshop',
+    meetingPlatform: 'google-meet' as 'zoom' | 'google-meet',
+    meetingLink: '',
+    sessionType: 'group' as '1-on-1' | 'group',
     scheduledStartTime: '',
     scheduledEndTime: '',
     maxParticipants: 10,
@@ -23,6 +25,23 @@ export default function CreateLiveSessionPage({
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Auto-fill end time as 1 hour after start time
+  const handleStartTimeChange = (startTime: string) => {
+    setFormData(prev => {
+      const newData = { ...prev, scheduledStartTime: startTime };
+
+      // Auto-fill end time if start time is set
+      if (startTime && !prev.scheduledEndTime) {
+        const startDate = new Date(startTime);
+        startDate.setHours(startDate.getHours() + 1);
+        const endTime = startDate.toISOString().slice(0, 16);
+        newData.scheduledEndTime = endTime;
+      }
+
+      return newData;
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,6 +145,54 @@ export default function CreateLiveSessionPage({
 
         <div style={{ marginBottom: '24px' }}>
           <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
+            Meeting Platform *
+          </label>
+          <select
+            value={formData.meetingPlatform}
+            onChange={e =>
+              setFormData({
+                ...formData,
+                meetingPlatform: e.target.value as 'zoom' | 'google-meet',
+              })
+            }
+            style={{
+              width: '100%',
+              padding: '12px',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px',
+              fontSize: '16px',
+            }}
+          >
+            <option value="google-meet">Google Meet</option>
+            <option value="zoom">Zoom</option>
+          </select>
+        </div>
+
+        <div style={{ marginBottom: '24px' }}>
+          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
+            Meeting Link *
+          </label>
+          <input
+            type="url"
+            required
+            value={formData.meetingLink}
+            onChange={e => setFormData({ ...formData, meetingLink: e.target.value })}
+            placeholder="https://zoom.us/j/... or https://meet.google.com/..."
+            style={{
+              width: '100%',
+              padding: '12px',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px',
+              fontSize: '16px',
+            }}
+          />
+          <p style={{ fontSize: '12px', color: '#718096', marginTop: '6px' }}>
+            Paste your Zoom, Google Meet, or other video meeting link
+          </p>
+        </div>
+
+        <div style={{ marginBottom: '24px' }}>
+          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
             Session Type *
           </label>
           <select
@@ -141,7 +208,6 @@ export default function CreateLiveSessionPage({
           >
             <option value="1-on-1">1-on-1 Session</option>
             <option value="group">Group Session</option>
-            <option value="workshop">Workshop</option>
           </select>
         </div>
 
@@ -161,7 +227,7 @@ export default function CreateLiveSessionPage({
               type="datetime-local"
               required
               value={formData.scheduledStartTime}
-              onChange={e => setFormData({ ...formData, scheduledStartTime: e.target.value })}
+              onChange={e => handleStartTimeChange(e.target.value)}
               style={{
                 width: '100%',
                 padding: '12px',

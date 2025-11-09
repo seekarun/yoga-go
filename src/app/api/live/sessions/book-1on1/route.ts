@@ -4,6 +4,7 @@ import { connectToDatabase } from '@/lib/mongodb';
 import LiveSession from '@/models/LiveSession';
 import LiveSessionParticipant from '@/models/LiveSessionParticipant';
 import Expert from '@/models/Expert';
+import User from '@/models/User';
 import { isSlotAvailable } from '@/lib/availability';
 import type { ApiResponse, LiveSession as LiveSessionType } from '@/types';
 import { nanoid } from 'nanoid';
@@ -81,6 +82,21 @@ export async function POST(request: Request) {
       return NextResponse.json(response, { status: 400 });
     }
 
+    // Get expert's user account to retrieve default meeting link
+    const expertUser = await User.findOne({ expertProfile: expertId });
+    const meetingLink = expertUser?.defaultMeetingLink || '';
+    const meetingPlatform = expertUser?.defaultMeetingPlatform || 'other';
+
+    // Validate expert has meeting link set up
+    if (!meetingLink) {
+      const response: ApiResponse<null> = {
+        success: false,
+        error:
+          'Expert has not set up their meeting link yet. Please contact the expert or try again later.',
+      };
+      return NextResponse.json(response, { status: 400 });
+    }
+
     // Create 1-on-1 session
     const sessionId = nanoid();
     const liveSession = new LiveSession({
@@ -91,6 +107,8 @@ export async function POST(request: Request) {
       title: title || `1-on-1 Session with ${expert.name}`,
       description: description || `Private one-on-one session with ${expert.name}`,
       sessionType: '1-on-1',
+      meetingLink: meetingLink,
+      meetingPlatform: meetingPlatform,
       scheduledStartTime: startTime,
       scheduledEndTime: endTime,
       maxParticipants: 1, // Always 1 for 1-on-1 sessions
@@ -101,6 +119,10 @@ export async function POST(request: Request) {
       attendedCount: 0,
       currentViewers: 0,
       isFree: true,
+      // Track who booked this session
+      scheduledByUserId: user.id,
+      scheduledByName: user.profile.name,
+      scheduledByRole: 'student',
     });
 
     await liveSession.save();

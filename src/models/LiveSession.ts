@@ -38,7 +38,7 @@ const LiveSessionSchema = new Schema<LiveSessionDocument>(
 
     sessionType: {
       type: String,
-      enum: ['1-on-1', 'group', 'workshop', 'instant'],
+      enum: ['1-on-1', 'group', 'instant'],
       required: true,
     },
     instantMeetingCode: String, // Shareable code for instant meetings
@@ -53,6 +53,14 @@ const LiveSessionSchema = new Schema<LiveSessionDocument>(
     price: { type: Number, required: true, default: 0 },
     currency: { type: String, default: 'INR' },
 
+    // Manual meeting link (Zoom/Google Meet/etc)
+    meetingLink: String,
+    meetingPlatform: {
+      type: String,
+      enum: ['zoom', 'google-meet', 'other'],
+    },
+
+    // 100ms Integration (deprecated, kept for backward compatibility)
     hmsDetails: LiveSessionHMSDetailsSchema,
 
     status: {
@@ -70,6 +78,14 @@ const LiveSessionSchema = new Schema<LiveSessionDocument>(
     attendedCount: { type: Number, default: 0 },
 
     metadata: LiveSessionMetadataSchema,
+
+    // Scheduled By (who created/booked this session)
+    scheduledByUserId: String,
+    scheduledByName: String,
+    scheduledByRole: {
+      type: String,
+      enum: ['student', 'expert'],
+    },
 
     featured: { type: Boolean, default: false },
     isFree: { type: Boolean, default: true },

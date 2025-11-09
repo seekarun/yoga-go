@@ -315,6 +315,9 @@ export interface User extends BaseEntity {
   billing?: Billing;
   savedItems?: SavedItem;
   social?: UserSocial;
+  // Expert meeting settings (for live sessions)
+  defaultMeetingLink?: string;
+  defaultMeetingPlatform?: 'zoom' | 'google-meet' | 'other';
 }
 
 // Progress Related Types
@@ -560,7 +563,7 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]> {
 }
 
 // Live Session Related Types
-export type LiveSessionType = '1-on-1' | 'group' | 'workshop' | 'instant';
+export type LiveSessionType = '1-on-1' | 'group' | 'instant';
 export type LiveSessionStatus = 'scheduled' | 'live' | 'ended' | 'cancelled';
 
 export interface LiveSessionMetadata {
@@ -620,6 +623,11 @@ export interface LiveSession extends BaseEntity {
 
   // Metadata
   metadata?: LiveSessionMetadata;
+
+  // Scheduled By (who created/booked this session)
+  scheduledByUserId?: string;
+  scheduledByName?: string;
+  scheduledByRole?: 'student' | 'expert';
 
   // Additional
   featured?: boolean;

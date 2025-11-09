@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getSession, getUserByAuth0Id } from '@/lib/auth';
 import LiveSessionModel from '@/models/LiveSession';
-import { createHMSRoom } from '@/lib/hms';
 import { nanoid } from 'nanoid';
 import type { ApiResponse } from '@/types';
 
 /**
  * POST /api/live/sessions/instant
  * Create an instant meeting (no scheduling required)
+ * Requires expert to provide a meeting link (Zoom/Google Meet/etc)
  */
 export async function POST(request: Request) {
   console.log('[DBG][api/live/sessions/instant] POST called');
@@ -38,7 +38,15 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { title, description } = body;
+    const { title, description, meetingLink, meetingPlatform } = body;
+
+    // Validate meeting link
+    if (!meetingLink || !meetingLink.trim()) {
+      return NextResponse.json(
+        { success: false, error: 'Meeting link is required' } as ApiResponse<null>,
+        { status: 400 }
+      );
+    }
 
     // Generate unique session ID and room code
     const sessionId = `instant-${nanoid(10)}`;
@@ -48,13 +56,10 @@ export async function POST(request: Request) {
       sessionId,
       roomCode,
       expertId: user.expertProfile,
+      meetingPlatform,
     });
 
-    // Create 100ms room
-    const roomName = `Instant Meeting - ${title || 'Quick Session'}`;
-    const room = await createHMSRoom(roomName, `Instant meeting created by expert`);
-
-    // Create LiveSession record
+    // Create LiveSession record with manual meeting link
     const now = new Date();
     const session_data = {
       _id: sessionId,
@@ -71,16 +76,18 @@ export async function POST(request: Request) {
       currency: 'USD',
       status: 'live' as const,
       actualStartTime: now,
-      hmsDetails: {
-        roomId: room.roomId,
-        roomCode: room.roomCode,
-      },
+      meetingLink: meetingLink.trim(), // Expert-provided meeting link
+      meetingPlatform: meetingPlatform || 'other', // zoom | google-meet | other
       enrolledCount: 0,
       attendedCount: 0,
       recordingEnabled: false,
       chatEnabled: true,
       isPublic: true,
       instantMeetingCode: roomCode, // Our custom shareable code
+      // Track who created this session
+      scheduledByUserId: user.id,
+      scheduledByName: user.profile.name,
+      scheduledByRole: 'expert' as const,
     };
 
     const liveSession = await LiveSessionModel.create(session_data);
@@ -94,14 +101,16 @@ export async function POST(request: Request) {
       sessionId: string;
       roomCode: string;
       joinUrl: string;
-      hmsRoomCode: string;
+      meetingLink: string;
+      meetingPlatform: string;
     }> = {
       success: true,
       data: {
         sessionId: liveSession._id,
         roomCode: roomCode,
         joinUrl: joinUrl,
-        hmsRoomCode: room.roomCode,
+        meetingLink: meetingLink.trim(),
+        meetingPlatform: meetingPlatform || 'other',
       },
     };
 

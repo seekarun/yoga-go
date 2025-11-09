@@ -2,8 +2,6 @@
 
 import { use, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { HMSRoomProvider } from '@100mslive/react-sdk';
-import StudentVideoRoom from '@/components/StudentVideoRoom';
 import type { LiveSession } from '@/types';
 
 export default function InstantMeetingPage({ params }: { params: Promise<{ code: string }> }) {
@@ -12,8 +10,6 @@ export default function InstantMeetingPage({ params }: { params: Promise<{ code:
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [session, setSession] = useState<LiveSession | null>(null);
-  const [joined, setJoined] = useState(false);
-  const [authToken, setAuthToken] = useState<string>('');
 
   useEffect(() => {
     fetchSession();
@@ -41,34 +37,14 @@ export default function InstantMeetingPage({ params }: { params: Promise<{ code:
     }
   };
 
-  const handleJoin = async () => {
-    if (!session) return;
-
-    try {
-      console.log('[DBG][instant-meeting] Generating auth token for session:', session.id);
-      const response = await fetch(`/api/live/sessions/${session.id}/join-token`, {
-        method: 'POST',
-      });
-
-      const data = await response.json();
-      if (!data.success) {
-        setError(data.error || 'Failed to join meeting');
-        return;
-      }
-
-      console.log('[DBG][instant-meeting] Auth token generated, joining room');
-      setAuthToken(data.data.token);
-      setJoined(true);
-    } catch (err) {
-      console.error('[DBG][instant-meeting] Error joining meeting:', err);
-      setError('Failed to join meeting');
+  const handleJoinMeeting = () => {
+    if (!session?.meetingLink) {
+      setError('Meeting link not available');
+      return;
     }
-  };
 
-  const handleLeave = () => {
-    setJoined(false);
-    setAuthToken('');
-    router.push('/app/live');
+    // Open meeting link in new tab
+    window.open(session.meetingLink, '_blank', 'noopener,noreferrer');
   };
 
   if (loading) {
@@ -94,6 +70,11 @@ export default function InstantMeetingPage({ params }: { params: Promise<{ code:
             }}
           />
           <p style={{ marginTop: '16px', color: '#718096' }}>Loading meeting...</p>
+          <style>{`
+            @keyframes spin {
+              to { transform: rotate(360deg); }
+            }
+          `}</style>
         </div>
       </div>
     );
@@ -145,12 +126,8 @@ export default function InstantMeetingPage({ params }: { params: Promise<{ code:
     );
   }
 
-  if (joined && session && authToken) {
-    return (
-      <HMSRoomProvider>
-        <StudentVideoRoom sessionId={session.id} authToken={authToken} onLeave={handleLeave} />
-      </HMSRoomProvider>
-    );
+  if (!session) {
+    return null;
   }
 
   return (
@@ -177,10 +154,10 @@ export default function InstantMeetingPage({ params }: { params: Promise<{ code:
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <div style={{ fontSize: '64px', marginBottom: '16px' }}>🎥</div>
           <h1 style={{ fontSize: '28px', fontWeight: '700', marginBottom: '8px' }}>
-            {session?.title}
+            {session.title}
           </h1>
           <p style={{ fontSize: '16px', color: '#718096', marginBottom: '16px' }}>
-            {session?.description}
+            {session.description}
           </p>
           <div
             style={{
@@ -197,7 +174,7 @@ export default function InstantMeetingPage({ params }: { params: Promise<{ code:
           </div>
         </div>
 
-        {session?.expertName && (
+        {session.expertName && (
           <div
             style={{
               display: 'flex',
@@ -231,6 +208,25 @@ export default function InstantMeetingPage({ params }: { params: Promise<{ code:
         <div
           style={{
             padding: '20px',
+            background: '#f0f4ff',
+            borderRadius: '12px',
+            marginBottom: '24px',
+            textAlign: 'center',
+          }}
+        >
+          <div style={{ fontSize: '14px', color: '#667eea', marginBottom: '8px' }}>Platform</div>
+          <div style={{ fontSize: '18px', fontWeight: '600', textTransform: 'capitalize' }}>
+            {session.meetingPlatform === 'zoom'
+              ? 'Zoom'
+              : session.meetingPlatform === 'google-meet'
+                ? 'Google Meet'
+                : 'Video Meeting'}
+          </div>
+        </div>
+
+        <div
+          style={{
+            padding: '20px',
             background: '#fffbeb',
             border: '1px solid #fbbf24',
             borderRadius: '12px',
@@ -248,34 +244,49 @@ export default function InstantMeetingPage({ params }: { params: Promise<{ code:
         </div>
 
         <button
-          onClick={handleJoin}
+          onClick={handleJoinMeeting}
+          disabled={!session.meetingLink}
           style={{
             width: '100%',
             padding: '16px',
-            background: '#667eea',
+            background: session.meetingLink ? '#667eea' : '#cbd5e0',
             color: '#fff',
             border: 'none',
             borderRadius: '12px',
             fontSize: '18px',
             fontWeight: '700',
-            cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+            cursor: session.meetingLink ? 'pointer' : 'not-allowed',
+            boxShadow: session.meetingLink ? '0 4px 12px rgba(102, 126, 234, 0.4)' : 'none',
+            transition: 'all 0.2s',
+          }}
+          onMouseEnter={e => {
+            if (session.meetingLink) {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 6px 16px rgba(102, 126, 234, 0.5)';
+            }
+          }}
+          onMouseLeave={e => {
+            if (session.meetingLink) {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)';
+            }
           }}
         >
-          Join Meeting
+          {session.meetingLink ? 'Join Meeting' : 'Meeting link not available'}
         </button>
 
-        <div
-          style={{
-            marginTop: '16px',
-            textAlign: 'center',
-            fontSize: '14px',
-            color: '#9ca3af',
-          }}
-        >
-          {session?.currentViewers || 0} participant{session?.currentViewers === 1 ? '' : 's'}{' '}
-          currently in the meeting
-        </div>
+        {session.meetingLink && (
+          <div
+            style={{
+              marginTop: '16px',
+              textAlign: 'center',
+              fontSize: '12px',
+              color: '#9ca3af',
+            }}
+          >
+            Meeting will open in a new tab
+          </div>
+        )}
       </div>
     </div>
   );

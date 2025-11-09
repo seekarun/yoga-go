@@ -138,6 +138,8 @@ export async function getOrCreateUser(
     billing: userDoc.billing,
     savedItems: userDoc.savedItems,
     social: userDoc.social,
+    defaultMeetingLink: userDoc.defaultMeetingLink,
+    defaultMeetingPlatform: userDoc.defaultMeetingPlatform,
   };
 
   return user;
@@ -171,6 +173,8 @@ export async function getUserById(userId: string): Promise<UserType | null> {
     billing: userDoc.billing,
     savedItems: userDoc.savedItems,
     social: userDoc.social,
+    defaultMeetingLink: userDoc.defaultMeetingLink,
+    defaultMeetingPlatform: userDoc.defaultMeetingPlatform,
   };
 
   return user;
@@ -214,6 +218,8 @@ export async function getUserByAuth0Id(auth0Id: string): Promise<UserType | null
     billing: userDoc.billing,
     savedItems: userDoc.savedItems,
     social: userDoc.social,
+    defaultMeetingLink: userDoc.defaultMeetingLink,
+    defaultMeetingPlatform: userDoc.defaultMeetingPlatform,
   };
 
   return user;

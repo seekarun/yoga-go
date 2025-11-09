@@ -16,20 +16,13 @@ export default function StudentLiveSessions({ userId }: StudentLiveSessionsProps
 
   useEffect(() => {
     fetchSessions();
-  }, [filter]);
+  }, []); // Only fetch once on mount, filter is done client-side
 
   const fetchSessions = async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams();
-
-      if (filter === 'live') {
-        params.append('status', 'live');
-      } else if (filter === 'upcoming') {
-        params.append('status', 'scheduled');
-      }
-
-      const response = await fetch(`/api/live/sessions?${params.toString()}`);
+      // Always fetch all sessions (no status filter) so badge counts are accurate
+      const response = await fetch('/api/live/sessions');
       const data: ApiResponse<LiveSession[]> = await response.json();
 
       if (data.success && data.data) {
@@ -74,29 +67,14 @@ export default function StudentLiveSessions({ userId }: StudentLiveSessionsProps
     }
   };
 
-  const liveSessions = sessions.filter(s => s.status === 'live');
-  const upcomingSessions = sessions.filter(s => s.status === 'scheduled');
+  // Filter to only show active sessions (exclude ended, cancelled)
+  const activeSessions = sessions.filter(s => s.status === 'live' || s.status === 'scheduled');
+  const liveSessions = activeSessions.filter(s => s.status === 'live');
+  const upcomingSessions = activeSessions.filter(s => s.status === 'scheduled');
 
   return (
-    <div style={{ padding: '40px 20px', background: '#f8f8f8', minHeight: '100vh' }}>
+    <div>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        {/* Header */}
-        <div style={{ marginBottom: '32px' }}>
-          <h1
-            style={{
-              fontSize: '32px',
-              fontWeight: '700',
-              color: '#2d3748',
-              marginBottom: '8px',
-            }}
-          >
-            Live Sessions
-          </h1>
-          <p style={{ fontSize: '16px', color: '#718096' }}>
-            Join live yoga sessions with expert instructors
-          </p>
-        </div>
-
         {/* Filter Tabs */}
         <div
           style={{
@@ -138,7 +116,7 @@ export default function StudentLiveSessions({ userId }: StudentLiveSessionsProps
                 }}
               >
                 {tab === 'all'
-                  ? sessions.length
+                  ? activeSessions.length
                   : tab === 'live'
                     ? liveSessions.length
                     : upcomingSessions.length}
@@ -171,7 +149,7 @@ export default function StudentLiveSessions({ userId }: StudentLiveSessionsProps
             />
             <div style={{ color: '#a0aec0' }}>Loading sessions...</div>
           </div>
-        ) : sessions.length === 0 ? (
+        ) : activeSessions.length === 0 ? (
           /* Empty State */
           <div
             style={{
@@ -287,7 +265,7 @@ export default function StudentLiveSessions({ userId }: StudentLiveSessionsProps
         )}
 
         {/* Info Section */}
-        {!loading && sessions.length > 0 && (
+        {!loading && activeSessions.length > 0 && (
           <div
             style={{
               marginTop: '48px',
@@ -333,14 +311,6 @@ export default function StudentLiveSessions({ userId }: StudentLiveSessionsProps
                 <div>
                   When the session goes live, click &ldquo;Join Now&rdquo; to watch the stream and
                   interact via chat.
-                </div>
-              </div>
-              <div>
-                <div style={{ fontWeight: '600', color: '#2d3748', marginBottom: '8px' }}>
-                  3. Watch Recordings
-                </div>
-                <div>
-                  Missed a session? Recordings are available for enrolled students to watch anytime.
                 </div>
               </div>
             </div>

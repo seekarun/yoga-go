@@ -12,12 +12,15 @@ export default function ExpertLiveDashboard({ params }: { params: Promise<{ expe
   const [showInstantModal, setShowInstantModal] = useState(false);
   const [instantTitle, setInstantTitle] = useState('');
   const [instantDescription, setInstantDescription] = useState('');
+  const [meetingLink, setMeetingLink] = useState('');
+  const [meetingPlatform, setMeetingPlatform] = useState<'zoom' | 'google-meet'>('google-meet');
   const [creatingMeeting, setCreatingMeeting] = useState(false);
   const [meetingCreated, setMeetingCreated] = useState<{
     sessionId: string;
     roomCode: string;
     joinUrl: string;
-    hmsRoomCode: string;
+    meetingLink: string;
+    meetingPlatform: string;
   } | null>(null);
 
   // Check authorization first
@@ -27,6 +30,11 @@ export default function ExpertLiveDashboard({ params }: { params: Promise<{ expe
   }, [expertId]);
 
   const handleCreateInstantMeeting = async () => {
+    if (!meetingLink.trim()) {
+      alert('Please provide a meeting link (Zoom, Google Meet, etc.)');
+      return;
+    }
+
     setCreatingMeeting(true);
     try {
       console.log('[DBG][live-dashboard] Creating instant meeting');
@@ -36,6 +44,8 @@ export default function ExpertLiveDashboard({ params }: { params: Promise<{ expe
         body: JSON.stringify({
           title: instantTitle || 'Instant Meeting',
           description: instantDescription || 'Join this instant meeting',
+          meetingLink: meetingLink.trim(),
+          meetingPlatform,
         }),
       });
 
@@ -64,13 +74,15 @@ export default function ExpertLiveDashboard({ params }: { params: Promise<{ expe
     setShowInstantModal(false);
     setInstantTitle('');
     setInstantDescription('');
+    setMeetingLink('');
+    setMeetingPlatform('google-meet');
     setMeetingCreated(null);
   };
 
   const handleJoinMeeting = () => {
-    if (meetingCreated) {
-      // Expert should join as host, not through the student page
-      router.push(`/app/live/host/${meetingCreated.sessionId}`);
+    if (meetingCreated?.meetingLink) {
+      // Open the meeting link in a new tab
+      window.open(meetingCreated.meetingLink, '_blank', 'noopener,noreferrer');
     }
   };
 
@@ -288,7 +300,7 @@ export default function ExpertLiveDashboard({ params }: { params: Promise<{ expe
                   />
                 </div>
 
-                <div style={{ marginBottom: '24px' }}>
+                <div style={{ marginBottom: '20px' }}>
                   <label
                     style={{
                       display: 'block',
@@ -315,6 +327,64 @@ export default function ExpertLiveDashboard({ params }: { params: Promise<{ expe
                   />
                 </div>
 
+                <div style={{ marginBottom: '20px' }}>
+                  <label
+                    style={{
+                      display: 'block',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      marginBottom: '8px',
+                    }}
+                  >
+                    Platform
+                  </label>
+                  <select
+                    value={meetingPlatform}
+                    onChange={e => setMeetingPlatform(e.target.value as 'zoom' | 'google-meet')}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      border: '2px solid #e2e8f0',
+                      borderRadius: '8px',
+                      fontSize: '16px',
+                      background: '#fff',
+                    }}
+                  >
+                    <option value="google-meet">Google Meet</option>
+                    <option value="zoom">Zoom</option>
+                  </select>
+                </div>
+
+                <div style={{ marginBottom: '24px' }}>
+                  <label
+                    style={{
+                      display: 'block',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      marginBottom: '8px',
+                    }}
+                  >
+                    Meeting Link <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input
+                    type="url"
+                    value={meetingLink}
+                    onChange={e => setMeetingLink(e.target.value)}
+                    placeholder="https://zoom.us/j/... or https://meet.google.com/..."
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      border: '2px solid #e2e8f0',
+                      borderRadius: '8px',
+                      fontSize: '16px',
+                    }}
+                    required
+                  />
+                  <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '6px' }}>
+                    Paste your Zoom, Google Meet, or other video meeting link
+                  </p>
+                </div>
+
                 <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
                   <button
                     onClick={handleCloseModal}
@@ -332,16 +402,16 @@ export default function ExpertLiveDashboard({ params }: { params: Promise<{ expe
                   </button>
                   <button
                     onClick={handleCreateInstantMeeting}
-                    disabled={creatingMeeting}
+                    disabled={creatingMeeting || !meetingLink.trim()}
                     style={{
                       padding: '12px 24px',
-                      background: creatingMeeting ? '#9ca3af' : '#10b981',
+                      background: creatingMeeting || !meetingLink.trim() ? '#9ca3af' : '#10b981',
                       border: 'none',
                       color: '#fff',
                       borderRadius: '8px',
                       fontSize: '16px',
                       fontWeight: '600',
-                      cursor: creatingMeeting ? 'not-allowed' : 'pointer',
+                      cursor: creatingMeeting || !meetingLink.trim() ? 'not-allowed' : 'pointer',
                     }}
                   >
                     {creatingMeeting ? 'Creating...' : 'Create Meeting'}
