@@ -158,7 +158,7 @@ export default function NewExpertPage() {
                 d="M15 19l-7-7 7-7"
               />
             </svg>
-            Back to Expert Portal
+            Back to Home
           </Link>
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Add New Expert</h1>
           <p className="text-gray-600">Create a new expert profile in the system</p>

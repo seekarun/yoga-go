@@ -39,7 +39,12 @@ export const EXPERT_DOMAINS: Record<string, ExpertDomainConfig> = {
 /**
  * Admin subdomain - redirects to expert portal (/srv)
  */
-export const ADMIN_DOMAINS = ['admin.myyoga.guru', 'www.admin.myyoga.guru', 'admin.local'];
+export const ADMIN_DOMAINS = [
+  'admin.myyoga.guru',
+  'www.admin.myyoga.guru',
+  'admin.local',
+  'admin.localhost', // Local development subdomain
+];
 
 /**
  * Primary app domains (non-expert domains that show full platform)
@@ -51,6 +56,7 @@ export const PRIMARY_DOMAINS = [
   'www.myyoga.guru',
   'localhost',
   'localhost:3111',
+  'admin.localhost:3111', // Admin subdomain for local development
   '127.0.0.1',
   '127.0.0.1:3111',
 ];
