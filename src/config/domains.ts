@@ -37,6 +37,11 @@ export const EXPERT_DOMAINS: Record<string, ExpertDomainConfig> = {
 };
 
 /**
+ * Admin subdomain - redirects to expert portal (/srv)
+ */
+export const ADMIN_DOMAINS = ['admin.myyoga.guru', 'www.admin.myyoga.guru', 'admin.local'];
+
+/**
  * Primary app domains (non-expert domains that show full platform)
  */
 export const PRIMARY_DOMAINS = [
@@ -66,6 +71,14 @@ export function getExpertIdFromHostname(hostname: string): string | null {
   }
 
   return null;
+}
+
+/**
+ * Check if hostname is an admin domain
+ */
+export function isAdminDomain(hostname: string): boolean {
+  const cleanHostname = hostname.split(':')[0].toLowerCase();
+  return ADMIN_DOMAINS.includes(cleanHostname);
 }
 
 /**

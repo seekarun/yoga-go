@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth0 } from './lib/auth0';
-import { getExpertIdFromHostname, isPrimaryDomain } from './config/domains';
+import { getExpertIdFromHostname, isPrimaryDomain, isAdminDomain } from './config/domains';
 
 /**
  * Middleware for authentication and domain-based routing
@@ -13,6 +13,7 @@ import { getExpertIdFromHostname, isPrimaryDomain } from './config/domains';
  *
  * Domain routing:
  * - yogago.com / localhost -> serves all routes (full platform)
+ * - admin.myyoga.guru -> redirects to /srv (expert portal)
  * - kavithayoga.com -> ONLY /experts/kavitha content (isolated)
  * - deepakyoga.com -> ONLY /experts/deepak content (isolated)
  *
@@ -26,6 +27,33 @@ export async function middleware(request: NextRequest) {
   const hostname = request.headers.get('host') || '';
 
   console.log('[DBG][middleware] Request to:', pathname, 'from:', hostname);
+
+  // Handle admin domain routing (admin.myyoga.guru -> /srv)
+  const isAdmin = isAdminDomain(hostname);
+  if (isAdmin) {
+    console.log('[DBG][middleware] Admin domain detected');
+
+    // Allow Next.js internals and API routes
+    if (pathname.startsWith('/_next') || pathname.startsWith('/api')) {
+      return await auth0.middleware(request);
+    }
+
+    // Allow static assets
+    if (pathname.startsWith('/public') || pathname.match(/\.(ico|png|jpg|jpeg|svg|css|js)$/)) {
+      return NextResponse.next();
+    }
+
+    // Root path or non-/srv path: Redirect to /srv
+    if (pathname === '/' || !pathname.startsWith('/srv')) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/srv';
+      console.log(`[DBG][middleware] Redirecting ${pathname} to /srv for admin domain`);
+      return NextResponse.redirect(url);
+    }
+
+    // /srv routes: Allow through Auth0 middleware
+    return await auth0.middleware(request);
+  }
 
   // Detect if this is an expert domain
   const expertId = getExpertIdFromHostname(hostname);
@@ -106,6 +134,8 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    // Root path (for domain redirects)
+    '/',
     // Auth routes
     '/auth/:path*',
     // Protected app routes
@@ -113,6 +143,9 @@ export const config = {
     '/srv/:path*',
     // Protected API routes
     '/data/app/:path*',
+    // Expert routes (for domain isolation)
+    '/experts/:path*',
+    '/courses/:path*',
     /*
      * Match all request paths except:
      * - api routes that don't need auth
