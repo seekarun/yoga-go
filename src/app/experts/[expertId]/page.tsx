@@ -40,17 +40,13 @@ export default function ExpertDetailPage() {
           console.log('[DBG][expert-detail] Expert loaded:', expertData.data);
         }
 
-        // Fetch all courses and filter by expert
-        const coursesRes = await fetch('/data/courses');
+        // Fetch courses for this expert (only PUBLISHED)
+        const coursesRes = await fetch(`/data/courses?instructorId=${expertId}`);
         const coursesData = await coursesRes.json();
 
         if (coursesData.success && expertData.success) {
-          // Filter courses by this expert
-          const expertCourses = coursesData.data.filter(
-            (course: Course) => course.instructor?.name === expertData.data.name
-          );
-          setCourses(expertCourses);
-          console.log('[DBG][expert-detail] Expert courses:', expertCourses);
+          setCourses(coursesData.data || []);
+          console.log('[DBG][expert-detail] Expert courses:', coursesData.data);
         }
       } catch (error) {
         console.error('[DBG][expert-detail] Error fetching data:', error);
@@ -628,6 +624,203 @@ export default function ExpertDetailPage() {
           </section>
         )}
 
+      {/* Courses Section */}
+      {courses.length > 0 && (
+        <section
+          style={{
+            padding: '80px 20px',
+            background: '#fff',
+          }}
+        >
+          <div className="container" style={{ maxWidth: '1400px', margin: '0 auto' }}>
+            <h2
+              style={{
+                fontSize: '48px',
+                fontWeight: '700',
+                textAlign: 'center',
+                marginBottom: '60px',
+                color: '#1a202c',
+              }}
+            >
+              Courses
+            </h2>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '80px' }}>
+              {courses.map(course => (
+                <div
+                  key={course.id}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '48px',
+                    alignItems: 'center',
+                  }}
+                >
+                  {/* Video - Left Half */}
+                  <div
+                    style={{
+                      borderRadius: '12px',
+                      overflow: 'hidden',
+                      boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                    }}
+                  >
+                    {course.promoVideoCloudflareId && course.promoVideoStatus === 'ready' ? (
+                      <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0 }}>
+                        <iframe
+                          src={`https://customer-${process.env.NEXT_PUBLIC_CF_SUBDOMAIN || 'placeholder'}.cloudflarestream.com/${course.promoVideoCloudflareId}/iframe?preload=auto&poster=https%3A%2F%2Fcustomer-${process.env.NEXT_PUBLIC_CF_SUBDOMAIN || 'placeholder'}.cloudflarestream.com%2F${course.promoVideoCloudflareId}%2Fthumbnails%2Fthumbnail.jpg%3Ftime%3D1s%26height%3D600`}
+                          style={{
+                            border: 'none',
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            height: '100%',
+                            width: '100%',
+                          }}
+                          allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+                          allowFullScreen={true}
+                        />
+                      </div>
+                    ) : (
+                      <img
+                        src={course.thumbnail || course.coverImage}
+                        alt={course.title}
+                        style={{
+                          width: '100%',
+                          height: 'auto',
+                          display: 'block',
+                        }}
+                      />
+                    )}
+                  </div>
+
+                  {/* Details - Right Half */}
+                  <div>
+                    <h3
+                      style={{
+                        fontSize: '32px',
+                        fontWeight: '700',
+                        marginBottom: '16px',
+                        color: '#1a202c',
+                        lineHeight: '1.2',
+                      }}
+                    >
+                      {course.title}
+                    </h3>
+
+                    <p
+                      style={{
+                        fontSize: '18px',
+                        lineHeight: '1.8',
+                        color: '#4a5568',
+                        marginBottom: '24px',
+                      }}
+                    >
+                      {course.description}
+                    </p>
+
+                    {/* Course Details */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '24px',
+                        marginBottom: '32px',
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                        }}
+                      >
+                        <span style={{ fontSize: '14px', fontWeight: '600', color: '#764ba2' }}>
+                          Level:
+                        </span>
+                        <span style={{ fontSize: '14px', color: '#4a5568' }}>{course.level}</span>
+                      </div>
+
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                        }}
+                      >
+                        <span style={{ fontSize: '14px', fontWeight: '600', color: '#764ba2' }}>
+                          Duration:
+                        </span>
+                        <span style={{ fontSize: '14px', color: '#4a5568' }}>
+                          {course.duration}
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                        }}
+                      >
+                        <span style={{ fontSize: '14px', fontWeight: '600', color: '#764ba2' }}>
+                          Lessons:
+                        </span>
+                        <span style={{ fontSize: '14px', color: '#4a5568' }}>
+                          {course.totalLessons}
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                        }}
+                      >
+                        <span style={{ fontSize: '14px', fontWeight: '600', color: '#764ba2' }}>
+                          Category:
+                        </span>
+                        <span style={{ fontSize: '14px', color: '#4a5568' }}>
+                          {course.category}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* CTA Button */}
+                    {!expertMode.isExpertMode && (
+                      <Link
+                        href={`/experts/${expertId}/courses/${course.id}`}
+                        style={{
+                          display: 'inline-block',
+                          padding: '14px 32px',
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          color: '#fff',
+                          fontSize: '16px',
+                          fontWeight: '600',
+                          borderRadius: '8px',
+                          textDecoration: 'none',
+                          transition: 'transform 0.2s, box-shadow 0.2s',
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.transform = 'translateY(-2px)';
+                          e.currentTarget.style.boxShadow = '0 6px 20px rgba(118, 75, 162, 0.4)';
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.transform = 'translateY(0)';
+                          e.currentTarget.style.boxShadow = 'none';
+                        }}
+                      >
+                        View Course
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Act Section - Image Left, Content Right */}
       {expert.customLandingPage?.act &&
         (expert.customLandingPage.act.imageUrl ||
@@ -692,7 +885,7 @@ export default function ExpertDetailPage() {
                   </p>
                   {!expertMode.isExpertMode && (
                     <Link
-                      href={customHero?.ctaLink || '#courses'}
+                      href={`/experts/${expertId}/survey`}
                       style={{
                         padding: '16px 48px',
                         background: '#fcd34d',

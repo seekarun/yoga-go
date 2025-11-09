@@ -187,6 +187,20 @@ export default function ExpertDashboard() {
                 </svg>
                 Edit Landing Page
               </Link>
+              <Link
+                href={`/srv/${expertId}/survey`}
+                className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors font-medium inline-flex items-center"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+                  />
+                </svg>
+                Edit Survey
+              </Link>
               <div className="text-left sm:text-right">
                 <p className="text-sm text-gray-500">Last updated</p>
                 <p className="text-sm font-medium text-gray-900">Just now</p>

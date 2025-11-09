@@ -560,7 +560,7 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]> {
 }
 
 // Live Session Related Types
-export type LiveSessionType = '1-on-1' | 'group' | 'workshop';
+export type LiveSessionType = '1-on-1' | 'group' | 'workshop' | 'instant';
 export type LiveSessionStatus = 'scheduled' | 'live' | 'ended' | 'cancelled';
 
 export interface LiveSessionMetadata {
@@ -599,7 +599,11 @@ export interface LiveSession extends BaseEntity {
   price: number; // Can be 0 for free sessions
   currency?: string; // Default 'INR'
 
-  // 100ms Integration
+  // Manual meeting link (Zoom/Google Meet/etc)
+  meetingLink?: string; // The actual Zoom/Meet URL
+  meetingPlatform?: 'zoom' | 'google-meet' | 'other';
+
+  // 100ms Integration (deprecated, kept for backward compatibility)
   hmsDetails?: LiveSessionHMSDetails;
 
   // Status
@@ -663,4 +667,59 @@ export interface AvailableSlot {
   endTime: string; // ISO datetime string
   duration: number; // in minutes
   available: boolean;
+}
+
+// Survey Related Types
+export type QuestionType = 'multiple-choice' | 'text';
+
+export interface QuestionOption {
+  id: string;
+  label: string;
+}
+
+export interface SurveyQuestion {
+  id: string;
+  questionText: string;
+  type: QuestionType;
+  options?: QuestionOption[]; // Only for multiple-choice questions
+  required: boolean;
+  order: number;
+}
+
+export interface SurveyContactInfo {
+  collectName: boolean;
+  nameRequired: boolean;
+  collectEmail: boolean;
+  emailRequired: boolean;
+  collectPhone: boolean;
+  phoneRequired: boolean;
+}
+
+export interface Survey extends BaseEntity {
+  expertId: string;
+  title: string;
+  description?: string;
+  contactInfo?: SurveyContactInfo;
+  questions: SurveyQuestion[];
+  isActive: boolean;
+}
+
+export interface SurveyAnswer {
+  questionId: string;
+  answer: string; // For text questions, this is the free text. For multiple-choice, this is the option ID
+}
+
+export interface SurveyResponseContactInfo {
+  name?: string;
+  email?: string;
+  phone?: string;
+}
+
+export interface SurveyResponse extends BaseEntity {
+  surveyId: string;
+  expertId: string;
+  userId?: string; // Optional, as guests can also respond
+  contactInfo?: SurveyResponseContactInfo; // Contact information collected from user
+  answers: SurveyAnswer[];
+  submittedAt: string;
 }
