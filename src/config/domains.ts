@@ -28,6 +28,12 @@ export const EXPERT_DOMAINS: Record<string, ExpertDomainConfig> = {
     name: 'Deepak',
     title: 'Yoga Master & Wellness Coach',
   },
+  tester: {
+    expertId: 'tester',
+    domains: ['tester.myyoga.guru', 'www.tester.myyoga.guru', 'tester.local'],
+    name: 'Tester',
+    title: 'Test Expert',
+  },
 };
 
 /**
@@ -36,6 +42,8 @@ export const EXPERT_DOMAINS: Record<string, ExpertDomainConfig> = {
 export const PRIMARY_DOMAINS = [
   'yogago.com',
   'www.yogago.com',
+  'myyoga.guru',
+  'www.myyoga.guru',
   'localhost',
   'localhost:3111',
   '127.0.0.1',
