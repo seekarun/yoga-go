@@ -90,6 +90,35 @@ export function isPrimaryDomain(hostname: string): boolean {
 }
 
 /**
+ * Extract subdomain from myyoga.guru hostname
+ * Returns subdomain if it's a valid expert subdomain, null otherwise
+ *
+ * Examples:
+ * - deepak.myyoga.guru -> 'deepak'
+ * - www.myyoga.guru -> null (www is excluded)
+ * - admin.myyoga.guru -> null (admin is excluded)
+ * - myyoga.guru -> null (no subdomain)
+ */
+export function getSubdomainFromMyYogaGuru(hostname: string): string | null {
+  const cleanHostname = hostname.split(':')[0].toLowerCase();
+
+  // Check if it's a myyoga.guru domain
+  if (!cleanHostname.endsWith('.myyoga.guru')) {
+    return null;
+  }
+
+  // Extract subdomain part (everything before .myyoga.guru)
+  const subdomain = cleanHostname.replace('.myyoga.guru', '');
+
+  // Exclude www and admin subdomains
+  if (subdomain === 'www' || subdomain === 'admin' || !subdomain) {
+    return null;
+  }
+
+  return subdomain;
+}
+
+/**
  * Get expert configuration by ID
  */
 export function getExpertConfig(expertId: string): ExpertDomainConfig | null {

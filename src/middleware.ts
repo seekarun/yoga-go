@@ -1,7 +1,12 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth0 } from './lib/auth0';
-import { getExpertIdFromHostname, isPrimaryDomain, isAdminDomain } from './config/domains';
+import {
+  getExpertIdFromHostname,
+  isPrimaryDomain,
+  isAdminDomain,
+  getSubdomainFromMyYogaGuru,
+} from './config/domains';
 
 /**
  * Middleware for authentication and domain-based routing
@@ -14,6 +19,7 @@ import { getExpertIdFromHostname, isPrimaryDomain, isAdminDomain } from './confi
  * Domain routing:
  * - yogago.com / localhost -> serves all routes (full platform)
  * - admin.myyoga.guru -> redirects to /srv (expert portal)
+ * - {subdomain}.myyoga.guru -> ONLY /experts/{subdomain} content (dynamic)
  * - kavithayoga.com -> ONLY /experts/kavitha content (isolated)
  * - deepakyoga.com -> ONLY /experts/deepak content (isolated)
  *
@@ -55,9 +61,17 @@ export async function middleware(request: NextRequest) {
     return await auth0.middleware(request);
   }
 
-  // Detect if this is an expert domain
-  const expertId = getExpertIdFromHostname(hostname);
-  const isExpertDomain = expertId !== null;
+  // Check if this is a dynamic myyoga.guru subdomain (e.g., deepak.myyoga.guru)
+  const myYogaGuruSubdomain = getSubdomainFromMyYogaGuru(hostname);
+  let expertId = myYogaGuruSubdomain;
+  let isExpertDomain = expertId !== null;
+
+  // If not a myyoga.guru subdomain, check configured expert domains (e.g., kavithayoga.com)
+  if (!expertId) {
+    expertId = getExpertIdFromHostname(hostname);
+    isExpertDomain = expertId !== null;
+  }
+
   const isPrimary = isPrimaryDomain(hostname);
 
   console.log(
@@ -66,7 +80,9 @@ export async function middleware(request: NextRequest) {
     'Expert ID:',
     expertId,
     'Is primary:',
-    isPrimary
+    isPrimary,
+    'MyYoga.Guru subdomain:',
+    myYogaGuruSubdomain
   );
 
   // Handle expert domain routing (domain isolation)
