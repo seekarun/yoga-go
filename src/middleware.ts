@@ -1,7 +1,12 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth0 } from './lib/auth0';
-import { getExpertIdFromHostname, isPrimaryDomain } from './config/domains';
+import {
+  getExpertIdFromHostname,
+  isPrimaryDomain,
+  isAdminDomain,
+  getSubdomainFromMyYogaGuru,
+} from './config/domains';
 
 /**
  * Middleware for authentication and domain-based routing
@@ -13,6 +18,8 @@ import { getExpertIdFromHostname, isPrimaryDomain } from './config/domains';
  *
  * Domain routing:
  * - yogago.com / localhost -> serves all routes (full platform)
+ * - admin.myyoga.guru -> redirects to /srv (expert portal)
+ * - {subdomain}.myyoga.guru -> ONLY /experts/{subdomain} content (dynamic)
  * - kavithayoga.com -> ONLY /experts/kavitha content (isolated)
  * - deepakyoga.com -> ONLY /experts/deepak content (isolated)
  *
@@ -27,9 +34,50 @@ export async function middleware(request: NextRequest) {
 
   console.log('[DBG][middleware] Request to:', pathname, 'from:', hostname);
 
-  // Detect if this is an expert domain
-  const expertId = getExpertIdFromHostname(hostname);
-  const isExpertDomain = expertId !== null;
+  // Handle admin domain routing (admin.myyoga.guru -> /srv)
+  const isAdmin = isAdminDomain(hostname);
+  if (isAdmin) {
+    console.log('[DBG][middleware] Admin domain detected');
+
+    // Allow Next.js internals and API routes
+    if (pathname.startsWith('/_next') || pathname.startsWith('/api')) {
+      return await auth0.middleware(request);
+    }
+
+    // Allow static assets
+    if (pathname.startsWith('/public') || pathname.match(/\.(ico|png|jpg|jpeg|svg|css|js)$/)) {
+      return NextResponse.next();
+    }
+
+    // Rewrite paths to /srv (keeps URL clean)
+    if (!pathname.startsWith('/srv')) {
+      const url = request.nextUrl.clone();
+      // Root path: Rewrite to /srv
+      if (pathname === '/') {
+        url.pathname = '/srv';
+      } else {
+        // Other paths: Rewrite to /srv/{path}
+        url.pathname = `/srv${pathname}`;
+      }
+      console.log(`[DBG][middleware] Rewriting ${pathname} to ${url.pathname} for admin domain`);
+      return NextResponse.rewrite(url);
+    }
+
+    // /srv routes: Allow through Auth0 middleware
+    return await auth0.middleware(request);
+  }
+
+  // Check if this is a dynamic myyoga.guru subdomain (e.g., deepak.myyoga.guru)
+  const myYogaGuruSubdomain = getSubdomainFromMyYogaGuru(hostname);
+  let expertId = myYogaGuruSubdomain;
+  let isExpertDomain = expertId !== null;
+
+  // If not a myyoga.guru subdomain, check configured expert domains (e.g., kavithayoga.com)
+  if (!expertId) {
+    expertId = getExpertIdFromHostname(hostname);
+    isExpertDomain = expertId !== null;
+  }
+
   const isPrimary = isPrimaryDomain(hostname);
 
   console.log(
@@ -38,7 +86,9 @@ export async function middleware(request: NextRequest) {
     'Expert ID:',
     expertId,
     'Is primary:',
-    isPrimary
+    isPrimary,
+    'MyYoga.Guru subdomain:',
+    myYogaGuruSubdomain
   );
 
   // Handle expert domain routing (domain isolation)
@@ -106,6 +156,8 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    // Root path (for domain redirects)
+    '/',
     // Auth routes
     '/auth/:path*',
     // Protected app routes
@@ -115,6 +167,9 @@ export const config = {
     '/api/:path*',
     // Protected API routes
     '/data/app/:path*',
+    // Expert routes (for domain isolation)
+    '/experts/:path*',
+    '/courses/:path*',
     /*
      * Match all request paths except:
      * - _next/static (static files)

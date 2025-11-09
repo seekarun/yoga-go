@@ -4,6 +4,7 @@ import { getSession } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/mongodb';
 import SurveyResponse from '@/models/SurveyResponse';
 import type { ApiResponse } from '@/types';
+import { sendBulkEmail } from '@/lib/email';
 
 interface RouteParams {
   params: Promise<{
@@ -88,34 +89,35 @@ export async function POST(
 
     console.log(`[DBG][survey-email-api] Recipients: ${recipients.join(', ')}`);
 
-    // TODO: Integrate with email service (e.g., SendGrid, AWS SES, Resend)
-    // For now, we'll just log the email details
-    console.log('[DBG][survey-email-api] Email Details:');
-    console.log(`  Subject: ${subject}`);
-    console.log(`  Message: ${message}`);
-    console.log(`  Recipients: ${recipients.length}`);
+    // Send emails using SendGrid
+    try {
+      await sendBulkEmail({
+        to: recipients,
+        subject,
+        text: message,
+        html: message.replace(/\n/g, '<br>'),
+      });
 
-    // Mock implementation - in production, you would send actual emails here
-    // Example with SendGrid:
-    // import sgMail from '@sendgrid/mail';
-    // sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-    // await sgMail.sendMultiple({
-    //   to: recipients,
-    //   from: 'noreply@yoga-go.com',
-    //   subject,
-    //   text: message,
-    //   html: message.replace(/\n/g, '<br>'),
-    // });
+      console.log('[DBG][survey-email-api] Emails sent successfully');
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        sent: recipients.length,
-        recipients,
-        message:
-          'Email functionality is not yet configured. Please set up an email service (SendGrid, AWS SES, or Resend) to send emails.',
-      },
-    });
+      return NextResponse.json({
+        success: true,
+        data: {
+          sent: recipients.length,
+          recipients,
+          message: `Successfully sent ${recipients.length} email(s)`,
+        },
+      });
+    } catch (emailError) {
+      console.error('[DBG][survey-email-api] Failed to send emails:', emailError);
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Failed to send emails. Please check SendGrid configuration.',
+        },
+        { status: 500 }
+      );
+    }
   } catch (error) {
     console.error('[DBG][survey-email-api] Error sending emails:', error);
     return NextResponse.json(

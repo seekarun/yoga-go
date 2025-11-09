@@ -25,6 +25,7 @@
     "@100mslive/react-sdk": "^0.10.39",
     "@100mslive/server-sdk": "^0.3.0",
     "@auth0/nextjs-auth0": "^4.10.0",
+    "@sendgrid/mail": "^8.1.6",
     "@stripe/react-stripe-js": "^5.2.0",
     "@stripe/stripe-js": "^8.0.0",
     "@types/jsonwebtoken": "^9.0.10",

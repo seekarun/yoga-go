@@ -28,7 +28,18 @@ export const EXPERT_DOMAINS: Record<string, ExpertDomainConfig> = {
     name: 'Deepak',
     title: 'Yoga Master & Wellness Coach',
   },
+  tester: {
+    expertId: 'tester',
+    domains: ['tester.myyoga.guru', 'www.tester.myyoga.guru', 'tester.local'],
+    name: 'Tester',
+    title: 'Test Expert',
+  },
 };
+
+/**
+ * Admin subdomain - redirects to expert portal (/srv)
+ */
+export const ADMIN_DOMAINS = ['admin.myyoga.guru', 'www.admin.myyoga.guru', 'admin.local'];
 
 /**
  * Primary app domains (non-expert domains that show full platform)
@@ -36,6 +47,8 @@ export const EXPERT_DOMAINS: Record<string, ExpertDomainConfig> = {
 export const PRIMARY_DOMAINS = [
   'yogago.com',
   'www.yogago.com',
+  'myyoga.guru',
+  'www.myyoga.guru',
   'localhost',
   'localhost:3111',
   '127.0.0.1',
@@ -61,11 +74,48 @@ export function getExpertIdFromHostname(hostname: string): string | null {
 }
 
 /**
+ * Check if hostname is an admin domain
+ */
+export function isAdminDomain(hostname: string): boolean {
+  const cleanHostname = hostname.split(':')[0].toLowerCase();
+  return ADMIN_DOMAINS.includes(cleanHostname);
+}
+
+/**
  * Check if hostname is a primary domain (not expert-specific)
  */
 export function isPrimaryDomain(hostname: string): boolean {
   const cleanHostname = hostname.toLowerCase();
   return PRIMARY_DOMAINS.some(domain => cleanHostname.includes(domain));
+}
+
+/**
+ * Extract subdomain from myyoga.guru hostname
+ * Returns subdomain if it's a valid expert subdomain, null otherwise
+ *
+ * Examples:
+ * - deepak.myyoga.guru -> 'deepak'
+ * - www.myyoga.guru -> null (www is excluded)
+ * - admin.myyoga.guru -> null (admin is excluded)
+ * - myyoga.guru -> null (no subdomain)
+ */
+export function getSubdomainFromMyYogaGuru(hostname: string): string | null {
+  const cleanHostname = hostname.split(':')[0].toLowerCase();
+
+  // Check if it's a myyoga.guru domain
+  if (!cleanHostname.endsWith('.myyoga.guru')) {
+    return null;
+  }
+
+  // Extract subdomain part (everything before .myyoga.guru)
+  const subdomain = cleanHostname.replace('.myyoga.guru', '');
+
+  // Exclude www and admin subdomains
+  if (subdomain === 'www' || subdomain === 'admin' || !subdomain) {
+    return null;
+  }
+
+  return subdomain;
 }
 
 /**

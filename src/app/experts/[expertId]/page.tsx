@@ -148,6 +148,36 @@ export default function ExpertDetailPage() {
             grid-template-columns: 1fr !important;
             gap: 20px !important;
           }
+          .course-item {
+            grid-template-columns: 1fr !important;
+            gap: 24px !important;
+          }
+          .course-title {
+            font-size: 24px !important;
+          }
+          .course-description {
+            font-size: 16px !important;
+          }
+          .courses-section-title {
+            font-size: 32px !important;
+            margin-bottom: 40px !important;
+          }
+          .act-section {
+            padding: 40px 20px !important;
+          }
+          .act-section-grid {
+            grid-template-columns: 1fr !important;
+            gap: 32px !important;
+          }
+          .act-section-image {
+            height: 250px !important;
+          }
+          .act-section-title {
+            font-size: 32px !important;
+          }
+          .act-section-text {
+            font-size: 16px !important;
+          }
         }
         @media (min-width: 769px) {
           .hero-section-desktop {
@@ -634,6 +664,7 @@ export default function ExpertDetailPage() {
         >
           <div className="container" style={{ maxWidth: '1400px', margin: '0 auto' }}>
             <h2
+              className="courses-section-title"
               style={{
                 fontSize: '48px',
                 fontWeight: '700',
@@ -649,6 +680,7 @@ export default function ExpertDetailPage() {
               {courses.map(course => (
                 <div
                   key={course.id}
+                  className="course-item"
                   style={{
                     display: 'grid',
                     gridTemplateColumns: '1fr 1fr',
@@ -696,6 +728,7 @@ export default function ExpertDetailPage() {
                   {/* Details - Right Half */}
                   <div>
                     <h3
+                      className="course-title"
                       style={{
                         fontSize: '32px',
                         fontWeight: '700',
@@ -708,6 +741,7 @@ export default function ExpertDetailPage() {
                     </h3>
 
                     <p
+                      className="course-description"
                       style={{
                         fontSize: '18px',
                         lineHeight: '1.8',
@@ -826,9 +860,10 @@ export default function ExpertDetailPage() {
         (expert.customLandingPage.act.imageUrl ||
           expert.customLandingPage.act.title ||
           expert.customLandingPage.act.text) && (
-          <section style={{ padding: '80px 20px', background: '#374151' }}>
+          <section className="act-section" style={{ padding: '80px 20px', background: '#374151' }}>
             <div className="container" style={{ maxWidth: '1400px', margin: '0 auto' }}>
               <div
+                className="act-section-grid"
                 style={{
                   display: 'grid',
                   gridTemplateColumns: '1fr 1fr',
@@ -838,6 +873,7 @@ export default function ExpertDetailPage() {
               >
                 {/* Left: Image */}
                 <div
+                  className="act-section-image"
                   style={{
                     width: '100%',
                     height: '400px',
@@ -862,6 +898,7 @@ export default function ExpertDetailPage() {
                 {/* Right: Content */}
                 <div>
                   <h2
+                    className="act-section-title"
                     style={{
                       fontSize: '48px',
                       fontWeight: '700',
@@ -873,6 +910,7 @@ export default function ExpertDetailPage() {
                     {expert.customLandingPage.act.title || "Let's uncover the power of your brand."}
                   </h2>
                   <p
+                    className="act-section-text"
                     style={{
                       fontSize: '18px',
                       lineHeight: '1.8',
