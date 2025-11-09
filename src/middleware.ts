@@ -49,12 +49,18 @@ export async function middleware(request: NextRequest) {
       return NextResponse.next();
     }
 
-    // Root path or non-/srv path: Redirect to /srv
-    if (pathname === '/' || !pathname.startsWith('/srv')) {
+    // Rewrite paths to /srv (keeps URL clean)
+    if (!pathname.startsWith('/srv')) {
       const url = request.nextUrl.clone();
-      url.pathname = '/srv';
-      console.log(`[DBG][middleware] Redirecting ${pathname} to /srv for admin domain`);
-      return NextResponse.redirect(url);
+      // Root path: Rewrite to /srv
+      if (pathname === '/') {
+        url.pathname = '/srv';
+      } else {
+        // Other paths: Rewrite to /srv/{path}
+        url.pathname = `/srv${pathname}`;
+      }
+      console.log(`[DBG][middleware] Rewriting ${pathname} to ${url.pathname} for admin domain`);
+      return NextResponse.rewrite(url);
     }
 
     // /srv routes: Allow through Auth0 middleware
