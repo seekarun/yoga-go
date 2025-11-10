@@ -2,14 +2,20 @@
  * Custom Auth0 Callback Handler
  *
  * This route handles the Auth0 callback with subdomain awareness.
- * After Auth0 authentication, it redirects users based on their role:
- * - Experts → admin subdomain (/srv)
- * - Learners → main domain (/app)
+ * After Auth0 authentication, it creates users with appropriate roles:
+ * - admin.myyoga.guru → creates expert role
+ * - myyoga.guru → creates learner role
+ *
+ * Then redirects users based on subdomain:
+ * - Admin subdomain → /srv
+ * - Main subdomain → /app
  */
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { Auth0Client } from '@auth0/nextjs-auth0/server';
+import { getOrCreateUser } from '@/lib/auth';
+import type { UserRole } from '@/types';
 
 // Safe domain extraction
 const getDomain = () => {
@@ -46,13 +52,36 @@ export async function GET(request: NextRequest) {
     // Handle the callback - this sets the session cookie and returns a redirect response
     const callbackResponse = await auth0Subdomain.middleware(request);
 
-    // Simple approach: redirect based on current subdomain
+    // Get session to extract user info and create/update user in MongoDB
+    const session = await auth0Subdomain.getSession(request);
+
+    if (session?.user) {
+      console.log('[DBG][auth/callback] Session user:', session.user.sub);
+
+      // Determine role based on subdomain
+      const { isAdminDomain } = await import('@/config/domains');
+      const isAdmin = isAdminDomain(hostname);
+      const role: UserRole = isAdmin ? 'expert' : 'learner';
+
+      console.log('[DBG][auth/callback] Creating/updating user with role:', role);
+
+      // Create or update user in MongoDB with appropriate role
+      await getOrCreateUser(
+        {
+          sub: session.user.sub,
+          email: session.user.email!,
+          name: session.user.name,
+          picture: session.user.picture,
+        },
+        role
+      );
+
+      console.log('[DBG][auth/callback] User created/updated successfully');
+    }
+
+    // Redirect based on current subdomain
     // - If on admin subdomain → redirect to /srv
     // - If on main subdomain → redirect to /app
-    //
-    // Cross-subdomain role-based redirects will be handled by middleware
-    // on subsequent page loads
-
     const { isAdminDomain } = await import('@/config/domains');
     const isAdmin = isAdminDomain(hostname);
     const redirectPath = isAdmin ? '/srv' : '/app';
