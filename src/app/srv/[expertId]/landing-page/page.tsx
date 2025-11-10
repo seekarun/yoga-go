@@ -417,7 +417,7 @@ export default function EditLandingPage() {
         {/* Header */}
         <div className="mb-8">
           <Link
-            href={`/srv/${expertId}`}
+            href="/srv"
             className="text-blue-600 hover:text-blue-800 font-medium inline-flex items-center mb-4"
           >
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -428,7 +428,7 @@ export default function EditLandingPage() {
                 d="M15 19l-7-7 7-7"
               />
             </svg>
-            Back to Dashboard
+            Back to Home
           </Link>
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Edit Landing Page</h1>
           <p className="text-gray-600">

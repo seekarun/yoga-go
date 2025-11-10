@@ -1,12 +1,37 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth0 } from './lib/auth0';
+import { Auth0Client } from '@auth0/nextjs-auth0/server';
 import {
   getExpertIdFromHostname,
   isPrimaryDomain,
   isAdminDomain,
   getSubdomainFromMyYogaGuru,
 } from './config/domains';
+
+// Helper to create subdomain-specific Auth0 client
+const getDomain = () => {
+  const issuerUrl = process.env.AUTH0_ISSUER_BASE_URL || 'https://placeholder.auth0.com';
+  return issuerUrl.replace('https://', '');
+};
+
+function createSubdomainAuth0Client(hostname: string): Auth0Client {
+  const protocol = hostname.includes('localhost') ? 'http' : 'https';
+  const dynamicBaseUrl = `${protocol}://${hostname}`;
+
+  return new Auth0Client({
+    domain: getDomain(),
+    clientId: process.env.AUTH0_CLIENT_ID || 'placeholder',
+    clientSecret: process.env.AUTH0_CLIENT_SECRET || 'placeholder',
+    appBaseUrl: dynamicBaseUrl,
+    secret: process.env.AUTH0_SECRET || 'placeholder-secret-at-least-32-characters-long',
+    routes: {
+      callback: '/auth/callback',
+      login: '/auth/login',
+      logout: '/auth/logout',
+    },
+  });
+}
 
 /**
  * Middleware for authentication and domain-based routing
@@ -39,13 +64,33 @@ export async function middleware(request: NextRequest) {
   if (isAdmin) {
     console.log('[DBG][middleware] Admin domain detected');
 
-    // Allow Next.js internals and API routes
-    if (pathname.startsWith('/_next') || pathname.startsWith('/api')) {
-      return await auth0.middleware(request);
+    // Allow Next.js internals and API routes - use subdomain-specific auth client
+    if (
+      pathname.startsWith('/_next') ||
+      pathname.startsWith('/api') ||
+      pathname.startsWith('/data')
+    ) {
+      const subdomainAuth = createSubdomainAuth0Client(hostname);
+      return await subdomainAuth.middleware(request);
+    }
+
+    // IMPORTANT: Allow Auth0 routes to pass through to custom route handlers
+    // Don't use auth0.middleware for /auth routes - let custom handlers handle subdomain logic
+    if (pathname.startsWith('/auth')) {
+      console.log(
+        '[DBG][middleware] Auth0 route detected, bypassing middleware to use custom handlers'
+      );
+      return NextResponse.next();
     }
 
     // Allow static assets
     if (pathname.startsWith('/public') || pathname.match(/\.(ico|png|jpg|jpeg|svg|css|js)$/)) {
+      return NextResponse.next();
+    }
+
+    // Allow /experts/* routes (for viewing public pages from admin dashboard)
+    if (pathname.startsWith('/experts/')) {
+      console.log('[DBG][middleware] Allowing /experts route on admin domain');
       return NextResponse.next();
     }
 
@@ -63,8 +108,9 @@ export async function middleware(request: NextRequest) {
       return NextResponse.rewrite(url);
     }
 
-    // /srv routes: Allow through Auth0 middleware
-    return await auth0.middleware(request);
+    // /srv routes: Allow through Auth0 middleware with subdomain-specific client
+    const subdomainAuth = createSubdomainAuth0Client(hostname);
+    return await subdomainAuth.middleware(request);
   }
 
   // Check if this is a dynamic myyoga.guru subdomain (e.g., deepak.myyoga.guru)
@@ -93,10 +139,23 @@ export async function middleware(request: NextRequest) {
 
   // Handle expert domain routing (domain isolation)
   if (isExpertDomain && expertId) {
-    // Allow Next.js internals and API routes
-    if (pathname.startsWith('/_next') || pathname.startsWith('/api')) {
-      // Continue to Auth0 middleware for protected API routes
-      return await auth0.middleware(request);
+    // Allow Next.js internals and API routes - use subdomain-specific auth client
+    if (
+      pathname.startsWith('/_next') ||
+      pathname.startsWith('/api') ||
+      pathname.startsWith('/data')
+    ) {
+      const subdomainAuth = createSubdomainAuth0Client(hostname);
+      return await subdomainAuth.middleware(request);
+    }
+
+    // IMPORTANT: Allow Auth0 routes to pass through to custom route handlers
+    // Don't use auth0.middleware for /auth routes - let custom handlers handle subdomain logic
+    if (pathname.startsWith('/auth')) {
+      console.log(
+        '[DBG][middleware] Auth0 route detected on expert domain, bypassing to custom handlers'
+      );
+      return NextResponse.next();
     }
 
     // Allow static assets
@@ -127,14 +186,15 @@ export async function middleware(request: NextRequest) {
       return NextResponse.next();
     }
 
-    // Protected routes: Allow but let Auth0 handle authentication
+    // Protected routes: Allow but let Auth0 handle authentication with subdomain-specific client
     if (
       pathname.startsWith('/app/') ||
       pathname.startsWith('/srv/') ||
       pathname.startsWith('/data/app/')
     ) {
       console.log('[DBG][middleware] Allowing access to protected route');
-      return await auth0.middleware(request);
+      const subdomainAuth = createSubdomainAuth0Client(hostname);
+      return await subdomainAuth.middleware(request);
     }
 
     // All other routes: Block access (redirect to expert page)
@@ -147,11 +207,10 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Primary domain: Allow all routes, use Auth0 for protected routes
-  // Use Auth0's built-in middleware which handles:
-  // - Authentication routes (/auth/login, /auth/callback, /auth/logout)
-  // - Session management and rolling sessions
-  return await auth0.middleware(request);
+  // Primary domain: Allow all routes, use subdomain-specific Auth0 for protected routes
+  // This ensures sessions work correctly even on main domain (localhost:3111)
+  const subdomainAuth = createSubdomainAuth0Client(hostname);
+  return await subdomainAuth.middleware(request);
 }
 
 export const config = {

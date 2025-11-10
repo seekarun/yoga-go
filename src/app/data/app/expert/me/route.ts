@@ -67,7 +67,7 @@ export async function GET() {
       id: expertDoc._id as string,
     };
 
-    console.log('[DBG][expert/me/route.ts] Expert profile found:', expert.id);
+    console.log('[DBG][expert/me/route.ts] Expert profile found:', expert.id, 'name:', expert.name);
     return NextResponse.json({ success: true, data: expert } as ApiResponse<Expert>);
   } catch (error) {
     console.error('[DBG][expert/me/route.ts] Error fetching expert profile:', error);
