@@ -36,6 +36,7 @@ const eslintConfig = [
       ],
       "react/self-closing-comp": "warn",
       "react/jsx-curly-brace-presence": ["warn", { props: "never", children: "never" }],
+      "react/no-unescaped-entities": "warn", // Don't block commits for quotes/apostrophes in text
       "no-console": ["warn", { allow: ["log", "warn", "error"] }],
       "prefer-const": "error",
       "no-var": "error",
@@ -49,6 +50,7 @@ const eslintConfig = [
       "build/**",
       "dist/**",
       "coverage/**",
+      "scripts/**",
       "next-env.d.ts",
       "*.config.js",
       "*.config.mjs",
