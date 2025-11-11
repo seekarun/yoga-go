@@ -2,14 +2,34 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import type { UserCoursesData } from '@/types';
 import CourseCard from '@/components/CourseCard';
 
 export default function Dashboard() {
   const { user, isAuthenticated } = useAuth();
+  const router = useRouter();
   const [userCourses, setUserCourses] = useState<UserCoursesData | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Clean up auth_token parameter from URL after OAuth callback
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('auth_token')) {
+      console.log('[DBG][app/page] Cleaning up auth_token parameter');
+      url.searchParams.delete('auth_token');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, []);
+
+  // Redirect experts to /srv
+  useEffect(() => {
+    if (user?.role === 'expert') {
+      console.log('[DBG][app/page] User is expert, redirecting to /srv');
+      router.push('/srv');
+    }
+  }, [user?.role, router]);
 
   useEffect(() => {
     const fetchUserCourses = async () => {
@@ -94,7 +114,10 @@ export default function Dashboard() {
                 color: '#764ba2',
               }}
             >
-              {!user.profile.avatar && user.profile.name.charAt(0).toUpperCase()}
+              {!user.profile.avatar &&
+                (user.profile?.name?.charAt(0)?.toUpperCase() ||
+                  user.profile.email?.charAt(0)?.toUpperCase() ||
+                  'U')}
             </div>
             <div>
               <h1
@@ -104,7 +127,9 @@ export default function Dashboard() {
                   marginBottom: '8px',
                 }}
               >
-                Welcome back, {user.profile.name.split(' ')[0]}! 🧘‍♀️
+                Welcome back,{' '}
+                {user.profile?.name?.split(' ')[0] || user.profile.email.split('@')[0] || 'User'}!
+                🧘‍♀️
               </h1>
               <p style={{ fontSize: '18px', opacity: 0.9 }}>Ready to continue your yoga journey?</p>
             </div>

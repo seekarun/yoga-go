@@ -883,6 +883,63 @@ export default function ExpertDetailPage() {
           </section>
         )}
 
+      {/* Become an Expert CTA - Hidden in expert mode */}
+      {!expertMode.isExpertMode && (
+        <section
+          style={{
+            padding: '80px 20px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            textAlign: 'center',
+          }}
+        >
+          <div style={{ maxWidth: '700px', margin: '0 auto' }}>
+            <h2
+              style={{
+                fontSize: '32px',
+                fontWeight: '600',
+                marginBottom: '12px',
+                color: '#fff',
+              }}
+            >
+              Inspired by {expert?.name || 'our experts'}?
+            </h2>
+            <p
+              style={{
+                fontSize: '18px',
+                marginBottom: '24px',
+                color: '#fff',
+                opacity: 0.95,
+                lineHeight: '1.6',
+              }}
+            >
+              Become an expert too and share your passion for yoga with students around the world.
+            </p>
+            <Link
+              href="/teach/apply"
+              style={{
+                padding: '14px 32px',
+                background: '#fff',
+                color: '#764ba2',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: '600',
+                textDecoration: 'none',
+                display: 'inline-block',
+                transition: 'transform 0.2s',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
+            >
+              Apply to Teach
+            </Link>
+          </div>
+        </section>
+      )}
+
       {/* CTA Section - Hidden in expert mode */}
       {!expertMode.isExpertMode && (
         <section

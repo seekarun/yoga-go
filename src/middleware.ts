@@ -1,56 +1,28 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { auth0 } from './lib/auth0';
-import { Auth0Client } from '@auth0/nextjs-auth0/server';
 import {
   getExpertIdFromHostname,
   isPrimaryDomain,
-  isAdminDomain,
   getSubdomainFromMyYogaGuru,
 } from './config/domains';
-
-// Helper to create subdomain-specific Auth0 client
-const getDomain = () => {
-  const issuerUrl = process.env.AUTH0_ISSUER_BASE_URL || 'https://placeholder.auth0.com';
-  return issuerUrl.replace('https://', '');
-};
-
-function createSubdomainAuth0Client(hostname: string): Auth0Client {
-  const protocol = hostname.includes('localhost') ? 'http' : 'https';
-  const dynamicBaseUrl = `${protocol}://${hostname}`;
-
-  return new Auth0Client({
-    domain: getDomain(),
-    clientId: process.env.AUTH0_CLIENT_ID || 'placeholder',
-    clientSecret: process.env.AUTH0_CLIENT_SECRET || 'placeholder',
-    appBaseUrl: dynamicBaseUrl,
-    secret: process.env.AUTH0_SECRET || 'placeholder-secret-at-least-32-characters-long',
-    routes: {
-      callback: '/auth/callback',
-      login: '/auth/login',
-      logout: '/auth/logout',
-    },
-  });
-}
 
 /**
  * Middleware for authentication and domain-based routing
  * This middleware:
- * 1. Handles domain-based routing (multi-domain expert isolation)
+ * 1. Handles domain-based routing for expert-specific domains (e.g., kavithayoga.com)
  * 2. Automatically handles Auth0 routes (/auth/login, /auth/callback, /auth/logout)
  * 3. Manages session cookies and rolling sessions
  * 4. Redirects unauthenticated users to login for protected routes
  *
  * Domain routing:
- * - yogago.com / localhost -> serves all routes (full platform)
- * - admin.myyoga.guru -> redirects to /srv (expert portal)
- * - {subdomain}.myyoga.guru -> ONLY /experts/{subdomain} content (dynamic)
+ * - myyoga.guru / localhost -> serves all routes (full platform)
  * - kavithayoga.com -> ONLY /experts/kavitha content (isolated)
  * - deepakyoga.com -> ONLY /experts/deepak content (isolated)
  *
  * Protected routes:
- * - /app/* - User dashboard and authenticated pages
- * - /srv/* - Expert portal pages
+ * - /app/* - User dashboard (learners AND experts can access)
+ * - /srv/* - Expert portal (only experts can access - checked in pages)
  * - /data/app/* - API routes for authenticated users
  */
 export async function middleware(request: NextRequest) {
@@ -58,60 +30,6 @@ export async function middleware(request: NextRequest) {
   const hostname = request.headers.get('host') || '';
 
   console.log('[DBG][middleware] Request to:', pathname, 'from:', hostname);
-
-  // Handle admin domain routing (admin.myyoga.guru -> /srv)
-  const isAdmin = isAdminDomain(hostname);
-  if (isAdmin) {
-    console.log('[DBG][middleware] Admin domain detected');
-
-    // Allow Next.js internals and API routes - use subdomain-specific auth client
-    if (
-      pathname.startsWith('/_next') ||
-      pathname.startsWith('/api') ||
-      pathname.startsWith('/data')
-    ) {
-      const subdomainAuth = createSubdomainAuth0Client(hostname);
-      return await subdomainAuth.middleware(request);
-    }
-
-    // IMPORTANT: Allow Auth0 routes to pass through to custom route handlers
-    // Don't use auth0.middleware for /auth routes - let custom handlers handle subdomain logic
-    if (pathname.startsWith('/auth')) {
-      console.log(
-        '[DBG][middleware] Auth0 route detected, bypassing middleware to use custom handlers'
-      );
-      return NextResponse.next();
-    }
-
-    // Allow static assets
-    if (pathname.startsWith('/public') || pathname.match(/\.(ico|png|jpg|jpeg|svg|css|js)$/)) {
-      return NextResponse.next();
-    }
-
-    // Allow /experts/* routes (for viewing public pages from admin dashboard)
-    if (pathname.startsWith('/experts/')) {
-      console.log('[DBG][middleware] Allowing /experts route on admin domain');
-      return NextResponse.next();
-    }
-
-    // Rewrite paths to /srv (keeps URL clean)
-    if (!pathname.startsWith('/srv')) {
-      const url = request.nextUrl.clone();
-      // Root path: Rewrite to /srv
-      if (pathname === '/') {
-        url.pathname = '/srv';
-      } else {
-        // Other paths: Rewrite to /srv/{path}
-        url.pathname = `/srv${pathname}`;
-      }
-      console.log(`[DBG][middleware] Rewriting ${pathname} to ${url.pathname} for admin domain`);
-      return NextResponse.rewrite(url);
-    }
-
-    // /srv routes: Allow through Auth0 middleware with subdomain-specific client
-    const subdomainAuth = createSubdomainAuth0Client(hostname);
-    return await subdomainAuth.middleware(request);
-  }
 
   // Check if this is a dynamic myyoga.guru subdomain (e.g., deepak.myyoga.guru)
   const myYogaGuruSubdomain = getSubdomainFromMyYogaGuru(hostname);
@@ -137,24 +55,20 @@ export async function middleware(request: NextRequest) {
     myYogaGuruSubdomain
   );
 
-  // Handle expert domain routing (domain isolation)
+  // Handle expert domain routing (domain isolation for dedicated expert sites)
   if (isExpertDomain && expertId) {
-    // Allow Next.js internals and API routes - use subdomain-specific auth client
+    // Allow Next.js internals and API routes
     if (
       pathname.startsWith('/_next') ||
       pathname.startsWith('/api') ||
       pathname.startsWith('/data')
     ) {
-      const subdomainAuth = createSubdomainAuth0Client(hostname);
-      return await subdomainAuth.middleware(request);
+      return await auth0.middleware(request);
     }
 
-    // IMPORTANT: Allow Auth0 routes to pass through to custom route handlers
-    // Don't use auth0.middleware for /auth routes - let custom handlers handle subdomain logic
+    // Allow Auth0 routes to pass through to custom route handlers
     if (pathname.startsWith('/auth')) {
-      console.log(
-        '[DBG][middleware] Auth0 route detected on expert domain, bypassing to custom handlers'
-      );
+      console.log('[DBG][middleware] Auth0 route detected on expert domain, bypassing');
       return NextResponse.next();
     }
 
@@ -181,20 +95,18 @@ export async function middleware(request: NextRequest) {
 
     // Courses belonging to this expert: Allow access
     if (pathname.startsWith('/courses/')) {
-      // Let the request through - the course page will validate ownership
       console.log('[DBG][middleware] Allowing access to course page (will validate expert)');
       return NextResponse.next();
     }
 
-    // Protected routes: Allow but let Auth0 handle authentication with subdomain-specific client
+    // Protected routes: Allow but let Auth0 handle authentication
     if (
       pathname.startsWith('/app/') ||
       pathname.startsWith('/srv/') ||
       pathname.startsWith('/data/app/')
     ) {
       console.log('[DBG][middleware] Allowing access to protected route');
-      const subdomainAuth = createSubdomainAuth0Client(hostname);
-      return await subdomainAuth.middleware(request);
+      return await auth0.middleware(request);
     }
 
     // All other routes: Block access (redirect to expert page)
@@ -207,10 +119,16 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Primary domain: Allow all routes, use subdomain-specific Auth0 for protected routes
-  // This ensures sessions work correctly even on main domain (localhost:3111)
-  const subdomainAuth = createSubdomainAuth0Client(hostname);
-  return await subdomainAuth.middleware(request);
+  // Primary domain (myyoga.guru, localhost): Allow all routes, use standard Auth0
+  // Auth0 middleware will protect /app/* and /srv/* routes automatically
+
+  // Allow Auth0 routes to pass through to custom route handlers
+  if (pathname.startsWith('/auth')) {
+    console.log('[DBG][middleware] Auth0 route on primary domain, bypassing to custom handler');
+    return NextResponse.next();
+  }
+
+  return await auth0.middleware(request);
 }
 
 export const config = {

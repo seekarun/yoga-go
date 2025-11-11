@@ -296,6 +296,20 @@ export default function Footer() {
                 </li>
                 <li style={{ marginBottom: '12px' }}>
                   <Link
+                    href="/teach"
+                    style={{
+                      color: '#764ba2',
+                      fontSize: '14px',
+                      textDecoration: 'none',
+                      transition: 'color 0.2s',
+                      fontWeight: '500',
+                    }}
+                  >
+                    Teach on MyYoga
+                  </Link>
+                </li>
+                <li style={{ marginBottom: '12px' }}>
+                  <Link
                     href="/blog"
                     style={{
                       color: '#666',

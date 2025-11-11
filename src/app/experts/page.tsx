@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import type { Expert } from '@/types';
 import ExpertCard from '@/components/ExpertCard';
 
@@ -99,6 +100,62 @@ export default function ExpertsPage() {
               <p style={{ color: '#666' }}>Please check back later.</p>
             </div>
           )}
+        </div>
+      </section>
+
+      {/* CTA Section - Become an Expert */}
+      <section
+        style={{
+          padding: '80px 20px',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          textAlign: 'center',
+        }}
+      >
+        <div style={{ maxWidth: '700px', margin: '0 auto' }}>
+          <h2
+            style={{
+              fontSize: '36px',
+              fontWeight: '600',
+              marginBottom: '16px',
+              color: '#fff',
+            }}
+          >
+            Want to Teach With Us?
+          </h2>
+          <p
+            style={{
+              fontSize: '18px',
+              marginBottom: '32px',
+              color: '#fff',
+              opacity: 0.95,
+              lineHeight: '1.6',
+            }}
+          >
+            Join our community of expert instructors and share your passion for yoga with students
+            around the world.
+          </p>
+          <Link
+            href="/teach/apply"
+            style={{
+              padding: '16px 32px',
+              background: '#fff',
+              color: '#764ba2',
+              borderRadius: '8px',
+              fontSize: '16px',
+              fontWeight: '600',
+              textDecoration: 'none',
+              display: 'inline-block',
+              transition: 'transform 0.2s',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.transform = 'translateY(0)';
+            }}
+          >
+            Apply to Become an Expert
+          </Link>
         </div>
       </section>
     </div>
