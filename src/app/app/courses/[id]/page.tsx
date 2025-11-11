@@ -203,7 +203,7 @@ export default function CoursePlayer() {
             href="/app"
             style={{
               padding: '12px 24px',
-              background: '#764ba2',
+              background: 'var(--color-primary)',
               color: '#fff',
               borderRadius: '8px',
               fontSize: '14px',
@@ -237,7 +237,7 @@ export default function CoursePlayer() {
             <Link
               href="/app"
               style={{
-                color: '#764ba2',
+                color: 'var(--color-primary)',
                 textDecoration: 'none',
                 fontSize: '14px',
                 fontWeight: '500',
@@ -280,7 +280,7 @@ export default function CoursePlayer() {
             <div style={{ fontSize: '12px', color: '#666' }} className="hide-on-small-mobile">
               {courseData.completedLessons} / {courseData.totalLessons}
             </div>
-            <div style={{ fontSize: '13px', fontWeight: '600', color: '#48bb78' }}>
+            <div style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-highlight)' }}>
               {courseData.percentComplete}%
             </div>
           </div>
@@ -296,7 +296,7 @@ export default function CoursePlayer() {
           left: '16px',
           zIndex: 1001,
           padding: '12px',
-          background: '#764ba2',
+          background: 'var(--color-primary)',
           color: '#fff',
           border: 'none',
           borderRadius: '8px',
@@ -408,7 +408,11 @@ export default function CoursePlayer() {
                           width: '24px',
                           height: '24px',
                           borderRadius: '50%',
-                          background: isCompleted ? '#48bb78' : isSelected ? '#764ba2' : '#e2e8f0',
+                          background: isCompleted
+                            ? 'var(--color-highlight)'
+                            : isSelected
+                              ? 'var(--color-primary)'
+                              : '#e2e8f0',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -428,7 +432,7 @@ export default function CoursePlayer() {
                             fontSize: '14px',
                             fontWeight: isSelected ? '600' : '500',
                             marginBottom: '6px',
-                            color: isSelected ? '#764ba2' : '#000',
+                            color: isSelected ? 'var(--color-primary)' : '#000',
                             lineHeight: '1.4',
                           }}
                         >
@@ -553,8 +557,8 @@ export default function CoursePlayer() {
                   style={{
                     padding: '10px 16px',
                     background: hasPrevLesson ? '#fff' : '#f5f5f5',
-                    color: hasPrevLesson ? '#764ba2' : '#ccc',
-                    border: `1px solid ${hasPrevLesson ? '#764ba2' : '#e2e8f0'}`,
+                    color: hasPrevLesson ? 'var(--color-primary)' : '#ccc',
+                    border: `1px solid ${hasPrevLesson ? 'var(--color-primary)' : '#e2e8f0'}`,
                     borderRadius: '8px',
                     fontSize: '13px',
                     fontWeight: '600',
@@ -567,14 +571,14 @@ export default function CoursePlayer() {
                   }}
                   onMouseEnter={e => {
                     if (hasPrevLesson) {
-                      e.currentTarget.style.background = '#764ba2';
+                      e.currentTarget.style.background = 'var(--color-primary)';
                       e.currentTarget.style.color = '#fff';
                     }
                   }}
                   onMouseLeave={e => {
                     if (hasPrevLesson) {
                       e.currentTarget.style.background = '#fff';
-                      e.currentTarget.style.color = '#764ba2';
+                      e.currentTarget.style.color = 'var(--color-primary)';
                     }
                   }}
                 >
@@ -595,9 +599,9 @@ export default function CoursePlayer() {
                     disabled={selectedItem.completed}
                     style={{
                       padding: '10px 16px',
-                      background: selectedItem.completed ? '#48bb78' : '#fff',
-                      color: selectedItem.completed ? '#fff' : '#48bb78',
-                      border: `1px solid #48bb78`,
+                      background: selectedItem.completed ? 'var(--color-highlight)' : '#fff',
+                      color: selectedItem.completed ? '#fff' : 'var(--color-highlight)',
+                      border: `1px solid var(--color-highlight)`,
                       borderRadius: '8px',
                       fontSize: '13px',
                       fontWeight: '600',
@@ -607,14 +611,14 @@ export default function CoursePlayer() {
                     }}
                     onMouseEnter={e => {
                       if (!selectedItem.completed) {
-                        e.currentTarget.style.background = '#48bb78';
+                        e.currentTarget.style.background = 'var(--color-highlight)';
                         e.currentTarget.style.color = '#fff';
                       }
                     }}
                     onMouseLeave={e => {
                       if (!selectedItem.completed) {
                         e.currentTarget.style.background = '#fff';
-                        e.currentTarget.style.color = '#48bb78';
+                        e.currentTarget.style.color = 'var(--color-highlight)';
                       }
                     }}
                   >
@@ -626,7 +630,7 @@ export default function CoursePlayer() {
                       onClick={() => handleMarkComplete(true)}
                       style={{
                         padding: '10px 16px',
-                        background: '#764ba2',
+                        background: 'var(--color-primary)',
                         color: '#fff',
                         border: 'none',
                         borderRadius: '8px',
@@ -643,7 +647,7 @@ export default function CoursePlayer() {
                         e.currentTarget.style.background = '#6a3f92';
                       }}
                       onMouseLeave={e => {
-                        e.currentTarget.style.background = '#764ba2';
+                        e.currentTarget.style.background = 'var(--color-primary)';
                       }}
                       className="complete-next-btn"
                     >
@@ -658,7 +662,7 @@ export default function CoursePlayer() {
                   disabled={!hasNextLesson}
                   style={{
                     padding: '10px 16px',
-                    background: hasNextLesson ? '#764ba2' : '#f5f5f5',
+                    background: hasNextLesson ? 'var(--color-primary)' : '#f5f5f5',
                     color: hasNextLesson ? '#fff' : '#ccc',
                     border: 'none',
                     borderRadius: '8px',
@@ -678,7 +682,7 @@ export default function CoursePlayer() {
                   }}
                   onMouseLeave={e => {
                     if (hasNextLesson) {
-                      e.currentTarget.style.background = '#764ba2';
+                      e.currentTarget.style.background = 'var(--color-primary)';
                     }
                   }}
                 >
@@ -706,7 +710,7 @@ export default function CoursePlayer() {
                           background: '#f0f4ff',
                           borderRadius: '6px',
                           fontSize: '12px',
-                          color: '#764ba2',
+                          color: 'var(--color-primary)',
                           fontWeight: '600',
                         }}
                       >
@@ -740,8 +744,8 @@ export default function CoursePlayer() {
                         style={{
                           padding: '12px 24px',
                           background: '#fff',
-                          color: '#764ba2',
-                          border: '1px solid #764ba2',
+                          color: 'var(--color-primary)',
+                          border: '1px solid var(--color-primary)',
                           borderRadius: '8px',
                           fontSize: '14px',
                           fontWeight: '600',
@@ -781,7 +785,7 @@ export default function CoursePlayer() {
                             <button
                               style={{
                                 padding: '8px 16px',
-                                background: '#764ba2',
+                                background: 'var(--color-primary)',
                                 color: '#fff',
                                 border: 'none',
                                 borderRadius: '6px',

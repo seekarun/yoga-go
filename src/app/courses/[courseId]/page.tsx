@@ -113,7 +113,7 @@ export default function CourseDetailPage() {
               width: '48px',
               height: '48px',
               border: '4px solid #e2e8f0',
-              borderTop: '4px solid #764ba2',
+              borderTop: '4px solid var(--color-primary)',
               borderRadius: '50%',
               animation: 'spin 1s linear infinite',
               margin: '0 auto 16px',
@@ -142,7 +142,7 @@ export default function CourseDetailPage() {
           <Link
             href="/courses"
             style={{
-              color: '#764ba2',
+              color: 'var(--color-primary)',
               textDecoration: 'underline',
             }}
           >
@@ -213,7 +213,7 @@ export default function CourseDetailPage() {
         >
           {/* Breadcrumb */}
           <div style={{ marginBottom: '24px', fontSize: '14px', color: '#666' }}>
-            <Link href="/courses" style={{ color: '#764ba2', textDecoration: 'none' }}>
+            <Link href="/courses" style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>
               Courses
             </Link>
             <span style={{ margin: '0 8px' }}>/</span>
@@ -235,7 +235,7 @@ export default function CourseDetailPage() {
                   <span
                     style={{
                       padding: '6px 12px',
-                      background: '#48bb78',
+                      background: 'var(--color-highlight)',
                       color: '#fff',
                       borderRadius: '6px',
                       fontSize: '12px',
@@ -249,7 +249,7 @@ export default function CourseDetailPage() {
                   <span
                     style={{
                       padding: '6px 12px',
-                      background: '#764ba2',
+                      background: 'var(--color-primary)',
                       color: '#fff',
                       borderRadius: '6px',
                       fontSize: '12px',
@@ -265,7 +265,7 @@ export default function CourseDetailPage() {
                     background: '#f7fafc',
                     borderRadius: '6px',
                     fontSize: '12px',
-                    color: '#764ba2',
+                    color: 'var(--color-primary)',
                     fontWeight: '600',
                   }}
                 >
@@ -347,7 +347,7 @@ export default function CourseDetailPage() {
                   onClick={handleEnrollClick}
                   style={{
                     padding: '12px 24px',
-                    background: isEnrolled ? '#48bb78' : '#764ba2',
+                    background: isEnrolled ? 'var(--color-highlight)' : 'var(--color-primary)',
                     color: '#fff',
                     border: 'none',
                     borderRadius: '8px',
@@ -364,7 +364,7 @@ export default function CourseDetailPage() {
                   }}
                   onMouseLeave={e => {
                     if (!isEnrolled) {
-                      e.currentTarget.style.background = '#764ba2';
+                      e.currentTarget.style.background = 'var(--color-primary)';
                     }
                   }}
                 >
@@ -663,7 +663,7 @@ export default function CourseDetailPage() {
                                   <span
                                     style={{
                                       padding: '4px 8px',
-                                      background: '#48bb78',
+                                      background: 'var(--color-highlight)',
                                       color: '#fff',
                                       borderRadius: '4px',
                                       fontSize: '11px',
@@ -791,7 +791,7 @@ export default function CourseDetailPage() {
                                     <span
                                       style={{
                                         fontSize: '12px',
-                                        color: '#48bb78',
+                                        color: 'var(--color-highlight)',
                                         fontWeight: '600',
                                       }}
                                     >

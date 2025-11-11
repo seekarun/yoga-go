@@ -94,7 +94,7 @@ export default function ExpertDetailPage() {
             <Link
               href="/experts"
               style={{
-                color: '#764ba2',
+                color: 'var(--color-primary)',
                 textDecoration: 'underline',
               }}
             >
@@ -263,7 +263,8 @@ export default function ExpertDetailPage() {
                   <br />
                   <span
                     style={{
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      background:
+                        'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%)',
                       WebkitBackgroundClip: 'text',
                       WebkitTextFillColor: 'transparent',
                       backgroundClip: 'text',
@@ -472,7 +473,8 @@ export default function ExpertDetailPage() {
                           width: '56px',
                           height: '56px',
                           borderRadius: '50%',
-                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          background:
+                            'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -698,7 +700,13 @@ export default function ExpertDetailPage() {
                           gap: '8px',
                         }}
                       >
-                        <span style={{ fontSize: '14px', fontWeight: '600', color: '#764ba2' }}>
+                        <span
+                          style={{
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            color: 'var(--color-primary)',
+                          }}
+                        >
                           Level:
                         </span>
                         <span style={{ fontSize: '14px', color: '#4a5568' }}>{course.level}</span>
@@ -711,7 +719,13 @@ export default function ExpertDetailPage() {
                           gap: '8px',
                         }}
                       >
-                        <span style={{ fontSize: '14px', fontWeight: '600', color: '#764ba2' }}>
+                        <span
+                          style={{
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            color: 'var(--color-primary)',
+                          }}
+                        >
                           Duration:
                         </span>
                         <span style={{ fontSize: '14px', color: '#4a5568' }}>
@@ -726,7 +740,13 @@ export default function ExpertDetailPage() {
                           gap: '8px',
                         }}
                       >
-                        <span style={{ fontSize: '14px', fontWeight: '600', color: '#764ba2' }}>
+                        <span
+                          style={{
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            color: 'var(--color-primary)',
+                          }}
+                        >
                           Lessons:
                         </span>
                         <span style={{ fontSize: '14px', color: '#4a5568' }}>
@@ -741,7 +761,13 @@ export default function ExpertDetailPage() {
                           gap: '8px',
                         }}
                       >
-                        <span style={{ fontSize: '14px', fontWeight: '600', color: '#764ba2' }}>
+                        <span
+                          style={{
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            color: 'var(--color-primary)',
+                          }}
+                        >
                           Category:
                         </span>
                         <span style={{ fontSize: '14px', color: '#4a5568' }}>
@@ -757,7 +783,8 @@ export default function ExpertDetailPage() {
                         style={{
                           display: 'inline-block',
                           padding: '14px 32px',
-                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          background:
+                            'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%)',
                           color: '#fff',
                           fontSize: '16px',
                           fontWeight: '600',

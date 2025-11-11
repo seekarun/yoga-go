@@ -173,7 +173,7 @@ export default function SurveyPage() {
                   alignItems: 'center',
                   padding: '16px',
                   background: answers[question.id] === option.id ? '#edf2f7' : '#fff',
-                  border: `2px solid ${answers[question.id] === option.id ? '#764ba2' : '#e2e8f0'}`,
+                  border: `2px solid ${answers[question.id] === option.id ? 'var(--color-primary)' : '#e2e8f0'}`,
                   borderRadius: '8px',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
@@ -316,7 +316,7 @@ export default function SurveyPage() {
             onClick={() => router.push(`/experts/${expertId}`)}
             style={{
               padding: '12px 24px',
-              background: '#764ba2',
+              background: 'var(--color-primary)',
               color: '#fff',
               border: 'none',
               borderRadius: '8px',
@@ -535,7 +535,7 @@ export default function SurveyPage() {
                 disabled={submitting}
                 style={{
                   padding: '14px 32px',
-                  background: submitting ? '#a0aec0' : '#764ba2',
+                  background: submitting ? '#a0aec0' : 'var(--color-primary)',
                   color: '#fff',
                   border: 'none',
                   borderRadius: '8px',

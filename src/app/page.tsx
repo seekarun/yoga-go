@@ -59,13 +59,17 @@ export default function Home() {
   };
 
   return (
-    <div style={{ paddingTop: '64px', minHeight: '100vh', background: '#fff' }}>
+    <div style={{ minHeight: '100vh', background: '#fff' }}>
       {/* Hero Banner */}
       <section
         style={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          backgroundImage:
+            'linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4)), url(/cover.png)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
           color: '#fff',
-          padding: '120px 20px',
+          padding: '180px 20px 120px',
           textAlign: 'center',
         }}
       >
@@ -97,7 +101,7 @@ export default function Home() {
               style={{
                 padding: '16px 32px',
                 background: '#fff',
-                color: '#764ba2',
+                color: 'var(--color-primary)',
                 borderRadius: '8px',
                 fontSize: '16px',
                 fontWeight: '600',
@@ -253,7 +257,7 @@ export default function Home() {
                     href="/courses"
                     style={{
                       padding: '12px 24px',
-                      background: '#764ba2',
+                      background: 'var(--color-primary)',
                       color: '#fff',
                       borderRadius: '8px',
                       fontSize: '14px',
@@ -377,7 +381,7 @@ export default function Home() {
                     href="/experts"
                     style={{
                       padding: '12px 24px',
-                      background: '#764ba2',
+                      background: 'var(--color-primary)',
                       color: '#fff',
                       borderRadius: '8px',
                       fontSize: '14px',

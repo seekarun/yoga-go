@@ -71,7 +71,8 @@ export default function Dashboard() {
       {/* Welcome Section */}
       <section
         style={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background:
+            'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%)',
           color: '#fff',
           padding: '60px 20px',
         }}
@@ -91,7 +92,7 @@ export default function Dashboard() {
                 justifyContent: 'center',
                 fontSize: '32px',
                 fontWeight: 'bold',
-                color: '#764ba2',
+                color: 'var(--color-primary)',
               }}
             >
               {!user.profile.avatar && user.profile.name.charAt(0).toUpperCase()}
@@ -198,7 +199,7 @@ export default function Dashboard() {
               <Link
                 href="/app/my-courses"
                 style={{
-                  color: '#764ba2',
+                  color: 'var(--color-primary)',
                   textDecoration: 'none',
                   fontSize: '14px',
                   fontWeight: '500',
@@ -246,7 +247,7 @@ export default function Dashboard() {
                 href="/courses"
                 style={{
                   padding: '12px 24px',
-                  background: '#764ba2',
+                  background: 'var(--color-primary)',
                   color: '#fff',
                   borderRadius: '8px',
                   fontSize: '14px',
@@ -321,7 +322,7 @@ export default function Dashboard() {
                 <Link
                   href="/app/achievements"
                   style={{
-                    color: '#764ba2',
+                    color: 'var(--color-primary)',
                     textDecoration: 'none',
                     fontSize: '14px',
                     fontWeight: '500',

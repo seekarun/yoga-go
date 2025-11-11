@@ -302,7 +302,7 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
               style={{
                 width: '19%',
                 height: '4px',
-                background: num <= step ? '#764ba2' : '#e2e8f0',
+                background: num <= step ? 'var(--color-primary)' : '#e2e8f0',
                 borderRadius: '2px',
               }}
             />
@@ -567,7 +567,7 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
                 style={{
                   marginTop: '8px',
                   fontSize: '12px',
-                  color: '#764ba2',
+                  color: 'var(--color-primary)',
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
@@ -606,7 +606,7 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
                     style={{
                       marginTop: '12px',
                       padding: '12px 24px',
-                      background: isUploading ? '#ccc' : '#764ba2',
+                      background: isUploading ? '#ccc' : 'var(--color-primary)',
                       color: '#fff',
                       border: 'none',
                       borderRadius: '8px',
@@ -632,7 +632,7 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
                     <div
                       style={{
                         width: `${uploadProgress}%`,
-                        background: '#764ba2',
+                        background: 'var(--color-primary)',
                         height: '8px',
                         borderRadius: '4px',
                         transition: 'width 0.3s',
@@ -842,7 +842,7 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
             disabled={loading}
             style={{
               padding: '12px 32px',
-              background: '#764ba2',
+              background: 'var(--color-primary)',
               color: '#fff',
               border: 'none',
               borderRadius: '8px',
@@ -859,7 +859,7 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
             disabled={loading}
             style={{
               padding: '12px 32px',
-              background: loading ? '#ccc' : '#764ba2',
+              background: loading ? '#ccc' : 'var(--color-primary)',
               color: '#fff',
               border: 'none',
               borderRadius: '8px',

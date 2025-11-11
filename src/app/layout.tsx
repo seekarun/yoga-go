@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Yoga-GO | Transform Your Practice',
+  title: 'My Yoga.Guru | Transform Your Practice',
   description:
     'Expert-led yoga courses for every level. Join thousands on their journey to better health and mindfulness.',
 };

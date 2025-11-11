@@ -77,8 +77,8 @@ export default function MyCourses() {
 
   const getStatusColor = (percentComplete: number) => {
     if (percentComplete === 0) return '#e2e8f0';
-    if (percentComplete === 100) return '#48bb78';
-    return '#764ba2';
+    if (percentComplete === 100) return 'var(--color-highlight)';
+    return 'var(--color-primary)';
   };
 
   const getStatusText = (percentComplete: number) => {
@@ -96,7 +96,7 @@ export default function MyCourses() {
             <Link
               href="/app"
               style={{
-                color: '#764ba2',
+                color: 'var(--color-primary)',
                 textDecoration: 'none',
                 fontSize: '14px',
                 fontWeight: '500',
@@ -212,7 +212,7 @@ export default function MyCourses() {
                 onClick={() => setViewMode('grid')}
                 style={{
                   padding: '8px 12px',
-                  background: viewMode === 'grid' ? '#764ba2' : '#e2e8f0',
+                  background: viewMode === 'grid' ? 'var(--color-primary)' : '#e2e8f0',
                   color: viewMode === 'grid' ? '#fff' : '#666',
                   border: 'none',
                   borderRadius: '6px',
@@ -226,7 +226,7 @@ export default function MyCourses() {
                 onClick={() => setViewMode('list')}
                 style={{
                   padding: '8px 12px',
-                  background: viewMode === 'list' ? '#764ba2' : '#e2e8f0',
+                  background: viewMode === 'list' ? 'var(--color-primary)' : '#e2e8f0',
                   color: viewMode === 'list' ? '#fff' : '#666',
                   border: 'none',
                   borderRadius: '6px',
@@ -339,7 +339,7 @@ export default function MyCourses() {
                           background: '#f7fafc',
                           borderRadius: '4px',
                           fontSize: '11px',
-                          color: '#764ba2',
+                          color: 'var(--color-primary)',
                           fontWeight: '600',
                         }}
                       >
@@ -466,7 +466,7 @@ export default function MyCourses() {
               href="/courses"
               style={{
                 padding: '12px 24px',
-                background: '#764ba2',
+                background: 'var(--color-primary)',
                 color: '#fff',
                 borderRadius: '8px',
                 fontSize: '14px',
