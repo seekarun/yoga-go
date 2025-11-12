@@ -251,11 +251,8 @@ export default function EditSurveyPage() {
       {/* Header */}
       <div className="bg-white shadow">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <Link
-            href={`/srv/${expertId}`}
-            className="text-blue-600 hover:text-blue-700 text-sm mb-3 inline-block"
-          >
-            ← Back to Dashboard
+          <Link href="/srv" className="text-blue-600 hover:text-blue-700 text-sm mb-3 inline-block">
+            ← Back to Home
           </Link>
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold text-gray-900">Edit Survey</h1>

@@ -219,7 +219,7 @@ export default function PaymentModal({ isOpen, onClose, type, item }: PaymentMod
               }}
               style={{
                 padding: '12px 24px',
-                background: '#764ba2',
+                background: 'var(--color-primary)',
                 color: '#fff',
                 border: 'none',
                 borderRadius: '8px',
@@ -258,7 +258,9 @@ export default function PaymentModal({ isOpen, onClose, type, item }: PaymentMod
                 }}
               >
                 <span style={{ fontSize: '16px', color: '#666' }}>Total Amount:</span>
-                <span style={{ fontSize: '24px', fontWeight: '700', color: '#764ba2' }}>
+                <span
+                  style={{ fontSize: '24px', fontWeight: '700', color: 'var(--color-primary)' }}
+                >
                   {formatPrice(amount, currency)}
                 </span>
               </div>

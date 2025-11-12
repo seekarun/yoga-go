@@ -2,14 +2,34 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import type { UserCoursesData } from '@/types';
 import CourseCard from '@/components/CourseCard';
 
 export default function Dashboard() {
   const { user, isAuthenticated } = useAuth();
+  const router = useRouter();
   const [userCourses, setUserCourses] = useState<UserCoursesData | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Clean up auth_token parameter from URL after OAuth callback
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.has('auth_token')) {
+      console.log('[DBG][app/page] Cleaning up auth_token parameter');
+      url.searchParams.delete('auth_token');
+      window.history.replaceState({}, '', url.toString());
+    }
+  }, []);
+
+  // Redirect experts to /srv
+  useEffect(() => {
+    if (user?.role === 'expert') {
+      console.log('[DBG][app/page] User is expert, redirecting to /srv');
+      router.push('/srv');
+    }
+  }, [user?.role, router]);
 
   useEffect(() => {
     const fetchUserCourses = async () => {
@@ -71,7 +91,8 @@ export default function Dashboard() {
       {/* Welcome Section */}
       <section
         style={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background:
+            'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%)',
           color: '#fff',
           padding: '60px 20px',
         }}
@@ -91,10 +112,13 @@ export default function Dashboard() {
                 justifyContent: 'center',
                 fontSize: '32px',
                 fontWeight: 'bold',
-                color: '#764ba2',
+                color: 'var(--color-primary)',
               }}
             >
-              {!user.profile.avatar && user.profile.name.charAt(0).toUpperCase()}
+              {!user.profile.avatar &&
+                (user.profile?.name?.charAt(0)?.toUpperCase() ||
+                  user.profile.email?.charAt(0)?.toUpperCase() ||
+                  'U')}
             </div>
             <div>
               <h1
@@ -104,7 +128,9 @@ export default function Dashboard() {
                   marginBottom: '8px',
                 }}
               >
-                Welcome back, {user.profile.name.split(' ')[0]}! 🧘‍♀️
+                Welcome back,{' '}
+                {user.profile?.name?.split(' ')[0] || user.profile.email.split('@')[0] || 'User'}!
+                🧘‍♀️
               </h1>
               <p style={{ fontSize: '18px', opacity: 0.9 }}>Ready to continue your yoga journey?</p>
             </div>
@@ -198,7 +224,7 @@ export default function Dashboard() {
               <Link
                 href="/app/my-courses"
                 style={{
-                  color: '#764ba2',
+                  color: 'var(--color-primary)',
                   textDecoration: 'none',
                   fontSize: '14px',
                   fontWeight: '500',
@@ -246,7 +272,7 @@ export default function Dashboard() {
                 href="/courses"
                 style={{
                   padding: '12px 24px',
-                  background: '#764ba2',
+                  background: 'var(--color-primary)',
                   color: '#fff',
                   borderRadius: '8px',
                   fontSize: '14px',
@@ -321,7 +347,7 @@ export default function Dashboard() {
                 <Link
                   href="/app/achievements"
                   style={{
-                    color: '#764ba2',
+                    color: 'var(--color-primary)',
                     textDecoration: 'none',
                     fontSize: '14px',
                     fontWeight: '500',

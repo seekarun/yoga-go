@@ -71,10 +71,10 @@ export default function CourseManagement() {
         <div className="text-center">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">{error || 'Course Not Found'}</h1>
           <Link
-            href={`/srv/${expertId}`}
+            href="/srv"
             className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700"
           >
-            Back to Dashboard
+            ← Back to Home
           </Link>
         </div>
       </div>
@@ -86,11 +86,8 @@ export default function CourseManagement() {
       {/* Header */}
       <div className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <Link
-            href={`/srv/${expertId}`}
-            className="text-blue-600 hover:text-blue-700 text-sm mb-2 block"
-          >
-            ← Back to Dashboard
+          <Link href="/srv" className="text-blue-600 hover:text-blue-700 text-sm mb-2 block">
+            ← Back to Home
           </Link>
           <div className="flex items-center justify-between">
             <div>

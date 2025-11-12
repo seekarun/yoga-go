@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import ExpertOnboarding from '@/components/ExpertOnboarding';
 import ExpertDashboard from '@/components/ExpertDashboard';
@@ -9,9 +10,18 @@ import type { Expert } from '@/types';
 
 export default function ExpertPlatform() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const router = useRouter();
   const [expertProfile, setExpertProfile] = useState<Expert | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Redirect learners to /app
+  useEffect(() => {
+    if (user?.role === 'learner') {
+      console.log('[DBG][srv/page] User is learner, redirecting to /app');
+      router.push('/app');
+    }
+  }, [user?.role, router]);
 
   useEffect(() => {
     // Only fetch expert profile if user is authenticated and is an expert
@@ -101,7 +111,7 @@ export default function ExpertPlatform() {
               href="/app"
               style={{
                 padding: '12px 24px',
-                background: '#764ba2',
+                background: 'var(--color-primary)',
                 color: '#fff',
                 borderRadius: '8px',
                 textDecoration: 'none',
@@ -247,7 +257,10 @@ export default function ExpertPlatform() {
   if (user?.role === 'expert' && !expertProfile) {
     return (
       <div style={{ paddingTop: '64px' }}>
-        <ExpertOnboarding userEmail={user.profile.email} userName={user.profile.name} />
+        <ExpertOnboarding
+          userEmail={user.profile.email}
+          userName={user.profile?.name || user.profile.email.split('@')[0] || 'Expert'}
+        />
       </div>
     );
   }
@@ -288,7 +301,8 @@ function ExpertLandingPage() {
       {/* Hero Section */}
       <section
         style={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background:
+            'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%)',
           color: '#fff',
           padding: '120px 20px',
           textAlign: 'center',
@@ -324,7 +338,7 @@ function ExpertLandingPage() {
               style={{
                 padding: '16px 40px',
                 background: '#fff',
-                color: '#764ba2',
+                color: 'var(--color-primary)',
                 borderRadius: '8px',
                 fontSize: '18px',
                 fontWeight: '600',
@@ -469,7 +483,7 @@ function ExpertLandingPage() {
                   minWidth: '80px',
                   height: '80px',
                   borderRadius: '50%',
-                  background: '#764ba2',
+                  background: 'var(--color-primary)',
                   color: '#fff',
                   display: 'flex',
                   alignItems: 'center',
@@ -497,7 +511,7 @@ function ExpertLandingPage() {
                   minWidth: '80px',
                   height: '80px',
                   borderRadius: '50%',
-                  background: '#764ba2',
+                  background: 'var(--color-primary)',
                   color: '#fff',
                   display: 'flex',
                   alignItems: 'center',
@@ -525,7 +539,7 @@ function ExpertLandingPage() {
                   minWidth: '80px',
                   height: '80px',
                   borderRadius: '50%',
-                  background: '#764ba2',
+                  background: 'var(--color-primary)',
                   color: '#fff',
                   display: 'flex',
                   alignItems: 'center',
@@ -586,7 +600,7 @@ function ExpertLandingPage() {
                 &quot;Yoga-GO has transformed my teaching practice. I now reach students worldwide
                 and earn more than I ever did with in-person classes.&quot;
               </p>
-              <p style={{ fontSize: '14px', fontWeight: '600', color: '#764ba2' }}>
+              <p style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-primary)' }}>
                 - Sarah M., Vinyasa Expert
               </p>
             </div>
@@ -607,7 +621,7 @@ function ExpertLandingPage() {
                 &quot;The platform is incredibly easy to use. I created my first course in just a
                 weekend and had my first students within days.&quot;
               </p>
-              <p style={{ fontSize: '14px', fontWeight: '600', color: '#764ba2' }}>
+              <p style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-primary)' }}>
                 - Michael Chen, Power Yoga Instructor
               </p>
             </div>
@@ -628,7 +642,7 @@ function ExpertLandingPage() {
                 &quot;I love the flexibility. I create content when it works for me and earn passive
                 income 24/7. Best decision for my career.&quot;
               </p>
-              <p style={{ fontSize: '14px', fontWeight: '600', color: '#764ba2' }}>
+              <p style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-primary)' }}>
                 - Priya Sharma, Meditation Teacher
               </p>
             </div>
@@ -639,7 +653,8 @@ function ExpertLandingPage() {
       {/* CTA Section */}
       <section
         style={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background:
+            'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%)',
           color: '#fff',
           padding: '100px 20px',
           textAlign: 'center',
@@ -657,7 +672,7 @@ function ExpertLandingPage() {
             style={{
               padding: '16px 48px',
               background: '#fff',
-              color: '#764ba2',
+              color: 'var(--color-primary)',
               borderRadius: '8px',
               fontSize: '18px',
               fontWeight: '600',

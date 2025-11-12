@@ -154,7 +154,7 @@ export default function Profile() {
             <Link
               href="/app"
               style={{
-                color: '#764ba2',
+                color: 'var(--color-primary)',
                 textDecoration: 'none',
                 fontSize: '14px',
                 fontWeight: '500',
@@ -204,7 +204,9 @@ export default function Profile() {
                     width: '80px',
                     height: '80px',
                     borderRadius: '50%',
-                    background: user.profile.avatar ? `url(${user.profile.avatar})` : '#764ba2',
+                    background: user.profile.avatar
+                      ? `url(${user.profile.avatar})`
+                      : 'var(--color-primary)',
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
                     display: 'flex',
@@ -245,9 +247,11 @@ export default function Profile() {
                       cursor: 'pointer',
                       fontSize: '14px',
                       fontWeight: '500',
-                      color: activeTab === tab.id ? '#764ba2' : '#666',
+                      color: activeTab === tab.id ? 'var(--color-primary)' : '#666',
                       borderLeft:
-                        activeTab === tab.id ? '3px solid #764ba2' : '3px solid transparent',
+                        activeTab === tab.id
+                          ? '3px solid var(--color-primary)'
+                          : '3px solid transparent',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '12px',
@@ -288,7 +292,7 @@ export default function Profile() {
                       onClick={() => setIsEditing(true)}
                       style={{
                         padding: '8px 16px',
-                        background: '#764ba2',
+                        background: 'var(--color-primary)',
                         color: '#fff',
                         border: 'none',
                         borderRadius: '6px',
@@ -474,7 +478,7 @@ export default function Profile() {
                         onClick={handleSave}
                         style={{
                           padding: '12px 24px',
-                          background: '#48bb78',
+                          background: 'var(--color-highlight)',
                           color: '#fff',
                           border: 'none',
                           borderRadius: '8px',
@@ -691,7 +695,8 @@ export default function Profile() {
 
                   <div
                     style={{
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      background:
+                        'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%)',
                       borderRadius: '12px',
                       padding: '24px',
                       color: '#fff',
@@ -754,7 +759,9 @@ export default function Profile() {
                           key={index}
                           style={{ display: 'flex', alignItems: 'center', gap: '12px' }}
                         >
-                          <span style={{ color: '#48bb78', fontSize: '16px' }}>✓</span>
+                          <span style={{ color: 'var(--color-highlight)', fontSize: '16px' }}>
+                            ✓
+                          </span>
                           <span style={{ fontSize: '14px' }}>{benefit}</span>
                         </div>
                       ))}
@@ -909,7 +916,7 @@ export default function Profile() {
                               right: 0,
                               bottom: 0,
                               background: user.preferences.emailNotifications
-                                ? '#764ba2'
+                                ? 'var(--color-primary)'
                                 : '#e2e8f0',
                               borderRadius: '24px',
                               transition: '0.3s',
@@ -972,7 +979,7 @@ export default function Profile() {
                               right: 0,
                               bottom: 0,
                               background: user.preferences.pushNotifications
-                                ? '#764ba2'
+                                ? 'var(--color-primary)'
                                 : '#e2e8f0',
                               borderRadius: '24px',
                               transition: '0.3s',
@@ -1068,7 +1075,7 @@ export default function Profile() {
                     <button
                       style={{
                         padding: '12px 24px',
-                        background: '#764ba2',
+                        background: 'var(--color-primary)',
                         color: '#fff',
                         border: 'none',
                         borderRadius: '8px',

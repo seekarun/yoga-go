@@ -64,7 +64,7 @@ export default function ExpertCard({ expert, variant = 'full' }: ExpertCardProps
             <p
               style={{
                 fontSize: '14px',
-                color: '#764ba2',
+                color: 'var(--color-primary)',
                 marginBottom: '12px',
                 fontWeight: '500',
               }}
@@ -202,7 +202,7 @@ export default function ExpertCard({ expert, variant = 'full' }: ExpertCardProps
           <p
             style={{
               fontSize: '16px',
-              color: '#764ba2',
+              color: 'var(--color-primary)',
               marginBottom: '16px',
               fontWeight: '500',
             }}

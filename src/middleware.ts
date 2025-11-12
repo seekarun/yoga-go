@@ -4,28 +4,25 @@ import { auth0 } from './lib/auth0';
 import {
   getExpertIdFromHostname,
   isPrimaryDomain,
-  isAdminDomain,
   getSubdomainFromMyYogaGuru,
 } from './config/domains';
 
 /**
  * Middleware for authentication and domain-based routing
  * This middleware:
- * 1. Handles domain-based routing (multi-domain expert isolation)
+ * 1. Handles domain-based routing for expert-specific domains (e.g., kavithayoga.com)
  * 2. Automatically handles Auth0 routes (/auth/login, /auth/callback, /auth/logout)
  * 3. Manages session cookies and rolling sessions
  * 4. Redirects unauthenticated users to login for protected routes
  *
  * Domain routing:
- * - yogago.com / localhost -> serves all routes (full platform)
- * - admin.myyoga.guru -> redirects to /srv (expert portal)
- * - {subdomain}.myyoga.guru -> ONLY /experts/{subdomain} content (dynamic)
+ * - myyoga.guru / localhost -> serves all routes (full platform)
  * - kavithayoga.com -> ONLY /experts/kavitha content (isolated)
  * - deepakyoga.com -> ONLY /experts/deepak content (isolated)
  *
  * Protected routes:
- * - /app/* - User dashboard and authenticated pages
- * - /srv/* - Expert portal pages
+ * - /app/* - User dashboard (learners AND experts can access)
+ * - /srv/* - Expert portal (only experts can access - checked in pages)
  * - /data/app/* - API routes for authenticated users
  */
 export async function middleware(request: NextRequest) {
@@ -33,39 +30,6 @@ export async function middleware(request: NextRequest) {
   const hostname = request.headers.get('host') || '';
 
   console.log('[DBG][middleware] Request to:', pathname, 'from:', hostname);
-
-  // Handle admin domain routing (admin.myyoga.guru -> /srv)
-  const isAdmin = isAdminDomain(hostname);
-  if (isAdmin) {
-    console.log('[DBG][middleware] Admin domain detected');
-
-    // Allow Next.js internals and API routes
-    if (pathname.startsWith('/_next') || pathname.startsWith('/api')) {
-      return await auth0.middleware(request);
-    }
-
-    // Allow static assets
-    if (pathname.startsWith('/public') || pathname.match(/\.(ico|png|jpg|jpeg|svg|css|js)$/)) {
-      return NextResponse.next();
-    }
-
-    // Rewrite paths to /srv (keeps URL clean)
-    if (!pathname.startsWith('/srv')) {
-      const url = request.nextUrl.clone();
-      // Root path: Rewrite to /srv
-      if (pathname === '/') {
-        url.pathname = '/srv';
-      } else {
-        // Other paths: Rewrite to /srv/{path}
-        url.pathname = `/srv${pathname}`;
-      }
-      console.log(`[DBG][middleware] Rewriting ${pathname} to ${url.pathname} for admin domain`);
-      return NextResponse.rewrite(url);
-    }
-
-    // /srv routes: Allow through Auth0 middleware
-    return await auth0.middleware(request);
-  }
 
   // Check if this is a dynamic myyoga.guru subdomain (e.g., deepak.myyoga.guru)
   const myYogaGuruSubdomain = getSubdomainFromMyYogaGuru(hostname);
@@ -91,12 +55,21 @@ export async function middleware(request: NextRequest) {
     myYogaGuruSubdomain
   );
 
-  // Handle expert domain routing (domain isolation)
+  // Handle expert domain routing (domain isolation for dedicated expert sites)
   if (isExpertDomain && expertId) {
     // Allow Next.js internals and API routes
-    if (pathname.startsWith('/_next') || pathname.startsWith('/api')) {
-      // Continue to Auth0 middleware for protected API routes
+    if (
+      pathname.startsWith('/_next') ||
+      pathname.startsWith('/api') ||
+      pathname.startsWith('/data')
+    ) {
       return await auth0.middleware(request);
+    }
+
+    // Allow Auth0 routes to pass through to custom route handlers
+    if (pathname.startsWith('/auth')) {
+      console.log('[DBG][middleware] Auth0 route detected on expert domain, bypassing');
+      return NextResponse.next();
     }
 
     // Allow static assets
@@ -122,7 +95,6 @@ export async function middleware(request: NextRequest) {
 
     // Courses belonging to this expert: Allow access
     if (pathname.startsWith('/courses/')) {
-      // Let the request through - the course page will validate ownership
       console.log('[DBG][middleware] Allowing access to course page (will validate expert)');
       return NextResponse.next();
     }
@@ -147,10 +119,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Primary domain: Allow all routes, use Auth0 for protected routes
-  // Use Auth0's built-in middleware which handles:
-  // - Authentication routes (/auth/login, /auth/callback, /auth/logout)
-  // - Session management and rolling sessions
+  // Primary domain (myyoga.guru, localhost): Allow all routes, use standard Auth0
+  // Auth0 middleware will protect /app/* and /srv/* routes automatically
+
+  // Allow Auth0 routes to pass through to custom route handlers
+  if (pathname.startsWith('/auth')) {
+    console.log('[DBG][middleware] Auth0 route on primary domain, bypassing to custom handler');
+    return NextResponse.next();
+  }
+
   return await auth0.middleware(request);
 }
 

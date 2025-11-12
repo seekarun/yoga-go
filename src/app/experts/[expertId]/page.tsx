@@ -94,7 +94,7 @@ export default function ExpertDetailPage() {
             <Link
               href="/experts"
               style={{
-                color: '#764ba2',
+                color: 'var(--color-primary)',
                 textDecoration: 'underline',
               }}
             >
@@ -263,7 +263,8 @@ export default function ExpertDetailPage() {
                   <br />
                   <span
                     style={{
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      background:
+                        'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%)',
                       WebkitBackgroundClip: 'text',
                       WebkitTextFillColor: 'transparent',
                       backgroundClip: 'text',
@@ -542,7 +543,8 @@ export default function ExpertDetailPage() {
                           width: '56px',
                           height: '56px',
                           borderRadius: '50%',
-                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          background:
+                            'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -768,7 +770,13 @@ export default function ExpertDetailPage() {
                           gap: '8px',
                         }}
                       >
-                        <span style={{ fontSize: '14px', fontWeight: '600', color: '#764ba2' }}>
+                        <span
+                          style={{
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            color: 'var(--color-primary)',
+                          }}
+                        >
                           Level:
                         </span>
                         <span style={{ fontSize: '14px', color: '#4a5568' }}>{course.level}</span>
@@ -781,7 +789,13 @@ export default function ExpertDetailPage() {
                           gap: '8px',
                         }}
                       >
-                        <span style={{ fontSize: '14px', fontWeight: '600', color: '#764ba2' }}>
+                        <span
+                          style={{
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            color: 'var(--color-primary)',
+                          }}
+                        >
                           Duration:
                         </span>
                         <span style={{ fontSize: '14px', color: '#4a5568' }}>
@@ -796,7 +810,13 @@ export default function ExpertDetailPage() {
                           gap: '8px',
                         }}
                       >
-                        <span style={{ fontSize: '14px', fontWeight: '600', color: '#764ba2' }}>
+                        <span
+                          style={{
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            color: 'var(--color-primary)',
+                          }}
+                        >
                           Lessons:
                         </span>
                         <span style={{ fontSize: '14px', color: '#4a5568' }}>
@@ -811,7 +831,13 @@ export default function ExpertDetailPage() {
                           gap: '8px',
                         }}
                       >
-                        <span style={{ fontSize: '14px', fontWeight: '600', color: '#764ba2' }}>
+                        <span
+                          style={{
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            color: 'var(--color-primary)',
+                          }}
+                        >
                           Category:
                         </span>
                         <span style={{ fontSize: '14px', color: '#4a5568' }}>
@@ -827,7 +853,8 @@ export default function ExpertDetailPage() {
                         style={{
                           display: 'inline-block',
                           padding: '14px 32px',
-                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          background:
+                            'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%)',
                           color: '#fff',
                           fontSize: '16px',
                           fontWeight: '600',
@@ -952,6 +979,63 @@ export default function ExpertDetailPage() {
             </div>
           </section>
         )}
+
+      {/* Become an Expert CTA - Hidden in expert mode */}
+      {!expertMode.isExpertMode && (
+        <section
+          style={{
+            padding: '80px 20px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            textAlign: 'center',
+          }}
+        >
+          <div style={{ maxWidth: '700px', margin: '0 auto' }}>
+            <h2
+              style={{
+                fontSize: '32px',
+                fontWeight: '600',
+                marginBottom: '12px',
+                color: '#fff',
+              }}
+            >
+              Inspired by {expert?.name || 'our experts'}?
+            </h2>
+            <p
+              style={{
+                fontSize: '18px',
+                marginBottom: '24px',
+                color: '#fff',
+                opacity: 0.95,
+                lineHeight: '1.6',
+              }}
+            >
+              Become an expert too and share your passion for yoga with students around the world.
+            </p>
+            <Link
+              href="/teach/apply"
+              style={{
+                padding: '14px 32px',
+                background: '#fff',
+                color: '#764ba2',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: '600',
+                textDecoration: 'none',
+                display: 'inline-block',
+                transition: 'transform 0.2s',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
+            >
+              Apply to Teach
+            </Link>
+          </div>
+        </section>
+      )}
 
       {/* CTA Section - Hidden in expert mode */}
       {!expertMode.isExpertMode && (

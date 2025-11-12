@@ -123,7 +123,8 @@ export default function PricingPage() {
       {/* Hero Section */}
       <section
         style={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background:
+            'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%)',
           color: '#fff',
           padding: '80px 20px',
           textAlign: 'center',
@@ -280,7 +281,7 @@ export default function PricingPage() {
                   style={{
                     fontSize: '48px',
                     fontWeight: '700',
-                    color: '#764ba2',
+                    color: 'var(--color-primary)',
                     marginBottom: '8px',
                   }}
                 >
@@ -297,19 +298,19 @@ export default function PricingPage() {
                 }}
               >
                 <li style={{ marginBottom: '16px', display: 'flex', gap: '12px' }}>
-                  <span style={{ color: '#48bb78', fontSize: '20px' }}>✓</span>
+                  <span style={{ color: 'var(--color-highlight)', fontSize: '20px' }}>✓</span>
                   <span style={{ color: '#4a5568' }}>Access to all courses</span>
                 </li>
                 <li style={{ marginBottom: '16px', display: 'flex', gap: '12px' }}>
-                  <span style={{ color: '#48bb78', fontSize: '20px' }}>✓</span>
+                  <span style={{ color: 'var(--color-highlight)', fontSize: '20px' }}>✓</span>
                   <span style={{ color: '#4a5568' }}>Lifetime access to purchased courses</span>
                 </li>
                 <li style={{ marginBottom: '16px', display: 'flex', gap: '12px' }}>
-                  <span style={{ color: '#48bb78', fontSize: '20px' }}>✓</span>
+                  <span style={{ color: 'var(--color-highlight)', fontSize: '20px' }}>✓</span>
                   <span style={{ color: '#4a5568' }}>No commitment required</span>
                 </li>
                 <li style={{ marginBottom: '16px', display: 'flex', gap: '12px' }}>
-                  <span style={{ color: '#48bb78', fontSize: '20px' }}>✓</span>
+                  <span style={{ color: 'var(--color-highlight)', fontSize: '20px' }}>✓</span>
                   <span style={{ color: '#4a5568' }}>Certificate of completion</span>
                 </li>
               </ul>
@@ -319,8 +320,8 @@ export default function PricingPage() {
                   width: '100%',
                   padding: '16px',
                   background: '#fff',
-                  color: '#764ba2',
-                  border: '2px solid #764ba2',
+                  color: 'var(--color-primary)',
+                  border: '2px solid var(--color-primary)',
                   borderRadius: '8px',
                   fontSize: '16px',
                   fontWeight: '600',
@@ -328,12 +329,12 @@ export default function PricingPage() {
                   transition: 'all 0.2s',
                 }}
                 onMouseEnter={e => {
-                  e.currentTarget.style.background = '#764ba2';
+                  e.currentTarget.style.background = 'var(--color-primary)';
                   e.currentTarget.style.color = '#fff';
                 }}
                 onMouseLeave={e => {
                   e.currentTarget.style.background = '#fff';
-                  e.currentTarget.style.color = '#764ba2';
+                  e.currentTarget.style.color = 'var(--color-primary)';
                 }}
               >
                 Browse Courses
@@ -350,7 +351,7 @@ export default function PricingPage() {
                 display: 'flex',
                 flexDirection: 'column',
                 position: 'relative',
-                border: '2px solid #764ba2',
+                border: '2px solid var(--color-primary)',
               }}
             >
               <div
@@ -359,7 +360,7 @@ export default function PricingPage() {
                   top: '-12px',
                   left: '50%',
                   transform: 'translateX(-50%)',
-                  background: '#764ba2',
+                  background: 'var(--color-primary)',
                   color: '#fff',
                   padding: '4px 16px',
                   borderRadius: '100px',
@@ -392,7 +393,7 @@ export default function PricingPage() {
                   style={{
                     fontSize: '48px',
                     fontWeight: '700',
-                    color: '#764ba2',
+                    color: 'var(--color-primary)',
                     marginBottom: '8px',
                   }}
                 >
@@ -416,23 +417,23 @@ export default function PricingPage() {
                 }}
               >
                 <li style={{ marginBottom: '16px', display: 'flex', gap: '12px' }}>
-                  <span style={{ color: '#48bb78', fontSize: '20px' }}>✓</span>
+                  <span style={{ color: 'var(--color-highlight)', fontSize: '20px' }}>✓</span>
                   <span style={{ color: '#4a5568' }}>12 course tokens per year</span>
                 </li>
                 <li style={{ marginBottom: '16px', display: 'flex', gap: '12px' }}>
-                  <span style={{ color: '#48bb78', fontSize: '20px' }}>✓</span>
+                  <span style={{ color: 'var(--color-highlight)', fontSize: '20px' }}>✓</span>
                   <span style={{ color: '#4a5568' }}>Lifetime access to redeemed courses</span>
                 </li>
                 <li style={{ marginBottom: '16px', display: 'flex', gap: '12px' }}>
-                  <span style={{ color: '#48bb78', fontSize: '20px' }}>✓</span>
+                  <span style={{ color: 'var(--color-highlight)', fontSize: '20px' }}>✓</span>
                   <span style={{ color: '#4a5568' }}>Priority support</span>
                 </li>
                 <li style={{ marginBottom: '16px', display: 'flex', gap: '12px' }}>
-                  <span style={{ color: '#48bb78', fontSize: '20px' }}>✓</span>
+                  <span style={{ color: 'var(--color-highlight)', fontSize: '20px' }}>✓</span>
                   <span style={{ color: '#4a5568' }}>Certificate of completion</span>
                 </li>
                 <li style={{ marginBottom: '16px', display: 'flex', gap: '12px' }}>
-                  <span style={{ color: '#48bb78', fontSize: '20px' }}>✓</span>
+                  <span style={{ color: 'var(--color-highlight)', fontSize: '20px' }}>✓</span>
                   <span style={{ color: '#4a5568' }}>Exclusive community access</span>
                 </li>
               </ul>
@@ -442,7 +443,7 @@ export default function PricingPage() {
                 style={{
                   width: '100%',
                   padding: '16px',
-                  background: locationLoading ? '#ccc' : '#764ba2',
+                  background: locationLoading ? '#ccc' : 'var(--color-primary)',
                   color: '#fff',
                   border: 'none',
                   borderRadius: '8px',

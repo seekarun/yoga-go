@@ -13,7 +13,8 @@ export default function ExpertDashboard({ expert }: ExpertDashboardProps) {
       {/* Welcome Header */}
       <div
         style={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background:
+            'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%)',
           color: '#fff',
           padding: '60px 20px',
         }}
@@ -35,7 +36,7 @@ export default function ExpertDashboard({ expert }: ExpertDashboardProps) {
             )}
             <div>
               <h1 style={{ fontSize: '36px', fontWeight: '600', marginBottom: '8px' }}>
-                Welcome back, {expert.name}!
+                Welcome back, {expert.name || 'Expert'}!
               </h1>
               <p style={{ fontSize: '18px', opacity: 0.9 }}>{expert.title}</p>
             </div>

@@ -101,7 +101,7 @@ export default function RazorpayCheckout({
           email: user.profile.email,
         },
         theme: {
-          color: '#764ba2',
+          color: 'var(--color-primary)',
         },
         handler: async function (response: {
           razorpay_order_id: string;
@@ -162,7 +162,7 @@ export default function RazorpayCheckout({
         style={{
           width: '100%',
           padding: '16px',
-          background: loading ? '#ccc' : '#764ba2',
+          background: loading ? '#ccc' : 'var(--color-primary)',
           color: '#fff',
           border: 'none',
           borderRadius: '8px',

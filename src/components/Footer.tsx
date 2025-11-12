@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { getClientExpertContext } from '@/lib/domainContext';
 
 export default function Footer() {
@@ -60,34 +61,22 @@ export default function Footer() {
                 marginBottom: '16px',
               }}
             >
-              <div
+              <Image
+                src="/myg.png"
+                alt="My Yoga.Guru"
+                width={40}
+                height={40}
                 style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '50%',
-                  background: '#000',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  objectFit: 'contain',
                 }}
-              >
-                <span
-                  style={{
-                    color: '#fff',
-                    fontWeight: '600',
-                    fontSize: '14px',
-                  }}
-                >
-                  YG
-                </span>
-              </div>
+              />
               <span
                 style={{
                   fontSize: '20px',
                   fontWeight: '500',
                 }}
               >
-                Yoga-GO
+                My Yoga.Guru
               </span>
             </div>
             <p
@@ -296,6 +285,20 @@ export default function Footer() {
                 </li>
                 <li style={{ marginBottom: '12px' }}>
                   <Link
+                    href="/teach"
+                    style={{
+                      color: '#764ba2',
+                      fontSize: '14px',
+                      textDecoration: 'none',
+                      transition: 'color 0.2s',
+                      fontWeight: '500',
+                    }}
+                  >
+                    Teach on MyYoga
+                  </Link>
+                </li>
+                <li style={{ marginBottom: '12px' }}>
+                  <Link
                     href="/blog"
                     style={{
                       color: '#666',
@@ -418,7 +421,7 @@ export default function Footer() {
               margin: 0,
             }}
           >
-            © {currentYear} Yoga-GO. All rights reserved.
+            © {currentYear} My Yoga.Guru. All rights reserved.
           </p>
           <div
             style={{

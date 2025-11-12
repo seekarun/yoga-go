@@ -64,7 +64,7 @@ export default function CourseCard({ course, variant = 'full' }: CourseCardProps
                 style={{
                   height: '100%',
                   width: `${enrolledCourse.percentComplete}%`,
-                  background: '#48bb78',
+                  background: 'var(--color-highlight)',
                   transition: 'width 0.3s ease',
                 }}
               />
@@ -80,7 +80,7 @@ export default function CourseCard({ course, variant = 'full' }: CourseCardProps
                   background: '#f7fafc',
                   borderRadius: '4px',
                   fontSize: '11px',
-                  color: '#764ba2',
+                  color: 'var(--color-primary)',
                   fontWeight: '600',
                 }}
               >
@@ -147,7 +147,10 @@ export default function CourseCard({ course, variant = 'full' }: CourseCardProps
               <div
                 style={{
                   padding: '6px 12px',
-                  background: enrolledCourse.percentComplete === 100 ? '#48bb78' : '#764ba2',
+                  background:
+                    enrolledCourse.percentComplete === 100
+                      ? 'var(--color-highlight)'
+                      : 'var(--color-primary)',
                   color: '#fff',
                   borderRadius: '6px',
                   fontSize: '12px',
@@ -215,7 +218,7 @@ export default function CourseCard({ course, variant = 'full' }: CourseCardProps
                   top: '12px',
                   left: '12px',
                   padding: '4px 12px',
-                  background: '#48bb78',
+                  background: 'var(--color-highlight)',
                   color: '#fff',
                   borderRadius: '6px',
                   fontSize: '12px',
@@ -236,7 +239,7 @@ export default function CourseCard({ course, variant = 'full' }: CourseCardProps
                   background: '#f7fafc',
                   borderRadius: '4px',
                   fontSize: '11px',
-                  color: '#764ba2',
+                  color: 'var(--color-primary)',
                   fontWeight: '600',
                 }}
               >
@@ -316,7 +319,7 @@ export default function CourseCard({ course, variant = 'full' }: CourseCardProps
                 <span style={{ color: '#FFB800' }}>★</span>
                 <span style={{ fontSize: '14px', fontWeight: '600' }}>{course.rating}</span>
               </div>
-              <div style={{ fontSize: '18px', fontWeight: '600', color: '#764ba2' }}>
+              <div style={{ fontSize: '18px', fontWeight: '600', color: 'var(--color-primary)' }}>
                 ${course.price}
               </div>
             </div>
@@ -374,7 +377,7 @@ export default function CourseCard({ course, variant = 'full' }: CourseCardProps
               <span
                 style={{
                   padding: '6px 12px',
-                  background: '#48bb78',
+                  background: 'var(--color-highlight)',
                   color: '#fff',
                   borderRadius: '6px',
                   fontSize: '12px',
@@ -388,7 +391,7 @@ export default function CourseCard({ course, variant = 'full' }: CourseCardProps
               <span
                 style={{
                   padding: '6px 12px',
-                  background: '#764ba2',
+                  background: 'var(--color-primary)',
                   color: '#fff',
                   borderRadius: '6px',
                   fontSize: '12px',
@@ -418,7 +421,7 @@ export default function CourseCard({ course, variant = 'full' }: CourseCardProps
                 background: '#f7fafc',
                 borderRadius: '6px',
                 fontSize: '12px',
-                color: '#764ba2',
+                color: 'var(--color-primary)',
                 fontWeight: '600',
               }}
             >
@@ -540,10 +543,10 @@ export default function CourseCard({ course, variant = 'full' }: CourseCardProps
               </div>
             ) : (
               <>
-                <div style={{ fontSize: '24px', fontWeight: '600', color: '#764ba2' }}>
+                <div style={{ fontSize: '24px', fontWeight: '600', color: 'var(--color-primary)' }}>
                   ${course.price}
                 </div>
-                <div style={{ fontSize: '12px', color: '#48bb78' }}>
+                <div style={{ fontSize: '12px', color: 'var(--color-highlight)' }}>
                   {course.freeLessons} free lessons
                 </div>
               </>

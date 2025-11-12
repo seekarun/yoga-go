@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { getClientExpertContext } from '@/lib/domainContext';
 
@@ -14,6 +15,7 @@ export default function Header() {
     expertId: null,
   });
   const [isOnSrvPage, setIsOnSrvPage] = useState(false);
+  const [scrollOpacity, setScrollOpacity] = useState(0);
 
   // Detect expert mode on mount AND when viewing /experts/[expertId] pages
   useEffect(() => {
@@ -27,17 +29,38 @@ export default function Header() {
     setIsOnSrvPage(isOnSrv);
   }, []);
 
+  // Track scroll position for background opacity
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY;
+      const maxScroll = 200; // Fully opaque after 200px scroll
+      const opacity = Math.min(scrollPosition / maxScroll, 1);
+      setScrollOpacity(opacity);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   const handleLogin = () => {
     login();
   };
 
   const handleLogout = () => {
-    logout();
+    // Redirect experts to /srv after logout, others to default
+    const returnTo = user?.role === 'expert' ? '/srv' : undefined;
+    logout(returnTo);
     setIsUserMenuOpen(false);
   };
 
-  // In expert mode or on expert pages, logo should not link to home
-  const logoHref = expertMode.isExpertMode ? '#' : '/';
+  // Logo links to user's default page based on role
+  const logoHref = expertMode.isExpertMode
+    ? '#'
+    : isAuthenticated
+      ? user?.role === 'expert'
+        ? '/srv'
+        : '/app'
+      : '/';
 
   // Don't render header at all on expert pages
   if (expertMode.isExpertMode) {
@@ -51,9 +74,11 @@ export default function Header() {
         top: 0,
         left: 0,
         right: 0,
-        background: 'rgba(255, 255, 255, 0.95)',
-        backdropFilter: 'blur(10px)',
-        borderBottom: '1px solid #e0e0e0',
+        background: `rgba(255, 255, 255, ${scrollOpacity * 0.95})`,
+        backdropFilter: scrollOpacity > 0 ? 'blur(10px)' : 'none',
+        borderBottom:
+          scrollOpacity > 0 ? `1px solid rgba(224, 224, 224, ${scrollOpacity})` : 'none',
+        transition: 'background 0.3s ease, backdrop-filter 0.3s ease, border-bottom 0.3s ease',
         zIndex: 1000,
       }}
     >
@@ -72,10 +97,9 @@ export default function Header() {
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '12px',
             textDecoration: 'none',
-            color: '#000',
             cursor: expertMode.isExpertMode ? 'default' : 'pointer',
+            paddingLeft: '20px',
           }}
           onClick={e => {
             if (expertMode.isExpertMode) {
@@ -83,23 +107,15 @@ export default function Header() {
             }
           }}
         >
-          <div
+          <Image
+            src="/myg.png"
+            alt="My Yoga.Guru"
+            width={40}
+            height={40}
             style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '50%',
-              background: '#000',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#fff',
-              fontWeight: 'bold',
-              fontSize: '14px',
+              objectFit: 'contain',
             }}
-          >
-            YG
-          </div>
-          <span style={{ fontSize: '20px', fontWeight: '600' }}>Yoga-GO</span>
+          />
         </Link>
 
         {/* Desktop Nav - Hidden in expert mode */}
@@ -117,9 +133,10 @@ export default function Header() {
                   href="/courses"
                   style={{
                     textDecoration: 'none',
-                    color: '#666',
+                    color: scrollOpacity < 0.5 ? '#fff' : '#666',
                     fontSize: '16px',
                     transition: 'color 0.2s',
+                    textShadow: scrollOpacity < 0.5 ? '0 2px 4px rgba(0,0,0,0.3)' : 'none',
                   }}
                 >
                   Courses
@@ -128,9 +145,10 @@ export default function Header() {
                   href="/experts"
                   style={{
                     textDecoration: 'none',
-                    color: '#666',
+                    color: scrollOpacity < 0.5 ? '#fff' : '#666',
                     fontSize: '16px',
                     transition: 'color 0.2s',
+                    textShadow: scrollOpacity < 0.5 ? '0 2px 4px rgba(0,0,0,0.3)' : 'none',
                   }}
                 >
                   Experts
@@ -139,9 +157,10 @@ export default function Header() {
                   href="/pricing"
                   style={{
                     textDecoration: 'none',
-                    color: '#666',
+                    color: scrollOpacity < 0.5 ? '#fff' : '#666',
                     fontSize: '16px',
                     transition: 'color 0.2s',
+                    textShadow: scrollOpacity < 0.5 ? '0 2px 4px rgba(0,0,0,0.3)' : 'none',
                   }}
                 >
                   Pricing
@@ -150,10 +169,11 @@ export default function Header() {
                   href="/srv"
                   style={{
                     textDecoration: 'none',
-                    color: '#764ba2',
+                    color: scrollOpacity < 0.5 ? '#fff' : 'var(--color-primary)',
                     fontSize: '16px',
                     fontWeight: '500',
                     transition: 'color 0.2s',
+                    textShadow: scrollOpacity < 0.5 ? '0 2px 4px rgba(0,0,0,0.3)' : 'none',
                   }}
                 >
                   For Experts
@@ -290,7 +310,7 @@ export default function Header() {
                           display: 'block',
                           padding: '12px 20px',
                           textDecoration: 'none',
-                          color: '#764ba2',
+                          color: 'var(--color-primary)',
                           fontSize: '14px',
                           fontWeight: '500',
                         }}
@@ -314,6 +334,19 @@ export default function Header() {
                           🎥 Manage My Sessions
                         </Link>
                       )}
+                      <Link
+                        href="/app"
+                        style={{
+                          display: 'block',
+                          padding: '12px 20px',
+                          textDecoration: 'none',
+                          color: '#000',
+                          fontSize: '14px',
+                        }}
+                        onClick={() => setIsUserMenuOpen(false)}
+                      >
+                        📚 My Learning
+                      </Link>
                     </>
                   )}
                   <div style={{ height: '1px', background: '#e0e0e0', margin: '8px 0' }} />
@@ -340,13 +373,18 @@ export default function Header() {
               )}
             </div>
           ) : !expertMode.isExpertMode ? (
-            <button
-              onClick={handleLogin}
+            <a
+              href="/auth/login"
               className="btn btn-primary"
-              style={{ padding: '10px 24px', fontSize: '14px' }}
+              style={{
+                padding: '10px 24px',
+                fontSize: '14px',
+                textDecoration: 'none',
+                display: 'inline-block',
+              }}
             >
-              Sign In
-            </button>
+              Sign In / Sign Up
+            </a>
           ) : null}
 
           {/* Mobile menu button - Hidden in expert mode */}

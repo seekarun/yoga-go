@@ -121,12 +121,12 @@ export default function ExpertDashboard() {
     courses.length > 0 ? courses.reduce((sum, c) => sum + (c.rating || 0), 0) / courses.length : 0;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pt-16">
       {/* Header */}
       <div className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <Link href="/srv" className="text-blue-600 hover:text-blue-700 text-sm mb-3 inline-block">
-            ← Back to Expert Portal
+            ← Back to Home
           </Link>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Expert Dashboard</h1>
