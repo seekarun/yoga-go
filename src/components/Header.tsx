@@ -47,12 +47,20 @@ export default function Header() {
   };
 
   const handleLogout = () => {
-    logout();
+    // Redirect experts to /srv after logout, others to default
+    const returnTo = user?.role === 'expert' ? '/srv' : undefined;
+    logout(returnTo);
     setIsUserMenuOpen(false);
   };
 
-  // In expert mode or on expert pages, logo should not link to home
-  const logoHref = expertMode.isExpertMode ? '#' : '/';
+  // Logo links to user's default page based on role
+  const logoHref = expertMode.isExpertMode
+    ? '#'
+    : isAuthenticated
+      ? user?.role === 'expert'
+        ? '/srv'
+        : '/app'
+      : '/';
 
   // Don't render header at all on expert pages
   if (expertMode.isExpertMode) {
@@ -285,6 +293,19 @@ export default function Header() {
                       >
                         Expert Dashboard
                       </Link>
+                      <Link
+                        href="/app"
+                        style={{
+                          display: 'block',
+                          padding: '12px 20px',
+                          textDecoration: 'none',
+                          color: '#000',
+                          fontSize: '14px',
+                        }}
+                        onClick={() => setIsUserMenuOpen(false)}
+                      >
+                        My Learning
+                      </Link>
                     </>
                   )}
                   <div style={{ height: '1px', background: '#e0e0e0', margin: '8px 0' }} />
@@ -311,13 +332,18 @@ export default function Header() {
               )}
             </div>
           ) : !expertMode.isExpertMode ? (
-            <button
-              onClick={handleLogin}
+            <a
+              href="/auth/login"
               className="btn btn-primary"
-              style={{ padding: '10px 24px', fontSize: '14px' }}
+              style={{
+                padding: '10px 24px',
+                fontSize: '14px',
+                textDecoration: 'none',
+                display: 'inline-block',
+              }}
             >
-              Sign In
-            </button>
+              Sign In / Sign Up
+            </a>
           ) : null}
 
           {/* Mobile menu button - Hidden in expert mode */}

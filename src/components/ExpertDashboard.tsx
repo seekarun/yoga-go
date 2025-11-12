@@ -36,7 +36,7 @@ export default function ExpertDashboard({ expert }: ExpertDashboardProps) {
             )}
             <div>
               <h1 style={{ fontSize: '36px', fontWeight: '600', marginBottom: '8px' }}>
-                Welcome back, {expert.name}!
+                Welcome back, {expert.name || 'Expert'}!
               </h1>
               <p style={{ fontSize: '18px', opacity: 0.9 }}>{expert.title}</p>
             </div>

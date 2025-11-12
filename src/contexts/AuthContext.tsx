@@ -9,7 +9,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (returnTo?: string) => void;
-  logout: () => void;
+  logout: (returnTo?: string) => void;
   refreshUser: () => Promise<void>;
 }
 
@@ -50,12 +50,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.href = `/auth/login?returnTo=${encodeURIComponent(returnPath)}`;
   };
 
-  const logout = async () => {
-    console.log('[DBG][AuthContext] Logging out');
+  const logout = async (returnTo?: string) => {
+    console.log('[DBG][AuthContext] Logging out', returnTo ? `with returnTo: ${returnTo}` : '');
     setUser(null);
     setIsAuthenticated(false);
-    // Redirect to Auth0 logout endpoint
-    window.location.href = '/auth/logout';
+    // Redirect to Auth0 logout endpoint with optional returnTo
+    const logoutUrl = returnTo
+      ? `/auth/logout?returnTo=${encodeURIComponent(returnTo)}`
+      : '/auth/logout';
+    window.location.href = logoutUrl;
   };
 
   const refreshUser = async () => {

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import ExpertOnboarding from '@/components/ExpertOnboarding';
 import ExpertDashboard from '@/components/ExpertDashboard';
@@ -9,9 +10,18 @@ import type { Expert } from '@/types';
 
 export default function ExpertPlatform() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const router = useRouter();
   const [expertProfile, setExpertProfile] = useState<Expert | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Redirect learners to /app
+  useEffect(() => {
+    if (user?.role === 'learner') {
+      console.log('[DBG][srv/page] User is learner, redirecting to /app');
+      router.push('/app');
+    }
+  }, [user?.role, router]);
 
   useEffect(() => {
     // Only fetch expert profile if user is authenticated and is an expert
@@ -120,7 +130,10 @@ export default function ExpertPlatform() {
   if (user?.role === 'expert' && !expertProfile) {
     return (
       <div style={{ paddingTop: '64px' }}>
-        <ExpertOnboarding userEmail={user.profile.email} userName={user.profile.name} />
+        <ExpertOnboarding
+          userEmail={user.profile.email}
+          userName={user.profile?.name || user.profile.email.split('@')[0] || 'Expert'}
+        />
       </div>
     );
   }

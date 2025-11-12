@@ -33,6 +33,13 @@ export async function getOrCreateUser(
   role?: UserRole
 ): Promise<UserType> {
   console.log('[DBG][auth] Getting or creating user for auth0Id:', auth0User.sub, 'role:', role);
+  console.log('[DBG][auth] Auth0 user data:', {
+    sub: auth0User.sub,
+    email: auth0User.email,
+    name: auth0User.name,
+    nameProvided: !!auth0User.name,
+    picture: auth0User.picture,
+  });
 
   await connectToDatabase();
 
@@ -47,13 +54,14 @@ export async function getOrCreateUser(
       userDoc.profile.email !== auth0User.email ||
       userDoc.profile.name !== (auth0User.name || auth0User.email)
     ) {
+      const newName = auth0User.name || auth0User.email;
       userDoc.profile.email = auth0User.email;
-      userDoc.profile.name = auth0User.name || auth0User.email;
+      userDoc.profile.name = newName;
       if (auth0User.picture) {
         userDoc.profile.avatar = auth0User.picture;
       }
       await userDoc.save();
-      console.log('[DBG][auth] Updated user profile');
+      console.log('[DBG][auth] Updated user profile with name:', newName);
     }
   } else {
     console.log('[DBG][auth] Creating new user with role:', role || 'learner');
@@ -61,13 +69,16 @@ export async function getOrCreateUser(
     // Create new user with default values
     const userId = nanoid(16);
     const now = new Date().toISOString();
+    const userName = auth0User.name || auth0User.email;
+
+    console.log('[DBG][auth] Creating user with name:', userName);
 
     userDoc = await User.create({
       _id: userId,
       auth0Id: auth0User.sub,
       role: role || ('learner' as UserRole),
       profile: {
-        name: auth0User.name || auth0User.email,
+        name: userName,
         email: auth0User.email,
         avatar: auth0User.picture || undefined,
         joinedAt: now,

@@ -63,7 +63,7 @@ export async function GET() {
     }
 
     const expert: Expert = {
-      ...expertDoc,
+      ...expertDoc.toObject(),
       id: expertDoc._id as string,
     };
 
@@ -158,7 +158,7 @@ export async function PATCH(request: Request) {
     }
 
     const expert: Expert = {
-      ...expertDoc,
+      ...expertDoc.toObject(),
       id: expertDoc._id as string,
     };
 

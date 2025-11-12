@@ -26,6 +26,24 @@ export async function GET(request: NextRequest) {
     console.log('[DBG][auth/logout] Current hostname:', hostname);
     console.log('[DBG][auth/logout] Dynamic base URL:', dynamicBaseUrl);
 
+    // Get returnTo parameter from query string
+    const searchParams = request.nextUrl.searchParams;
+    const returnTo = searchParams.get('returnTo');
+
+    if (returnTo) {
+      console.log('[DBG][auth/logout] Custom returnTo:', returnTo);
+
+      // Convert relative path to absolute URL for Auth0
+      const absoluteReturnTo = returnTo.startsWith('http')
+        ? returnTo
+        : `${dynamicBaseUrl}${returnTo}`;
+
+      console.log('[DBG][auth/logout] Absolute returnTo:', absoluteReturnTo);
+
+      // Add absolute returnTo URL to the request for Auth0 SDK
+      request.nextUrl.searchParams.set('returnTo', absoluteReturnTo);
+    }
+
     // Create a subdomain-specific Auth0 client
     const auth0Subdomain = new Auth0Client({
       domain: getDomain(),
