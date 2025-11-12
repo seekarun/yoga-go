@@ -335,7 +335,7 @@ export default function Header() {
                         </Link>
                       )}
                       <Link
-                        href="/app"
+                        href="/app?view=learning"
                         style={{
                           display: 'block',
                           padding: '12px 20px',
