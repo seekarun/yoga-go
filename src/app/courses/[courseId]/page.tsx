@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import PaymentModal from '@/components/payment/PaymentModal';
 import { trackCourseView, trackSubscriptionClick } from '@/lib/analytics';
 import type { Course, Lesson } from '@/types';
+import ReviewsList from '@/components/ReviewsList';
 
 export default function CourseDetailPage() {
   const params = useParams();
@@ -812,6 +813,28 @@ export default function CourseDetailPage() {
                 </div>
               </section>
             )}
+
+            {/* Reviews Section */}
+            <section
+              style={{
+                background: '#fff',
+                padding: '32px 24px',
+                borderRadius: '12px',
+                marginBottom: '24px',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+              }}
+            >
+              <h2
+                style={{
+                  fontSize: '24px',
+                  fontWeight: '600',
+                  marginBottom: '24px',
+                }}
+              >
+                Student Reviews
+              </h2>
+              <ReviewsList courseId={courseId} showStats={true} />
+            </section>
           </div>
 
           {/* Sidebar */}

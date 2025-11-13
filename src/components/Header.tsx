@@ -62,11 +62,6 @@ export default function Header() {
         : '/app'
       : '/';
 
-  // Don't render header at all on expert pages
-  if (expertMode.isExpertMode) {
-    return null;
-  }
-
   return (
     <header
       style={{
@@ -74,7 +69,9 @@ export default function Header() {
         top: 0,
         left: 0,
         right: 0,
-        background: `rgba(255, 255, 255, ${scrollOpacity * 0.95})`,
+        background: expertMode.isExpertMode
+          ? `rgba(255, 255, 255, ${scrollOpacity * 0.95})`
+          : `rgba(255, 255, 255, ${scrollOpacity * 0.95})`,
         backdropFilter: scrollOpacity > 0 ? 'blur(10px)' : 'none',
         borderBottom:
           scrollOpacity > 0 ? `1px solid rgba(224, 224, 224, ${scrollOpacity})` : 'none',
@@ -100,6 +97,10 @@ export default function Header() {
             textDecoration: 'none',
             cursor: expertMode.isExpertMode ? 'default' : 'pointer',
             paddingLeft: '20px',
+            filter:
+              expertMode.isExpertMode && scrollOpacity < 0.5
+                ? 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))'
+                : 'none',
           }}
           onClick={e => {
             if (expertMode.isExpertMode) {
@@ -183,9 +184,9 @@ export default function Header() {
           </nav>
         )}
 
-        {/* Auth Button - Hidden in expert mode */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          {!expertMode.isExpertMode && isAuthenticated ? (
+        {/* Auth Button */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', paddingRight: '20px' }}>
+          {isAuthenticated ? (
             <div style={{ position: 'relative' }}>
               <button
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
@@ -201,6 +202,10 @@ export default function Header() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
+                  boxShadow:
+                    expertMode.isExpertMode && scrollOpacity < 0.5
+                      ? '0 2px 8px rgba(0,0,0,0.3)'
+                      : 'none',
                 }}
               >
                 {!user?.profile?.avatar && (
@@ -331,7 +336,7 @@ export default function Header() {
                 </div>
               )}
             </div>
-          ) : !expertMode.isExpertMode ? (
+          ) : (
             <a
               href="/auth/login"
               className="btn btn-primary"
@@ -340,11 +345,15 @@ export default function Header() {
                 fontSize: '14px',
                 textDecoration: 'none',
                 display: 'inline-block',
+                boxShadow:
+                  expertMode.isExpertMode && scrollOpacity < 0.5
+                    ? '0 2px 8px rgba(0,0,0,0.2)'
+                    : 'none',
               }}
             >
               Sign In / Sign Up
             </a>
-          ) : null}
+          )}
 
           {/* Mobile menu button - Hidden in expert mode */}
           {!expertMode.isExpertMode && (

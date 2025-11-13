@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { trackLessonView, trackLessonComplete } from '@/lib/analytics';
 import type { UserCourseData, Lesson } from '@/types';
+import ReviewModal from '@/components/ReviewModal';
 
 export default function CoursePlayer() {
   const { isAuthenticated } = useAuth();
@@ -16,6 +17,9 @@ export default function CoursePlayer() {
   const [selectedItem, setSelectedItem] = useState<Lesson | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [canReview, setCanReview] = useState(false);
+  const [reviewEligibilityReason, setReviewEligibilityReason] = useState('');
 
   useEffect(() => {
     const fetchCourseData = async () => {
@@ -97,6 +101,53 @@ export default function CoursePlayer() {
       });
     }
   }, [selectedItem, courseId]);
+
+  // Check if user can review this course
+  useEffect(() => {
+    const checkReviewEligibility = async () => {
+      if (!courseData || !courseId) return;
+
+      try {
+        // The API will check: enrolled, 25% progress, no existing review
+        const response = await fetch(`/api/courses/${courseId}/reviews/eligibility`);
+        if (response.status === 404) {
+          // Route doesn't exist yet, we'll check client-side
+          const progress = courseData.percentComplete || 0;
+          if (progress >= 25) {
+            setCanReview(true);
+            setReviewEligibilityReason('');
+          } else {
+            setCanReview(false);
+            setReviewEligibilityReason(
+              `Complete at least 25% of the course to write a review (current: ${progress}%)`
+            );
+          }
+          return;
+        }
+
+        const data = await response.json();
+        if (data.canReview) {
+          setCanReview(true);
+          setReviewEligibilityReason('');
+        } else {
+          setCanReview(false);
+          setReviewEligibilityReason(data.reason || 'You cannot review this course');
+        }
+      } catch (error) {
+        console.error('[DBG][course-player] Error checking review eligibility:', error);
+        // Default to checking progress only
+        const progress = courseData.percentComplete || 0;
+        setCanReview(progress >= 25);
+        setReviewEligibilityReason(
+          progress >= 25
+            ? ''
+            : `Complete at least 25% of the course to write a review (current: ${progress}%)`
+        );
+      }
+    };
+
+    checkReviewEligibility();
+  }, [courseData, courseId]);
 
   const handleMarkComplete = async (moveToNext = false) => {
     if (!selectedItem) return;
@@ -277,6 +328,27 @@ export default function CoursePlayer() {
               flexShrink: 0,
             }}
           >
+            {canReview && (
+              <button
+                onClick={() => setIsReviewModalOpen(true)}
+                style={{
+                  padding: '8px 16px',
+                  background:
+                    'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+                title="Write a review for this course"
+                className="hide-on-small-mobile"
+              >
+                ⭐ Write Review
+              </button>
+            )}
             <div style={{ fontSize: '12px', color: '#666' }} className="hide-on-small-mobile">
               {courseData.completedLessons} / {courseData.totalLessons}
             </div>
@@ -826,6 +898,19 @@ export default function CoursePlayer() {
           )}
         </div>
       </div>
+
+      {/* Review Modal */}
+      <ReviewModal
+        isOpen={isReviewModalOpen}
+        onClose={() => setIsReviewModalOpen(false)}
+        courseId={courseId}
+        courseTitle={courseData?.title || ''}
+        onSuccess={() => {
+          // Refresh review eligibility after successful submission
+          setCanReview(false);
+          setReviewEligibilityReason('You have already reviewed this course');
+        }}
+      />
 
       {/* Mobile-responsive CSS */}
       <style jsx>{`
