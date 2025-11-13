@@ -451,6 +451,270 @@
               "response": []
             }
           ]
+        },
+        {
+          "name": "Discussions",
+          "description": "Reddit-like discussion system for course lessons with voting, threading, and moderation",
+          "item": [
+            {
+              "name": "Get Lesson Discussions",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/data/app/courses/:courseId/lessons/:lessonId/discussions",
+                  "host": ["{{baseUrl}}"],
+                  "path": [
+                    "data",
+                    "app",
+                    "courses",
+                    ":courseId",
+                    "lessons",
+                    ":lessonId",
+                    "discussions"
+                  ],
+                  "variable": [
+                    {
+                      "key": "courseId",
+                      "value": "course-deepak-1",
+                      "description": "Course ID"
+                    },
+                    {
+                      "key": "lessonId",
+                      "value": "deepak-1-item-1",
+                      "description": "Lesson ID"
+                    }
+                  ]
+                },
+                "description": "Retrieve all discussions for a specific lesson. Returns threaded discussions with replies, votes, and user information. User must be enrolled in the course."
+              },
+              "response": []
+            },
+            {
+              "name": "Create Discussion",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"content\": \"Great lesson! I learned so much about sun salutations.\",\n  \"parentId\": null\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/data/app/courses/:courseId/lessons/:lessonId/discussions",
+                  "host": ["{{baseUrl}}"],
+                  "path": [
+                    "data",
+                    "app",
+                    "courses",
+                    ":courseId",
+                    "lessons",
+                    ":lessonId",
+                    "discussions"
+                  ],
+                  "variable": [
+                    {
+                      "key": "courseId",
+                      "value": "course-deepak-1",
+                      "description": "Course ID"
+                    },
+                    {
+                      "key": "lessonId",
+                      "value": "deepak-1-item-1",
+                      "description": "Lesson ID"
+                    }
+                  ]
+                },
+                "description": "Create a new discussion or reply to an existing one. Set parentId to null for top-level discussions, or provide a discussion ID to create a reply."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Course-Wide Discussions",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/data/app/courses/:courseId/discussions?lessonId=deepak-1-item-1",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["data", "app", "courses", ":courseId", "discussions"],
+                  "query": [
+                    {
+                      "key": "lessonId",
+                      "value": "deepak-1-item-1",
+                      "description": "Optional: Filter by specific lesson"
+                    }
+                  ],
+                  "variable": [
+                    {
+                      "key": "courseId",
+                      "value": "course-deepak-1",
+                      "description": "Course ID"
+                    }
+                  ]
+                },
+                "description": "Retrieve all discussions across all lessons in a course. Optionally filter by lessonId query parameter."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Discussion",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"content\": \"Updated content with more details.\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/data/app/discussions/:discussionId",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["data", "app", "discussions", ":discussionId"],
+                  "variable": [
+                    {
+                      "key": "discussionId",
+                      "value": "lesson-1_user-123_1234567890",
+                      "description": "Discussion ID"
+                    }
+                  ]
+                },
+                "description": "Update your own discussion content. Only the owner can edit their discussions."
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Discussion",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/data/app/discussions/:discussionId",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["data", "app", "discussions", ":discussionId"],
+                  "variable": [
+                    {
+                      "key": "discussionId",
+                      "value": "lesson-1_user-123_1234567890",
+                      "description": "Discussion ID"
+                    }
+                  ]
+                },
+                "description": "Delete a discussion. Users can delete their own discussions, and experts can delete any discussion in their courses."
+              },
+              "response": []
+            },
+            {
+              "name": "Vote on Discussion",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"voteType\": \"up\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/data/app/discussions/:discussionId/vote",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["data", "app", "discussions", ":discussionId", "vote"],
+                  "variable": [
+                    {
+                      "key": "discussionId",
+                      "value": "lesson-1_user-123_1234567890",
+                      "description": "Discussion ID"
+                    }
+                  ]
+                },
+                "description": "Upvote or downvote a discussion. Click same vote again to remove. voteType must be 'up' or 'down'."
+              },
+              "response": []
+            },
+            {
+              "name": "Moderate Discussion (Expert Only)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"action\": \"pin\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/data/app/discussions/:discussionId/moderate",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["data", "app", "discussions", ":discussionId", "moderate"],
+                  "variable": [
+                    {
+                      "key": "discussionId",
+                      "value": "lesson-1_user-123_1234567890",
+                      "description": "Discussion ID"
+                    }
+                  ]
+                },
+                "description": "Moderate a discussion (experts only). Valid actions: pin, unpin, resolve, unresolve, hide, unhide. Only course instructors can moderate discussions in their courses."
+              },
+              "response": []
+            }
+          ]
         }
       ]
     },

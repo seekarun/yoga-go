@@ -604,3 +604,36 @@ export interface SurveyResponse extends BaseEntity {
   answers: SurveyAnswer[];
   submittedAt: string;
 }
+
+// Discussion Related Types
+export type VoteType = 'up' | 'down';
+
+export interface Discussion extends BaseEntity {
+  courseId: string;
+  lessonId: string;
+  userId: string;
+  userRole: UserRole;
+  userName: string;
+  userAvatar?: string;
+  content: string;
+  parentId?: string; // null/undefined for top-level discussions, ID for replies
+  upvotes: number;
+  downvotes: number;
+  isPinned: boolean;
+  isResolved: boolean;
+  isHidden: boolean;
+  editedAt?: string;
+  deletedAt?: string;
+}
+
+export interface DiscussionVote extends BaseEntity {
+  discussionId: string;
+  userId: string;
+  voteType: VoteType;
+}
+
+export interface DiscussionThread extends Discussion {
+  replies: DiscussionThread[]; // Recursive type for nested replies
+  userVote?: VoteType; // Current user's vote on this discussion
+  netScore: number; // upvotes - downvotes
+}
