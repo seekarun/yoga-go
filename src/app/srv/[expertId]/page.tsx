@@ -125,9 +125,6 @@ export default function ExpertDashboard() {
       {/* Header */}
       <div className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <Link href="/srv" className="text-blue-600 hover:text-blue-700 text-sm mb-3 inline-block">
-            ← Back to Home
-          </Link>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Expert Dashboard</h1>
             <div className="flex items-center gap-4">
@@ -268,27 +265,6 @@ export default function ExpertDashboard() {
           </div>
         </div>
 
-        {/* Add New Course Section */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg shadow mb-8 border border-blue-200">
-          <div className="p-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900 mb-2">Create New Course</h2>
-                <p className="text-gray-600">
-                  Share your expertise by creating a new course for your students
-                </p>
-              </div>
-              <Link
-                href={`/srv/${expertId}/courses/create`}
-                className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-md hover:shadow-lg"
-              >
-                <span className="text-xl mr-2">+</span>
-                Add New Course
-              </Link>
-            </div>
-          </div>
-        </div>
-
         {/* My Courses */}
         <div className="bg-white rounded-lg shadow mb-8">
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
@@ -380,6 +356,27 @@ export default function ExpertDashboard() {
                 </Link>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Add New Course Section */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg shadow mb-8 border border-blue-200">
+          <div className="p-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Create New Course</h2>
+                <p className="text-gray-600">
+                  Share your expertise by creating a new course for your students
+                </p>
+              </div>
+              <Link
+                href={`/srv/${expertId}/courses/create`}
+                className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-md hover:shadow-lg"
+              >
+                <span className="text-xl mr-2">+</span>
+                Add New Course
+              </Link>
+            </div>
           </div>
         </div>
       </div>

@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { trackLessonView, trackLessonComplete } from '@/lib/analytics';
 import type { UserCourseData, Lesson } from '@/types';
+import ReviewModal from '@/components/ReviewModal';
+import DiscussionThread from '@/components/discussions/DiscussionThread';
 
 export default function CoursePlayer() {
   const { isAuthenticated } = useAuth();
@@ -16,6 +18,10 @@ export default function CoursePlayer() {
   const [selectedItem, setSelectedItem] = useState<Lesson | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [canReview, setCanReview] = useState(false);
+  const [reviewEligibilityReason, setReviewEligibilityReason] = useState('');
+  const [activeTab, setActiveTab] = useState<'details' | 'discussions'>('details');
 
   useEffect(() => {
     const fetchCourseData = async () => {
@@ -97,6 +103,53 @@ export default function CoursePlayer() {
       });
     }
   }, [selectedItem, courseId]);
+
+  // Check if user can review this course
+  useEffect(() => {
+    const checkReviewEligibility = async () => {
+      if (!courseData || !courseId) return;
+
+      try {
+        // The API will check: enrolled, 25% progress, no existing review
+        const response = await fetch(`/api/courses/${courseId}/reviews/eligibility`);
+        if (response.status === 404) {
+          // Route doesn't exist yet, we'll check client-side
+          const progress = courseData.percentComplete || 0;
+          if (progress >= 25) {
+            setCanReview(true);
+            setReviewEligibilityReason('');
+          } else {
+            setCanReview(false);
+            setReviewEligibilityReason(
+              `Complete at least 25% of the course to write a review (current: ${progress}%)`
+            );
+          }
+          return;
+        }
+
+        const data = await response.json();
+        if (data.canReview) {
+          setCanReview(true);
+          setReviewEligibilityReason('');
+        } else {
+          setCanReview(false);
+          setReviewEligibilityReason(data.reason || 'You cannot review this course');
+        }
+      } catch (error) {
+        console.error('[DBG][course-player] Error checking review eligibility:', error);
+        // Default to checking progress only
+        const progress = courseData.percentComplete || 0;
+        setCanReview(progress >= 25);
+        setReviewEligibilityReason(
+          progress >= 25
+            ? ''
+            : `Complete at least 25% of the course to write a review (current: ${progress}%)`
+        );
+      }
+    };
+
+    checkReviewEligibility();
+  }, [courseData, courseId]);
 
   const handleMarkComplete = async (moveToNext = false) => {
     if (!selectedItem) return;
@@ -220,7 +273,15 @@ export default function CoursePlayer() {
   }
 
   return (
-    <div style={{ paddingTop: '64px', minHeight: '100vh', background: '#f8f8f8' }}>
+    <div
+      style={{
+        paddingTop: '64px',
+        minHeight: '100vh',
+        background: '#f8f8f8',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       {/* Top Navigation Bar */}
       <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0' }}>
         <div
@@ -277,6 +338,27 @@ export default function CoursePlayer() {
               flexShrink: 0,
             }}
           >
+            {canReview && (
+              <button
+                onClick={() => setIsReviewModalOpen(true)}
+                style={{
+                  padding: '8px 16px',
+                  background:
+                    'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+                title="Write a review for this course"
+                className="hide-on-small-mobile"
+              >
+                ⭐ Write Review
+              </button>
+            )}
             <div style={{ fontSize: '12px', color: '#666' }} className="hide-on-small-mobile">
               {courseData.completedLessons} / {courseData.totalLessons}
             </div>
@@ -333,7 +415,7 @@ export default function CoursePlayer() {
       )}
 
       {/* Main Layout: Left Sidebar + Right Content */}
-      <div style={{ display: 'flex', height: 'calc(100vh - 128px)', position: 'relative' }}>
+      <div style={{ display: 'flex', flex: 1, position: 'relative', minHeight: 0 }}>
         {/* LEFT PANE: Course Items List */}
         <div
           style={{
@@ -347,7 +429,7 @@ export default function CoursePlayer() {
             position: 'fixed',
             top: '128px',
             left: isSidebarOpen ? '0' : '-100%',
-            bottom: 0,
+            height: 'calc(100vh - 128px)',
             zIndex: 1000,
             transition: 'left 0.3s ease-in-out',
           }}
@@ -693,114 +775,182 @@ export default function CoursePlayer() {
 
               {/* Lesson Details */}
               <div style={{ flex: 1, overflowY: 'auto', background: '#fff' }}>
-                <div style={{ padding: '24px 20px' }} className="lesson-details">
-                  {/* Lesson Header */}
-                  <div style={{ marginBottom: '24px' }}>
-                    <div
+                {/* Tabs */}
+                <div
+                  style={{
+                    borderBottom: '1px solid #e2e8f0',
+                    background: '#fff',
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 10,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: '8px',
+                      padding: '0 20px',
+                    }}
+                    className="lesson-tabs"
+                  >
+                    <button
+                      onClick={() => setActiveTab('details')}
                       style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        marginBottom: '12px',
-                      }}
-                    >
-                      <span
-                        style={{
-                          padding: '4px 12px',
-                          background: '#f0f4ff',
-                          borderRadius: '6px',
-                          fontSize: '12px',
-                          color: 'var(--color-primary)',
-                          fontWeight: '600',
-                        }}
-                      >
-                        VIDEO
-                      </span>
-                      <span style={{ fontSize: '14px', color: '#666' }}>
-                        ⏱️ {selectedItem.duration || '30 min'}
-                      </span>
-                    </div>
-                    <h2
-                      style={{
-                        fontSize: '28px',
+                        padding: '16px 24px',
+                        background: 'none',
+                        border: 'none',
+                        borderBottom:
+                          activeTab === 'details' ? '3px solid var(--color-primary)' : 'none',
+                        color: activeTab === 'details' ? 'var(--color-primary)' : '#666',
+                        fontSize: '14px',
                         fontWeight: '600',
-                        marginBottom: '12px',
-                        lineHeight: '1.3',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
                       }}
                     >
-                      {selectedItem.title}
-                    </h2>
-                    {selectedItem.description && (
-                      <p style={{ fontSize: '16px', color: '#666', lineHeight: '1.6' }}>
-                        {selectedItem.description}
-                      </p>
-                    )}
+                      Details
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('discussions')}
+                      style={{
+                        padding: '16px 24px',
+                        background: 'none',
+                        border: 'none',
+                        borderBottom:
+                          activeTab === 'discussions' ? '3px solid var(--color-primary)' : 'none',
+                        color: activeTab === 'discussions' ? 'var(--color-primary)' : '#666',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      Discussions
+                    </button>
                   </div>
+                </div>
 
-                  {/* Resources Button */}
-                  {selectedItem.resources && selectedItem.resources.length > 0 && (
-                    <div style={{ marginBottom: '32px' }}>
-                      <button
+                {/* Tab Content */}
+                {activeTab === 'details' ? (
+                  <div
+                    style={{ padding: '24px 20px', paddingBottom: '60px' }}
+                    className="lesson-details"
+                  >
+                    {/* Lesson Header */}
+                    <div style={{ marginBottom: '24px' }}>
+                      <div
                         style={{
-                          padding: '12px 24px',
-                          background: '#fff',
-                          color: 'var(--color-primary)',
-                          border: '1px solid var(--color-primary)',
-                          borderRadius: '8px',
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          marginBottom: '12px',
                         }}
                       >
-                        📎 Resources ({selectedItem.resources.length})
-                      </button>
+                        <span
+                          style={{
+                            padding: '4px 12px',
+                            background: '#f0f4ff',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            color: 'var(--color-primary)',
+                            fontWeight: '600',
+                          }}
+                        >
+                          VIDEO
+                        </span>
+                        <span style={{ fontSize: '14px', color: '#666' }}>
+                          ⏱️ {selectedItem.duration || '30 min'}
+                        </span>
+                      </div>
+                      <h2
+                        style={{
+                          fontSize: '28px',
+                          fontWeight: '600',
+                          marginBottom: '12px',
+                          lineHeight: '1.3',
+                        }}
+                      >
+                        {selectedItem.title}
+                      </h2>
+                      {selectedItem.description && (
+                        <p style={{ fontSize: '16px', color: '#666', lineHeight: '1.6' }}>
+                          {selectedItem.description}
+                        </p>
+                      )}
                     </div>
-                  )}
 
-                  {/* Resources */}
-                  {selectedItem.resources && selectedItem.resources.length > 0 && (
-                    <div>
-                      <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
-                        Resources
-                      </h3>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        {selectedItem.resources.map(resource => (
-                          <div
-                            key={resource}
-                            style={{
-                              padding: '16px',
-                              border: '1px solid #e2e8f0',
-                              borderRadius: '8px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '12px',
-                            }}
-                          >
-                            <div style={{ fontSize: '24px' }}>📄</div>
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontWeight: '600', marginBottom: '4px' }}>
-                                {resource}
-                              </div>
-                            </div>
-                            <button
+                    {/* Resources Button */}
+                    {selectedItem.resources && selectedItem.resources.length > 0 && (
+                      <div style={{ marginBottom: '32px' }}>
+                        <button
+                          style={{
+                            padding: '12px 24px',
+                            background: '#fff',
+                            color: 'var(--color-primary)',
+                            border: '1px solid var(--color-primary)',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          📎 Resources ({selectedItem.resources.length})
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Resources */}
+                    {selectedItem.resources && selectedItem.resources.length > 0 && (
+                      <div>
+                        <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
+                          Resources
+                        </h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          {selectedItem.resources.map(resource => (
+                            <div
+                              key={resource}
                               style={{
-                                padding: '8px 16px',
-                                background: 'var(--color-primary)',
-                                color: '#fff',
-                                border: 'none',
-                                borderRadius: '6px',
-                                fontSize: '12px',
-                                cursor: 'pointer',
+                                padding: '16px',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '8px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '12px',
                               }}
                             >
-                              Download
-                            </button>
-                          </div>
-                        ))}
+                              <div style={{ fontSize: '24px' }}>📄</div>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontWeight: '600', marginBottom: '4px' }}>
+                                  {resource}
+                                </div>
+                              </div>
+                              <button
+                                style={{
+                                  padding: '8px 16px',
+                                  background: 'var(--color-primary)',
+                                  color: '#fff',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  fontSize: '12px',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                Download
+                              </button>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
+                ) : (
+                  <DiscussionThread
+                    courseId={courseId}
+                    lessonId={selectedItem.id}
+                    lessonTitle={selectedItem.title}
+                    instructorId={courseData?.instructor?.id || ''}
+                  />
+                )}
               </div>
             </>
           ) : (
@@ -826,6 +976,19 @@ export default function CoursePlayer() {
           )}
         </div>
       </div>
+
+      {/* Review Modal */}
+      <ReviewModal
+        isOpen={isReviewModalOpen}
+        onClose={() => setIsReviewModalOpen(false)}
+        courseId={courseId}
+        courseTitle={courseData?.title || ''}
+        onSuccess={() => {
+          // Refresh review eligibility after successful submission
+          setCanReview(false);
+          setReviewEligibilityReason('You have already reviewed this course');
+        }}
+      />
 
       {/* Mobile-responsive CSS */}
       <style jsx>{`

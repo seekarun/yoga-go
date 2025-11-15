@@ -18,12 +18,21 @@ const InstructorSchema = new Schema<Instructor>(
 const CourseReviewSchema = new Schema<CourseReview>(
   {
     id: { type: String, required: true },
-    user: { type: String, required: true },
-    userId: String,
-    rating: { type: Number, required: true },
-    date: { type: String, required: true },
-    comment: { type: String, required: true },
-    verified: { type: Boolean, default: false },
+    user: { type: String, required: true }, // Display name
+    userId: { type: String, required: true }, // User ID
+    rating: { type: Number, required: true, min: 1, max: 5 }, // 1-5 stars
+    date: { type: String, required: true }, // Date submitted
+    comment: { type: String, required: true }, // Review text
+    verified: { type: Boolean, default: false }, // Verified purchase
+    status: {
+      type: String,
+      enum: ['submitted', 'published'],
+      required: true,
+      default: 'submitted',
+    }, // Review approval status
+    courseProgress: { type: Number, min: 0, max: 100 }, // Percentage when reviewed
+    createdAt: String, // ISO timestamp
+    updatedAt: String, // ISO timestamp
   },
   { _id: false }
 );

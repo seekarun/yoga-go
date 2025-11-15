@@ -150,14 +150,20 @@ export interface Curriculum {
   lessons: Lesson[];
 }
 
+export type ReviewStatus = 'submitted' | 'published';
+
 export interface CourseReview {
   id: string;
-  user: string;
-  userId?: string;
-  rating: number;
-  date: string;
-  comment: string;
-  verified?: boolean;
+  user: string; // Display name
+  userId: string; // User ID (required)
+  rating: number; // 1-5 stars
+  date: string; // Date submitted
+  comment: string; // Review text
+  verified?: boolean; // Verified purchase badge
+  status: ReviewStatus; // Review approval status
+  courseProgress?: number; // Percentage complete when reviewed
+  createdAt?: string; // ISO timestamp when created
+  updatedAt?: string; // ISO timestamp when last updated
 }
 
 export interface Course extends BaseEntity {
@@ -730,4 +736,37 @@ export interface SurveyResponse extends BaseEntity {
   contactInfo?: SurveyResponseContactInfo; // Contact information collected from user
   answers: SurveyAnswer[];
   submittedAt: string;
+}
+
+// Discussion Related Types
+export type VoteType = 'up' | 'down';
+
+export interface Discussion extends BaseEntity {
+  courseId: string;
+  lessonId: string;
+  userId: string;
+  userRole: UserRole;
+  userName: string;
+  userAvatar?: string;
+  content: string;
+  parentId?: string; // null/undefined for top-level discussions, ID for replies
+  upvotes: number;
+  downvotes: number;
+  isPinned: boolean;
+  isResolved: boolean;
+  isHidden: boolean;
+  editedAt?: string;
+  deletedAt?: string;
+}
+
+export interface DiscussionVote extends BaseEntity {
+  discussionId: string;
+  userId: string;
+  voteType: VoteType;
+}
+
+export interface DiscussionThread extends Discussion {
+  replies: DiscussionThread[]; // Recursive type for nested replies
+  userVote?: VoteType; // Current user's vote on this discussion
+  netScore: number; // upvotes - downvotes
 }

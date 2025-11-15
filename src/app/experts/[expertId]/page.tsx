@@ -5,6 +5,7 @@ import type { Course, Expert } from '@/types';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import Header from '@/components/Header';
 
 export default function ExpertDetailPage() {
   const params = useParams();
@@ -136,6 +137,7 @@ export default function ExpertDetailPage() {
 
   return (
     <div style={{ minHeight: '100vh' }}>
+      <Header />
       <style>{`
         @media (max-width: 768px) {
           .hero-section-desktop {
@@ -194,6 +196,7 @@ export default function ExpertDetailPage() {
         className="hero-section-desktop"
         style={{
           minHeight: '600px',
+          paddingTop: '64px',
           position: 'relative',
           background: heroImage
             ? `url(${heroImage})`
@@ -368,7 +371,7 @@ export default function ExpertDetailPage() {
       </section>
 
       {/* Mobile Hero Section */}
-      <section className="hero-section-mobile" style={{ display: 'none' }}>
+      <section className="hero-section-mobile" style={{ display: 'none', paddingTop: '64px' }}>
         {/* Hero Image */}
         {heroImage ? (
           <div style={{ width: '100%', height: '300px', overflow: 'hidden' }}>

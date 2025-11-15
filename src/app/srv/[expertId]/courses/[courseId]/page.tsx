@@ -94,12 +94,20 @@ export default function CourseManagement() {
               <h1 className="text-3xl font-bold text-gray-900">{course.title}</h1>
               <p className="text-gray-600 mt-1">{course.description}</p>
             </div>
-            <Link
-              href={`/srv/${expertId}/courses/${courseId}/lessons`}
-              className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            >
-              + Manage Lessons
-            </Link>
+            <div className="flex items-center gap-3">
+              <Link
+                href={`/srv/${expertId}/courses/${courseId}/reviews`}
+                className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                ⭐ Reviews
+              </Link>
+              <Link
+                href={`/srv/${expertId}/courses/${courseId}/lessons`}
+                className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                + Manage Lessons
+              </Link>
+            </div>
           </div>
         </div>
       </div>

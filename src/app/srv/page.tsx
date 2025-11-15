@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import ExpertOnboarding from '@/components/ExpertOnboarding';
-import ExpertDashboard from '@/components/ExpertDashboard';
 import type { Expert } from '@/types';
 
 export default function ExpertPlatform() {
@@ -265,11 +264,21 @@ export default function ExpertPlatform() {
     );
   }
 
-  // Case 5: User is expert with completed profile - Show Dashboard
+  // Case 4: User is expert with completed profile - Redirect to expert dashboard
   if (user?.role === 'expert' && expertProfile) {
+    router.push(`/srv/${expertProfile.id}`);
     return (
-      <div style={{ paddingTop: '64px' }}>
-        <ExpertDashboard expert={expertProfile} />
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '16px', color: '#666' }}>Redirecting to dashboard...</div>
+        </div>
       </div>
     );
   }
