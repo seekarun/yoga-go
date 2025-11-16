@@ -42,7 +42,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ code
       currency: session.currency,
       meetingLink: session.meetingLink,
       meetingPlatform: session.meetingPlatform,
-      hmsDetails: session.hmsDetails,
       status: session.status,
       recordingS3Key: session.recordingS3Key,
       recordedLessonId: session.recordedLessonId,

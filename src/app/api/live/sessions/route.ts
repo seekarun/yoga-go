@@ -264,7 +264,6 @@ export async function GET(request: Request) {
       currency: session.currency,
       meetingLink: session.meetingLink,
       meetingPlatform: session.meetingPlatform,
-      hmsDetails: session.hmsDetails,
       status: session.status,
       recordingAvailable: session.recordingAvailable,
       recordedLessonId: session.recordedLessonId,

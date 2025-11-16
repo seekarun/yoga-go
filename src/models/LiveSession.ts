@@ -1,5 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
-import type { LiveSession, LiveSessionMetadata, LiveSessionHMSDetails } from '@/types';
+import type { LiveSession, LiveSessionMetadata } from '@/types';
 
 export interface LiveSessionDocument extends Omit<LiveSession, 'id'> {
   _id: string;
@@ -11,16 +11,6 @@ const LiveSessionMetadataSchema = new Schema<LiveSessionMetadata>(
     difficulty: String,
     equipment: [{ type: String }],
     category: String,
-  },
-  { _id: false }
-);
-
-const LiveSessionHMSDetailsSchema = new Schema<LiveSessionHMSDetails>(
-  {
-    roomId: { type: String, required: true },
-    roomCode: { type: String, required: true },
-    sessionId: String, // Optional - populated when first person joins
-    recordingId: String,
   },
   { _id: false }
 );
@@ -59,9 +49,6 @@ const LiveSessionSchema = new Schema<LiveSessionDocument>(
       type: String,
       enum: ['zoom', 'google-meet', 'other'],
     },
-
-    // 100ms Integration (deprecated, kept for backward compatibility)
-    hmsDetails: LiveSessionHMSDetailsSchema,
 
     status: {
       type: String,

@@ -89,7 +89,6 @@ export async function GET() {
       currentViewers: session.currentViewers,
       price: session.price,
       currency: session.currency,
-      hmsDetails: session.hmsDetails,
       status: session.status,
       recordingS3Key: session.recordingS3Key,
       recordedLessonId: session.recordedLessonId,
