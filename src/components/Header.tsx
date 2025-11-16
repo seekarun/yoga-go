@@ -47,8 +47,8 @@ export default function Header() {
   };
 
   const handleLogout = () => {
-    // Redirect experts to /srv after logout, others to default
-    const returnTo = user?.role === 'expert' ? '/srv' : undefined;
+    // Redirect experts to /srv after logout, others to landing page
+    const returnTo = user?.role === 'expert' ? '/srv' : '/';
     logout(returnTo);
     setIsUserMenuOpen(false);
   };
@@ -123,7 +123,7 @@ export default function Header() {
         {!expertMode.isExpertMode && (
           <nav
             style={{
-              display: 'none',
+              display: 'flex',
               gap: '40px',
             }}
             className="desktop-nav"
@@ -279,7 +279,7 @@ export default function Header() {
                     }}
                     onClick={() => setIsUserMenuOpen(false)}
                   >
-                    Browse Live Sessions
+                    My 1:1 Sessions
                   </Link>
                   <Link
                     href="/app/profile"
@@ -336,7 +336,7 @@ export default function Header() {
                           }}
                           onClick={() => setIsUserMenuOpen(false)}
                         >
-                          🎥 Manage My Sessions
+                          🎥 Manage 1-on-1 Sessions
                         </Link>
                       )}
                       <Link

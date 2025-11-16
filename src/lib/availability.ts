@@ -6,15 +6,17 @@ import { nanoid } from 'nanoid';
 
 /**
  * Generate available time slots for an expert on a specific date
+ * Each ExpertAvailability record defines a time window that gets subdivided into bookable slots
+ * based on the expert's configured sessionDuration and bufferMinutes
  * @param expertId Expert's ID
  * @param date Date string in YYYY-MM-DD format
- * @param sessionDuration Duration of session in minutes (default 60)
- * @returns Array of available time slots
+ * @param sessionDuration Duration override (optional, ignored - uses expert's configured durations)
+ * @returns Array of available time slots (available = not booked)
  */
 export async function generateAvailableSlots(
   expertId: string,
   date: string,
-  sessionDuration: number = 60
+  sessionDuration?: number
 ): Promise<AvailableSlot[]> {
   console.log(`[DBG][lib/availability] Generating slots for expert ${expertId} on ${date}`);
 
@@ -41,7 +43,7 @@ export async function generateAvailableSlots(
     return [];
   }
 
-  // Get existing sessions for this expert on this date to check conflicts
+  // Get existing sessions for this expert on this date
   const startOfDay = new Date(date);
   startOfDay.setHours(0, 0, 0, 0);
   const endOfDay = new Date(date);
@@ -49,7 +51,7 @@ export async function generateAvailableSlots(
 
   const existingSessions = await LiveSession.find({
     expertId,
-    status: { $in: ['scheduled', 'live'] }, // Only check active sessions
+    status: { $in: ['scheduled', 'live'] },
     scheduledStartTime: {
       $gte: startOfDay.toISOString(),
       $lt: endOfDay.toISOString(),
@@ -58,55 +60,76 @@ export async function generateAvailableSlots(
 
   console.log(`[DBG][lib/availability] Found ${existingSessions.length} existing sessions`);
 
-  // Generate time slots
+  // Generate time slots by subdividing availability windows
   const slots: AvailableSlot[] = [];
 
   for (const availability of availabilities) {
     const [startHour, startMinute] = availability.startTime.split(':').map(Number);
     const [endHour, endMinute] = availability.endTime.split(':').map(Number);
 
+    // Get session configuration (with defaults)
+    const sessionDurationMinutes = availability.sessionDuration || 60;
+    const bufferMinutes = availability.bufferMinutes || 0;
+
     // Create datetime objects for this availability window
-    let slotStart = new Date(date);
-    slotStart.setHours(startHour, startMinute, 0, 0);
+    const windowStart = new Date(date);
+    windowStart.setHours(startHour, startMinute, 0, 0);
 
     const windowEnd = new Date(date);
     windowEnd.setHours(endHour, endMinute, 0, 0);
 
-    // Generate slots within this availability window
-    while (slotStart < windowEnd) {
-      const slotEnd = new Date(slotStart.getTime() + sessionDuration * 60000);
+    // Subdivide the window into bookable slots
+    let currentSlotStart = new Date(windowStart);
 
-      // Don't create slots that extend past the availability window
-      if (slotEnd > windowEnd) {
+    while (currentSlotStart < windowEnd) {
+      // Calculate slot end time (start + session duration)
+      const currentSlotEnd = new Date(
+        currentSlotStart.getTime() + sessionDurationMinutes * 60 * 1000
+      );
+
+      // Check if this slot fits within the availability window
+      if (currentSlotEnd > windowEnd) {
+        console.log('[DBG][lib/availability] Slot would exceed window end, stopping subdivision');
         break;
       }
 
-      // Check if this slot conflicts with existing sessions
-      const hasConflict = existingSessions.some(session => {
+      // Check if this slot is already booked
+      const isBooked = existingSessions.some(session => {
         const sessionStart = new Date(session.scheduledStartTime);
         const sessionEnd = new Date(session.scheduledEndTime);
-
-        // Check for overlap: slot starts before session ends AND slot ends after session starts
-        return slotStart < sessionEnd && slotEnd > sessionStart;
+        // Check for any time overlap
+        return (
+          (sessionStart >= currentSlotStart && sessionStart < currentSlotEnd) ||
+          (sessionEnd > currentSlotStart && sessionEnd <= currentSlotEnd) ||
+          (sessionStart <= currentSlotStart && sessionEnd >= currentSlotEnd)
+        );
       });
 
-      // Don't allow booking slots in the past
+      // Don't allow booking slots in the past (with 2hr minimum notice)
       const now = new Date();
-      const isPast = slotEnd <= now;
+      const minBookingTime = new Date(now.getTime() + 2 * 60 * 60 * 1000); // 2 hours from now
+      const isPast = currentSlotStart <= minBookingTime;
 
       slots.push({
-        startTime: slotStart.toISOString(),
-        endTime: slotEnd.toISOString(),
-        duration: sessionDuration,
-        available: !hasConflict && !isPast,
+        startTime: currentSlotStart.toISOString(),
+        endTime: currentSlotEnd.toISOString(),
+        duration: sessionDurationMinutes,
+        available: !isBooked && !isPast,
       });
 
-      // Move to next slot
-      slotStart = new Date(slotStart.getTime() + sessionDuration * 60000);
+      // Move to next slot (add session duration + buffer)
+      currentSlotStart = new Date(
+        currentSlotStart.getTime() + (sessionDurationMinutes + bufferMinutes) * 60 * 1000
+      );
     }
   }
 
-  console.log(`[DBG][lib/availability] Generated ${slots.length} slots`);
+  // Sort slots by start time
+  slots.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+
+  console.log(
+    `[DBG][lib/availability] Generated ${slots.length} slots from ${availabilities.length} availability windows`
+  );
   return slots;
 }
 

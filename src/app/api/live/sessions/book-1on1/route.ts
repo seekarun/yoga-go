@@ -4,7 +4,7 @@ import { connectToDatabase } from '@/lib/mongodb';
 import LiveSession from '@/models/LiveSession';
 import LiveSessionParticipant from '@/models/LiveSessionParticipant';
 import Expert from '@/models/Expert';
-import User from '@/models/User';
+import ExpertAvailability from '@/models/ExpertAvailability';
 import { isSlotAvailable } from '@/lib/availability';
 import type { ApiResponse, LiveSession as LiveSessionType } from '@/types';
 import { nanoid } from 'nanoid';
@@ -13,6 +13,7 @@ import { nanoid } from 'nanoid';
  * POST /api/live/sessions/book-1on1
  * Book a 1-on-1 session with an expert (Student only)
  * Creates session and auto-enrolls the student
+ * Uses meeting link from expert's availability configuration
  */
 export async function POST(request: Request) {
   console.log('[DBG][api/live/sessions/book-1on1] POST request received');
@@ -82,17 +83,44 @@ export async function POST(request: Request) {
       return NextResponse.json(response, { status: 400 });
     }
 
-    // Get expert's user account to retrieve default meeting link
-    const expertUser = await User.findOne({ expertProfile: expertId });
-    const meetingLink = expertUser?.defaultMeetingLink || '';
-    const meetingPlatform = expertUser?.defaultMeetingPlatform || 'other';
+    // Get meeting link from expert's availability configuration
+    const start = new Date(startTime);
+    const dayOfWeek = start.getDay();
+    const date = start.toISOString().split('T')[0];
+
+    console.log('[DBG][api/live/sessions/book-1on1] Looking for availability:', {
+      expertId,
+      dayOfWeek,
+      date,
+    });
+
+    const availability = await ExpertAvailability.findOne({
+      expertId,
+      isActive: true,
+      $or: [
+        { isRecurring: true, dayOfWeek },
+        { isRecurring: false, date },
+      ],
+    });
+
+    console.log('[DBG][api/live/sessions/book-1on1] Found availability:', {
+      found: !!availability,
+      meetingLink: availability?.meetingLink,
+      availabilityId: availability?._id,
+    });
+
+    const meetingLink = availability?.meetingLink?.trim() || '';
 
     // Validate expert has meeting link set up
     if (!meetingLink) {
+      console.error(
+        '[DBG][api/live/sessions/book-1on1] No meeting link found for expert:',
+        expertId
+      );
       const response: ApiResponse<null> = {
         success: false,
         error:
-          'Expert has not set up their meeting link yet. Please contact the expert or try again later.',
+          'This time slot is not available for booking. The expert has not completed their session setup. Please try another time slot or contact the expert directly.',
       };
       return NextResponse.json(response, { status: 400 });
     }
@@ -108,7 +136,7 @@ export async function POST(request: Request) {
       description: description || `Private one-on-one session with ${expert.name}`,
       sessionType: '1-on-1',
       meetingLink: meetingLink,
-      meetingPlatform: meetingPlatform,
+      meetingPlatform: 'other', // Meeting link from availability config
       scheduledStartTime: startTime,
       scheduledEndTime: endTime,
       maxParticipants: 1, // Always 1 for 1-on-1 sessions

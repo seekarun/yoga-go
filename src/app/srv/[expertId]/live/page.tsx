@@ -177,9 +177,9 @@ export default function ExpertLiveDashboard({ params }: { params: Promise<{ expe
         >
           <div>
             <h1 style={{ fontSize: '32px', fontWeight: '700', marginBottom: '8px' }}>
-              Live Sessions
+              1-on-1 Sessions
             </h1>
-            <p style={{ color: '#718096' }}>Manage your live video sessions with students</p>
+            <p style={{ color: '#718096' }}>Manage your private sessions with students</p>
           </div>
 
           <div style={{ display: 'flex', gap: '12px' }}>
@@ -199,7 +199,8 @@ export default function ExpertLiveDashboard({ params }: { params: Promise<{ expe
               📅 Set Availability
             </button>
 
-            <button
+            {/* MVP: Hidden for now - can be enabled later */}
+            {/* <button
               onClick={() => setShowInstantModal(true)}
               style={{
                 padding: '12px 24px',
@@ -229,15 +230,15 @@ export default function ExpertLiveDashboard({ params }: { params: Promise<{ expe
               }}
             >
               + Create Session
-            </button>
+            </button> */}
           </div>
         </div>
 
         <ExpertLiveSessions expertId={expertId} />
       </div>
 
-      {/* Instant Meeting Modal */}
-      {showInstantModal && (
+      {/* MVP: Instant Meeting Modal - Hidden for now, can be enabled later */}
+      {/* {showInstantModal && (
         <div
           style={{
             position: 'fixed',
@@ -570,7 +571,7 @@ export default function ExpertLiveDashboard({ params }: { params: Promise<{ expe
             )}
           </div>
         </div>
-      )}
+      )} */}
     </>
   );
 }

@@ -674,6 +674,13 @@ export interface ExpertAvailability extends BaseEntity {
   endTime: string; // "17:00" (24-hour format)
   isRecurring: boolean; // true for weekly recurring, false for one-time
   isActive: boolean; // soft delete flag
+  // Session configuration
+  sessionDuration?: number; // Session length in minutes (30, 60, 90)
+  bufferMinutes?: number; // Break time between consecutive sessions (0, 5, 10, 15)
+  // MVP: 1-on-1 sessions only - group session fields commented out for future use
+  // maxParticipants?: number; // max students per session
+  // meetingPlatform?: 'google-meet' | 'zoom' | 'other';
+  meetingLink?: string; // meeting URL for 1-on-1 sessions
 }
 
 export interface AvailableSlot {

@@ -15,6 +15,13 @@ const ExpertAvailabilitySchema = new Schema<ExpertAvailabilityDocument>(
     endTime: { type: String, required: true }, // "17:00"
     isRecurring: { type: Boolean, required: true, default: true },
     isActive: { type: Boolean, required: true, default: true, index: true },
+    // Session configuration
+    sessionDuration: { type: Number, default: 60 }, // Session length in minutes (30, 60, 90)
+    bufferMinutes: { type: Number, default: 0 }, // Break time between consecutive sessions
+    // MVP: 1-on-1 sessions only - group session fields commented out for future use
+    // maxParticipants: { type: Number, default: 10 }, // max students per session
+    // meetingPlatform: { type: String, enum: ['google-meet', 'zoom', 'other'], default: 'google-meet' },
+    meetingLink: String, // meeting URL for 1-on-1 sessions
   },
   {
     timestamps: true,

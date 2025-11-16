@@ -38,8 +38,8 @@ export async function GET() {
     // Connect to database
     await connectToDatabase();
 
-    // Fetch all availability slots for this expert
-    const availabilityDocs = await ExpertAvailability.find({ expertId }).sort({
+    // Fetch all active availability slots for this expert
+    const availabilityDocs = await ExpertAvailability.find({ expertId, isActive: true }).sort({
       isRecurring: -1, // Recurring first
       dayOfWeek: 1, // Then by day of week
       date: 1, // Then by date
@@ -56,6 +56,12 @@ export async function GET() {
       endTime: doc.endTime,
       isRecurring: doc.isRecurring,
       isActive: doc.isActive,
+      sessionDuration: doc.sessionDuration,
+      bufferMinutes: doc.bufferMinutes,
+      // MVP: 1-on-1 sessions only - group session fields commented out for future use
+      // maxParticipants: doc.maxParticipants,
+      // meetingPlatform: doc.meetingPlatform,
+      meetingLink: doc.meetingLink,
       createdAt: doc.createdAt,
       updatedAt: doc.updatedAt,
     }));
@@ -116,7 +122,19 @@ export async function POST(request: Request) {
 
     // Parse request body
     const body = await request.json();
-    const { dayOfWeek, date, startTime, endTime, isRecurring } = body;
+    const {
+      dayOfWeek,
+      date,
+      startTime,
+      endTime,
+      isRecurring,
+      sessionDuration,
+      bufferMinutes,
+      // MVP: 1-on-1 sessions only - group session fields commented out for future use
+      // maxParticipants,
+      // meetingPlatform,
+      meetingLink,
+    } = body;
 
     // Validation
     if (!startTime || !endTime) {
@@ -162,6 +180,24 @@ export async function POST(request: Request) {
       return NextResponse.json(response, { status: 400 });
     }
 
+    // Validate sessionDuration (must be 30 or 60)
+    if (sessionDuration && ![30, 60].includes(sessionDuration)) {
+      const response: ApiResponse<null> = {
+        success: false,
+        error: 'sessionDuration must be 30 or 60 minutes',
+      };
+      return NextResponse.json(response, { status: 400 });
+    }
+
+    // Validate bufferMinutes (must be 0, 5, 10, or 15)
+    if (bufferMinutes !== undefined && ![0, 5, 10, 15].includes(bufferMinutes)) {
+      const response: ApiResponse<null> = {
+        success: false,
+        error: 'bufferMinutes must be 0, 5, 10, or 15 minutes',
+      };
+      return NextResponse.json(response, { status: 400 });
+    }
+
     await connectToDatabase();
 
     // Create availability slot
@@ -174,6 +210,12 @@ export async function POST(request: Request) {
       endTime,
       isRecurring: isRecurring || false,
       isActive: true,
+      sessionDuration: sessionDuration || 60,
+      bufferMinutes: bufferMinutes !== undefined ? bufferMinutes : 0,
+      // MVP: 1-on-1 sessions only - group session fields commented out for future use
+      // maxParticipants: maxParticipants || 10,
+      // meetingPlatform: meetingPlatform || 'google-meet',
+      meetingLink: meetingLink || '',
     });
 
     await availability.save();
@@ -189,6 +231,12 @@ export async function POST(request: Request) {
       endTime: availability.endTime,
       isRecurring: availability.isRecurring,
       isActive: availability.isActive,
+      sessionDuration: availability.sessionDuration,
+      bufferMinutes: availability.bufferMinutes,
+      // MVP: 1-on-1 sessions only - group session fields commented out for future use
+      // maxParticipants: availability.maxParticipants,
+      // meetingPlatform: availability.meetingPlatform,
+      meetingLink: availability.meetingLink,
       createdAt: availability.createdAt,
       updatedAt: availability.updatedAt,
     };
@@ -202,6 +250,70 @@ export async function POST(request: Request) {
     return NextResponse.json(response);
   } catch (error) {
     console.error('[DBG][api/srv/live/availability] Error:', error);
+    const response: ApiResponse<null> = {
+      success: false,
+      error: error instanceof Error ? error.message : 'Internal server error',
+    };
+    return NextResponse.json(response, { status: 500 });
+  }
+}
+
+/**
+ * DELETE /api/srv/live/availability
+ * Bulk delete all availability slots for the expert (Expert only)
+ * Performs soft delete by setting isActive: false
+ */
+export async function DELETE(request: Request) {
+  console.log('[DBG][api/srv/live/availability] DELETE request received (bulk delete)');
+
+  try {
+    // Check authentication
+    const session = await getSession();
+    if (!session || !session.user) {
+      const response: ApiResponse<null> = {
+        success: false,
+        error: 'Not authenticated',
+      };
+      return NextResponse.json(response, { status: 401 });
+    }
+
+    // Get user from database
+    const user = await getUserByAuth0Id(session.user.sub);
+    if (!user || !user.expertProfile) {
+      const response: ApiResponse<null> = {
+        success: false,
+        error: 'Unauthorized. Only experts can delete availability.',
+      };
+      return NextResponse.json(response, { status: 403 });
+    }
+
+    const expertId = user.expertProfile;
+
+    // Connect to database
+    await connectToDatabase();
+
+    // Soft delete all availability slots for this expert
+    const result = await ExpertAvailability.updateMany(
+      { expertId, isActive: true },
+      { $set: { isActive: false, updatedAt: new Date().toISOString() } }
+    );
+
+    console.log(
+      '[DBG][api/srv/live/availability] Bulk deleted',
+      result.modifiedCount,
+      'slots for expert:',
+      expertId
+    );
+
+    const response: ApiResponse<{ deletedCount: number }> = {
+      success: true,
+      data: { deletedCount: result.modifiedCount },
+      message: `Successfully deleted ${result.modifiedCount} availability slot${result.modifiedCount !== 1 ? 's' : ''}`,
+    };
+
+    return NextResponse.json(response);
+  } catch (error) {
+    console.error('[DBG][api/srv/live/availability] Error during bulk delete:', error);
     const response: ApiResponse<null> = {
       success: false,
       error: error instanceof Error ? error.message : 'Internal server error',

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import LiveSessionCard from './LiveSessionCard';
 import type { LiveSession, ApiResponse } from '@/types';
 
@@ -9,10 +10,10 @@ interface StudentLiveSessionsProps {
 }
 
 export default function StudentLiveSessions({ userId }: StudentLiveSessionsProps) {
+  const router = useRouter();
   const [sessions, setSessions] = useState<LiveSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'live' | 'upcoming'>('all');
-  const [enrolling, setEnrolling] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSessions();
@@ -21,8 +22,8 @@ export default function StudentLiveSessions({ userId }: StudentLiveSessionsProps
   const fetchSessions = async () => {
     try {
       setLoading(true);
-      // Always fetch all sessions (no status filter) so badge counts are accurate
-      const response = await fetch('/api/live/sessions');
+      // Fetch only user's enrolled sessions (my bookings)
+      const response = await fetch('/api/app/live/my-sessions');
       const data: ApiResponse<LiveSession[]> = await response.json();
 
       if (data.success && data.data) {
@@ -37,33 +38,9 @@ export default function StudentLiveSessions({ userId }: StudentLiveSessionsProps
         setSessions(sorted);
       }
     } catch (error) {
-      console.error('[DBG][StudentLiveSessions] Error fetching sessions:', error);
+      console.error('[DBG][StudentLiveSessions] Error fetching my sessions:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleEnroll = async (sessionId: string) => {
-    try {
-      setEnrolling(sessionId);
-      const response = await fetch(`/api/live/sessions/${sessionId}/enroll`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      });
-      const data = await response.json();
-
-      if (data.success) {
-        alert('Successfully enrolled! You can join when the session goes live.');
-        fetchSessions(); // Refresh list
-      } else {
-        alert(data.error || 'Failed to enroll in session');
-      }
-    } catch (error) {
-      console.error('[DBG][StudentLiveSessions] Error enrolling:', error);
-      alert('Failed to enroll in session');
-    } finally {
-      setEnrolling(null);
     }
   };
 
@@ -160,7 +137,7 @@ export default function StudentLiveSessions({ userId }: StudentLiveSessionsProps
               boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
             }}
           >
-            <div style={{ fontSize: '64px', marginBottom: '16px' }}>🎥</div>
+            <div style={{ fontSize: '64px', marginBottom: '16px' }}>📅</div>
             <h3
               style={{
                 fontSize: '24px',
@@ -169,16 +146,70 @@ export default function StudentLiveSessions({ userId }: StudentLiveSessionsProps
                 marginBottom: '8px',
               }}
             >
-              No {filter !== 'all' ? filter : ''} sessions available
+              No Sessions Booked Yet
             </h3>
             <p
               style={{
                 fontSize: '16px',
                 color: '#718096',
+                marginBottom: '32px',
               }}
             >
-              Check back later for live sessions with our expert instructors
+              Book your first private session with a yoga expert
             </p>
+
+            <div
+              style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}
+            >
+              <button
+                onClick={() => router.push('/experts')}
+                style={{
+                  padding: '12px 32px',
+                  background: '#667eea',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(102, 126, 234, 0.4)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
+                }}
+              >
+                Browse Experts
+              </button>
+
+              <button
+                onClick={() => router.push('/app')}
+                style={{
+                  padding: '12px 32px',
+                  background: '#fff',
+                  color: '#667eea',
+                  border: '2px solid #667eea',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'background 0.2s, color 0.2s',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = '#f7fafc';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = '#fff';
+                }}
+              >
+                Back to Dashboard
+              </button>
+            </div>
           </div>
         ) : (
           <>
@@ -221,11 +252,7 @@ export default function StudentLiveSessions({ userId }: StudentLiveSessionsProps
                   }}
                 >
                   {liveSessions.map(session => (
-                    <LiveSessionCard
-                      key={session.id}
-                      session={session}
-                      onEnroll={enrolling === session.id ? undefined : handleEnroll}
-                    />
+                    <LiveSessionCard key={session.id} session={session} />
                   ))}
                 </div>
               </div>
@@ -252,69 +279,74 @@ export default function StudentLiveSessions({ userId }: StudentLiveSessionsProps
                   }}
                 >
                   {upcomingSessions.map(session => (
-                    <LiveSessionCard
-                      key={session.id}
-                      session={session}
-                      onEnroll={enrolling === session.id ? undefined : handleEnroll}
-                    />
+                    <LiveSessionCard key={session.id} session={session} />
                   ))}
                 </div>
               </div>
             )}
-          </>
-        )}
 
-        {/* Info Section */}
-        {!loading && activeSessions.length > 0 && (
-          <div
-            style={{
-              marginTop: '48px',
-              padding: '24px',
-              background: '#fff',
-              borderRadius: '12px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            }}
-          >
-            <h3
-              style={{
-                margin: '0 0 16px 0',
-                fontSize: '18px',
-                fontWeight: '600',
-                color: '#2d3748',
-              }}
-            >
-              ℹ️ How Live Sessions Work
-            </h3>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-                gap: '20px',
-                fontSize: '14px',
-                color: '#4a5568',
-                lineHeight: '1.8',
-              }}
-            >
-              <div>
-                <div style={{ fontWeight: '600', color: '#2d3748', marginBottom: '8px' }}>
-                  1. Enroll in a Session
-                </div>
-                <div>
-                  Browse upcoming sessions and enroll in ones that interest you. Free and paid
-                  options available.
-                </div>
+            {/* Call-to-Action: Browse More Experts */}
+            {activeSessions.length > 0 && (
+              <div
+                style={{
+                  marginTop: '48px',
+                  padding: '32px 24px',
+                  background: '#f7fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '12px',
+                  textAlign: 'center',
+                }}
+              >
+                <div style={{ fontSize: '48px', marginBottom: '16px' }}>🧘‍♀️</div>
+                <h3
+                  style={{
+                    fontSize: '20px',
+                    fontWeight: '700',
+                    color: '#2d3748',
+                    marginBottom: '8px',
+                  }}
+                >
+                  Want to book another session?
+                </h3>
+                <p
+                  style={{
+                    fontSize: '16px',
+                    color: '#718096',
+                    marginBottom: '24px',
+                    maxWidth: '500px',
+                    margin: '0 auto 24px',
+                  }}
+                >
+                  Browse our expert instructors and schedule your next 1-on-1 session
+                </p>
+                <button
+                  onClick={() => router.push('/experts')}
+                  style={{
+                    padding: '12px 32px',
+                    background: '#667eea',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
+                    transition: 'transform 0.2s, box-shadow 0.2s',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(102, 126, 234, 0.4)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
+                  }}
+                >
+                  Browse Experts
+                </button>
               </div>
-              <div>
-                <div style={{ fontWeight: '600', color: '#2d3748', marginBottom: '8px' }}>
-                  2. Join When Live
-                </div>
-                <div>
-                  When the session goes live, click &ldquo;Join Now&rdquo; to watch the stream and
-                  interact via chat.
-                </div>
-              </div>
-            </div>
-          </div>
+            )}
+          </>
         )}
       </div>
 
