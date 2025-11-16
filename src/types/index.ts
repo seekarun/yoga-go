@@ -579,13 +579,6 @@ export interface LiveSessionMetadata {
   category?: CourseCategory;
 }
 
-export interface LiveSessionHMSDetails {
-  roomId: string; // 100ms room ID
-  roomCode: string; // Room code for joining
-  sessionId?: string; // 100ms session ID (created when first person joins)
-  recordingId?: string; // If recording is enabled
-}
-
 export interface LiveSession extends BaseEntity {
   expertId: string;
   expertName: string; // Denormalized for quick display
@@ -611,9 +604,6 @@ export interface LiveSession extends BaseEntity {
   // Manual meeting link (Zoom/Google Meet/etc)
   meetingLink?: string; // The actual Zoom/Meet URL
   meetingPlatform?: 'zoom' | 'google-meet' | 'other';
-
-  // 100ms Integration (deprecated, kept for backward compatibility)
-  hmsDetails?: LiveSessionHMSDetails;
 
   // Status
   status: LiveSessionStatus;

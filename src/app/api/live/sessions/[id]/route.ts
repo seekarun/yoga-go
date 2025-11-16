@@ -48,7 +48,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       currentViewers: liveSession.currentViewers,
       price: liveSession.price,
       currency: liveSession.currency,
-      hmsDetails: liveSession.hmsDetails,
       status: liveSession.status,
       recordingS3Key: liveSession.recordingS3Key,
       recordedLessonId: liveSession.recordedLessonId,
