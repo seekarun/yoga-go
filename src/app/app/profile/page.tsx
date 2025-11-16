@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { posthog } from '@/providers/PostHogProvider';
 
 export default function Profile() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [activeTab, setActiveTab] = useState<
     'profile' | 'membership' | 'preferences' | 'achievements'
   >('profile');
@@ -16,6 +17,8 @@ export default function Profile() {
     bio: user?.profile?.bio || '',
     location: user?.profile?.location || '',
   });
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
+  const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
 
   if (!user) {
     return (
@@ -41,6 +44,105 @@ export default function Profile() {
       location: user.profile.location || '',
     });
     setIsEditing(false);
+  };
+
+  const handleCancelSubscription = async (reason?: string) => {
+    if (!user?.membership?.subscriptionId) return;
+
+    setSubscriptionLoading(true);
+    setSubscriptionError(null);
+
+    try {
+      const gateway = user.membership.paymentGateway || 'stripe';
+      const endpoint = `/api/payment/${gateway}/cancel-subscription`;
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subscriptionId: user.membership.subscriptionId,
+          userId: user.id,
+          reason,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to cancel subscription');
+      }
+
+      // PostHog analytics
+      posthog.capture('subscription_cancelled', {
+        subscriptionId: user.membership.subscriptionId,
+        planType: user.membership.type,
+        billingInterval: user.membership.billingInterval,
+        reason,
+        gateway,
+        currentPeriodEnd: user.membership.currentPeriodEnd,
+      });
+
+      // Refresh user data to show updated subscription status
+      await refreshUser();
+      alert(
+        'Subscription cancelled successfully. You will have access until the end of your billing period.'
+      );
+    } catch (error) {
+      console.error('[DBG][profile] Cancel subscription error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to cancel subscription';
+      setSubscriptionError(errorMessage);
+      alert(`Error: ${errorMessage}`);
+    } finally {
+      setSubscriptionLoading(false);
+    }
+  };
+
+  const handleReactivateSubscription = async () => {
+    if (!user?.membership?.subscriptionId) return;
+
+    setSubscriptionLoading(true);
+    setSubscriptionError(null);
+
+    try {
+      const gateway = user.membership.paymentGateway || 'stripe';
+      const endpoint = `/api/payment/${gateway}/cancel-subscription`;
+
+      const response = await fetch(endpoint, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subscriptionId: user.membership.subscriptionId,
+          userId: user.id,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to reactivate subscription');
+      }
+
+      // PostHog analytics
+      posthog.capture('subscription_reactivated', {
+        subscriptionId: user.membership.subscriptionId,
+        planType: user.membership.type,
+        billingInterval: user.membership.billingInterval,
+        gateway,
+        currentPeriodEnd: user.membership.currentPeriodEnd,
+      });
+
+      // Refresh user data to show updated subscription status
+      await refreshUser();
+      alert('Subscription reactivated successfully!');
+    } catch (error) {
+      console.error('[DBG][profile] Reactivate subscription error:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Failed to reactivate subscription';
+      setSubscriptionError(errorMessage);
+      alert(`Error: ${errorMessage}`);
+    } finally {
+      setSubscriptionLoading(false);
+    }
   };
 
   return (
@@ -408,6 +510,146 @@ export default function Profile() {
               </div>
             )}
 
+            {activeTab === 'profile' && user.role !== 'expert' && (
+              <div
+                style={{
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  borderRadius: '12px',
+                  padding: '32px',
+                  color: '#fff',
+                  marginTop: '24px',
+                  boxShadow: '0 4px 12px rgba(118, 75, 162, 0.3)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'start', gap: '24px' }}>
+                  <div style={{ fontSize: '48px' }}>🎓</div>
+                  <div style={{ flex: 1 }}>
+                    <h3 style={{ fontSize: '24px', fontWeight: '700', marginBottom: '12px' }}>
+                      Become a Yoga Expert
+                    </h3>
+                    <p
+                      style={{
+                        fontSize: '16px',
+                        opacity: 0.95,
+                        marginBottom: '20px',
+                        lineHeight: '1.6',
+                      }}
+                    >
+                      Share your knowledge with the world! As an expert, you can:
+                    </p>
+                    <ul
+                      style={{
+                        fontSize: '15px',
+                        opacity: 0.95,
+                        marginBottom: '24px',
+                        paddingLeft: '20px',
+                        lineHeight: '1.8',
+                      }}
+                    >
+                      <li>Create and publish your own yoga courses</li>
+                      <li>Host live 1-on-1 sessions with students</li>
+                      <li>Build your personal brand with a custom landing page</li>
+                      <li>Earn revenue from course enrollments and bookings</li>
+                      <li>Access detailed analytics about your students</li>
+                    </ul>
+                    <button
+                      onClick={async () => {
+                        if (
+                          confirm(
+                            "Ready to become an expert? You'll be taken to the expert portal to complete your profile."
+                          )
+                        ) {
+                          try {
+                            const response = await fetch('/api/user/become-expert', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                            });
+                            const data = await response.json();
+
+                            if (data.success) {
+                              await refreshUser();
+                              window.location.href = '/srv';
+                            } else {
+                              alert('Error: ' + (data.error || 'Failed to become expert'));
+                            }
+                          } catch (error) {
+                            console.error('[DBG][profile] Become expert error:', error);
+                            alert('Error: Failed to become expert');
+                          }
+                        }
+                      }}
+                      style={{
+                        padding: '14px 32px',
+                        background: '#fff',
+                        color: '#764ba2',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '16px',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                      }}
+                    >
+                      Start Your Expert Journey →
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'profile' && user.role === 'expert' && (
+              <div
+                style={{
+                  background: '#f0f4ff',
+                  border: '2px solid #667eea',
+                  borderRadius: '12px',
+                  padding: '24px',
+                  marginTop: '24px',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '16px',
+                    marginBottom: '16px',
+                  }}
+                >
+                  <span style={{ fontSize: '32px' }}>👨‍🏫</span>
+                  <div>
+                    <h3
+                      style={{
+                        fontSize: '18px',
+                        fontWeight: '600',
+                        color: '#667eea',
+                        marginBottom: '4px',
+                      }}
+                    >
+                      You're an Expert!
+                    </h3>
+                    <p style={{ fontSize: '14px', color: '#4a5568' }}>
+                      Manage your courses, live sessions, and analytics in the expert portal
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  href="/srv"
+                  style={{
+                    display: 'inline-block',
+                    padding: '12px 24px',
+                    background: '#667eea',
+                    color: '#fff',
+                    textDecoration: 'none',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                  }}
+                >
+                  Go to Expert Portal →
+                </Link>
+              </div>
+            )}
+
             {activeTab === 'membership' && (
               <div
                 style={{
@@ -422,6 +664,35 @@ export default function Profile() {
                 </div>
 
                 <div style={{ padding: '24px' }}>
+                  {/* Subscription Status Alert */}
+                  {user.membership.cancelAtPeriodEnd && (
+                    <div
+                      style={{
+                        background: '#fff3cd',
+                        border: '1px solid #ffc107',
+                        borderRadius: '8px',
+                        padding: '16px',
+                        marginBottom: '24px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'start', gap: '12px' }}>
+                        <span style={{ fontSize: '20px' }}>⚠️</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: '600', marginBottom: '4px', color: '#856404' }}>
+                            Subscription Cancelled
+                          </div>
+                          <div style={{ fontSize: '14px', color: '#856404' }}>
+                            Your subscription will end on{' '}
+                            {user.membership.currentPeriodEnd
+                              ? new Date(user.membership.currentPeriodEnd).toLocaleDateString()
+                              : 'the end of your billing period'}
+                            . You will still have access until then.
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div
                     style={{
                       background:
@@ -457,13 +728,24 @@ export default function Profile() {
                         {user.membership.status.toUpperCase()}
                       </span>
                     </div>
-                    <p style={{ opacity: 0.9, marginBottom: '16px' }}>
-                      Member since {new Date(user.membership.startDate).toLocaleDateString()}
-                    </p>
-                    {user.membership.renewalDate && (
-                      <p style={{ fontSize: '14px', opacity: 0.8 }}>
-                        Next billing: {new Date(user.membership.renewalDate).toLocaleDateString()}
-                      </p>
+
+                    <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '8px' }}>
+                      <strong>Billing:</strong> {user.membership.billingInterval || 'yearly'} · via{' '}
+                      {user.membership.paymentGateway || 'payment gateway'}
+                    </div>
+
+                    <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '8px' }}>
+                      <strong>Member since:</strong>{' '}
+                      {new Date(user.membership.startDate).toLocaleDateString()}
+                    </div>
+
+                    {user.membership.currentPeriodEnd && (
+                      <div style={{ fontSize: '14px', opacity: 0.9 }}>
+                        <strong>
+                          {user.membership.cancelAtPeriodEnd ? 'Access until' : 'Next billing'}:
+                        </strong>{' '}
+                        {new Date(user.membership.currentPeriodEnd).toLocaleDateString()}
+                      </div>
                     )}
                   </div>
 
@@ -486,35 +768,93 @@ export default function Profile() {
                     </div>
                   </div>
 
-                  <div style={{ marginTop: '24px', display: 'flex', gap: '12px' }}>
-                    <button
-                      style={{
-                        padding: '12px 24px',
-                        background: 'var(--color-primary)',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '8px',
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Upgrade Plan
-                    </button>
-                    <button
-                      style={{
-                        padding: '12px 24px',
-                        background: 'transparent',
-                        color: 'var(--color-primary)',
-                        border: '1px solid var(--color-primary)',
-                        borderRadius: '8px',
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Manage Billing
-                    </button>
+                  {/* Subscription Actions */}
+                  <div style={{ marginTop: '24px' }}>
+                    {user.membership.subscriptionId && (
+                      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                        {user.membership.cancelAtPeriodEnd ? (
+                          <button
+                            onClick={handleReactivateSubscription}
+                            disabled={subscriptionLoading}
+                            style={{
+                              padding: '12px 24px',
+                              background: subscriptionLoading ? '#ccc' : '#48bb78',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '8px',
+                              fontSize: '14px',
+                              fontWeight: '600',
+                              cursor: subscriptionLoading ? 'not-allowed' : 'pointer',
+                            }}
+                          >
+                            {subscriptionLoading ? 'Processing...' : 'Reactivate Subscription'}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              if (
+                                confirm(
+                                  'Are you sure you want to cancel? You will still have access until the end of your billing period.'
+                                )
+                              ) {
+                                handleCancelSubscription();
+                              }
+                            }}
+                            disabled={subscriptionLoading}
+                            style={{
+                              padding: '12px 24px',
+                              background: 'transparent',
+                              color: subscriptionLoading ? '#ccc' : '#dc3545',
+                              border: `1px solid ${subscriptionLoading ? '#ccc' : '#dc3545'}`,
+                              borderRadius: '8px',
+                              fontSize: '14px',
+                              fontWeight: '600',
+                              cursor: subscriptionLoading ? 'not-allowed' : 'pointer',
+                            }}
+                          >
+                            {subscriptionLoading ? 'Processing...' : 'Cancel Subscription'}
+                          </button>
+                        )}
+
+                        <Link
+                          href="/pricing"
+                          style={{
+                            padding: '12px 24px',
+                            background: 'transparent',
+                            color: '#764ba2',
+                            border: '1px solid #764ba2',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            cursor: 'pointer',
+                            textDecoration: 'none',
+                            display: 'inline-block',
+                          }}
+                        >
+                          Change Plan
+                        </Link>
+                      </div>
+                    )}
+
+                    {!user.membership.subscriptionId && user.membership.type === 'free' && (
+                      <Link
+                        href="/pricing"
+                        style={{
+                          padding: '12px 24px',
+                          background: '#764ba2',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          textDecoration: 'none',
+                          display: 'inline-block',
+                        }}
+                      >
+                        Upgrade to Premium
+                      </Link>
+                    )}
                   </div>
                 </div>
               </div>

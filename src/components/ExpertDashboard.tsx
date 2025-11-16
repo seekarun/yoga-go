@@ -166,6 +166,37 @@ export default function ExpertDashboard({ expert }: ExpertDashboardProps) {
             </p>
           </Link>
 
+          {/* Manage Live Sessions */}
+          <Link
+            href={`/srv/${expert.id}/live`}
+            style={{
+              background: '#fff',
+              borderRadius: '12px',
+              padding: '32px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              textDecoration: 'none',
+              color: 'inherit',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+              display: 'block',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.transform = 'translateY(-4px)';
+              e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.15)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+            }}
+          >
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🎥</div>
+            <h3 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '8px' }}>
+              Manage Live Sessions
+            </h3>
+            <p style={{ fontSize: '14px', color: '#666', lineHeight: '1.5' }}>
+              Schedule sessions, start instant meetings, and set availability
+            </p>
+          </Link>
+
           {/* Edit Profile */}
           <Link
             href={`/srv/${expert.id}/edit`}

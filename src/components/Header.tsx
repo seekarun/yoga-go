@@ -47,8 +47,8 @@ export default function Header() {
   };
 
   const handleLogout = () => {
-    // Redirect experts to /srv after logout, others to default
-    const returnTo = user?.role === 'expert' ? '/srv' : undefined;
+    // Redirect experts to /srv after logout, others to landing page
+    const returnTo = user?.role === 'expert' ? '/srv' : '/';
     logout(returnTo);
     setIsUserMenuOpen(false);
   };
@@ -123,7 +123,7 @@ export default function Header() {
         {!expertMode.isExpertMode && (
           <nav
             style={{
-              display: 'none',
+              display: 'flex',
               gap: '40px',
             }}
             className="desktop-nav"
@@ -269,6 +269,19 @@ export default function Header() {
                     My Courses
                   </Link>
                   <Link
+                    href="/app/live"
+                    style={{
+                      display: 'block',
+                      padding: '12px 20px',
+                      textDecoration: 'none',
+                      color: '#000',
+                      fontSize: '14px',
+                    }}
+                    onClick={() => setIsUserMenuOpen(false)}
+                  >
+                    My 1:1 Sessions
+                  </Link>
+                  <Link
                     href="/app/profile"
                     style={{
                       display: 'block',
@@ -284,6 +297,18 @@ export default function Header() {
                   {user?.role === 'expert' && (
                     <>
                       <div style={{ height: '1px', background: '#e0e0e0', margin: '8px 0' }} />
+                      <div
+                        style={{
+                          padding: '8px 20px 4px',
+                          fontSize: '11px',
+                          fontWeight: '600',
+                          color: '#999',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                        }}
+                      >
+                        Expert Tools
+                      </div>
                       <Link
                         href="/srv"
                         style={{
@@ -296,10 +321,26 @@ export default function Header() {
                         }}
                         onClick={() => setIsUserMenuOpen(false)}
                       >
-                        Expert Dashboard
+                        📊 Expert Dashboard
                       </Link>
+                      {user?.expertProfile && (
+                        <Link
+                          href={`/srv/${user.expertProfile}/live`}
+                          style={{
+                            display: 'block',
+                            padding: '12px 20px',
+                            textDecoration: 'none',
+                            color: '#764ba2',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                          }}
+                          onClick={() => setIsUserMenuOpen(false)}
+                        >
+                          🎥 Manage 1-on-1 Sessions
+                        </Link>
+                      )}
                       <Link
-                        href="/app"
+                        href="/app?view=learning"
                         style={{
                           display: 'block',
                           padding: '12px 20px',
@@ -309,7 +350,7 @@ export default function Header() {
                         }}
                         onClick={() => setIsUserMenuOpen(false)}
                       >
-                        My Learning
+                        📚 My Learning
                       </Link>
                     </>
                   )}

@@ -1,21 +1,81 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import type { Course } from '@/types';
+import type { Course, User } from '@/types';
 
 export default function ExpertDashboard() {
   const params = useParams();
+  const router = useRouter();
   const expertId = params.expertId as string;
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [authChecking, setAuthChecking] = useState(true);
 
+  // Check authorization first
   useEffect(() => {
-    fetchExpertCourses();
+    checkAuthorization();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expertId]);
+
+  useEffect(() => {
+    if (!authChecking) {
+      fetchExpertCourses();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expertId, authChecking]);
+
+  const checkAuthorization = async () => {
+    try {
+      console.log('[DBG][expert-dashboard] Checking authorization for expertId:', expertId);
+
+      // Fetch current user
+      const response = await fetch('/api/auth/me');
+      const data = await response.json();
+
+      if (!data.success || !data.data) {
+        console.log('[DBG][expert-dashboard] Not authenticated, redirecting to login');
+        router.push('/');
+        return;
+      }
+
+      const user: User = data.data;
+
+      // Check if user is an expert
+      if (user.role !== 'expert') {
+        console.log('[DBG][expert-dashboard] User is not an expert, redirecting to home');
+        router.push('/');
+        return;
+      }
+
+      // Check if expert profile is set up
+      if (!user.expertProfile) {
+        console.log(
+          '[DBG][expert-dashboard] Expert profile not set up yet, redirecting to onboarding'
+        );
+        router.push('/srv');
+        return;
+      }
+
+      // Check if user owns this expert profile
+      if (user.expertProfile !== expertId) {
+        console.log(
+          `[DBG][expert-dashboard] User doesn't own this profile. user.expertProfile=${user.expertProfile}, requested=${expertId}`
+        );
+        console.log('[DBG][expert-dashboard] Redirecting to own dashboard:', user.expertProfile);
+        router.push(`/srv/${user.expertProfile}`);
+        return;
+      }
+
+      console.log('[DBG][expert-dashboard] Authorization check passed');
+      setAuthChecking(false);
+    } catch (err) {
+      console.error('[DBG][expert-dashboard] Error checking authorization:', err);
+      router.push('/');
+    }
+  };
 
   const fetchExpertCourses = async () => {
     try {
@@ -40,12 +100,14 @@ export default function ExpertDashboard() {
     }
   };
 
-  if (loading) {
+  if (authChecking || loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
-          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+          <p className="mt-4 text-gray-600">
+            {authChecking ? 'Verifying access...' : 'Loading dashboard...'}
+          </p>
         </div>
       </div>
     );
@@ -66,6 +128,20 @@ export default function ExpertDashboard() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Expert Dashboard</h1>
             <div className="flex items-center gap-4">
+              <Link
+                href={`/srv/${expertId}/live`}
+                className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition-colors font-medium inline-flex items-center"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                  />
+                </svg>
+                Live Sessions
+              </Link>
               <Link
                 href={`/srv/${expertId}/analytics`}
                 className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors font-medium inline-flex items-center"

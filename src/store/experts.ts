@@ -42,6 +42,9 @@ const mockExperts: Record<string, Expert> = {
       website: 'deepakyogawellness.com',
       youtube: '@deepakyogamaster',
     },
+    liveStreamingEnabled: true,
+    totalLiveSessions: 0,
+    upcomingLiveSessions: 0,
   },
   kavitha: {
     id: 'kavitha',
@@ -82,6 +85,9 @@ const mockExperts: Record<string, Expert> = {
       facebook: 'KavithaTherapeuticYoga',
       youtube: '@kavithayogatherapy',
     },
+    liveStreamingEnabled: true,
+    totalLiveSessions: 0,
+    upcomingLiveSessions: 0,
   },
 };
 

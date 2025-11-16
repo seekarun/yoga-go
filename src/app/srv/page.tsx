@@ -125,7 +125,134 @@ export default function ExpertPlatform() {
     );
   }
 
-  // Case 3: User is expert but profile doesn't exist - Show Onboarding
+  // Case 3: User is expert with error - Show Error State
+  if (user?.role === 'expert' && error) {
+    return (
+      <div
+        style={{
+          paddingTop: '64px',
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: '#f7fafc',
+        }}
+      >
+        <div style={{ maxWidth: '600px', padding: '40px', textAlign: 'center' }}>
+          <div
+            style={{
+              width: '64px',
+              height: '64px',
+              borderRadius: '50%',
+              background: '#fee',
+              margin: '0 auto 24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '32px',
+            }}
+          >
+            ⚠️
+          </div>
+          <h1
+            style={{ fontSize: '24px', fontWeight: '700', marginBottom: '12px', color: '#2d3748' }}
+          >
+            Expert Profile Error
+          </h1>
+          <p
+            style={{ fontSize: '16px', color: '#718096', marginBottom: '24px', lineHeight: '1.6' }}
+          >
+            {error}
+          </p>
+          <div
+            style={{
+              background: '#fffaf0',
+              border: '1px solid #fed7aa',
+              borderRadius: '8px',
+              padding: '16px',
+              marginBottom: '24px',
+              textAlign: 'left',
+            }}
+          >
+            <p
+              style={{
+                fontSize: '14px',
+                color: '#744210',
+                marginBottom: '12px',
+                fontWeight: '600',
+              }}
+            >
+              Possible causes:
+            </p>
+            <ul style={{ fontSize: '14px', color: '#744210', paddingLeft: '20px', margin: 0 }}>
+              <li>Your expert profile link may be broken</li>
+              <li>The expert profile was deleted or moved</li>
+              <li>Database connection issue</li>
+            </ul>
+          </div>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => {
+                setError('');
+                fetchExpertProfile();
+              }}
+              style={{
+                padding: '12px 24px',
+                background: '#667eea',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer',
+              }}
+            >
+              🔄 Retry
+            </button>
+            <button
+              onClick={() => {
+                setError('');
+                setExpertProfile(null);
+              }}
+              style={{
+                padding: '12px 24px',
+                background: '#fff',
+                color: '#667eea',
+                border: '2px solid #667eea',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: '600',
+                cursor: 'pointer',
+              }}
+            >
+              📝 Reset & Re-onboard
+            </button>
+            <Link
+              href="/app"
+              style={{
+                padding: '12px 24px',
+                background: '#fff',
+                color: '#718096',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: '600',
+                textDecoration: 'none',
+                display: 'inline-block',
+              }}
+            >
+              ← Back to App
+            </Link>
+          </div>
+          <div style={{ marginTop: '24px', fontSize: '14px', color: '#a0aec0' }}>
+            Need help? Contact support with error details above
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Case 4: User is expert but profile doesn't exist - Show Onboarding
   if (user?.role === 'expert' && !expertProfile) {
     return (
       <div style={{ paddingTop: '64px' }}>

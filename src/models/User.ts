@@ -36,7 +36,7 @@ const MembershipSchema = new Schema<Membership>(
   {
     type: {
       type: String,
-      enum: ['free', 'basic', 'premium', 'lifetime'],
+      enum: ['free', 'curious', 'committed', 'lifetime'],
       default: 'free',
       required: true,
     },
@@ -50,6 +50,19 @@ const MembershipSchema = new Schema<Membership>(
     renewalDate: String,
     cancelledAt: String,
     benefits: [{ type: String }],
+
+    // Subscription-specific fields
+    subscriptionId: { type: String, index: true }, // Reference to Subscription document
+    billingInterval: {
+      type: String,
+      enum: ['monthly', 'yearly'],
+    },
+    currentPeriodEnd: String, // When current billing period ends
+    cancelAtPeriodEnd: { type: Boolean, default: false }, // True if user has cancelled but still has access
+    paymentGateway: {
+      type: String,
+      enum: ['stripe', 'razorpay'],
+    },
   },
   { _id: false }
 );
@@ -137,6 +150,8 @@ const BillingSchema = new Schema<Billing>(
     lastPayment: PaymentSchema,
     nextPayment: PaymentSchema,
     paymentHistory: [PaymentSchema],
+    stripeCustomerId: String,
+    razorpayCustomerId: String,
   },
   { _id: false }
 );
@@ -188,6 +203,13 @@ const UserSchema = new Schema<UserDocument>(
     billing: BillingSchema,
     savedItems: SavedItemSchema,
     social: UserSocialSchema,
+
+    // Expert meeting settings (for live sessions)
+    defaultMeetingLink: String,
+    defaultMeetingPlatform: {
+      type: String,
+      enum: ['zoom', 'google-meet', 'other'],
+    },
   },
   {
     timestamps: true,

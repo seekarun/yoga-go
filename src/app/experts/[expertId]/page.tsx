@@ -293,30 +293,65 @@ export default function ExpertDetailPage() {
 
             {/* CTA Button */}
             {!expertMode.isExpertMode && (
-              <a
-                href={`/experts/${expertId}/survey`}
+              <div
                 style={{
-                  display: 'inline-block',
-                  padding: '16px 48px',
-                  background: '#fcd34d',
-                  color: '#1f2937',
-                  fontSize: '18px',
-                  fontWeight: '600',
-                  borderRadius: '8px',
-                  textDecoration: 'none',
-                  transition: 'transform 0.2s, background 0.2s',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.background = '#fbbf24';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.background = '#fcd34d';
+                  display: 'flex',
+                  gap: '16px',
+                  flexWrap: 'wrap',
+                  justifyContent: heroAlignment,
                 }}
               >
-                {heroCtaText}
-              </a>
+                <a
+                  href={customHero?.ctaLink || '#courses'}
+                  style={{
+                    display: 'inline-block',
+                    padding: '16px 48px',
+                    background: '#fcd34d',
+                    color: '#1f2937',
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    borderRadius: '8px',
+                    textDecoration: 'none',
+                    transition: 'transform 0.2s, background 0.2s',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.background = '#fbbf24';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.background = '#fcd34d';
+                  }}
+                >
+                  {heroCtaText}
+                </a>
+                {expert.liveStreamingEnabled && (
+                  <Link
+                    href={`/app/live/book/${expert.id}`}
+                    style={{
+                      display: 'inline-block',
+                      padding: '16px 48px',
+                      background: '#667eea',
+                      color: '#fff',
+                      fontSize: '18px',
+                      fontWeight: '600',
+                      borderRadius: '8px',
+                      textDecoration: 'none',
+                      transition: 'transform 0.2s, background 0.2s',
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.background = '#5568d3';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.background = '#667eea';
+                    }}
+                  >
+                    📅 Book 1:1 Session
+                  </Link>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -393,32 +428,67 @@ export default function ExpertDetailPage() {
             {heroDescription}
           </p>
 
-          {/* CTA Button */}
+          {/* CTA Buttons */}
           {!expertMode.isExpertMode && (
-            <a
-              href={`/experts/${expertId}/survey`}
+            <div
               style={{
-                display: 'inline-block',
-                padding: '14px 32px',
-                background: '#fcd34d',
-                color: '#1f2937',
-                fontSize: '16px',
-                fontWeight: '600',
-                borderRadius: '8px',
-                textDecoration: 'none',
-                transition: 'transform 0.2s, background 0.2s',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.background = '#fbbf24';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.background = '#fcd34d';
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                alignItems: 'center',
               }}
             >
-              {heroCtaText}
-            </a>
+              <a
+                href={customHero?.ctaLink || '#courses'}
+                style={{
+                  display: 'inline-block',
+                  padding: '14px 32px',
+                  background: '#fcd34d',
+                  color: '#1f2937',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  borderRadius: '8px',
+                  textDecoration: 'none',
+                  transition: 'transform 0.2s, background 0.2s',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.background = '#fbbf24';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.background = '#fcd34d';
+                }}
+              >
+                {heroCtaText}
+              </a>
+              {expert.liveStreamingEnabled && (
+                <Link
+                  href={`/app/live/book/${expert.id}`}
+                  style={{
+                    display: 'inline-block',
+                    padding: '14px 32px',
+                    background: '#667eea',
+                    color: '#fff',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    borderRadius: '8px',
+                    textDecoration: 'none',
+                    transition: 'transform 0.2s, background 0.2s',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.background = '#5568d3';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.background = '#667eea';
+                  }}
+                >
+                  📅 Book 1:1 Session
+                </Link>
+              )}
+            </div>
           )}
         </div>
       </section>

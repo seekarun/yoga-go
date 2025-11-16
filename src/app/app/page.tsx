@@ -23,11 +23,17 @@ export default function Dashboard() {
     }
   }, []);
 
-  // Redirect experts to /srv
+  // Redirect experts to /srv, UNLESS they explicitly want to view their learning dashboard
   useEffect(() => {
-    if (user?.role === 'expert') {
+    const url = new URL(window.location.href);
+    const isLearningView =
+      url.searchParams.has('view') && url.searchParams.get('view') === 'learning';
+
+    if (user?.role === 'expert' && !isLearningView) {
       console.log('[DBG][app/page] User is expert, redirecting to /srv');
       router.push('/srv');
+    } else if (user?.role === 'expert' && isLearningView) {
+      console.log('[DBG][app/page] Expert viewing learning dashboard');
     }
   }, [user?.role, router]);
 

@@ -56,6 +56,10 @@ export async function GET() {
           id: expertId,
           totalCourses,
           totalStudents,
+          // Ensure liveStreamingEnabled is always present (default to true if not set)
+          liveStreamingEnabled: (doc as any).liveStreamingEnabled ?? true,
+          totalLiveSessions: (doc as any).totalLiveSessions ?? 0,
+          upcomingLiveSessions: (doc as any).upcomingLiveSessions ?? 0,
         };
       })
     );
