@@ -22,6 +22,20 @@ export default function CoursePlayer() {
   const [canReview, setCanReview] = useState(false);
   const [reviewEligibilityReason, setReviewEligibilityReason] = useState('');
   const [activeTab, setActiveTab] = useState<'details' | 'discussions'>('details');
+  const [autoPlayEnabled, setAutoPlayEnabled] = useState(false);
+
+  // Load auto-play preference from localStorage on mount
+  useEffect(() => {
+    const savedPreference = localStorage.getItem('autoPlayEnabled');
+    if (savedPreference !== null) {
+      setAutoPlayEnabled(savedPreference === 'true');
+    }
+  }, []);
+
+  // Save auto-play preference to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('autoPlayEnabled', String(autoPlayEnabled));
+  }, [autoPlayEnabled]);
 
   useEffect(() => {
     const fetchCourseData = async () => {
@@ -150,6 +164,46 @@ export default function CoursePlayer() {
 
     checkReviewEligibility();
   }, [courseData, courseId]);
+
+  // Listen for Cloudflare Stream video end events for auto-play
+  useEffect(() => {
+    const handleStreamMessage = (event: MessageEvent) => {
+      // Check if message is from Cloudflare Stream
+      if (event.origin !== 'https://customer-iq7mgkvtb3bwxqf5.cloudflarestream.com') {
+        return;
+      }
+
+      // Check if video has ended - Cloudflare Stream sends different event structures
+      const isEnded =
+        event.data.eventName === 'ended' ||
+        (event.data.property === 'ended' && event.data.value === true);
+
+      if (isEnded) {
+        console.log('[DBG][course-player] Video ended, autoPlayEnabled:', autoPlayEnabled);
+
+        if (!selectedItem || !autoPlayEnabled || selectedItem.completed) {
+          return;
+        }
+
+        // Check if there's a next lesson
+        const currentIndex = courseItems.findIndex(item => item.id === selectedItem.id);
+        const hasNext = currentIndex >= 0 && currentIndex < courseItems.length - 1;
+
+        // Only auto-advance if auto-play is enabled, there's a next lesson, and current lesson is not already completed
+        if (hasNext) {
+          console.log('[DBG][course-player] Auto-advancing to next lesson');
+          // Add a small delay before auto-advancing (better UX)
+          setTimeout(() => {
+            handleMarkComplete(true);
+          }, 1500);
+        }
+      }
+    };
+
+    window.addEventListener('message', handleStreamMessage);
+    return () => window.removeEventListener('message', handleStreamMessage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoPlayEnabled, selectedItem, courseItems]);
 
   const handleMarkComplete = async (moveToNext = false) => {
     if (!selectedItem) return;
@@ -583,7 +637,8 @@ export default function CoursePlayer() {
               >
                 {selectedItem.cloudflareVideoId ? (
                   <iframe
-                    src={`https://customer-iq7mgkvtb3bwxqf5.cloudflarestream.com/${selectedItem.cloudflareVideoId}/iframe?preload=true&poster=https%3A%2F%2Fcustomer-iq7mgkvtb3bwxqf5.cloudflarestream.com%2F${selectedItem.cloudflareVideoId}%2Fthumbnails%2Fthumbnail.jpg%3Ftime%3D0s%26height%3D600`}
+                    id="cloudflare-stream-player"
+                    src={`https://customer-iq7mgkvtb3bwxqf5.cloudflarestream.com/${selectedItem.cloudflareVideoId}/iframe?preload=true&autoplay=${autoPlayEnabled}&poster=https%3A%2F%2Fcustomer-iq7mgkvtb3bwxqf5.cloudflarestream.com%2F${selectedItem.cloudflareVideoId}%2Fthumbnails%2Fthumbnail.jpg%3Ftime%3D0s%26height%3D600`}
                     title={selectedItem.title}
                     style={{
                       width: '100%',
@@ -624,153 +679,195 @@ export default function CoursePlayer() {
                   background: '#fff',
                   borderTop: '1px solid #e2e8f0',
                   borderBottom: '1px solid #e2e8f0',
-                  padding: '12px 16px',
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  gap: '8px',
                 }}
                 className="navigation-controls"
               >
-                <button
-                  onClick={handleNavigatePrev}
-                  disabled={!hasPrevLesson}
-                  style={{
-                    padding: '10px 16px',
-                    background: hasPrevLesson ? '#fff' : '#f5f5f5',
-                    color: hasPrevLesson ? 'var(--color-primary)' : '#ccc',
-                    border: `1px solid ${hasPrevLesson ? 'var(--color-primary)' : '#e2e8f0'}`,
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    fontWeight: '600',
-                    cursor: hasPrevLesson ? 'pointer' : 'not-allowed',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    transition: 'all 0.2s',
-                    flexShrink: 0,
-                  }}
-                  onMouseEnter={e => {
-                    if (hasPrevLesson) {
-                      e.currentTarget.style.background = 'var(--color-primary)';
-                      e.currentTarget.style.color = '#fff';
-                    }
-                  }}
-                  onMouseLeave={e => {
-                    if (hasPrevLesson) {
-                      e.currentTarget.style.background = '#fff';
-                      e.currentTarget.style.color = 'var(--color-primary)';
-                    }
-                  }}
-                >
-                  <span className="hide-text-mobile">← Prev</span>
-                  <span className="show-text-mobile">←</span>
-                </button>
-
+                {/* Navigation Buttons */}
                 <div
                   style={{
+                    padding: '12px 16px',
                     display: 'flex',
-                    gap: '8px',
                     flexWrap: 'wrap',
-                    justifyContent: 'center',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '8px',
                   }}
                 >
                   <button
-                    onClick={() => handleMarkComplete(false)}
-                    disabled={selectedItem.completed}
+                    onClick={handleNavigatePrev}
+                    disabled={!hasPrevLesson}
                     style={{
                       padding: '10px 16px',
-                      background: selectedItem.completed ? 'var(--color-highlight)' : '#fff',
-                      color: selectedItem.completed ? '#fff' : 'var(--color-highlight)',
-                      border: `1px solid var(--color-highlight)`,
+                      background: hasPrevLesson ? '#fff' : '#f5f5f5',
+                      color: hasPrevLesson ? 'var(--color-primary)' : '#ccc',
+                      border: `1px solid ${hasPrevLesson ? 'var(--color-primary)' : '#e2e8f0'}`,
                       borderRadius: '8px',
                       fontSize: '13px',
                       fontWeight: '600',
-                      cursor: selectedItem.completed ? 'default' : 'pointer',
+                      cursor: hasPrevLesson ? 'pointer' : 'not-allowed',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
                       transition: 'all 0.2s',
-                      whiteSpace: 'nowrap',
+                      flexShrink: 0,
                     }}
                     onMouseEnter={e => {
-                      if (!selectedItem.completed) {
-                        e.currentTarget.style.background = 'var(--color-highlight)';
+                      if (hasPrevLesson) {
+                        e.currentTarget.style.background = 'var(--color-primary)';
                         e.currentTarget.style.color = '#fff';
                       }
                     }}
                     onMouseLeave={e => {
-                      if (!selectedItem.completed) {
+                      if (hasPrevLesson) {
                         e.currentTarget.style.background = '#fff';
-                        e.currentTarget.style.color = 'var(--color-highlight)';
+                        e.currentTarget.style.color = 'var(--color-primary)';
                       }
                     }}
                   >
-                    {selectedItem.completed ? '✓' : 'Complete'}
+                    <span className="hide-text-mobile">← Prev</span>
+                    <span className="show-text-mobile">←</span>
                   </button>
 
-                  {hasNextLesson && !selectedItem.completed && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: '8px',
+                      flexWrap: 'wrap',
+                      justifyContent: 'center',
+                    }}
+                  >
                     <button
-                      onClick={() => handleMarkComplete(true)}
+                      onClick={() => handleMarkComplete(false)}
+                      disabled={selectedItem.completed}
                       style={{
                         padding: '10px 16px',
-                        background: 'var(--color-primary)',
-                        color: '#fff',
-                        border: 'none',
+                        background: selectedItem.completed ? 'var(--color-highlight)' : '#fff',
+                        color: selectedItem.completed ? '#fff' : 'var(--color-highlight)',
+                        border: `1px solid var(--color-highlight)`,
                         borderRadius: '8px',
                         fontSize: '13px',
                         fontWeight: '600',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
+                        cursor: selectedItem.completed ? 'default' : 'pointer',
                         transition: 'all 0.2s',
                         whiteSpace: 'nowrap',
                       }}
                       onMouseEnter={e => {
-                        e.currentTarget.style.background = '#6a3f92';
+                        if (!selectedItem.completed) {
+                          e.currentTarget.style.background = 'var(--color-highlight)';
+                          e.currentTarget.style.color = '#fff';
+                        }
                       }}
                       onMouseLeave={e => {
-                        e.currentTarget.style.background = 'var(--color-primary)';
+                        if (!selectedItem.completed) {
+                          e.currentTarget.style.background = '#fff';
+                          e.currentTarget.style.color = 'var(--color-highlight)';
+                        }
                       }}
-                      className="complete-next-btn"
                     >
-                      <span className="hide-text-mobile">Complete & Next →</span>
-                      <span className="show-text-mobile">✓ & →</span>
+                      {selectedItem.completed ? '✓' : 'Complete'}
                     </button>
-                  )}
+
+                    {hasNextLesson && !selectedItem.completed && (
+                      <button
+                        onClick={() => handleMarkComplete(true)}
+                        style={{
+                          padding: '10px 16px',
+                          background: 'var(--color-primary)',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '13px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          transition: 'all 0.2s',
+                          whiteSpace: 'nowrap',
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = '#6a3f92';
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = 'var(--color-primary)';
+                        }}
+                        className="complete-next-btn"
+                      >
+                        <span className="hide-text-mobile">Complete & Next →</span>
+                        <span className="show-text-mobile">✓ & →</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <button
+                    onClick={handleNavigateNext}
+                    disabled={!hasNextLesson}
+                    style={{
+                      padding: '10px 16px',
+                      background: hasNextLesson ? 'var(--color-primary)' : '#f5f5f5',
+                      color: hasNextLesson ? '#fff' : '#ccc',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      cursor: hasNextLesson ? 'pointer' : 'not-allowed',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      transition: 'all 0.2s',
+                      flexShrink: 0,
+                    }}
+                    onMouseEnter={e => {
+                      if (hasNextLesson) {
+                        e.currentTarget.style.background = '#6a3f92';
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      if (hasNextLesson) {
+                        e.currentTarget.style.background = 'var(--color-primary)';
+                      }
+                    }}
+                  >
+                    <span className="hide-text-mobile">Next →</span>
+                    <span className="show-text-mobile">→</span>
+                  </button>
                 </div>
 
-                <button
-                  onClick={handleNavigateNext}
-                  disabled={!hasNextLesson}
+                {/* Auto-Play Toggle */}
+                <div
                   style={{
-                    padding: '10px 16px',
-                    background: hasNextLesson ? 'var(--color-primary)' : '#f5f5f5',
-                    color: hasNextLesson ? '#fff' : '#ccc',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    fontWeight: '600',
-                    cursor: hasNextLesson ? 'pointer' : 'not-allowed',
+                    padding: '8px 16px 12px',
+                    borderTop: '1px solid #f0f0f0',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '6px',
-                    transition: 'all 0.2s',
-                    flexShrink: 0,
-                  }}
-                  onMouseEnter={e => {
-                    if (hasNextLesson) {
-                      e.currentTarget.style.background = '#6a3f92';
-                    }
-                  }}
-                  onMouseLeave={e => {
-                    if (hasNextLesson) {
-                      e.currentTarget.style.background = 'var(--color-primary)';
-                    }
+                    justifyContent: 'center',
                   }}
                 >
-                  <span className="hide-text-mobile">Next →</span>
-                  <span className="show-text-mobile">→</span>
-                </button>
+                  <label
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      color: '#666',
+                      userSelect: 'none',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={autoPlayEnabled}
+                      onChange={e => setAutoPlayEnabled(e.target.checked)}
+                      style={{
+                        width: '16px',
+                        height: '16px',
+                        cursor: 'pointer',
+                        accentColor: 'var(--color-primary)',
+                      }}
+                    />
+                    <span>Auto-play next lesson when video ends</span>
+                  </label>
+                </div>
               </div>
 
               {/* Lesson Details */}
