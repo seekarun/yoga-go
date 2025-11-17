@@ -45,6 +45,7 @@ export default function CourseManagement() {
   const [pollingVideoId, setPollingVideoId] = useState<string | null>(null);
   const [showNotification, setShowNotification] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState('');
+  const [showPublishConfirm, setShowPublishConfirm] = useState(false);
 
   useEffect(() => {
     fetchCourseAndLessons();
@@ -435,18 +436,17 @@ export default function CourseManagement() {
     }
   };
 
-  const handlePublishCourse = async () => {
+  const handlePublishCourse = () => {
     if (lessons.length === 0) {
       setError('Please add at least one lesson before publishing the course');
       return;
     }
 
-    if (
-      !confirm('Are you sure you want to publish this course? It will become visible to all users.')
-    ) {
-      return;
-    }
+    // Show confirmation overlay
+    setShowPublishConfirm(true);
+  };
 
+  const confirmPublishCourse = async () => {
     setPublishing(true);
     setError(null);
 
@@ -923,6 +923,17 @@ export default function CourseManagement() {
         message={notificationMessage}
         type="success"
         duration={4000}
+      />
+
+      {/* Publish Confirmation Overlay */}
+      <NotificationOverlay
+        isOpen={showPublishConfirm}
+        onClose={() => setShowPublishConfirm(false)}
+        message="Are you sure you want to publish this course? It will become visible to all users."
+        type="warning"
+        onConfirm={confirmPublishCourse}
+        confirmText="Publish Course"
+        cancelText="Cancel"
       />
 
       {/* Pulsing Animation for Processing Status */}

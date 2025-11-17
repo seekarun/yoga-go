@@ -10,6 +10,9 @@ interface NotificationOverlayProps {
   message: string;
   type?: NotificationType;
   duration?: number; // Auto-close duration in ms (0 = no auto-close)
+  onConfirm?: () => void; // Optional: turns this into a confirmation dialog
+  confirmText?: string; // Text for confirm button (default: "Confirm")
+  cancelText?: string; // Text for cancel button (default: "Cancel")
 }
 
 export default function NotificationOverlay({
@@ -18,16 +21,22 @@ export default function NotificationOverlay({
   message,
   type = 'info',
   duration = 3000,
+  onConfirm,
+  confirmText = 'Confirm',
+  cancelText = 'Cancel',
 }: NotificationOverlayProps) {
+  const isConfirmation = !!onConfirm;
+
   useEffect(() => {
-    if (isOpen && duration > 0) {
+    // Only auto-close if this is not a confirmation dialog
+    if (isOpen && duration > 0 && !isConfirmation) {
       const timer = setTimeout(() => {
         onClose();
       }, duration);
 
       return () => clearTimeout(timer);
     }
-  }, [isOpen, duration, onClose]);
+  }, [isOpen, duration, onClose, isConfirmation]);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -105,24 +114,26 @@ export default function NotificationOverlay({
           role="alert"
           aria-live="assertive"
         >
-          {/* Close button */}
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
-            aria-label="Close notification"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
+          {/* Close button - only show for non-confirmation dialogs */}
+          {!isConfirmation && (
+            <button
+              onClick={onClose}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+              aria-label="Close notification"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          )}
 
           {/* Content */}
-          <div className="flex items-start gap-4 pr-8">
+          <div className={`flex items-start gap-4 ${isConfirmation ? '' : 'pr-8'}`}>
             <div
               className={`${styles.iconBg} rounded-full p-2 flex-shrink-0 flex items-center justify-center w-10 h-10`}
             >
@@ -133,8 +144,29 @@ export default function NotificationOverlay({
             </div>
           </div>
 
-          {/* Progress bar for auto-close */}
-          {duration > 0 && (
+          {/* Action buttons for confirmation dialogs */}
+          {isConfirmation && (
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                onClick={onClose}
+                className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium"
+              >
+                {cancelText}
+              </button>
+              <button
+                onClick={() => {
+                  onConfirm();
+                  onClose();
+                }}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                {confirmText}
+              </button>
+            </div>
+          )}
+
+          {/* Progress bar for auto-close - only show for non-confirmation dialogs */}
+          {duration > 0 && !isConfirmation && (
             <div className="mt-4 h-1 bg-gray-200 rounded-full overflow-hidden">
               <div
                 className="h-full bg-blue-500 rounded-full"
