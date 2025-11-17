@@ -42,7 +42,7 @@ if (typeof window !== 'undefined') {
       // Autocapture settings
       autocapture: {
         dom_event_allowlist: ['click', 'change', 'submit'], // Only capture these events
-        url_allowlist: ['/pricing', '/app/profile', '/app/courses'], // Only on these pages
+        url_allowlist: ['/app/profile', '/app/courses'], // Only on these pages
         element_allowlist: ['button', 'a'], // Only these elements
       },
       // Privacy

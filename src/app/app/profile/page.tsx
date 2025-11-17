@@ -817,7 +817,7 @@ export default function Profile() {
                         )}
 
                         <Link
-                          href="/pricing"
+                          href="/courses"
                           style={{
                             padding: '12px 24px',
                             background: 'transparent',
@@ -831,14 +831,14 @@ export default function Profile() {
                             display: 'inline-block',
                           }}
                         >
-                          Change Plan
+                          Browse Courses
                         </Link>
                       </div>
                     )}
 
                     {!user.membership.subscriptionId && user.membership.type === 'free' && (
                       <Link
-                        href="/pricing"
+                        href="/courses"
                         style={{
                           padding: '12px 24px',
                           background: '#764ba2',
@@ -852,7 +852,7 @@ export default function Profile() {
                           display: 'inline-block',
                         }}
                       >
-                        Upgrade to Premium
+                        Browse Courses
                       </Link>
                     )}
                   </div>
