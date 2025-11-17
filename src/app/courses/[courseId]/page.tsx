@@ -156,51 +156,6 @@ export default function CourseDetailPage() {
 
   return (
     <div style={{ paddingTop: '64px', minHeight: '100vh', background: '#f8f8f8' }}>
-      {/* Cover Image Banner */}
-      {course.coverImage && (
-        <section
-          style={{
-            height: '400px',
-            backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url(${course.coverImage})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            position: 'relative',
-          }}
-        >
-          <div
-            style={{
-              textAlign: 'center',
-              color: '#fff',
-              maxWidth: '800px',
-              padding: '0 20px',
-            }}
-          >
-            <h1
-              style={{
-                fontSize: '56px',
-                fontWeight: '700',
-                marginBottom: '16px',
-                textShadow: '2px 2px 4px rgba(0,0,0,0.5)',
-                lineHeight: '1.2',
-              }}
-            >
-              {course.title}
-            </h1>
-            <p
-              style={{
-                fontSize: '20px',
-                textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
-              }}
-            >
-              {course.description}
-            </p>
-          </div>
-        </section>
-      )}
-
       {/* Hero Section */}
       <section
         style={{
@@ -210,7 +165,7 @@ export default function CourseDetailPage() {
       >
         <div
           className="container"
-          style={{ maxWidth: '1200px', margin: '0 auto', padding: '60px 20px' }}
+          style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px 20px 60px' }}
         >
           {/* Breadcrumb */}
           <div style={{ marginBottom: '24px', fontSize: '14px', color: '#666' }}>
@@ -335,14 +290,44 @@ export default function CourseDetailPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span style={{ color: '#FFB800', fontSize: '20px' }}>★</span>
                   <span style={{ fontSize: '16px', fontWeight: '600' }}>{course.rating}</span>
-                  <span style={{ fontSize: '14px', color: '#666' }}>
+                  <a
+                    href="#reviews"
+                    style={{
+                      fontSize: '14px',
+                      color: '#666',
+                      textDecoration: 'none',
+                      cursor: 'pointer',
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.textDecoration = 'underline';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.textDecoration = 'none';
+                    }}
+                  >
                     ({course.totalRatings || 0} ratings)
-                  </span>
+                  </a>
                 </div>
                 <div style={{ fontSize: '16px', color: '#666' }}>
                   {course.totalStudents.toLocaleString()} students
                 </div>
-                <div style={{ fontSize: '16px', color: '#666' }}>{course.totalLessons} lessons</div>
+                <a
+                  href="#lessons"
+                  style={{
+                    fontSize: '16px',
+                    color: '#666',
+                    textDecoration: 'none',
+                    cursor: 'pointer',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.textDecoration = 'underline';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.textDecoration = 'none';
+                  }}
+                >
+                  {course.totalLessons} lessons
+                </a>
                 <div style={{ fontSize: '16px', color: '#666' }}>{course.duration}</div>
                 <button
                   onClick={handleEnrollClick}
@@ -551,334 +536,284 @@ export default function CourseDetailPage() {
         className="container"
         style={{ maxWidth: '1200px', margin: '0 auto', padding: '60px 20px' }}
       >
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '40px' }}>
-          {/* Main Content */}
-          <div>
-            {/* Lessons List */}
-            {lessons.length > 0 && (
-              <section
-                style={{
-                  background: '#fff',
-                  padding: '32px',
-                  borderRadius: '12px',
-                  marginBottom: '32px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                }}
-              >
-                <h2
+        {/* Lessons List */}
+        {lessons.length > 0 && (
+          <section
+            id="lessons"
+            style={{
+              background: '#fff',
+              padding: '32px',
+              borderRadius: '12px',
+              marginBottom: '32px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            }}
+          >
+            <h2
+              style={{
+                fontSize: '24px',
+                fontWeight: '600',
+                marginBottom: '20px',
+              }}
+            >
+              Course Lessons ({lessons.length})
+            </h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              {lessons.map((lesson, idx) => (
+                <div
+                  key={lesson.id}
                   style={{
-                    fontSize: '24px',
-                    fontWeight: '600',
-                    marginBottom: '20px',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '12px',
+                    overflow: 'hidden',
+                    transition: 'all 0.2s',
                   }}
                 >
-                  Course Lessons ({lessons.length})
-                </h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                  {lessons.map((lesson, idx) => (
-                    <div
-                      key={lesson.id}
-                      style={{
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '12px',
-                        overflow: 'hidden',
-                        transition: 'all 0.2s',
-                      }}
-                    >
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: lesson.cloudflareVideoId ? '200px 1fr' : '1fr',
+                      gap: '20px',
+                    }}
+                  >
+                    {/* Video Thumbnail */}
+                    {lesson.cloudflareVideoId && (
+                      <div style={{ position: 'relative' }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={`https://customer-iq7mgkvtb3bwxqf5.cloudflarestream.com/${lesson.cloudflareVideoId}/thumbnails/thumbnail.jpg?time=0s&height=300`}
+                          alt={lesson.title}
+                          style={{
+                            width: '100%',
+                            height: '150px',
+                            objectFit: 'cover',
+                            borderRadius: '12px 0 0 12px',
+                          }}
+                        />
+                        {/* Play button overlay */}
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: '50%',
+                            left: '50%',
+                            transform: 'translate(-50%, -50%)',
+                            background: 'rgba(0,0,0,0.6)',
+                            borderRadius: '50%',
+                            width: '48px',
+                            height: '48px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <svg
+                            style={{ width: '24px', height: '24px', fill: '#fff' }}
+                            viewBox="0 0 20 20"
+                          >
+                            <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                          </svg>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Lesson Info */}
+                    <div style={{ padding: '20px' }}>
                       <div
                         style={{
-                          display: 'grid',
-                          gridTemplateColumns: lesson.cloudflareVideoId ? '200px 1fr' : '1fr',
-                          gap: '20px',
+                          display: 'flex',
+                          alignItems: 'start',
+                          justifyContent: 'space-between',
+                          marginBottom: '12px',
                         }}
                       >
-                        {/* Video Thumbnail */}
-                        {lesson.cloudflareVideoId && (
-                          <div style={{ position: 'relative' }}>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={`https://customer-iq7mgkvtb3bwxqf5.cloudflarestream.com/${lesson.cloudflareVideoId}/thumbnails/thumbnail.jpg?time=0s&height=300`}
-                              alt={lesson.title}
-                              style={{
-                                width: '100%',
-                                height: '150px',
-                                objectFit: 'cover',
-                                borderRadius: '12px 0 0 12px',
-                              }}
-                            />
-                            {/* Play button overlay */}
-                            <div
-                              style={{
-                                position: 'absolute',
-                                top: '50%',
-                                left: '50%',
-                                transform: 'translate(-50%, -50%)',
-                                background: 'rgba(0,0,0,0.6)',
-                                borderRadius: '50%',
-                                width: '48px',
-                                height: '48px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                              }}
-                            >
-                              <svg
-                                style={{ width: '24px', height: '24px', fill: '#fff' }}
-                                viewBox="0 0 20 20"
-                              >
-                                <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-                              </svg>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Lesson Info */}
-                        <div style={{ padding: '20px' }}>
+                        <div style={{ flex: 1 }}>
                           <div
                             style={{
                               display: 'flex',
-                              alignItems: 'start',
-                              justifyContent: 'space-between',
-                              marginBottom: '12px',
+                              alignItems: 'center',
+                              gap: '12px',
+                              marginBottom: '8px',
                             }}
                           >
-                            <div style={{ flex: 1 }}>
-                              <div
+                            <span
+                              style={{
+                                fontSize: '14px',
+                                color: '#666',
+                                fontWeight: '600',
+                              }}
+                            >
+                              Lesson {idx + 1}
+                            </span>
+                            {lesson.isFree && (
+                              <span
                                 style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '12px',
-                                  marginBottom: '8px',
+                                  padding: '4px 8px',
+                                  background: 'var(--color-highlight)',
+                                  color: '#fff',
+                                  borderRadius: '4px',
+                                  fontSize: '11px',
+                                  fontWeight: '600',
                                 }}
                               >
+                                FREE PREVIEW
+                              </span>
+                            )}
+                          </div>
+                          <h3
+                            style={{
+                              fontSize: '18px',
+                              fontWeight: '600',
+                              marginBottom: '8px',
+                              color: '#2d3748',
+                            }}
+                          >
+                            {lesson.title}
+                          </h3>
+                          {lesson.description && (
+                            <p
+                              style={{
+                                fontSize: '14px',
+                                color: '#4a5568',
+                                lineHeight: '1.6',
+                                marginBottom: '12px',
+                              }}
+                            >
+                              {lesson.description}
+                            </p>
+                          )}
+                        </div>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            fontSize: '14px',
+                            color: '#666',
+                            marginLeft: '16px',
+                          }}
+                        >
+                          <span>⏱️</span>
+                          <span>{lesson.duration}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Curriculum - Show only if no lessons loaded from API */}
+        {!lessons.length && course.curriculum && course.curriculum.length > 0 && (
+          <section
+            id="lessons"
+            style={{
+              background: '#fff',
+              padding: '32px',
+              borderRadius: '12px',
+              marginBottom: '32px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            }}
+          >
+            <h2
+              style={{
+                fontSize: '24px',
+                fontWeight: '600',
+                marginBottom: '20px',
+              }}
+            >
+              Course Curriculum
+            </h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {course.curriculum.map((week, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: '16px 20px',
+                      background: '#f7fafc',
+                      borderBottom: '1px solid #e2e8f0',
+                    }}
+                  >
+                    <div style={{ fontWeight: '600', fontSize: '16px' }}>
+                      Week {week.week}: {week.title}
+                    </div>
+                    <div style={{ fontSize: '14px', color: '#666', marginTop: '4px' }}>
+                      {week.lessons?.length || 0} lessons
+                    </div>
+                  </div>
+                  {week.lessons && week.lessons.length > 0 && (
+                    <div>
+                      {week.lessons.map((lesson: Lesson, lessonIdx: number) => (
+                        <div
+                          key={lessonIdx}
+                          style={{
+                            padding: '16px 20px',
+                            borderBottom:
+                              lessonIdx < week.lessons!.length - 1 ? '1px solid #e2e8f0' : 'none',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <span style={{ fontSize: '20px' }}>{lesson.isFree ? '▶️' : '🔒'}</span>
+                            <div>
+                              <div style={{ fontSize: '15px', fontWeight: '500' }}>
+                                {lesson.title}
+                              </div>
+                              {lesson.isFree && (
                                 <span
                                   style={{
-                                    fontSize: '14px',
-                                    color: '#666',
+                                    fontSize: '12px',
+                                    color: 'var(--color-highlight)',
                                     fontWeight: '600',
                                   }}
                                 >
-                                  Lesson {idx + 1}
+                                  FREE PREVIEW
                                 </span>
-                                {lesson.isFree && (
-                                  <span
-                                    style={{
-                                      padding: '4px 8px',
-                                      background: 'var(--color-highlight)',
-                                      color: '#fff',
-                                      borderRadius: '4px',
-                                      fontSize: '11px',
-                                      fontWeight: '600',
-                                    }}
-                                  >
-                                    FREE PREVIEW
-                                  </span>
-                                )}
-                              </div>
-                              <h3
-                                style={{
-                                  fontSize: '18px',
-                                  fontWeight: '600',
-                                  marginBottom: '8px',
-                                  color: '#2d3748',
-                                }}
-                              >
-                                {lesson.title}
-                              </h3>
-                              {lesson.description && (
-                                <p
-                                  style={{
-                                    fontSize: '14px',
-                                    color: '#4a5568',
-                                    lineHeight: '1.6',
-                                    marginBottom: '12px',
-                                  }}
-                                >
-                                  {lesson.description}
-                                </p>
                               )}
                             </div>
-                            <div
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                fontSize: '14px',
-                                color: '#666',
-                                marginLeft: '16px',
-                              }}
-                            >
-                              <span>⏱️</span>
-                              <span>{lesson.duration}</span>
-                            </div>
                           </div>
+                          <div style={{ fontSize: '14px', color: '#666' }}>{lesson.duration}</div>
                         </div>
-                      </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
-              </section>
-            )}
+              ))}
+            </div>
+          </section>
+        )}
 
-            {/* Curriculum - Show only if no lessons loaded from API */}
-            {!lessons.length && course.curriculum && course.curriculum.length > 0 && (
-              <section
-                style={{
-                  background: '#fff',
-                  padding: '32px',
-                  borderRadius: '12px',
-                  marginBottom: '32px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                }}
-              >
-                <h2
-                  style={{
-                    fontSize: '24px',
-                    fontWeight: '600',
-                    marginBottom: '20px',
-                  }}
-                >
-                  Course Curriculum
-                </h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {course.curriculum.map((week, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '8px',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      <div
-                        style={{
-                          padding: '16px 20px',
-                          background: '#f7fafc',
-                          borderBottom: '1px solid #e2e8f0',
-                        }}
-                      >
-                        <div style={{ fontWeight: '600', fontSize: '16px' }}>
-                          Week {week.week}: {week.title}
-                        </div>
-                        <div style={{ fontSize: '14px', color: '#666', marginTop: '4px' }}>
-                          {week.lessons?.length || 0} lessons
-                        </div>
-                      </div>
-                      {week.lessons && week.lessons.length > 0 && (
-                        <div>
-                          {week.lessons.map((lesson: Lesson, lessonIdx: number) => (
-                            <div
-                              key={lessonIdx}
-                              style={{
-                                padding: '16px 20px',
-                                borderBottom:
-                                  lessonIdx < week.lessons!.length - 1
-                                    ? '1px solid #e2e8f0'
-                                    : 'none',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                              }}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <span style={{ fontSize: '20px' }}>
-                                  {lesson.isFree ? '▶️' : '🔒'}
-                                </span>
-                                <div>
-                                  <div style={{ fontSize: '15px', fontWeight: '500' }}>
-                                    {lesson.title}
-                                  </div>
-                                  {lesson.isFree && (
-                                    <span
-                                      style={{
-                                        fontSize: '12px',
-                                        color: 'var(--color-highlight)',
-                                        fontWeight: '600',
-                                      }}
-                                    >
-                                      FREE PREVIEW
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              <div style={{ fontSize: '14px', color: '#666' }}>
-                                {lesson.duration}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Reviews Section */}
-            <section
-              style={{
-                background: '#fff',
-                padding: '32px 24px',
-                borderRadius: '12px',
-                marginBottom: '24px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-              }}
-            >
-              <h2
-                style={{
-                  fontSize: '24px',
-                  fontWeight: '600',
-                  marginBottom: '24px',
-                }}
-              >
-                Student Reviews
-              </h2>
-              <ReviewsList courseId={courseId} showStats={true} />
-            </section>
-          </div>
-
-          {/* Sidebar */}
-          <div>
-            {/* Tags */}
-            {course.tags && course.tags.length > 0 && (
-              <section
-                style={{
-                  background: '#fff',
-                  padding: '24px',
-                  borderRadius: '12px',
-                  marginBottom: '24px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                }}
-              >
-                <h3
-                  style={{
-                    fontSize: '18px',
-                    fontWeight: '600',
-                    marginBottom: '16px',
-                  }}
-                >
-                  Tags
-                </h3>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  {course.tags.map((tag, idx) => (
-                    <span
-                      key={idx}
-                      style={{
-                        padding: '6px 12px',
-                        background: '#f7fafc',
-                        borderRadius: '6px',
-                        fontSize: '12px',
-                        color: '#4a5568',
-                      }}
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </section>
-            )}
-          </div>
-        </div>
+        {/* Reviews Section */}
+        <section
+          id="reviews"
+          style={{
+            background: '#fff',
+            padding: '32px 24px',
+            borderRadius: '12px',
+            marginBottom: '24px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+          }}
+        >
+          <h2
+            style={{
+              fontSize: '24px',
+              fontWeight: '600',
+              marginBottom: '24px',
+            }}
+          >
+            Student Reviews
+          </h2>
+          <ReviewsList courseId={courseId} showStats={true} />
+        </section>
       </div>
 
       <style jsx>{`
