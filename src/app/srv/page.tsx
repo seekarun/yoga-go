@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import ExpertOnboarding from '@/components/ExpertOnboarding';
@@ -306,75 +307,111 @@ export default function ExpertPlatform() {
 // SaaS Landing Page for unauthenticated users
 function ExpertLandingPage() {
   return (
-    <div style={{ paddingTop: '64px', minHeight: '100vh' }}>
+    <div style={{ minHeight: '100vh' }}>
       {/* Hero Section */}
       <section
         style={{
-          background:
-            'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%)',
-          color: '#fff',
-          padding: '120px 20px',
-          textAlign: 'center',
+          position: 'relative',
+          width: '100%',
+          height: '50vh',
+          minHeight: '500px',
+          overflow: 'hidden',
         }}
       >
-        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-          <h1
-            style={{
-              fontSize: '56px',
-              fontWeight: '700',
-              marginBottom: '24px',
-              lineHeight: '1.2',
-            }}
-          >
-            Build Your Yoga Business Online
-          </h1>
-          <p
-            style={{
-              fontSize: '20px',
-              marginBottom: '40px',
-              opacity: 0.95,
-              lineHeight: '1.6',
-              maxWidth: '700px',
-              margin: '0 auto 40px',
-            }}
-          >
-            Share your expertise, reach students worldwide, and earn income doing what you love.
-            Join hundreds of yoga instructors building thriving online practices.
-          </p>
-          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link
-              href="/auth/login?returnTo=/srv"
-              style={{
-                padding: '16px 40px',
-                background: '#fff',
-                color: 'var(--color-primary)',
-                borderRadius: '8px',
-                fontSize: '18px',
-                fontWeight: '600',
-                textDecoration: 'none',
-                display: 'inline-block',
-                transition: 'transform 0.2s',
-              }}
-            >
-              Start Teaching Today
-            </Link>
-            <a
-              href="#features"
-              style={{
-                padding: '16px 40px',
-                background: 'transparent',
-                color: '#fff',
-                border: '2px solid #fff',
-                borderRadius: '8px',
-                fontSize: '18px',
-                fontWeight: '600',
-                textDecoration: 'none',
-                display: 'inline-block',
-                transition: 'transform 0.2s',
-              }}
-            >
-              Learn More
-            </a>
+        {/* Background Image */}
+        <Image
+          src="/yg_teach1.jpg"
+          alt="Yoga instructor teaching"
+          fill
+          style={{ objectFit: 'cover', objectPosition: 'center' }}
+          priority
+        />
+
+        {/* Gradient Overlay with Primary Color */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background:
+              'linear-gradient(to bottom, transparent 0%, color-mix(in srgb, var(--color-primary) 40%, transparent) 50%, color-mix(in srgb, var(--color-primary) 90%, transparent) 100%)',
+          }}
+        />
+
+        {/* Content Overlay */}
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            padding: '40px 20px 60px',
+          }}
+        >
+          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+            <div style={{ maxWidth: '800px', color: '#fff' }}>
+              <h1
+                style={{
+                  fontSize: '56px',
+                  fontWeight: '700',
+                  marginBottom: '20px',
+                  lineHeight: '1.2',
+                  textShadow: '0 2px 10px rgba(0,0,0,0.3)',
+                }}
+              >
+                Build Your Yoga Business Online
+              </h1>
+              <p
+                style={{
+                  fontSize: '20px',
+                  marginBottom: '32px',
+                  lineHeight: '1.6',
+                  textShadow: '0 1px 5px rgba(0,0,0,0.3)',
+                }}
+              >
+                Share your expertise, reach students worldwide, and earn income doing what you love.
+                Join hundreds of yoga instructors building thriving online practices.
+              </p>
+              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                <Link
+                  href="/auth/login?returnTo=/srv"
+                  style={{
+                    padding: '16px 40px',
+                    background: '#fff',
+                    color: 'var(--color-primary)',
+                    borderRadius: '8px',
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    textDecoration: 'none',
+                    display: 'inline-block',
+                    transition: 'transform 0.2s',
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+                  }}
+                >
+                  Start Teaching Today
+                </Link>
+                <a
+                  href="#features"
+                  style={{
+                    padding: '16px 40px',
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    color: '#fff',
+                    border: '2px solid #fff',
+                    borderRadius: '8px',
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    textDecoration: 'none',
+                    display: 'inline-block',
+                    transition: 'transform 0.2s',
+                    backdropFilter: 'blur(10px)',
+                  }}
+                >
+                  Learn More
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -396,8 +433,10 @@ function ExpertLandingPage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-              gap: '40px',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '60px',
+              maxWidth: '1200px',
+              margin: '0 auto',
             }}
           >
             {/* Feature 1 */}
@@ -424,39 +463,6 @@ function ExpertLandingPage() {
             </div>
 
             {/* Feature 3 */}
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '64px', marginBottom: '20px' }}>⏰</div>
-              <h3 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '12px' }}>
-                Full Flexibility
-              </h3>
-              <p style={{ fontSize: '16px', color: '#666', lineHeight: '1.6' }}>
-                Create courses on your schedule. Record once and earn passive income forever.
-              </p>
-            </div>
-
-            {/* Feature 4 */}
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '64px', marginBottom: '20px' }}>📊</div>
-              <h3 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '12px' }}>
-                Deep Analytics
-              </h3>
-              <p style={{ fontSize: '16px', color: '#666', lineHeight: '1.6' }}>
-                Track student progress, engagement, and revenue with powerful analytics tools.
-              </p>
-            </div>
-
-            {/* Feature 5 */}
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '64px', marginBottom: '20px' }}>🎥</div>
-              <h3 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '12px' }}>
-                Easy Course Creation
-              </h3>
-              <p style={{ fontSize: '16px', color: '#666', lineHeight: '1.6' }}>
-                Upload videos, organize lessons, and publish courses with our intuitive platform.
-              </p>
-            </div>
-
-            {/* Feature 6 */}
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: '64px', marginBottom: '20px' }}>🤝</div>
               <h3 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '12px' }}>
