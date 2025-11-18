@@ -23,19 +23,71 @@ export default function CoursePlayer() {
   const [reviewEligibilityReason, setReviewEligibilityReason] = useState('');
   const [activeTab, setActiveTab] = useState<'details' | 'discussions'>('details');
   const [autoPlayEnabled, setAutoPlayEnabled] = useState(false);
+  const [isLoadingPreferences, setIsLoadingPreferences] = useState(true);
 
-  // Load auto-play preference from localStorage on mount
+  // Load auto-play preference from database on mount
   useEffect(() => {
-    const savedPreference = localStorage.getItem('autoPlayEnabled');
-    if (savedPreference !== null) {
-      setAutoPlayEnabled(savedPreference === 'true');
-    }
+    const loadPreferences = async () => {
+      try {
+        console.log('[DBG][course-player] Loading preferences from database');
+        const response = await fetch('/api/user/preferences');
+        const result = await response.json();
+
+        if (result.success) {
+          const dbValue = result.data.autoPlayEnabled ?? false;
+          console.log('[DBG][course-player] Loaded from DB:', dbValue);
+          setAutoPlayEnabled(dbValue);
+          // Also update localStorage to keep it in sync
+          localStorage.setItem('autoPlayEnabled', String(dbValue));
+        } else {
+          // Fallback to localStorage if DB fetch fails
+          const savedPreference = localStorage.getItem('autoPlayEnabled');
+          if (savedPreference !== null) {
+            setAutoPlayEnabled(savedPreference === 'true');
+          }
+        }
+      } catch (error) {
+        console.error('[DBG][course-player] Error loading preferences:', error);
+        // Fallback to localStorage
+        const savedPreference = localStorage.getItem('autoPlayEnabled');
+        if (savedPreference !== null) {
+          setAutoPlayEnabled(savedPreference === 'true');
+        }
+      } finally {
+        setIsLoadingPreferences(false);
+      }
+    };
+
+    loadPreferences();
   }, []);
 
-  // Save auto-play preference to localStorage when it changes
+  // Save auto-play preference to database when it changes
   useEffect(() => {
-    localStorage.setItem('autoPlayEnabled', String(autoPlayEnabled));
-  }, [autoPlayEnabled]);
+    // Skip saving on initial load
+    if (isLoadingPreferences) {
+      return;
+    }
+
+    const savePreference = async () => {
+      try {
+        console.log('[DBG][course-player] Saving preference to database:', autoPlayEnabled);
+
+        // Save to localStorage immediately for quick access
+        localStorage.setItem('autoPlayEnabled', String(autoPlayEnabled));
+
+        // Save to database (silent save, no toast on course page)
+        await fetch('/api/user/preferences', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ autoPlayEnabled }),
+        });
+      } catch (error) {
+        console.error('[DBG][course-player] Error saving preference:', error);
+      }
+    };
+
+    savePreference();
+  }, [autoPlayEnabled, isLoadingPreferences]);
 
   useEffect(() => {
     const fetchCourseData = async () => {

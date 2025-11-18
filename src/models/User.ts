@@ -125,6 +125,7 @@ const UserPreferencesSchema = new Schema<UserPreferences>(
       enum: ['sd', 'hd', '4k'],
       default: 'hd',
     },
+    autoPlayEnabled: { type: Boolean, default: false },
   },
   { _id: false }
 );

@@ -1,15 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { posthog } from '@/providers/PostHogProvider';
 
 export default function Profile() {
   const { user, refreshUser } = useAuth();
-  const [activeTab, setActiveTab] = useState<
-    'profile' | 'membership' | 'preferences' | 'achievements'
-  >('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'preferences' | 'achievements'>('profile');
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     name: user?.profile?.name || '',
@@ -19,6 +17,99 @@ export default function Profile() {
   });
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
   const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
+  const [autoPlayEnabled, setAutoPlayEnabled] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const hasLoadedInitialPreferences = useRef(false);
+
+  // Load auto-play preference from database on mount
+  useEffect(() => {
+    const loadPreferences = async () => {
+      try {
+        console.log('[DBG][profile] Loading preferences from database');
+        const response = await fetch('/api/user/preferences');
+        const result = await response.json();
+
+        if (result.success) {
+          const dbValue = result.data.autoPlayEnabled ?? false;
+          console.log('[DBG][profile] Loaded from DB:', dbValue);
+          setAutoPlayEnabled(dbValue);
+          // Also update localStorage to keep it in sync
+          localStorage.setItem('autoPlayEnabled', String(dbValue));
+        } else {
+          // Fallback to localStorage if DB fetch fails
+          const savedPreference = localStorage.getItem('autoPlayEnabled');
+          if (savedPreference !== null) {
+            setAutoPlayEnabled(savedPreference === 'true');
+          }
+        }
+      } catch (error) {
+        console.error('[DBG][profile] Error loading preferences:', error);
+        // Fallback to localStorage
+        const savedPreference = localStorage.getItem('autoPlayEnabled');
+        if (savedPreference !== null) {
+          setAutoPlayEnabled(savedPreference === 'true');
+        }
+      } finally {
+        // Mark that we've completed the initial load
+        hasLoadedInitialPreferences.current = true;
+      }
+    };
+
+    loadPreferences();
+  }, []);
+
+  // Save auto-play preference to database when it changes
+  useEffect(() => {
+    // Skip saving on initial load - only save when user actually changes the preference
+    if (!hasLoadedInitialPreferences.current) {
+      return;
+    }
+
+    const savePreference = async () => {
+      try {
+        console.log('[DBG][profile] Saving preference to database:', autoPlayEnabled);
+
+        // Save to localStorage immediately for quick access
+        localStorage.setItem('autoPlayEnabled', String(autoPlayEnabled));
+
+        // Save to database
+        const response = await fetch('/api/user/preferences', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ autoPlayEnabled }),
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          console.log('[DBG][profile] Preference saved to database successfully');
+          setToastMessage('Auto-play preference saved');
+          setShowToast(true);
+        } else {
+          console.error('[DBG][profile] Failed to save to database:', result.error);
+          setToastMessage('Saved locally (will sync later)');
+          setShowToast(true);
+        }
+      } catch (error) {
+        console.error('[DBG][profile] Error saving preference:', error);
+        setToastMessage('Saved locally (will sync later)');
+        setShowToast(true);
+      }
+    };
+
+    savePreference();
+  }, [autoPlayEnabled]);
+
+  // Auto-hide toast after 3 seconds
+  useEffect(() => {
+    if (showToast) {
+      const timer = setTimeout(() => {
+        setShowToast(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showToast]);
 
   if (!user) {
     return (
@@ -220,19 +311,12 @@ export default function Profile() {
                 >
                   {!user.profile.avatar && user.profile.name.charAt(0).toUpperCase()}
                 </div>
-                <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '4px' }}>
-                  {user.profile.name}
-                </h3>
-                <p style={{ fontSize: '14px', color: '#666' }}>
-                  {user.membership.type.charAt(0).toUpperCase() + user.membership.type.slice(1)}{' '}
-                  Member
-                </p>
+                <h3 style={{ fontSize: '18px', fontWeight: '600' }}>{user.profile.name}</h3>
               </div>
 
               <div>
                 {[
                   { id: 'profile' as const, label: 'Profile Info', icon: '👤' },
-                  { id: 'membership' as const, label: 'Membership', icon: '💎' },
                   { id: 'preferences' as const, label: 'Preferences', icon: '⚙️' },
                   { id: 'achievements' as const, label: 'Achievements', icon: '🏆' },
                 ].map(tab => (
@@ -650,216 +734,6 @@ export default function Profile() {
               </div>
             )}
 
-            {activeTab === 'membership' && (
-              <div
-                style={{
-                  background: '#fff',
-                  borderRadius: '12px',
-                  overflow: 'hidden',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                }}
-              >
-                <div style={{ padding: '24px', borderBottom: '1px solid #e2e8f0' }}>
-                  <h2 style={{ fontSize: '20px', fontWeight: '600' }}>Membership Details</h2>
-                </div>
-
-                <div style={{ padding: '24px' }}>
-                  {/* Subscription Status Alert */}
-                  {user.membership.cancelAtPeriodEnd && (
-                    <div
-                      style={{
-                        background: '#fff3cd',
-                        border: '1px solid #ffc107',
-                        borderRadius: '8px',
-                        padding: '16px',
-                        marginBottom: '24px',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'start', gap: '12px' }}>
-                        <span style={{ fontSize: '20px' }}>⚠️</span>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: '600', marginBottom: '4px', color: '#856404' }}>
-                            Subscription Cancelled
-                          </div>
-                          <div style={{ fontSize: '14px', color: '#856404' }}>
-                            Your subscription will end on{' '}
-                            {user.membership.currentPeriodEnd
-                              ? new Date(user.membership.currentPeriodEnd).toLocaleDateString()
-                              : 'the end of your billing period'}
-                            . You will still have access until then.
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <div
-                    style={{
-                      background:
-                        'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%)',
-                      borderRadius: '12px',
-                      padding: '24px',
-                      color: '#fff',
-                      marginBottom: '24px',
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginBottom: '16px',
-                      }}
-                    >
-                      <h3 style={{ fontSize: '18px', fontWeight: '600' }}>
-                        {user.membership.type.charAt(0).toUpperCase() +
-                          user.membership.type.slice(1)}{' '}
-                        Plan
-                      </h3>
-                      <span
-                        style={{
-                          padding: '4px 12px',
-                          background: 'rgba(255,255,255,0.2)',
-                          borderRadius: '100px',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                        }}
-                      >
-                        {user.membership.status.toUpperCase()}
-                      </span>
-                    </div>
-
-                    <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '8px' }}>
-                      <strong>Billing:</strong> {user.membership.billingInterval || 'yearly'} · via{' '}
-                      {user.membership.paymentGateway || 'payment gateway'}
-                    </div>
-
-                    <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '8px' }}>
-                      <strong>Member since:</strong>{' '}
-                      {new Date(user.membership.startDate).toLocaleDateString()}
-                    </div>
-
-                    {user.membership.currentPeriodEnd && (
-                      <div style={{ fontSize: '14px', opacity: 0.9 }}>
-                        <strong>
-                          {user.membership.cancelAtPeriodEnd ? 'Access until' : 'Next billing'}:
-                        </strong>{' '}
-                        {new Date(user.membership.currentPeriodEnd).toLocaleDateString()}
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <h4 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px' }}>
-                      Plan Benefits
-                    </h4>
-                    <div style={{ display: 'grid', gap: '12px' }}>
-                      {user.membership.benefits.map((benefit, index) => (
-                        <div
-                          key={index}
-                          style={{ display: 'flex', alignItems: 'center', gap: '12px' }}
-                        >
-                          <span style={{ color: 'var(--color-highlight)', fontSize: '16px' }}>
-                            ✓
-                          </span>
-                          <span style={{ fontSize: '14px' }}>{benefit}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Subscription Actions */}
-                  <div style={{ marginTop: '24px' }}>
-                    {user.membership.subscriptionId && (
-                      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                        {user.membership.cancelAtPeriodEnd ? (
-                          <button
-                            onClick={handleReactivateSubscription}
-                            disabled={subscriptionLoading}
-                            style={{
-                              padding: '12px 24px',
-                              background: subscriptionLoading ? '#ccc' : '#48bb78',
-                              color: '#fff',
-                              border: 'none',
-                              borderRadius: '8px',
-                              fontSize: '14px',
-                              fontWeight: '600',
-                              cursor: subscriptionLoading ? 'not-allowed' : 'pointer',
-                            }}
-                          >
-                            {subscriptionLoading ? 'Processing...' : 'Reactivate Subscription'}
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => {
-                              if (
-                                confirm(
-                                  'Are you sure you want to cancel? You will still have access until the end of your billing period.'
-                                )
-                              ) {
-                                handleCancelSubscription();
-                              }
-                            }}
-                            disabled={subscriptionLoading}
-                            style={{
-                              padding: '12px 24px',
-                              background: 'transparent',
-                              color: subscriptionLoading ? '#ccc' : '#dc3545',
-                              border: `1px solid ${subscriptionLoading ? '#ccc' : '#dc3545'}`,
-                              borderRadius: '8px',
-                              fontSize: '14px',
-                              fontWeight: '600',
-                              cursor: subscriptionLoading ? 'not-allowed' : 'pointer',
-                            }}
-                          >
-                            {subscriptionLoading ? 'Processing...' : 'Cancel Subscription'}
-                          </button>
-                        )}
-
-                        <Link
-                          href="/courses"
-                          style={{
-                            padding: '12px 24px',
-                            background: 'transparent',
-                            color: '#764ba2',
-                            border: '1px solid #764ba2',
-                            borderRadius: '8px',
-                            fontSize: '14px',
-                            fontWeight: '600',
-                            cursor: 'pointer',
-                            textDecoration: 'none',
-                            display: 'inline-block',
-                          }}
-                        >
-                          Browse Courses
-                        </Link>
-                      </div>
-                    )}
-
-                    {!user.membership.subscriptionId && user.membership.type === 'free' && (
-                      <Link
-                        href="/courses"
-                        style={{
-                          padding: '12px 24px',
-                          background: '#764ba2',
-                          color: '#fff',
-                          border: 'none',
-                          borderRadius: '8px',
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          textDecoration: 'none',
-                          display: 'inline-block',
-                        }}
-                      >
-                        Browse Courses
-                      </Link>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
             {activeTab === 'preferences' && (
               <div
                 style={{
@@ -1068,24 +942,70 @@ export default function Profile() {
                           <option value="4k">Ultra (4K)</option>
                         </select>
                       </div>
-                    </div>
-                  </div>
 
-                  <div style={{ marginTop: '24px' }}>
-                    <button
-                      style={{
-                        padding: '12px 24px',
-                        background: 'var(--color-primary)',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '8px',
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Save Preferences
-                    </button>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '16px',
+                          background: '#f8f8f8',
+                          borderRadius: '8px',
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontSize: '14px', fontWeight: '500', marginBottom: '4px' }}>
+                            Auto-play Next Lesson
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#666' }}>
+                            Automatically play the next lesson when current video ends
+                          </div>
+                        </div>
+                        <label
+                          style={{
+                            position: 'relative',
+                            display: 'inline-block',
+                            width: '48px',
+                            height: '24px',
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={autoPlayEnabled}
+                            onChange={e => setAutoPlayEnabled(e.target.checked)}
+                            style={{ opacity: 0, width: 0, height: 0 }}
+                          />
+                          <span
+                            style={{
+                              position: 'absolute',
+                              cursor: 'pointer',
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              background: autoPlayEnabled ? 'var(--color-primary)' : '#e2e8f0',
+                              borderRadius: '24px',
+                              transition: '0.3s',
+                            }}
+                          >
+                            <span
+                              style={{
+                                position: 'absolute',
+                                content: '""',
+                                height: '18px',
+                                width: '18px',
+                                left: '3px',
+                                bottom: '3px',
+                                background: '#fff',
+                                borderRadius: '50%',
+                                transition: '0.3s',
+                                transform: autoPlayEnabled ? 'translateX(24px)' : 'translateX(0)',
+                              }}
+                            />
+                          </span>
+                        </label>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1160,6 +1080,44 @@ export default function Profile() {
           </div>
         </div>
       </div>
+
+      {/* Toast Notification */}
+      {showToast && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            background: '#10b981',
+            color: '#fff',
+            padding: '16px 24px',
+            borderRadius: '8px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            zIndex: 9999,
+            animation: 'slideIn 0.3s ease-out',
+          }}
+        >
+          <span style={{ fontSize: '20px' }}>✓</span>
+          <span style={{ fontSize: '14px', fontWeight: '500' }}>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Toast Animation */}
+      <style jsx>{`
+        @keyframes slideIn {
+          from {
+            transform: translateY(100px);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+      `}</style>
     </div>
   );
 }

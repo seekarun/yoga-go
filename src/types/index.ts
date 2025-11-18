@@ -271,6 +271,7 @@ export interface UserPreferences {
   difficultyLevel?: string;
   language?: string;
   videoQuality?: 'sd' | 'hd' | '4k';
+  autoPlayEnabled?: boolean;
 }
 
 export interface Payment {
