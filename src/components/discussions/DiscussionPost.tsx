@@ -4,12 +4,12 @@ import { useState } from 'react';
 import VoteButtons from './VoteButtons';
 import DiscussionForm from './DiscussionForm';
 import ModerationMenu from './ModerationMenu';
-import type { DiscussionThread, VoteType } from '@/types';
+import type { DiscussionThread, VoteType, UserRole } from '@/types';
 
 interface DiscussionPostProps {
   discussion: DiscussionThread;
   currentUserId: string;
-  currentUserRole: 'learner' | 'expert';
+  currentUserRole: UserRole;
   isExpertForCourse: boolean;
   onVote: (discussionId: string, voteType: VoteType) => Promise<void>;
   onReply: (parentId: string, content: string) => Promise<void>;

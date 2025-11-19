@@ -6,7 +6,7 @@ export interface BaseEntity {
 }
 
 // User Role Types
-export type UserRole = 'learner' | 'expert';
+export type UserRole = 'learner' | 'expert' | 'admin';
 
 // Expert Related Types
 export interface SocialLinks {
@@ -767,4 +767,46 @@ export interface DiscussionThread extends Discussion {
   replies: DiscussionThread[]; // Recursive type for nested replies
   userVote?: VoteType; // Current user's vote on this discussion
   netScore: number; // upvotes - downvotes
+}
+
+// Admin Dashboard Types
+export interface AdminStats {
+  totalUsers: number;
+  totalLearners: number;
+  totalExperts: number;
+  activeUsers: number; // Users active in last 30 days
+  totalCourses: number;
+  totalEnrollments: number;
+  totalRevenue: number;
+  recentSignups: number; // Users signed up in last 7 days
+}
+
+export interface UserListItem {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  role: UserRole;
+  membershipType: MembershipType;
+  membershipStatus: MembershipStatus;
+  joinedAt: string;
+  lastActive: string;
+  totalCourses: number;
+  totalSpent: number;
+  status: 'active' | 'suspended';
+}
+
+export interface ExpertListItem {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  expertId: string;
+  joinedAt: string;
+  lastActive: string;
+  totalCourses: number;
+  totalStudents: number;
+  totalRevenue: number;
+  featured: boolean;
+  status: 'active' | 'suspended';
 }

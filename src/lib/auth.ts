@@ -359,3 +359,27 @@ export async function requireCourseOwnership(courseId: string): Promise<UserType
   console.log('[DBG][auth] Course ownership check passed');
   return user;
 }
+
+/**
+ * Require admin authentication - throws error if not authenticated as admin
+ * Use this in API routes to protect admin-only routes
+ */
+export async function requireAdminAuth(): Promise<{ session: any; user: UserType }> {
+  const session = await getSession();
+
+  if (!session || !session.user) {
+    throw new Error('Unauthorized');
+  }
+
+  const user = await getUserByAuth0Id(session.user.sub);
+
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  if (user.role !== 'admin') {
+    throw new Error('Forbidden - Admin access required');
+  }
+
+  return { session, user };
+}

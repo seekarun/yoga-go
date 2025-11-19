@@ -190,7 +190,7 @@ const UserSchema = new Schema<UserDocument>(
     auth0Id: { type: String, required: true, unique: true, index: true },
     role: {
       type: String,
-      enum: ['learner', 'expert'],
+      enum: ['learner', 'expert', 'admin'],
       default: 'learner',
       required: true,
     },
