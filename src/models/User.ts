@@ -22,12 +22,22 @@ const UserProfileSchema = new Schema<UserProfile>(
   {
     name: { type: String, required: true },
     email: { type: String, required: true },
+    username: String,
     avatar: String,
     bio: String,
+    nameIsFromEmail: { type: Boolean, default: false },
+    onboardingCompleted: { type: Boolean, default: false },
     joinedAt: { type: String, required: true },
     location: String,
     timezone: String,
     phoneNumber: String,
+    // Yoga-specific fields
+    experienceLevel: { type: String, enum: ['beginner', 'intermediate', 'advanced'] },
+    weight: Number,
+    weightUnit: { type: String, enum: ['kg', 'lbs'], default: 'kg' },
+    height: Number,
+    heightUnit: { type: String, enum: ['cm', 'inches'], default: 'cm' },
+    preconditions: String,
   },
   { _id: false }
 );

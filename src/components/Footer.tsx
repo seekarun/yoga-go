@@ -283,7 +283,8 @@ export default function Footer() {
                     Our Experts
                   </Link>
                 </li>
-                <li style={{ marginBottom: '12px' }}>
+                {/* TODO: Uncomment when ready to enable teaching features */}
+                {/* <li style={{ marginBottom: '12px' }}>
                   <Link
                     href="/teach"
                     style={{
@@ -296,7 +297,7 @@ export default function Footer() {
                   >
                     Teach on MyYoga
                   </Link>
-                </li>
+                </li> */}
                 <li style={{ marginBottom: '12px' }}>
                   <Link
                     href="/blog"

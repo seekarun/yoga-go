@@ -103,8 +103,9 @@ export default function ExpertsPage() {
         </div>
       </section>
 
+      {/* TODO: Uncomment when ready to enable expert applications */}
       {/* CTA Section - Become an Expert */}
-      <section
+      {/* <section
         style={{
           padding: '80px 20px',
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -157,7 +158,7 @@ export default function ExpertsPage() {
             Apply to Become an Expert
           </Link>
         </div>
-      </section>
+      </section> */}
     </div>
   );
 }

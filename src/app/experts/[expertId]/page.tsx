@@ -983,8 +983,9 @@ export default function ExpertDetailPage() {
           </section>
         )}
 
+      {/* TODO: Uncomment when ready to enable teaching applications */}
       {/* Become an Expert CTA - Hidden in expert mode */}
-      {!expertMode.isExpertMode && (
+      {/* {!expertMode.isExpertMode && (
         <section
           style={{
             padding: '80px 20px',
@@ -1038,7 +1039,7 @@ export default function ExpertDetailPage() {
             </Link>
           </div>
         </section>
-      )}
+      )} */}
 
       {/* CTA Section - Hidden in expert mode */}
       {!expertMode.isExpertMode && (

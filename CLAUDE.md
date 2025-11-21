@@ -9,6 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run dev` - Start development server on port 3111 (http://localhost:3111)
 - `npm run build` - Build production bundle
 - `npm run start` - Start production server
+- `npm run type-check` - Run TypeScript type checking without building (fast, won't interfere with dev server)
 
 ### Code Quality
 
@@ -16,6 +17,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run lint:fix` - Fix ESLint issues automatically
 - `npm run format` - Format all files with Prettier
 - `npm run format:check` - Check if files are formatted correctly
+- `npm run type-check` - Check TypeScript types without building
 
 ### Git Hooks
 
@@ -25,7 +27,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Important
 
 - After making changes do not start the application, let user start and verify changes
-- After every request iteration, build the app with `npm run build` to confirm it works
+- **During development iterations**: Use `npm run type-check` to verify TypeScript types (fast, won't disrupt dev server)
+- **Before committing/pushing**: Run `npm run build` to ensure production build succeeds
 - Always verify build succeeds before pushing to git remote
 - Use logging extensively with `[DBG][$filename]` prefix to understand issues
 - Code is automatically formatted and linted on commit via pre-commit hook
@@ -46,6 +49,27 @@ This app uses Auth0 for authentication. To set it up:
    - Client Secret → `AUTH0_CLIENT_SECRET`
 6. Generate AUTH0_SECRET: `openssl rand -hex 32`
 7. Set `AUTH0_BASE_URL=http://localhost:3111` (update for production)
+
+**Email Verification & Password Reset Configuration:**
+
+8. **Enable Email Verification (Required):**
+   - Go to Authentication → Database → Username-Password-Authentication
+   - Click "Settings" tab
+   - Enable "Requires Verification" under Email Verification
+   - Save changes
+   - Note: Users with unverified emails will be redirected to `/auth/verify-email`
+
+9. **Enable Password Reset:**
+   - Password reset is automatically available in Auth0 Universal Login
+   - Users can click "Forgot password?" on the login page
+   - Auth0 will send a password reset email automatically
+   - Customize email templates: Branding → Email Templates → Change Password Template
+
+10. **Customize Email Templates (Optional):**
+    - Go to Branding → Email Templates
+    - Customize "Verification Email" template
+    - Customize "Change Password" template
+    - Add your branding and custom copy
 
 **MongoDB Setup:**
 User data is stored in MongoDB. To set it up:

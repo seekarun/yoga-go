@@ -128,6 +128,47 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // For protected routes, check email verification
+  if (
+    pathname.startsWith('/app') ||
+    pathname.startsWith('/srv') ||
+    pathname.startsWith('/data/app')
+  ) {
+    try {
+      const session = await auth0.getSession(request);
+
+      if (session?.user) {
+        console.log('[DBG][middleware] Checking email verification for user:', session.user.sub);
+
+        // Check if email is verified (skip for social logins)
+        if (!session.user.email_verified) {
+          // Detect if this is a social login (Twitter, Google, Facebook, etc.)
+          const provider = session.user.sub.split('|')[0];
+          const isSocial = provider !== 'auth0';
+
+          if (isSocial) {
+            // Social logins are auto-verified by OAuth provider
+            console.log('[DBG][middleware] Social login detected, skipping email verification');
+          } else {
+            // Email/password signup requires email verification
+            console.log(
+              '[DBG][middleware] Email/password signup - email not verified, redirecting'
+            );
+            const url = request.nextUrl.clone();
+            url.pathname = '/auth/verify-email';
+            return NextResponse.redirect(url);
+          }
+        }
+
+        console.log('[DBG][middleware] Email verified or social login, allowing access');
+        // Note: Profile completion check is handled client-side in app layout
+      }
+    } catch (error) {
+      console.error('[DBG][middleware] Error checking email verification:', error);
+      // Continue to Auth0 middleware for authentication check
+    }
+  }
+
   return await auth0.middleware(request);
 }
 
