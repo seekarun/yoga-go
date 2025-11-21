@@ -203,12 +203,22 @@ export type BillingInterval = 'monthly' | 'yearly';
 export interface UserProfile {
   name: string;
   email: string;
+  username?: string;
   avatar?: string;
   bio?: string;
+  nameIsFromEmail?: boolean; // True if name was auto-filled from email (needs completion)
+  onboardingCompleted?: boolean; // True if user has completed initial profile setup
   joinedAt: string;
   location?: string;
   timezone?: string;
   phoneNumber?: string;
+  // Yoga-specific fields
+  experienceLevel?: 'beginner' | 'intermediate' | 'advanced';
+  weight?: number;
+  weightUnit?: 'kg' | 'lbs';
+  height?: number;
+  heightUnit?: 'cm' | 'inches';
+  preconditions?: string; // Pre-existing conditions, injuries, limitations
 }
 
 export interface Membership {
@@ -312,6 +322,7 @@ export interface UserSocial {
 
 export interface User extends BaseEntity {
   role: UserRole; // User role: learner or expert
+  auth0Id?: string; // Auth0 user sub (e.g., "auth0|123", "google-oauth2|456")
   expertProfile?: string; // Expert ID if user is an expert
   profile: UserProfile;
   membership: Membership;

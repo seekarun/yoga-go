@@ -155,6 +155,19 @@ export default function Header() {
                   Experts
                 </Link>
                 <Link
+                  href="/pricing"
+                  style={{
+                    textDecoration: 'none',
+                    color: scrollOpacity < 0.5 ? '#fff' : '#666',
+                    fontSize: '16px',
+                    transition: 'color 0.2s',
+                    textShadow: scrollOpacity < 0.5 ? '0 2px 4px rgba(0,0,0,0.3)' : 'none',
+                  }}
+                >
+                  Pricing
+                </Link>
+                {/* TODO: Uncomment when ready to enable expert features */}
+                {/* <Link
                   href="/srv"
                   style={{
                     textDecoration: 'none',
@@ -166,7 +179,7 @@ export default function Header() {
                   }}
                 >
                   For Experts
-                </Link>
+                </Link> */}
               </>
             )}
           </nav>

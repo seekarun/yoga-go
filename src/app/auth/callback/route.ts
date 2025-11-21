@@ -12,6 +12,18 @@ import { PendingAuth } from '@/models/PendingAuth';
 import { getOrCreateUser } from '@/lib/auth';
 import type { UserRole } from '@/types';
 
+/**
+ * Helper function to detect if login is from social provider
+ * @param sub - Auth0 user sub (e.g., "twitter|123", "auth0|456", "google-oauth2|789")
+ * @returns true if social login, false if email/password
+ */
+function isSocialLogin(sub: string): boolean {
+  const provider = sub.split('|')[0];
+  // If provider is 'auth0', it's email/password database connection
+  // All other providers (twitter, google-oauth2, facebook, etc.) are social
+  return provider !== 'auth0';
+}
+
 export async function GET(request: NextRequest) {
   console.log('[DBG][auth/callback] Processing Auth0 callback');
 
@@ -32,8 +44,28 @@ export async function GET(request: NextRequest) {
         sub: session.user.sub,
         email: session.user.email,
         name: session.user.name,
+        username: (session.user as any).username,
         picture: session.user.picture,
+        email_verified: session.user.email_verified,
       });
+
+      // Check if email is verified (skip for social logins)
+      if (!session.user.email_verified) {
+        const isSocial = isSocialLogin(session.user.sub);
+
+        if (isSocial) {
+          // Social logins (Twitter, Google, Facebook) are auto-verified by OAuth provider
+          console.log('[DBG][auth/callback] Social login detected, skipping email verification');
+        } else {
+          // Email/password signup requires email verification
+          console.log(
+            '[DBG][auth/callback] Email/password signup - email not verified, redirecting'
+          );
+          const hostname = request.headers.get('host') || 'localhost:3111';
+          const protocol = hostname.includes('localhost') ? 'http' : 'https';
+          return NextResponse.redirect(new URL('/auth/verify-email', `${protocol}://${hostname}`));
+        }
+      }
 
       // Extract auth_token from the redirect location
       const location = callbackResponse.headers.get('location');
@@ -73,6 +105,7 @@ export async function GET(request: NextRequest) {
           sub: session.user.sub,
           email: session.user.email!,
           name: session.user.name,
+          username: (session.user as any).username, // Username from Auth0 (email/password signups)
           picture: session.user.picture,
         },
         role

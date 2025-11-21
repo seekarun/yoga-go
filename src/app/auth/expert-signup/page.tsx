@@ -167,7 +167,8 @@ export default function ExpertSignupPage() {
               </button>
             </form>
 
-            <div
+            {/* TODO: Uncomment when teaching applications are open */}
+            {/* <div
               style={{
                 marginTop: '32px',
                 paddingTop: '32px',
@@ -189,7 +190,7 @@ export default function ExpertSignupPage() {
               >
                 Apply to become an expert →
               </Link>
-            </div>
+            </div> */}
 
             <div style={{ marginTop: '16px', textAlign: 'center' }}>
               <Link

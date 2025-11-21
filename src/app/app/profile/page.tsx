@@ -13,7 +13,12 @@ export default function Profile() {
     name: user?.profile?.name || '',
     email: user?.profile?.email || '',
     bio: user?.profile?.bio || '',
-    location: user?.profile?.location || '',
+    experienceLevel: user?.profile?.experienceLevel || '',
+    weight: user?.profile?.weight?.toString() || '',
+    weightUnit: user?.profile?.weightUnit || 'kg',
+    height: user?.profile?.height?.toString() || '',
+    heightUnit: user?.profile?.heightUnit || 'cm',
+    preconditions: user?.profile?.preconditions || '',
   });
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
   const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
@@ -111,6 +116,18 @@ export default function Profile() {
     }
   }, [showToast]);
 
+  // Handle password change success message
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('password_changed') === 'true') {
+      console.log('[DBG][profile] Password changed successfully - showing toast');
+      setToastMessage('Password changed successfully!');
+      setShowToast(true);
+      // Clean up URL without reloading the page
+      window.history.replaceState({}, '', '/app/profile');
+    }
+  }, []);
+
   if (!user) {
     return (
       <div style={{ paddingTop: '64px', minHeight: '100vh', background: '#f8f8f8' }}>
@@ -121,10 +138,49 @@ export default function Profile() {
     );
   }
 
-  const handleSave = () => {
-    // In a real app, this would make an API call to update the profile
-    setIsEditing(false);
-    alert('Profile updated successfully! 🎉');
+  // Check if user is a social login (not Auth0 database user)
+  // Social login users cannot change passwords through Auth0
+  const isSocialLogin = user.auth0Id && !user.auth0Id.startsWith('auth0|');
+
+  const handleSave = async () => {
+    try {
+      const profileData: Record<string, string | number | undefined> = {
+        name: formData.name,
+        bio: formData.bio,
+      };
+
+      // Add yoga fields if provided
+      if (formData.experienceLevel) profileData.experienceLevel = formData.experienceLevel;
+      if (formData.weight) {
+        profileData.weight = parseFloat(formData.weight);
+        profileData.weightUnit = formData.weightUnit;
+      }
+      if (formData.height) {
+        profileData.height = parseFloat(formData.height);
+        profileData.heightUnit = formData.heightUnit;
+      }
+      if (formData.preconditions) profileData.preconditions = formData.preconditions;
+
+      const response = await fetch(`/data/app/user/${user.id}/details`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profileData),
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to update profile');
+      }
+
+      // Refresh user data to reflect changes
+      await refreshUser();
+      setIsEditing(false);
+      alert('Profile updated successfully!');
+    } catch (error) {
+      console.error('[DBG][profile] Update profile error:', error);
+      alert(`Error: ${error instanceof Error ? error.message : 'Failed to update profile'}`);
+    }
   };
 
   const handleCancel = () => {
@@ -132,9 +188,50 @@ export default function Profile() {
       name: user.profile.name,
       email: user.profile.email,
       bio: user.profile.bio || '',
-      location: user.profile.location || '',
+      experienceLevel: user.profile.experienceLevel || '',
+      weight: user.profile.weight?.toString() || '',
+      weightUnit: user.profile.weightUnit || 'kg',
+      height: user.profile.height?.toString() || '',
+      heightUnit: user.profile.heightUnit || 'cm',
+      preconditions: user.profile.preconditions || '',
     });
     setIsEditing(false);
+  };
+
+  const handleRequestPasswordChange = async () => {
+    try {
+      setSubscriptionLoading(true);
+
+      const response = await fetch('/api/auth/request-password-change', {
+        method: 'POST',
+      });
+
+      const result = await response.json();
+
+      if (!result.success) {
+        // Handle social login users
+        if (result.error === 'social_provider') {
+          alert(
+            result.message ||
+              'You signed in with a social provider (Google, Facebook, etc.). Please manage your password through that provider.'
+          );
+          return;
+        }
+
+        throw new Error(result.error || 'Failed to request password change');
+      }
+
+      // Redirect to Auth0's password change page
+      console.log('[DBG][profile] Redirecting to password change page');
+      window.location.href = result.data.ticketUrl;
+    } catch (error) {
+      console.error('[DBG][profile] Password change request error:', error);
+      alert(
+        `Error: ${error instanceof Error ? error.message : 'Failed to request password change'}`
+      );
+    } finally {
+      setSubscriptionLoading(false);
+    }
   };
 
   const handleCancelSubscription = async (reason?: string) => {
@@ -487,7 +584,7 @@ export default function Profile() {
                         color: '#4a5568',
                       }}
                     >
-                      Bio
+                      About Me
                     </label>
                     {isEditing ? (
                       <textarea
@@ -517,44 +614,306 @@ export default function Profile() {
                     )}
                   </div>
 
-                  <div>
-                    <label
+                  {/* Yoga Profile Section */}
+                  <div
+                    style={{
+                      marginTop: '32px',
+                      paddingTop: '24px',
+                      borderTop: '1px solid #e2e8f0',
+                    }}
+                  >
+                    <h3
                       style={{
-                        display: 'block',
-                        marginBottom: '8px',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        color: '#4a5568',
+                        fontSize: '16px',
+                        fontWeight: '600',
+                        marginBottom: '16px',
+                        color: '#2d3748',
                       }}
                     >
-                      Location
-                    </label>
-                    {isEditing ? (
-                      <input
-                        type="text"
-                        value={formData.location}
-                        onChange={e => setFormData({ ...formData, location: e.target.value })}
+                      Yoga Profile
+                    </h3>
+
+                    <div style={{ marginBottom: '24px' }}>
+                      <label
                         style={{
-                          width: '100%',
-                          padding: '12px',
-                          border: '1px solid #e2e8f0',
-                          borderRadius: '8px',
+                          display: 'block',
+                          marginBottom: '8px',
                           fontSize: '14px',
-                        }}
-                      />
-                    ) : (
-                      <div
-                        style={{
-                          padding: '12px',
-                          background: '#f8f8f8',
-                          borderRadius: '8px',
-                          fontSize: '14px',
+                          fontWeight: '500',
+                          color: '#4a5568',
                         }}
                       >
-                        {user.profile.location || 'No location provided'}
+                        Experience Level
+                      </label>
+                      {isEditing ? (
+                        <select
+                          value={formData.experienceLevel}
+                          onChange={e =>
+                            setFormData({ ...formData, experienceLevel: e.target.value })
+                          }
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            backgroundColor: '#fff',
+                          }}
+                        >
+                          <option value="">Not specified</option>
+                          <option value="beginner">Beginner</option>
+                          <option value="intermediate">Intermediate</option>
+                          <option value="advanced">Advanced</option>
+                        </select>
+                      ) : (
+                        <div
+                          style={{
+                            padding: '12px',
+                            background: '#f8f8f8',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                          }}
+                        >
+                          {user.profile.experienceLevel
+                            ? user.profile.experienceLevel.charAt(0).toUpperCase() +
+                              user.profile.experienceLevel.slice(1)
+                            : 'Not specified'}
+                        </div>
+                      )}
+                    </div>
+
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr',
+                        gap: '16px',
+                        marginBottom: '24px',
+                      }}
+                    >
+                      <div>
+                        <label
+                          style={{
+                            display: 'block',
+                            marginBottom: '8px',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            color: '#4a5568',
+                          }}
+                        >
+                          Weight
+                        </label>
+                        {isEditing ? (
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <input
+                              type="number"
+                              value={formData.weight}
+                              onChange={e => setFormData({ ...formData, weight: e.target.value })}
+                              placeholder="0"
+                              style={{
+                                flex: 1,
+                                padding: '12px',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '8px',
+                                fontSize: '14px',
+                              }}
+                            />
+                            <select
+                              value={formData.weightUnit}
+                              onChange={e =>
+                                setFormData({
+                                  ...formData,
+                                  weightUnit: e.target.value as 'kg' | 'lbs',
+                                })
+                              }
+                              style={{
+                                padding: '12px',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '8px',
+                                fontSize: '14px',
+                                backgroundColor: '#fff',
+                              }}
+                            >
+                              <option value="kg">kg</option>
+                              <option value="lbs">lbs</option>
+                            </select>
+                          </div>
+                        ) : (
+                          <div
+                            style={{
+                              padding: '12px',
+                              background: '#f8f8f8',
+                              borderRadius: '8px',
+                              fontSize: '14px',
+                            }}
+                          >
+                            {user.profile.weight
+                              ? `${user.profile.weight} ${user.profile.weightUnit || 'kg'}`
+                              : 'Not specified'}
+                          </div>
+                        )}
                       </div>
-                    )}
+
+                      <div>
+                        <label
+                          style={{
+                            display: 'block',
+                            marginBottom: '8px',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            color: '#4a5568',
+                          }}
+                        >
+                          Height
+                        </label>
+                        {isEditing ? (
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <input
+                              type="number"
+                              value={formData.height}
+                              onChange={e => setFormData({ ...formData, height: e.target.value })}
+                              placeholder="0"
+                              style={{
+                                flex: 1,
+                                padding: '12px',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '8px',
+                                fontSize: '14px',
+                              }}
+                            />
+                            <select
+                              value={formData.heightUnit}
+                              onChange={e =>
+                                setFormData({
+                                  ...formData,
+                                  heightUnit: e.target.value as 'cm' | 'inches',
+                                })
+                              }
+                              style={{
+                                padding: '12px',
+                                border: '1px solid #e2e8f0',
+                                borderRadius: '8px',
+                                fontSize: '14px',
+                                backgroundColor: '#fff',
+                              }}
+                            >
+                              <option value="cm">cm</option>
+                              <option value="inches">in</option>
+                            </select>
+                          </div>
+                        ) : (
+                          <div
+                            style={{
+                              padding: '12px',
+                              background: '#f8f8f8',
+                              borderRadius: '8px',
+                              fontSize: '14px',
+                            }}
+                          >
+                            {user.profile.height
+                              ? `${user.profile.height} ${user.profile.heightUnit || 'cm'}`
+                              : 'Not specified'}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: '24px' }}>
+                      <label
+                        style={{
+                          display: 'block',
+                          marginBottom: '8px',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          color: '#4a5568',
+                        }}
+                      >
+                        Pre-existing Conditions
+                      </label>
+                      {isEditing ? (
+                        <textarea
+                          value={formData.preconditions}
+                          onChange={e =>
+                            setFormData({ ...formData, preconditions: e.target.value })
+                          }
+                          rows={3}
+                          placeholder="Any injuries, conditions, or limitations..."
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            resize: 'vertical',
+                          }}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            padding: '12px',
+                            background: '#f8f8f8',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                          }}
+                        >
+                          {user.profile.preconditions || 'None specified'}
+                        </div>
+                      )}
+                    </div>
                   </div>
+
+                  {/* Security Section - Change Password (Temporarily disabled - users can use Forgot Password at login) */}
+                  {/* {!isEditing && !isSocialLogin && (
+                    <div
+                      style={{
+                        marginTop: '32px',
+                        paddingTop: '24px',
+                        borderTop: '1px solid #e2e8f0',
+                      }}
+                    >
+                      <h3
+                        style={{
+                          fontSize: '16px',
+                          fontWeight: '600',
+                          marginBottom: '12px',
+                          color: '#2d3748',
+                        }}
+                      >
+                        Security
+                      </h3>
+                      <p style={{ fontSize: '14px', color: '#718096', marginBottom: '16px' }}>
+                        Manage your account security and password
+                      </p>
+                      <button
+                        onClick={handleRequestPasswordChange}
+                        disabled={subscriptionLoading}
+                        style={{
+                          padding: '10px 20px',
+                          background: subscriptionLoading ? '#ccc' : '#fff',
+                          color: subscriptionLoading ? '#666' : 'var(--color-primary)',
+                          border: `1px solid ${subscriptionLoading ? '#ccc' : 'var(--color-primary)'}`,
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          cursor: subscriptionLoading ? 'not-allowed' : 'pointer',
+                          transition: 'all 0.2s',
+                        }}
+                        onMouseOver={e => {
+                          if (!subscriptionLoading) {
+                            e.currentTarget.style.background = 'var(--color-primary)';
+                            e.currentTarget.style.color = '#fff';
+                          }
+                        }}
+                        onMouseOut={e => {
+                          if (!subscriptionLoading) {
+                            e.currentTarget.style.background = '#fff';
+                            e.currentTarget.style.color = 'var(--color-primary)';
+                          }
+                        }}
+                      >
+                        {subscriptionLoading ? 'Processing...' : 'Change Password'}
+                      </button>
+                    </div>
+                  )} */}
 
                   {isEditing && (
                     <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
@@ -594,7 +953,8 @@ export default function Profile() {
               </div>
             )}
 
-            {activeTab === 'profile' && user.role !== 'expert' && (
+            {/* TODO: Uncomment when ready to allow users to become experts */}
+            {/* {activeTab === 'profile' && user.role !== 'expert' && (
               <div
                 style={{
                   background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -679,7 +1039,7 @@ export default function Profile() {
                   </div>
                 </div>
               </div>
-            )}
+            )} */}
 
             {activeTab === 'profile' && user.role === 'expert' && (
               <div
@@ -808,69 +1168,6 @@ export default function Profile() {
                                 borderRadius: '50%',
                                 transition: '0.3s',
                                 transform: user.preferences.emailNotifications
-                                  ? 'translateX(24px)'
-                                  : 'translateX(0)',
-                              }}
-                            />
-                          </span>
-                        </label>
-                      </div>
-
-                      <div
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                        }}
-                      >
-                        <div>
-                          <div style={{ fontSize: '14px', fontWeight: '500', marginBottom: '4px' }}>
-                            Push Notifications
-                          </div>
-                          <div style={{ fontSize: '12px', color: '#666' }}>
-                            Get reminders for practice sessions
-                          </div>
-                        </div>
-                        <label
-                          style={{
-                            position: 'relative',
-                            display: 'inline-block',
-                            width: '48px',
-                            height: '24px',
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            defaultChecked={user.preferences.pushNotifications}
-                            style={{ opacity: 0, width: 0, height: 0 }}
-                          />
-                          <span
-                            style={{
-                              position: 'absolute',
-                              cursor: 'pointer',
-                              top: 0,
-                              left: 0,
-                              right: 0,
-                              bottom: 0,
-                              background: user.preferences.pushNotifications
-                                ? 'var(--color-primary)'
-                                : '#e2e8f0',
-                              borderRadius: '24px',
-                              transition: '0.3s',
-                            }}
-                          >
-                            <span
-                              style={{
-                                position: 'absolute',
-                                content: '""',
-                                height: '18px',
-                                width: '18px',
-                                left: '3px',
-                                bottom: '3px',
-                                background: '#fff',
-                                borderRadius: '50%',
-                                transition: '0.3s',
-                                transform: user.preferences.pushNotifications
                                   ? 'translateX(24px)'
                                   : 'translateX(0)',
                               }}

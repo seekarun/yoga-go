@@ -98,13 +98,14 @@ export default function ExpertPlatform() {
       >
         <div style={{ textAlign: 'center', padding: '40px' }}>
           <h1 style={{ fontSize: '32px', fontWeight: '600', marginBottom: '16px' }}>
-            Looking to teach on Yoga-GO?
+            Expert Portal
           </h1>
           <p style={{ fontSize: '16px', color: '#666', marginBottom: '24px' }}>
-            This area is for yoga experts who want to create and sell courses.
+            This area is for yoga experts who want to create and manage courses.
           </p>
+          {/* TODO: Update text when teaching features are live */}
           <p style={{ fontSize: '14px', color: '#999' }}>
-            To become an expert, please contact support or create a new account with an expert role.
+            Expert features are coming soon. Stay tuned!
           </p>
           <div style={{ marginTop: '32px' }}>
             <Link

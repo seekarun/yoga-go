@@ -19,6 +19,102 @@ export async function getSession() {
 }
 
 /**
+ * Generate a unique username from email address
+ *
+ * @param email - User's email address (optional for social logins like Twitter)
+ * @param providedUsername - Optional username from Auth0 (for email/password signups)
+ * @param auth0Sub - Auth0 user sub for fallback username generation
+ * @returns A unique username
+ */
+async function generateUniqueUsername(
+  email: string | null | undefined,
+  providedUsername?: string,
+  auth0Sub?: string
+): Promise<string> {
+  console.log('[DBG][auth] Generating username for email:', email, 'provided:', providedUsername);
+
+  await connectToDatabase();
+
+  // If username was provided (from Auth0 email/password signup), try to use it
+  if (providedUsername) {
+    const sanitized = providedUsername.toLowerCase().trim();
+    const existing = await User.findOne({ 'profile.username': sanitized });
+
+    if (!existing) {
+      console.log('[DBG][auth] Using provided username:', sanitized);
+      return sanitized;
+    }
+    console.log('[DBG][auth] Provided username already exists, generating from email');
+  }
+
+  let baseUsername = '';
+
+  // If email is provided, extract username from it
+  if (email && email.includes('@')) {
+    // Extract local part from email (before @)
+    const localPart = email.split('@')[0];
+
+    // Remove special characters and convert to lowercase
+    // Keep only alphanumeric characters
+    baseUsername = localPart.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    // If username is too short after sanitization, use part of email domain
+    if (baseUsername.length < 3) {
+      const domain = email.split('@')[1]?.split('.')[0] || 'user';
+      baseUsername = baseUsername + domain.toLowerCase().replace(/[^a-z0-9]/g, '');
+    }
+  } else {
+    // No email provided (e.g., Twitter without email permission)
+    // Generate username from auth0 sub or use default
+    console.log('[DBG][auth] No email provided, using fallback username generation');
+
+    if (auth0Sub) {
+      // Extract provider and ID from sub (e.g., "twitter|123456" -> "twitter123456")
+      const subParts = auth0Sub.split('|');
+      const provider = subParts[0] || 'user';
+      const userId = subParts[1] || nanoid(8);
+      baseUsername = `${provider}${userId}`.toLowerCase().replace(/[^a-z0-9]/g, '');
+    } else {
+      // Last resort fallback
+      baseUsername = `user${nanoid(8)}`;
+    }
+  }
+
+  // Limit to 20 characters
+  baseUsername = baseUsername.substring(0, 20);
+
+  console.log('[DBG][auth] Base username:', baseUsername);
+
+  // Check if username exists
+  const existing = await User.findOne({ 'profile.username': baseUsername });
+
+  if (!existing) {
+    console.log('[DBG][auth] Username available:', baseUsername);
+    return baseUsername;
+  }
+
+  // Username exists, try with random suffix
+  console.log('[DBG][auth] Username exists, adding suffix');
+
+  for (let i = 0; i < 5; i++) {
+    const suffix = Math.floor(1000 + Math.random() * 9000); // 4-digit random number
+    const username = `${baseUsername}${suffix}`;
+
+    const collision = await User.findOne({ 'profile.username': username });
+
+    if (!collision) {
+      console.log('[DBG][auth] Generated unique username:', username);
+      return username;
+    }
+  }
+
+  // Fallback: use nanoid
+  const fallback = `${baseUsername}${nanoid(6)}`;
+  console.log('[DBG][auth] Using fallback username:', fallback);
+  return fallback;
+}
+
+/**
  * Get or create user in MongoDB from Auth0 profile
  * This is called after Auth0 authentication to sync user data
  *
@@ -30,6 +126,7 @@ export async function getOrCreateUser(
     email: string;
     name?: string;
     picture?: string;
+    username?: string;
   },
   role?: UserRole
 ): Promise<UserType> {
@@ -50,19 +147,46 @@ export async function getOrCreateUser(
   if (userDoc) {
     console.log('[DBG][auth] Found existing user:', userDoc._id, 'role:', userDoc.role);
 
-    // Update profile if email or name changed in Auth0
-    if (
+    // Update profile if email or name changed in Auth0, or username is missing
+    const shouldUpdate =
       userDoc.profile.email !== auth0User.email ||
-      userDoc.profile.name !== (auth0User.name || auth0User.email)
-    ) {
-      const newName = auth0User.name || auth0User.email;
-      userDoc.profile.email = auth0User.email;
+      userDoc.profile.name !== (auth0User.name || auth0User.email) ||
+      !userDoc.profile.username;
+
+    if (shouldUpdate) {
+      const newName = auth0User.name || auth0User.email || 'User';
+      // True if Auth0 didn't provide a real name OR if the name is the same as email
+      const nameIsFromEmail = !auth0User.name || auth0User.name === auth0User.email;
+
+      // Only update email if provided (Twitter might not share email)
+      if (auth0User.email) {
+        userDoc.profile.email = auth0User.email;
+      }
       userDoc.profile.name = newName;
+      userDoc.profile.nameIsFromEmail = nameIsFromEmail;
+
       if (auth0User.picture) {
         userDoc.profile.avatar = auth0User.picture;
       }
+
+      // Generate username if missing
+      if (!userDoc.profile.username) {
+        const username = await generateUniqueUsername(
+          auth0User.email,
+          auth0User.username,
+          auth0User.sub
+        );
+        userDoc.profile.username = username;
+        console.log('[DBG][auth] Generated username for existing user:', username);
+      }
+
       await userDoc.save();
-      console.log('[DBG][auth] Updated user profile with name:', newName);
+      console.log(
+        '[DBG][auth] Updated user profile with name:',
+        newName,
+        'nameIsFromEmail:',
+        nameIsFromEmail
+      );
     }
   } else {
     console.log('[DBG][auth] Creating new user with role:', role || 'learner');
@@ -70,9 +194,25 @@ export async function getOrCreateUser(
     // Create new user with default values
     const userId = nanoid(16);
     const now = new Date().toISOString();
-    const userName = auth0User.name || auth0User.email;
+    // Twitter might not provide email, so fallback to a generic name
+    const userName = auth0User.name || auth0User.email || 'User';
+    // True if Auth0 didn't provide a real name OR if the name is the same as email
+    const nameIsFromEmail = !auth0User.name || auth0User.name === auth0User.email;
 
-    console.log('[DBG][auth] Creating user with name:', userName);
+    // Generate unique username
+    const username = await generateUniqueUsername(
+      auth0User.email,
+      auth0User.username,
+      auth0User.sub
+    );
+    console.log(
+      '[DBG][auth] Creating user with name:',
+      userName,
+      'username:',
+      username,
+      'nameIsFromEmail:',
+      nameIsFromEmail
+    );
 
     userDoc = await User.create({
       _id: userId,
@@ -80,7 +220,10 @@ export async function getOrCreateUser(
       role: role || ('learner' as UserRole),
       profile: {
         name: userName,
-        email: auth0User.email,
+        email: auth0User.email || `${username}@placeholder.local`, // Twitter might not share email
+        username: username,
+        nameIsFromEmail: nameIsFromEmail,
+        onboardingCompleted: false, // New users need to complete onboarding
         avatar: auth0User.picture || undefined,
         joinedAt: now,
       },
@@ -138,6 +281,7 @@ export async function getOrCreateUser(
   // Convert MongoDB document to User type
   const user: UserType = {
     id: userDoc._id,
+    auth0Id: userDoc.auth0Id,
     role: userDoc.role,
     expertProfile: userDoc.expertProfile,
     profile: userDoc.profile,
@@ -173,6 +317,7 @@ export async function getUserById(userId: string): Promise<UserType | null> {
 
   const user: UserType = {
     id: userDoc._id,
+    auth0Id: userDoc.auth0Id,
     role: userDoc.role,
     expertProfile: userDoc.expertProfile,
     profile: userDoc.profile,
@@ -218,6 +363,7 @@ export async function getUserByAuth0Id(auth0Id: string): Promise<UserType | null
 
   const user: UserType = {
     id: userDoc._id,
+    auth0Id: userDoc.auth0Id,
     role: userDoc.role,
     expertProfile: userDoc.expertProfile,
     profile: userDoc.profile,

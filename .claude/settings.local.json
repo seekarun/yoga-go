@@ -8,7 +8,13 @@
       "WebSearch",
       "Bash(npm run format:*)",
       "Read(//Users/arunsubramaniam/garage/**)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(for issue in 19 17 16)",
+      "Bash(do echo \"\")",
+      "Bash(echo:*)",
+      "Bash(gh issue view:*)",
+      "Bash(done)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []
