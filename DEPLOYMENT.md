@@ -1,440 +1,378 @@
-# Yoga-GO AWS Deployment Guide
+# Yoga Go Deployment Guide
 
-This guide covers deploying the Yoga-GO Next.js application to AWS using Docker containers, ECS Fargate, and Application Load Balancer with domain-based routing.
+This guide covers deploying the Yoga Go Next.js application using Docker containers and AWS ECR for container registry.
 
-## Architecture Overview
+## Current Status
+
+**Phase 1: Container Registry** ✅
+
+Currently implemented:
+
+- Docker containerization with optimized multi-stage build
+- AWS ECR (Elastic Container Registry) for storing Docker images
+- GitHub Actions CI/CD pipeline for automatic builds and deployments
+- AWS CDK infrastructure as code
+
+**Future Phases:**
+
+- ECS Fargate service deployment
+- Application Load Balancer with domain routing
+- Auto-scaling and production monitoring
+
+## Architecture Overview (Current)
 
 ```
-┌─────────────────┐     ┌─────────────────┐
-│  yogago.com     │────▶│                 │
-│  (Route 53)     │     │  Application    │
-└─────────────────┘     │  Load Balancer  │
-                        │  (Port 80/443)  │
-┌─────────────────┐     │                 │
-│ kavithayoga.com │────▶│                 │
-│  (Route 53)     │     └────────┬────────┘
-└─────────────────┘              │
-                                 │
-                        ┌────────▼────────┐
-                        │  ECS Fargate    │
-                        │  Service        │
-                        │  (Next.js App)  │
-                        └────────┬────────┘
-                                 │
-                    ┌────────────┼────────────┐
-                    │            │            │
-            ┌───────▼──────┐ ┌──▼──────┐ ┌──▼──────┐
-            │  MongoDB     │ │  Auth0  │ │Cloudflare│
-            │  Atlas       │ │         │ │ Stream   │
-            └──────────────┘ └─────────┘ └──────────┘
+┌──────────────────┐
+│  GitHub Actions  │
+│  (on push main)  │
+└────────┬─────────┘
+         │
+         ▼
+┌──────────────────┐
+│  Build Docker    │
+│  Image           │
+└────────┬─────────┘
+         │
+         ▼
+┌──────────────────┐
+│  AWS ECR         │
+│  (yoga-go)       │
+│  - SHA tag       │
+│  - latest tag    │
+└──────────────────┘
 ```
-
-### Key Components
-
-1. **Application Load Balancer (ALB)**: Routes traffic based on domain
-   - `yogago.com` → serves default routes (/)
-   - `kavithayoga.com` → Next.js middleware rewrites to /experts/kavitha
-
-2. **ECS Fargate**: Runs containerized Next.js application
-   - 0.25 vCPU, 512 MB RAM (free tier eligible)
-   - Auto-scaling capabilities
-
-3. **ECR**: Stores Docker images
-   - Private repository with image scanning
-
-4. **VPC**: Network isolation with public/private subnets
-   - 2 Availability Zones for high availability
 
 ## Prerequisites
 
-### Required
+### Required Tools
 
-1. **AWS Account** with appropriate permissions
-2. **AWS CLI** installed and configured
-
-   ```bash
-   aws configure
-   ```
-
-3. **Docker** installed and running
+1. **Node.js 20+** and npm
 
    ```bash
-   docker --version
-   ```
-
-4. **Node.js 20+** and npm
-
-   ```bash
-   node --version
+   node --version  # Should be v20+
    npm --version
    ```
 
-5. **AWS CDK** installed globally
+2. **AWS CLI** configured with `myg` profile
+
+   ```bash
+   aws configure --profile myg
+   # Enter your AWS Access Key ID, Secret Access Key, Region (us-east-1)
+   ```
+
+3. **AWS CDK** CLI (for infrastructure management)
+
    ```bash
    npm install -g aws-cdk
    cdk --version
    ```
 
-### External Services
-
-1. **MongoDB Atlas** (free tier available)
-   - Create cluster at https://www.mongodb.com/cloud/atlas
-   - Get connection string
-
-2. **Auth0** account
-   - Create application at https://manage.auth0.com/
-   - Configure callback URLs
-
-3. **Cloudflare** account (for video hosting)
-   - API token from https://dash.cloudflare.com/
-
-4. **Domain names** registered
-   - yogago.com
-   - kavithayoga.com
-
-## Deployment Steps
-
-### Step 1: Environment Configuration
-
-1. Copy the production environment template:
-
+4. **Docker** (for local testing)
    ```bash
-   cp .env.production.example .env.production
+   docker --version
    ```
 
-2. Edit `.env.production` and fill in all values:
+### AWS Account Setup
 
-   ```bash
-   # MongoDB Atlas connection string
-   MONGODB_URI=mongodb+srv://...
+1. AWS account with appropriate permissions
+2. IAM user with permissions for:
+   - ECR (push/pull images)
+   - CloudFormation (for CDK)
+   - IAM (create roles for CDK bootstrap)
 
-   # Auth0 credentials
-   AUTH0_SECRET=...
-   AUTH0_BASE_URL=https://yogago.com
-   AUTH0_ISSUER_BASE_URL=https://...
-   AUTH0_CLIENT_ID=...
-   AUTH0_CLIENT_SECRET=...
+## Infrastructure Setup
 
-   # Cloudflare
-   CLOUDFLARE_ACCOUNT_ID=...
-   CLOUDFLARE_API_TOKEN=...
-   CLOUDFLARE_IMAGES_ACCOUNT_HASH=...
+### Step 1: Bootstrap AWS CDK (First Time Only)
 
-   # Payment gateways
-   STRIPE_SECRET_KEY=...
-   RAZORPAY_KEY_SECRET=...
-
-   # AWS configuration
-   AWS_REGION=us-east-1
-   AWS_ACCOUNT_ID=123456789012
-   ECR_REPOSITORY_NAME=yoga-go
-   ECS_CLUSTER_NAME=yoga-go-cluster
-   ECS_SERVICE_NAME=yoga-go-service
-
-   # Domains
-   PRIMARY_DOMAIN=yogago.com
-   EXPERT_DOMAIN_KAVITHA=kavithayoga.com
-   ```
-
-3. Verify your AWS credentials:
-   ```bash
-   aws sts get-caller-identity
-   ```
-
-### Step 2: Deploy Infrastructure
-
-1. Bootstrap CDK (first time only):
-
-   ```bash
-   cd infrastructure
-   npm install
-   npx cdk bootstrap
-   cd ..
-   ```
-
-2. Deploy all infrastructure stacks:
-
-   ```bash
-   ./scripts/deployment/deploy-infrastructure.sh
-   ```
-
-   This will create:
-   - VPC with public/private subnets
-   - ECR repository
-   - ECS cluster and service
-   - Application Load Balancer
-   - Security groups
-   - IAM roles
-   - CloudWatch log groups
-   - Secrets Manager secret
-
-3. Note the outputs from CDK deployment:
-   - Load Balancer DNS name
-   - ECR repository URI
-   - ECS cluster and service names
-
-### Step 3: Update Secrets
-
-1. Update AWS Secrets Manager with your actual secrets:
-
-   ```bash
-   ./scripts/deployment/update-secrets.sh
-   ```
-
-   This stores sensitive environment variables in AWS Secrets Manager.
-
-### Step 4: Build and Deploy Application
-
-1. Build Docker image and push to ECR:
-
-   ```bash
-   ./scripts/deployment/build-and-push.sh
-   ```
-
-2. Update ECS service to use the new image:
-
-   ```bash
-   ./scripts/deployment/update-ecs-service.sh
-   ```
-
-   Or use the combined script:
-
-   ```bash
-   ./scripts/deployment/deploy-app.sh
-   ```
-
-3. Wait for deployment to complete (2-5 minutes)
-
-### Step 5: DNS Configuration
-
-#### Option A: Using Route 53
-
-1. Create hosted zone in Route 53 (if not exists)
-2. Uncomment Route 53 code in `infrastructure/lib/loadbalancer-stack.ts`
-3. Redeploy infrastructure:
-   ```bash
-   ./scripts/deployment/deploy-infrastructure.sh
-   ```
-
-#### Option B: External DNS Provider
-
-1. Get the Load Balancer DNS name from CDK outputs:
-
-   ```bash
-   aws cloudformation describe-stacks \
-     --stack-name YogaGoLoadBalancerStack \
-     --query 'Stacks[0].Outputs'
-   ```
-
-2. Create CNAME records in your DNS provider:
-   - `yogago.com` → `<alb-dns-name>`
-   - `kavithayoga.com` → `<alb-dns-name>`
-
-### Step 6: SSL/TLS Certificate Setup
-
-1. Request certificate in AWS Certificate Manager:
-
-   ```bash
-   aws acm request-certificate \
-     --domain-name yogago.com \
-     --subject-alternative-names kavithayoga.com \
-     --validation-method DNS \
-     --region us-east-1
-   ```
-
-2. Add DNS validation records provided by ACM to your DNS
-
-3. Wait for certificate validation (can take up to 30 minutes)
-
-4. Uncomment HTTPS listener code in `infrastructure/lib/loadbalancer-stack.ts`
-
-5. Update the certificate ARN and redeploy:
-   ```bash
-   ./scripts/deployment/deploy-infrastructure.sh
-   ```
-
-## Testing
-
-### Test Load Balancer
-
-1. Get Load Balancer DNS:
-
-   ```bash
-   aws elbv2 describe-load-balancers \
-     --query 'LoadBalancers[0].DNSName' \
-     --output text
-   ```
-
-2. Test HTTP endpoint:
-
-   ```bash
-   curl http://<alb-dns-name>/api/health
-   ```
-
-3. Test with host headers:
-
-   ```bash
-   # Primary domain
-   curl -H "Host: yogago.com" http://<alb-dns-name>/
-
-   # Expert domain
-   curl -H "Host: kavithayoga.com" http://<alb-dns-name>/
-   ```
-
-### Test Domain Routing
-
-Once DNS is configured:
+Bootstrap CDK in your AWS account and region:
 
 ```bash
-# Should show main landing page
-curl https://yogago.com/
-
-# Should show Kavitha's expert page
-curl https://kavithayoga.com/
+cd infra
+npm install
+cdk bootstrap --profile myg
+cd ..
 ```
 
-## Monitoring
+This creates the necessary S3 bucket and IAM roles for CDK deployments.
 
-### CloudWatch Logs
+### Step 2: Deploy ECR Repository
 
-View application logs:
+Deploy the container registry:
 
 ```bash
-aws logs tail /ecs/yoga-go --follow
+npm run infra:deploy
 ```
 
-### ECS Service Status
+This creates:
 
-Check service health:
+- ECR repository named `yoga-go`
+- Image scanning enabled for security
+- Lifecycle policy (keeps last 10 images, removes untagged after 1 day)
+- Tag mutability enabled (allows updating `latest` tag)
+
+**Outputs** (save these):
+
+- `RepositoryUri`: Full ECR repository URI (e.g., `123456789012.dkr.ecr.us-east-1.amazonaws.com/yoga-go`)
+- `RepositoryName`: `yoga-go`
+- `RepositoryArn`: Full ARN for IAM policies
+
+## GitHub Actions Setup
+
+### Configure GitHub Secrets
+
+1. Go to your GitHub repository → Settings → Secrets and variables → Actions
+2. Navigate to Environments → Create environment `aws-dev` (if not exists)
+3. Add the following secrets to the `aws-dev` environment:
+
+   | Secret Name             | Description         | Example                                    |
+   | ----------------------- | ------------------- | ------------------------------------------ |
+   | `AWS_ACCESS_KEY_ID`     | IAM user access key | `AKIAIOSFODNN7EXAMPLE`                     |
+   | `AWS_SECRET_ACCESS_KEY` | IAM user secret key | `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY` |
+   | `AWS_REGION`            | AWS region          | `us-east-1`                                |
+   | `AWS_ACCOUNT_ID`        | Your AWS account ID | `123456789012`                             |
+
+### How It Works
+
+The GitHub Actions workflow (`.github/workflows/deploy-ecr.yml`) automatically:
+
+1. **Triggers** on push to `main` branch
+2. **Builds** Docker image using optimized Dockerfile
+3. **Tags** image with:
+   - Git commit SHA (e.g., `abc1234`)
+   - `latest`
+4. **Pushes** both tags to AWS ECR
+5. **Outputs** image URIs for reference
+
+### Manual Trigger
+
+You can also trigger the workflow manually from GitHub Actions UI.
+
+## Local Development
+
+### Build Docker Image Locally
 
 ```bash
-aws ecs describe-services \
-  --cluster yoga-go-cluster \
-  --services yoga-go-service
+# Build image
+docker build -t yoga-go .
+
+# Run container
+docker run -p 3000:3000 --env-file .env.local yoga-go
+
+# Test health endpoint
+curl http://localhost:3000/api/health
 ```
 
-### Load Balancer Health Checks
-
-View target health:
+### Test with Docker Compose
 
 ```bash
-aws elbv2 describe-target-health \
-  --target-group-arn <target-group-arn>
+# Start MongoDB + Next.js app
+docker-compose up
+
+# App runs on http://localhost:3111
 ```
 
-## Updating the Application
+## Infrastructure Management
 
-### Deploy New Version
+### Available Commands
+
+From project root:
+
+```bash
+# Install infrastructure dependencies
+npm run infra:install
+
+# Build TypeScript infrastructure code
+npm run infra:build
+
+# Preview infrastructure changes
+npm run infra:diff
+
+# Synthesize CloudFormation template
+npm run infra:synth
+
+# Deploy infrastructure
+npm run infra:deploy
+
+# Destroy infrastructure (use with caution!)
+npm run infra:destroy
+```
+
+From `infra/` directory:
+
+```bash
+cd infra
+
+# Deploy with auto-approval
+cdk deploy --profile myg --require-approval never
+
+# View stack outputs
+cdk list --profile myg
+
+# Destroy stack
+cdk destroy --profile myg
+```
+
+## Deployment Workflow
+
+### Automatic (Recommended)
 
 1. Make code changes
-2. Run deployment script:
+2. Commit and push to `main` branch:
    ```bash
-   ./scripts/deployment/deploy-app.sh v1.2.3
+   git add .
+   git commit -m "feat: add new feature"
+   git push origin main
    ```
+3. GitHub Actions automatically builds and pushes Docker image
+4. Check Actions tab for deployment status
 
-This will:
+### Manual (Alternative)
 
-- Build new Docker image with tag `v1.2.3`
-- Push to ECR
-- Force new ECS deployment
-- Wait for deployment to stabilize
+If you need to build and push manually:
 
-### Rollback
+```bash
+# Login to ECR
+aws ecr get-login-password --region us-east-1 --profile myg | \
+  docker login --username AWS --password-stdin <your-account-id>.dkr.ecr.us-east-1.amazonaws.com
 
-To rollback to a previous version:
+# Build image
+docker build -t yoga-go .
 
-1. Find previous image tag:
+# Tag image
+docker tag yoga-go:latest <repository-uri>:latest
+docker tag yoga-go:latest <repository-uri>:v1.0.0
 
-   ```bash
-   aws ecr list-images \
-     --repository-name yoga-go \
-     --query 'imageIds[*].imageTag'
-   ```
+# Push to ECR
+docker push <repository-uri>:latest
+docker push <repository-uri>:v1.0.0
+```
 
-2. Update task definition to use old image
-3. Force new deployment
+## Monitoring & Troubleshooting
+
+### View Images in ECR
+
+```bash
+# List all images
+aws ecr list-images \
+  --repository-name yoga-go \
+  --profile myg
+
+# Describe images with details
+aws ecr describe-images \
+  --repository-name yoga-go \
+  --profile myg
+```
+
+### GitHub Actions Logs
+
+1. Go to repository → Actions tab
+2. Click on the workflow run
+3. View detailed logs for each step
+
+### Common Issues
+
+#### Build Fails
+
+**Symptom**: GitHub Actions build fails
+**Solution**:
+
+- Check that all dependencies are in `package.json`
+- Verify Next.js config has `output: 'standalone'`
+- Review build logs in Actions tab
+
+#### Push to ECR Fails
+
+**Symptom**: "no basic auth credentials" or "denied: access denied"
+**Solution**:
+
+- Verify AWS secrets are correctly set in GitHub environment
+- Check IAM user has ECR permissions:
+  ```json
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Action": [
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage",
+          "ecr:PutImage",
+          "ecr:InitiateLayerUpload",
+          "ecr:UploadLayerPart",
+          "ecr:CompleteLayerUpload"
+        ],
+        "Resource": "*"
+      }
+    ]
+  }
+  ```
+
+#### CDK Bootstrap Fails
+
+**Symptom**: "Bootstrap stack not found"
+**Solution**:
+
+```bash
+cd infra
+cdk bootstrap --profile myg
+```
 
 ## Cost Optimization
 
 ### Free Tier Eligible
 
-- ECS Fargate: 20GB storage + 10GB transfer/month
-- ALB: 750 hours/month (first 12 months)
-- ECR: 500MB storage (first 12 months)
-- CloudWatch Logs: 5GB ingestion
+AWS ECR Free Tier:
 
-### Not Free Tier
+- **500 MB** storage per month (free for 12 months)
+- **500 GB** data transfer out to internet per month
+- **2,500** GetAuthorizationToken API calls per month
 
-- NAT Gateway: ~$32/month ($0.045/hour)
-- Secrets Manager: $0.40/secret/month
-- Route 53 hosted zone: $0.50/month
+### Cost After Free Tier
 
-### Cost Reduction Tips
+- Storage: **$0.10 per GB/month**
+- Data transfer: **$0.09 per GB** (to internet)
 
-1. **Remove NAT Gateway for dev**: Use public subnets
-2. **Use SSM Parameter Store**: Instead of Secrets Manager (free)
-3. **Reduce log retention**: Use 1 week instead of longer periods
-4. **Stop services when not in use**: Delete ECS service for dev environments
+**Tip**: Lifecycle policy automatically cleans up old images to stay within free tier limits.
 
-## Troubleshooting
+## Next Steps
 
-### Container Won't Start
+Once ECR is set up and working, the next deployment phases will include:
 
-1. Check CloudWatch logs:
+1. **ECS Fargate Service**: Run the containerized application
+2. **Application Load Balancer**: Route traffic to containers
+3. **Auto-scaling**: Scale based on traffic
+4. **CloudWatch Monitoring**: Application logs and metrics
+5. **Domain & SSL**: Custom domain with HTTPS
 
-   ```bash
-   aws logs tail /ecs/yoga-go --follow
-   ```
+## Useful Resources
 
-2. Verify environment variables in Secrets Manager
-
-3. Check security groups allow outbound traffic
-
-### Load Balancer Health Check Failing
-
-1. Verify `/api/health` endpoint is accessible
-2. Check security group rules
-3. Verify container port mapping (3000)
-
-### DNS Not Resolving
-
-1. Check DNS propagation (can take up to 48 hours)
-2. Verify CNAME/A records are correct
-3. Test with `dig` or `nslookup`:
-   ```bash
-   dig yogago.com
-   nslookup kavithayoga.com
-   ```
-
-### HTTPS Not Working
-
-1. Verify certificate is validated in ACM
-2. Check HTTPS listener is configured
-3. Verify security group allows port 443
-
-## Cleanup
-
-To delete all AWS resources:
-
-```bash
-cd infrastructure
-npm run destroy
-```
-
-⚠️ **Warning**: This will delete all resources including the ECR repository and container images!
-
-## Additional Resources
-
-- [AWS ECS Documentation](https://docs.aws.amazon.com/ecs/)
+- [AWS ECR Documentation](https://docs.aws.amazon.com/ecr/)
 - [AWS CDK Documentation](https://docs.aws.amazon.com/cdk/)
-- [Next.js Deployment](https://nextjs.org/docs/deployment)
-- [Docker Best Practices](https://docs.docker.com/develop/dev-best-practices/)
+- [Next.js Docker Deployment](https://nextjs.org/docs/deployment#docker-image)
+- [GitHub Actions Documentation](https://docs.github.com/actions)
+
+## Infrastructure Code
+
+The infrastructure code is located in the `infra/` directory:
+
+```
+infra/
+├── bin/
+│   └── yoga-go.ts          # CDK app entry point
+├── lib/
+│   └── yoga-go-stack.ts    # ECR stack definition
+├── cdk.json                # CDK configuration (uses 'myg' profile)
+├── package.json            # CDK dependencies
+└── tsconfig.json           # TypeScript config
+```
 
 ## Support
 
-For issues or questions:
+For issues:
 
-1. Check CloudWatch logs
-2. Review AWS service status
-3. Verify all environment variables are set correctly
-4. Check security group and network configurations
+1. Check GitHub Actions logs for build/deployment errors
+2. Verify AWS credentials and permissions
+3. Review ECR repository in AWS Console
+4. Check CDK stack status in CloudFormation

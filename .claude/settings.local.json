@@ -8,7 +8,9 @@
       "WebSearch",
       "Bash(npm run format:*)",
       "Read(//Users/arunsubramaniam/garage/**)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(node --version:*)",
+      "Bash(npm run infra:synth:*)"
     ],
     "deny": [],
     "ask": []

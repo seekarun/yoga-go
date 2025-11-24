@@ -10,7 +10,13 @@
     "lint:fix": "eslint --fix",
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
     "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
-    "prepare": "husky"
+    "prepare": "husky",
+    "infra:install": "cd infra && npm install",
+    "infra:build": "cd infra && npm run build",
+    "infra:synth": "cd infra && cdk synth --profile myg",
+    "infra:deploy": "cd infra && cdk deploy --profile myg",
+    "infra:destroy": "cd infra && cdk destroy --profile myg",
+    "infra:diff": "cd infra && cdk diff --profile myg"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [

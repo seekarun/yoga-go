@@ -1,7 +1,10 @@
 # Dependencies
 node_modules
-npm-debug.log
-yarn-error.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+.pnpm-debug.log*
 
 # Next.js
 .next
@@ -17,8 +20,6 @@ build
 
 # Debug
 *.log
-.pnpm-debug.log*
-.yarn-integrity
 
 # Local env files
 .env
@@ -28,17 +29,9 @@ build
 .env.test.local
 .env.production.local
 
-# Vercel
-.vercel
-
-# TypeScript
-*.tsbuildinfo
-next-env.d.ts
-
-# Git
-.git
-.gitignore
-.github
+# Testing
+coverage
+.nyc_output
 
 # IDE
 .vscode
@@ -47,32 +40,52 @@ next-env.d.ts
 *.swo
 *~
 
-# Testing
-coverage
-.nyc_output
+# Git
+.git
+.gitignore
+.gitattributes
+
+# GitHub
+.github
 
 # Documentation
 *.md
-!README.md
+README.md
+CHANGELOG.md
+LICENSE
+DEPLOYMENT.md
+DOCKER_AWS_SETUP.md
 
-# Scripts and utilities
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Infrastructure & Scripts
+infra
+infrastructure
 scripts
 docs
+cdk.out
 
 # Husky
 .husky
 
+# ESLint & Prettier
+.eslintrc*
+.prettierrc*
+.prettierignore
+eslint.config.*
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Vercel
+.vercel
+
 # MongoDB local data
 mongodb-data
-
-# Docker
-Dockerfile
-docker-compose.yml
-.dockerignore
-
-# AWS CDK
-infrastructure
-cdk.out
 
 # Temporary files
 tmp
