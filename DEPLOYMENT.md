@@ -5,21 +5,27 @@ This guide covers deploying the Yoga Go Next.js application using Docker contain
 ## Current Status
 
 **Phase 1: Container Registry** ✅
+**Phase 2: ECS on EC2 Deployment** ✅
 
 Currently implemented:
 
 - Docker containerization with optimized multi-stage build
 - AWS ECR (Elastic Container Registry) for storing Docker images
-- GitHub Actions CI/CD pipeline for automatic builds and deployments
+- **ECS on EC2** - Container orchestration with health checks and auto-restart
+- **Auto Scaling Group** - Single t3.micro instance (free tier eligible)
+- **AWS Secrets Manager** - Secure environment variable storage
+- **CloudWatch Logs** - Centralized application logging
+- GitHub Actions CI/CD pipeline with automatic ECS deployment
 - AWS CDK infrastructure as code
 
 **Future Phases:**
 
-- ECS Fargate service deployment
 - Application Load Balancer with domain routing
-- Auto-scaling and production monitoring
+- Multiple availability zones for high availability
+- Auto-scaling based on traffic
+- CloudWatch alarms and monitoring dashboards
 
-## Architecture Overview (Current)
+## Architecture Overview
 
 ```
 ┌──────────────────┐
@@ -28,18 +34,36 @@ Currently implemented:
 └────────┬─────────┘
          │
          ▼
-┌──────────────────┐
-│  Build Docker    │
-│  Image           │
-└────────┬─────────┘
-         │
-         ▼
-┌──────────────────┐
-│  AWS ECR         │
-│  (yoga-go)       │
-│  - SHA tag       │
-│  - latest tag    │
-└──────────────────┘
+┌──────────────────┐     ┌─────────────────────┐
+│  Build Docker    │────▶│  Push to ECR        │
+│  Image           │     │  (SHA + latest tag) │
+└──────────────────┘     └────────┬────────────┘
+                                  │
+                         ┌────────▼────────┐
+                         │ Deploy to ECS   │
+                         │ (force update)  │
+                         └────────┬────────┘
+                                  │
+                    ┌─────────────▼──────────────┐
+                    │  ECS Cluster               │
+                    │  ┌──────────────────────┐  │
+                    │  │ EC2 Instance         │  │
+                    │  │ (t3.micro)           │  │
+                    │  │                      │  │
+                    │  │  ┌────────────────┐  │  │
+                    │  │  │ Next.js App    │  │  │
+                    │  │  │ (Docker)       │  │  │
+                    │  │  │ Port 3000→80   │  │  │
+                    │  │  └────────────────┘  │  │
+                    │  └──────────────────────┘  │
+                    └─────────────────────────────┘
+                              │
+                    ┌─────────┼─────────┐
+                    │         │         │
+              ┌─────▼──┐  ┌──▼────┐ ┌──▼──────────┐
+              │MongoDB │  │Auth0  │ │Secrets Mgr  │
+              │Atlas   │  │       │ │+ CloudWatch │
+              └────────┘  └───────┘ └─────────────┘
 ```
 
 ## Prerequisites
@@ -95,26 +119,44 @@ cd ..
 
 This creates the necessary S3 bucket and IAM roles for CDK deployments.
 
-### Step 2: Deploy ECR Repository
+### Step 2: Deploy Complete Infrastructure
 
-Deploy the container registry:
+Deploy ECR repository and ECS infrastructure:
 
 ```bash
-npm run infra:deploy
+cd infra
+cdk deploy --profile myg
 ```
 
 This creates:
 
+**Container Registry:**
+
 - ECR repository named `yoga-go`
 - Image scanning enabled for security
 - Lifecycle policy (keeps last 10 images, removes untagged after 1 day)
-- Tag mutability enabled (allows updating `latest` tag)
+
+**Compute Infrastructure:**
+
+- ECS cluster (`yoga-go-cluster`)
+- Auto Scaling Group with single t3.micro instance (free tier)
+- ECS service (`yoga-go-service`) with health checks
+- Security groups (HTTP/HTTPS/SSH access)
+- IAM roles for ECS tasks and EC2 instances
+
+**Supporting Services:**
+
+- AWS Secrets Manager secret (`yoga-go/production`)
+- CloudWatch log group (`/ecs/yoga-go`)
+- VPC configuration (uses default VPC)
 
 **Outputs** (save these):
 
-- `RepositoryUri`: Full ECR repository URI (e.g., `123456789012.dkr.ecr.us-east-1.amazonaws.com/yoga-go`)
-- `RepositoryName`: `yoga-go`
-- `RepositoryArn`: Full ARN for IAM policies
+- `RepositoryUri`: ECR repository URI
+- `ClusterName`: `yoga-go-cluster`
+- `ServiceName`: `yoga-go-service`
+- `SecretArn`: Secrets Manager ARN
+- `GetPublicIpCommand`: Command to get EC2 instance public IP
 
 ## GitHub Actions Setup
 
@@ -141,11 +183,101 @@ The GitHub Actions workflow (`.github/workflows/deploy-ecr.yml`) automatically:
    - Git commit SHA (e.g., `abc1234`)
    - `latest`
 4. **Pushes** both tags to AWS ECR
-5. **Outputs** image URIs for reference
+5. **Deploys to ECS** - Forces service to pull latest image and restart
+6. **Outputs** image URIs and deployment status
 
 ### Manual Trigger
 
 You can also trigger the workflow manually from GitHub Actions UI.
+
+## Secrets Management
+
+### Step 3: Configure Application Secrets
+
+After deploying the infrastructure, you need to populate AWS Secrets Manager with your actual environment variables.
+
+1. **Create `.env.production` file** (do NOT commit to git):
+
+```bash
+MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/yoga-go
+AUTH0_SECRET=your-auth0-secret-from-openssl-rand-hex-32
+AUTH0_BASE_URL=http://YOUR_EC2_IP
+AUTH0_ISSUER_BASE_URL=https://your-domain.auth0.com
+AUTH0_CLIENT_ID=your-auth0-client-id
+AUTH0_CLIENT_SECRET=your-auth0-client-secret
+CLOUDFLARE_ACCOUNT_ID=your-cloudflare-account-id
+CLOUDFLARE_API_TOKEN=your-cloudflare-api-token
+CLOUDFLARE_IMAGES_ACCOUNT_HASH=your-images-hash
+STRIPE_PUBLISHABLE_KEY=pk_live_...
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+RAZORPAY_KEY_ID=rzp_live_...
+RAZORPAY_KEY_SECRET=...
+RAZORPAY_WEBHOOK_SECRET=...
+SENDGRID_API_KEY=SG...
+```
+
+2. **Update secrets in AWS**:
+
+```bash
+./infra/scripts/update-secrets.sh .env.production
+```
+
+3. **Restart ECS service** to apply new secrets:
+
+```bash
+aws ecs update-service \
+  --cluster yoga-go-cluster \
+  --service yoga-go-service \
+  --force-new-deployment \
+  --region ap-southeast-2 \
+  --profile myg
+```
+
+## Accessing Your Application
+
+### Step 4: Get Application URL
+
+After deployment completes (2-3 minutes), get your application's public URL:
+
+```bash
+./infra/scripts/get-service-url.sh
+```
+
+This will output:
+
+- 🌐 Application URL (e.g., `http://13.210.xxx.xxx`)
+- 🏥 Health check endpoint
+- 📊 CloudWatch logs command
+- ✅ Health check status
+
+You can also manually get the IP:
+
+```bash
+# Get EC2 instance public IP
+aws ec2 describe-instances \
+  --filters "Name=tag:Name,Values=*EcsAutoScalingGroup*" \
+            "Name=instance-state-name,Values=running" \
+  --query "Reservations[*].Instances[*].PublicIpAddress" \
+  --output text \
+  --region ap-southeast-2 \
+  --profile myg
+```
+
+### Test Your Deployment
+
+```bash
+# Test health endpoint
+curl http://YOUR_EC2_IP/api/health
+
+# Should return: {"status":"ok"}
+```
+
+Access your application:
+
+- **Main site**: `http://YOUR_EC2_IP`
+- **Health check**: `http://YOUR_EC2_IP/api/health`
+- **API endpoints**: `http://YOUR_EC2_IP/api/*`
 
 ## Local Development
 
@@ -223,8 +355,12 @@ cdk destroy --profile myg
    git commit -m "feat: add new feature"
    git push origin main
    ```
-3. GitHub Actions automatically builds and pushes Docker image
+3. GitHub Actions automatically:
+   - Builds and pushes Docker image to ECR
+   - Deploys to ECS (forces service update)
 4. Check Actions tab for deployment status
+5. Wait 2-3 minutes for ECS to pull new image and restart containers
+6. Verify deployment: `./infra/scripts/get-service-url.sh`
 
 ### Manual (Alternative)
 
@@ -268,6 +404,64 @@ aws ecr describe-images \
 1. Go to repository → Actions tab
 2. Click on the workflow run
 3. View detailed logs for each step
+
+### ECS Service Monitoring
+
+**Check service status:**
+
+```bash
+aws ecs describe-services \
+  --cluster yoga-go-cluster \
+  --services yoga-go-service \
+  --region ap-southeast-2 \
+  --profile myg
+```
+
+**View running tasks:**
+
+```bash
+aws ecs list-tasks \
+  --cluster yoga-go-cluster \
+  --service-name yoga-go-service \
+  --region ap-southeast-2 \
+  --profile myg
+```
+
+**View application logs (real-time):**
+
+```bash
+aws logs tail /ecs/yoga-go --follow \
+  --region ap-southeast-2 \
+  --profile myg
+```
+
+**View recent logs:**
+
+```bash
+aws logs tail /ecs/yoga-go --since 1h \
+  --region ap-southeast-2 \
+  --profile myg
+```
+
+**Check EC2 instance:**
+
+```bash
+aws ec2 describe-instances \
+  --filters "Name=tag:Name,Values=*EcsAutoScalingGroup*" \
+            "Name=instance-state-name,Values=running" \
+  --region ap-southeast-2 \
+  --profile myg
+```
+
+**SSH to EC2 instance (if needed):**
+
+```bash
+# Use AWS Systems Manager Session Manager (no SSH key required)
+aws ssm start-session \
+  --target <instance-id> \
+  --region ap-southeast-2 \
+  --profile myg
+```
 
 ### Common Issues
 

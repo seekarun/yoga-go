@@ -65,3 +65,33 @@ jobs:
           echo ""
           echo "🔗 AWS Console:"
           echo "  https://console.aws.amazon.com/ecr/repositories/$ECR_REPOSITORY?region=${{ secrets.AWS_REGION }}"
+
+      - name: Deploy to ECS
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          echo "🚀 Deploying to ECS..."
+          echo ""
+          echo "Cluster: yoga-go-cluster"
+          echo "Service: yoga-go-service"
+          echo "Region: $AWS_REGION"
+          echo ""
+
+          aws ecs update-service \
+            --cluster yoga-go-cluster \
+            --service yoga-go-service \
+            --force-new-deployment \
+            --region $AWS_REGION
+
+          echo ""
+          echo "✅ Deployment initiated!"
+          echo ""
+          echo "ECS will:"
+          echo "  1. Pull the latest image from ECR"
+          echo "  2. Stop the old container"
+          echo "  3. Start a new container with the updated image"
+          echo ""
+          echo "📊 Monitor deployment:"
+          echo "  https://console.aws.amazon.com/ecs/v2/clusters/yoga-go-cluster/services/yoga-go-service?region=$AWS_REGION"
+          echo ""
+          echo "⏱️  Deployment typically takes 2-3 minutes to complete."
