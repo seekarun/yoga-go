@@ -82,7 +82,7 @@ export default function Home() {
               lineHeight: '1.2',
             }}
           >
-            Transform Your Life Through Yoga
+            Live. Love. Yoga.
           </h1>
           <p
             style={{
