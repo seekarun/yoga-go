@@ -322,6 +322,147 @@ npm run format:check   # Check if files are formatted
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## AWS Deployment
+
+This application is deployed to AWS using ECS on EC2 with automated CI/CD via GitHub Actions.
+
+### Architecture
+
+- **Container Registry**: AWS ECR (Elastic Container Registry)
+- **Compute**: ECS on EC2 (single t3.micro instance - free tier eligible)
+- **Infrastructure**: AWS CDK (TypeScript) in `infra/` directory
+- **Secrets**: AWS Secrets Manager
+- **Logging**: CloudWatch Logs
+- **CI/CD**: GitHub Actions (automatic on push to main)
+
+### Quick Commands
+
+```bash
+# Infrastructure management
+npm run infra:deploy    # Deploy/update AWS infrastructure
+npm run infra:diff      # Preview infrastructure changes
+npm run infra:synth     # Generate CloudFormation template
+
+# View available Docker images in ECR
+./infra/scripts/list-images.sh
+
+# Deploy specific image tag (rollback capability)
+./infra/scripts/deploy-tag.sh <tag>      # Deploy specific tag
+./infra/scripts/deploy-tag.sh b727c7a   # Example: deploy commit SHA
+./infra/scripts/deploy-tag.sh latest    # Deploy latest image
+
+# Get application URL
+./infra/scripts/get-service-url.sh
+
+# View application logs
+aws logs tail /ecs/yoga-go --follow --region ap-southeast-2 --profile myg
+```
+
+### Automatic Deployment
+
+Every push to `main` branch automatically:
+
+1. Builds Docker image
+2. Pushes to ECR with tags:
+   - Git commit SHA (e.g., `b727c7a`)
+   - `latest`
+3. Deploys to ECS (forces service update)
+4. Deployment takes 2-3 minutes
+
+### Rollback & Tag Deployment
+
+You can deploy any previous version from ECR:
+
+**View available versions:**
+
+```bash
+./infra/scripts/list-images.sh
+```
+
+**Deploy specific version:**
+
+```bash
+# List available tags
+./infra/scripts/deploy-tag.sh
+
+# Deploy specific commit
+./infra/scripts/deploy-tag.sh b727c7a
+
+# Or use GitHub Actions manual workflow:
+# Go to Actions → "Deploy Specific Tag to ECS" → Run workflow
+```
+
+**Quick rollback example:**
+
+```bash
+# 1. List available images
+./infra/scripts/list-images.sh
+
+# 2. Deploy previous version
+./infra/scripts/deploy-tag.sh <previous-tag>
+
+# 3. Verify deployment
+curl http://YOUR_IP/api/health
+```
+
+### Image Tagging Strategy
+
+- **Commit SHA tags** (e.g., `b727c7a`) - Use for production deployments (traceable)
+- **`latest` tag** - Always points to most recent build
+- **Lifecycle policy** - Keeps last 10 images, removes untagged after 1 day
+
+### Monitoring
+
+```bash
+# Check service status
+aws ecs describe-services \
+  --cluster yoga-go-cluster \
+  --services yoga-go-service \
+  --region ap-southeast-2 \
+  --profile myg
+
+# View application logs
+aws logs tail /ecs/yoga-go --follow \
+  --region ap-southeast-2 \
+  --profile myg
+
+# Get EC2 instance public IP
+./infra/scripts/get-service-url.sh
+```
+
+### Secrets Management
+
+Application secrets are stored in AWS Secrets Manager:
+
+```bash
+# Update secrets from .env.production file
+./infra/scripts/update-secrets.sh .env.production
+
+# Restart service to apply new secrets
+aws ecs update-service \
+  --cluster yoga-go-cluster \
+  --service yoga-go-service \
+  --force-new-deployment \
+  --region ap-southeast-2 \
+  --profile myg
+```
+
+### Detailed Documentation
+
+For comprehensive deployment documentation, troubleshooting, and best practices, see:
+
+📖 **[DEPLOYMENT.md](./DEPLOYMENT.md)**
+
+Topics covered:
+
+- Complete infrastructure setup guide
+- GitHub Actions configuration
+- Secrets management
+- Rollback procedures and scenarios
+- Deployment verification checklist
+- Troubleshooting common issues
+- Cost optimization tips
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

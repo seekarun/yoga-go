@@ -383,6 +383,452 @@ docker push <repository-uri>:latest
 docker push <repository-uri>:v1.0.0
 ```
 
+## Rollback & Tag Deployment
+
+You can deploy any specific image tag from ECR, enabling easy rollbacks to previous versions.
+
+### View Available Images
+
+First, list all available images in ECR to see what tags are available:
+
+```bash
+./infra/scripts/list-images.sh
+```
+
+This displays:
+
+- All available image tags sorted by push date (newest first)
+- Currently deployed tag (highlighted in green with "← DEPLOYED")
+- Image size and push timestamp
+- Total storage usage and free tier status (500 MB free tier limit)
+- Quick commands for deployment and monitoring
+
+**Example output:**
+
+```
+═══════════════════════════════════════════════════════════════════════
+✅ Available Images in ECR Repository: yoga-go
+═══════════════════════════════════════════════════════════════════════
+
+TAG                  PUSHED                    SIZE        STATUS
+──────────────────────────────────────────────────────────────────────────
+b727c7a              2025-01-24 14:32:15       245 MB      ← DEPLOYED (latest)
+a3f9d21              2025-01-24 12:18:43       244 MB
+9e2c8f5              2025-01-23 18:45:22       243 MB
+latest               2025-01-24 14:32:15       245 MB      (latest)
+
+═══════════════════════════════════════════════════════════════════════
+
+🏷️  Currently Deployed: b727c7a
+
+📊 Total images: 8
+💾 Total size: 1,950 MB
+⚠️  Exceeding free tier by 1,450 MB
+💰 Estimated cost: $14.50/month
+```
+
+### Deploy a Specific Tag (Local Script)
+
+Use the deployment script to deploy any tag:
+
+```bash
+# List available tags (no argument)
+./infra/scripts/deploy-tag.sh
+
+# Deploy a specific commit tag
+./infra/scripts/deploy-tag.sh b727c7a
+
+# Deploy latest tag
+./infra/scripts/deploy-tag.sh latest
+```
+
+**What the script does:**
+
+1. Verifies the image tag exists in ECR
+2. Fetches the current task definition
+3. Creates a new task definition with the specified image tag
+4. Registers the new task definition
+5. Updates the ECS service to use the new task definition
+6. Provides monitoring commands and deployment status
+
+**Example output:**
+
+```
+🚀 Yoga Go Deployment Tool
+
+Deploying image tag: b727c7a
+
+Current deployment: a3f9d21
+New deployment:     b727c7a
+
+🔍 Verifying image tag exists...
+✓ Image tag verified: b727c7a
+
+📋 Fetching current task definition...
+✓ Current task definition: yoga-go:15
+
+🔧 Creating new task definition with image: 710735877057.dkr.ecr.ap-southeast-2.amazonaws.com/yoga-go:b727c7a
+✓ New task definition registered: yoga-go:16
+
+🚀 Updating ECS service...
+✓ Service update initiated
+
+═══════════════════════════════════════════════
+✅ Deployment Started!
+═══════════════════════════════════════════════
+
+📦 Image:    710735877057.dkr.ecr.ap-southeast-2.amazonaws.com/yoga-go:b727c7a
+🎯 Cluster:  yoga-go-cluster
+🔧 Service:  yoga-go-service
+
+⏱️  Deployment in progress...
+
+ECS will:
+  1. Stop the current task
+  2. Pull the image: b727c7a
+  3. Start a new task
+  4. Wait for health checks to pass
+
+This typically takes 2-3 minutes.
+```
+
+### Deploy via GitHub Actions (Manual Workflow)
+
+You can also deploy specific tags through the GitHub Actions web interface:
+
+1. Go to your GitHub repository → **Actions** tab
+2. Select **"Deploy Specific Tag to ECS"** workflow
+3. Click **"Run workflow"** button
+4. Enter the image tag (e.g., `b727c7a` or `latest`)
+5. Click **"Run workflow"** to start deployment
+
+This workflow:
+
+- Verifies the tag exists in ECR
+- Creates a new task definition
+- Updates the ECS service
+- Waits for deployment to stabilize (up to 10 minutes)
+- Shows deployment status and recent service events
+
+**When to use:**
+
+- Rolling back from any location without AWS CLI access
+- Team members who need deployment access but not AWS console access
+- Automated rollback workflows triggered by monitoring alerts
+
+### Rollback Scenarios
+
+#### Scenario 1: Quick Rollback to Previous Version
+
+If the latest deployment has issues, rollback to the previous version:
+
+```bash
+# 1. List available images to find previous version
+./infra/scripts/list-images.sh
+
+# 2. Deploy the previous tag
+./infra/scripts/deploy-tag.sh a3f9d21
+
+# 3. Monitor deployment
+aws ecs describe-services \
+  --cluster yoga-go-cluster \
+  --services yoga-go-service \
+  --region ap-southeast-2 \
+  --profile myg
+
+# 4. Verify application is working
+curl http://$(./infra/scripts/get-service-url.sh | grep "http://" | awk '{print $2}')/api/health
+```
+
+#### Scenario 2: Rollback During Incident
+
+If production is broken and you need immediate rollback:
+
+```bash
+# Fastest path - deploy known good tag directly
+./infra/scripts/deploy-tag.sh <KNOWN_GOOD_TAG>
+
+# Example: Rollback to specific commit from 2 days ago
+./infra/scripts/deploy-tag.sh 9e2c8f5
+```
+
+The deployment typically takes 2-3 minutes:
+
+- **0-30s**: ECS receives update command, stops current task
+- **30-90s**: EC2 pulls new image from ECR
+- **90-180s**: Container starts, health checks run, traffic switches
+
+#### Scenario 3: Gradual Rollback Testing
+
+If you want to test a rollback before committing:
+
+```bash
+# 1. Note current deployment
+CURRENT=$(aws ecs describe-services \
+  --cluster yoga-go-cluster \
+  --services yoga-go-service \
+  --query 'services[0].taskDefinition' \
+  --output text \
+  --region ap-southeast-2 \
+  --profile myg)
+
+echo "Current: $CURRENT"
+
+# 2. Deploy older version
+./infra/scripts/deploy-tag.sh <OLDER_TAG>
+
+# 3. Test the deployment
+curl http://YOUR_IP/api/health
+# ... run more tests ...
+
+# 4. If issues, rollback to original
+# Extract tag from task definition and redeploy
+```
+
+### Deployment Best Practices
+
+#### Image Tagging Strategy
+
+Every push to `main` creates two tags:
+
+- **Commit SHA** (e.g., `b727c7a`) - immutable reference to specific version
+- **`latest`** - always points to most recent build
+
+**Recommendations:**
+
+- Use commit SHA tags for production deployments (traceable)
+- Use `latest` tag for quick testing in staging environments
+- Never delete commit SHA tags - keep deployment history
+
+#### Monitoring Deployments
+
+**Watch deployment progress:**
+
+```bash
+# Real-time ECS service events
+watch -n 5 'aws ecs describe-services \
+  --cluster yoga-go-cluster \
+  --services yoga-go-service \
+  --query "services[0].events[0:5]" \
+  --region ap-southeast-2 \
+  --profile myg'
+```
+
+**Watch application logs:**
+
+```bash
+# Follow logs in real-time
+aws logs tail /ecs/yoga-go --follow \
+  --region ap-southeast-2 \
+  --profile myg
+```
+
+**Check health endpoint:**
+
+```bash
+# Continuously check health
+while true; do
+  curl -s http://YOUR_IP/api/health || echo "FAILED"
+  sleep 2
+done
+```
+
+#### Deployment Verification Checklist
+
+After any deployment or rollback:
+
+1. ✅ **Service is stable**
+
+   ```bash
+   aws ecs describe-services \
+     --cluster yoga-go-cluster \
+     --services yoga-go-service \
+     --query 'services[0].{Running:runningCount,Desired:desiredCount}' \
+     --region ap-southeast-2 \
+     --profile myg
+   ```
+
+   Should show: `Running: 1, Desired: 1`
+
+2. ✅ **Health check passes**
+
+   ```bash
+   curl http://YOUR_IP/api/health
+   # Should return: {"status":"ok"}
+   ```
+
+3. ✅ **No errors in logs**
+
+   ```bash
+   aws logs tail /ecs/yoga-go --since 5m \
+     --filter-pattern "ERROR" \
+     --region ap-southeast-2 \
+     --profile myg
+   ```
+
+4. ✅ **Correct image is deployed**
+   ```bash
+   ./infra/scripts/list-images.sh
+   # Verify "← DEPLOYED" marker is on expected tag
+   ```
+
+### Troubleshooting Rollback Issues
+
+#### Issue: "Image tag not found in ECR"
+
+**Symptom:**
+
+```
+❌ Error: Image tag 'abc1234' not found in ECR
+```
+
+**Solution:**
+
+1. Verify tag exists:
+
+   ```bash
+   ./infra/scripts/list-images.sh
+   ```
+
+2. Check if lifecycle policy deleted old images (keeps last 10 only)
+
+3. If needed, redeploy from source:
+   ```bash
+   git checkout <commit-sha>
+   # Trigger GitHub Actions or build manually
+   ```
+
+#### Issue: Deployment stuck in "CREATE_IN_PROGRESS"
+
+**Symptom:** ECS service update doesn't complete after 10 minutes
+
+**Solution:**
+
+1. Check task health:
+
+   ```bash
+   aws ecs describe-tasks \
+     --cluster yoga-go-cluster \
+     --tasks $(aws ecs list-tasks --cluster yoga-go-cluster --service-name yoga-go-service --query 'taskArns[0]' --output text --region ap-southeast-2 --profile myg) \
+     --region ap-southeast-2 \
+     --profile myg
+   ```
+
+2. Check logs for errors:
+
+   ```bash
+   aws logs tail /ecs/yoga-go --since 10m --region ap-southeast-2 --profile myg
+   ```
+
+3. Common causes:
+   - Health check endpoint failing (check `/api/health`)
+   - Missing environment variables (check Secrets Manager)
+   - Image pull errors (check ECR permissions)
+
+4. Force stop stuck tasks:
+   ```bash
+   aws ecs update-service \
+     --cluster yoga-go-cluster \
+     --service yoga-go-service \
+     --force-new-deployment \
+     --region ap-southeast-2 \
+     --profile myg
+   ```
+
+#### Issue: Container keeps restarting
+
+**Symptom:** Task starts then immediately stops, health checks never pass
+
+**Solution:**
+
+1. Check container exit code:
+
+   ```bash
+   aws ecs describe-tasks \
+     --cluster yoga-go-cluster \
+     --tasks <TASK_ARN> \
+     --query 'tasks[0].containers[0].{exitCode:exitCode,reason:reason}' \
+     --region ap-southeast-2 \
+     --profile myg
+   ```
+
+2. Check application startup logs:
+
+   ```bash
+   aws logs tail /ecs/yoga-go --since 5m --region ap-southeast-2 --profile myg | grep -i error
+   ```
+
+3. Common fixes:
+   - Update secrets in AWS Secrets Manager
+   - Verify MongoDB connection string
+   - Check Auth0 configuration (AUTH0_BASE_URL must match public IP)
+   - Ensure all required environment variables are set
+
+#### Issue: Old version still serving traffic after deployment
+
+**Symptom:** Deployed new tag but application behavior hasn't changed
+
+**Solution:**
+
+1. Verify task is running new image:
+
+   ```bash
+   aws ecs describe-tasks \
+     --cluster yoga-go-cluster \
+     --tasks $(aws ecs list-tasks --cluster yoga-go-cluster --service-name yoga-go-service --query 'taskArns[0]' --output text --region ap-southeast-2 --profile myg) \
+     --query 'tasks[0].containers[0].image' \
+     --region ap-southeast-2 \
+     --profile myg
+   ```
+
+2. Check task definition revision:
+
+   ```bash
+   aws ecs describe-services \
+     --cluster yoga-go-cluster \
+     --services yoga-go-service \
+     --query 'services[0].taskDefinition' \
+     --region ap-southeast-2 \
+     --profile myg
+   ```
+
+3. Force new deployment if needed:
+   ```bash
+   aws ecs update-service \
+     --cluster yoga-go-cluster \
+     --service yoga-go-service \
+     --force-new-deployment \
+     --region ap-southeast-2 \
+     --profile myg
+   ```
+
+### Deployment History
+
+ECS maintains a complete history of task definition revisions. You can view all previous deployments:
+
+```bash
+# List all task definition revisions
+aws ecs list-task-definitions \
+  --family-prefix yoga-go \
+  --sort DESC \
+  --region ap-southeast-2 \
+  --profile myg
+
+# View specific revision details
+aws ecs describe-task-definition \
+  --task-definition yoga-go:15 \
+  --region ap-southeast-2 \
+  --profile myg
+```
+
+Each revision includes:
+
+- Container image URI with tag
+- Environment variables and secrets
+- Resource allocations (CPU, memory)
+- Health check configuration
+- Creation timestamp
+
 ## Monitoring & Troubleshooting
 
 ### View Images in ECR
