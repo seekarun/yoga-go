@@ -2,7 +2,7 @@
  * PendingAuth Model
  *
  * Temporarily stores role information during Auth0 OAuth flow.
- * Records are created when user initiates login and deleted after successful callback.
+ * Records are created when user initiates login and automatically deleted via TTL index.
  */
 
 import { Schema, model, models } from 'mongoose';

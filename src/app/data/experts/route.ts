@@ -136,6 +136,30 @@ export async function POST(request: Request) {
     // Check if expert with this ID already exists
     const existingExpert = await ExpertModel.findById(body.id).exec();
     if (existingExpert) {
+      // Check if this expert belongs to the current user (by userId)
+      if (existingExpert.userId === userDoc._id) {
+        // Expert exists and belongs to this user - link it and return success
+        console.log('[DBG][experts/route.ts] Expert exists for this user, re-linking');
+        userDoc.role = 'expert';
+        userDoc.expertProfile = existingExpert._id as string;
+        await userDoc.save();
+
+        const expert: Expert = {
+          ...existingExpert.toObject(),
+          id: existingExpert._id as string,
+        };
+
+        return NextResponse.json(
+          {
+            success: true,
+            data: expert,
+            message: 'Expert profile re-linked successfully',
+          } as ApiResponse<Expert>,
+          { status: 200 }
+        );
+      }
+
+      // Expert exists but belongs to a different user
       const response: ApiResponse<Expert> = {
         success: false,
         error: 'Expert with this ID already exists',

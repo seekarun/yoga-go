@@ -3,12 +3,15 @@
 import { getClientExpertContext } from '@/lib/domainContext';
 import type { Course, Expert } from '@/types';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Header from '@/components/Header';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function ExpertDetailPage() {
   const params = useParams();
+  const router = useRouter();
+  const { user, login } = useAuth();
   const expertId = params.expertId as string;
   const [expert, setExpert] = useState<Expert | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -17,6 +20,18 @@ export default function ExpertDetailPage() {
     isExpertMode: false,
     expertId: null,
   });
+
+  // Handler for Book 1:1 Session button
+  const handleBookSession = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    if (user) {
+      // User is authenticated, navigate to booking page
+      router.push(`/app/live/book/${expertId}`);
+    } else {
+      // User is not authenticated, redirect to login with returnTo
+      login(`/app/live/book/${expertId}`);
+    }
+  };
 
   // Detect expert mode on mount
   useEffect(() => {
@@ -326,8 +341,8 @@ export default function ExpertDetailPage() {
                   {heroCtaText}
                 </a>
                 {expert.liveStreamingEnabled && (
-                  <Link
-                    href={`/app/live/book/${expert.id}`}
+                  <button
+                    onClick={handleBookSession}
                     style={{
                       display: 'inline-block',
                       padding: '16px 48px',
@@ -337,6 +352,8 @@ export default function ExpertDetailPage() {
                       fontWeight: '600',
                       borderRadius: '8px',
                       textDecoration: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
                       transition: 'transform 0.2s, background 0.2s',
                     }}
                     onMouseEnter={e => {
@@ -349,7 +366,7 @@ export default function ExpertDetailPage() {
                     }}
                   >
                     📅 Book 1:1 Session
-                  </Link>
+                  </button>
                 )}
               </div>
             )}
@@ -463,8 +480,8 @@ export default function ExpertDetailPage() {
                 {heroCtaText}
               </a>
               {expert.liveStreamingEnabled && (
-                <Link
-                  href={`/app/live/book/${expert.id}`}
+                <button
+                  onClick={handleBookSession}
                   style={{
                     display: 'inline-block',
                     padding: '14px 32px',
@@ -474,6 +491,8 @@ export default function ExpertDetailPage() {
                     fontWeight: '600',
                     borderRadius: '8px',
                     textDecoration: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
                     transition: 'transform 0.2s, background 0.2s',
                   }}
                   onMouseEnter={e => {
@@ -486,7 +505,7 @@ export default function ExpertDetailPage() {
                   }}
                 >
                   📅 Book 1:1 Session
-                </Link>
+                </button>
               )}
             </div>
           )}

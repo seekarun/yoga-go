@@ -23,6 +23,17 @@ export default function ExpertPlatform() {
     }
   }, [user?.role, router]);
 
+  // Redirect to expert dashboard when profile is loaded
+  useEffect(() => {
+    if (user?.role === 'expert' && expertProfile?.id) {
+      console.log(
+        '[DBG][srv/page] Expert with profile, redirecting to dashboard:',
+        expertProfile.id
+      );
+      router.push(`/srv/${expertProfile.id}`);
+    }
+  }, [user?.role, expertProfile?.id, router]);
+
   useEffect(() => {
     // Only fetch expert profile if user is authenticated and is an expert
     if (isAuthenticated && user?.role === 'expert') {
@@ -266,9 +277,8 @@ export default function ExpertPlatform() {
     );
   }
 
-  // Case 4: User is expert with completed profile - Redirect to expert dashboard
+  // Case 4: User is expert with completed profile - Show loading while useEffect redirects
   if (user?.role === 'expert' && expertProfile) {
-    router.push(`/srv/${expertProfile.id}`);
     return (
       <div
         style={{
@@ -613,8 +623,8 @@ function ExpertLandingPage() {
               <p
                 style={{ fontSize: '16px', color: '#333', marginBottom: '20px', lineHeight: '1.6' }}
               >
-                &quot;Yoga-GO has transformed my teaching practice. I now reach students worldwide
-                and earn more than I ever did with in-person classes.&quot;
+                &quot;My Yoga.Guru has transformed my teaching practice. I now reach students
+                worldwide and earn more than I ever did with in-person classes.&quot;
               </p>
               <p style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-primary)' }}>
                 - Sarah M., Vinyasa Expert
@@ -681,7 +691,8 @@ function ExpertLandingPage() {
             Ready to Share Your Expertise?
           </h2>
           <p style={{ fontSize: '20px', marginBottom: '40px', opacity: 0.95 }}>
-            Join the Yoga-GO expert community today and start building your online yoga business.
+            Join the My Yoga.Guru expert community today and start building your online yoga
+            business.
           </p>
           <Link
             href="/auth/login?returnTo=/srv"

@@ -29,8 +29,6 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hostname = request.headers.get('host') || '';
 
-  console.log('[DBG][middleware] Request to:', pathname, 'from:', hostname);
-
   // Check if this is a dynamic myyoga.guru subdomain (e.g., deepak.myyoga.guru)
   const myYogaGuruSubdomain = getSubdomainFromMyYogaGuru(hostname);
   let expertId = myYogaGuruSubdomain;
@@ -43,17 +41,6 @@ export async function middleware(request: NextRequest) {
   }
 
   const isPrimary = isPrimaryDomain(hostname);
-
-  console.log(
-    '[DBG][middleware] Expert domain:',
-    isExpertDomain,
-    'Expert ID:',
-    expertId,
-    'Is primary:',
-    isPrimary,
-    'MyYoga.Guru subdomain:',
-    myYogaGuruSubdomain
-  );
 
   // Handle expert domain routing (domain isolation for dedicated expert sites)
   if (isExpertDomain && expertId) {
@@ -68,7 +55,6 @@ export async function middleware(request: NextRequest) {
 
     // Allow Auth0 routes to pass through to custom route handlers
     if (pathname.startsWith('/auth')) {
-      console.log('[DBG][middleware] Auth0 route detected on expert domain, bypassing');
       return NextResponse.next();
     }
 
@@ -83,19 +69,16 @@ export async function middleware(request: NextRequest) {
     if (pathname === '/') {
       const url = request.nextUrl.clone();
       url.pathname = expertPath;
-      console.log(`[DBG][middleware] Rewriting root to ${expertPath} for expert domain`);
       return NextResponse.rewrite(url);
     }
 
     // Expert's own page: Allow access
     if (pathname === expertPath || pathname.startsWith(`${expertPath}/`)) {
-      console.log(`[DBG][middleware] Allowing access to ${expertPath}`);
       return NextResponse.next();
     }
 
     // Courses belonging to this expert: Allow access
     if (pathname.startsWith('/courses/')) {
-      console.log('[DBG][middleware] Allowing access to course page (will validate expert)');
       return NextResponse.next();
     }
 
@@ -105,15 +88,11 @@ export async function middleware(request: NextRequest) {
       pathname.startsWith('/srv/') ||
       pathname.startsWith('/data/app/')
     ) {
-      console.log('[DBG][middleware] Allowing access to protected route');
       return await auth0.middleware(request);
     }
 
     // All other routes: Block access (redirect to expert page)
     // This prevents navigation to /, /experts, other expert pages, etc.
-    console.log(
-      `[DBG][middleware] Blocking unauthorized route ${pathname}, redirecting to ${expertPath}`
-    );
     const url = request.nextUrl.clone();
     url.pathname = expertPath;
     return NextResponse.redirect(url);
@@ -124,7 +103,6 @@ export async function middleware(request: NextRequest) {
 
   // Allow Auth0 routes to pass through to custom route handlers
   if (pathname.startsWith('/auth')) {
-    console.log('[DBG][middleware] Auth0 route on primary domain, bypassing to custom handler');
     return NextResponse.next();
   }
 
@@ -138,33 +116,24 @@ export async function middleware(request: NextRequest) {
       const session = await auth0.getSession(request);
 
       if (session?.user) {
-        console.log('[DBG][middleware] Checking email verification for user:', session.user.sub);
-
         // Check if email is verified (skip for social logins)
         if (!session.user.email_verified) {
           // Detect if this is a social login (Twitter, Google, Facebook, etc.)
           const provider = session.user.sub.split('|')[0];
           const isSocial = provider !== 'auth0';
 
-          if (isSocial) {
-            // Social logins are auto-verified by OAuth provider
-            console.log('[DBG][middleware] Social login detected, skipping email verification');
-          } else {
+          if (!isSocial) {
             // Email/password signup requires email verification
-            console.log(
-              '[DBG][middleware] Email/password signup - email not verified, redirecting'
-            );
             const url = request.nextUrl.clone();
             url.pathname = '/auth/verify-email';
             return NextResponse.redirect(url);
           }
+          // Social logins are auto-verified by OAuth provider
         }
-
-        console.log('[DBG][middleware] Email verified or social login, allowing access');
         // Note: Profile completion check is handled client-side in app layout
       }
     } catch (error) {
-      console.error('[DBG][middleware] Error checking email verification:', error);
+      console.error('[middleware] Error checking email verification:', error);
       // Continue to Auth0 middleware for authentication check
     }
   }

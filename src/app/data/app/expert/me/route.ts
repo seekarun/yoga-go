@@ -44,22 +44,32 @@ export async function GET() {
     }
 
     // Get expert profile if it exists
-    if (!userDoc.expertProfile) {
+    let expertDoc = null;
+
+    if (userDoc.expertProfile) {
+      expertDoc = await ExpertModel.findById(userDoc.expertProfile).exec();
+    }
+
+    // If no expertProfile link, try to find expert by userId (in case link was broken)
+    if (!expertDoc) {
+      console.log('[DBG][expert/me/route.ts] No expert profile link, checking by userId');
+      expertDoc = await ExpertModel.findOne({ userId: userDoc._id }).exec();
+
+      if (expertDoc) {
+        // Re-link the expert profile to the user
+        console.log('[DBG][expert/me/route.ts] Found orphaned expert profile, re-linking');
+        userDoc.expertProfile = expertDoc._id as string;
+        userDoc.role = 'expert';
+        await userDoc.save();
+      }
+    }
+
+    if (!expertDoc) {
       console.log('[DBG][expert/me/route.ts] Expert profile not created yet');
       return NextResponse.json({
         success: true,
         message: 'Expert profile not created yet',
       } as ApiResponse<Expert>);
-    }
-
-    const expertDoc = await ExpertModel.findById(userDoc.expertProfile).exec();
-
-    if (!expertDoc) {
-      console.log('[DBG][expert/me/route.ts] Expert profile not found');
-      return NextResponse.json(
-        { success: false, error: 'Expert profile not found' } as ApiResponse<Expert>,
-        { status: 404 }
-      );
     }
 
     const expert: Expert = {

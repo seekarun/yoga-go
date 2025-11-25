@@ -13,11 +13,9 @@ export default function VerifyEmailPage() {
 
     try {
       // In a production app, this would call an API endpoint to resend verification email
-      // For now, we'll just show a success message
       await new Promise(resolve => setTimeout(resolve, 1000));
       setMessage('Verification email sent! Please check your inbox.');
-    } catch (error) {
-      console.error('[DBG][verify-email] Resend error:', error);
+    } catch {
       setMessage('Failed to resend verification email. Please try again.');
     } finally {
       setResending(false);

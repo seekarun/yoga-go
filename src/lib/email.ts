@@ -4,15 +4,14 @@ import sgMail from '@sendgrid/mail';
 const apiKey = process.env.SENDGRID_API_KEY;
 
 if (!apiKey) {
-  console.warn('[DBG][email] SENDGRID_API_KEY is not set. Email functionality will not work.');
+  console.warn('[email] SENDGRID_API_KEY is not set. Email functionality will not work.');
 } else {
   sgMail.setApiKey(apiKey);
-  console.log('[DBG][email] SendGrid initialized successfully');
 }
 
 export interface EmailOptions {
   to: string | string[];
-  from?: string;
+  from?: string | { email: string; name: string };
   subject: string;
   text: string;
   html?: string;
@@ -30,14 +29,14 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
 
   const {
     to,
-    from = process.env.SENDGRID_FROM_EMAIL || 'hi@myyoga.guru',
+    from = {
+      email: process.env.SENDGRID_FROM_EMAIL || 'hi@myyoga.guru',
+      name: 'My Yoga.Guru',
+    },
     subject,
     text,
     html,
   } = options;
-
-  console.log(`[DBG][email] Sending email to ${Array.isArray(to) ? to.join(', ') : to}`);
-  console.log(`[DBG][email] Subject: ${subject}`);
 
   try {
     const msg = {
@@ -49,9 +48,8 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
     };
 
     await sgMail.send(msg);
-    console.log('[DBG][email] Email sent successfully');
   } catch (error) {
-    console.error('[DBG][email] Error sending email:', error);
+    console.error('[email] Error sending email:', error);
     throw error;
   }
 };
@@ -68,16 +66,16 @@ export const sendBulkEmail = async (options: EmailOptions): Promise<void> => {
 
   const {
     to,
-    from = process.env.SENDGRID_FROM_EMAIL || 'hi@myyoga.guru',
+    from = {
+      email: process.env.SENDGRID_FROM_EMAIL || 'hi@myyoga.guru',
+      name: 'My Yoga.Guru',
+    },
     subject,
     text,
     html,
   } = options;
 
   const recipients = Array.isArray(to) ? to : [to];
-
-  console.log(`[DBG][email] Sending bulk email to ${recipients.length} recipients`);
-  console.log(`[DBG][email] Subject: ${subject}`);
 
   try {
     const msg = {
@@ -89,9 +87,8 @@ export const sendBulkEmail = async (options: EmailOptions): Promise<void> => {
     };
 
     await sgMail.sendMultiple(msg);
-    console.log(`[DBG][email] Bulk email sent successfully to ${recipients.length} recipients`);
   } catch (error) {
-    console.error('[DBG][email] Error sending bulk email:', error);
+    console.error('[email] Error sending bulk email:', error);
     throw error;
   }
 };

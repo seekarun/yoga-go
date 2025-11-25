@@ -21,8 +21,6 @@ export default function ExpertSignupPage() {
     }
 
     try {
-      console.log('[DBG][expert-signup] Validating expert code');
-
       const res = await fetch('/auth/expert-signup/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -35,12 +33,8 @@ export default function ExpertSignupPage() {
         throw new Error(data.error || 'Invalid expert signup code');
       }
 
-      console.log('[DBG][expert-signup] Code validated, redirecting to Auth0');
-
-      // Redirect to login with auth token
       window.location.href = `/auth/login?auth_token=${data.authToken}`;
     } catch (err) {
-      console.error('[DBG][expert-signup] Validation error:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
       setIsSubmitting(false);
     }
@@ -166,31 +160,6 @@ export default function ExpertSignupPage() {
                 {isSubmitting ? 'Validating...' : 'Continue to Signup'}
               </button>
             </form>
-
-            {/* TODO: Uncomment when teaching applications are open */}
-            {/* <div
-              style={{
-                marginTop: '32px',
-                paddingTop: '32px',
-                borderTop: '1px solid #eee',
-                textAlign: 'center',
-              }}
-            >
-              <p style={{ fontSize: '14px', color: '#666', marginBottom: '12px' }}>
-                Don&apos;t have an expert code?
-              </p>
-              <Link
-                href="/teach/apply"
-                style={{
-                  color: '#764ba2',
-                  textDecoration: 'none',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                }}
-              >
-                Apply to become an expert →
-              </Link>
-            </div> */}
 
             <div style={{ marginTop: '16px', textAlign: 'center' }}>
               <Link

@@ -93,7 +93,7 @@ export default function RazorpayCheckout({
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: orderData.data.amount,
         currency: orderData.data.currency,
-        name: 'Yoga-GO',
+        name: 'My Yoga.Guru',
         description: itemName,
         order_id: orderData.data.orderId,
         prefill: {

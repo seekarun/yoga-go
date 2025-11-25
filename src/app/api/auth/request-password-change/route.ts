@@ -12,23 +12,17 @@ import { createPasswordChangeTicket } from '@/lib/auth0-management';
  */
 export async function POST() {
   try {
-    console.log('[DBG][auth-api] Processing password change request');
-
-    // Get authenticated user session
     const session = await getSession();
 
     if (!session || !session.user) {
-      console.log('[DBG][auth-api] Unauthorized - no session found');
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     // Check if user signed up with social provider (Google, Twitter, etc.)
     // Social login users don't have Auth0 database passwords
     const provider = session.user.sub.split('|')[0];
-    console.log('[DBG][auth-api] User provider:', provider);
 
     if (provider !== 'auth0') {
-      console.log('[DBG][auth-api] Social login user - cannot change password via Auth0');
       return NextResponse.json(
         {
           success: false,
@@ -47,14 +41,12 @@ export async function POST() {
       `${process.env.AUTH0_BASE_URL}/app/profile/password-success`
     );
 
-    console.log('[DBG][auth-api] Password change ticket created successfully');
-
     return NextResponse.json({
       success: true,
       data: { ticketUrl: result.ticket },
     });
   } catch (error) {
-    console.error('[DBG][auth-api] Password change ticket error:', error);
+    console.error('[auth-api] Password change ticket error:', error);
     return NextResponse.json(
       {
         success: false,

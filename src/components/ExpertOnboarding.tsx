@@ -314,7 +314,7 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
       {/* Welcome Header */}
       <div style={{ textAlign: 'center', marginBottom: '40px' }}>
         <h1 style={{ fontSize: '32px', fontWeight: '600', marginBottom: '12px' }}>
-          Welcome to Yoga-GO Expert Platform
+          Welcome to My Yoga.Guru Expert Platform
         </h1>
         <p style={{ fontSize: '16px', color: '#666' }}>
           Let&apos;s set up your expert profile to start sharing your knowledge

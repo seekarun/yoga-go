@@ -5,6 +5,8 @@
  * Used for operations that require elevated permissions, such as creating password change tickets.
  */
 
+import type { UserRole } from '@/types';
+
 interface ManagementTokenResponse {
   access_token: string;
   token_type: string;
@@ -95,4 +97,48 @@ export async function createPasswordChangeTicket(
   const data: PasswordChangeTicketResponse = await response.json();
   console.log('[DBG][auth0-management] Password change ticket created successfully');
   return data;
+}
+
+/**
+ * Update user's app_metadata with their role
+ *
+ * This syncs the MongoDB role to Auth0's app_metadata so it can be accessed
+ * in email templates and other Auth0 features.
+ *
+ * @param userId - Auth0 user ID (format: auth0|xxxxx or google-oauth2|xxxxx)
+ * @param role - User role from MongoDB (learner, expert, or admin)
+ */
+export async function updateAuth0UserMetadata(userId: string, role: UserRole): Promise<void> {
+  console.log('[DBG][auth0-management] Updating app_metadata for user:', userId, 'role:', role);
+
+  // Get Management API access token
+  const token = await getManagementToken();
+
+  // URL encode the user ID (handles special characters like |)
+  const encodedUserId = encodeURIComponent(userId);
+
+  // Update user's app_metadata
+  const response = await fetch(
+    `${process.env.AUTH0_ISSUER_BASE_URL}/api/v2/users/${encodedUserId}`,
+    {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        app_metadata: {
+          role: role,
+        },
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('[DBG][auth0-management] Failed to update user metadata:', error);
+    throw new Error(`Failed to update user metadata: ${response.status}`);
+  }
+
+  console.log('[DBG][auth0-management] User app_metadata updated successfully with role:', role);
 }

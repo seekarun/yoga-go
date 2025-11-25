@@ -11,8 +11,6 @@ import { connectToDatabase } from '@/lib/mongodb';
 import { PendingAuth } from '@/models/PendingAuth';
 
 export async function POST(request: NextRequest) {
-  console.log('[DBG][expert-signup/validate] Validating expert code');
-
   try {
     const body = await request.json();
     const { code } = body;
@@ -21,11 +19,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Code is required' }, { status: 400 });
     }
 
-    // Validate against environment variable
     const expectedCode = process.env.EXPERT_SIGNUP_CODE;
 
     if (!expectedCode) {
-      console.error('[DBG][expert-signup/validate] EXPERT_SIGNUP_CODE not configured!');
+      console.error('[expert-signup/validate] EXPERT_SIGNUP_CODE not configured');
       return NextResponse.json(
         { success: false, error: 'Expert signup is not configured' },
         { status: 500 }
@@ -33,33 +30,38 @@ export async function POST(request: NextRequest) {
     }
 
     if (code.trim().toUpperCase() !== expectedCode.toUpperCase()) {
-      console.log('[DBG][expert-signup/validate] Invalid code provided');
       return NextResponse.json(
         { success: false, error: 'Invalid expert signup code' },
         { status: 401 }
       );
     }
 
-    console.log('[DBG][expert-signup/validate] Code validated successfully');
-
-    // Create PendingAuth record with expert role
     await connectToDatabase();
+
     const pendingAuth = await PendingAuth.create({
       role: 'expert',
       createdAt: new Date(),
-      expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
+      expiresAt: new Date(Date.now() + 30 * 60 * 1000), // 30 minutes
     });
 
     const authToken = pendingAuth._id;
 
-    console.log('[DBG][expert-signup/validate] Created pending auth:', authToken);
-
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       authToken,
     });
+
+    response.cookies.set('pending_auth_token', authToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 30 * 60,
+      path: '/',
+    });
+
+    return response;
   } catch (error) {
-    console.error('[DBG][expert-signup/validate] Error:', error);
+    console.error('[expert-signup/validate] Error:', error);
     return NextResponse.json(
       { success: false, error: 'An error occurred during validation' },
       { status: 500 }
