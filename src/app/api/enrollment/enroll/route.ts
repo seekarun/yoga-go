@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   try {
     // Check authentication
     const session = await getSession();
-    if (!session || !session.user) {
+    if (!session || !session.user || !session.user.cognitoSub) {
       const response: ApiResponse<null> = {
         success: false,
         error: 'Not authenticated',
@@ -34,10 +34,10 @@ export async function POST(request: Request) {
     }
 
     // Get user ID from session
-    // In production, you'd fetch the MongoDB user ID via the auth0Id
+    // In production, you'd fetch the MongoDB user ID via the cognitoSub
     // For now, we'll assume the session contains the user ID
     const { getUserByAuth0Id } = await import('@/lib/auth');
-    const user = await getUserByAuth0Id(session.user.sub);
+    const user = await getUserByAuth0Id(session.user.cognitoSub);
 
     if (!user) {
       const response: ApiResponse<null> = {

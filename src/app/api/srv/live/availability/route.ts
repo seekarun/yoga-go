@@ -15,7 +15,7 @@ export async function GET() {
   try {
     // Check authentication
     const session = await getSession();
-    if (!session || !session.user) {
+    if (!session || !session.user || !session.user.cognitoSub) {
       const response: ApiResponse<null> = {
         success: false,
         error: 'Not authenticated',
@@ -24,7 +24,7 @@ export async function GET() {
     }
 
     // Get user from database
-    const user = await getUserByAuth0Id(session.user.sub);
+    const user = await getUserByAuth0Id(session.user.cognitoSub);
     if (!user || !user.expertProfile) {
       const response: ApiResponse<null> = {
         success: false,
@@ -100,7 +100,7 @@ export async function POST(request: Request) {
   try {
     // Check authentication
     const session = await getSession();
-    if (!session || !session.user) {
+    if (!session || !session.user || !session.user.cognitoSub) {
       const response: ApiResponse<null> = {
         success: false,
         error: 'Not authenticated',
@@ -109,7 +109,7 @@ export async function POST(request: Request) {
     }
 
     // Get user from database
-    const user = await getUserByAuth0Id(session.user.sub);
+    const user = await getUserByAuth0Id(session.user.cognitoSub);
     if (!user || !user.expertProfile) {
       const response: ApiResponse<null> = {
         success: false,
@@ -269,7 +269,7 @@ export async function DELETE(request: Request) {
   try {
     // Check authentication
     const session = await getSession();
-    if (!session || !session.user) {
+    if (!session || !session.user || !session.user.cognitoSub) {
       const response: ApiResponse<null> = {
         success: false,
         error: 'Not authenticated',
@@ -278,7 +278,7 @@ export async function DELETE(request: Request) {
     }
 
     // Get user from database
-    const user = await getUserByAuth0Id(session.user.sub);
+    const user = await getUserByAuth0Id(session.user.cognitoSub);
     if (!user || !user.expertProfile) {
       const response: ApiResponse<null> = {
         success: false,

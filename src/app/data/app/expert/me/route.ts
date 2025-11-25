@@ -15,7 +15,7 @@ export async function GET() {
   try {
     // Require authentication
     const session = await getSession();
-    if (!session || !session.user) {
+    if (!session || !session.user || !session.user.cognitoSub) {
       console.log('[DBG][expert/me/route.ts] Unauthorized - no session');
       return NextResponse.json({ success: false, error: 'Unauthorized' } as ApiResponse<Expert>, {
         status: 401,
@@ -25,7 +25,7 @@ export async function GET() {
     await connectToDatabase();
 
     // Get user to check role and expert profile
-    const userDoc = await UserModel.findOne({ auth0Id: session.user.sub }).exec();
+    const userDoc = await UserModel.findOne({ cognitoSub: session.user.cognitoSub }).exec();
 
     if (!userDoc) {
       console.log('[DBG][expert/me/route.ts] User not found');
@@ -91,7 +91,7 @@ export async function PATCH(request: Request) {
   try {
     // Require authentication
     const session = await getSession();
-    if (!session || !session.user) {
+    if (!session || !session.user || !session.user.cognitoSub) {
       console.log('[DBG][expert/me/route.ts] Unauthorized - no session');
       return NextResponse.json({ success: false, error: 'Unauthorized' } as ApiResponse<Expert>, {
         status: 401,
@@ -104,7 +104,7 @@ export async function PATCH(request: Request) {
     await connectToDatabase();
 
     // Get user to check role and expert profile
-    const userDoc = await UserModel.findOne({ auth0Id: session.user.sub }).exec();
+    const userDoc = await UserModel.findOne({ cognitoSub: session.user.cognitoSub }).exec();
 
     if (!userDoc) {
       console.log('[DBG][expert/me/route.ts] User not found');

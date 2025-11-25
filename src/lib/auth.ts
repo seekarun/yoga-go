@@ -1,4 +1,4 @@
-import { auth0 } from './auth0';
+import { auth } from '@/auth';
 import { connectToDatabase } from './mongodb';
 import User from '@/models/User';
 import CourseModel from '@/models/Course';
@@ -6,11 +6,11 @@ import type { User as UserType, MembershipType, UserRole } from '@/types';
 import { nanoid } from 'nanoid';
 
 /**
- * Get the current session from Auth0
+ * Get the current session from NextAuth
  */
 export async function getSession() {
   try {
-    const session = await auth0.getSession();
+    const session = await auth();
     return session;
   } catch (error) {
     console.error('[DBG][auth] Error getting session:', error);
@@ -19,13 +19,13 @@ export async function getSession() {
 }
 
 /**
- * Get or create user in MongoDB from Auth0 profile
- * This is called after Auth0 authentication to sync user data
+ * Get or create user in MongoDB from Cognito profile
+ * This is called after Cognito authentication to sync user data
  *
  * @param role - Optional role to assign to new users. Defaults to 'learner'
  */
 export async function getOrCreateUser(
-  auth0User: {
+  cognitoUser: {
     sub: string;
     email: string;
     name?: string;
@@ -33,33 +33,38 @@ export async function getOrCreateUser(
   },
   role?: UserRole
 ): Promise<UserType> {
-  console.log('[DBG][auth] Getting or creating user for auth0Id:', auth0User.sub, 'role:', role);
-  console.log('[DBG][auth] Auth0 user data:', {
-    sub: auth0User.sub,
-    email: auth0User.email,
-    name: auth0User.name,
-    nameProvided: !!auth0User.name,
-    picture: auth0User.picture,
+  console.log(
+    '[DBG][auth] Getting or creating user for cognitoSub:',
+    cognitoUser.sub,
+    'role:',
+    role
+  );
+  console.log('[DBG][auth] Cognito user data:', {
+    sub: cognitoUser.sub,
+    email: cognitoUser.email,
+    name: cognitoUser.name,
+    nameProvided: !!cognitoUser.name,
+    picture: cognitoUser.picture,
   });
 
   await connectToDatabase();
 
-  // Try to find existing user by auth0Id
-  let userDoc = await User.findOne({ auth0Id: auth0User.sub });
+  // Try to find existing user by cognitoSub
+  let userDoc = await User.findOne({ cognitoSub: cognitoUser.sub });
 
   if (userDoc) {
     console.log('[DBG][auth] Found existing user:', userDoc._id, 'role:', userDoc.role);
 
-    // Update profile if email or name changed in Auth0
+    // Update profile if email or name changed in Cognito
     if (
-      userDoc.profile.email !== auth0User.email ||
-      userDoc.profile.name !== (auth0User.name || auth0User.email)
+      userDoc.profile.email !== cognitoUser.email ||
+      userDoc.profile.name !== (cognitoUser.name || cognitoUser.email)
     ) {
-      const newName = auth0User.name || auth0User.email;
-      userDoc.profile.email = auth0User.email;
+      const newName = cognitoUser.name || cognitoUser.email;
+      userDoc.profile.email = cognitoUser.email;
       userDoc.profile.name = newName;
-      if (auth0User.picture) {
-        userDoc.profile.avatar = auth0User.picture;
+      if (cognitoUser.picture) {
+        userDoc.profile.avatar = cognitoUser.picture;
       }
       await userDoc.save();
       console.log('[DBG][auth] Updated user profile with name:', newName);
@@ -70,18 +75,18 @@ export async function getOrCreateUser(
     // Create new user with default values
     const userId = nanoid(16);
     const now = new Date().toISOString();
-    const userName = auth0User.name || auth0User.email;
+    const userName = cognitoUser.name || cognitoUser.email;
 
     console.log('[DBG][auth] Creating user with name:', userName);
 
     userDoc = await User.create({
       _id: userId,
-      auth0Id: auth0User.sub,
+      cognitoSub: cognitoUser.sub,
       role: role || ('learner' as UserRole),
       profile: {
         name: userName,
-        email: auth0User.email,
-        avatar: auth0User.picture || undefined,
+        email: cognitoUser.email,
+        avatar: cognitoUser.picture || undefined,
         joinedAt: now,
       },
       membership: {
@@ -192,14 +197,14 @@ export async function getUserById(userId: string): Promise<UserType | null> {
 }
 
 /**
- * Get user by Auth0 ID from MongoDB
+ * Get user by Cognito Sub from MongoDB
  */
-export async function getUserByAuth0Id(auth0Id: string): Promise<UserType | null> {
-  console.log('[DBG][auth] Getting user by auth0Id:', auth0Id);
+export async function getUserByCognitoSub(cognitoSub: string): Promise<UserType | null> {
+  console.log('[DBG][auth] Getting user by cognitoSub:', cognitoSub);
 
   await connectToDatabase();
 
-  const userDoc = await User.findOne({ auth0Id });
+  const userDoc = await User.findOne({ cognitoSub });
 
   if (!userDoc) {
     console.log('[DBG][auth] User not found');
@@ -243,7 +248,7 @@ export async function getUserByAuth0Id(auth0Id: string): Promise<UserType | null
 export async function requireAuth() {
   const session = await getSession();
 
-  if (!session || !session.user) {
+  if (!session || !session.user || !session.user.cognitoSub) {
     throw new Error('Unauthorized');
   }
 
@@ -254,14 +259,22 @@ export async function requireAuth() {
  * Require expert authentication - throws error if not authenticated as expert
  * Use this in API routes to protect expert-only routes
  */
-export async function requireExpertAuth(): Promise<{ session: any; user: UserType }> {
+export async function requireExpertAuth(): Promise<{
+  session: Awaited<ReturnType<typeof getSession>>;
+  user: UserType;
+}> {
   const session = await getSession();
 
-  if (!session || !session.user) {
+  if (!session || !session.user || !session.user.cognitoSub) {
     throw new Error('Unauthorized');
   }
 
-  const user = await getUserByAuth0Id(session.user.sub);
+  const cognitoSub = session.user.cognitoSub;
+  if (!cognitoSub) {
+    throw new Error('Invalid session - missing cognitoSub');
+  }
+
+  const user = await getUserByCognitoSub(cognitoSub);
 
   if (!user) {
     throw new Error('User not found');
@@ -286,11 +299,16 @@ export async function requireExpertOwnership(expertId: string): Promise<UserType
 
   const session = await getSession();
 
-  if (!session || !session.user) {
+  if (!session || !session.user || !session.user.cognitoSub) {
     throw new Error('Unauthorized');
   }
 
-  const user = await getUserByAuth0Id(session.user.sub);
+  const cognitoSub = session.user.cognitoSub;
+  if (!cognitoSub) {
+    throw new Error('Invalid session - missing cognitoSub');
+  }
+
+  const user = await getUserByCognitoSub(cognitoSub);
 
   if (!user) {
     throw new Error('User not found');
@@ -323,11 +341,16 @@ export async function requireCourseOwnership(courseId: string): Promise<UserType
 
   const session = await getSession();
 
-  if (!session || !session.user) {
+  if (!session || !session.user || !session.user.cognitoSub) {
     throw new Error('Unauthorized');
   }
 
-  const user = await getUserByAuth0Id(session.user.sub);
+  const cognitoSub = session.user.cognitoSub;
+  if (!cognitoSub) {
+    throw new Error('Invalid session - missing cognitoSub');
+  }
+
+  const user = await getUserByCognitoSub(cognitoSub);
 
   if (!user) {
     throw new Error('User not found');
@@ -364,14 +387,22 @@ export async function requireCourseOwnership(courseId: string): Promise<UserType
  * Require admin authentication - throws error if not authenticated as admin
  * Use this in API routes to protect admin-only routes
  */
-export async function requireAdminAuth(): Promise<{ session: any; user: UserType }> {
+export async function requireAdminAuth(): Promise<{
+  session: Awaited<ReturnType<typeof getSession>>;
+  user: UserType;
+}> {
   const session = await getSession();
 
-  if (!session || !session.user) {
+  if (!session || !session.user || !session.user.cognitoSub) {
     throw new Error('Unauthorized');
   }
 
-  const user = await getUserByAuth0Id(session.user.sub);
+  const cognitoSub = session.user.cognitoSub;
+  if (!cognitoSub) {
+    throw new Error('Invalid session - missing cognitoSub');
+  }
+
+  const user = await getUserByCognitoSub(cognitoSub);
 
   if (!user) {
     throw new Error('User not found');
@@ -383,3 +414,9 @@ export async function requireAdminAuth(): Promise<{ session: any; user: UserType
 
   return { session, user };
 }
+
+/**
+ * @deprecated Use getUserByCognitoSub instead
+ * Backward compatible alias for getUserByCognitoSub
+ */
+export const getUserByAuth0Id = getUserByCognitoSub;

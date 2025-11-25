@@ -9,13 +9,13 @@ export async function PATCH(request: NextRequest) {
 
     // Check authentication
     const session = await getSession();
-    if (!session?.user?.sub) {
+    if (!session?.user?.cognitoSub) {
       console.log('[DBG][api/user/preferences] Unauthorized - no session');
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const auth0Id = session.user.sub;
-    console.log('[DBG][api/user/preferences] Auth0 ID:', auth0Id);
+    const cognitoSub = session.user.cognitoSub;
+    console.log('[DBG][api/user/preferences] Cognito Sub:', cognitoSub);
 
     // Parse request body
     const body = await request.json();
@@ -33,7 +33,7 @@ export async function PATCH(request: NextRequest) {
 
     // Update user preferences
     const user = await User.findOneAndUpdate(
-      { auth0Id },
+      { cognitoSub },
       { 'preferences.autoPlayEnabled': autoPlayEnabled },
       { new: true }
     );
@@ -60,22 +60,22 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     console.log('[DBG][api/user/preferences] GET request received');
 
     // Check authentication
     const session = await getSession();
-    if (!session?.user?.sub) {
+    if (!session?.user?.cognitoSub) {
       console.log('[DBG][api/user/preferences] Unauthorized - no session');
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const auth0Id = session.user.sub;
-    console.log('[DBG][api/user/preferences] Auth0 ID:', auth0Id);
+    const cognitoSub = session.user.cognitoSub;
+    console.log('[DBG][api/user/preferences] Cognito Sub:', cognitoSub);
 
     // Get user preferences
-    const user = await User.findOne({ auth0Id }).select('preferences');
+    const user = await User.findOne({ cognitoSub }).select('preferences');
 
     if (!user) {
       console.log('[DBG][api/user/preferences] User not found');

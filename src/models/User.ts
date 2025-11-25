@@ -15,7 +15,7 @@ import type {
 
 export interface UserDocument extends Omit<User, 'id'> {
   _id: string;
-  auth0Id: string; // Link to Auth0 user
+  cognitoSub: string; // Link to Cognito user (sub claim)
 }
 
 const UserProfileSchema = new Schema<UserProfile>(
@@ -187,7 +187,7 @@ const UserSocialSchema = new Schema<UserSocial>(
 const UserSchema = new Schema<UserDocument>(
   {
     _id: { type: String, required: true },
-    auth0Id: { type: String, required: true, unique: true, index: true },
+    cognitoSub: { type: String, required: true, unique: true, index: true },
     role: {
       type: String,
       enum: ['learner', 'expert', 'admin'],

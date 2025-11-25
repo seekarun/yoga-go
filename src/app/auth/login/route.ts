@@ -1,25 +1,27 @@
 /**
- * Custom Auth0 Login Handler
+ * Custom Cognito Login Handler
  *
  * Supports two flows:
  * 1. New flow: auth_token parameter (from expert signup page)
  * 2. Legacy flow: role + code parameters (backward compatibility)
  *
- * Stores the intended role in MongoDB temporarily and redirects to Auth0 SDK's login.
+ * Stores the intended role in MongoDB temporarily and redirects to Cognito via NextAuth.
  */
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import { PendingAuth } from '@/models/PendingAuth';
+import { signIn } from '@/auth';
 
 export async function GET(request: NextRequest) {
-  console.log('[DBG][auth/login] Auth0 login handler');
+  console.log('[DBG][auth/login] Cognito login handler');
 
   try {
     // Get the current hostname
     const hostname = request.headers.get('host') || 'localhost:3111';
     const protocol = hostname.includes('localhost') ? 'http' : 'https';
+    const baseUrl = `${protocol}://${hostname}`;
 
     console.log('[DBG][auth/login] Hostname:', hostname);
 
@@ -28,6 +30,7 @@ export async function GET(request: NextRequest) {
     const authTokenParam = searchParams.get('auth_token');
     const roleParam = searchParams.get('role');
     const codeParam = searchParams.get('code');
+    const callbackUrl = searchParams.get('callbackUrl');
 
     let authToken: string;
 
@@ -40,13 +43,13 @@ export async function GET(request: NextRequest) {
 
       if (!pendingAuth) {
         console.log('[DBG][auth/login] No pending auth found for token:', authTokenParam);
-        return NextResponse.redirect(new URL('/invite-invalid', `${protocol}://${hostname}`));
+        return NextResponse.redirect(new URL('/invite-invalid', baseUrl));
       }
 
       if (pendingAuth.expiresAt < new Date()) {
         console.log('[DBG][auth/login] Pending auth expired for token:', authTokenParam);
         await PendingAuth.findByIdAndDelete(authTokenParam);
-        return NextResponse.redirect(new URL('/invite-invalid', `${protocol}://${hostname}`));
+        return NextResponse.redirect(new URL('/invite-invalid', baseUrl));
       }
 
       authToken = authTokenParam;
@@ -64,12 +67,12 @@ export async function GET(request: NextRequest) {
 
         if (!expectedCode) {
           console.error('[DBG][auth/login] EXPERT_SIGNUP_CODE not configured in environment!');
-          return NextResponse.redirect(new URL('/invite-invalid', `${protocol}://${hostname}`));
+          return NextResponse.redirect(new URL('/invite-invalid', baseUrl));
         }
 
         if (codeParam !== expectedCode) {
           console.log('[DBG][auth/login] Invalid expert signup code provided');
-          return NextResponse.redirect(new URL('/invite-invalid', `${protocol}://${hostname}`));
+          return NextResponse.redirect(new URL('/invite-invalid', baseUrl));
         }
 
         console.log('[DBG][auth/login] Expert signup code validated successfully');
@@ -89,18 +92,16 @@ export async function GET(request: NextRequest) {
       console.log('[DBG][auth/login] Created pending auth:', authToken, 'role:', role);
     }
 
-    // Construct returnTo URL with the auth token
-    const returnToUrl = `/app?auth_token=${authToken}`;
+    // Construct redirect URL to go through /auth/callback for proper user creation
+    // The callback route will process the auth_token and create the user with the correct role
+    const finalDestination = callbackUrl || '/app';
+    const redirectUrl = `/auth/callback?auth_token=${authToken}&redirectTo=${encodeURIComponent(finalDestination)}`;
 
-    console.log('[DBG][auth/login] Redirecting to Auth0');
-    console.log('[DBG][auth/login] ReturnTo:', returnToUrl);
+    console.log('[DBG][auth/login] Redirecting to Cognito via NextAuth');
+    console.log('[DBG][auth/login] Redirect URL after auth:', redirectUrl);
 
-    // Add returnTo to the request URL for Auth0 SDK
-    request.nextUrl.searchParams.set('returnTo', returnToUrl);
-
-    // Let Auth0 SDK handle the login flow
-    const { auth0 } = await import('@/lib/auth0');
-    return await auth0.middleware(request);
+    // Use NextAuth's signIn to redirect to Cognito
+    return signIn('cognito', { redirectTo: redirectUrl });
   } catch (error) {
     console.error('[DBG][auth/login] Error:', error);
     throw error;

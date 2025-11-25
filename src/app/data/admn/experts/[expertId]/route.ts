@@ -83,7 +83,7 @@ export async function GET(
         // User account data
         user: {
           id: user._id,
-          auth0Id: user.auth0Id,
+          cognitoSub: user.cognitoSub,
           profile: user.profile,
           membership: user.membership,
           statistics: user.statistics,

@@ -15,7 +15,7 @@ export async function PUT(
   try {
     // Check authentication
     const session = await getSession();
-    if (!session || !session.user) {
+    if (!session || !session.user || !session.user.cognitoSub) {
       const response: ApiResponse<null> = {
         success: false,
         error: 'Not authenticated',
@@ -24,7 +24,7 @@ export async function PUT(
     }
 
     // Get user from MongoDB
-    const user = await getUserByAuth0Id(session.user.sub);
+    const user = await getUserByAuth0Id(session.user.cognitoSub);
     if (!user) {
       const response: ApiResponse<null> = {
         success: false,
@@ -121,7 +121,7 @@ export async function DELETE(
   try {
     // Check authentication
     const session = await getSession();
-    if (!session || !session.user) {
+    if (!session || !session.user || !session.user.cognitoSub) {
       const response: ApiResponse<null> = {
         success: false,
         error: 'Not authenticated',
@@ -130,7 +130,7 @@ export async function DELETE(
     }
 
     // Get user from MongoDB
-    const user = await getUserByAuth0Id(session.user.sub);
+    const user = await getUserByAuth0Id(session.user.cognitoSub);
     if (!user) {
       const response: ApiResponse<null> = {
         success: false,

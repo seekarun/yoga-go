@@ -18,7 +18,7 @@ export async function POST(
 
     // Get user session (if authenticated)
     const session = await getSession();
-    const userId = session?.user?.sub;
+    const userId = session?.user?.cognitoSub;
 
     // Parse request body
     const body = await request.json();

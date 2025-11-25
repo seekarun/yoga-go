@@ -1,7 +1,8 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { useSession, signIn as nextAuthSignIn, signOut as nextAuthSignOut } from 'next-auth/react';
 import type { User } from '@/types';
 
 interface AuthContextType {
@@ -16,11 +17,22 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { data: session, status } = useSession();
   const [user, setUser] = useState<User | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchUserDetails = async () => {
+  const fetchUserDetails = useCallback(async () => {
+    if (status === 'loading') {
+      return;
+    }
+
+    if (!session) {
+      console.log('[DBG][AuthContext] No session, setting user to null');
+      setUser(null);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       console.log('[DBG][AuthContext] Fetching user details from /api/auth/me');
       const response = await fetch('/api/auth/me');
@@ -29,32 +41,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (response.ok && data.success && data.data) {
         console.log('[DBG][AuthContext] User authenticated:', data.data.id);
         setUser(data.data);
-        setIsAuthenticated(true);
       } else {
         console.log('[DBG][AuthContext] User not authenticated:', data.error);
         setUser(null);
-        setIsAuthenticated(false);
       }
     } catch (error) {
       console.error('[DBG][AuthContext] Error fetching user details:', error);
       setUser(null);
-      setIsAuthenticated(false);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [session, status]);
 
   const login = (returnTo?: string) => {
-    console.log('[DBG][AuthContext] Redirecting to Auth0 login');
+    console.log('[DBG][AuthContext] Redirecting to Cognito login');
     const returnPath = returnTo || '/app';
-    window.location.href = `/auth/login?returnTo=${encodeURIComponent(returnPath)}`;
+    // Use custom login handler which handles PendingAuth
+    window.location.href = `/auth/login?callbackUrl=${encodeURIComponent(returnPath)}`;
   };
 
   const logout = async (returnTo?: string) => {
     console.log('[DBG][AuthContext] Logging out', returnTo ? `with returnTo: ${returnTo}` : '');
     setUser(null);
-    setIsAuthenticated(false);
-    // Redirect to Auth0 logout endpoint with optional returnTo
+    // Use custom logout handler which clears both NextAuth and Cognito sessions
     const logoutUrl = returnTo
       ? `/auth/logout?returnTo=${encodeURIComponent(returnTo)}`
       : '/auth/logout';
@@ -67,14 +76,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    console.log('[DBG][AuthContext] Checking authentication status');
-    fetchUserDetails();
-  }, []);
+    console.log('[DBG][AuthContext] Session status:', status);
+    if (status !== 'loading') {
+      fetchUserDetails();
+    }
+  }, [status, fetchUserDetails]);
 
   const value = {
     user,
-    isAuthenticated,
-    isLoading,
+    isAuthenticated: !!session,
+    isLoading: status === 'loading' || isLoading,
     login,
     logout,
     refreshUser,

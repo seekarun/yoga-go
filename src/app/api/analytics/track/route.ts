@@ -63,7 +63,7 @@ export async function POST(request: Request) {
 
     // Get user ID if authenticated (optional)
     const session = await getSession();
-    const userId = session?.user?.sub;
+    const userId = session?.user?.cognitoSub;
 
     // Validate session tracking - either userId or sessionId must be provided
     if (!userId && !sessionId) {

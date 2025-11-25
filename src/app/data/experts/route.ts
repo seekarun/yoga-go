@@ -87,7 +87,7 @@ export async function POST(request: Request) {
   try {
     // Check authentication
     const session = await getSession();
-    if (!session || !session.user) {
+    if (!session || !session.user || !session.user.cognitoSub) {
       console.log('[DBG][experts/route.ts] Unauthorized - no session');
       return NextResponse.json({ success: false, error: 'Unauthorized' } as ApiResponse<Expert>, {
         status: 401,
@@ -112,7 +112,7 @@ export async function POST(request: Request) {
     await connectToDatabase();
 
     // Get user to link expert profile
-    const userDoc = await UserModel.findOne({ auth0Id: session.user.sub }).exec();
+    const userDoc = await UserModel.findOne({ cognitoSub: session.user.cognitoSub }).exec();
 
     if (!userDoc) {
       console.log('[DBG][experts/route.ts] User not found');

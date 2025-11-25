@@ -40,7 +40,7 @@ export async function GET(
       success: true,
       data: {
         id: user._id,
-        auth0Id: user.auth0Id,
+        cognitoSub: user.cognitoSub,
         role: user.role,
         profile: user.profile,
         membership: user.membership,

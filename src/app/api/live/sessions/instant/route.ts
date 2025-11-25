@@ -15,14 +15,14 @@ export async function POST(request: Request) {
   try {
     // Authenticate
     const session = await getSession();
-    if (!session || !session.user) {
+    if (!session || !session.user || !session.user.cognitoSub) {
       return NextResponse.json(
         { success: false, error: 'Not authenticated' } as ApiResponse<null>,
         { status: 401 }
       );
     }
 
-    const user = await getUserByAuth0Id(session.user.sub);
+    const user = await getUserByAuth0Id(session.user.cognitoSub);
     if (!user) {
       return NextResponse.json({ success: false, error: 'User not found' } as ApiResponse<null>, {
         status: 404,

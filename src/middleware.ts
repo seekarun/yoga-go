@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth0 } from './lib/auth0';
+import { auth } from './auth';
 import {
   getExpertIdFromHostname,
   isPrimaryDomain,
@@ -11,9 +11,8 @@ import {
  * Middleware for authentication and domain-based routing
  * This middleware:
  * 1. Handles domain-based routing for expert-specific domains (e.g., kavithayoga.com)
- * 2. Automatically handles Auth0 routes (/auth/login, /auth/callback, /auth/logout)
- * 3. Manages session cookies and rolling sessions
- * 4. Redirects unauthenticated users to login for protected routes
+ * 2. Uses NextAuth for session management
+ * 3. Redirects unauthenticated users to login for protected routes
  *
  * Domain routing:
  * - myyoga.guru / localhost -> serves all routes (full platform)
@@ -25,9 +24,11 @@ import {
  * - /srv/* - Expert portal (only experts can access - checked in pages)
  * - /data/app/* - API routes for authenticated users
  */
-export async function middleware(request: NextRequest) {
+export default auth(async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hostname = request.headers.get('host') || '';
+  // @ts-expect-error - auth adds this property
+  const session = request.auth;
 
   console.log('[DBG][middleware] Request to:', pathname, 'from:', hostname);
 
@@ -52,23 +53,32 @@ export async function middleware(request: NextRequest) {
     'Is primary:',
     isPrimary,
     'MyYoga.Guru subdomain:',
-    myYogaGuruSubdomain
+    myYogaGuruSubdomain,
+    'Session:',
+    session ? 'exists' : 'null'
   );
 
   // Handle expert domain routing (domain isolation for dedicated expert sites)
   if (isExpertDomain && expertId) {
-    // Allow Next.js internals and API routes
-    if (
-      pathname.startsWith('/_next') ||
-      pathname.startsWith('/api') ||
-      pathname.startsWith('/data')
-    ) {
-      return await auth0.middleware(request);
+    // Allow Next.js internals
+    if (pathname.startsWith('/_next')) {
+      return NextResponse.next();
     }
 
-    // Allow Auth0 routes to pass through to custom route handlers
+    // Allow API routes but check auth for protected ones
+    if (pathname.startsWith('/api') || pathname.startsWith('/data')) {
+      // Protected API routes require authentication
+      if (pathname.startsWith('/data/app/')) {
+        if (!session) {
+          return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+      }
+      return NextResponse.next();
+    }
+
+    // Allow Auth routes to pass through to custom route handlers
     if (pathname.startsWith('/auth')) {
-      console.log('[DBG][middleware] Auth0 route detected on expert domain, bypassing');
+      console.log('[DBG][middleware] Auth route detected on expert domain, bypassing');
       return NextResponse.next();
     }
 
@@ -99,14 +109,20 @@ export async function middleware(request: NextRequest) {
       return NextResponse.next();
     }
 
-    // Protected routes: Allow but let Auth0 handle authentication
+    // Protected routes: Check authentication
     if (
       pathname.startsWith('/app/') ||
       pathname.startsWith('/srv/') ||
       pathname.startsWith('/data/app/')
     ) {
+      if (!session) {
+        console.log('[DBG][middleware] No session, redirecting to login');
+        const loginUrl = new URL('/auth/login', request.url);
+        loginUrl.searchParams.set('callbackUrl', pathname);
+        return NextResponse.redirect(loginUrl);
+      }
       console.log('[DBG][middleware] Allowing access to protected route');
-      return await auth0.middleware(request);
+      return NextResponse.next();
     }
 
     // All other routes: Block access (redirect to expert page)
@@ -119,17 +135,30 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Primary domain (myyoga.guru, localhost): Allow all routes, use standard Auth0
-  // Auth0 middleware will protect /app/* and /srv/* routes automatically
+  // Primary domain (myyoga.guru, localhost): Allow all routes
 
-  // Allow Auth0 routes to pass through to custom route handlers
+  // Allow Auth routes to pass through to custom route handlers
   if (pathname.startsWith('/auth')) {
-    console.log('[DBG][middleware] Auth0 route on primary domain, bypassing to custom handler');
+    console.log('[DBG][middleware] Auth route on primary domain, bypassing to custom handler');
     return NextResponse.next();
   }
 
-  return await auth0.middleware(request);
-}
+  // Protected routes: Check authentication
+  if (
+    pathname.startsWith('/app/') ||
+    pathname.startsWith('/srv/') ||
+    pathname.startsWith('/data/app/')
+  ) {
+    if (!session) {
+      console.log('[DBG][middleware] No session, redirecting to login');
+      const loginUrl = new URL('/auth/login', request.url);
+      loginUrl.searchParams.set('callbackUrl', pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+  }
+
+  return NextResponse.next();
+});
 
 export const config = {
   matcher: [

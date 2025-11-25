@@ -14,7 +14,7 @@ export async function POST() {
     // Get Auth0 session
     const session = await getSession();
 
-    if (!session || !session.user) {
+    if (!session || !session.user || !session.user.cognitoSub) {
       console.log('[DBG][api/user/become-expert] No session found');
       const response: ApiResponse<null> = {
         success: false,
@@ -23,10 +23,13 @@ export async function POST() {
       return NextResponse.json(response, { status: 401 });
     }
 
-    console.log('[DBG][api/user/become-expert] Session found for auth0Id:', session.user.sub);
+    console.log(
+      '[DBG][api/user/become-expert] Session found for cognitoSub:',
+      session.user.cognitoSub
+    );
 
     // Get user from MongoDB
-    const user = await getUserByAuth0Id(session.user.sub);
+    const user = await getUserByAuth0Id(session.user.cognitoSub);
 
     if (!user) {
       console.log('[DBG][api/user/become-expert] User not found in MongoDB');

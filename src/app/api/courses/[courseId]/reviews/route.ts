@@ -22,7 +22,7 @@ export async function POST(
   try {
     // Check authentication
     const session = await getSession();
-    if (!session || !session.user) {
+    if (!session || !session.user || !session.user.cognitoSub) {
       console.log('[DBG][review-api] Unauthorized - no session');
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: 'Authentication required' },
@@ -30,7 +30,7 @@ export async function POST(
       );
     }
 
-    const auth0Id = session.user.sub;
+    const cognitoSub = session.user.cognitoSub;
     await connectToDatabase();
 
     // Get user from database

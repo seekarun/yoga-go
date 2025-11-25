@@ -13,7 +13,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
   try {
     // Check authentication
     const session = await getSession();
-    if (!session || !session.user) {
+    if (!session || !session.user || !session.user.cognitoSub) {
       const response: ApiResponse<null> = {
         success: false,
         error: 'Not authenticated',
@@ -22,7 +22,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
     }
 
     // Get user from MongoDB
-    const user = await getUserByAuth0Id(session.user.sub);
+    const user = await getUserByAuth0Id(session.user.cognitoSub);
     if (!user) {
       const response: ApiResponse<null> = {
         success: false,

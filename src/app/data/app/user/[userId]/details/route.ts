@@ -11,7 +11,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ user
   try {
     // Verify authentication
     const session = await getSession();
-    if (!session || !session.user) {
+    if (!session || !session.user || !session.user.cognitoSub) {
       console.log('[DBG][app/user/details] No session found');
       const response: ApiResponse<null> = {
         success: false,
@@ -33,7 +33,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ user
     }
 
     // Verify user can only access their own data
-    // Note: In the session, we might have mongoUserId or need to look up by auth0Id
+    // Note: In the session, we might have mongoUserId or need to look up by cognitoSub
     // For now, we'll allow access if authenticated (consider adding authorization check)
 
     console.log('[DBG][app/user/details] User found:', user.id);

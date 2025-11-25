@@ -6,6 +6,7 @@ import * as autoscaling from 'aws-cdk-lib/aws-autoscaling';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
+import * as cognito from 'aws-cdk-lib/aws-cognito';
 import type { Construct } from 'constructs';
 
 export class YogaGoStack extends cdk.Stack {
@@ -78,23 +79,98 @@ export class YogaGoStack extends cdk.Stack {
     );
 
     // ========================================
-    // Secrets Manager Secret (for environment variables)
+    // Cognito User Pool
     // ========================================
-    const appSecret = new secretsmanager.Secret(this, 'AppSecret', {
-      secretName: 'yoga-go/production',
-      description: 'Environment variables for Yoga Go application',
-      generateSecretString: {
-        secretStringTemplate: JSON.stringify({
-          MONGODB_URI: 'PLACEHOLDER',
-          AUTH0_SECRET: 'PLACEHOLDER',
-          AUTH0_BASE_URL: 'PLACEHOLDER',
-          AUTH0_ISSUER_BASE_URL: 'PLACEHOLDER',
-          AUTH0_CLIENT_ID: 'PLACEHOLDER',
-          AUTH0_CLIENT_SECRET: 'PLACEHOLDER',
-        }),
-        generateStringKey: 'dummy',
+    const userPool = new cognito.UserPool(this, 'YogaGoUserPool', {
+      userPoolName: 'yoga-go-users',
+      selfSignUpEnabled: true,
+      signInAliases: {
+        email: true,
+      },
+      autoVerify: {
+        email: true,
+      },
+      standardAttributes: {
+        email: {
+          required: true,
+          mutable: true,
+        },
+        fullname: {
+          required: false,
+          mutable: true,
+        },
+      },
+      passwordPolicy: {
+        minLength: 8,
+        requireLowercase: true,
+        requireUppercase: true,
+        requireDigits: true,
+        requireSymbols: false,
+      },
+      accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
+      mfa: cognito.Mfa.OPTIONAL,
+      mfaSecondFactor: {
+        sms: false,
+        otp: true, // TOTP authenticator apps
+      },
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
+    // ========================================
+    // Cognito User Pool Domain (Hosted UI)
+    // ========================================
+    const userPoolDomain = userPool.addDomain('YogaGoDomain', {
+      cognitoDomain: {
+        domainPrefix: 'yoga-go-auth',
       },
     });
+
+    // ========================================
+    // Cognito App Client (Email/Password only)
+    // ========================================
+    // Note: Social providers (Google, Facebook) can be added later by:
+    // 1. Creating OAuth credentials in respective developer consoles
+    // 2. Adding UserPoolIdentityProviderGoogle/Facebook resources
+    // 3. Updating supportedIdentityProviders to include them
+    const appClient = userPool.addClient('YogaGoWebClient', {
+      userPoolClientName: 'yoga-go-web',
+      generateSecret: true,
+      authFlows: {
+        userPassword: true,
+        userSrp: true,
+      },
+      oAuth: {
+        flows: {
+          authorizationCodeGrant: true,
+        },
+        scopes: [cognito.OAuthScope.EMAIL, cognito.OAuthScope.OPENID, cognito.OAuthScope.PROFILE],
+        callbackUrls: [
+          'http://localhost:3111/api/auth/callback/cognito',
+          'https://myyoga.guru/api/auth/callback/cognito',
+          'https://www.myyoga.guru/api/auth/callback/cognito',
+        ],
+        logoutUrls: ['http://localhost:3111', 'https://myyoga.guru', 'https://www.myyoga.guru'],
+      },
+      supportedIdentityProviders: [
+        cognito.UserPoolClientIdentityProvider.COGNITO, // Email/password only
+      ],
+      preventUserExistenceErrors: true,
+    });
+
+    // ========================================
+    // Secrets Manager Secret (for environment variables)
+    // ========================================
+    // Import existing secret - CDK will NOT overwrite its values
+    // Create the secret manually in AWS Console with these keys:
+    // - MONGODB_URI
+    // - NEXTAUTH_SECRET
+    // - EXPERT_SIGNUP_CODE
+    // - COGNITO_CLIENT_SECRET (optional, for Cognito)
+    const appSecret = secretsmanager.Secret.fromSecretNameV2(
+      this,
+      'AppSecret',
+      'yoga-go/production'
+    );
 
     // ========================================
     // CloudWatch Log Group
@@ -205,16 +281,18 @@ export class YogaGoStack extends cdk.Stack {
       environment: {
         NODE_ENV: 'production',
         PORT: '3000',
+        // Cognito environment variables (non-secret)
+        COGNITO_USER_POOL_ID: userPool.userPoolId,
+        COGNITO_CLIENT_ID: appClient.userPoolClientId,
+        COGNITO_ISSUER: `https://cognito-idp.${this.region}.amazonaws.com/${userPool.userPoolId}`,
+        NEXTAUTH_URL: 'https://myyoga.guru',
       },
       secrets: {
-        // Load all secrets from Secrets Manager
-        // Note: You'll need to update the secret with actual values after deployment
+        // Load secrets from Secrets Manager
         MONGODB_URI: ecs.Secret.fromSecretsManager(appSecret, 'MONGODB_URI'),
-        AUTH0_SECRET: ecs.Secret.fromSecretsManager(appSecret, 'AUTH0_SECRET'),
-        AUTH0_BASE_URL: ecs.Secret.fromSecretsManager(appSecret, 'AUTH0_BASE_URL'),
-        AUTH0_ISSUER_BASE_URL: ecs.Secret.fromSecretsManager(appSecret, 'AUTH0_ISSUER_BASE_URL'),
-        AUTH0_CLIENT_ID: ecs.Secret.fromSecretsManager(appSecret, 'AUTH0_CLIENT_ID'),
-        AUTH0_CLIENT_SECRET: ecs.Secret.fromSecretsManager(appSecret, 'AUTH0_CLIENT_SECRET'),
+        NEXTAUTH_SECRET: ecs.Secret.fromSecretsManager(appSecret, 'NEXTAUTH_SECRET'),
+        EXPERT_SIGNUP_CODE: ecs.Secret.fromSecretsManager(appSecret, 'EXPERT_SIGNUP_CODE'),
+        // Note: Cognito client secret is retrieved at runtime from Cognito
       },
       healthCheck: {
         command: [
@@ -304,6 +382,33 @@ export class YogaGoStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'GetPublicIpCommand', {
       value: `aws ec2 describe-instances --filters "Name=tag:aws:autoscaling:groupName,Values=${autoScalingGroup.autoScalingGroupName}" --query "Reservations[*].Instances[*].PublicIpAddress" --output text`,
       description: 'Command to get EC2 instance public IP',
+    });
+
+    // ========================================
+    // Cognito Outputs
+    // ========================================
+    new cdk.CfnOutput(this, 'UserPoolId', {
+      value: userPool.userPoolId,
+      description: 'Cognito User Pool ID',
+      exportName: 'YogaGoUserPoolId',
+    });
+
+    new cdk.CfnOutput(this, 'UserPoolClientId', {
+      value: appClient.userPoolClientId,
+      description: 'Cognito App Client ID',
+      exportName: 'YogaGoUserPoolClientId',
+    });
+
+    new cdk.CfnOutput(this, 'CognitoDomain', {
+      value: `${userPoolDomain.domainName}.auth.${this.region}.amazoncognito.com`,
+      description: 'Cognito Hosted UI Domain',
+      exportName: 'YogaGoCognitoDomain',
+    });
+
+    new cdk.CfnOutput(this, 'CognitoIssuer', {
+      value: `https://cognito-idp.${this.region}.amazonaws.com/${userPool.userPoolId}`,
+      description: 'Cognito Issuer URL (for OIDC)',
+      exportName: 'YogaGoCognitoIssuer',
     });
   }
 }

@@ -10,7 +10,7 @@ export async function PUT(request: Request) {
   try {
     // Get authenticated user
     const session = await getSession();
-    if (!session?.user?.sub) {
+    if (!session?.user?.cognitoSub) {
       return NextResponse.json(
         {
           success: false,
@@ -20,7 +20,7 @@ export async function PUT(request: Request) {
       );
     }
 
-    const userId = session.user.sub;
+    const userId = session.user.cognitoSub;
     console.log('[DBG][landing-page/route.ts] User ID:', userId);
 
     await connectToDatabase();
