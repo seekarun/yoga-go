@@ -1,8 +1,8 @@
 /**
  * Custom Logout Handler
  *
- * Signs out from NextAuth and redirects to home.
- * Cognito session cookies will expire naturally.
+ * Signs out from both NextAuth and Cognito.
+ * Redirects to Cognito logout endpoint to fully clear the session.
  */
 
 import type { NextRequest } from 'next/server';
@@ -40,8 +40,28 @@ export async function GET(request: NextRequest) {
       console.log('[DBG][auth/logout] No active session to sign out from');
     }
 
-    // Redirect to home (or returnTo URL)
-    return NextResponse.redirect(returnTo);
+    // Build Cognito logout URL to fully clear the Cognito session
+    const cognitoDomain = process.env.COGNITO_DOMAIN || 'yoga-go-auth';
+    const cognitoRegion = process.env.AWS_REGION || 'ap-southeast-2';
+    const cognitoClientId = process.env.COGNITO_CLIENT_ID;
+
+    // For localhost, redirect directly home (Cognito doesn't allow localhost logout_uri)
+    if (hostname.includes('localhost') || !cognitoClientId) {
+      console.log('[DBG][auth/logout] Local/no-cognito mode, redirecting to:', returnTo);
+      return NextResponse.redirect(returnTo);
+    }
+
+    // Cognito logout endpoint - clears Cognito session cookies
+    // logout_uri must be registered in Cognito app client's logout URLs
+    const cognitoLogoutUrl = new URL(
+      `https://${cognitoDomain}.auth.${cognitoRegion}.amazoncognito.com/logout`
+    );
+    cognitoLogoutUrl.searchParams.set('client_id', cognitoClientId);
+    cognitoLogoutUrl.searchParams.set('logout_uri', returnTo);
+
+    console.log('[DBG][auth/logout] Redirecting to Cognito logout:', cognitoLogoutUrl.toString());
+
+    return NextResponse.redirect(cognitoLogoutUrl.toString());
   } catch (error) {
     console.error('[DBG][auth/logout] Error:', error);
     throw error;

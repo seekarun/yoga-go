@@ -7,6 +7,8 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
+import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import type { Construct } from 'constructs';
 
 export class YogaGoStack extends cdk.Stack {
@@ -49,26 +51,42 @@ export class YogaGoStack extends cdk.Stack {
     });
 
     // ========================================
-    // Security Group for ECS Tasks
+    // Security Group for ALB
     // ========================================
-    const ecsSecurityGroup = new ec2.SecurityGroup(this, 'EcsSecurityGroup', {
+    const albSecurityGroup = new ec2.SecurityGroup(this, 'AlbSecurityGroup', {
       vpc,
-      description: 'Security group for Yoga Go ECS tasks',
-      allowAllOutbound: true, // Required for ECR, MongoDB Atlas, Auth0, etc.
+      description: 'Security group for Application Load Balancer',
+      allowAllOutbound: true,
     });
 
-    // Allow HTTP traffic (port 80) from anywhere
-    ecsSecurityGroup.addIngressRule(
+    // Allow HTTP traffic to ALB (will redirect to HTTPS)
+    albSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.tcp(80),
       'Allow HTTP traffic from anywhere'
     );
 
-    // Allow HTTPS traffic (port 443) from anywhere
-    ecsSecurityGroup.addIngressRule(
+    // Allow HTTPS traffic to ALB
+    albSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.tcp(443),
       'Allow HTTPS traffic from anywhere'
+    );
+
+    // ========================================
+    // Security Group for ECS Tasks
+    // ========================================
+    const ecsSecurityGroup = new ec2.SecurityGroup(this, 'EcsSecurityGroup', {
+      vpc,
+      description: 'Security group for Yoga Go ECS tasks',
+      allowAllOutbound: true, // Required for ECR, MongoDB Atlas, etc.
+    });
+
+    // Allow traffic from ALB on ephemeral ports (dynamic port mapping)
+    ecsSecurityGroup.addIngressRule(
+      albSecurityGroup,
+      ec2.Port.tcpRange(32768, 65535),
+      'Allow traffic from ALB on dynamic ports'
     );
 
     // Allow SSH for debugging (optional - can remove for production)
@@ -171,6 +189,66 @@ export class YogaGoStack extends cdk.Stack {
       'AppSecret',
       'yoga-go/production'
     );
+
+    // ========================================
+    // ACM Certificate for HTTPS (DNS Validated)
+    // ========================================
+    // After deployment, add CNAME records in Namecheap for DNS validation
+    // Check AWS Console > ACM for the required CNAME records
+    const certificate = new acm.Certificate(this, 'YogaGoCertificate', {
+      domainName: 'myyoga.guru',
+      subjectAlternativeNames: ['*.myyoga.guru'],
+      validation: acm.CertificateValidation.fromDns(),
+    });
+
+    // ========================================
+    // Application Load Balancer
+    // ========================================
+    const alb = new elbv2.ApplicationLoadBalancer(this, 'YogaGoALB', {
+      vpc,
+      internetFacing: true,
+      securityGroup: albSecurityGroup,
+      loadBalancerName: 'yoga-go-alb',
+    });
+
+    // ========================================
+    // ALB Target Group
+    // ========================================
+    const targetGroup = new elbv2.ApplicationTargetGroup(this, 'YogaGoTargetGroup', {
+      vpc,
+      port: 3000,
+      protocol: elbv2.ApplicationProtocol.HTTP,
+      targetType: elbv2.TargetType.INSTANCE,
+      healthCheck: {
+        path: '/api/health',
+        healthyHttpCodes: '200',
+        interval: cdk.Duration.seconds(30),
+        timeout: cdk.Duration.seconds(5),
+        healthyThresholdCount: 2,
+        unhealthyThresholdCount: 3,
+      },
+      deregistrationDelay: cdk.Duration.seconds(30),
+    });
+
+    // ========================================
+    // ALB Listeners
+    // ========================================
+    // HTTPS Listener (port 443) - serves traffic
+    alb.addListener('HttpsListener', {
+      port: 443,
+      certificates: [certificate],
+      defaultTargetGroups: [targetGroup],
+    });
+
+    // HTTP Listener (port 80) - redirects to HTTPS
+    alb.addListener('HttpListener', {
+      port: 80,
+      defaultAction: elbv2.ListenerAction.redirect({
+        protocol: 'HTTPS',
+        port: '443',
+        permanent: true,
+      }),
+    });
 
     // ========================================
     // CloudWatch Log Group
@@ -285,14 +363,14 @@ export class YogaGoStack extends cdk.Stack {
         COGNITO_USER_POOL_ID: userPool.userPoolId,
         COGNITO_CLIENT_ID: appClient.userPoolClientId,
         COGNITO_ISSUER: `https://cognito-idp.${this.region}.amazonaws.com/${userPool.userPoolId}`,
-        NEXTAUTH_URL: 'https://myyoga.guru',
+        NEXTAUTH_URL: 'https://www.myyoga.guru',
       },
       secrets: {
         // Load secrets from Secrets Manager
         MONGODB_URI: ecs.Secret.fromSecretsManager(appSecret, 'MONGODB_URI'),
         NEXTAUTH_SECRET: ecs.Secret.fromSecretsManager(appSecret, 'NEXTAUTH_SECRET'),
         EXPERT_SIGNUP_CODE: ecs.Secret.fromSecretsManager(appSecret, 'EXPERT_SIGNUP_CODE'),
-        // Note: Cognito client secret is retrieved at runtime from Cognito
+        COGNITO_CLIENT_SECRET: ecs.Secret.fromSecretsManager(appSecret, 'COGNITO_CLIENT_SECRET'),
       },
       healthCheck: {
         command: [
@@ -306,10 +384,10 @@ export class YogaGoStack extends cdk.Stack {
       },
     });
 
-    // Port mapping: map host port 80 to container port 3000
+    // Port mapping: container port 3000 (ALB routes traffic here)
     container.addPortMappings({
       containerPort: 3000,
-      hostPort: 80, // Map to standard HTTP port
+      hostPort: 0, // Dynamic port mapping - ALB handles routing
       protocol: ecs.Protocol.TCP,
     });
 
@@ -329,8 +407,11 @@ export class YogaGoStack extends cdk.Stack {
       ],
       minHealthyPercent: 0, // Allow taking down the only instance during updates
       maxHealthyPercent: 100, // Don't launch extra instances (single instance constraint)
-      healthCheckGracePeriod: cdk.Duration.seconds(60),
+      healthCheckGracePeriod: cdk.Duration.seconds(120), // Give more time for ALB health checks
     });
+
+    // Register ECS service with ALB target group
+    service.attachToApplicationTargetGroup(targetGroup);
 
     // ========================================
     // Outputs
@@ -409,6 +490,27 @@ export class YogaGoStack extends cdk.Stack {
       value: `https://cognito-idp.${this.region}.amazonaws.com/${userPool.userPoolId}`,
       description: 'Cognito Issuer URL (for OIDC)',
       exportName: 'YogaGoCognitoIssuer',
+    });
+
+    // ========================================
+    // ALB Outputs
+    // ========================================
+    new cdk.CfnOutput(this, 'AlbDnsName', {
+      value: alb.loadBalancerDnsName,
+      description: 'ALB DNS Name - point your domain CNAME here',
+      exportName: 'YogaGoAlbDnsName',
+    });
+
+    new cdk.CfnOutput(this, 'AlbArn', {
+      value: alb.loadBalancerArn,
+      description: 'ALB ARN',
+      exportName: 'YogaGoAlbArn',
+    });
+
+    new cdk.CfnOutput(this, 'CertificateArn', {
+      value: certificate.certificateArn,
+      description: 'ACM Certificate ARN',
+      exportName: 'YogaGoCertificateArn',
     });
   }
 }
