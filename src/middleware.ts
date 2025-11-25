@@ -32,6 +32,31 @@ export default auth(async function middleware(request: NextRequest) {
 
   console.log('[DBG][middleware] Request to:', pathname, 'from:', hostname);
 
+  // Check for pending_logout cookie (set during logout flow)
+  // If found, clear it and redirect to NextAuth signout to clear any remaining session
+  const pendingLogout = request.cookies.get('pending_logout');
+  if (pendingLogout && pathname === '/') {
+    console.log('[DBG][middleware] ========== PENDING LOGOUT DETECTED ==========');
+    console.log('[DBG][middleware] Clearing pending_logout and redirecting to signout');
+
+    const protocol = hostname.includes('localhost') ? 'http' : 'https';
+    const baseUrl = `${protocol}://${hostname}`;
+
+    // Redirect to NextAuth signout
+    const signOutUrl = new URL('/api/auth/signout', baseUrl);
+    signOutUrl.searchParams.set('callbackUrl', baseUrl);
+
+    const response = NextResponse.redirect(signOutUrl.toString());
+
+    // Clear the pending_logout cookie
+    response.cookies.set('pending_logout', '', {
+      path: '/',
+      maxAge: 0,
+    });
+
+    return response;
+  }
+
   // Check if this is a dynamic myyoga.guru subdomain (e.g., deepak.myyoga.guru)
   const myYogaGuruSubdomain = getSubdomainFromMyYogaGuru(hostname);
   let expertId = myYogaGuruSubdomain;

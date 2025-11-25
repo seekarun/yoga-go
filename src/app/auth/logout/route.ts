@@ -1,95 +1,81 @@
 /**
  * Custom Logout Handler
  *
- * Signs out from both NextAuth and Cognito.
- * Clears NextAuth session cookies and redirects to Cognito logout endpoint.
+ * Two-phase logout:
+ * Phase 1: Redirect to Cognito logout (clears Cognito session)
+ * Phase 2: When Cognito redirects back, NextAuth signout happens via middleware
+ *
+ * Uses a cookie to track logout state since Cognito logout_uri must be exact match.
  */
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
-  console.log('[DBG][auth/logout] Logout handler');
+  console.log('[DBG][auth/logout] ========== LOGOUT HANDLER START ==========');
 
   try {
-    // Get the current hostname to determine returnTo URL
     const hostname = request.headers.get('host') || 'localhost:3111';
     const protocol = hostname.includes('localhost') ? 'http' : 'https';
     const baseUrl = `${protocol}://${hostname}`;
 
-    // Get returnTo parameter from query string
-    const searchParams = request.nextUrl.searchParams;
-    const returnToParam = searchParams.get('returnTo');
+    console.log('[DBG][auth/logout] hostname:', hostname);
+    console.log('[DBG][auth/logout] protocol:', protocol);
+    console.log('[DBG][auth/logout] baseUrl:', baseUrl);
 
-    // Convert relative path to absolute URL
-    const returnTo = returnToParam
-      ? returnToParam.startsWith('http')
-        ? returnToParam
-        : `${baseUrl}${returnToParam}`
-      : baseUrl;
+    // Log all cookies present in the request
+    const cookies = request.cookies.getAll();
+    console.log('[DBG][auth/logout] Cookies in request:', cookies.map(c => c.name).join(', '));
 
-    console.log('[DBG][auth/logout] Return to:', returnTo);
-
-    // Build Cognito logout URL to fully clear the Cognito session
     const cognitoDomain = process.env.COGNITO_DOMAIN || 'yoga-go-auth';
     const cognitoRegion = process.env.AWS_REGION || 'ap-southeast-2';
     const cognitoClientId = process.env.COGNITO_CLIENT_ID;
 
-    // Determine redirect URL
-    let redirectUrl: string;
+    console.log('[DBG][auth/logout] cognitoClientId:', cognitoClientId ? 'set' : 'not set');
 
+    // If no Cognito, just clear NextAuth session
     if (!cognitoClientId) {
-      console.log('[DBG][auth/logout] No Cognito client ID, redirecting to:', returnTo);
-      redirectUrl = returnTo;
-    } else {
-      // Cognito logout endpoint - clears Cognito session cookies
-      // logout_uri must exactly match one of the registered Sign out URL(s) in Cognito
-      const logoutUri = returnTo.endsWith('/') ? returnTo.slice(0, -1) : returnTo;
-
-      const cognitoLogoutUrl = new URL(
-        `https://${cognitoDomain}.auth.${cognitoRegion}.amazoncognito.com/logout`
-      );
-      cognitoLogoutUrl.searchParams.set('client_id', cognitoClientId);
-      cognitoLogoutUrl.searchParams.set('logout_uri', logoutUri);
-
-      console.log('[DBG][auth/logout] Redirecting to Cognito logout:', cognitoLogoutUrl.toString());
-      redirectUrl = cognitoLogoutUrl.toString();
+      console.log('[DBG][auth/logout] No Cognito, redirecting to NextAuth signout');
+      const signOutUrl = new URL('/api/auth/signout', baseUrl);
+      signOutUrl.searchParams.set('callbackUrl', baseUrl);
+      return NextResponse.redirect(signOutUrl.toString());
     }
 
-    // Create redirect response
-    const response = NextResponse.redirect(redirectUrl);
+    // Redirect to Cognito logout
+    // logout_uri must exactly match registered URL (no query params)
+    const logoutUri = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
 
-    // Clear NextAuth session cookies
-    // NextAuth v5 uses different cookie names based on environment:
-    // - Development (HTTP): 'authjs.session-token'
-    // - Production (HTTPS): '__Secure-authjs.session-token'
-    const isSecure = protocol === 'https';
+    const cognitoLogoutUrl = new URL(
+      `https://${cognitoDomain}.auth.${cognitoRegion}.amazoncognito.com/logout`
+    );
+    cognitoLogoutUrl.searchParams.set('client_id', cognitoClientId);
+    cognitoLogoutUrl.searchParams.set('logout_uri', logoutUri);
 
-    // All possible NextAuth cookie names
-    const cookiesToClear = [
-      // Non-secure cookies (localhost/development)
-      'authjs.session-token',
-      'authjs.csrf-token',
-      'authjs.callback-url',
-      // Secure cookies (production HTTPS)
-      '__Secure-authjs.session-token',
-      '__Secure-authjs.callback-url',
-      '__Host-authjs.csrf-token',
-    ];
+    console.log('[DBG][auth/logout] Cognito logout URL:', cognitoLogoutUrl.toString());
 
-    // Clear all cookies using delete() method with matching attributes
+    // Create response that redirects to Cognito logout
+    const response = NextResponse.redirect(cognitoLogoutUrl.toString());
+
+    // Set a cookie to signal that we need to clear NextAuth session when we return
+    // This cookie will be checked by middleware
+    response.cookies.set('pending_logout', '1', {
+      path: '/',
+      maxAge: 60, // 1 minute - should be enough for the redirect
+      httpOnly: true,
+    });
+
+    // Also clear NextAuth cookies now (before Cognito redirect)
+    const cookiesToClear = ['authjs.session-token', 'authjs.csrf-token', 'authjs.callback-url'];
+
     for (const cookieName of cookiesToClear) {
-      // Use delete() which properly removes the cookie
-      response.cookies.delete({
-        name: cookieName,
+      response.cookies.set(cookieName, '', {
         path: '/',
-        secure: isSecure,
-        httpOnly: true,
-        sameSite: 'lax',
+        maxAge: 0,
       });
     }
 
-    console.log('[DBG][auth/logout] Cleared NextAuth cookies, isSecure:', isSecure);
+    console.log('[DBG][auth/logout] Set pending_logout cookie and cleared NextAuth cookies');
+    console.log('[DBG][auth/logout] ========== LOGOUT HANDLER END ==========');
 
     return response;
   } catch (error) {

@@ -61,12 +61,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async (returnTo?: string) => {
-    console.log('[DBG][AuthContext] Logging out', returnTo ? `with returnTo: ${returnTo}` : '');
+    console.log('[DBG][AuthContext] ========== LOGOUT INITIATED ==========');
+    console.log('[DBG][AuthContext] returnTo:', returnTo);
+    console.log('[DBG][AuthContext] Current session before logout:', session ? 'exists' : 'null');
+    console.log('[DBG][AuthContext] Current user before logout:', user ? user.id : 'null');
     setUser(null);
     // Use custom logout handler which clears both NextAuth and Cognito sessions
     const logoutUrl = returnTo
       ? `/auth/logout?returnTo=${encodeURIComponent(returnTo)}`
       : '/auth/logout';
+    console.log('[DBG][AuthContext] Redirecting to:', logoutUrl);
     window.location.href = logoutUrl;
   };
 
@@ -76,7 +80,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    console.log('[DBG][AuthContext] ========== SESSION UPDATE ==========');
     console.log('[DBG][AuthContext] Session status:', status);
+    console.log(
+      '[DBG][AuthContext] Session data:',
+      session ? JSON.stringify(session, null, 2) : 'null'
+    );
+    console.log('[DBG][AuthContext] Current user state:', user ? user.id : 'null');
     if (status !== 'loading') {
       fetchUserDetails();
     }
