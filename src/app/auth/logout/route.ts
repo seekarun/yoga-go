@@ -65,34 +65,28 @@ export async function GET(request: NextRequest) {
     // - Production (HTTPS): '__Secure-authjs.session-token'
     const isSecure = protocol === 'https';
 
-    // Non-secure cookies (localhost/development)
-    const nonSecureCookies = ['authjs.session-token', 'authjs.csrf-token', 'authjs.callback-url'];
-
-    // Secure cookies (production HTTPS)
-    const secureCookies = [
+    // All possible NextAuth cookie names
+    const cookiesToClear = [
+      // Non-secure cookies (localhost/development)
+      'authjs.session-token',
+      'authjs.csrf-token',
+      'authjs.callback-url',
+      // Secure cookies (production HTTPS)
       '__Secure-authjs.session-token',
       '__Secure-authjs.callback-url',
       '__Host-authjs.csrf-token',
     ];
 
-    // Clear non-secure cookies
-    for (const cookieName of nonSecureCookies) {
-      response.cookies.set(cookieName, '', {
-        expires: new Date(0),
+    // Clear all cookies using delete() method with matching attributes
+    for (const cookieName of cookiesToClear) {
+      // Use delete() which properly removes the cookie
+      response.cookies.delete({
+        name: cookieName,
         path: '/',
+        secure: isSecure,
+        httpOnly: true,
+        sameSite: 'lax',
       });
-    }
-
-    // Clear secure cookies (need secure flag for HTTPS)
-    if (isSecure) {
-      for (const cookieName of secureCookies) {
-        response.cookies.set(cookieName, '', {
-          expires: new Date(0),
-          path: '/',
-          secure: true,
-          sameSite: 'lax',
-        });
-      }
     }
 
     console.log('[DBG][auth/logout] Cleared NextAuth cookies, isSecure:', isSecure);
