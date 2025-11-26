@@ -141,8 +141,8 @@ export default auth(async function middleware(request: NextRequest) {
       pathname.startsWith('/data/app/')
     ) {
       if (!session) {
-        console.log('[DBG][middleware] No session, redirecting to login');
-        const loginUrl = new URL('/auth/login', request.url);
+        console.log('[DBG][middleware] No session, redirecting to signin');
+        const loginUrl = new URL('/auth/signin', request.url);
         loginUrl.searchParams.set('callbackUrl', pathname);
         return NextResponse.redirect(loginUrl);
       }
@@ -175,8 +175,8 @@ export default auth(async function middleware(request: NextRequest) {
     pathname.startsWith('/data/app/')
   ) {
     if (!session) {
-      console.log('[DBG][middleware] No session, redirecting to login');
-      const loginUrl = new URL('/auth/login', request.url);
+      console.log('[DBG][middleware] No session, redirecting to signin');
+      const loginUrl = new URL('/auth/signin', request.url);
       loginUrl.searchParams.set('callbackUrl', pathname);
       return NextResponse.redirect(loginUrl);
     }

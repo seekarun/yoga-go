@@ -54,10 +54,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [session, status]);
 
   const login = (returnTo?: string) => {
-    console.log('[DBG][AuthContext] Redirecting to Cognito login');
+    console.log('[DBG][AuthContext] Redirecting to signin page');
     const returnPath = returnTo || '/app';
-    // Use custom login handler which handles PendingAuth
-    window.location.href = `/auth/login?callbackUrl=${encodeURIComponent(returnPath)}`;
+    // Use custom signin page
+    window.location.href = `/auth/signin?callbackUrl=${encodeURIComponent(returnPath)}`;
   };
 
   const logout = async (returnTo?: string) => {

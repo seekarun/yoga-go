@@ -62,7 +62,7 @@ export default function DebugAuthPage() {
           </h2>
           <p style={{ marginBottom: '16px', color: '#742a2a' }}>{error}</p>
           <a
-            href="/api/auth/login"
+            href="/auth/signin"
             style={{
               display: 'inline-block',
               padding: '12px 24px',
@@ -73,7 +73,7 @@ export default function DebugAuthPage() {
               fontWeight: '600',
             }}
           >
-            Login with Auth0
+            Sign In
           </a>
         </div>
       ) : (

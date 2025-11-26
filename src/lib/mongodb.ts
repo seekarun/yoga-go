@@ -45,8 +45,28 @@ export async function connectToDatabase() {
     };
 
     console.log('[DBG][mongodb] Creating new database connection');
-    cached.promise = mongoose.connect(MONGODB_URI!, opts).then(mongoose => {
+    cached.promise = mongoose.connect(MONGODB_URI!, opts).then(async mongoose => {
       console.log('[DBG][mongodb] Successfully connected to MongoDB');
+
+      // Clean up legacy Auth0 index if it exists (one-time migration)
+      try {
+        const db = mongoose.connection.db;
+        if (db) {
+          const usersCollection = db.collection('users');
+          const indexes = await usersCollection.indexes();
+          const hasAuth0Index = indexes.some(idx => idx.name === 'auth0Id_1');
+
+          if (hasAuth0Index) {
+            console.log('[DBG][mongodb] Dropping legacy auth0Id_1 index...');
+            await usersCollection.dropIndex('auth0Id_1');
+            console.log('[DBG][mongodb] Successfully dropped legacy auth0Id_1 index');
+          }
+        }
+      } catch (indexError) {
+        // Ignore errors if index doesn't exist or already dropped
+        console.log('[DBG][mongodb] Index cleanup note:', indexError);
+      }
+
       return mongoose;
     });
   }

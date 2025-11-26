@@ -367,7 +367,7 @@ export default function Header() {
             </div>
           ) : (
             <a
-              href="/auth/login"
+              href="/auth/signin"
               className="btn btn-primary"
               style={{
                 padding: '10px 24px',

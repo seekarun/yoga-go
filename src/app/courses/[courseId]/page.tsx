@@ -82,7 +82,7 @@ export default function CourseDetailPage() {
 
     if (!isAuthenticated) {
       // Redirect to login
-      router.push('/auth/login');
+      router.push('/auth/signin');
       return;
     }
 

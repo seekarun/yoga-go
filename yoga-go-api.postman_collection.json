@@ -337,6 +337,108 @@
       "name": "Auth Routes",
       "item": [
         {
+          "name": "Cognito Auth",
+          "description": "Custom Cognito authentication endpoints for signup, login, and email verification",
+          "item": [
+            {
+              "name": "Signup",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"password\": \"Password123!\",\n  \"phone\": \"+919876543210\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/auth/cognito/signup",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "auth", "cognito", "signup"]
+                },
+                "description": "Register a new user with Cognito. Password must be 8+ chars with uppercase, lowercase, number, and special char.\n\nRequired fields: name, email, password\nOptional fields: phone (E.164 format), role, authToken\n\nResponse:\n{\n  \"success\": true,\n  \"message\": \"Signup successful. Please check your email for verification code.\",\n  \"email\": \"john@example.com\",\n  \"requiresVerification\": true,\n  \"userSub\": \"uuid-from-cognito\"\n}"
+              },
+              "response": []
+            },
+            {
+              "name": "Verify Email",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"john@example.com\",\n  \"code\": \"123456\",\n  \"password\": \"Password123!\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/auth/cognito/verify",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "auth", "cognito", "verify"]
+                },
+                "description": "Verify email with the 6-digit code sent to the user's email. If password is provided, auto-logs in the user.\n\nRequired fields: email, code\nOptional fields: password (for auto-login)\n\nResponse:\n{\n  \"success\": true,\n  \"message\": \"Email verified and logged in successfully.\",\n  \"user\": { ... },\n  \"redirectUrl\": \"/app\"\n}"
+              },
+              "response": []
+            },
+            {
+              "name": "Login",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"john@example.com\",\n  \"password\": \"Password123!\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/auth/cognito/login",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "auth", "cognito", "login"]
+                },
+                "description": "Authenticate user with Cognito and create a session.\n\nRequired fields: email, password\n\nResponse:\n{\n  \"success\": true,\n  \"message\": \"Login successful.\",\n  \"user\": {\n    \"id\": \"user-id\",\n    \"email\": \"john@example.com\",\n    \"name\": \"John Doe\",\n    \"role\": \"learner\"\n  },\n  \"redirectUrl\": \"/app\"\n}\n\nError codes:\n- USER_NOT_CONFIRMED: Email not verified (redirectUrl provided)"
+              },
+              "response": []
+            },
+            {
+              "name": "Resend Verification Code",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"john@example.com\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/auth/cognito/resend-code",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "auth", "cognito", "resend-code"]
+                },
+                "description": "Resend the email verification code.\n\nRequired fields: email\n\nResponse:\n{\n  \"success\": true,\n  \"message\": \"Verification code sent to your email.\"\n}"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
           "name": "User Courses",
           "item": [
             {

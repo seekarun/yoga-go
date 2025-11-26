@@ -85,7 +85,7 @@ export default function ExpertCourseDetailPage() {
 
     if (!isAuthenticated) {
       // Redirect to login
-      router.push('/auth/login');
+      router.push('/auth/signin');
       return;
     }
 

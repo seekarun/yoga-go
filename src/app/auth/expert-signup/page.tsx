@@ -35,10 +35,10 @@ export default function ExpertSignupPage() {
         throw new Error(data.error || 'Invalid expert signup code');
       }
 
-      console.log('[DBG][expert-signup] Code validated, redirecting to Auth0');
+      console.log('[DBG][expert-signup] Code validated, redirecting to signup');
 
-      // Redirect to login with auth token
-      window.location.href = `/auth/login?auth_token=${data.authToken}`;
+      // Redirect to signup with auth token and expert role
+      window.location.href = `/auth/signup?role=expert&auth_token=${data.authToken}`;
     } catch (err) {
       console.error('[DBG][expert-signup] Validation error:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');

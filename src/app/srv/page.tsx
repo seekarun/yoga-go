@@ -376,7 +376,7 @@ function ExpertLandingPage() {
               </p>
               <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
                 <Link
-                  href="/auth/login?returnTo=/srv"
+                  href="/auth/signin?callbackUrl=/srv"
                   style={{
                     padding: '16px 40px',
                     background: '#fff',
@@ -683,7 +683,7 @@ function ExpertLandingPage() {
             Join the Yoga-GO expert community today and start building your online yoga business.
           </p>
           <Link
-            href="/auth/login?returnTo=/srv"
+            href="/auth/signin?callbackUrl=/srv"
             style={{
               padding: '16px 48px',
               background: '#fff',

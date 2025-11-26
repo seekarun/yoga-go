@@ -9,6 +9,8 @@ import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
+import * as route53 from 'aws-cdk-lib/aws-route53';
+import * as route53Targets from 'aws-cdk-lib/aws-route53-targets';
 import type { Construct } from 'constructs';
 
 export class YogaGoStack extends cdk.Stack {
@@ -248,6 +250,32 @@ export class YogaGoStack extends cdk.Stack {
         port: '443',
         permanent: true,
       }),
+    });
+
+    // ========================================
+    // Route 53 Hosted Zone & DNS Records
+    // ========================================
+    // Create hosted zone for myyoga.guru
+    // After deployment, update nameservers at Namecheap to point to Route 53
+    const hostedZone = new route53.HostedZone(this, 'YogaGoHostedZone', {
+      zoneName: 'myyoga.guru',
+      comment: 'Hosted zone for myyoga.guru - managed by CDK',
+    });
+
+    // ALIAS record for apex domain (myyoga.guru -> ALB)
+    new route53.ARecord(this, 'ApexAliasRecord', {
+      zone: hostedZone,
+      recordName: '', // Empty string = apex domain
+      target: route53.RecordTarget.fromAlias(new route53Targets.LoadBalancerTarget(alb)),
+      comment: 'Apex domain pointing to ALB',
+    });
+
+    // ALIAS record for www subdomain (www.myyoga.guru -> ALB)
+    new route53.ARecord(this, 'WwwAliasRecord', {
+      zone: hostedZone,
+      recordName: 'www',
+      target: route53.RecordTarget.fromAlias(new route53Targets.LoadBalancerTarget(alb)),
+      comment: 'WWW subdomain pointing to ALB',
     });
 
     // ========================================
@@ -511,6 +539,21 @@ export class YogaGoStack extends cdk.Stack {
       value: certificate.certificateArn,
       description: 'ACM Certificate ARN',
       exportName: 'YogaGoCertificateArn',
+    });
+
+    // ========================================
+    // Route 53 Outputs
+    // ========================================
+    new cdk.CfnOutput(this, 'HostedZoneId', {
+      value: hostedZone.hostedZoneId,
+      description: 'Route 53 Hosted Zone ID',
+      exportName: 'YogaGoHostedZoneId',
+    });
+
+    new cdk.CfnOutput(this, 'NameServers', {
+      value: cdk.Fn.join(', ', hostedZone.hostedZoneNameServers || []),
+      description: 'Route 53 Name Servers - Update these in Namecheap',
+      exportName: 'YogaGoNameServers',
     });
   }
 }
