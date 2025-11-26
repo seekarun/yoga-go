@@ -51,15 +51,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.href = `/auth/signin?callbackUrl=${encodeURIComponent(returnPath)}`;
   };
 
-  const logout = async (returnTo?: string) => {
-    console.log('[DBG][AuthContext] ========== LOGOUT INITIATED ==========');
-    console.log('[DBG][AuthContext] returnTo:', returnTo);
-    console.log('[DBG][AuthContext] Current user before logout:', user ? user.id : 'null');
+  const logout = (returnTo?: string) => {
+    console.log('[DBG][AuthContext] Logging out');
     setUser(null);
-    const logoutUrl = returnTo
-      ? `/auth/logout?returnTo=${encodeURIComponent(returnTo)}`
-      : '/auth/logout';
-    console.log('[DBG][AuthContext] Redirecting to:', logoutUrl);
+    // Navigate directly to logout API which clears cookie and redirects
+    const logoutUrl = `/api/auth/logout${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`;
     window.location.href = logoutUrl;
   };
 
