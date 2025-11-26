@@ -11,66 +11,44 @@ import { NextResponse } from 'next/server';
 
 // Helper to clear all auth cookies on a response
 function clearAuthCookies(response: NextResponse) {
-  const expiredDate = new Date(0); // Jan 1, 1970
   const isProduction = process.env.NODE_ENV === 'production';
 
-  // Cookie options for clearing - must match how they were set
-  const sessionCookieOptions: {
-    httpOnly: boolean;
-    secure: boolean;
-    sameSite: 'lax' | 'strict' | 'none';
-    path: string;
-    expires: Date;
-    maxAge: number;
-    domain?: string;
-  } = {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: 'lax',
+  // Cookie delete options - must match how they were set
+  const deleteOptions: { path: string; domain?: string } = {
     path: '/',
-    expires: expiredDate,
-    maxAge: 0,
   };
 
   // Set domain for production to match how cookie was set
   if (isProduction) {
-    sessionCookieOptions.domain = '.myyoga.guru';
+    deleteOptions.domain = '.myyoga.guru';
   }
 
-  // Clear the main session cookie
-  response.cookies.set('authjs.session-token', '', sessionCookieOptions);
+  // Use cookies.delete() - the recommended way to clear cookies in Next.js
+  // This properly sets the cookie with maxAge=0 and expires in the past
+  const cookiesToClear = [
+    'authjs.session-token',
+    'authjs.csrf-token',
+    'authjs.callback-url',
+    'pending_logout',
+  ];
 
-  // Clear other auth-related cookies
-  const otherCookies = ['authjs.csrf-token', 'authjs.callback-url', 'pending_logout'];
-  for (const cookieName of otherCookies) {
-    const options: { path: string; expires: Date; maxAge: number; domain?: string } = {
-      path: '/',
-      expires: expiredDate,
-      maxAge: 0,
-    };
-    if (isProduction) {
-      options.domain = '.myyoga.guru';
-    }
-    response.cookies.set(cookieName, '', options);
+  for (const cookieName of cookiesToClear) {
+    response.cookies.delete({ name: cookieName, ...deleteOptions });
   }
+
+  console.log('[DBG][do-logout] Clearing cookies with options:', deleteOptions);
 }
 
-// POST handler - called from client-side fetch
+// POST handler - called from client-side fetch (kept for backwards compatibility)
 export async function POST(request: NextRequest) {
   console.log('[DBG][do-logout] ========== LOGOUT POST HANDLER ==========');
 
   try {
-    // Log all cookies present in the request
     const cookies = request.cookies.getAll();
     console.log('[DBG][do-logout] Cookies in request:', cookies.map(c => c.name).join(', '));
 
-    // Create JSON response with Set-Cookie headers to clear cookies
     const response = NextResponse.json({ success: true, message: 'Logged out successfully' });
-
     clearAuthCookies(response);
-
-    console.log('[DBG][do-logout] Set-Cookie headers:', response.headers.get('Set-Cookie'));
-    console.log('[DBG][do-logout] Cleared session cookies');
 
     return response;
   } catch (error) {
@@ -79,7 +57,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET handler - for direct navigation (backwards compatibility)
+// GET handler - primary logout method via direct navigation
 export async function GET(request: NextRequest) {
   console.log('[DBG][do-logout] ========== LOGOUT GET HANDLER ==========');
 
@@ -88,13 +66,11 @@ export async function GET(request: NextRequest) {
     const protocol = hostname.includes('localhost') ? 'http' : 'https';
     const baseUrl = `${protocol}://${hostname}`;
 
-    // Get returnTo from query params
     const { searchParams } = new URL(request.url);
     const returnTo = searchParams.get('returnTo') || '/';
 
     console.log('[DBG][do-logout] returnTo:', returnTo);
 
-    // Log all cookies present in the request
     const cookies = request.cookies.getAll();
     console.log('[DBG][do-logout] Cookies in request:', cookies.map(c => c.name).join(', '));
 
@@ -103,13 +79,12 @@ export async function GET(request: NextRequest) {
       ? returnTo
       : new URL(returnTo, baseUrl).toString();
 
-    // Create response that redirects
+    // Create redirect response with cookie clearing
+    // Using redirect ensures browser processes Set-Cookie headers during redirect
     const response = NextResponse.redirect(redirectUrl);
-
     clearAuthCookies(response);
 
     console.log('[DBG][do-logout] Redirecting to:', redirectUrl);
-    console.log('[DBG][do-logout] Cleared session cookies');
 
     return response;
   } catch (error) {

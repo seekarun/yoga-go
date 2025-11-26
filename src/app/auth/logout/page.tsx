@@ -22,32 +22,17 @@ function LogoutContent() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [router, isLoggingOut]);
 
-  const handleConfirmLogout = async () => {
+  const handleConfirmLogout = () => {
     console.log('[DBG][logout-page] User confirmed logout, returnTo:', returnTo);
     setIsLoggingOut(true);
     setShowConfirmation(false);
 
-    try {
-      // Call our logout API which clears cookies server-side
-      const response = await fetch('/api/auth/do-logout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ returnTo }),
-      });
-
-      if (response.ok) {
-        console.log('[DBG][logout-page] Logout successful, redirecting');
-        // Force full page reload to clear all client state
-        window.location.href = returnTo;
-      } else {
-        throw new Error('Logout failed');
-      }
-    } catch (error) {
-      console.error('[DBG][logout-page] Logout error:', error);
-      // Fallback: clear cookie client-side and redirect
-      document.cookie = 'authjs.session-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      window.location.href = returnTo;
-    }
+    // Navigate directly to the GET logout endpoint
+    // This is more reliable than fetch + redirect because:
+    // 1. Server returns redirect (302) with Set-Cookie headers to clear cookies
+    // 2. Browser processes Set-Cookie headers during redirect
+    // 3. No issues with credentials mode or timing
+    window.location.href = `/api/auth/do-logout?returnTo=${encodeURIComponent(returnTo)}`;
   };
 
   const handleCancel = () => {
