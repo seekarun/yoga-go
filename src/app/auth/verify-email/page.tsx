@@ -167,7 +167,8 @@ function VerifyEmailForm() {
       {/* Header */}
       <section
         style={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background:
+            'linear-gradient(135deg, var(--color-primary) 0%, var(--color-highlight) 100%)',
           color: '#fff',
           padding: '60px 20px',
           textAlign: 'center',
@@ -277,7 +278,7 @@ function VerifyEmailForm() {
                       transition: 'border-color 0.2s',
                     }}
                     onFocus={e => {
-                      e.target.style.borderColor = '#764ba2';
+                      e.target.style.borderColor = 'var(--color-primary)';
                     }}
                     onBlur={e => {
                       e.target.style.borderColor = '#ddd';
@@ -292,10 +293,7 @@ function VerifyEmailForm() {
                 style={{
                   width: '100%',
                   padding: '14px 24px',
-                  background:
-                    isSubmitting || code.some(d => !d)
-                      ? '#ccc'
-                      : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  background: isSubmitting || code.some(d => !d) ? '#ccc' : 'var(--color-primary)',
                   color: '#fff',
                   border: 'none',
                   borderRadius: '8px',
@@ -326,7 +324,7 @@ function VerifyEmailForm() {
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: resendCooldown > 0 ? '#999' : '#764ba2',
+                  color: resendCooldown > 0 ? '#999' : 'var(--color-primary)',
                   fontSize: '14px',
                   fontWeight: '500',
                   cursor: resendCooldown > 0 ? 'default' : 'pointer',
