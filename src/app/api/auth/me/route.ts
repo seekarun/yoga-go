@@ -1,21 +1,30 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { getSession, getUserByCognitoSub, getOrCreateUser } from '@/lib/auth';
+import { decode } from 'next-auth/jwt';
+import { getUserByCognitoSub, getOrCreateUser } from '@/lib/auth';
 import type { ApiResponse, User } from '@/types';
+
+interface DecodedToken {
+  cognitoSub?: string;
+  email?: string;
+  name?: string;
+}
 
 /**
  * GET /api/auth/me
  * Get the currently authenticated user's data from MongoDB
- * Automatically syncs new users from Cognito to MongoDB on first access
+ * Decodes JWT directly from cookie instead of using NextAuth's auth()
+ * This is needed because we use custom login that creates JWT directly
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   console.log('[DBG][api/auth/me] GET /api/auth/me called');
 
   try {
-    // Get session from NextAuth
-    const session = await getSession();
+    // Get the session token directly from cookies
+    const sessionToken = request.cookies.get('authjs.session-token')?.value;
 
-    if (!session || !session.user || !session.user.cognitoSub) {
-      console.log('[DBG][api/auth/me] No session found');
+    if (!sessionToken) {
+      console.log('[DBG][api/auth/me] No session token cookie found');
       const response: ApiResponse<null> = {
         success: false,
         error: 'Not authenticated',
@@ -23,12 +32,36 @@ export async function GET() {
       return NextResponse.json(response, { status: 401 });
     }
 
-    const cognitoSub = session.user.cognitoSub;
-    if (!cognitoSub) {
-      console.log('[DBG][api/auth/me] No cognitoSub in session');
+    console.log('[DBG][api/auth/me] Found session token cookie');
+
+    // Decode the JWT directly
+    const decoded = (await decode({
+      token: sessionToken,
+      secret: process.env.NEXTAUTH_SECRET!,
+      salt: 'authjs.session-token',
+    })) as DecodedToken | null;
+
+    if (!decoded) {
+      console.log('[DBG][api/auth/me] Failed to decode token');
       const response: ApiResponse<null> = {
         success: false,
         error: 'Invalid session',
+      };
+      return NextResponse.json(response, { status: 401 });
+    }
+
+    console.log('[DBG][api/auth/me] Decoded token:', {
+      cognitoSub: decoded.cognitoSub,
+      email: decoded.email,
+      name: decoded.name,
+    });
+
+    const cognitoSub = decoded.cognitoSub;
+    if (!cognitoSub) {
+      console.log('[DBG][api/auth/me] No cognitoSub in token');
+      const response: ApiResponse<null> = {
+        success: false,
+        error: 'Invalid session - missing cognitoSub',
       };
       return NextResponse.json(response, { status: 401 });
     }
@@ -43,9 +76,8 @@ export async function GET() {
       console.log('[DBG][api/auth/me] User not found in MongoDB, creating new user');
       user = await getOrCreateUser({
         sub: cognitoSub,
-        email: session.user.email || '',
-        name: session.user.name || undefined,
-        picture: session.user.image || undefined,
+        email: decoded.email || '',
+        name: decoded.name || undefined,
       });
       console.log('[DBG][api/auth/me] New user created:', user.id);
     } else {
