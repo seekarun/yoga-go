@@ -387,6 +387,8 @@ export class YogaGoStack extends cdk.Stack {
       environment: {
         NODE_ENV: 'production',
         PORT: '3000',
+        // AWS region (required for Cognito SDK)
+        AWS_REGION: this.region,
         // Cognito environment variables (non-secret)
         COGNITO_USER_POOL_ID: userPool.userPoolId,
         COGNITO_CLIENT_ID: appClient.userPoolClientId,

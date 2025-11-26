@@ -16,6 +16,15 @@ interface LoginRequestBody {
 }
 
 export async function POST(request: NextRequest) {
+  // Log environment config at start (helps debug production issues)
+  console.log('[DBG][login] ========== LOGIN ATTEMPT ==========');
+  console.log('[DBG][login] COGNITO_CLIENT_ID set:', !!process.env.COGNITO_CLIENT_ID);
+  console.log('[DBG][login] COGNITO_CLIENT_SECRET set:', !!process.env.COGNITO_CLIENT_SECRET);
+  console.log('[DBG][login] AWS_REGION:', process.env.AWS_REGION);
+  console.log('[DBG][login] COGNITO_USER_POOL_ID set:', !!process.env.COGNITO_USER_POOL_ID);
+  console.log('[DBG][login] NEXTAUTH_SECRET set:', !!process.env.NEXTAUTH_SECRET);
+  console.log('[DBG][login] NODE_ENV:', process.env.NODE_ENV);
+
   try {
     const body: LoginRequestBody = await request.json();
     const { email, password } = body;
@@ -165,15 +174,14 @@ export async function POST(request: NextRequest) {
         ? (error as { name: string }).name
         : 'Unknown';
 
-    // In development, include more error details
-    const devDetails =
-      process.env.NODE_ENV !== 'production'
-        ? {
-            errorName,
-            errorMessage: error instanceof Error ? error.message : String(error),
-          }
-        : {};
+    // Include error details for debugging (TODO: remove in production after debugging)
+    const errorDetails = {
+      errorName,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    };
 
-    return NextResponse.json({ success: false, message, ...devDetails }, { status: 400 });
+    console.error('[DBG][login] Final error response:', { message, ...errorDetails });
+
+    return NextResponse.json({ success: false, message, ...errorDetails }, { status: 400 });
   }
 }
