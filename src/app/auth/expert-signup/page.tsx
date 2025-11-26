@@ -51,7 +51,8 @@ export default function ExpertSignupPage() {
       {/* Header */}
       <section
         style={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background:
+            'linear-gradient(135deg, var(--color-primary) 0%, var(--color-highlight) 100%)',
           color: '#fff',
           padding: '60px 20px',
           textAlign: 'center',
@@ -145,9 +146,7 @@ export default function ExpertSignupPage() {
                 style={{
                   width: '100%',
                   padding: '14px 24px',
-                  background: isSubmitting
-                    ? '#ccc'
-                    : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  background: isSubmitting ? '#ccc' : 'var(--color-primary)',
                   color: '#fff',
                   border: 'none',
                   borderRadius: '8px',
@@ -181,7 +180,7 @@ export default function ExpertSignupPage() {
               <Link
                 href="/teach/apply"
                 style={{
-                  color: '#764ba2',
+                  color: 'var(--color-primary)',
                   textDecoration: 'none',
                   fontSize: '14px',
                   fontWeight: '500',

@@ -153,7 +153,8 @@ function SignupForm() {
       {/* Header */}
       <section
         style={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background:
+            'linear-gradient(135deg, var(--color-primary) 0%, var(--color-highlight) 100%)',
           color: '#fff',
           padding: '60px 20px',
           textAlign: 'center',
@@ -467,9 +468,7 @@ function SignupForm() {
                   width: '100%',
                   padding: '14px 24px',
                   background:
-                    isSubmitting || passwordStrength.score < 5
-                      ? '#ccc'
-                      : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    isSubmitting || passwordStrength.score < 5 ? '#ccc' : 'var(--color-primary)',
                   color: '#fff',
                   border: 'none',
                   borderRadius: '8px',
@@ -496,7 +495,7 @@ function SignupForm() {
                 <Link
                   href="/auth/signin"
                   style={{
-                    color: '#764ba2',
+                    color: 'var(--color-primary)',
                     textDecoration: 'none',
                     fontWeight: '500',
                   }}
