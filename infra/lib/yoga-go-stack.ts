@@ -119,6 +119,8 @@ export class YogaGoStack extends cdk.Stack {
           required: false,
           mutable: true,
         },
+        // Note: phone_number and picture already exist in Cognito by default
+        // No need to define them here - they're used via Google identity provider mapping
       },
       passwordPolicy: {
         minLength: 8,
@@ -146,12 +148,41 @@ export class YogaGoStack extends cdk.Stack {
     });
 
     // ========================================
-    // Cognito App Client (Email/Password only)
+    // Secrets Manager Secret (for environment variables)
     // ========================================
-    // Note: Social providers (Google, Facebook) can be added later by:
-    // 1. Creating OAuth credentials in respective developer consoles
-    // 2. Adding UserPoolIdentityProviderGoogle/Facebook resources
-    // 3. Updating supportedIdentityProviders to include them
+    // Import existing secret - CDK will NOT overwrite its values
+    // Create the secret manually in AWS Console with these keys:
+    // - MONGODB_URI
+    // - NEXTAUTH_SECRET
+    // - EXPERT_SIGNUP_CODE
+    // - COGNITO_CLIENT_SECRET
+    // - GOOGLE_CLIENT_ID (from Google Developer Console)
+    // - GOOGLE_CLIENT_SECRET (from Google Developer Console)
+    const appSecret = secretsmanager.Secret.fromSecretNameV2(
+      this,
+      'AppSecret',
+      'yoga-go/production'
+    );
+
+    // ========================================
+    // Google Identity Provider
+    // ========================================
+    // Prerequisites: Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to Secrets Manager
+    const googleProvider = new cognito.UserPoolIdentityProviderGoogle(this, 'GoogleProvider', {
+      userPool,
+      clientId: appSecret.secretValueFromJson('GOOGLE_CLIENT_ID').unsafeUnwrap(),
+      clientSecretValue: appSecret.secretValueFromJson('GOOGLE_CLIENT_SECRET'),
+      scopes: ['email', 'profile', 'openid'],
+      attributeMapping: {
+        email: cognito.ProviderAttribute.GOOGLE_EMAIL,
+        fullname: cognito.ProviderAttribute.GOOGLE_NAME,
+        profilePicture: cognito.ProviderAttribute.GOOGLE_PICTURE,
+      },
+    });
+
+    // ========================================
+    // Cognito App Client (Email/Password + Google)
+    // ========================================
     const appClient = userPool.addClient('YogaGoWebClient', {
       userPoolClientName: 'yoga-go-web',
       generateSecret: true,
@@ -168,29 +199,22 @@ export class YogaGoStack extends cdk.Stack {
           'http://localhost:3111/api/auth/callback/cognito',
           'https://myyoga.guru/api/auth/callback/cognito',
           'https://www.myyoga.guru/api/auth/callback/cognito',
+          // Google OAuth callback URLs
+          'http://localhost:3111/api/auth/google/callback',
+          'https://myyoga.guru/api/auth/google/callback',
+          'https://www.myyoga.guru/api/auth/google/callback',
         ],
         logoutUrls: ['http://localhost:3111', 'https://myyoga.guru', 'https://www.myyoga.guru'],
       },
       supportedIdentityProviders: [
-        cognito.UserPoolClientIdentityProvider.COGNITO, // Email/password only
+        cognito.UserPoolClientIdentityProvider.COGNITO,
+        cognito.UserPoolClientIdentityProvider.GOOGLE,
       ],
       preventUserExistenceErrors: true,
     });
 
-    // ========================================
-    // Secrets Manager Secret (for environment variables)
-    // ========================================
-    // Import existing secret - CDK will NOT overwrite its values
-    // Create the secret manually in AWS Console with these keys:
-    // - MONGODB_URI
-    // - NEXTAUTH_SECRET
-    // - EXPERT_SIGNUP_CODE
-    // - COGNITO_CLIENT_SECRET (optional, for Cognito)
-    const appSecret = secretsmanager.Secret.fromSecretNameV2(
-      this,
-      'AppSecret',
-      'yoga-go/production'
-    );
+    // Ensure Google provider is created before the app client
+    appClient.node.addDependency(googleProvider);
 
     // ========================================
     // ACM Certificate for HTTPS (DNS Validated)

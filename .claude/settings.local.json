@@ -17,7 +17,8 @@
       "Bash(aws elbv2 describe-target-health:*)",
       "Bash(aws ecs describe-tasks:*)",
       "Bash(aws ec2 describe-security-groups:*)",
-      "Bash(aws cloudformation describe-stacks:*)"
+      "Bash(aws cloudformation describe-stacks:*)",
+      "Bash(npx eslint:*)"
     ],
     "deny": [],
     "ask": []
