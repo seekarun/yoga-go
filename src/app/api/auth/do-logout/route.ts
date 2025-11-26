@@ -12,25 +12,46 @@ import { NextResponse } from 'next/server';
 // Helper to clear all auth cookies on a response
 function clearAuthCookies(response: NextResponse) {
   const expiredDate = new Date(0); // Jan 1, 1970
+  const isProduction = process.env.NODE_ENV === 'production';
 
-  // Clear the main session cookie
-  response.cookies.set('authjs.session-token', '', {
+  // Cookie options for clearing - must match how they were set
+  const sessionCookieOptions: {
+    httpOnly: boolean;
+    secure: boolean;
+    sameSite: 'lax' | 'strict' | 'none';
+    path: string;
+    expires: Date;
+    maxAge: number;
+    domain?: string;
+  } = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: isProduction,
     sameSite: 'lax',
     path: '/',
     expires: expiredDate,
     maxAge: 0,
-  });
+  };
+
+  // Set domain for production to match how cookie was set
+  if (isProduction) {
+    sessionCookieOptions.domain = '.myyoga.guru';
+  }
+
+  // Clear the main session cookie
+  response.cookies.set('authjs.session-token', '', sessionCookieOptions);
 
   // Clear other auth-related cookies
   const otherCookies = ['authjs.csrf-token', 'authjs.callback-url', 'pending_logout'];
   for (const cookieName of otherCookies) {
-    response.cookies.set(cookieName, '', {
+    const options: { path: string; expires: Date; maxAge: number; domain?: string } = {
       path: '/',
       expires: expiredDate,
       maxAge: 0,
-    });
+    };
+    if (isProduction) {
+      options.domain = '.myyoga.guru';
+    }
+    response.cookies.set(cookieName, '', options);
   }
 }
 

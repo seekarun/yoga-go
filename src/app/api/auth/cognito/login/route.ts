@@ -113,13 +113,29 @@ export async function POST(request: NextRequest) {
     });
 
     // Set the session cookie
-    response.cookies.set('authjs.session-token', token, {
+    // In production, set domain to .myyoga.guru to work across www and apex domain
+    const cookieOptions: {
+      httpOnly: boolean;
+      secure: boolean;
+      sameSite: 'lax' | 'strict' | 'none';
+      path: string;
+      maxAge: number;
+      domain?: string;
+    } = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
       maxAge: 30 * 24 * 60 * 60, // 30 days
-    });
+    };
+
+    // Set domain for production to work across www.myyoga.guru and myyoga.guru
+    if (process.env.NODE_ENV === 'production') {
+      cookieOptions.domain = '.myyoga.guru';
+    }
+
+    response.cookies.set('authjs.session-token', token, cookieOptions);
+    console.log('[DBG][login] Cookie set with options:', cookieOptions);
 
     return response;
   } catch (error) {
