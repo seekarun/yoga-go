@@ -113,13 +113,31 @@ export async function GET(request: NextRequest) {
     const response = NextResponse.redirect(new URL(callbackUrl, baseUrl));
 
     // Set session cookie with the name NextAuth expects
-    response.cookies.set('authjs.session-token', sessionToken, {
+    // IMPORTANT: Cookie settings must match logout route exactly for proper session clearing
+    const isProduction = process.env.NODE_ENV === 'production';
+    const cookieOptions: {
+      httpOnly: boolean;
+      secure: boolean;
+      sameSite: 'lax' | 'strict' | 'none';
+      path: string;
+      maxAge: number;
+      domain?: string;
+    } = {
       httpOnly: true,
-      secure: !hostname.includes('localhost'),
+      secure: isProduction,
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
       path: '/',
-    });
+      maxAge: 30 * 24 * 60 * 60, // 30 days (matches email login)
+    };
+
+    // Set domain for production to work across www.myyoga.guru and myyoga.guru
+    // IMPORTANT: Must match logout route domain setting for cookie to be cleared properly
+    if (isProduction) {
+      cookieOptions.domain = '.myyoga.guru';
+    }
+
+    response.cookies.set('authjs.session-token', sessionToken, cookieOptions);
+    console.log('[DBG][auth/google/callback] Cookie set with options:', cookieOptions);
 
     return response;
   } catch (error) {
