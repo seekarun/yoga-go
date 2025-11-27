@@ -181,7 +181,27 @@ export class YogaGoStack extends cdk.Stack {
     });
 
     // ========================================
-    // Cognito App Client (Email/Password + Google)
+    // Facebook Identity Provider
+    // ========================================
+    // Prerequisites: Add FACEBOOK_APP_ID and FACEBOOK_APP_SECRET to Secrets Manager
+    const facebookProvider = new cognito.UserPoolIdentityProviderFacebook(
+      this,
+      'FacebookProvider',
+      {
+        userPool,
+        clientId: appSecret.secretValueFromJson('FACEBOOK_APP_ID').unsafeUnwrap(),
+        clientSecret: appSecret.secretValueFromJson('FACEBOOK_APP_SECRET').unsafeUnwrap(),
+        scopes: ['email', 'public_profile'],
+        attributeMapping: {
+          email: cognito.ProviderAttribute.FACEBOOK_EMAIL,
+          fullname: cognito.ProviderAttribute.FACEBOOK_NAME,
+          // Facebook profile picture is accessed via Graph API, not as a standard attribute
+        },
+      }
+    );
+
+    // ========================================
+    // Cognito App Client (Email/Password + Google + Facebook)
     // ========================================
     const appClient = userPool.addClient('YogaGoWebClient', {
       userPoolClientName: 'yoga-go-web',
@@ -203,18 +223,24 @@ export class YogaGoStack extends cdk.Stack {
           'http://localhost:3111/api/auth/google/callback',
           'https://myyoga.guru/api/auth/google/callback',
           'https://www.myyoga.guru/api/auth/google/callback',
+          // Facebook OAuth callback URLs
+          'http://localhost:3111/api/auth/facebook/callback',
+          'https://myyoga.guru/api/auth/facebook/callback',
+          'https://www.myyoga.guru/api/auth/facebook/callback',
         ],
         logoutUrls: ['http://localhost:3111', 'https://myyoga.guru', 'https://www.myyoga.guru'],
       },
       supportedIdentityProviders: [
         cognito.UserPoolClientIdentityProvider.COGNITO,
         cognito.UserPoolClientIdentityProvider.GOOGLE,
+        cognito.UserPoolClientIdentityProvider.FACEBOOK,
       ],
       preventUserExistenceErrors: true,
     });
 
-    // Ensure Google provider is created before the app client
+    // Ensure identity providers are created before the app client
     appClient.node.addDependency(googleProvider);
+    appClient.node.addDependency(facebookProvider);
 
     // ========================================
     // ACM Certificate for HTTPS (DNS Validated)
