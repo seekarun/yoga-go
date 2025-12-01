@@ -189,9 +189,9 @@ const UserSchema = new Schema<UserDocument>(
     _id: { type: String, required: true },
     cognitoSub: { type: String, required: true, unique: true, index: true },
     role: {
-      type: String,
+      type: [String],
       enum: ['learner', 'expert', 'admin'],
-      default: 'learner',
+      default: ['learner'],
       required: true,
     },
     expertProfile: { type: String, index: true }, // Expert ID if user is an expert

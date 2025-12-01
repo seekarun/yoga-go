@@ -7,7 +7,7 @@ import Link from 'next/link';
 import type { User } from '@/types';
 
 export default function UserDetailsPage() {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, isAdmin } = useAuth();
   const router = useRouter();
   const params = useParams();
   const userId = params.userId as string;
@@ -15,7 +15,7 @@ export default function UserDetailsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (currentUser?.role !== 'admin') {
+    if (!isAdmin) {
       router.push('/app');
       return;
     }

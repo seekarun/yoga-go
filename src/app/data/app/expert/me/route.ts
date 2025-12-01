@@ -34,8 +34,11 @@ export async function GET() {
       });
     }
 
-    // Check if user is an expert
-    if (userDoc.role !== 'expert') {
+    // Check if user is an expert (role is now an array)
+    const isExpert = Array.isArray(userDoc.role)
+      ? userDoc.role.includes('expert')
+      : userDoc.role === 'expert';
+    if (!isExpert) {
       console.log('[DBG][expert/me/route.ts] User is not an expert');
       return NextResponse.json(
         { success: false, error: 'User is not an expert' } as ApiResponse<Expert>,
@@ -113,8 +116,11 @@ export async function PATCH(request: Request) {
       });
     }
 
-    // Check if user is an expert
-    if (userDoc.role !== 'expert') {
+    // Check if user is an expert (role is now an array)
+    const isExpertPatch = Array.isArray(userDoc.role)
+      ? userDoc.role.includes('expert')
+      : userDoc.role === 'expert';
+    if (!isExpertPatch) {
       console.log('[DBG][expert/me/route.ts] User is not an expert');
       return NextResponse.json(
         { success: false, error: 'User is not an expert' } as ApiResponse<Expert>,

@@ -1015,7 +1015,7 @@ export default function ExpertDetailPage() {
               Become an expert too and share your passion for yoga with students around the world.
             </p>
             <Link
-              href="/teach/apply"
+              href="/srv"
               style={{
                 padding: '14px 32px',
                 background: '#fff',

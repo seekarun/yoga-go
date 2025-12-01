@@ -14,14 +14,15 @@ interface SignupRequestBody {
   password: string;
   name: string;
   phone?: string;
-  role?: UserRole;
+  roles?: UserRole[]; // New: roles array
+  role?: UserRole; // Legacy: single role
   authToken?: string; // From expert signup flow
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body: SignupRequestBody = await request.json();
-    const { email, password, name, phone, role, authToken } = body;
+    const { email, password, name, phone, roles, role, authToken } = body;
 
     // Validate required fields
     if (!email || !password || !name) {
@@ -67,35 +68,39 @@ export async function POST(request: NextRequest) {
       requiresVerification: result.requiresVerification,
     });
 
-    // Determine user role
-    let userRole: UserRole = 'learner';
+    // Determine user roles array
+    let userRoles: UserRole[] = ['learner']; // Default
 
     // If authToken provided (from expert signup), verify and get role
     if (authToken) {
       await connectToDatabase();
       const pendingAuth = await PendingAuth.findById(authToken);
-      if (pendingAuth && pendingAuth.role === 'expert') {
-        userRole = 'expert';
+      if (pendingAuth && pendingAuth.role) {
+        // Use roles from pending auth (could be array or legacy string)
+        userRoles = Array.isArray(pendingAuth.role) ? pendingAuth.role : [pendingAuth.role];
         // Delete the old pending auth (it was for the code validation step)
         await PendingAuth.deleteOne({ _id: authToken });
       }
-    } else if (role === 'expert') {
-      // Direct role specification (shouldn't happen without authToken, but handle it)
-      userRole = 'expert';
+    } else if (roles && roles.length > 0) {
+      // Use provided roles array
+      userRoles = roles;
+    } else if (role) {
+      // Legacy: single role provided
+      userRoles = role === 'expert' ? ['learner', 'expert'] : ['learner'];
     }
 
-    // Create new PendingAuth to store role for verification callback
+    // Create new PendingAuth to store roles for verification callback
     if (result.requiresVerification && result.userSub) {
       await connectToDatabase();
       const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
 
       await PendingAuth.create({
         _id: result.userSub, // Use Cognito sub as ID for easy lookup
-        role: userRole,
+        role: userRoles,
         expiresAt,
       });
 
-      console.log('[DBG][signup] Created PendingAuth for:', result.userSub, 'role:', userRole);
+      console.log('[DBG][signup] Created PendingAuth for:', result.userSub, 'roles:', userRoles);
     }
 
     return NextResponse.json({

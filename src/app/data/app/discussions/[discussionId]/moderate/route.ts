@@ -37,8 +37,11 @@ export async function POST(
       return NextResponse.json(response, { status: 404 });
     }
 
-    // Check if user is an expert
-    if (user.role !== 'expert' || !user.expertProfile) {
+    // Check if user is an expert (role is now an array)
+    const isExpert = Array.isArray(user.role)
+      ? user.role.includes('expert')
+      : user.role === 'expert';
+    if (!isExpert || !user.expertProfile) {
       const response: ApiResponse<null> = {
         success: false,
         error: 'Only experts can moderate discussions',

@@ -11,7 +11,7 @@ import type { UserRole } from '@/types';
 
 export interface PendingAuthDocument {
   _id: string;
-  role: UserRole;
+  role: UserRole[];
   createdAt: Date;
   expiresAt: Date;
 }
@@ -23,7 +23,7 @@ const PendingAuthSchema = new Schema<PendingAuthDocument>(
       default: () => nanoid(32),
     },
     role: {
-      type: String,
+      type: [String],
       enum: ['learner', 'expert', 'admin'],
       required: true,
     },

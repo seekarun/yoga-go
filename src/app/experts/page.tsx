@@ -135,7 +135,7 @@ export default function ExpertsPage() {
             around the world.
           </p>
           <Link
-            href="/teach/apply"
+            href="/srv"
             style={{
               padding: '16px 32px',
               background: '#fff',

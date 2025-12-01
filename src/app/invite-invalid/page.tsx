@@ -154,7 +154,7 @@ export default function InviteInvalidPage() {
               Return to Home
             </Link>
             <Link
-              href="/teach"
+              href="/srv"
               style={{
                 padding: '14px 32px',
                 background: 'transparent',

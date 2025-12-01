@@ -285,7 +285,7 @@ export default function Footer() {
                 </li>
                 <li style={{ marginBottom: '12px' }}>
                   <Link
-                    href="/teach"
+                    href="/srv"
                     style={{
                       color: '#764ba2',
                       fontSize: '14px',

@@ -34,8 +34,11 @@ export async function POST(request: Request) {
       return NextResponse.json(response, { status: 404 });
     }
 
-    // Verify user is an expert
-    if (user.role !== 'expert' || !user.expertProfile) {
+    // Verify user is an expert (role is now an array)
+    const isExpert = Array.isArray(user.role)
+      ? user.role.includes('expert')
+      : user.role === 'expert';
+    if (!isExpert || !user.expertProfile) {
       const response: ApiResponse<null> = {
         success: false,
         error: 'Only experts can create live sessions',

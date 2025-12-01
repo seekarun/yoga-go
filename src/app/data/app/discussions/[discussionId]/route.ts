@@ -155,8 +155,11 @@ export async function DELETE(
     // Check if user owns this discussion OR if user is expert for this course
     let canDelete = discussionDoc.userId === user.id;
 
-    // If not owner, check if user is expert for this course
-    if (!canDelete && user.role === 'expert' && user.expertProfile) {
+    // If not owner, check if user is expert for this course (role is now an array)
+    const isExpert = Array.isArray(user.role)
+      ? user.role.includes('expert')
+      : user.role === 'expert';
+    if (!canDelete && isExpert && user.expertProfile) {
       const course = await CourseModel.findById(discussionDoc.courseId).exec();
       if (course && course.instructor.id === user.expertProfile) {
         canDelete = true;

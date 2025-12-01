@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { Course, Asset } from '@/types';
 import ImageUploadCrop from '@/components/ImageUploadCrop';
+import VideoUpload from '@/components/VideoUpload';
+import type { VideoUploadResult } from '@/components/VideoUpload';
 
 export default function EditCoursePage() {
   const params = useParams();
@@ -23,12 +25,8 @@ export default function EditCoursePage() {
     promoVideoStatus: '' as 'uploading' | 'processing' | 'ready' | 'error' | '',
     level: 'Beginner',
     duration: '',
-    totalLessons: 0,
-    freeLessons: 0,
     price: '',
     category: 'Yoga',
-    tags: '',
-    featured: false,
     requirements: '',
     whatYouWillLearn: '',
   });
@@ -36,10 +34,6 @@ export default function EditCoursePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedPromoFile, setSelectedPromoFile] = useState<File | null>(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [isUploading, setIsUploading] = useState(false);
-  const [pollingVideoId, setPollingVideoId] = useState<string | null>(null);
   const [_coverImageAsset, setCoverImageAsset] = useState<Asset | null>(null);
   const [uploadError, setUploadError] = useState('');
 
@@ -48,47 +42,6 @@ export default function EditCoursePage() {
     fetchCourseData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId]);
-
-  // Poll video status for processing promo videos
-  useEffect(() => {
-    if (!pollingVideoId) return;
-
-    const pollInterval = setInterval(async () => {
-      try {
-        console.log('[DBG][edit-course] Polling video status for:', pollingVideoId);
-
-        const response = await fetch(`/api/cloudflare/video-status/${pollingVideoId}`);
-        const data = await response.json();
-
-        if (data.success) {
-          const videoStatus = data.data.status;
-          const isReady = data.data.readyToStream;
-
-          console.log('[DBG][edit-course] Video status:', videoStatus, 'Ready:', isReady);
-
-          // Update formData if this is the currently uploading video
-          if (formData.promoVideoCloudflareId === pollingVideoId) {
-            const newStatus = isReady ? 'ready' : videoStatus === 'error' ? 'error' : 'processing';
-
-            setFormData(prev => ({
-              ...prev,
-              promoVideoStatus: newStatus,
-            }));
-
-            // If ready or error, stop polling
-            if (isReady || videoStatus === 'error') {
-              console.log('[DBG][edit-course] Video processing complete, stopping poll');
-              setPollingVideoId(null);
-            }
-          }
-        }
-      } catch (err) {
-        console.error('[DBG][edit-course] Error polling video status:', err);
-      }
-    }, 10000); // Poll every 10 seconds
-
-    return () => clearInterval(pollInterval);
-  }, [pollingVideoId, formData.promoVideoCloudflareId]);
 
   const fetchCourseData = async () => {
     try {
@@ -117,20 +70,11 @@ export default function EditCoursePage() {
         promoVideoStatus: course.promoVideoStatus || '',
         level: course.level || 'Beginner',
         duration: course.duration || '',
-        totalLessons: course.totalLessons || 0,
-        freeLessons: course.freeLessons || 0,
         price: course.price?.toString() || '',
         category: course.category || 'Yoga',
-        tags: course.tags?.join(', ') || '',
-        featured: course.featured || false,
         requirements: course.requirements?.join('\n') || '',
         whatYouWillLearn: course.whatYouWillLearn?.join('\n') || '',
       });
-
-      // If promo video is processing, start polling
-      if (course.promoVideoCloudflareId && course.promoVideoStatus === 'processing') {
-        setPollingVideoId(course.promoVideoCloudflareId);
-      }
     } catch (err) {
       console.error('[DBG][edit-course] Error loading course:', err);
       setError(err instanceof Error ? err.message : 'Failed to load course');
@@ -154,14 +98,6 @@ export default function EditCoursePage() {
     }
   };
 
-  const handlePromoFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      console.log('[DBG][edit-course] Promo video file selected:', file.name, file.size);
-      setSelectedPromoFile(file);
-    }
-  };
-
   const handleCoverImageUpload = (asset: Asset) => {
     console.log('[DBG][edit-course] Cover image uploaded:', asset);
     setCoverImageAsset(asset);
@@ -172,92 +108,31 @@ export default function EditCoursePage() {
     setUploadError('');
   };
 
-  const handleImageUploadError = (error: string) => {
-    console.error('[DBG][edit-course] Image upload error:', error);
-    setUploadError(error);
+  const handleImageUploadError = (errorMsg: string) => {
+    console.error('[DBG][edit-course] Image upload error:', errorMsg);
+    setUploadError(errorMsg);
   };
 
-  const handlePromoVideoUpload = async () => {
-    if (!selectedPromoFile) {
-      setError('Please select a video file');
-      return;
-    }
+  const handlePromoVideoUploadComplete = (result: VideoUploadResult) => {
+    console.log('[DBG][edit-course] Promo video upload complete:', result);
+    setFormData(prev => ({
+      ...prev,
+      promoVideoCloudflareId: result.videoId,
+      promoVideoStatus: result.status,
+    }));
+  };
 
-    setIsUploading(true);
-    setUploadProgress(0);
-    setError(null);
+  const handlePromoVideoClear = () => {
+    setFormData(prev => ({
+      ...prev,
+      promoVideoCloudflareId: '',
+      promoVideoStatus: '',
+    }));
+  };
 
-    try {
-      console.log('[DBG][edit-course] Starting promo video upload');
-
-      // Step 1: Get upload URL from our API
-      const uploadUrlResponse = await fetch('/api/cloudflare/upload-url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ maxDurationSeconds: 600 }), // 10 minutes max for promo
-      });
-
-      const uploadUrlData = await uploadUrlResponse.json();
-      if (!uploadUrlData.success) {
-        throw new Error(uploadUrlData.error || 'Failed to get upload URL');
-      }
-
-      const { uploadURL, uid } = uploadUrlData.data;
-      console.log('[DBG][edit-course] Got upload URL for promo video:', uid);
-
-      // Step 2: Upload video to Cloudflare using tus protocol
-      const formDataUpload = new FormData();
-      formDataUpload.append('file', selectedPromoFile);
-
-      const xhr = new XMLHttpRequest();
-
-      xhr.upload.addEventListener('progress', e => {
-        if (e.lengthComputable) {
-          const percentComplete = Math.round((e.loaded / e.total) * 100);
-          setUploadProgress(percentComplete);
-          console.log('[DBG][edit-course] Upload progress:', percentComplete, '%');
-        }
-      });
-
-      await new Promise<void>((resolve, reject) => {
-        xhr.addEventListener('load', () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            resolve();
-          } else {
-            reject(new Error(`Upload failed with status ${xhr.status}`));
-          }
-        });
-
-        xhr.addEventListener('error', () => {
-          reject(new Error('Upload failed'));
-        });
-
-        xhr.open('POST', uploadURL);
-        xhr.send(formDataUpload);
-      });
-
-      console.log('[DBG][edit-course] Promo video uploaded successfully:', uid);
-
-      // Step 3: Update form data with video ID
-      setFormData(prev => ({
-        ...prev,
-        promoVideoCloudflareId: uid,
-        promoVideoStatus: 'processing',
-      }));
-
-      setUploadProgress(100);
-
-      // Start polling for video status
-      console.log('[DBG][edit-course] Starting status polling for:', uid);
-      setPollingVideoId(uid);
-
-      alert('Promo video uploaded successfully! Processing status will update automatically.');
-    } catch (err) {
-      console.error('[DBG][edit-course] Error uploading promo video:', err);
-      setError(err instanceof Error ? err.message : 'Failed to upload promo video');
-    } finally {
-      setIsUploading(false);
-    }
+  const handlePromoVideoError = (errorMsg: string) => {
+    console.error('[DBG][edit-course] Promo video upload error:', errorMsg);
+    setError(errorMsg);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -280,12 +155,8 @@ export default function EditCoursePage() {
         promoVideoStatus: formData.promoVideoStatus || undefined,
         level: formData.level,
         duration: formData.duration,
-        totalLessons: formData.totalLessons,
-        freeLessons: formData.freeLessons,
         price: parseFloat(formData.price),
         category: formData.category,
-        tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()) : [],
-        featured: formData.featured,
         requirements: formData.requirements
           ? formData.requirements.split('\n').filter(r => r.trim())
           : [],
@@ -508,75 +379,6 @@ export default function EditCoursePage() {
                   />
                 </div>
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label
-                    htmlFor="totalLessons"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    Total Lessons
-                  </label>
-                  <input
-                    type="number"
-                    id="totalLessons"
-                    name="totalLessons"
-                    min="0"
-                    value={formData.totalLessons}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="0 (can add later)"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="freeLessons"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    Free Preview Lessons
-                  </label>
-                  <input
-                    type="number"
-                    id="freeLessons"
-                    name="freeLessons"
-                    min="0"
-                    value={formData.freeLessons}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="tags" className="block text-sm font-medium text-gray-700 mb-2">
-                  Tags (comma separated)
-                </label>
-                <input
-                  type="text"
-                  id="tags"
-                  name="tags"
-                  value={formData.tags}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="e.g., yoga, meditation, flexibility"
-                />
-              </div>
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="featured"
-                  name="featured"
-                  checked={formData.featured}
-                  onChange={handleChange}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label htmlFor="featured" className="ml-2 block text-sm text-gray-700">
-                  Mark as featured course
-                </label>
-              </div>
             </div>
           </div>
 
@@ -623,84 +425,18 @@ export default function EditCoursePage() {
                 <p className="text-sm text-gray-500 mt-1">Leave empty to use default image</p>
               </div>
 
+              {/* Promo Video Upload */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Promo Video Upload
-                </label>
-
-                {formData.promoVideoCloudflareId ? (
-                  <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-green-600">✓</span>
-                      <span className="text-sm font-medium text-green-800">
-                        Promo video uploaded
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600">
-                      Video ID: {formData.promoVideoCloudflareId}
-                    </p>
-                    {formData.promoVideoStatus && (
-                      <p className="text-sm text-gray-600">Status: {formData.promoVideoStatus}</p>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormData(prev => ({
-                          ...prev,
-                          promoVideoCloudflareId: '',
-                          promoVideoStatus: '',
-                        }));
-                        setSelectedPromoFile(null);
-                        setUploadProgress(0);
-                      }}
-                      className="mt-2 text-sm text-blue-600 hover:text-blue-700"
-                    >
-                      Upload different video
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <input
-                      type="file"
-                      id="promoVideoFile"
-                      accept="video/*"
-                      onChange={handlePromoFileSelect}
-                      disabled={isUploading}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                    />
-                    {selectedPromoFile && (
-                      <div className="mt-2">
-                        <p className="text-sm text-gray-600">
-                          Selected: {selectedPromoFile.name} (
-                          {(selectedPromoFile.size / 1024 / 1024).toFixed(2)} MB)
-                        </p>
-                        <button
-                          type="button"
-                          onClick={handlePromoVideoUpload}
-                          disabled={isUploading}
-                          className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed text-sm"
-                        >
-                          {isUploading ? 'Uploading...' : 'Upload Promo Video'}
-                        </button>
-                      </div>
-                    )}
-                    {isUploading && (
-                      <div className="mt-2">
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${uploadProgress}%` }}
-                          />
-                        </div>
-                        <p className="text-sm text-gray-600 mt-1">{uploadProgress}% uploaded</p>
-                      </div>
-                    )}
-                  </>
-                )}
-                <p className="text-sm text-gray-500 mt-2">
-                  Upload a promo video file (MP4, MOV, etc.). Max duration: 10 minutes. This video
-                  will be shown to users to preview your course.
-                </p>
+                <VideoUpload
+                  label="Promo Video Upload"
+                  maxDurationSeconds={600}
+                  videoId={formData.promoVideoCloudflareId}
+                  videoStatus={formData.promoVideoStatus}
+                  onUploadComplete={handlePromoVideoUploadComplete}
+                  onClear={handlePromoVideoClear}
+                  onError={handlePromoVideoError}
+                  helpText="Upload a promo video file (MP4, MOV, etc.). Max duration: 10 minutes. This video will be shown to users to preview your course."
+                />
 
                 <div className="mt-4">
                   <label

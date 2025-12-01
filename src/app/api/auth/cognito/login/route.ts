@@ -96,8 +96,11 @@ export async function POST(request: NextRequest) {
       salt: 'authjs.session-token',
     });
 
-    // Determine redirect URL based on role
-    const redirectUrl = user.role === 'expert' ? '/srv' : '/app';
+    // Determine redirect URL based on role (role is now an array)
+    const isExpert = Array.isArray(user.role)
+      ? user.role.includes('expert')
+      : user.role === 'expert';
+    const redirectUrl = isExpert ? '/srv' : '/app';
 
     // Create response with session cookie
     const response = NextResponse.json({

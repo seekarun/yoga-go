@@ -8,7 +8,7 @@ import type { UserCoursesData } from '@/types';
 import CourseCard from '@/components/CourseCard';
 
 export default function Dashboard() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isExpert } = useAuth();
   const router = useRouter();
   const [userCourses, setUserCourses] = useState<UserCoursesData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -29,13 +29,13 @@ export default function Dashboard() {
     const isLearningView =
       url.searchParams.has('view') && url.searchParams.get('view') === 'learning';
 
-    if (user?.role === 'expert' && !isLearningView) {
+    if (isExpert && !isLearningView) {
       console.log('[DBG][app/page] User is expert, redirecting to /srv');
       router.push('/srv');
-    } else if (user?.role === 'expert' && isLearningView) {
+    } else if (isExpert && isLearningView) {
       console.log('[DBG][app/page] Expert viewing learning dashboard');
     }
-  }, [user?.role, router]);
+  }, [isExpert, router]);
 
   useEffect(() => {
     const fetchUserCourses = async () => {

@@ -27,8 +27,11 @@ export async function PUT(request: Request) {
       });
     }
 
-    // Check if user is an expert
-    if (user.role !== 'expert') {
+    // Check if user is an expert (role is now an array)
+    const isExpert = Array.isArray(user.role)
+      ? user.role.includes('expert')
+      : user.role === 'expert';
+    if (!isExpert) {
       return NextResponse.json(
         {
           success: false,

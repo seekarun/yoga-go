@@ -66,22 +66,26 @@ export async function POST(request: NextRequest) {
             name: userInfo.name,
           });
 
-          // Check for pending auth to get role
+          // Check for pending auth to get roles
           await connectToDatabase();
           const pendingAuth = await PendingAuth.findById(userInfo.sub);
-          const role = pendingAuth?.role || 'learner';
+          // Get roles array from pending auth (handle both array and legacy string)
+          let roles: ('learner' | 'expert' | 'admin')[] = ['learner'];
+          if (pendingAuth?.role) {
+            roles = Array.isArray(pendingAuth.role) ? pendingAuth.role : [pendingAuth.role];
+          }
 
-          // Create or update MongoDB user
+          // Create or update MongoDB user with roles array
           const user = await getOrCreateUser(
             {
               sub: userInfo.sub,
               email: userInfo.email,
               name: userInfo.name || '',
             },
-            role
+            roles
           );
 
-          console.log('[DBG][verify] Created/updated user:', user.id, 'role:', role);
+          console.log('[DBG][verify] Created/updated user:', user.id, 'roles:', roles);
 
           // Delete pending auth
           if (pendingAuth) {
@@ -100,6 +104,8 @@ export async function POST(request: NextRequest) {
           });
 
           // Create response with session cookie
+          // Redirect to /srv if user has expert role, otherwise /app
+          const isExpert = roles.includes('expert');
           const response = NextResponse.json({
             success: true,
             message: 'Email verified and logged in successfully.',
@@ -109,7 +115,7 @@ export async function POST(request: NextRequest) {
               name: user.profile.name,
               role: user.role,
             },
-            redirectUrl: role === 'expert' ? '/srv' : '/app',
+            redirectUrl: isExpert ? '/srv' : '/app',
           });
 
           // Set the session cookie

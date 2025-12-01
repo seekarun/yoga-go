@@ -10,7 +10,7 @@ import ExpertTable from '@/components/ExpertTable';
 import type { AdminStats, UserListItem, ExpertListItem } from '@/types';
 
 export default function AdminDashboard() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, isAdmin } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('learners');
   const [stats, setStats] = useState<AdminStats | null>(null);
@@ -24,11 +24,11 @@ export default function AdminDashboard() {
 
   // Redirect if not admin
   useEffect(() => {
-    if (!authLoading && user && user.role !== 'admin') {
+    if (!authLoading && user && !isAdmin) {
       console.log('[DBG][admn] User is not admin, redirecting');
       router.push('/app');
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, isAdmin, router]);
 
   // Fetch stats
   useEffect(() => {
@@ -44,10 +44,10 @@ export default function AdminDashboard() {
       }
     };
 
-    if (user?.role === 'admin') {
+    if (isAdmin) {
       fetchStats();
     }
-  }, [user]);
+  }, [isAdmin]);
 
   // Fetch users
   useEffect(() => {
@@ -67,10 +67,10 @@ export default function AdminDashboard() {
       }
     };
 
-    if (user?.role === 'admin' && activeTab === 'learners') {
+    if (isAdmin && activeTab === 'learners') {
       fetchUsers();
     }
-  }, [user, activeTab, usersPage]);
+  }, [isAdmin, activeTab, usersPage]);
 
   // Fetch experts
   useEffect(() => {
@@ -90,10 +90,10 @@ export default function AdminDashboard() {
       }
     };
 
-    if (user?.role === 'admin' && activeTab === 'experts') {
+    if (isAdmin && activeTab === 'experts') {
       fetchExperts();
     }
-  }, [user, activeTab, expertsPage]);
+  }, [isAdmin, activeTab, expertsPage]);
 
   const handleEditUser = (userId: string) => {
     router.push(`/admn/users/${userId}`);
@@ -236,7 +236,7 @@ export default function AdminDashboard() {
     );
   }
 
-  if (user.role !== 'admin') {
+  if (!isAdmin) {
     return (
       <div style={{ padding: '80px 20px', textAlign: 'center' }}>
         <div style={{ fontSize: '16px', color: '#666' }}>Access denied. Admin only.</div>

@@ -43,8 +43,11 @@ export default function ExpertDashboard() {
 
       const user: User = data.data;
 
-      // Check if user is an expert
-      if (user.role !== 'expert') {
+      // Check if user is an expert (role is now an array)
+      const isExpert = Array.isArray(user.role)
+        ? user.role.includes('expert')
+        : user.role === 'expert';
+      if (!isExpert) {
         console.log('[DBG][expert-dashboard] User is not an expert, redirecting to home');
         router.push('/');
         return;
@@ -311,7 +314,7 @@ export default function ExpertDashboard() {
                     <div className="flex flex-wrap items-center gap-3">
                       {course.status === 'IN_PROGRESS' ? (
                         <Link
-                          href={`/srv/${expertId}/courses/${course.id}/lessons`}
+                          href={`/srv/${expertId}/courses/${course.id}`}
                           className="px-4 py-2 bg-yellow-600 text-white text-sm rounded-lg hover:bg-yellow-700 transition-colors font-medium"
                         >
                           Continue Setup

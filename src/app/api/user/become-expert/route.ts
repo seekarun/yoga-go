@@ -40,8 +40,11 @@ export async function POST() {
       return NextResponse.json(response, { status: 404 });
     }
 
-    // Check if already an expert
-    if (user.role === 'expert') {
+    // Check if already has expert role (handle both array and legacy string)
+    const currentRoles = Array.isArray(user.role) ? user.role : [user.role];
+    const isAlreadyExpert = currentRoles.includes('expert');
+
+    if (isAlreadyExpert) {
       console.log('[DBG][api/user/become-expert] User is already an expert');
       const response: ApiResponse<{ message: string }> = {
         success: true,
@@ -50,18 +53,24 @@ export async function POST() {
       return NextResponse.json(response);
     }
 
-    // Update user role to expert
+    // Add 'expert' to user's roles array
+    const newRoles = [...currentRoles, 'expert'];
     await UserModel.updateOne(
       { _id: user.id },
       {
         $set: {
-          role: 'expert',
+          role: newRoles,
           // Note: expertProfile will be created during onboarding at /srv
         },
       }
     );
 
-    console.log('[DBG][api/user/become-expert] User upgraded to expert:', user.id);
+    console.log(
+      '[DBG][api/user/become-expert] User upgraded to expert:',
+      user.id,
+      'roles:',
+      newRoles
+    );
 
     const response: ApiResponse<{ message: string }> = {
       success: true,

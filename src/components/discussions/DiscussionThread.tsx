@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import DiscussionForm from './DiscussionForm';
 import DiscussionReply from './DiscussionReply';
 import { useAuth } from '@/contexts/AuthContext';
-import type { DiscussionThread, VoteType, ApiResponse } from '@/types';
+import type { DiscussionThread, VoteType, ApiResponse, UserRole } from '@/types';
 
 interface DiscussionThreadProps {
   courseId: string;
@@ -19,12 +19,15 @@ export default function DiscussionThread({
   lessonTitle,
   instructorId,
 }: DiscussionThreadProps) {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isExpert } = useAuth();
+
+  // Determine primary role for discussions (prefer 'expert' if available)
+  const currentUserRole: UserRole = isExpert ? 'expert' : 'learner';
   const [discussions, setDiscussions] = useState<DiscussionThread[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const isExpertForCourse = user?.role === 'expert' && user?.expertProfile === instructorId;
+  const isExpertForCourse = isExpert && user?.expertProfile === instructorId;
 
   const fetchDiscussions = async () => {
     try {
@@ -250,7 +253,7 @@ export default function DiscussionThread({
               key={discussion.id}
               discussion={discussion}
               currentUserId={user.id}
-              currentUserRole={user.role}
+              currentUserRole={currentUserRole}
               isExpertForCourse={isExpertForCourse}
               onVote={handleVote}
               onReply={handleReply}

@@ -19,10 +19,34 @@ export async function getSession() {
 }
 
 /**
+ * Check if a user has a specific role
+ */
+export function hasRole(user: UserType | null | undefined, role: UserRole): boolean {
+  if (!user || !user.role) return false;
+  // Handle both array and legacy string formats (fallback)
+  if (Array.isArray(user.role)) {
+    return user.role.includes(role);
+  }
+  // Legacy fallback for string role
+  return user.role === role;
+}
+
+/**
+ * Normalize role to array format
+ * Handles legacy string format and defaults to ['learner']
+ */
+export function normalizeRoles(role: UserRole[] | UserRole | undefined): UserRole[] {
+  if (!role) return ['learner'];
+  if (Array.isArray(role)) return role;
+  // Legacy string format
+  return [role];
+}
+
+/**
  * Get or create user in MongoDB from Cognito profile
  * This is called after Cognito authentication to sync user data
  *
- * @param role - Optional role to assign to new users. Defaults to 'learner'
+ * @param roles - Optional roles array to assign to new users. Defaults to ['learner']
  */
 export async function getOrCreateUser(
   cognitoUser: {
@@ -31,13 +55,13 @@ export async function getOrCreateUser(
     name?: string;
     picture?: string;
   },
-  role?: UserRole
+  roles?: UserRole[]
 ): Promise<UserType> {
   console.log(
     '[DBG][auth] Getting or creating user for cognitoSub:',
     cognitoUser.sub,
-    'role:',
-    role
+    'roles:',
+    roles
   );
   console.log('[DBG][auth] Cognito user data:', {
     sub: cognitoUser.sub,
@@ -53,7 +77,7 @@ export async function getOrCreateUser(
   let userDoc = await User.findOne({ cognitoSub: cognitoUser.sub });
 
   if (userDoc) {
-    console.log('[DBG][auth] Found existing user:', userDoc._id, 'role:', userDoc.role);
+    console.log('[DBG][auth] Found existing user:', userDoc._id, 'roles:', userDoc.role);
 
     // Update profile if email or name changed in Cognito
     if (
@@ -70,7 +94,8 @@ export async function getOrCreateUser(
       console.log('[DBG][auth] Updated user profile with name:', newName);
     }
   } else {
-    console.log('[DBG][auth] Creating new user with role:', role || 'learner');
+    const userRoles = roles || ['learner'];
+    console.log('[DBG][auth] Creating new user with roles:', userRoles);
 
     // Create new user with default values
     const userId = nanoid(16);
@@ -82,7 +107,7 @@ export async function getOrCreateUser(
     userDoc = await User.create({
       _id: userId,
       cognitoSub: cognitoUser.sub,
-      role: role || ('learner' as UserRole),
+      role: userRoles,
       profile: {
         name: userName,
         email: cognitoUser.email,
@@ -143,7 +168,7 @@ export async function getOrCreateUser(
   // Convert MongoDB document to User type
   const user: UserType = {
     id: userDoc._id,
-    role: userDoc.role,
+    role: normalizeRoles(userDoc.role),
     expertProfile: userDoc.expertProfile,
     profile: userDoc.profile,
     membership: userDoc.membership,
@@ -178,7 +203,7 @@ export async function getUserById(userId: string): Promise<UserType | null> {
 
   const user: UserType = {
     id: userDoc._id,
-    role: userDoc.role,
+    role: normalizeRoles(userDoc.role),
     expertProfile: userDoc.expertProfile,
     profile: userDoc.profile,
     membership: userDoc.membership,
@@ -211,7 +236,7 @@ export async function getUserByCognitoSub(cognitoSub: string): Promise<UserType 
     return null;
   }
 
-  console.log('[DBG][auth] Found user:', userDoc._id, 'role:', userDoc.role);
+  console.log('[DBG][auth] Found user:', userDoc._id, 'roles:', userDoc.role);
   console.log('[DBG][auth] User has', userDoc.enrolledCourses.length, 'enrolled courses');
   console.log(
     '[DBG][auth] Enrolled courses:',
@@ -223,7 +248,7 @@ export async function getUserByCognitoSub(cognitoSub: string): Promise<UserType 
 
   const user: UserType = {
     id: userDoc._id,
-    role: userDoc.role,
+    role: normalizeRoles(userDoc.role),
     expertProfile: userDoc.expertProfile,
     profile: userDoc.profile,
     membership: userDoc.membership,
@@ -280,7 +305,7 @@ export async function requireExpertAuth(): Promise<{
     throw new Error('User not found');
   }
 
-  if (user.role !== 'expert') {
+  if (!hasRole(user, 'expert')) {
     throw new Error('Forbidden - Expert access required');
   }
 
@@ -314,7 +339,7 @@ export async function requireExpertOwnership(expertId: string): Promise<UserType
     throw new Error('User not found');
   }
 
-  if (user.role !== 'expert') {
+  if (!hasRole(user, 'expert')) {
     throw new Error('Forbidden - Expert access required');
   }
 
@@ -356,7 +381,7 @@ export async function requireCourseOwnership(courseId: string): Promise<UserType
     throw new Error('User not found');
   }
 
-  if (user.role !== 'expert') {
+  if (!hasRole(user, 'expert')) {
     throw new Error('Forbidden - Expert access required');
   }
 
@@ -408,7 +433,7 @@ export async function requireAdminAuth(): Promise<{
     throw new Error('User not found');
   }
 
-  if (user.role !== 'admin') {
+  if (!hasRole(user, 'admin')) {
     throw new Error('Forbidden - Admin access required');
   }
 

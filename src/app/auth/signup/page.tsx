@@ -41,9 +41,13 @@ function checkPasswordStrength(password: string): PasswordStrength {
 
 function SignupForm() {
   const searchParams = useSearchParams();
-  const role = searchParams.get('role');
+  const source = searchParams.get('source');
+  const role = searchParams.get('role'); // Legacy support
   const authToken = searchParams.get('auth_token');
-  const isExpert = role === 'expert';
+  // User is signing up as expert if source=srv OR role=expert (legacy)
+  const isExpert = source === 'srv' || role === 'expert';
+  // Determine roles array based on source
+  const roles = isExpert ? ['learner', 'expert'] : ['learner'];
 
   const [formData, setFormData] = useState<FormData>({
     name: '',
@@ -115,7 +119,7 @@ function SignupForm() {
           email: formData.email.trim().toLowerCase(),
           password: formData.password,
           phone: formData.phone.trim() || undefined,
-          role: isExpert ? 'expert' : 'learner',
+          roles: roles, // Send roles array
           authToken: authToken || undefined,
         }),
       });
@@ -499,9 +503,9 @@ function SignupForm() {
                 </div>
 
                 {/* Google Sign Up - uses <a> intentionally for full page redirect to API route */}
-                {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+                {}
                 <a
-                  href="/api/auth/google?callbackUrl=/app"
+                  href={`/api/auth/google?callbackUrl=${isExpert ? '/srv' : '/app'}${isExpert ? '&source=srv' : ''}`}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -550,9 +554,9 @@ function SignupForm() {
                 </a>
 
                 {/* Facebook Sign Up - uses <a> intentionally for full page redirect to API route */}
-                {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+                {}
                 <a
-                  href="/api/auth/facebook?callbackUrl=/app"
+                  href={`/api/auth/facebook?callbackUrl=${isExpert ? '/srv' : '/app'}${isExpert ? '&source=srv' : ''}`}
                   style={{
                     display: 'flex',
                     alignItems: 'center',

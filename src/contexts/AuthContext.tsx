@@ -2,12 +2,28 @@
 
 import type { ReactNode } from 'react';
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import type { User } from '@/types';
+import type { User, UserRole } from '@/types';
+
+/**
+ * Check if user has a specific role
+ */
+function hasRole(user: User | null, role: UserRole): boolean {
+  if (!user || !user.role) return false;
+  // Handle both array and legacy string formats
+  if (Array.isArray(user.role)) {
+    return user.role.includes(role);
+  }
+  // Legacy fallback for string role
+  return user.role === role;
+}
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isExpert: boolean;
+  isLearner: boolean;
+  isAdmin: boolean;
   login: (returnTo?: string) => void;
   logout: (returnTo?: string) => void;
   refreshUser: () => Promise<void>;
@@ -77,6 +93,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     isAuthenticated: !!user,
     isLoading,
+    isExpert: hasRole(user, 'expert'),
+    isLearner: hasRole(user, 'learner'),
+    isAdmin: hasRole(user, 'admin'),
     login,
     logout,
     refreshUser,

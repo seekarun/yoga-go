@@ -76,8 +76,11 @@ export default function AnalyticsDashboard() {
 
       const user: User = data.data;
 
-      // Check if user is an expert
-      if (user.role !== 'expert') {
+      // Check if user is an expert (role is now an array)
+      const isExpert = Array.isArray(user.role)
+        ? user.role.includes('expert')
+        : user.role === 'expert';
+      if (!isExpert) {
         console.log('[DBG][analytics-dashboard] User is not an expert, redirecting to home');
         router.push('/');
         return;

@@ -203,13 +203,17 @@ export async function POST(
     // Create discussion ID
     const discussionId = `${lessonId}_${user.id}_${Date.now()}`;
 
+    // Determine primary role for discussion (prefer 'expert' if available, otherwise first role)
+    const userRoles = Array.isArray(user.role) ? user.role : [user.role];
+    const primaryRole = userRoles.includes('expert') ? 'expert' : userRoles[0] || 'learner';
+
     // Create discussion document
     const discussionDoc = {
       _id: discussionId,
       courseId,
       lessonId,
       userId: user.id,
-      userRole: user.role,
+      userRole: primaryRole,
       userName: user.profile.name,
       userAvatar: user.profile.avatar,
       content: content.trim(),
@@ -229,7 +233,7 @@ export async function POST(
       courseId,
       lessonId,
       userId: user.id,
-      userRole: user.role,
+      userRole: primaryRole,
       userName: user.profile.name,
       userAvatar: user.profile.avatar,
       content: content.trim(),

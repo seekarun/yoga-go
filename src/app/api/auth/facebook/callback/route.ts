@@ -78,6 +78,24 @@ export async function GET(request: NextRequest) {
       name: payload.name,
     });
 
+    // Check if this is an expert signup based on source parameter
+    // The source param is encoded in the state/callbackUrl
+    const stateUrl = state ? new URL(state, baseUrl) : null;
+    const source = stateUrl?.searchParams?.get('source');
+    const isExpertSignup = source === 'srv';
+    const roles: ('learner' | 'expert' | 'admin')[] = isExpertSignup
+      ? ['learner', 'expert']
+      : ['learner'];
+
+    console.log(
+      '[DBG][auth/facebook/callback] source:',
+      source,
+      'isExpertSignup:',
+      isExpertSignup,
+      'roles:',
+      roles
+    );
+
     // Create or update user in MongoDB
     const user = await getOrCreateUser(
       {
@@ -86,10 +104,10 @@ export async function GET(request: NextRequest) {
         name: payload.name || payload.email?.split('@')[0],
         picture: payload.picture,
       },
-      'learner' // Default role for Facebook sign-up
+      roles // Use roles array
     );
 
-    console.log('[DBG][auth/facebook/callback] User created/updated:', user.id);
+    console.log('[DBG][auth/facebook/callback] User created/updated:', user.id, 'roles:', roles);
 
     // Create session token using NextAuth's encode function
     // This ensures compatibility with /api/auth/me which uses decode

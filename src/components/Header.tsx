@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getClientExpertContext } from '@/lib/domainContext';
 
 export default function Header() {
-  const { user, isAuthenticated, login, logout } = useAuth();
+  const { user, isAuthenticated, isExpert, login, logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [expertMode, setExpertMode] = useState<{ isExpertMode: boolean; expertId: string | null }>({
@@ -48,7 +48,7 @@ export default function Header() {
 
   const handleLogout = () => {
     // Redirect experts to /srv after logout, others to landing page
-    const returnTo = user?.role === 'expert' ? '/srv' : '/';
+    const returnTo = isExpert ? '/srv' : '/';
     logout(returnTo);
     setIsUserMenuOpen(false);
   };
@@ -57,7 +57,7 @@ export default function Header() {
   const logoHref = expertMode.isExpertMode
     ? '#'
     : isAuthenticated
-      ? user?.role === 'expert'
+      ? isExpert
         ? '/srv'
         : '/app'
       : '/';
@@ -153,19 +153,6 @@ export default function Header() {
                   }}
                 >
                   Experts
-                </Link>
-                <Link
-                  href="/srv"
-                  style={{
-                    textDecoration: 'none',
-                    color: scrollOpacity < 0.5 ? '#fff' : 'var(--color-primary)',
-                    fontSize: '16px',
-                    fontWeight: '500',
-                    transition: 'color 0.2s',
-                    textShadow: scrollOpacity < 0.5 ? '0 2px 4px rgba(0,0,0,0.3)' : 'none',
-                  }}
-                >
-                  For Experts
                 </Link>
               </>
             )}
@@ -282,7 +269,7 @@ export default function Header() {
                   >
                     Profile
                   </Link>
-                  {user?.role === 'expert' && (
+                  {isExpert && (
                     <>
                       <div style={{ height: '1px', background: '#e0e0e0', margin: '8px 0' }} />
                       <div

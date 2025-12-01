@@ -171,8 +171,9 @@ export async function DELETE(
       );
     }
 
-    // Don't allow deleting admin users
-    if (user.role === 'admin') {
+    // Don't allow deleting admin users (role is now an array)
+    const isAdmin = Array.isArray(user.role) ? user.role.includes('admin') : user.role === 'admin';
+    if (isAdmin) {
       return NextResponse.json(
         {
           success: false,

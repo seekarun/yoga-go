@@ -15,21 +15,22 @@ export default function ExpertPlatform() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Redirect learners to /app
-  useEffect(() => {
-    if (user?.role === 'learner') {
-      console.log('[DBG][srv/page] User is learner, redirecting to /app');
-      router.push('/app');
-    }
-  }, [user?.role, router]);
+  // Helper to check if user has a role (handles array format)
+  const hasRole = (role: string) => {
+    if (!user?.role) return false;
+    return Array.isArray(user.role)
+      ? user.role.includes(role as 'learner' | 'expert' | 'admin')
+      : user.role === role;
+  };
 
   useEffect(() => {
     // Only fetch expert profile if user is authenticated and is an expert
-    if (isAuthenticated && user?.role === 'expert') {
+    if (isAuthenticated && hasRole('expert')) {
       fetchExpertProfile();
     } else {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, user]);
 
   const fetchExpertProfile = async () => {
@@ -84,50 +85,13 @@ export default function ExpertPlatform() {
     return <ExpertLandingPage />;
   }
 
-  // Case 2: User is authenticated but is a learner
-  if (user?.role === 'learner') {
-    return (
-      <div
-        style={{
-          paddingTop: '64px',
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <div style={{ textAlign: 'center', padding: '40px' }}>
-          <h1 style={{ fontSize: '32px', fontWeight: '600', marginBottom: '16px' }}>
-            Looking to teach on Yoga-GO?
-          </h1>
-          <p style={{ fontSize: '16px', color: '#666', marginBottom: '24px' }}>
-            This area is for yoga experts who want to create and sell courses.
-          </p>
-          <p style={{ fontSize: '14px', color: '#999' }}>
-            To become an expert, please contact support or create a new account with an expert role.
-          </p>
-          <div style={{ marginTop: '32px' }}>
-            <Link
-              href="/app"
-              style={{
-                padding: '12px 24px',
-                background: 'var(--color-primary)',
-                color: '#fff',
-                borderRadius: '8px',
-                textDecoration: 'none',
-                display: 'inline-block',
-              }}
-            >
-              Back to Dashboard
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
+  // Case 2: User is authenticated but NOT an expert - show landing page with upgrade option
+  if (!hasRole('expert')) {
+    return <ExpertLandingPage isAuthenticated={isAuthenticated} />;
   }
 
   // Case 3: User is expert with error - Show Error State
-  if (user?.role === 'expert' && error) {
+  if (hasRole('expert') && error) {
     return (
       <div
         style={{
@@ -254,19 +218,19 @@ export default function ExpertPlatform() {
   }
 
   // Case 4: User is expert but profile doesn't exist - Show Onboarding
-  if (user?.role === 'expert' && !expertProfile) {
+  if (hasRole('expert') && !expertProfile) {
     return (
       <div style={{ paddingTop: '64px' }}>
         <ExpertOnboarding
-          userEmail={user.profile.email}
-          userName={user.profile?.name || user.profile.email.split('@')[0] || 'Expert'}
+          userEmail={user?.profile.email || ''}
+          userName={user?.profile?.name || user?.profile.email.split('@')[0] || 'Expert'}
         />
       </div>
     );
   }
 
-  // Case 4: User is expert with completed profile - Redirect to expert dashboard
-  if (user?.role === 'expert' && expertProfile) {
+  // Case 5: User is expert with completed profile - Redirect to expert dashboard
+  if (hasRole('expert') && expertProfile) {
     router.push(`/srv/${expertProfile.id}`);
     return (
       <div
@@ -304,8 +268,31 @@ export default function ExpertPlatform() {
   );
 }
 
-// SaaS Landing Page for unauthenticated users
-function ExpertLandingPage() {
+// SaaS Landing Page for unauthenticated users and learners
+function ExpertLandingPage({ isAuthenticated = false }: { isAuthenticated?: boolean }) {
+  const [upgrading, setUpgrading] = useState(false);
+  const [upgradeError, setUpgradeError] = useState('');
+
+  const handleUpgradeToExpert = async () => {
+    setUpgrading(true);
+    setUpgradeError('');
+    try {
+      const response = await fetch('/api/user/become-expert', {
+        method: 'POST',
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || 'Failed to upgrade to expert');
+      }
+      // Reload the page to show expert onboarding
+      window.location.reload();
+    } catch (err) {
+      console.error('[DBG][srv/page] Upgrade error:', err);
+      setUpgradeError(err instanceof Error ? err.message : 'Failed to upgrade');
+      setUpgrading(false);
+    }
+  };
+
   return (
     <div style={{ minHeight: '100vh' }}>
       {/* Hero Section */}
@@ -374,42 +361,88 @@ function ExpertLandingPage() {
                 Share your expertise, reach students worldwide, and earn income doing what you love.
                 Join hundreds of yoga instructors building thriving online practices.
               </p>
-              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                <Link
-                  href="/auth/signin?callbackUrl=/srv"
-                  style={{
-                    padding: '16px 40px',
-                    background: '#fff',
-                    color: 'var(--color-primary)',
-                    borderRadius: '8px',
-                    fontSize: '18px',
-                    fontWeight: '600',
-                    textDecoration: 'none',
-                    display: 'inline-block',
-                    transition: 'transform 0.2s',
-                    boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
-                  }}
-                >
-                  Start Teaching Today
-                </Link>
-                <a
-                  href="#features"
-                  style={{
-                    padding: '16px 40px',
-                    background: 'rgba(255, 255, 255, 0.1)',
-                    color: '#fff',
-                    border: '2px solid #fff',
-                    borderRadius: '8px',
-                    fontSize: '18px',
-                    fontWeight: '600',
-                    textDecoration: 'none',
-                    display: 'inline-block',
-                    transition: 'transform 0.2s',
-                    backdropFilter: 'blur(10px)',
-                  }}
-                >
-                  Learn More
-                </a>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '16px',
+                  flexWrap: 'wrap',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                }}
+              >
+                {upgradeError && (
+                  <div
+                    style={{
+                      padding: '12px 16px',
+                      background: 'rgba(255,0,0,0.2)',
+                      color: '#fff',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                    }}
+                  >
+                    {upgradeError}
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                  {isAuthenticated ? (
+                    // Authenticated learner - show upgrade button
+                    <button
+                      onClick={handleUpgradeToExpert}
+                      disabled={upgrading}
+                      style={{
+                        padding: '16px 40px',
+                        background: upgrading ? '#ccc' : '#fff',
+                        color: 'var(--color-primary)',
+                        borderRadius: '8px',
+                        fontSize: '18px',
+                        fontWeight: '600',
+                        border: 'none',
+                        cursor: upgrading ? 'not-allowed' : 'pointer',
+                        transition: 'transform 0.2s',
+                        boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+                      }}
+                    >
+                      {upgrading ? 'Upgrading...' : 'Start Teaching Today'}
+                    </button>
+                  ) : (
+                    // Unauthenticated - show signup link
+                    <Link
+                      href="/auth/signup?source=srv"
+                      style={{
+                        padding: '16px 40px',
+                        background: '#fff',
+                        color: 'var(--color-primary)',
+                        borderRadius: '8px',
+                        fontSize: '18px',
+                        fontWeight: '600',
+                        textDecoration: 'none',
+                        display: 'inline-block',
+                        transition: 'transform 0.2s',
+                        boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+                      }}
+                    >
+                      Start Teaching Today
+                    </Link>
+                  )}
+                  <a
+                    href="#features"
+                    style={{
+                      padding: '16px 40px',
+                      background: 'rgba(255, 255, 255, 0.1)',
+                      color: '#fff',
+                      border: '2px solid #fff',
+                      borderRadius: '8px',
+                      fontSize: '18px',
+                      fontWeight: '600',
+                      textDecoration: 'none',
+                      display: 'inline-block',
+                      transition: 'transform 0.2s',
+                      backdropFilter: 'blur(10px)',
+                    }}
+                  >
+                    Learn More
+                  </a>
+                </div>
               </div>
             </div>
           </div>

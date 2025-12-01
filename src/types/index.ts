@@ -311,7 +311,7 @@ export interface UserSocial {
 }
 
 export interface User extends BaseEntity {
-  role: UserRole; // User role: learner or expert
+  role: UserRole[]; // User roles array: ['learner'], ['learner', 'expert'], etc.
   expertProfile?: string; // Expert ID if user is an expert
   profile: UserProfile;
   membership: Membership;
@@ -786,7 +786,7 @@ export interface UserListItem {
   name: string;
   email: string;
   avatar?: string;
-  role: UserRole;
+  role: UserRole[];
   membershipType: MembershipType;
   membershipStatus: MembershipStatus;
   joinedAt: string;

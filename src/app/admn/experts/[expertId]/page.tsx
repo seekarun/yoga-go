@@ -12,7 +12,7 @@ interface ExpertData {
 }
 
 export default function ExpertDetailsPage() {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, isAdmin } = useAuth();
   const router = useRouter();
   const params = useParams();
   const expertId = params.expertId as string;
@@ -20,7 +20,7 @@ export default function ExpertDetailsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (currentUser?.role !== 'admin') {
+    if (!isAdmin) {
       router.push('/app');
       return;
     }

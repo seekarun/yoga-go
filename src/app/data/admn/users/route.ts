@@ -27,8 +27,8 @@ export async function GET(request: NextRequest) {
     const membershipType = searchParams.get('membershipType') || '';
     const status = searchParams.get('status') || '';
 
-    // Build query filter
-    const query: any = { role: 'learner' };
+    // Build query filter (role is now an array, query for users with learner role)
+    const query: any = { role: { $in: ['learner'] } };
 
     // Add search filter (name or email)
     if (search) {
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
         name: user.profile.name,
         email: user.profile.email,
         avatar: user.profile.avatar,
-        role: 'learner',
+        role: ['learner'] as const,
         membershipType: user.membership.type,
         membershipStatus: user.membership.status,
         joinedAt: user.profile.joinedAt,

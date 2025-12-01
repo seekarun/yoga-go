@@ -29,8 +29,11 @@ export async function POST(request: Request) {
       });
     }
 
-    // Check if user is an expert
-    if (user.role !== 'expert' || !user.expertProfile) {
+    // Check if user is an expert (role is now an array)
+    const isExpert = Array.isArray(user.role)
+      ? user.role.includes('expert')
+      : user.role === 'expert';
+    if (!isExpert || !user.expertProfile) {
       return NextResponse.json(
         { success: false, error: 'Only experts can create instant meetings' } as ApiResponse<null>,
         { status: 403 }

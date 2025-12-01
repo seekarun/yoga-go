@@ -39,18 +39,19 @@ export async function GET(request: NextRequest) {
     const authToken = searchParams.get('auth_token');
     const redirectTo = searchParams.get('redirectTo') || '/app';
 
-    let role: UserRole = 'learner';
+    let roles: UserRole[] = ['learner'];
 
     if (authToken) {
       console.log('[DBG][auth/callback] Auth token found:', authToken);
 
-      // Look up role from MongoDB
+      // Look up roles from MongoDB
       await connectToDatabase();
       const pendingAuth = await PendingAuth.findById(authToken);
 
       if (pendingAuth) {
-        role = pendingAuth.role;
-        console.log('[DBG][auth/callback] Retrieved role from database:', role);
+        // Handle both array and legacy single role format
+        roles = Array.isArray(pendingAuth.role) ? pendingAuth.role : [pendingAuth.role];
+        console.log('[DBG][auth/callback] Retrieved roles from database:', roles);
 
         // Delete the pending auth record (one-time use)
         await PendingAuth.findByIdAndDelete(authToken);
@@ -60,7 +61,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    console.log('[DBG][auth/callback] Creating/updating user with role:', role);
+    console.log('[DBG][auth/callback] Creating/updating user with roles:', roles);
 
     // Create or update user in MongoDB
     await getOrCreateUser(
@@ -70,7 +71,7 @@ export async function GET(request: NextRequest) {
         name: session.user.name || undefined,
         picture: session.user.image || undefined,
       },
-      role
+      roles
     );
 
     console.log('[DBG][auth/callback] User created/updated successfully');

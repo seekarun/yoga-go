@@ -178,7 +178,7 @@ export default function ExpertSignupPage() {
                 Don&apos;t have an expert code?
               </p>
               <Link
-                href="/teach/apply"
+                href="/srv"
                 style={{
                   color: 'var(--color-primary)',
                   textDecoration: 'none',
@@ -186,7 +186,7 @@ export default function ExpertSignupPage() {
                   fontWeight: '500',
                 }}
               >
-                Apply to become an expert →
+                Become an expert →
               </Link>
             </div>
 
