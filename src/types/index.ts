@@ -810,3 +810,51 @@ export interface ExpertListItem {
   featured: boolean;
   status: 'active' | 'suspended';
 }
+
+// Instagram Integration Types
+export interface InstagramConnection extends BaseEntity {
+  instagramUserId: string;
+  instagramUsername: string;
+  facebookPageId: string;
+  facebookPageName: string;
+  accessToken: string; // Long-lived token (encrypted in DB)
+  tokenExpiresAt: string; // ISO date
+  connectedAt: string;
+  isActive: boolean;
+  profilePictureUrl?: string;
+  followersCount?: number;
+  // Optional: link to expert when auth is available
+  expertId?: string;
+}
+
+export type InstagramPostStatus = 'draft' | 'pending' | 'publishing' | 'published' | 'failed';
+
+export type InstagramPostType = 'image' | 'carousel' | 'reel';
+
+export interface InstagramPost extends BaseEntity {
+  connectionId: string; // Reference to InstagramConnection
+  courseId?: string; // Source course (if generated from course)
+  postType: InstagramPostType;
+  caption: string;
+  generatedCaption?: string; // Original AI-generated caption
+  hashtags: string[];
+  mediaUrls: string[]; // Cloudflare/public image URLs
+  instagramMediaId?: string; // Instagram's media ID after posting
+  instagramPermalink?: string; // Link to post on Instagram
+  status: InstagramPostStatus;
+  scheduledFor?: string; // Future: scheduled posting
+  publishedAt?: string;
+  errorMessage?: string;
+  engagement?: {
+    likes?: number;
+    comments?: number;
+    shares?: number;
+    reach?: number;
+  };
+}
+
+export interface GeneratedPostContent {
+  caption: string;
+  hashtags: string[];
+  mediaUrl: string;
+}
