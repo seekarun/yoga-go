@@ -15,8 +15,10 @@ export async function GET(
     savePoint,
     userId: 'guest-user',
     progress: {
+      id: `guest-user_${courseId}`,
       courseId,
       userId: 'guest-user',
+      enrolledAt: '2024-01-01T10:00:00Z',
       totalLessons: 30,
       completedLessons: ['lesson-1', 'lesson-2', 'lesson-3'],
       percentComplete: 10,
@@ -27,6 +29,26 @@ export async function GET(
       },
       lastAccessed: new Date().toISOString(),
       totalTimeSpent: 120,
+      lessonProgress: [
+        {
+          lessonId: 'lesson-1',
+          completed: true,
+          completedAt: '2024-01-01T10:30:00Z',
+          timeSpent: 30,
+        },
+        {
+          lessonId: 'lesson-2',
+          completed: true,
+          completedAt: '2024-01-02T10:30:00Z',
+          timeSpent: 35,
+        },
+        {
+          lessonId: 'lesson-3',
+          completed: true,
+          completedAt: '2024-01-03T10:30:00Z',
+          timeSpent: 30,
+        },
+      ],
       notes: [
         {
           lessonId: 'lesson-1',

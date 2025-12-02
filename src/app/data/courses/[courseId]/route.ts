@@ -1,19 +1,16 @@
 import { NextResponse } from 'next/server';
 import type { ApiResponse, Course, Lesson } from '@/types';
-import { connectToDatabase } from '@/lib/mongodb';
-import CourseModel from '@/models/Course';
-import LessonModel from '@/models/Lesson';
-import ExpertModel from '@/models/Expert';
+import * as courseRepository from '@/lib/repositories/courseRepository';
+import * as expertRepository from '@/lib/repositories/expertRepository';
+import * as lessonRepository from '@/lib/repositories/lessonRepository';
 
 export async function GET(request: Request, { params }: { params: Promise<{ courseId: string }> }) {
   const { courseId } = await params;
   console.log(`[DBG][courses/[courseId]/route.ts] GET /data/courses/${courseId} called`);
 
   try {
-    await connectToDatabase();
-
-    // Fetch course from MongoDB
-    const courseDoc = await CourseModel.findOne({ _id: courseId }).lean().exec();
+    // Fetch course from DynamoDB
+    const courseDoc = await courseRepository.getCourseById(courseId);
 
     if (!courseDoc) {
       const errorResponse: ApiResponse<never> = {
@@ -23,56 +20,47 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
       return NextResponse.json(errorResponse, { status: 404 });
     }
 
+    // Fetch all lessons for this course from DynamoDB
+    const allLessons = await lessonRepository.getLessonsByCourseId(courseId);
+
+    // Create a map for quick lookup
+    const lessonMap = new Map(allLessons.map(l => [l.id, l]));
+
     // Populate curriculum with actual lesson data
-    const populatedCurriculum = await Promise.all(
-      (
-        ((courseDoc as Record<string, unknown>).curriculum as {
-          week: number;
-          title: string;
-          lessonIds: string[];
-        }[]) || []
-      ).map(async week => {
-        if (!week.lessonIds || week.lessonIds.length === 0) {
-          return { ...week, lessons: [] };
-        }
+    const populatedCurriculum = (courseDoc.curriculum || []).map(week => {
+      // Check if week has lessonIds (stored format) or lessons (API format)
+      const lessonIds = (week as { lessonIds?: string[] }).lessonIds || [];
+      if (lessonIds.length === 0) {
+        return { ...week, lessons: [] };
+      }
 
-        // Fetch lessons for this week
-        const lessonDocs = await LessonModel.find({ _id: { $in: week.lessonIds } })
-          .lean()
-          .exec();
+      // Get lessons for this week from the map
+      const lessons = lessonIds
+        .map((id: string) => lessonMap.get(id))
+        .filter((l): l is NonNullable<typeof l> => l !== undefined) as Lesson[];
 
-        // Transform lessons
-        const lessons: Lesson[] = lessonDocs.map((doc: any) => ({
-          ...doc,
-          id: doc._id as string,
-        }));
+      return {
+        week: week.week,
+        title: week.title,
+        lessons,
+      };
+    });
 
-        return {
-          week: week.week,
-          title: week.title,
-          lessons,
-        };
-      })
-    );
-
-    // Fetch instructor/expert data to get current avatar
-    let instructorData = (courseDoc as any).instructor;
-    if ((courseDoc as any).instructor?.id) {
-      const expert = await ExpertModel.findById((courseDoc as any).instructor.id)
-        .lean()
-        .exec();
+    // Fetch instructor/expert data from DynamoDB to get current avatar
+    let instructorData = courseDoc.instructor;
+    if (courseDoc.instructor?.id) {
+      const expert = await expertRepository.getExpertById(courseDoc.instructor.id);
       if (expert) {
         instructorData = {
-          ...(courseDoc as any).instructor,
-          avatar: (expert as any).avatar || (courseDoc as any).instructor.avatar,
+          ...courseDoc.instructor,
+          avatar: expert.avatar || courseDoc.instructor.avatar,
         };
       }
     }
 
-    // Transform MongoDB document to Course type
+    // Build response
     const course: Course = {
-      ...(courseDoc as any),
-      id: (courseDoc as any)._id as string,
+      ...courseDoc,
       instructor: instructorData,
       curriculum: populatedCurriculum,
     };
@@ -98,10 +86,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ cour
   console.log(`[DBG][courses/[courseId]/route.ts] PUT /data/courses/${courseId} called`);
 
   try {
-    await connectToDatabase();
-
-    // Check if course exists
-    const existingCourse = await CourseModel.findOne({ _id: courseId }).lean().exec();
+    // Check if course exists in DynamoDB
+    const existingCourse = await courseRepository.getCourseById(courseId);
     if (!existingCourse) {
       return NextResponse.json(
         {
@@ -116,11 +102,10 @@ export async function PUT(request: Request, { params }: { params: Promise<{ cour
     const body = await request.json();
 
     // Build update object - only include provided fields
-    const updateData: Record<string, unknown> = {};
+    const updateData: Partial<Course> = {};
 
     if (body.title !== undefined) updateData.title = body.title;
     if (body.description !== undefined) updateData.description = body.description;
-    if (body.longDescription !== undefined) updateData.longDescription = body.longDescription;
     if (body.instructor !== undefined) updateData.instructor = body.instructor;
     if (body.thumbnail !== undefined) updateData.thumbnail = body.thumbnail;
     if (body.coverImage !== undefined) updateData.coverImage = body.coverImage;
@@ -145,34 +130,19 @@ export async function PUT(request: Request, { params }: { params: Promise<{ cour
     if (body.whatYouWillLearn !== undefined) updateData.whatYouWillLearn = body.whatYouWillLearn;
     if (body.reviews !== undefined) updateData.reviews = body.reviews;
 
-    // Handle curriculum update - transform to use lessonIds
+    // Handle curriculum update
     if (body.curriculum !== undefined) {
-      updateData.curriculum = (
-        body.curriculum as { week: number; title: string; lessonIds?: string[] }[]
-      ).map(week => ({
-        week: week.week,
-        title: week.title,
-        lessonIds: week.lessonIds || [],
-      }));
+      updateData.curriculum = body.curriculum;
     }
 
-    // Update course
-    const updatedCourse = await CourseModel.findOneAndUpdate({ _id: courseId }, updateData, {
-      new: true,
-      lean: true,
-    }).exec();
+    // Update course in DynamoDB
+    const updatedCourse = await courseRepository.updateCourse(courseId, updateData);
 
     console.log(`[DBG][courses/[courseId]/route.ts] ✓ Updated course: ${courseId}`);
 
-    // Transform response
-    const course: Course = {
-      ...(updatedCourse as any),
-      id: (updatedCourse as any)._id as string,
-    };
-
     const response: ApiResponse<Course> = {
       success: true,
-      data: course,
+      data: updatedCourse,
       message: 'Course updated successfully',
     };
 
@@ -195,10 +165,8 @@ export async function DELETE(
   console.log(`[DBG][courses/[courseId]/route.ts] DELETE /data/courses/${courseId} called`);
 
   try {
-    await connectToDatabase();
-
-    // Check if course exists
-    const existingCourse = await CourseModel.findOne({ _id: courseId }).lean().exec();
+    // Check if course exists in DynamoDB
+    const existingCourse = await courseRepository.getCourseById(courseId);
     if (!existingCourse) {
       return NextResponse.json(
         {
@@ -209,21 +177,19 @@ export async function DELETE(
       );
     }
 
-    // Delete all lessons associated with this course
-    const deletedLessons = await LessonModel.deleteMany({ courseId }).exec();
-    console.log(
-      `[DBG][courses/[courseId]/route.ts] ✓ Deleted ${deletedLessons.deletedCount} lessons`
-    );
+    // Delete all lessons associated with this course from DynamoDB
+    const deletedCount = await lessonRepository.deleteLessonsByCourseId(courseId);
+    console.log(`[DBG][courses/[courseId]/route.ts] ✓ Deleted ${deletedCount} lessons`);
 
-    // Delete the course
-    await CourseModel.findOneAndDelete({ _id: courseId }).exec();
+    // Delete the course from DynamoDB
+    await courseRepository.deleteCourse(courseId);
     console.log(`[DBG][courses/[courseId]/route.ts] ✓ Deleted course: ${courseId}`);
 
     const response: ApiResponse<{ deletedCourse: string; deletedLessons: number }> = {
       success: true,
       data: {
         deletedCourse: courseId,
-        deletedLessons: deletedLessons.deletedCount,
+        deletedLessons: deletedCount,
       },
       message: 'Course and associated lessons deleted successfully',
     };

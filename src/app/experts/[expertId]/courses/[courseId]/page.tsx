@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import PaymentModal from '@/components/payment/PaymentModal';
-import { trackCourseView, trackSubscriptionClick } from '@/lib/analytics';
+import { trackCourseView, trackEnrollClick } from '@/lib/analytics';
 import type { Course, Lesson } from '@/types';
 
 export default function ExpertCourseDetailPage() {
@@ -78,9 +78,9 @@ export default function ExpertCourseDetailPage() {
   }, [isAuthenticated, user, courseId]);
 
   const handleEnrollClick = () => {
-    // Track subscription click
-    trackSubscriptionClick(courseId).catch(err => {
-      console.error('[DBG][expert-course-detail] Failed to track subscription click:', err);
+    // Track enroll click
+    trackEnrollClick(courseId).catch(err => {
+      console.error('[DBG][expert-course-detail] Failed to track enroll click:', err);
     });
 
     if (!isAuthenticated) {

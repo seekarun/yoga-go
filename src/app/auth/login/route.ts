@@ -2,17 +2,19 @@
  * Custom Cognito Login Handler
  *
  * Supports two flows:
- * 1. New flow: auth_token parameter (from expert signup page)
- * 2. Legacy flow: role + code parameters (backward compatibility)
+ * 1. Expert flow: Check for pending-oauth-role cookie (set by expert signup validation)
+ * 2. Learner flow: Default role
  *
- * Stores the intended role in MongoDB temporarily and redirects to Cognito via NextAuth.
+ * Stores the intended role in a signed cookie and redirects to Cognito via NextAuth.
  */
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/mongodb';
-import { PendingAuth } from '@/models/PendingAuth';
-import { signIn } from '@/auth';
+import { SignJWT, jwtVerify } from 'jose';
+import type { UserRole } from '@/types';
+
+// Cookie name for pending OAuth auth data
+const PENDING_OAUTH_COOKIE = 'pending-oauth-role';
 
 export async function GET(request: NextRequest) {
   console.log('[DBG][auth/login] Cognito login handler');
@@ -27,81 +29,100 @@ export async function GET(request: NextRequest) {
 
     // Check for parameters
     const searchParams = request.nextUrl.searchParams;
-    const authTokenParam = searchParams.get('auth_token');
     const roleParam = searchParams.get('role');
     const codeParam = searchParams.get('code');
     const callbackUrl = searchParams.get('callbackUrl');
 
-    let authToken: string;
+    let roles: UserRole[] = ['learner']; // Default role
 
-    // Priority 1: Use existing auth_token if provided (from expert signup page)
-    if (authTokenParam) {
-      console.log('[DBG][auth/login] Using existing auth_token:', authTokenParam);
-      await connectToDatabase();
+    // Check for pending-oauth-role cookie (from expert signup validation)
+    const pendingOAuthCookie = request.cookies.get(PENDING_OAUTH_COOKIE);
 
-      const pendingAuth = await PendingAuth.findById(authTokenParam);
+    if (pendingOAuthCookie?.value) {
+      try {
+        const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET);
+        const { payload } = await jwtVerify(pendingOAuthCookie.value, secret);
 
-      if (!pendingAuth) {
-        console.log('[DBG][auth/login] No pending auth found for token:', authTokenParam);
+        if (payload.roles && payload.validated) {
+          roles = payload.roles as UserRole[];
+          console.log('[DBG][auth/login] Found validated expert role from cookie:', roles);
+        }
+      } catch (cookieError) {
+        console.error('[DBG][auth/login] Error reading pending-oauth-role cookie:', cookieError);
+        // Continue with default role
+      }
+    }
+    // Legacy flow - validate code directly (backward compatibility)
+    else if (roleParam === 'expert') {
+      console.log('[DBG][auth/login] Expert signup requested (legacy flow), validating code...');
+
+      const expectedCode = process.env.EXPERT_SIGNUP_CODE;
+
+      if (!expectedCode) {
+        console.error('[DBG][auth/login] EXPERT_SIGNUP_CODE not configured in environment!');
         return NextResponse.redirect(new URL('/invite-invalid', baseUrl));
       }
 
-      if (pendingAuth.expiresAt < new Date()) {
-        console.log('[DBG][auth/login] Pending auth expired for token:', authTokenParam);
-        await PendingAuth.findByIdAndDelete(authTokenParam);
+      if (codeParam !== expectedCode) {
+        console.log('[DBG][auth/login] Invalid expert signup code provided');
         return NextResponse.redirect(new URL('/invite-invalid', baseUrl));
       }
 
-      authToken = authTokenParam;
-      console.log('[DBG][auth/login] Found valid pending auth with role:', pendingAuth.role);
+      console.log('[DBG][auth/login] Expert signup code validated successfully');
+      roles = ['learner', 'expert']; // Expert users also have learner role
     }
-    // Priority 2: Legacy flow - validate code directly (backward compatibility)
-    else {
-      let role: 'learner' | 'expert' = 'learner'; // Default role
 
-      // If role=expert is requested, validate the secret code
-      if (roleParam === 'expert') {
-        console.log('[DBG][auth/login] Expert signup requested (legacy flow), validating code...');
+    // Create a new signed cookie to carry the role through the OAuth flow
+    const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET);
+    const signedToken = await new SignJWT({
+      roles,
+      forOAuth: true,
+    })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setExpirationTime('10m') // 10 minutes expiry
+      .setIssuedAt()
+      .sign(secret);
 
-        const expectedCode = process.env.EXPERT_SIGNUP_CODE;
-
-        if (!expectedCode) {
-          console.error('[DBG][auth/login] EXPERT_SIGNUP_CODE not configured in environment!');
-          return NextResponse.redirect(new URL('/invite-invalid', baseUrl));
-        }
-
-        if (codeParam !== expectedCode) {
-          console.log('[DBG][auth/login] Invalid expert signup code provided');
-          return NextResponse.redirect(new URL('/invite-invalid', baseUrl));
-        }
-
-        console.log('[DBG][auth/login] Expert signup code validated successfully');
-        role = 'expert'; // User will be created as expert
-      }
-
-      // Store role in MongoDB with auto-expiry
-      await connectToDatabase();
-      const pendingAuth = await PendingAuth.create({
-        role,
-        createdAt: new Date(),
-        expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
-      });
-
-      authToken = pendingAuth._id as string;
-
-      console.log('[DBG][auth/login] Created pending auth:', authToken, 'role:', role);
-    }
+    console.log('[DBG][auth/login] Created pending OAuth role:', roles);
 
     // Construct redirect URL to go through /auth/callback for proper user creation
-    // The callback route will process the auth_token and create the user with the correct role
     const finalDestination = callbackUrl || '/app';
-    const redirectUrl = `/auth/callback?auth_token=${authToken}&redirectTo=${encodeURIComponent(finalDestination)}`;
+    const callbackPath = `/auth/callback?redirectTo=${encodeURIComponent(finalDestination)}`;
 
-    console.log('[DBG][auth/login] Redirecting to Cognito via NextAuth');
-    console.log('[DBG][auth/login] Redirect URL after auth:', redirectUrl);
+    // Build the Cognito OAuth URL manually
+    // NextAuth's signIn('cognito') would redirect, but we need to set a cookie first
+    const cognitoSignInUrl = `/api/auth/signin/cognito?callbackUrl=${encodeURIComponent(callbackPath)}`;
 
-    // Use NextAuth's signIn to redirect to Cognito
-    return signIn('cognito', { redirectTo: redirectUrl });
+    console.log('[DBG][auth/login] Redirecting to Cognito OAuth');
+    console.log('[DBG][auth/login] Callback path after auth:', callbackPath);
+
+    // Create redirect response with the cookie set
+    const response = NextResponse.redirect(new URL(cognitoSignInUrl, baseUrl));
+
+    // Set cookie with pending OAuth role
+    const cookieOptions: {
+      httpOnly: boolean;
+      secure: boolean;
+      sameSite: 'lax' | 'strict' | 'none';
+      path: string;
+      maxAge: number;
+      domain?: string;
+    } = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 10 * 60, // 10 minutes
+    };
+
+    // Set domain for production
+    if (process.env.NODE_ENV === 'production') {
+      cookieOptions.domain = '.myyoga.guru';
+    }
+
+    response.cookies.set(PENDING_OAUTH_COOKIE, signedToken, cookieOptions);
+
+    return response;
   } catch (error) {
     console.error('[DBG][auth/login] Error:', error);
     throw error;

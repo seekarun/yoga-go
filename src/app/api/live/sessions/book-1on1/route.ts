@@ -1,13 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getSession, getUserByAuth0Id } from '@/lib/auth';
-import { connectToDatabase } from '@/lib/mongodb';
-import LiveSession from '@/models/LiveSession';
-import LiveSessionParticipant from '@/models/LiveSessionParticipant';
-import Expert from '@/models/Expert';
-import ExpertAvailability from '@/models/ExpertAvailability';
-import { isSlotAvailable } from '@/lib/availability';
+import { isSlotAvailable, getAvailabilityForTime } from '@/lib/availability';
 import type { ApiResponse, LiveSession as LiveSessionType } from '@/types';
-import { nanoid } from 'nanoid';
+import * as expertRepository from '@/lib/repositories/expertRepository';
+import * as liveSessionRepository from '@/lib/repositories/liveSessionRepository';
+import * as liveSessionParticipantRepository from '@/lib/repositories/liveSessionParticipantRepository';
 
 /**
  * POST /api/live/sessions/book-1on1
@@ -52,10 +49,8 @@ export async function POST(request: Request) {
       return NextResponse.json(response, { status: 400 });
     }
 
-    await connectToDatabase();
-
-    // Get expert details
-    const expert = await Expert.findById(expertId);
+    // Get expert details from DynamoDB
+    const expert = await expertRepository.getExpertById(expertId);
     if (!expert) {
       const response: ApiResponse<null> = {
         success: false,
@@ -84,32 +79,19 @@ export async function POST(request: Request) {
     }
 
     // Get meeting link from expert's availability configuration
-    const start = new Date(startTime);
-    const dayOfWeek = start.getDay();
-    const date = start.toISOString().split('T')[0];
-
     console.log('[DBG][api/live/sessions/book-1on1] Looking for availability:', {
       expertId,
-      dayOfWeek,
-      date,
+      startTime,
     });
 
-    const availability = await ExpertAvailability.findOne({
-      expertId,
-      isActive: true,
-      $or: [
-        { isRecurring: true, dayOfWeek },
-        { isRecurring: false, date },
-      ],
-    });
+    const availabilityConfig = await getAvailabilityForTime(expertId, startTime);
 
     console.log('[DBG][api/live/sessions/book-1on1] Found availability:', {
-      found: !!availability,
-      meetingLink: availability?.meetingLink,
-      availabilityId: availability?._id,
+      found: !!availabilityConfig,
+      meetingLink: availabilityConfig?.meetingLink,
     });
 
-    const meetingLink = availability?.meetingLink?.trim() || '';
+    const meetingLink = availabilityConfig?.meetingLink?.trim() || '';
 
     // Validate expert has meeting link set up
     if (!meetingLink) {
@@ -125,11 +107,9 @@ export async function POST(request: Request) {
       return NextResponse.json(response, { status: 400 });
     }
 
-    // Create 1-on-1 session
-    const sessionId = nanoid();
-    const liveSession = new LiveSession({
-      _id: sessionId,
-      expertId: expert._id,
+    // Create 1-on-1 session in DynamoDB
+    const liveSession = await liveSessionRepository.createLiveSession({
+      expertId: expert.id,
       expertName: expert.name,
       expertAvatar: expert.avatar,
       title: title || `1-on-1 Session with ${expert.name}`,
@@ -153,15 +133,11 @@ export async function POST(request: Request) {
       scheduledByRole: 'student',
     });
 
-    await liveSession.save();
+    console.log('[DBG][api/live/sessions/book-1on1] Session created:', liveSession.id);
 
-    console.log('[DBG][api/live/sessions/book-1on1] Session created:', sessionId);
-
-    // Auto-enroll the student
-    const participantId = nanoid();
-    const participant = new LiveSessionParticipant({
-      _id: participantId,
-      sessionId: sessionId,
+    // Auto-enroll the student in DynamoDB
+    const participant = await liveSessionParticipantRepository.createParticipant({
+      sessionId: liveSession.id,
       userId: user.id,
       userName: user.profile.name,
       userEmail: user.profile.email,
@@ -169,44 +145,13 @@ export async function POST(request: Request) {
       enrolledAt: new Date().toISOString(),
       attended: false,
       paid: true, // Marked as paid since session is free
-      paymentGateway: undefined,
       amountPaid: 0,
     });
 
-    await participant.save();
-
-    console.log('[DBG][api/live/sessions/book-1on1] Student enrolled:', participantId);
+    console.log('[DBG][api/live/sessions/book-1on1] Student enrolled:', participant.id);
 
     // Return session data
-    const data: LiveSessionType = {
-      id: liveSession._id,
-      expertId: liveSession.expertId,
-      expertName: liveSession.expertName,
-      expertAvatar: liveSession.expertAvatar,
-      title: liveSession.title,
-      description: liveSession.description,
-      thumbnail: liveSession.thumbnail,
-      sessionType: liveSession.sessionType,
-      scheduledStartTime: liveSession.scheduledStartTime,
-      scheduledEndTime: liveSession.scheduledEndTime,
-      actualStartTime: liveSession.actualStartTime,
-      actualEndTime: liveSession.actualEndTime,
-      maxParticipants: liveSession.maxParticipants,
-      currentViewers: liveSession.currentViewers,
-      price: liveSession.price,
-      currency: liveSession.currency,
-      status: liveSession.status,
-      recordingS3Key: liveSession.recordingS3Key,
-      recordedLessonId: liveSession.recordedLessonId,
-      recordingAvailable: liveSession.recordingAvailable,
-      enrolledCount: liveSession.enrolledCount,
-      attendedCount: liveSession.attendedCount,
-      metadata: liveSession.metadata,
-      featured: liveSession.featured,
-      isFree: liveSession.isFree,
-      createdAt: liveSession.createdAt,
-      updatedAt: liveSession.updatedAt,
-    };
+    const data: LiveSessionType = liveSession;
 
     const response: ApiResponse<LiveSessionType> = {
       success: true,

@@ -1,12 +1,10 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/auth';
-import { connectToDatabase } from '@/lib/mongodb';
-import User from '@/models/User';
-import Expert from '@/models/Expert';
-import Course from '@/models/Course';
-import type { Expert as ExpertType } from '@/types';
-import type { UserDocument } from '@/models/User';
+import * as userRepository from '@/lib/repositories/userRepository';
+import * as expertRepository from '@/lib/repositories/expertRepository';
+import * as courseRepository from '@/lib/repositories/courseRepository';
+import type { Expert as ExpertType, User } from '@/types';
 
 /**
  * GET /data/admn/experts/[expertId]
@@ -23,10 +21,8 @@ export async function GET(
     const { expertId } = await params;
     console.log('[DBG][admn/experts/expertId] Fetching expert:', expertId);
 
-    await connectToDatabase();
-
-    // Find expert profile
-    const expertProfile = (await Expert.findById(expertId).lean()) as ExpertType | null;
+    // Find expert profile from DynamoDB
+    const expertProfile = await expertRepository.getExpertById(expertId);
 
     if (!expertProfile) {
       return NextResponse.json(
@@ -38,10 +34,10 @@ export async function GET(
       );
     }
 
-    // Find associated user account
-    const user = (await User.findOne({ expertProfile: expertId }).lean()) as
-      | (UserDocument & { _id: string })
-      | null;
+    // Find associated user account from DynamoDB using userId
+    const user = expertProfile.userId
+      ? await userRepository.getUserById(expertProfile.userId)
+      : null;
 
     if (!user) {
       return NextResponse.json(
@@ -53,8 +49,8 @@ export async function GET(
       );
     }
 
-    // Get expert's courses
-    const courses = await Course.find({ 'instructor.id': expertId }).lean();
+    // Get expert's courses from DynamoDB
+    const courses = await courseRepository.getCoursesByInstructorId(expertId);
 
     console.log('[DBG][admn/experts/expertId] Found expert:', expertProfile.name);
 
@@ -82,8 +78,7 @@ export async function GET(
         },
         // User account data
         user: {
-          id: user._id,
-          cognitoSub: user.cognitoSub,
+          id: user.id,
           profile: user.profile,
           membership: user.membership,
           statistics: user.statistics,
@@ -91,7 +86,7 @@ export async function GET(
         },
         // Courses
         courses: courses.map(c => ({
-          id: c._id,
+          id: c.id,
           title: c.title,
           status: c.status,
           totalStudents: c.totalStudents,
@@ -130,9 +125,8 @@ export async function PUT(
 
     console.log('[DBG][admn/experts/expertId] Updating expert:', expertId, 'with data:', body);
 
-    await connectToDatabase();
-
-    const expertProfile = await Expert.findById(expertId);
+    // Get expert from DynamoDB
+    const expertProfile = await expertRepository.getExpertById(expertId);
 
     if (!expertProfile) {
       return NextResponse.json(
@@ -144,32 +138,52 @@ export async function PUT(
       );
     }
 
+    // Build expert updates
+    const expertUpdates: Partial<ExpertType> = {};
+
     // Update expert profile fields if provided
     if (body.expert) {
-      Object.assign(expertProfile, body.expert);
+      Object.assign(expertUpdates, body.expert);
     }
 
     // Update featured status if provided
     if (typeof body.featured === 'boolean') {
-      expertProfile.featured = body.featured;
+      expertUpdates.featured = body.featured;
     }
 
-    await expertProfile.save();
+    // Update expert in DynamoDB
+    const updatedExpert = await expertRepository.updateExpert(expertId, expertUpdates);
 
     // Update associated user account if user data provided
     if (body.user || body.status) {
-      const user = await User.findOne({ expertProfile: expertId });
+      // Find user by userId from expert profile
+      const user = expertProfile.userId
+        ? await userRepository.getUserById(expertProfile.userId)
+        : null;
+
       if (user) {
+        const updates: Partial<User> = {};
+
         if (body.user) {
-          Object.assign(user, body.user);
-        }
-        if (body.status) {
-          user.membership.status = body.status;
-          if (body.status === 'cancelled') {
-            user.membership.cancelledAt = new Date().toISOString();
+          // Merge user updates
+          if (body.user.profile) {
+            updates.profile = { ...user.profile, ...body.user.profile };
+          }
+          if (body.user.membership) {
+            updates.membership = { ...user.membership, ...body.user.membership };
           }
         }
-        await user.save();
+
+        if (body.status) {
+          const membershipUpdate = updates.membership || { ...user.membership };
+          membershipUpdate.status = body.status;
+          if (body.status === 'cancelled') {
+            membershipUpdate.cancelledAt = new Date().toISOString();
+          }
+          updates.membership = membershipUpdate;
+        }
+
+        await userRepository.updateUser(user.id, updates);
       }
     }
 
@@ -178,7 +192,7 @@ export async function PUT(
     return NextResponse.json({
       success: true,
       data: {
-        expert: expertProfile,
+        expert: updatedExpert,
       },
       message: 'Expert updated successfully',
     });
@@ -209,9 +223,8 @@ export async function DELETE(
     const { expertId } = await params;
     console.log('[DBG][admn/experts/expertId] Deleting expert:', expertId);
 
-    await connectToDatabase();
-
-    const expertProfile = await Expert.findById(expertId);
+    // Get expert from DynamoDB
+    const expertProfile = await expertRepository.getExpertById(expertId);
 
     if (!expertProfile) {
       return NextResponse.json(
@@ -223,11 +236,13 @@ export async function DELETE(
       );
     }
 
-    // Delete expert profile
-    await Expert.findByIdAndDelete(expertId);
+    // Delete expert profile from DynamoDB
+    await expertRepository.deleteExpert(expertId);
 
-    // Delete associated user account
-    await User.deleteOne({ expertProfile: expertId });
+    // Delete associated user from DynamoDB if exists
+    if (expertProfile.userId) {
+      await userRepository.deleteUser(expertProfile.userId);
+    }
 
     // Note: Courses are not deleted, just orphaned
     // You may want to handle this differently based on business logic

@@ -11,6 +11,7 @@ import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as route53Targets from 'aws-cdk-lib/aws-route53-targets';
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import type { Construct } from 'constructs';
 
 export class YogaGoStack extends cdk.Stack {
@@ -412,8 +413,98 @@ export class YogaGoStack extends cdk.Stack {
       description: 'Role used by the Yoga Go application',
     });
 
-    // Add any application-specific permissions here
-    // (e.g., S3 access, DynamoDB, etc.)
+    // ========================================
+    // DynamoDB Tables (5-Table Design)
+    // ========================================
+
+    // ----------------------------------------
+    // 1. CORE TABLE - Main business entities
+    // ----------------------------------------
+    // Entities: User, Expert, Course, Lesson, CourseProgress, Asset, Survey, SurveyResponse
+    const coreTable = new dynamodb.Table(this, 'CoreTable', {
+      tableName: 'core',
+      partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      pointInTimeRecovery: false,
+    });
+
+    // GSI1: For courses by instructor lookup
+    coreTable.addGlobalSecondaryIndex({
+      indexName: 'GSI1',
+      partitionKey: { name: 'GSI1PK', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'GSI1SK', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
+    // ----------------------------------------
+    // 2. CALENDAR TABLE - Scheduling & live sessions
+    // ----------------------------------------
+    // Entities: LiveSession, LiveSessionParticipant, Availability
+    // Uses dual-write pattern for multiple access patterns (no GSIs)
+    const calendarTable = new dynamodb.Table(this, 'CalendarTable', {
+      tableName: 'calendar',
+      partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      pointInTimeRecovery: false,
+    });
+
+    // ----------------------------------------
+    // 3. ORDERS TABLE - Payments
+    // ----------------------------------------
+    // Entities: Payment (dual-write for user lookup and intent lookup)
+    const ordersTable = new dynamodb.Table(this, 'OrdersTable', {
+      tableName: 'orders',
+      partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      pointInTimeRecovery: false,
+    });
+
+    // ----------------------------------------
+    // 4. ANALYTICS TABLE - Course analytics events
+    // ----------------------------------------
+    // Entities: CourseAnalyticsEvent (simple time-series)
+    const analyticsTable = new dynamodb.Table(this, 'AnalyticsTable', {
+      tableName: 'analytics',
+      partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      pointInTimeRecovery: false,
+    });
+
+    // ----------------------------------------
+    // 5. DISCUSSIONS TABLE - Discussions and votes
+    // ----------------------------------------
+    // Entities: Discussion, DiscussionVote (dual-write for efficient lookups)
+    const discussionsTable = new dynamodb.Table(this, 'DiscussionsTable', {
+      tableName: 'discussions',
+      partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      pointInTimeRecovery: false,
+    });
+
+    // GSI1: For replies and top-level discussions lookup
+    discussionsTable.addGlobalSecondaryIndex({
+      indexName: 'GSI1',
+      partitionKey: { name: 'GSI1PK', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'GSI1SK', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
+    // Grant ECS task role read/write access to all DynamoDB tables
+    coreTable.grantReadWriteData(taskRole);
+    calendarTable.grantReadWriteData(taskRole);
+    ordersTable.grantReadWriteData(taskRole);
+    analyticsTable.grantReadWriteData(taskRole);
+    discussionsTable.grantReadWriteData(taskRole);
 
     // ========================================
     // ECS Task Definition
@@ -437,8 +528,16 @@ export class YogaGoStack extends cdk.Stack {
       environment: {
         NODE_ENV: 'production',
         PORT: '3000',
-        // AWS region (required for Cognito SDK)
+        // AWS region (required for Cognito SDK and DynamoDB)
         AWS_REGION: this.region,
+        // DynamoDB table names (5-table design)
+        DYNAMODB_TABLE_CORE: coreTable.tableName,
+        DYNAMODB_TABLE_CALENDAR: calendarTable.tableName,
+        DYNAMODB_TABLE_ORDERS: ordersTable.tableName,
+        DYNAMODB_TABLE_ANALYTICS: analyticsTable.tableName,
+        DYNAMODB_TABLE_DISCUSSIONS: discussionsTable.tableName,
+        // Legacy: Keep for backward compatibility during migration
+        DYNAMODB_TABLE_NAME: coreTable.tableName,
         // Cognito environment variables (non-secret)
         COGNITO_USER_POOL_ID: userPool.userPoolId,
         COGNITO_CLIENT_ID: appClient.userPoolClientId,
@@ -606,6 +705,39 @@ export class YogaGoStack extends cdk.Stack {
       value: cdk.Fn.join(', ', hostedZone.hostedZoneNameServers || []),
       description: 'Route 53 Name Servers - Update these in Namecheap',
       exportName: 'YogaGoNameServers',
+    });
+
+    // ========================================
+    // DynamoDB Outputs (4-Table Design)
+    // ========================================
+    new cdk.CfnOutput(this, 'DynamoDBCoreTableName', {
+      value: coreTable.tableName,
+      description: 'DynamoDB Core Table Name',
+      exportName: 'YogaGoDynamoDBCoreTableName',
+    });
+
+    new cdk.CfnOutput(this, 'DynamoDBCalendarTableName', {
+      value: calendarTable.tableName,
+      description: 'DynamoDB Calendar Table Name',
+      exportName: 'YogaGoDynamoDBCalendarTableName',
+    });
+
+    new cdk.CfnOutput(this, 'DynamoDBOrdersTableName', {
+      value: ordersTable.tableName,
+      description: 'DynamoDB Orders Table Name',
+      exportName: 'YogaGoDynamoDBOrdersTableName',
+    });
+
+    new cdk.CfnOutput(this, 'DynamoDBAnalyticsTableName', {
+      value: analyticsTable.tableName,
+      description: 'DynamoDB Analytics Table Name',
+      exportName: 'YogaGoDynamoDBAnalyticsTableName',
+    });
+
+    new cdk.CfnOutput(this, 'DynamoDBDiscussionsTableName', {
+      value: discussionsTable.tableName,
+      description: 'DynamoDB Discussions Table Name',
+      exportName: 'YogaGoDynamoDBDiscussionsTableName',
     });
   }
 }

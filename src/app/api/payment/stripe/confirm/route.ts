@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { PAYMENT_CONFIG } from '@/config/payment';
-import { connectToDatabase } from '@/lib/mongodb';
-import Payment from '@/models/Payment';
+import * as paymentRepository from '@/lib/repositories/paymentRepository';
 
 function getStripeInstance() {
   if (!PAYMENT_CONFIG.stripe.secretKey) {
@@ -30,22 +29,28 @@ export async function POST(request: Request) {
     const stripe = getStripeInstance();
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
 
+    // Get the payment record from DynamoDB
+    const existingPayment = await paymentRepository.getPaymentByIntentId(paymentIntentId);
+
     // Verify payment was successful
     if (paymentIntent.status !== 'succeeded') {
       console.error('[DBG][stripe] Payment not succeeded:', paymentIntent.status);
 
-      // Update payment status to failed
-      await connectToDatabase();
-      await Payment.updateOne(
-        { paymentIntentId },
-        {
-          $set: {
-            status: 'failed',
-            failedAt: new Date(),
-            'metadata.errorMessage': `Payment status: ${paymentIntent.status}`,
-          },
-        }
-      );
+      // Update payment status to failed if we have the payment record
+      if (existingPayment) {
+        await paymentRepository.updatePaymentStatus(
+          existingPayment.userId,
+          existingPayment.id,
+          'failed',
+          {
+            failedAt: new Date().toISOString(),
+            metadata: {
+              ...existingPayment.metadata,
+              errorMessage: `Payment status: ${paymentIntent.status}`,
+            },
+          }
+        );
+      }
 
       return NextResponse.json(
         { success: false, error: `Payment not completed. Status: ${paymentIntent.status}` },
@@ -69,17 +74,20 @@ export async function POST(request: Request) {
     console.log('[DBG][stripe] Payment verified successfully:', paymentIntentId);
 
     // Update payment status to succeeded
-    await connectToDatabase();
-    await Payment.updateOne(
-      { paymentIntentId },
-      {
-        $set: {
-          status: 'succeeded',
-          completedAt: new Date(),
-          'metadata.chargeId': paymentIntent.latest_charge,
-        },
-      }
-    );
+    if (existingPayment) {
+      await paymentRepository.updatePaymentStatus(
+        existingPayment.userId,
+        existingPayment.id,
+        'succeeded',
+        {
+          completedAt: new Date().toISOString(),
+          metadata: {
+            ...existingPayment.metadata,
+            chargeId: paymentIntent.latest_charge as string,
+          },
+        }
+      );
+    }
 
     // Grant access based on type
     if (type === 'course') {
@@ -99,47 +107,6 @@ export async function POST(request: Request) {
       }
 
       console.log(`[DBG][stripe] Enrolled user ${userId} in course ${itemId}`);
-    } else if (type === 'subscription') {
-      // Update user membership
-      const { connectToDatabase } = await import('@/lib/mongodb');
-      const User = (await import('@/models/User')).default;
-
-      await connectToDatabase();
-      const user = await User.findById(userId);
-
-      if (user) {
-        const now = new Date().toISOString();
-        const oneYearFromNow = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
-
-        user.membership = {
-          type: itemId as 'free' | 'basic' | 'premium' | 'lifetime',
-          status: 'active',
-          startDate: now,
-          renewalDate: oneYearFromNow,
-          benefits: [],
-        };
-
-        // Add payment to history
-        if (!user.billing) {
-          user.billing = { paymentHistory: [] };
-        }
-        if (!user.billing.paymentHistory) {
-          user.billing.paymentHistory = [];
-        }
-
-        user.billing.paymentHistory.push({
-          date: now,
-          amount: paymentIntent.amount,
-          method: 'online',
-          status: 'paid',
-          description: `Subscription: ${itemId}`,
-          invoice: paymentIntentId,
-        });
-
-        await user.save();
-      }
-
-      console.log(`[DBG][stripe] Updated user ${userId} subscription to ${itemId}`);
     }
 
     // TODO: Send confirmation email

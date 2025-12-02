@@ -169,7 +169,6 @@ export interface CourseReview {
 export interface Course extends BaseEntity {
   title: string;
   description: string;
-  longDescription?: string;
   instructor: Instructor;
   thumbnail: string;
   coverImage?: string; // Cover image URL for course cards and hero banner
@@ -219,8 +218,6 @@ export interface Membership {
   cancelledAt?: string;
   benefits: string[];
 
-  // Subscription-specific fields
-  subscriptionId?: string; // Reference to Subscription document
   billingInterval?: BillingInterval; // 'monthly' | 'yearly'
   currentPeriodEnd?: string; // When current billing period ends
   cancelAtPeriodEnd?: boolean; // True if user has cancelled but still has access
@@ -357,32 +354,56 @@ export interface ProgressFeedback {
 }
 
 export interface CourseProgress {
+  id: string; // Format: {userId}_{courseId}
   courseId: string;
   userId: string;
+  enrolledAt: string;
+  lastAccessed: string;
+  completedAt?: string;
+
+  // Progress tracking
   totalLessons: number;
-  completedLessons: number | string[]; // Can be count or array of IDs
+  completedLessons: string[]; // Array of completed lesson IDs
   percentComplete: number;
+
+  // Current position
+  currentLessonId?: string;
   currentLesson?: {
     id: string;
     title: string;
     duration: string;
     position?: number;
   };
-  lastAccessed: string;
-  enrolledAt?: string;
-  totalTimeSpent: number;
+
+  // Time tracking
+  totalTimeSpent: number; // in minutes
+  averageSessionTime?: number; // in minutes
+
+  // Streak tracking
   streak?: number;
   longestStreak?: number;
-  averageSessionTime?: number;
+  lastPracticeDate?: string;
+
+  // Detailed tracking
+  lessonProgress: LessonProgress[];
   sessions?: SessionHistory[];
   notes?: ProgressNote[];
+
+  // Achievements unlocked for this course
+  achievementIds?: string[];
   achievements?: Achievement[];
+
+  // Feedback
   feedback?: ProgressFeedback;
   lastCompletedLesson?: {
     id: string;
     title: string;
     completedAt: string;
   };
+
+  // Timestamps
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface NextLesson {
@@ -468,11 +489,7 @@ export interface UserCourseData extends Course {
       }
     >;
   }>;
-  notes?: Array<{
-    lessonId: string;
-    note: string;
-    createdAt: string;
-  }>;
+  notes?: ProgressNote[];
   achievements?: Achievement[];
   resources?: Array<{
     id: string;
@@ -809,4 +826,49 @@ export interface ExpertListItem {
   totalRevenue: number;
   featured: boolean;
   status: 'active' | 'suspended';
+}
+
+// Payment Transaction Types (for payment processing)
+export type PaymentStatus =
+  | 'initiated'
+  | 'pending'
+  | 'succeeded'
+  | 'failed'
+  | 'cancelled'
+  | 'refunded';
+
+export type PaymentGateway = 'stripe' | 'razorpay';
+
+export type PaymentType = 'course_enrollment' | 'one_time';
+
+export interface PaymentMetadata {
+  chargeId?: string;
+  customerId?: string;
+  last4?: string;
+  brand?: string;
+  country?: string;
+  errorCode?: string;
+  errorMessage?: string;
+  declineCode?: string;
+  userAgent?: string;
+  ipAddress?: string;
+  [key: string]: unknown;
+}
+
+export interface PaymentTransaction extends BaseEntity {
+  userId: string;
+  courseId?: string;
+  itemType: PaymentType;
+  itemId: string;
+  amount: number;
+  currency: string;
+  gateway: PaymentGateway;
+  status: PaymentStatus;
+  paymentIntentId: string;
+  paymentMethodId?: string;
+  initiatedAt: string;
+  completedAt?: string;
+  failedAt?: string;
+  refundedAt?: string;
+  metadata?: PaymentMetadata;
 }

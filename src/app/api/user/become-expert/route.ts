@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession, getUserByAuth0Id } from '@/lib/auth';
-import UserModel from '@/models/User';
-import type { ApiResponse } from '@/types';
+import * as userRepository from '@/lib/repositories/userRepository';
+import type { ApiResponse, UserRole } from '@/types';
 
 /**
  * POST /api/user/become-expert
@@ -28,11 +28,11 @@ export async function POST() {
       session.user.cognitoSub
     );
 
-    // Get user from MongoDB
+    // Get user from DynamoDB
     const user = await getUserByAuth0Id(session.user.cognitoSub);
 
     if (!user) {
-      console.log('[DBG][api/user/become-expert] User not found in MongoDB');
+      console.log('[DBG][api/user/become-expert] User not found in DynamoDB');
       const response: ApiResponse<null> = {
         success: false,
         error: 'User not found',
@@ -41,7 +41,7 @@ export async function POST() {
     }
 
     // Check if already has expert role (handle both array and legacy string)
-    const currentRoles = Array.isArray(user.role) ? user.role : [user.role];
+    const currentRoles: UserRole[] = Array.isArray(user.role) ? user.role : [user.role as UserRole];
     const isAlreadyExpert = currentRoles.includes('expert');
 
     if (isAlreadyExpert) {
@@ -54,16 +54,11 @@ export async function POST() {
     }
 
     // Add 'expert' to user's roles array
-    const newRoles = [...currentRoles, 'expert'];
-    await UserModel.updateOne(
-      { _id: user.id },
-      {
-        $set: {
-          role: newRoles,
-          // Note: expertProfile will be created during onboarding at /srv
-        },
-      }
-    );
+    const newRoles: UserRole[] = [...currentRoles, 'expert'];
+    await userRepository.updateUser(session.user.cognitoSub, {
+      role: newRoles,
+      // Note: expertProfile will be created during onboarding at /srv
+    });
 
     console.log(
       '[DBG][api/user/become-expert] User upgraded to expert:',

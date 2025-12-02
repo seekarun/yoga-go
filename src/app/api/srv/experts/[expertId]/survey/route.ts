@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { ApiResponse, Survey } from '@/types';
-import { connectToDatabase } from '@/lib/mongodb';
-import SurveyModel from '@/models/Survey';
+import * as surveyRepository from '@/lib/repositories/surveyRepository';
 import { getSession } from '@/lib/auth';
 
 export async function GET(request: Request, { params }: { params: Promise<{ expertId: string }> }) {
@@ -23,17 +22,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ expe
       );
     }
 
-    await connectToDatabase();
+    // Fetch active survey for this expert from DynamoDB
+    const survey = await surveyRepository.getActiveSurveyByExpert(expertId);
 
-    // Fetch active survey for this expert
-    const surveyDoc = await SurveyModel.findOne({
-      expertId,
-      isActive: true,
-    })
-      .lean()
-      .exec();
-
-    if (!surveyDoc) {
+    if (!survey) {
       // Return empty survey structure if none exists
       const response: ApiResponse<Survey | null> = {
         success: true,
@@ -41,12 +33,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ expe
       };
       return NextResponse.json(response);
     }
-
-    // Transform MongoDB document to Survey type
-    const survey: Survey = {
-      ...(surveyDoc as any),
-      id: (surveyDoc as any)._id as string,
-    };
 
     console.log(`[DBG][srv/experts/[expertId]/survey/route.ts] Found survey: ${survey.title}`);
 
@@ -88,8 +74,6 @@ export async function PUT(request: Request, { params }: { params: Promise<{ expe
       );
     }
 
-    await connectToDatabase();
-
     // Parse request body
     const body = await request.json();
     const { title, description, contactInfo, questions } = body;
@@ -97,41 +81,30 @@ export async function PUT(request: Request, { params }: { params: Promise<{ expe
     console.log(`[DBG][srv/experts/[expertId]/survey/route.ts] Updating survey with data:`, body);
 
     // Check if survey exists
-    const existingSurvey = await SurveyModel.findOne({
-      expertId,
-      isActive: true,
-    })
-      .lean()
-      .exec();
+    const existingSurvey = await surveyRepository.getActiveSurveyByExpert(expertId);
 
-    let survey;
+    let survey: Survey;
 
     if (existingSurvey) {
       // Update existing survey
-      const updatedSurvey = await SurveyModel.findByIdAndUpdate(
-        (existingSurvey as any)._id,
-        {
-          title,
-          description,
-          contactInfo,
-          questions,
-        },
-        { new: true, lean: true }
-      ).exec();
+      const updatedSurvey = await surveyRepository.updateSurvey(expertId, existingSurvey.id, {
+        title,
+        description,
+        contactInfo,
+        questions,
+      });
 
-      survey = {
-        ...(updatedSurvey as any),
-        id: (updatedSurvey as any)._id as string,
-      };
+      if (!updatedSurvey) {
+        throw new Error('Failed to update survey');
+      }
 
+      survey = updatedSurvey;
       console.log(
-        `[DBG][srv/experts/[expertId]/survey/route.ts] Updated existing survey: ${(existingSurvey as any)._id}`
+        `[DBG][srv/experts/[expertId]/survey/route.ts] Updated existing survey: ${existingSurvey.id}`
       );
     } else {
       // Create new survey
-      const surveyId = `survey_${expertId}_${Date.now()}`;
-      const newSurvey = await SurveyModel.create({
-        _id: surveyId,
+      survey = await surveyRepository.createSurvey({
         expertId,
         title,
         description,
@@ -140,12 +113,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ expe
         isActive: true,
       });
 
-      survey = {
-        ...(newSurvey.toObject() as any),
-        id: surveyId,
-      };
-
-      console.log(`[DBG][srv/experts/[expertId]/survey/route.ts] Created new survey: ${surveyId}`);
+      console.log(`[DBG][srv/experts/[expertId]/survey/route.ts] Created new survey: ${survey.id}`);
     }
 
     const response: ApiResponse<Survey> = {

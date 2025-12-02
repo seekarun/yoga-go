@@ -1,9 +1,8 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/auth';
-import { connectToDatabase } from '@/lib/mongodb';
-import User from '@/models/User';
-import type { UserDocument } from '@/models/User';
+import * as userRepository from '@/lib/repositories/userRepository';
+import type { User, Membership } from '@/types';
 
 /**
  * GET /data/admn/users/[userId]
@@ -20,9 +19,7 @@ export async function GET(
     const { userId } = await params;
     console.log('[DBG][admn/users/userId] Fetching user:', userId);
 
-    await connectToDatabase();
-
-    const user = (await User.findById(userId).lean()) as (UserDocument & { _id: string }) | null;
+    const user = await userRepository.getUserById(userId);
 
     if (!user) {
       return NextResponse.json(
@@ -39,8 +36,7 @@ export async function GET(
     return NextResponse.json({
       success: true,
       data: {
-        id: user._id,
-        cognitoSub: user.cognitoSub,
+        id: user.id,
         role: user.role,
         profile: user.profile,
         membership: user.membership,
@@ -85,9 +81,7 @@ export async function PUT(
 
     console.log('[DBG][admn/users/userId] Updating user:', userId, 'with data:', body);
 
-    await connectToDatabase();
-
-    const user = await User.findById(userId);
+    const user = await userRepository.getUserById(userId);
 
     if (!user) {
       return NextResponse.json(
@@ -99,34 +93,41 @@ export async function PUT(
       );
     }
 
+    // Build updates object
+    const updates: Partial<User> = {};
+
     // Update profile fields if provided
     if (body.profile) {
-      Object.assign(user.profile, body.profile);
+      updates.profile = { ...user.profile, ...body.profile };
     }
 
     // Update membership if provided
     if (body.membership) {
-      Object.assign(user.membership, body.membership);
+      updates.membership = { ...user.membership, ...body.membership };
     }
 
     // Update status (suspend/activate)
     if (body.status) {
-      user.membership.status = body.status;
+      const membershipUpdate: Membership = (updates.membership as Membership) || {
+        ...user.membership,
+      };
+      membershipUpdate.status = body.status;
       if (body.status === 'cancelled') {
-        user.membership.cancelledAt = new Date().toISOString();
+        membershipUpdate.cancelledAt = new Date().toISOString();
       }
+      updates.membership = membershipUpdate;
     }
 
-    await user.save();
+    const updatedUser = await userRepository.updateUser(userId, updates);
 
     console.log('[DBG][admn/users/userId] User updated successfully');
 
     return NextResponse.json({
       success: true,
       data: {
-        id: user._id,
-        profile: user.profile,
-        membership: user.membership,
+        id: updatedUser.id,
+        profile: updatedUser.profile,
+        membership: updatedUser.membership,
       },
       message: 'User updated successfully',
     });
@@ -157,9 +158,7 @@ export async function DELETE(
     const { userId } = await params;
     console.log('[DBG][admn/users/userId] Deleting user:', userId);
 
-    await connectToDatabase();
-
-    const user = await User.findById(userId);
+    const user = await userRepository.getUserById(userId);
 
     if (!user) {
       return NextResponse.json(
@@ -172,7 +171,7 @@ export async function DELETE(
     }
 
     // Don't allow deleting admin users (role is now an array)
-    const isAdmin = Array.isArray(user.role) ? user.role.includes('admin') : user.role === 'admin';
+    const isAdmin = Array.isArray(user.role) ? user.role.includes('admin') : false;
     if (isAdmin) {
       return NextResponse.json(
         {
@@ -183,7 +182,7 @@ export async function DELETE(
       );
     }
 
-    await User.findByIdAndDelete(userId);
+    await userRepository.deleteUser(userId);
 
     console.log('[DBG][admn/users/userId] User deleted successfully');
 

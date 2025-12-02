@@ -23,8 +23,11 @@ export async function GET(
       membership: 'premium',
     },
     progress: {
+      id: `user-123_${courseId}`,
       courseId,
       userId: 'user-123',
+      enrolledAt: '2024-01-01T10:00:00Z',
+      lastAccessed: new Date().toISOString(),
       totalLessons: 30,
       completedLessons: [
         'lesson-1',
@@ -41,15 +44,37 @@ export async function GET(
         'lesson-12',
       ],
       percentComplete: 40,
+      currentLessonId: `lesson-${savePoint}`,
       currentLesson: {
         id: `lesson-${savePoint}`,
         title: 'Current Lesson',
         duration: '30 min',
       },
-      lastAccessed: new Date().toISOString(),
       totalTimeSpent: 420, // minutes
       streak: 5,
       longestStreak: 8,
+
+      // Lesson-level progress
+      lessonProgress: [
+        {
+          lessonId: 'lesson-1',
+          completed: true,
+          completedAt: '2024-01-01T10:30:00Z',
+          timeSpent: 30,
+        },
+        {
+          lessonId: 'lesson-2',
+          completed: true,
+          completedAt: '2024-01-02T10:30:00Z',
+          timeSpent: 35,
+        },
+        {
+          lessonId: 'lesson-3',
+          completed: true,
+          completedAt: '2024-01-03T10:30:00Z',
+          timeSpent: 30,
+        },
+      ],
 
       // Detailed session history
       sessions: [

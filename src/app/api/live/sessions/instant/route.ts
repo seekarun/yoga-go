@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession, getUserByAuth0Id } from '@/lib/auth';
-import LiveSessionModel from '@/models/LiveSession';
-import { nanoid } from 'nanoid';
 import type { ApiResponse } from '@/types';
+import * as liveSessionRepository from '@/lib/repositories/liveSessionRepository';
 
 /**
  * POST /api/live/sessions/instant
@@ -51,54 +50,43 @@ export async function POST(request: Request) {
       );
     }
 
-    // Generate unique session ID and room code
-    const sessionId = `instant-${nanoid(10)}`;
-    const roomCode = nanoid(8).toUpperCase(); // Short, shareable code
-
     console.log('[DBG][api/live/sessions/instant] Creating instant meeting:', {
-      sessionId,
-      roomCode,
       expertId: user.expertProfile,
       meetingPlatform,
     });
 
-    // Create LiveSession record with manual meeting link
+    // Create LiveSession record in DynamoDB with instant type
     const now = new Date();
-    const session_data = {
-      _id: sessionId,
+    const liveSession = await liveSessionRepository.createLiveSession({
       expertId: user.expertProfile,
       expertName: user.profile.name || 'Expert',
       expertAvatar: user.profile.avatar,
       title: title || 'Instant Meeting',
       description: description || 'Join this instant meeting',
-      sessionType: 'instant' as const,
-      scheduledStartTime: now,
-      scheduledEndTime: new Date(now.getTime() + 2 * 60 * 60 * 1000), // 2 hours
+      sessionType: 'instant',
+      scheduledStartTime: now.toISOString(),
+      scheduledEndTime: new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString(), // 2 hours
       maxParticipants: 50,
       price: 0,
       currency: 'USD',
-      status: 'live' as const,
-      actualStartTime: now,
+      status: 'live',
+      actualStartTime: now.toISOString(),
       meetingLink: meetingLink.trim(), // Expert-provided meeting link
       meetingPlatform: meetingPlatform || 'other', // zoom | google-meet | other
       enrolledCount: 0,
       attendedCount: 0,
-      recordingEnabled: false,
-      chatEnabled: true,
-      isPublic: true,
-      instantMeetingCode: roomCode, // Our custom shareable code
+      currentViewers: 0,
+      isFree: true,
       // Track who created this session
       scheduledByUserId: user.id,
       scheduledByName: user.profile.name,
-      scheduledByRole: 'expert' as const,
-    };
+      scheduledByRole: 'expert',
+    });
 
-    const liveSession = await LiveSessionModel.create(session_data);
-
-    console.log('[DBG][api/live/sessions/instant] Instant meeting created:', liveSession._id);
+    console.log('[DBG][api/live/sessions/instant] Instant meeting created:', liveSession.id);
 
     // Generate shareable link (works across networks)
-    const joinUrl = `${process.env.AUTH0_BASE_URL || 'http://localhost:3111'}/app/live/instant/${roomCode}`;
+    const joinUrl = `${process.env.AUTH0_BASE_URL || 'http://localhost:3111'}/app/live/instant/${liveSession.instantMeetingCode}`;
 
     const response: ApiResponse<{
       sessionId: string;
@@ -109,8 +97,8 @@ export async function POST(request: Request) {
     }> = {
       success: true,
       data: {
-        sessionId: liveSession._id,
-        roomCode: roomCode,
+        sessionId: liveSession.id,
+        roomCode: liveSession.instantMeetingCode || '',
         joinUrl: joinUrl,
         meetingLink: meetingLink.trim(),
         meetingPlatform: meetingPlatform || 'other',

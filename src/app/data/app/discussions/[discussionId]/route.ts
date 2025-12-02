@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession, getUserByAuth0Id } from '@/lib/auth';
-import { connectToDatabase } from '@/lib/mongodb';
-import DiscussionModel from '@/models/Discussion';
-import CourseModel from '@/models/Course';
+import * as discussionRepository from '@/lib/repositories/discussionRepository';
+import * as courseRepository from '@/lib/repositories/courseRepository';
 import type { ApiResponse, Discussion } from '@/types';
 
 export async function PUT(
@@ -23,7 +22,7 @@ export async function PUT(
       return NextResponse.json(response, { status: 401 });
     }
 
-    // Get user from MongoDB
+    // Get user from DynamoDB
     const user = await getUserByAuth0Id(session.user.cognitoSub);
     if (!user) {
       const response: ApiResponse<null> = {
@@ -33,11 +32,8 @@ export async function PUT(
       return NextResponse.json(response, { status: 404 });
     }
 
-    // Connect to MongoDB
-    await connectToDatabase();
-
-    // Get discussion
-    const discussionDoc = await DiscussionModel.findById(discussionId).exec();
+    // Get discussion using GSI3 lookup (by discussionId only)
+    const discussionDoc = await discussionRepository.getDiscussionByIdOnly(discussionId);
     if (!discussionDoc) {
       const response: ApiResponse<null> = {
         success: false,
@@ -67,36 +63,25 @@ export async function PUT(
       return NextResponse.json(response, { status: 400 });
     }
 
-    // Update discussion
-    discussionDoc.content = content.trim();
-    discussionDoc.editedAt = new Date().toISOString();
-    await discussionDoc.save();
+    // Update discussion using repository
+    const updatedDiscussion = await discussionRepository.updateDiscussion(
+      discussionDoc.courseId,
+      discussionDoc.lessonId,
+      discussionId,
+      { content: content.trim() }
+    );
 
-    // Convert to Discussion type
-    const discussion: Discussion = {
-      id: discussionDoc._id,
-      courseId: discussionDoc.courseId,
-      lessonId: discussionDoc.lessonId,
-      userId: discussionDoc.userId,
-      userRole: discussionDoc.userRole,
-      userName: discussionDoc.userName,
-      userAvatar: discussionDoc.userAvatar,
-      content: discussionDoc.content,
-      parentId: discussionDoc.parentId,
-      upvotes: discussionDoc.upvotes,
-      downvotes: discussionDoc.downvotes,
-      isPinned: discussionDoc.isPinned,
-      isResolved: discussionDoc.isResolved,
-      isHidden: discussionDoc.isHidden,
-      editedAt: discussionDoc.editedAt,
-      deletedAt: discussionDoc.deletedAt,
-      createdAt: discussionDoc.createdAt?.toISOString(),
-      updatedAt: discussionDoc.updatedAt?.toISOString(),
-    };
+    if (!updatedDiscussion) {
+      const response: ApiResponse<null> = {
+        success: false,
+        error: 'Failed to update discussion',
+      };
+      return NextResponse.json(response, { status: 500 });
+    }
 
     const response: ApiResponse<Discussion> = {
       success: true,
-      data: discussion,
+      data: updatedDiscussion,
       message: 'Discussion updated successfully',
     };
 
@@ -129,7 +114,7 @@ export async function DELETE(
       return NextResponse.json(response, { status: 401 });
     }
 
-    // Get user from MongoDB
+    // Get user from DynamoDB
     const user = await getUserByAuth0Id(session.user.cognitoSub);
     if (!user) {
       const response: ApiResponse<null> = {
@@ -139,11 +124,8 @@ export async function DELETE(
       return NextResponse.json(response, { status: 404 });
     }
 
-    // Connect to MongoDB
-    await connectToDatabase();
-
-    // Get discussion
-    const discussionDoc = await DiscussionModel.findById(discussionId).exec();
+    // Get discussion using GSI3 lookup (by discussionId only)
+    const discussionDoc = await discussionRepository.getDiscussionByIdOnly(discussionId);
     if (!discussionDoc) {
       const response: ApiResponse<null> = {
         success: false,
@@ -160,8 +142,8 @@ export async function DELETE(
       ? user.role.includes('expert')
       : user.role === 'expert';
     if (!canDelete && isExpert && user.expertProfile) {
-      const course = await CourseModel.findById(discussionDoc.courseId).exec();
-      if (course && course.instructor.id === user.expertProfile) {
+      const course = await courseRepository.getCourseById(discussionDoc.courseId);
+      if (course && course.instructor?.id === user.expertProfile) {
         canDelete = true;
       }
     }
@@ -174,9 +156,12 @@ export async function DELETE(
       return NextResponse.json(response, { status: 403 });
     }
 
-    // Soft delete
-    discussionDoc.deletedAt = new Date().toISOString();
-    await discussionDoc.save();
+    // Soft delete using repository
+    await discussionRepository.softDeleteDiscussion(
+      discussionDoc.courseId,
+      discussionDoc.lessonId,
+      discussionId
+    );
 
     const response: ApiResponse<null> = {
       success: true,

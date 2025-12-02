@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { ApiResponse, Expert } from '@/types';
-import { getSession } from '@/lib/auth';
-import { connectToDatabase } from '@/lib/mongodb';
-import ExpertModel from '@/models/Expert';
-import UserModel from '@/models/User';
+import { getSession, getUserByCognitoSub } from '@/lib/auth';
+import * as expertRepository from '@/lib/repositories/expertRepository';
 
 /**
  * GET /data/app/expert/me
@@ -22,12 +20,10 @@ export async function GET() {
       });
     }
 
-    await connectToDatabase();
+    // Get user from DynamoDB
+    const user = await getUserByCognitoSub(session.user.cognitoSub);
 
-    // Get user to check role and expert profile
-    const userDoc = await UserModel.findOne({ cognitoSub: session.user.cognitoSub }).exec();
-
-    if (!userDoc) {
+    if (!user) {
       console.log('[DBG][expert/me/route.ts] User not found');
       return NextResponse.json({ success: false, error: 'User not found' } as ApiResponse<Expert>, {
         status: 404,
@@ -35,9 +31,9 @@ export async function GET() {
     }
 
     // Check if user is an expert (role is now an array)
-    const isExpert = Array.isArray(userDoc.role)
-      ? userDoc.role.includes('expert')
-      : userDoc.role === 'expert';
+    const isExpert = Array.isArray(user.role)
+      ? user.role.includes('expert')
+      : user.role === 'expert';
     if (!isExpert) {
       console.log('[DBG][expert/me/route.ts] User is not an expert');
       return NextResponse.json(
@@ -47,7 +43,7 @@ export async function GET() {
     }
 
     // Get expert profile if it exists
-    if (!userDoc.expertProfile) {
+    if (!user.expertProfile) {
       console.log('[DBG][expert/me/route.ts] Expert profile not created yet');
       return NextResponse.json({
         success: true,
@@ -55,20 +51,16 @@ export async function GET() {
       } as ApiResponse<Expert>);
     }
 
-    const expertDoc = await ExpertModel.findById(userDoc.expertProfile).exec();
+    // Get expert from DynamoDB
+    const expert = await expertRepository.getExpertById(user.expertProfile);
 
-    if (!expertDoc) {
+    if (!expert) {
       console.log('[DBG][expert/me/route.ts] Expert profile not found');
       return NextResponse.json(
         { success: false, error: 'Expert profile not found' } as ApiResponse<Expert>,
         { status: 404 }
       );
     }
-
-    const expert: Expert = {
-      ...expertDoc.toObject(),
-      id: expertDoc._id as string,
-    };
 
     console.log('[DBG][expert/me/route.ts] Expert profile found:', expert.id, 'name:', expert.name);
     return NextResponse.json({ success: true, data: expert } as ApiResponse<Expert>);
@@ -104,12 +96,10 @@ export async function PATCH(request: Request) {
     const updates = await request.json();
     console.log('[DBG][expert/me/route.ts] Received updates:', Object.keys(updates));
 
-    await connectToDatabase();
+    // Get user from DynamoDB
+    const user = await getUserByCognitoSub(session.user.cognitoSub);
 
-    // Get user to check role and expert profile
-    const userDoc = await UserModel.findOne({ cognitoSub: session.user.cognitoSub }).exec();
-
-    if (!userDoc) {
+    if (!user) {
       console.log('[DBG][expert/me/route.ts] User not found');
       return NextResponse.json({ success: false, error: 'User not found' } as ApiResponse<Expert>, {
         status: 404,
@@ -117,9 +107,9 @@ export async function PATCH(request: Request) {
     }
 
     // Check if user is an expert (role is now an array)
-    const isExpertPatch = Array.isArray(userDoc.role)
-      ? userDoc.role.includes('expert')
-      : userDoc.role === 'expert';
+    const isExpertPatch = Array.isArray(user.role)
+      ? user.role.includes('expert')
+      : user.role === 'expert';
     if (!isExpertPatch) {
       console.log('[DBG][expert/me/route.ts] User is not an expert');
       return NextResponse.json(
@@ -128,7 +118,7 @@ export async function PATCH(request: Request) {
       );
     }
 
-    if (!userDoc.expertProfile) {
+    if (!user.expertProfile) {
       console.log('[DBG][expert/me/route.ts] Expert profile not found');
       return NextResponse.json(
         { success: false, error: 'Expert profile not found' } as ApiResponse<Expert>,
@@ -136,37 +126,19 @@ export async function PATCH(request: Request) {
       );
     }
 
-    // Update expert profile
     // Remove fields that shouldn't be updated directly
     const {
-      id,
-      _id,
-      userId,
-      totalCourses,
-      totalStudents,
-      createdAt,
-      updatedAt,
+      id: _id,
+      userId: _userId,
+      totalCourses: _totalCourses,
+      totalStudents: _totalStudents,
+      createdAt: _createdAt,
+      updatedAt: _updatedAt,
       ...allowedUpdates
     } = updates;
 
-    const expertDoc = await ExpertModel.findByIdAndUpdate(
-      userDoc.expertProfile,
-      { $set: allowedUpdates },
-      { new: true, runValidators: true }
-    ).exec();
-
-    if (!expertDoc) {
-      console.log('[DBG][expert/me/route.ts] Expert profile not found after update');
-      return NextResponse.json(
-        { success: false, error: 'Expert profile not found' } as ApiResponse<Expert>,
-        { status: 404 }
-      );
-    }
-
-    const expert: Expert = {
-      ...expertDoc.toObject(),
-      id: expertDoc._id as string,
-    };
+    // Update expert profile in DynamoDB
+    const expert = await expertRepository.updateExpert(user.expertProfile, allowedUpdates);
 
     console.log('[DBG][expert/me/route.ts] Expert profile updated:', expert.id);
     return NextResponse.json({

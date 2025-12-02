@@ -1,9 +1,8 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/auth';
-import { connectToDatabase } from '@/lib/mongodb';
-import User from '@/models/User';
-import type { UserListItem } from '@/types';
+import * as userRepository from '@/lib/repositories/userRepository';
+import type { UserListItem, User } from '@/types';
 
 /**
  * GET /data/admn/users
@@ -17,61 +16,64 @@ export async function GET(request: NextRequest) {
 
     console.log('[DBG][admn/users] Fetching users list');
 
-    await connectToDatabase();
-
     // Parse query parameters
     const searchParams = request.nextUrl.searchParams;
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
-    const search = searchParams.get('search') || '';
+    const search = searchParams.get('search')?.toLowerCase() || '';
     const membershipType = searchParams.get('membershipType') || '';
     const status = searchParams.get('status') || '';
 
-    // Build query filter (role is now an array, query for users with learner role)
-    const query: any = { role: { $in: ['learner'] } };
+    // Get all users from DynamoDB
+    const allUsers = await userRepository.getAllUsers();
 
-    // Add search filter (name or email)
+    // Filter for learners with role array
+    let filteredUsers = allUsers.filter((user: User) =>
+      Array.isArray(user.role) ? user.role.includes('learner') : user.role === 'learner'
+    );
+
+    // Apply search filter (name or email)
     if (search) {
-      query.$or = [
-        { 'profile.name': { $regex: search, $options: 'i' } },
-        { 'profile.email': { $regex: search, $options: 'i' } },
-      ];
+      filteredUsers = filteredUsers.filter(
+        (user: User) =>
+          user.profile.name?.toLowerCase().includes(search) ||
+          user.profile.email?.toLowerCase().includes(search)
+      );
     }
 
-    // Add membership type filter
+    // Apply membership type filter
     if (membershipType) {
-      query['membership.type'] = membershipType;
+      filteredUsers = filteredUsers.filter((user: User) => user.membership.type === membershipType);
     }
 
-    // Add status filter
+    // Apply status filter
     if (status) {
-      query['membership.status'] = status;
+      filteredUsers = filteredUsers.filter((user: User) => user.membership.status === status);
     }
 
-    // Calculate skip for pagination
-    const skip = (page - 1) * limit;
+    // Sort by joinedAt descending (newest first)
+    filteredUsers.sort((a: User, b: User) => {
+      const dateA = new Date(a.profile.joinedAt || a.createdAt || 0).getTime();
+      const dateB = new Date(b.profile.joinedAt || b.createdAt || 0).getTime();
+      return dateB - dateA;
+    });
 
-    // Get total count and paginated data
-    const [total, users] = await Promise.all([
-      User.countDocuments(query),
-      User.find(query)
-        .select('_id profile membership statistics enrolledCourses billing createdAt')
-        .sort({ 'profile.joinedAt': -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-    ]);
+    // Calculate pagination
+    const total = filteredUsers.length;
+    const totalPages = Math.ceil(total / limit);
+    const skip = (page - 1) * limit;
+    const paginatedUsers = filteredUsers.slice(skip, skip + limit);
 
     // Transform to UserListItem format
-    const userList: UserListItem[] = users.map(user => {
+    const userList: UserListItem[] = paginatedUsers.map((user: User) => {
       // Calculate total spent from payment history
       const totalSpent =
         user.billing?.paymentHistory
-          ?.filter((p: any) => p.status === 'paid')
-          .reduce((sum: number, p: any) => sum + p.amount, 0) || 0;
+          ?.filter(p => p.status === 'paid')
+          .reduce((sum: number, p) => sum + p.amount, 0) || 0;
 
       return {
-        id: user._id as string,
+        id: user.id,
         name: user.profile.name,
         email: user.profile.email,
         avatar: user.profile.avatar,
@@ -85,8 +87,6 @@ export async function GET(request: NextRequest) {
         status: user.membership.status === 'active' ? 'active' : 'suspended',
       };
     });
-
-    const totalPages = Math.ceil(total / limit);
 
     console.log('[DBG][admn/users] Found', total, 'users, page', page, 'of', totalPages);
 

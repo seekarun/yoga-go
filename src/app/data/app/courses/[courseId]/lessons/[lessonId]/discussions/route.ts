@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession, getUserByAuth0Id } from '@/lib/auth';
-import { connectToDatabase } from '@/lib/mongodb';
-import DiscussionModel from '@/models/Discussion';
-import DiscussionVoteModel from '@/models/DiscussionVote';
+import * as discussionRepository from '@/lib/repositories/discussionRepository';
+import * as discussionVoteRepository from '@/lib/repositories/discussionVoteRepository';
 import type { ApiResponse, DiscussionThread, Discussion } from '@/types';
 
 export async function GET(
@@ -25,7 +24,7 @@ export async function GET(
       return NextResponse.json(response, { status: 401 });
     }
 
-    // Get user from MongoDB
+    // Get user from DynamoDB
     const user = await getUserByAuth0Id(session.user.cognitoSub);
     if (!user) {
       const response: ApiResponse<null> = {
@@ -45,61 +44,39 @@ export async function GET(
       return NextResponse.json(response, { status: 403 });
     }
 
-    // Connect to MongoDB
-    await connectToDatabase();
+    // Fetch all discussions for this lesson (using DynamoDB)
+    const discussions = await discussionRepository.getDiscussionsByLesson(courseId, lessonId);
 
-    // Fetch all discussions for this lesson (not hidden, not deleted)
-    const discussions = await DiscussionModel.find({
-      lessonId,
-      courseId,
-      isHidden: false,
-      deletedAt: { $exists: false },
-    })
-      .sort({ isPinned: -1, createdAt: -1 }) // Pinned first, then newest
-      .lean()
-      .exec();
+    // Also get replies for each discussion
+    const allDiscussions = [...discussions];
+    for (const discussion of discussions) {
+      const replies = await discussionRepository.getReplies(discussion.id);
+      allDiscussions.push(...replies);
+    }
+
+    // Filter out hidden and deleted discussions
+    const visibleDiscussions = allDiscussions.filter(d => !d.isHidden && !d.deletedAt);
 
     // Fetch user's votes for these discussions
-    const discussionIds = discussions.map(d => d._id);
-    const userVotes = await DiscussionVoteModel.find({
-      discussionId: { $in: discussionIds },
-      userId: user.id,
-    })
-      .lean()
-      .exec();
-
-    const userVoteMap = new Map(userVotes.map(v => [v.discussionId, v.voteType]));
+    const discussionIds = visibleDiscussions.map(d => d.id);
+    const userVoteMap = await discussionVoteRepository.getUserVotesForDiscussions(
+      user.id,
+      discussionIds
+    );
 
     // Build threaded structure
     const discussionMap = new Map<string, DiscussionThread>();
     const topLevelDiscussions: DiscussionThread[] = [];
 
     // First pass: convert all discussions to DiscussionThread
-    discussions.forEach((doc: any) => {
+    visibleDiscussions.forEach((doc: Discussion) => {
       const thread: DiscussionThread = {
-        id: doc._id,
-        courseId: doc.courseId,
-        lessonId: doc.lessonId,
-        userId: doc.userId,
-        userRole: doc.userRole,
-        userName: doc.userName,
-        userAvatar: doc.userAvatar,
-        content: doc.content,
-        parentId: doc.parentId,
-        upvotes: doc.upvotes,
-        downvotes: doc.downvotes,
-        isPinned: doc.isPinned,
-        isResolved: doc.isResolved,
-        isHidden: doc.isHidden,
-        editedAt: doc.editedAt,
-        deletedAt: doc.deletedAt,
-        createdAt: doc.createdAt?.toISOString(),
-        updatedAt: doc.updatedAt?.toISOString(),
+        ...doc,
         replies: [],
-        userVote: userVoteMap.get(doc._id),
+        userVote: userVoteMap.get(doc.id),
         netScore: doc.upvotes - doc.downvotes,
       };
-      discussionMap.set(doc._id, thread);
+      discussionMap.set(doc.id, thread);
     });
 
     // Second pass: build hierarchy
@@ -114,16 +91,19 @@ export async function GET(
       }
     });
 
-    // Sort replies by score
-    const sortReplies = (threads: DiscussionThread[]) => {
-      threads.sort((a, b) => b.netScore - a.netScore);
+    // Sort by pinned first, then by score
+    const sortDiscussions = (threads: DiscussionThread[]) => {
+      threads.sort((a, b) => {
+        if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+        return b.netScore - a.netScore;
+      });
       threads.forEach(thread => {
         if (thread.replies.length > 0) {
-          sortReplies(thread.replies);
+          sortDiscussions(thread.replies);
         }
       });
     };
-    sortReplies(topLevelDiscussions);
+    sortDiscussions(topLevelDiscussions);
 
     const response: ApiResponse<DiscussionThread[]> = {
       success: true,
@@ -165,7 +145,7 @@ export async function POST(
       return NextResponse.json(response, { status: 401 });
     }
 
-    // Get user from MongoDB
+    // Get user from DynamoDB
     const user = await getUserByAuth0Id(session.user.cognitoSub);
     if (!user) {
       const response: ApiResponse<null> = {
@@ -197,23 +177,16 @@ export async function POST(
       return NextResponse.json(response, { status: 400 });
     }
 
-    // Connect to MongoDB
-    await connectToDatabase();
-
-    // Create discussion ID
-    const discussionId = `${lessonId}_${user.id}_${Date.now()}`;
-
     // Determine primary role for discussion (prefer 'expert' if available, otherwise first role)
     const userRoles = Array.isArray(user.role) ? user.role : [user.role];
     const primaryRole = userRoles.includes('expert') ? 'expert' : userRoles[0] || 'learner';
 
-    // Create discussion document
-    const discussionDoc = {
-      _id: discussionId,
+    // Create discussion using repository
+    const discussion = await discussionRepository.createDiscussion({
       courseId,
       lessonId,
       userId: user.id,
-      userRole: primaryRole,
+      userRole: primaryRole as 'learner' | 'expert',
       userName: user.profile.name,
       userAvatar: user.profile.avatar,
       content: content.trim(),
@@ -223,29 +196,7 @@ export async function POST(
       isPinned: false,
       isResolved: false,
       isHidden: false,
-    };
-
-    await DiscussionModel.create(discussionDoc);
-
-    // Convert to Discussion type
-    const discussion: Discussion = {
-      id: discussionId,
-      courseId,
-      lessonId,
-      userId: user.id,
-      userRole: primaryRole,
-      userName: user.profile.name,
-      userAvatar: user.profile.avatar,
-      content: content.trim(),
-      parentId: parentId || undefined,
-      upvotes: 0,
-      downvotes: 0,
-      isPinned: false,
-      isResolved: false,
-      isHidden: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    });
 
     const response: ApiResponse<Discussion> = {
       success: true,

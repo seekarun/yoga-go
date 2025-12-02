@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server';
 import { requireAdminAuth } from '@/lib/auth';
-import { connectToDatabase } from '@/lib/mongodb';
-import User from '@/models/User';
-import Expert from '@/models/Expert';
-import Course from '@/models/Course';
-import type { AdminStats } from '@/types';
+import * as userRepository from '@/lib/repositories/userRepository';
+import * as courseRepository from '@/lib/repositories/courseRepository';
+import type { AdminStats, User } from '@/types';
 
 /**
  * GET /data/admn/stats
@@ -17,48 +15,56 @@ export async function GET() {
 
     console.log('[DBG][admn/stats] Fetching platform statistics');
 
-    await connectToDatabase();
-
     // Get current date and date ranges
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    // Run queries in parallel for performance
-    const [totalUsers, totalLearners, totalExperts, activeUsers, totalCourses, recentSignups] =
-      await Promise.all([
-        User.countDocuments({ role: { $ne: 'admin' } }), // Exclude admins from count
-        User.countDocuments({ role: 'learner' }),
-        User.countDocuments({ role: 'expert' }),
-        User.countDocuments({
-          role: { $ne: 'admin' },
-          'statistics.lastPractice': { $gte: thirtyDaysAgo.toISOString() },
-        }),
-        Course.countDocuments({ status: 'PUBLISHED' }),
-        User.countDocuments({
-          role: { $ne: 'admin' },
-          'profile.joinedAt': { $gte: sevenDaysAgo.toISOString() },
-        }),
-      ]);
+    // Get all users from DynamoDB
+    const allUsers = await userRepository.getAllUsers();
 
-    // Calculate total enrollments across all users
-    const enrollmentResults = await User.aggregate([
-      { $match: { role: { $ne: 'admin' } } },
-      { $project: { enrollmentCount: { $size: '$enrolledCourses' } } },
-      { $group: { _id: null, totalEnrollments: { $sum: '$enrollmentCount' } } },
-    ]);
+    // Filter out admins
+    const nonAdminUsers = allUsers.filter((user: User) => !user.role.includes('admin'));
 
-    const totalEnrollments = enrollmentResults[0]?.totalEnrollments || 0;
+    // Calculate user counts
+    const totalUsers = nonAdminUsers.length;
+    const totalLearners = nonAdminUsers.filter((user: User) =>
+      user.role.includes('learner')
+    ).length;
+    const totalExperts = nonAdminUsers.filter((user: User) => user.role.includes('expert')).length;
 
-    // Calculate total revenue (sum of payment amounts)
-    const revenueResults = await User.aggregate([
-      { $match: { role: 'learner', 'billing.paymentHistory': { $exists: true, $ne: [] } } },
-      { $unwind: '$billing.paymentHistory' },
-      { $match: { 'billing.paymentHistory.status': 'paid' } },
-      { $group: { _id: null, totalRevenue: { $sum: '$billing.paymentHistory.amount' } } },
-    ]);
+    // Active users (practiced in last 30 days)
+    const activeUsers = nonAdminUsers.filter((user: User) => {
+      if (!user.statistics?.lastPractice) return false;
+      return new Date(user.statistics.lastPractice) >= thirtyDaysAgo;
+    }).length;
 
-    const totalRevenue = revenueResults[0]?.totalRevenue || 0;
+    // Recent signups (last 7 days)
+    const recentSignups = nonAdminUsers.filter((user: User) => {
+      const joinedAt = user.profile?.joinedAt || user.createdAt;
+      if (!joinedAt) return false;
+      return new Date(joinedAt) >= sevenDaysAgo;
+    }).length;
+
+    // Calculate total enrollments
+    const totalEnrollments = nonAdminUsers.reduce((total: number, user: User) => {
+      return total + (user.enrolledCourses?.length || 0);
+    }, 0);
+
+    // Calculate total revenue from payment history
+    const totalRevenue = nonAdminUsers.reduce((total: number, user: User) => {
+      if (!user.billing?.paymentHistory) return total;
+      return (
+        total +
+        user.billing.paymentHistory
+          .filter(p => p.status === 'paid')
+          .reduce((sum, p) => sum + p.amount, 0)
+      );
+    }, 0);
+
+    // Get course count from DynamoDB
+    const publishedCourses = await courseRepository.getCoursesByStatus('PUBLISHED');
+    const totalCourses = publishedCourses.length;
 
     const stats: AdminStats = {
       totalUsers,

@@ -1,8 +1,6 @@
-import { connectToDatabase } from './mongodb';
-import ExpertAvailability from '@/models/ExpertAvailability';
-import LiveSession from '@/models/LiveSession';
+import * as availabilityRepository from './repositories/availabilityRepository';
+import * as liveSessionRepository from './repositories/liveSessionRepository';
 import type { AvailableSlot } from '@/types';
-import { nanoid } from 'nanoid';
 
 /**
  * Generate available time slots for an expert on a specific date
@@ -10,52 +8,49 @@ import { nanoid } from 'nanoid';
  * based on the expert's configured sessionDuration and bufferMinutes
  * @param expertId Expert's ID
  * @param date Date string in YYYY-MM-DD format
- * @param sessionDuration Duration override (optional, ignored - uses expert's configured durations)
+ * @param _sessionDuration Duration override (optional, ignored - uses expert's configured durations)
  * @returns Array of available time slots (available = not booked)
  */
 export async function generateAvailableSlots(
   expertId: string,
   date: string,
-  sessionDuration?: number
+  _sessionDuration?: number
 ): Promise<AvailableSlot[]> {
   console.log(`[DBG][lib/availability] Generating slots for expert ${expertId} on ${date}`);
-
-  await connectToDatabase();
 
   // Get day of week for the date (0=Sunday, 6=Saturday)
   const targetDate = new Date(date);
   const dayOfWeek = targetDate.getDay();
 
-  // Get expert's availability for this day
-  const availabilities = await ExpertAvailability.find({
-    expertId,
-    isActive: true,
-    $or: [
-      // Recurring weekly availability for this day
-      { isRecurring: true, dayOfWeek },
-      // One-time availability for this specific date
-      { isRecurring: false, date },
-    ],
-  });
+  // Get expert's availability for this day from DynamoDB
+  const [recurringAvailabilities, dateAvailabilities] = await Promise.all([
+    availabilityRepository.getRecurringAvailabilitiesByDay(expertId, dayOfWeek),
+    availabilityRepository.getAvailabilitiesByDate(expertId, date),
+  ]);
+
+  const availabilities = [...recurringAvailabilities, ...dateAvailabilities];
 
   if (availabilities.length === 0) {
     console.log('[DBG][lib/availability] No availability found for this date');
     return [];
   }
 
-  // Get existing sessions for this expert on this date
+  // Get existing sessions for this expert on this date from DynamoDB
+  const allSessions = await liveSessionRepository.getLiveSessionsByExpert(expertId);
+
+  // Filter sessions for this date that are scheduled or live
   const startOfDay = new Date(date);
   startOfDay.setHours(0, 0, 0, 0);
   const endOfDay = new Date(date);
   endOfDay.setHours(23, 59, 59, 999);
 
-  const existingSessions = await LiveSession.find({
-    expertId,
-    status: { $in: ['scheduled', 'live'] },
-    scheduledStartTime: {
-      $gte: startOfDay.toISOString(),
-      $lt: endOfDay.toISOString(),
-    },
+  const existingSessions = allSessions.filter(session => {
+    const sessionStart = new Date(session.scheduledStartTime);
+    return (
+      ['scheduled', 'live'].includes(session.status) &&
+      sessionStart >= startOfDay &&
+      sessionStart < endOfDay
+    );
   });
 
   console.log(`[DBG][lib/availability] Found ${existingSessions.length} existing sessions`);
@@ -149,38 +144,34 @@ export async function checkSchedulingConflict(
 ): Promise<boolean> {
   console.log(`[DBG][lib/availability] Checking conflicts for expert ${expertId}`);
 
-  await connectToDatabase();
-
   const start = new Date(startTime);
   const end = new Date(endTime);
 
+  // Get all sessions for this expert from DynamoDB
+  const allSessions = await liveSessionRepository.getLiveSessionsByExpert(expertId);
+
   // Find sessions that overlap with this time range
-  const query: any = {
-    expertId,
-    status: { $in: ['scheduled', 'live'] },
-    $or: [
-      // Session starts during this time
-      {
-        scheduledStartTime: { $gte: start.toISOString(), $lt: end.toISOString() },
-      },
-      // Session ends during this time
-      {
-        scheduledEndTime: { $gt: start.toISOString(), $lte: end.toISOString() },
-      },
-      // Session completely encompasses this time
-      {
-        scheduledStartTime: { $lte: start.toISOString() },
-        scheduledEndTime: { $gte: end.toISOString() },
-      },
-    ],
-  };
+  const conflicts = allSessions.filter(session => {
+    // Skip excluded session
+    if (excludeSessionId && session.id === excludeSessionId) {
+      return false;
+    }
 
-  // Exclude specific session if provided (for editing)
-  if (excludeSessionId) {
-    query._id = { $ne: excludeSessionId };
-  }
+    // Only check scheduled or live sessions
+    if (!['scheduled', 'live'].includes(session.status)) {
+      return false;
+    }
 
-  const conflicts = await LiveSession.find(query);
+    const sessionStart = new Date(session.scheduledStartTime);
+    const sessionEnd = new Date(session.scheduledEndTime);
+
+    // Check for any time overlap
+    return (
+      (sessionStart >= start && sessionStart < end) ||
+      (sessionEnd > start && sessionEnd <= end) ||
+      (sessionStart <= start && sessionEnd >= end)
+    );
+  });
 
   console.log(`[DBG][lib/availability] Found ${conflicts.length} conflicts`);
   return conflicts.length > 0;
@@ -201,8 +192,6 @@ export async function isSlotAvailable(
 ): Promise<boolean> {
   console.log(`[DBG][lib/availability] Checking if slot is available`);
 
-  await connectToDatabase();
-
   const start = new Date(startTime);
   const end = new Date(endTime);
 
@@ -219,17 +208,13 @@ export async function isSlotAvailable(
   const startTimeStr = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`;
   const endTimeStr = `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`;
 
-  // Check if expert has availability for this time
-  const availabilities = await ExpertAvailability.find({
-    expertId,
-    isActive: true,
-    $or: [
-      // Recurring weekly availability for this day
-      { isRecurring: true, dayOfWeek },
-      // One-time availability for this specific date
-      { isRecurring: false, date },
-    ],
-  });
+  // Check if expert has availability for this time from DynamoDB
+  const [recurringAvailabilities, dateAvailabilities] = await Promise.all([
+    availabilityRepository.getRecurringAvailabilitiesByDay(expertId, dayOfWeek),
+    availabilityRepository.getAvailabilitiesByDate(expertId, date),
+  ]);
+
+  const availabilities = [...recurringAvailabilities, ...dateAvailabilities];
 
   // Check if requested time falls within any availability window
   const withinAvailability = availabilities.some(availability => {
@@ -260,27 +245,64 @@ export async function isSlotAvailable(
 export async function createDefaultAvailability(expertId: string): Promise<void> {
   console.log(`[DBG][lib/availability] Creating default availability for expert ${expertId}`);
 
-  await connectToDatabase();
-
   // Check if expert already has availability
-  const existing = await ExpertAvailability.findOne({ expertId, isActive: true });
-  if (existing) {
+  const existing = await availabilityRepository.getActiveAvailabilitiesByExpert(expertId);
+  if (existing.length > 0) {
     console.log('[DBG][lib/availability] Expert already has availability');
     return;
   }
 
   // Create Monday-Friday, 9am-5pm schedule
   const weekdays = [1, 2, 3, 4, 5]; // Monday to Friday
-  const availabilities = weekdays.map(dayOfWeek => ({
-    _id: nanoid(),
-    expertId,
-    dayOfWeek,
-    startTime: '09:00',
-    endTime: '17:00',
-    isRecurring: true,
-    isActive: true,
-  }));
 
-  await ExpertAvailability.insertMany(availabilities);
+  for (const dayOfWeek of weekdays) {
+    await availabilityRepository.createAvailability({
+      expertId,
+      dayOfWeek,
+      startTime: '09:00',
+      endTime: '17:00',
+      isRecurring: true,
+      isActive: true,
+    });
+  }
+
   console.log('[DBG][lib/availability] Default availability created');
+}
+
+/**
+ * Get availability slot for a specific time
+ * Used to retrieve meeting link configuration
+ */
+export async function getAvailabilityForTime(
+  expertId: string,
+  startTime: string
+): Promise<{
+  meetingLink?: string;
+  sessionDuration?: number;
+  bufferMinutes?: number;
+} | null> {
+  const start = new Date(startTime);
+  const dayOfWeek = start.getDay();
+  const date = start.toISOString().split('T')[0];
+
+  // Get availability for this time from DynamoDB
+  const [recurringAvailabilities, dateAvailabilities] = await Promise.all([
+    availabilityRepository.getRecurringAvailabilitiesByDay(expertId, dayOfWeek),
+    availabilityRepository.getAvailabilitiesByDate(expertId, date),
+  ]);
+
+  const availabilities = [...recurringAvailabilities, ...dateAvailabilities];
+
+  if (availabilities.length === 0) {
+    return null;
+  }
+
+  // Return the first matching availability (prefer date-specific over recurring)
+  const availability = dateAvailabilities[0] || recurringAvailabilities[0];
+
+  return {
+    meetingLink: availability.meetingLink,
+    sessionDuration: availability.sessionDuration,
+    bufferMinutes: availability.bufferMinutes,
+  };
 }

@@ -6,6 +6,7 @@ export interface VideoUploadResult {
   videoId: string;
   status: 'uploading' | 'processing' | 'ready' | 'error';
   duration?: string;
+  errorReason?: string;
 }
 
 interface VideoUploadProps {
@@ -48,6 +49,7 @@ export default function VideoUpload({
     'uploading' | 'processing' | 'ready' | 'error' | ''
   >(videoStatus || '');
   const [duration, setDuration] = useState<string>('');
+  const [errorReason, setErrorReason] = useState<string>('');
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
   // Sync internal status with prop
@@ -72,11 +74,27 @@ export default function VideoUpload({
           const status = data.data.status;
           const isReady = data.data.readyToStream;
           const videoDuration = data.data.duration;
+          const errorReasonCode = data.data.errorReasonCode;
+          const errorReasonText = data.data.errorReasonText;
 
-          console.log('[DBG][VideoUpload] Video status:', status, 'Ready:', isReady);
+          console.log(
+            '[DBG][VideoUpload] Video status:',
+            status,
+            'Ready:',
+            isReady,
+            'Error:',
+            errorReasonCode,
+            errorReasonText
+          );
 
           const newStatus = isReady ? 'ready' : status === 'error' ? 'error' : 'processing';
           setInternalStatus(newStatus);
+
+          // Capture error reason if available
+          if (status === 'error') {
+            const errorMsg = errorReasonText || errorReasonCode || 'Unknown processing error';
+            setErrorReason(errorMsg);
+          }
 
           // Auto-populate duration if available
           if (videoDuration && !duration) {
@@ -93,6 +111,10 @@ export default function VideoUpload({
               videoId: pollingVideoId,
               status: newStatus as 'ready' | 'error',
               duration: videoDuration ? formatDuration(videoDuration) : undefined,
+              errorReason:
+                status === 'error'
+                  ? errorReasonText || errorReasonCode || 'Unknown error'
+                  : undefined,
             });
           }
         }
@@ -219,6 +241,7 @@ export default function VideoUpload({
     setUploadProgress(0);
     setInternalStatus('');
     setDuration('');
+    setErrorReason('');
     setPollingVideoId(null);
     onClear?.();
   };
@@ -316,6 +339,9 @@ export default function VideoUpload({
               }`}
             >
               Status: {internalStatus}
+              {internalStatus === 'error' && errorReason && (
+                <span className="block text-xs mt-1">Reason: {errorReason}</span>
+              )}
             </p>
           )}
           {duration && (

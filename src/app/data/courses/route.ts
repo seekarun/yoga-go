@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { ApiResponse, Course } from '@/types';
-import { connectToDatabase } from '@/lib/mongodb';
-import CourseModel from '@/models/Course';
-import ExpertModel from '@/models/Expert';
+import * as courseRepository from '@/lib/repositories/courseRepository';
+import * as expertRepository from '@/lib/repositories/expertRepository';
 
 // Generate a unique course ID
 function generateCourseId(instructorId: string): string {
@@ -15,54 +14,45 @@ export async function GET(request: Request) {
   console.log('[DBG][courses/route.ts] GET /data/courses called');
 
   try {
-    await connectToDatabase();
-
     // Check for query parameters
     const { searchParams } = new URL(request.url);
     const instructorId = searchParams.get('instructorId');
     const includeAll = searchParams.get('includeAll') === 'true';
 
-    const query: Record<string, unknown> = {};
+    let courseDocs: Course[];
 
-    // If instructorId is provided, filter by instructor
+    // Fetch courses from DynamoDB
     if (instructorId) {
-      query['instructor.id'] = instructorId;
       // For expert dashboard, include IN_PROGRESS and PUBLISHED courses
       if (includeAll) {
-        query.status = { $in: ['IN_PROGRESS', 'PUBLISHED'] };
+        const allCourses = await courseRepository.getCoursesByInstructorId(instructorId);
+        courseDocs = allCourses.filter(c => c.status === 'IN_PROGRESS' || c.status === 'PUBLISHED');
+      } else {
+        courseDocs = await courseRepository.getPublishedCoursesByInstructorId(instructorId);
       }
     } else {
       // For public course listing, only show PUBLISHED courses
-      query.status = 'PUBLISHED';
+      courseDocs = await courseRepository.getCoursesByStatus('PUBLISHED');
     }
 
-    // Fetch courses from MongoDB
-    const courseDocs = await CourseModel.find(query).lean().exec();
-
     // Fetch all unique instructor IDs
-    const instructorIds = [
-      ...new Set(courseDocs.map((doc: any) => doc.instructor?.id).filter(Boolean)),
-    ];
+    const instructorIds = [...new Set(courseDocs.map(doc => doc.instructor?.id).filter(Boolean))];
 
-    // Fetch expert data for all instructors
-    const experts = await ExpertModel.find({ _id: { $in: instructorIds } })
-      .lean()
-      .exec();
-    const expertMap = new Map(experts.map((expert: any) => [expert._id, expert]));
+    // Fetch expert data for all instructors from DynamoDB
+    const expertPromises = instructorIds.map(id => expertRepository.getExpertById(id));
+    const experts = await Promise.all(expertPromises);
+    const expertMap = new Map(experts.filter(e => e !== null).map(expert => [expert!.id, expert]));
 
-    // Transform MongoDB documents to Course type and populate instructor avatar
-    const courses: Course[] = courseDocs.map((doc: any) => {
-      const course = {
-        ...doc,
-        id: doc._id as string,
-      };
+    // Populate instructor avatar from expert data
+    const courses: Course[] = courseDocs.map(doc => {
+      const course = { ...doc };
 
       // Populate instructor avatar from expert data
       if (doc.instructor?.id && expertMap.has(doc.instructor.id)) {
         const expert = expertMap.get(doc.instructor.id);
         course.instructor = {
           ...doc.instructor,
-          avatar: expert.avatar || doc.instructor.avatar,
+          avatar: expert?.avatar || doc.instructor.avatar,
         };
       }
 
@@ -90,8 +80,6 @@ export async function POST(request: Request) {
   console.log('[DBG][courses/route.ts] POST /data/courses called');
 
   try {
-    await connectToDatabase();
-
     // Parse request body
     const body = await request.json();
 
@@ -133,27 +121,26 @@ export async function POST(request: Request) {
     // Generate course ID
     const courseId = generateCourseId(body.instructor.id);
 
-    // Transform curriculum to use lessonIds if provided
+    // Transform curriculum to use lessons array format
     const curriculum = body.curriculum
       ? (body.curriculum as { week: number; title: string; lessonIds?: string[] }[]).map(week => ({
           week: week.week,
           title: week.title,
-          lessonIds: week.lessonIds || [],
+          lessons: [], // Empty for now - lessons will be populated when fetching
         }))
       : [];
 
-    // Create course document with defaults for optional fields
-    const courseData = {
-      _id: courseId,
+    // Create course in DynamoDB
+    const createdCourse = await courseRepository.createCourse({
+      id: courseId,
       title: body.title,
       description: body.description,
-      longDescription: body.longDescription || body.description,
       instructor: body.instructor,
       thumbnail: body.thumbnail || '/images/default-course.jpg',
-      coverImage: body.coverImage || undefined,
-      promoVideo: body.promoVideo || undefined,
-      promoVideoCloudflareId: body.promoVideoCloudflareId || undefined,
-      promoVideoStatus: body.promoVideoStatus || undefined,
+      coverImage: body.coverImage,
+      promoVideo: body.promoVideo,
+      promoVideoCloudflareId: body.promoVideoCloudflareId,
+      promoVideoStatus: body.promoVideoStatus,
       level: body.level,
       duration: body.duration,
       totalLessons: body.totalLessons !== undefined ? body.totalLessons : 0,
@@ -166,23 +153,14 @@ export async function POST(request: Request) {
       tags: body.tags || [],
       featured: body.featured || false,
       isNew: body.isNew !== undefined ? body.isNew : true,
-      status: 'IN_PROGRESS' as const, // New courses start as IN_PROGRESS
+      status: 'IN_PROGRESS', // New courses start as IN_PROGRESS
       requirements: body.requirements || [],
       whatYouWillLearn: body.whatYouWillLearn || [],
       curriculum,
       reviews: body.reviews || [],
-    };
-
-    const course = new CourseModel(courseData);
-    await course.save();
+    });
 
     console.log(`[DBG][courses/route.ts] ✓ Created course: ${courseId}`);
-
-    // Return created course
-    const createdCourse: Course = {
-      ...(courseData as any),
-      id: courseId,
-    };
 
     const response: ApiResponse<Course> = {
       success: true,

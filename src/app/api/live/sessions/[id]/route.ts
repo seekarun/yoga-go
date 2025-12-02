@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/mongodb';
-import LiveSession from '@/models/LiveSession';
 import type { ApiResponse, LiveSession as LiveSessionType } from '@/types';
+import * as liveSessionRepository from '@/lib/repositories/liveSessionRepository';
 
 /**
  * GET /api/live/sessions/[id]
@@ -12,11 +11,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   console.log('[DBG][api/live/sessions/[id]] GET request received:', sessionId);
 
   try {
-    // Connect to database
-    await connectToDatabase();
-
-    // Get live session
-    const liveSession: any = await LiveSession.findById(sessionId).lean();
+    // Get live session from DynamoDB
+    const liveSession = await liveSessionRepository.getLiveSessionByIdOnly(sessionId);
     if (!liveSession) {
       const response: ApiResponse<null> = {
         success: false,
@@ -27,43 +23,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
     console.log('[DBG][api/live/sessions/[id]] Session found:', sessionId);
 
-    // Transform session to match API type
-    const sessionData: LiveSessionType = {
-      id: liveSession._id,
-      expertId: liveSession.expertId,
-      expertName: liveSession.expertName,
-      expertAvatar: liveSession.expertAvatar,
-      title: liveSession.title,
-      description: liveSession.description,
-      thumbnail: liveSession.thumbnail,
-      sessionType: liveSession.sessionType,
-      meetingLink: liveSession.meetingLink,
-      meetingPlatform: liveSession.meetingPlatform,
-      instantMeetingCode: liveSession.instantMeetingCode,
-      scheduledStartTime: liveSession.scheduledStartTime,
-      scheduledEndTime: liveSession.scheduledEndTime,
-      actualStartTime: liveSession.actualStartTime,
-      actualEndTime: liveSession.actualEndTime,
-      maxParticipants: liveSession.maxParticipants,
-      currentViewers: liveSession.currentViewers,
-      price: liveSession.price,
-      currency: liveSession.currency,
-      status: liveSession.status,
-      recordingS3Key: liveSession.recordingS3Key,
-      recordedLessonId: liveSession.recordedLessonId,
-      recordingAvailable: liveSession.recordingAvailable,
-      enrolledCount: liveSession.enrolledCount,
-      attendedCount: liveSession.attendedCount,
-      metadata: liveSession.metadata,
-      featured: liveSession.featured,
-      isFree: liveSession.isFree,
-      createdAt: liveSession.createdAt,
-      updatedAt: liveSession.updatedAt,
-    };
-
     const response: ApiResponse<LiveSessionType> = {
       success: true,
-      data: sessionData,
+      data: liveSession,
     };
 
     return NextResponse.json(response);

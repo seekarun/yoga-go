@@ -1,72 +1,58 @@
 import { NextResponse } from 'next/server';
-import type { ApiResponse, Expert } from '@/types';
-import { connectToDatabase } from '@/lib/mongodb';
-import ExpertModel from '@/models/Expert';
-import CourseModel from '@/models/Course';
-import PaymentModel from '@/models/Payment';
-import UserModel from '@/models/User';
-import { getSession } from '@/lib/auth';
+import type { ApiResponse, Expert, UserRole } from '@/types';
+import { getSession, getUserByCognitoSub } from '@/lib/auth';
+import * as userRepository from '@/lib/repositories/userRepository';
+import * as expertRepository from '@/lib/repositories/expertRepository';
+import * as courseRepository from '@/lib/repositories/courseRepository';
+import * as paymentRepository from '@/lib/repositories/paymentRepository';
 
 export async function GET() {
   console.log('[DBG][experts/route.ts] GET /data/experts called');
 
   try {
-    await connectToDatabase();
-
-    // Fetch all experts from MongoDB
-    const expertDocs = await ExpertModel.find({}).lean().exec();
+    // Fetch all experts from DynamoDB
+    const expertDocs = await expertRepository.getAllExperts();
 
     // Calculate dynamic stats for each expert
     const expertsWithStats = await Promise.all(
-      expertDocs.map(async (doc: any) => {
-        const expertId = doc._id as string;
+      expertDocs.map(async (doc: Expert) => {
+        const expertId = doc.id;
 
-        // Get actual number of published courses
-        const totalCourses = await CourseModel.countDocuments({
-          'instructor.id': expertId,
-          status: 'PUBLISHED',
-        });
+        // Get published courses for this expert from DynamoDB
+        const expertCourses = await courseRepository.getPublishedCoursesByInstructorId(expertId);
+        const totalCourses = expertCourses.length;
+        const courseIds = expertCourses.map(c => c.id);
 
-        // Get all courses for this expert (for calculating students)
-        const expertCourses = await CourseModel.find(
-          {
-            'instructor.id': expertId,
-            status: 'PUBLISHED',
-          },
-          { _id: 1 }
-        ).lean();
-
-        const courseIds = expertCourses.map(c => c._id);
-
-        // Get actual number of unique students (from successful payments)
-        const totalStudents =
-          courseIds.length > 0
-            ? await PaymentModel.distinct('userId', {
-                courseId: { $in: courseIds },
-                status: 'succeeded',
-              }).then(users => users.length)
-            : 0;
+        // Get actual number of unique students (from successful payments in DynamoDB)
+        let totalStudents = 0;
+        if (courseIds.length > 0) {
+          const uniqueUserIds = new Set<string>();
+          for (const courseId of courseIds) {
+            const payments = await paymentRepository.getSuccessfulPaymentsByCourse(courseId);
+            payments.forEach(p => uniqueUserIds.add(p.userId));
+          }
+          totalStudents = uniqueUserIds.size;
+        }
 
         console.log(
-          `[DBG][experts/route.ts] Expert ${(doc as any).name}: ${totalCourses} courses, ${totalStudents} students`
+          `[DBG][experts/route.ts] Expert ${doc.name}: ${totalCourses} courses, ${totalStudents} students`
         );
 
         return {
           ...doc,
-          id: expertId,
           totalCourses,
           totalStudents,
           // Ensure liveStreamingEnabled is always present (default to true if not set)
-          liveStreamingEnabled: (doc as any).liveStreamingEnabled ?? true,
-          totalLiveSessions: (doc as any).totalLiveSessions ?? 0,
-          upcomingLiveSessions: (doc as any).upcomingLiveSessions ?? 0,
+          liveStreamingEnabled: doc.liveStreamingEnabled ?? true,
+          totalLiveSessions: doc.totalLiveSessions ?? 0,
+          upcomingLiveSessions: doc.upcomingLiveSessions ?? 0,
         };
       })
     );
 
     const response: ApiResponse<Expert[]> = {
       success: true,
-      data: expertsWithStats,
+      data: expertsWithStats as Expert[],
       total: expertsWithStats.length,
     };
 
@@ -109,12 +95,10 @@ export async function POST(request: Request) {
       return NextResponse.json(response, { status: 400 });
     }
 
-    await connectToDatabase();
+    // Get user from DynamoDB
+    const user = await getUserByCognitoSub(session.user.cognitoSub);
 
-    // Get user to link expert profile
-    const userDoc = await UserModel.findOne({ cognitoSub: session.user.cognitoSub }).exec();
-
-    if (!userDoc) {
+    if (!user) {
       console.log('[DBG][experts/route.ts] User not found');
       return NextResponse.json({ success: false, error: 'User not found' } as ApiResponse<Expert>, {
         status: 404,
@@ -122,7 +106,7 @@ export async function POST(request: Request) {
     }
 
     // Check if user already has an expert profile
-    if (userDoc.expertProfile) {
+    if (user.expertProfile) {
       console.log('[DBG][experts/route.ts] User already has an expert profile');
       return NextResponse.json(
         {
@@ -133,8 +117,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check if expert with this ID already exists
-    const existingExpert = await ExpertModel.findById(body.id).exec();
+    // Check if expert with this ID already exists in DynamoDB
+    const existingExpert = await expertRepository.getExpertById(body.id);
     if (existingExpert) {
       const response: ApiResponse<Expert> = {
         success: false,
@@ -143,10 +127,10 @@ export async function POST(request: Request) {
       return NextResponse.json(response, { status: 409 });
     }
 
-    // Create new expert with defaults
-    const newExpertData = {
-      _id: body.id,
-      userId: userDoc._id, // Link to user account
+    // Create new expert in DynamoDB
+    const newExpert = await expertRepository.createExpert({
+      id: body.id,
+      userId: user.id, // Link to user account (cognitoSub)
       name: body.name,
       title: body.title,
       bio: body.bio,
@@ -158,32 +142,27 @@ export async function POST(request: Request) {
       featured: body.featured || false,
       certifications: body.certifications || [],
       experience: body.experience || '',
-      courses: body.courses || [],
       socialLinks: body.socialLinks || {},
       onboardingCompleted: true, // Mark as completed since they filled the form
-    };
+    });
 
-    const newExpert = new ExpertModel(newExpertData);
-    await newExpert.save();
+    console.log('[DBG][experts/route.ts] Expert created successfully:', newExpert.id);
 
-    console.log('[DBG][experts/route.ts] Expert created successfully:', newExpert._id);
+    // Update user to set role to expert and link expert profile using userRepository
+    const updatedRoles: UserRole[] = user.role.includes('expert')
+      ? user.role
+      : [...user.role, 'expert'];
 
-    // Update user to set role to expert and link expert profile
-    userDoc.role = 'expert';
-    userDoc.expertProfile = newExpert._id as string;
-    await userDoc.save();
+    await userRepository.updateUser(session.user.cognitoSub, {
+      role: updatedRoles,
+      expertProfile: newExpert.id,
+    });
 
     console.log('[DBG][experts/route.ts] User updated with expert profile');
 
-    // Transform to Expert type for response
-    const expert: Expert = {
-      ...newExpert.toObject(),
-      id: newExpert._id as string,
-    };
-
     const response: ApiResponse<Expert> = {
       success: true,
-      data: expert,
+      data: newExpert,
       message: 'Expert created successfully',
     };
 

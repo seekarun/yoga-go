@@ -1,9 +1,8 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { connectToDatabase } from '@/lib/mongodb';
-import SurveyResponse from '@/models/SurveyResponse';
-import Survey from '@/models/Survey';
+import * as surveyRepository from '@/lib/repositories/surveyRepository';
+import * as surveyResponseRepository from '@/lib/repositories/surveyResponseRepository';
 import type { ApiResponse } from '@/types';
 
 interface RouteParams {
@@ -15,7 +14,7 @@ interface RouteParams {
 export async function GET(
   request: NextRequest,
   { params }: RouteParams
-): Promise<NextResponse<ApiResponse<any>>> {
+): Promise<NextResponse<ApiResponse<unknown>>> {
   try {
     console.log('[DBG][survey-responses-api] Fetching survey responses');
 
@@ -34,14 +33,8 @@ export async function GET(
 
     const { expertId } = await params;
 
-    // Connect to database
-    await connectToDatabase();
-
-    // Get the survey for this expert
-    const survey: any = await Survey.findOne({
-      expertId,
-      isActive: true,
-    }).lean();
+    // Get the active survey for this expert
+    const survey = await surveyRepository.getActiveSurveyByExpert(expertId);
 
     if (!survey) {
       console.log(`[DBG][survey-responses-api] No active survey found for expert: ${expertId}`);
@@ -59,33 +52,24 @@ export async function GET(
     const questionId = searchParams.get('questionId');
     const answer = searchParams.get('answer');
 
-    // Build query
-    const query: any = {
-      expertId,
-      surveyId: survey._id,
-    };
+    // Fetch responses for this survey
+    let responses = await surveyResponseRepository.getResponsesBySurvey(survey.id);
 
     // Apply filters if provided
     if (questionId && answer) {
-      query.answers = {
-        $elemMatch: {
-          questionId,
-          answer,
-        },
-      };
+      responses = responses.filter(response =>
+        response.answers.some(ans => ans.questionId === questionId && ans.answer === answer)
+      );
     }
-
-    // Fetch responses
-    const responses = await SurveyResponse.find(query).sort({ submittedAt: -1 }).lean();
 
     console.log(
       `[DBG][survey-responses-api] Found ${responses.length} responses for expert: ${expertId}`
     );
 
     // Transform responses to include question text
-    const enrichedResponses = responses.map((response: any) => {
-      const answersWithQuestions = response.answers.map((ans: any) => {
-        const question = survey.questions.find((q: any) => q.id === ans.questionId);
+    const enrichedResponses = responses.map(response => {
+      const answersWithQuestions = response.answers.map(ans => {
+        const question = survey.questions.find(q => q.id === ans.questionId);
         return {
           ...ans,
           questionText: question?.questionText || 'Unknown Question',
@@ -103,7 +87,7 @@ export async function GET(
       success: true,
       data: {
         survey: {
-          id: survey._id,
+          id: survey.id,
           title: survey.title,
           description: survey.description,
           questions: survey.questions,

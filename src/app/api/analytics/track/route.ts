@@ -1,12 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { connectToDatabase } from '@/lib/mongodb';
-import CourseAnalyticsEvent, {
-  type EventType,
-  type EventMetadata,
-} from '@/models/CourseAnalyticsEvent';
+import * as courseAnalyticsEventRepository from '@/lib/repositories/courseAnalyticsEventRepository';
+import type { EventType } from '@/lib/repositories/courseAnalyticsEventRepository';
 import type { ApiResponse } from '@/types';
-import { nanoid } from 'nanoid';
 
 /**
  * POST /api/analytics/track
@@ -48,7 +44,7 @@ export async function POST(request: Request) {
       'video_pause',
       'video_complete',
       'video_progress',
-      'subscription_click',
+      'enroll_click',
       'payment_modal_open',
       'enrollment_complete',
     ];
@@ -74,34 +70,27 @@ export async function POST(request: Request) {
       return NextResponse.json(response, { status: 400 });
     }
 
-    // Connect to database
-    await connectToDatabase();
-
-    // Create event document
-    const eventId = nanoid();
-    const eventMetadata: EventMetadata = {
+    // Create event in DynamoDB
+    const eventMetadata = {
       ...metadata,
       userAgent: request.headers.get('user-agent') || undefined,
     };
 
-    const analyticsEvent = new CourseAnalyticsEvent({
-      _id: eventId,
-      eventType,
+    const analyticsEvent = await courseAnalyticsEventRepository.createAnalyticsEvent({
+      eventType: eventType as EventType,
       courseId,
       lessonId: lessonId || undefined,
       userId: userId || undefined,
       sessionId: sessionId || undefined,
-      timestamp: new Date(),
+      timestamp: new Date().toISOString(),
       metadata: eventMetadata,
     });
-
-    await analyticsEvent.save();
 
     console.log('[DBG][analytics/track] Event saved:', eventType, courseId, lessonId);
 
     const response: ApiResponse<{ eventId: string }> = {
       success: true,
-      data: { eventId },
+      data: { eventId: analyticsEvent.id },
       message: 'Event tracked successfully',
     };
 

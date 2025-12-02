@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession, getUserByAuth0Id } from '@/lib/auth';
-import UserModel from '@/models/User';
+import * as userRepository from '@/lib/repositories/userRepository';
 import type { ApiResponse } from '@/types';
 
 /**
@@ -69,7 +69,7 @@ export async function PUT(request: Request) {
 
     console.log('[DBG][api/user/meeting-settings] Updating meeting settings:', updateData);
 
-    await UserModel.findByIdAndUpdate(user.id, updateData);
+    await userRepository.updateUser(session.user.cognitoSub, updateData);
 
     const response: ApiResponse<{
       defaultMeetingLink?: string;

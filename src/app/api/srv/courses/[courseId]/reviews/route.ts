@@ -1,8 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { requireExpertAuth } from '@/lib/auth';
-import { connectToDatabase } from '@/lib/mongodb';
-import CourseModel from '@/models/Course';
+import * as courseRepository from '@/lib/repositories/courseRepository';
 import type { CourseReview, ApiResponse } from '@/types';
 
 /**
@@ -22,10 +21,8 @@ export async function GET(
 
     const { courseId } = await params;
 
-    await connectToDatabase();
-
-    // Get course
-    const course = await CourseModel.findById(courseId);
+    // Get course from DynamoDB
+    const course = await courseRepository.getCourseById(courseId);
     if (!course) {
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: 'Course not found' },
@@ -34,7 +31,7 @@ export async function GET(
     }
 
     // Verify expert owns this course
-    if (course.instructor.id !== user.expertProfile) {
+    if (course.instructor?.id !== user.expertProfile) {
       console.log('[DBG][expert-review-api] Expert does not own this course');
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: 'Forbidden - You do not own this course' },

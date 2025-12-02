@@ -88,7 +88,6 @@ function UserIdentifier() {
         membershipType: user.membership.type,
         membershipStatus: user.membership.status,
         billingInterval: user.membership.billingInterval,
-        subscriptionId: user.membership.subscriptionId,
         paymentGateway: user.membership.paymentGateway,
       });
 

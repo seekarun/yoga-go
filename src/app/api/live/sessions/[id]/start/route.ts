@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession, getUserByAuth0Id } from '@/lib/auth';
-import { connectToDatabase } from '@/lib/mongodb';
-import LiveSession from '@/models/LiveSession';
 import type { ApiResponse } from '@/types';
+import * as liveSessionRepository from '@/lib/repositories/liveSessionRepository';
 
 /**
  * POST /api/live/sessions/[id]/start
@@ -34,11 +33,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       return NextResponse.json(response, { status: 404 });
     }
 
-    // Connect to database
-    await connectToDatabase();
-
-    // Get live session
-    const liveSession = await LiveSession.findById(sessionId);
+    // Get live session from DynamoDB
+    const liveSession = await liveSessionRepository.getLiveSessionByIdOnly(sessionId);
     if (!liveSession) {
       const response: ApiResponse<null> = {
         success: false,
@@ -65,10 +61,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       return NextResponse.json(response, { status: 400 });
     }
 
-    // Update session status to live
-    liveSession.status = 'live';
-    liveSession.actualStartTime = new Date().toISOString();
-    await liveSession.save();
+    // Update session status to live in DynamoDB
+    const updatedSession = await liveSessionRepository.updateLiveSessionStatus(
+      liveSession.expertId,
+      sessionId,
+      'live',
+      { actualStartTime: new Date().toISOString() }
+    );
 
     console.log('[DBG][api/live/sessions/[id]/start] Session started successfully');
 
@@ -80,8 +79,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }> = {
       success: true,
       data: {
-        sessionId: liveSession._id,
-        status: liveSession.status,
+        sessionId: sessionId,
+        status: updatedSession?.status || 'live',
         meetingLink: liveSession.meetingLink || '',
         meetingPlatform: liveSession.meetingPlatform || 'other',
       },

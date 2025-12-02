@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { Lesson, ApiResponse } from '@/types';
-import { connectToDatabase } from '@/lib/mongodb';
-import LessonModel from '@/models/Lesson';
-import CourseModel from '@/models/Course';
+import * as courseRepository from '@/lib/repositories/courseRepository';
+import * as lessonRepository from '@/lib/repositories/lessonRepository';
 
 // Generate a unique lesson ID
 function generateLessonId(courseId: string): string {
@@ -18,10 +17,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
   );
 
   try {
-    await connectToDatabase();
-
-    // Fetch lessons for this course from MongoDB
-    const lessonDocs = await LessonModel.find({ courseId }).lean().exec();
+    // Fetch lessons for this course from DynamoDB
+    const lessonDocs = await lessonRepository.getLessonsByCourseId(courseId);
 
     if (!lessonDocs || lessonDocs.length === 0) {
       const errorResponse: ApiResponse<never> = {
@@ -31,11 +28,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
       return NextResponse.json(errorResponse, { status: 404 });
     }
 
-    // Transform MongoDB documents to Lesson type
-    const items: Lesson[] = lessonDocs.map((doc: any) => ({
-      ...doc,
-      id: doc._id as string,
-    }));
+    // Lessons are already in correct format from repository
+    const items: Lesson[] = lessonDocs;
 
     const response: ApiResponse<Lesson[]> = {
       success: true,
@@ -67,10 +61,8 @@ export async function POST(
   );
 
   try {
-    await connectToDatabase();
-
-    // Check if course exists
-    const course = await CourseModel.findOne({ _id: courseId }).lean().exec();
+    // Check if course exists in DynamoDB
+    const course = await courseRepository.getCourseById(courseId);
     if (!course) {
       return NextResponse.json(
         {
@@ -101,9 +93,9 @@ export async function POST(
     // Generate lesson ID
     const lessonId = generateLessonId(courseId);
 
-    // Create lesson document
-    const lessonData = {
-      _id: lessonId,
+    // Create lesson in DynamoDB
+    const createdLesson = await lessonRepository.createLesson({
+      id: lessonId,
       courseId,
       title: body.title,
       duration: body.duration,
@@ -115,22 +107,19 @@ export async function POST(
       resources: body.resources || [],
       completed: false,
       locked: body.locked || false,
-    };
-
-    const lesson = new LessonModel(lessonData);
-    await lesson.save();
+    });
 
     console.log(`[DBG][courses/[courseId]/items/route.ts] ✓ Created lesson: ${lessonId}`);
 
     // Optionally add lesson to course curriculum if week is specified
     if (body.week !== undefined) {
       const weekIndex = body.week - 1;
-      const curriculum =
-        ((course as Record<string, unknown>).curriculum as {
-          week: number;
-          title: string;
-          lessonIds: string[];
-        }[]) || [];
+      // Access curriculum with lessonIds property
+      const curriculum = (course.curriculum || []).map(w => ({
+        week: w.week,
+        title: w.title,
+        lessonIds: (w as { lessonIds?: string[] }).lessonIds || [],
+      }));
 
       // Ensure the week exists in curriculum
       if (curriculum[weekIndex]) {
@@ -140,25 +129,18 @@ export async function POST(
         }
         curriculum[weekIndex].lessonIds.push(lessonId);
 
-        // Update course
-        await CourseModel.findOneAndUpdate(
-          { _id: courseId },
-          {
-            curriculum,
-            totalLessons: ((course as Record<string, unknown>).totalLessons as number) + 1,
-          }
-        );
+        // Update course in DynamoDB
+        // Cast curriculum through unknown since storage format differs from API format
+        await courseRepository.updateCourse(courseId, {
+          curriculum: curriculum as unknown as typeof course.curriculum,
+          totalLessons: (course.totalLessons || 0) + 1,
+        });
 
         console.log(`[DBG][courses/[courseId]/items/route.ts] ✓ Added lesson to week ${body.week}`);
       }
     }
 
     // Return created lesson
-    const createdLesson: Lesson = {
-      ...lessonData,
-      id: lessonId,
-    };
-
     const response: ApiResponse<Lesson> = {
       success: true,
       data: createdLesson,

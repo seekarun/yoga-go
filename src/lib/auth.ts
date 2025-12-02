@@ -1,9 +1,7 @@
 import { auth } from '@/auth';
-import { connectToDatabase } from './mongodb';
-import User from '@/models/User';
-import CourseModel from '@/models/Course';
-import type { User as UserType, MembershipType, UserRole } from '@/types';
-import { nanoid } from 'nanoid';
+import type { User as UserType, UserRole } from '@/types';
+import * as userRepository from './repositories/userRepository';
+import * as courseRepository from './repositories/courseRepository';
 
 /**
  * Get the current session from NextAuth
@@ -43,7 +41,7 @@ export function normalizeRoles(role: UserRole[] | UserRole | undefined): UserRol
 }
 
 /**
- * Get or create user in MongoDB from Cognito profile
+ * Get or create user in DynamoDB from Cognito profile
  * This is called after Cognito authentication to sync user data
  *
  * @param roles - Optional roles array to assign to new users. Defaults to ['learner']
@@ -71,199 +69,26 @@ export async function getOrCreateUser(
     picture: cognitoUser.picture,
   });
 
-  await connectToDatabase();
-
-  // Try to find existing user by cognitoSub
-  let userDoc = await User.findOne({ cognitoSub: cognitoUser.sub });
-
-  if (userDoc) {
-    console.log('[DBG][auth] Found existing user:', userDoc._id, 'roles:', userDoc.role);
-
-    // Update profile if email or name changed in Cognito
-    if (
-      userDoc.profile.email !== cognitoUser.email ||
-      userDoc.profile.name !== (cognitoUser.name || cognitoUser.email)
-    ) {
-      const newName = cognitoUser.name || cognitoUser.email;
-      userDoc.profile.email = cognitoUser.email;
-      userDoc.profile.name = newName;
-      if (cognitoUser.picture) {
-        userDoc.profile.avatar = cognitoUser.picture;
-      }
-      await userDoc.save();
-      console.log('[DBG][auth] Updated user profile with name:', newName);
-    }
-  } else {
-    const userRoles = roles || ['learner'];
-    console.log('[DBG][auth] Creating new user with roles:', userRoles);
-
-    // Create new user with default values
-    const userId = nanoid(16);
-    const now = new Date().toISOString();
-    const userName = cognitoUser.name || cognitoUser.email;
-
-    console.log('[DBG][auth] Creating user with name:', userName);
-
-    userDoc = await User.create({
-      _id: userId,
-      cognitoSub: cognitoUser.sub,
-      role: userRoles,
-      profile: {
-        name: userName,
-        email: cognitoUser.email,
-        avatar: cognitoUser.picture || undefined,
-        joinedAt: now,
-      },
-      membership: {
-        type: 'free' as MembershipType,
-        status: 'active',
-        startDate: now,
-        benefits: ['Access to free courses', 'Community support'],
-      },
-      statistics: {
-        totalCourses: 0,
-        completedCourses: 0,
-        totalLessons: 0,
-        completedLessons: 0,
-        totalPracticeTime: 0,
-        currentStreak: 0,
-        longestStreak: 0,
-        averageSessionTime: 0,
-        lastPractice: now,
-      },
-      achievements: [
-        {
-          id: 'welcome',
-          title: 'Welcome to Yoga-GO',
-          description: 'Joined the Yoga-GO community',
-          icon: '👋',
-          unlockedAt: now,
-          points: 10,
-        },
-      ],
-      enrolledCourses: [],
-      preferences: {
-        emailNotifications: true,
-        pushNotifications: false,
-        language: 'en',
-        videoQuality: 'hd',
-      },
-      savedItems: {
-        favoriteCourses: [],
-        watchlist: [],
-        bookmarkedLessons: [],
-      },
-      social: {
-        following: [],
-        followers: 0,
-        friends: 0,
-        sharedAchievements: false,
-        publicProfile: false,
-      },
-    });
-
-    console.log('[DBG][auth] Created new user:', userDoc._id);
-  }
-
-  // Convert MongoDB document to User type
-  const user: UserType = {
-    id: userDoc._id,
-    role: normalizeRoles(userDoc.role),
-    expertProfile: userDoc.expertProfile,
-    profile: userDoc.profile,
-    membership: userDoc.membership,
-    statistics: userDoc.statistics,
-    achievements: userDoc.achievements,
-    enrolledCourses: userDoc.enrolledCourses,
-    preferences: userDoc.preferences,
-    billing: userDoc.billing,
-    savedItems: userDoc.savedItems,
-    social: userDoc.social,
-    defaultMeetingLink: userDoc.defaultMeetingLink,
-    defaultMeetingPlatform: userDoc.defaultMeetingPlatform,
-  };
-
-  return user;
+  // Delegate to userRepository
+  return userRepository.getOrCreateUser(cognitoUser, roles);
 }
 
 /**
- * Get user by ID from MongoDB
+ * Get user by ID from DynamoDB
+ * Note: In DynamoDB, the user ID is the cognitoSub
  */
 export async function getUserById(userId: string): Promise<UserType | null> {
   console.log('[DBG][auth] Getting user by ID:', userId);
-
-  await connectToDatabase();
-
-  const userDoc = await User.findById(userId);
-
-  if (!userDoc) {
-    console.log('[DBG][auth] User not found');
-    return null;
-  }
-
-  const user: UserType = {
-    id: userDoc._id,
-    role: normalizeRoles(userDoc.role),
-    expertProfile: userDoc.expertProfile,
-    profile: userDoc.profile,
-    membership: userDoc.membership,
-    statistics: userDoc.statistics,
-    achievements: userDoc.achievements,
-    enrolledCourses: userDoc.enrolledCourses,
-    preferences: userDoc.preferences,
-    billing: userDoc.billing,
-    savedItems: userDoc.savedItems,
-    social: userDoc.social,
-    defaultMeetingLink: userDoc.defaultMeetingLink,
-    defaultMeetingPlatform: userDoc.defaultMeetingPlatform,
-  };
-
-  return user;
+  return userRepository.getUserById(userId);
 }
 
 /**
- * Get user by Cognito Sub from MongoDB
+ * Get user by Cognito Sub from DynamoDB
+ * Note: In DynamoDB, cognitoSub is the same as user ID
  */
 export async function getUserByCognitoSub(cognitoSub: string): Promise<UserType | null> {
   console.log('[DBG][auth] Getting user by cognitoSub:', cognitoSub);
-
-  await connectToDatabase();
-
-  const userDoc = await User.findOne({ cognitoSub });
-
-  if (!userDoc) {
-    console.log('[DBG][auth] User not found');
-    return null;
-  }
-
-  console.log('[DBG][auth] Found user:', userDoc._id, 'roles:', userDoc.role);
-  console.log('[DBG][auth] User has', userDoc.enrolledCourses.length, 'enrolled courses');
-  console.log(
-    '[DBG][auth] Enrolled courses:',
-    userDoc.enrolledCourses.map((ec: { courseId: string; title: string }) => ({
-      id: ec.courseId,
-      title: ec.title,
-    }))
-  );
-
-  const user: UserType = {
-    id: userDoc._id,
-    role: normalizeRoles(userDoc.role),
-    expertProfile: userDoc.expertProfile,
-    profile: userDoc.profile,
-    membership: userDoc.membership,
-    statistics: userDoc.statistics,
-    achievements: userDoc.achievements,
-    enrolledCourses: userDoc.enrolledCourses,
-    preferences: userDoc.preferences,
-    billing: userDoc.billing,
-    savedItems: userDoc.savedItems,
-    social: userDoc.social,
-    defaultMeetingLink: userDoc.defaultMeetingLink,
-    defaultMeetingPlatform: userDoc.defaultMeetingPlatform,
-  };
-
-  return user;
+  return userRepository.getUserByCognitoSub(cognitoSub);
 }
 
 /**
@@ -390,14 +215,13 @@ export async function requireCourseOwnership(courseId: string): Promise<UserType
   }
 
   // Check if course exists and belongs to this expert
-  await connectToDatabase();
-  const course = await CourseModel.findById(courseId);
+  const course = await courseRepository.getCourseById(courseId);
 
   if (!course) {
     throw new Error('Course not found');
   }
 
-  if (course.instructor.id !== user.expertProfile) {
+  if (course.instructor?.id !== user.expertProfile) {
     console.log(
       `[DBG][auth] Course ownership check failed: course.instructor.id=${course.instructor.id}, user.expertProfile=${user.expertProfile}`
     );

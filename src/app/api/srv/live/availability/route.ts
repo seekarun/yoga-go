@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession, getUserByAuth0Id } from '@/lib/auth';
-import { connectToDatabase } from '@/lib/mongodb';
-import ExpertAvailability from '@/models/ExpertAvailability';
+import * as availabilityRepository from '@/lib/repositories/availabilityRepository';
 import type { ApiResponse, ExpertAvailability as ExpertAvailabilityType } from '@/types';
-import { nanoid } from 'nanoid';
 
 /**
  * GET /api/srv/live/availability
@@ -35,36 +33,27 @@ export async function GET() {
 
     const expertId = user.expertProfile;
 
-    // Connect to database
-    await connectToDatabase();
+    // Fetch all active availability slots for this expert from DynamoDB
+    const availabilitySlots =
+      await availabilityRepository.getActiveAvailabilitiesByExpert(expertId);
 
-    // Fetch all active availability slots for this expert
-    const availabilityDocs = await ExpertAvailability.find({ expertId, isActive: true }).sort({
-      isRecurring: -1, // Recurring first
-      dayOfWeek: 1, // Then by day of week
-      date: 1, // Then by date
-      startTime: 1, // Then by start time
+    // Sort: Recurring first, then by day of week, then by date, then by start time
+    availabilitySlots.sort((a, b) => {
+      // Recurring first
+      if (a.isRecurring !== b.isRecurring) {
+        return a.isRecurring ? -1 : 1;
+      }
+      // Then by day of week
+      if (a.dayOfWeek !== b.dayOfWeek) {
+        return (a.dayOfWeek ?? 7) - (b.dayOfWeek ?? 7);
+      }
+      // Then by date
+      if (a.date !== b.date) {
+        return (a.date ?? '').localeCompare(b.date ?? '');
+      }
+      // Then by start time
+      return a.startTime.localeCompare(b.startTime);
     });
-
-    // Transform to API format
-    const availabilitySlots: ExpertAvailabilityType[] = availabilityDocs.map(doc => ({
-      id: doc._id,
-      expertId: doc.expertId,
-      dayOfWeek: doc.dayOfWeek,
-      date: doc.date,
-      startTime: doc.startTime,
-      endTime: doc.endTime,
-      isRecurring: doc.isRecurring,
-      isActive: doc.isActive,
-      sessionDuration: doc.sessionDuration,
-      bufferMinutes: doc.bufferMinutes,
-      // MVP: 1-on-1 sessions only - group session fields commented out for future use
-      // maxParticipants: doc.maxParticipants,
-      // meetingPlatform: doc.meetingPlatform,
-      meetingLink: doc.meetingLink,
-      createdAt: doc.createdAt,
-      updatedAt: doc.updatedAt,
-    }));
 
     console.log(
       '[DBG][api/srv/live/availability] Found',
@@ -130,9 +119,6 @@ export async function POST(request: Request) {
       isRecurring,
       sessionDuration,
       bufferMinutes,
-      // MVP: 1-on-1 sessions only - group session fields commented out for future use
-      // maxParticipants,
-      // meetingPlatform,
       meetingLink,
     } = body;
 
@@ -198,11 +184,8 @@ export async function POST(request: Request) {
       return NextResponse.json(response, { status: 400 });
     }
 
-    await connectToDatabase();
-
-    // Create availability slot
-    const availability = new ExpertAvailability({
-      _id: nanoid(),
+    // Create availability slot in DynamoDB
+    const availability = await availabilityRepository.createAvailability({
       expertId,
       dayOfWeek: isRecurring ? dayOfWeek : undefined,
       date: !isRecurring ? date : undefined,
@@ -212,38 +195,14 @@ export async function POST(request: Request) {
       isActive: true,
       sessionDuration: sessionDuration || 60,
       bufferMinutes: bufferMinutes !== undefined ? bufferMinutes : 0,
-      // MVP: 1-on-1 sessions only - group session fields commented out for future use
-      // maxParticipants: maxParticipants || 10,
-      // meetingPlatform: meetingPlatform || 'google-meet',
       meetingLink: meetingLink || '',
     });
 
-    await availability.save();
-
-    console.log('[DBG][api/srv/live/availability] Availability created:', availability._id);
-
-    const data: ExpertAvailabilityType = {
-      id: availability._id,
-      expertId: availability.expertId,
-      dayOfWeek: availability.dayOfWeek,
-      date: availability.date,
-      startTime: availability.startTime,
-      endTime: availability.endTime,
-      isRecurring: availability.isRecurring,
-      isActive: availability.isActive,
-      sessionDuration: availability.sessionDuration,
-      bufferMinutes: availability.bufferMinutes,
-      // MVP: 1-on-1 sessions only - group session fields commented out for future use
-      // maxParticipants: availability.maxParticipants,
-      // meetingPlatform: availability.meetingPlatform,
-      meetingLink: availability.meetingLink,
-      createdAt: availability.createdAt,
-      updatedAt: availability.updatedAt,
-    };
+    console.log('[DBG][api/srv/live/availability] Availability created:', availability.id);
 
     const response: ApiResponse<ExpertAvailabilityType> = {
       success: true,
-      data,
+      data: availability,
       message: 'Availability slot created successfully',
     };
 
@@ -263,7 +222,7 @@ export async function POST(request: Request) {
  * Bulk delete all availability slots for the expert (Expert only)
  * Performs soft delete by setting isActive: false
  */
-export async function DELETE(request: Request) {
+export async function DELETE() {
   console.log('[DBG][api/srv/live/availability] DELETE request received (bulk delete)');
 
   try {
@@ -289,26 +248,26 @@ export async function DELETE(request: Request) {
 
     const expertId = user.expertProfile;
 
-    // Connect to database
-    await connectToDatabase();
+    // Get all active availability slots and soft delete them
+    const activeSlots = await availabilityRepository.getActiveAvailabilitiesByExpert(expertId);
+    let deletedCount = 0;
 
-    // Soft delete all availability slots for this expert
-    const result = await ExpertAvailability.updateMany(
-      { expertId, isActive: true },
-      { $set: { isActive: false, updatedAt: new Date().toISOString() } }
-    );
+    for (const slot of activeSlots) {
+      await availabilityRepository.updateAvailability(expertId, slot.id, { isActive: false });
+      deletedCount++;
+    }
 
     console.log(
       '[DBG][api/srv/live/availability] Bulk deleted',
-      result.modifiedCount,
+      deletedCount,
       'slots for expert:',
       expertId
     );
 
     const response: ApiResponse<{ deletedCount: number }> = {
       success: true,
-      data: { deletedCount: result.modifiedCount },
-      message: `Successfully deleted ${result.modifiedCount} availability slot${result.modifiedCount !== 1 ? 's' : ''}`,
+      data: { deletedCount },
+      message: `Successfully deleted ${deletedCount} availability slot${deletedCount !== 1 ? 's' : ''}`,
     };
 
     return NextResponse.json(response);

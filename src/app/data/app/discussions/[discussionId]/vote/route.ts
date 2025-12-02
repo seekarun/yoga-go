@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession, getUserByAuth0Id } from '@/lib/auth';
-import { connectToDatabase } from '@/lib/mongodb';
-import DiscussionModel from '@/models/Discussion';
-import DiscussionVoteModel from '@/models/DiscussionVote';
+import * as discussionRepository from '@/lib/repositories/discussionRepository';
+import * as discussionVoteRepository from '@/lib/repositories/discussionVoteRepository';
 import type { ApiResponse, VoteType } from '@/types';
 
 export async function POST(
@@ -23,7 +22,7 @@ export async function POST(
       return NextResponse.json(response, { status: 401 });
     }
 
-    // Get user from MongoDB
+    // Get user from DynamoDB
     const user = await getUserByAuth0Id(session.user.cognitoSub);
     if (!user) {
       const response: ApiResponse<null> = {
@@ -45,11 +44,8 @@ export async function POST(
       return NextResponse.json(response, { status: 400 });
     }
 
-    // Connect to MongoDB
-    await connectToDatabase();
-
-    // Get discussion
-    const discussionDoc = await DiscussionModel.findById(discussionId).exec();
+    // Get discussion using GSI3 lookup (by discussionId only)
+    const discussionDoc = await discussionRepository.getDiscussionByIdOnly(discussionId);
     if (!discussionDoc) {
       const response: ApiResponse<null> = {
         success: false,
@@ -69,70 +65,65 @@ export async function POST(
     }
 
     // Check for existing vote
-    const existingVote = await DiscussionVoteModel.findOne({
-      discussionId,
-      userId: user.id,
-    }).exec();
+    const existingVote = await discussionVoteRepository.getVote(discussionId, user.id);
 
     let message = '';
+    let upvoteDelta = 0;
+    let downvoteDelta = 0;
 
     if (existingVote) {
       if (existingVote.voteType === voteType) {
         // User is clicking same vote again - remove vote (toggle off)
-        // Decrement the vote count
         if (voteType === 'up') {
-          discussionDoc.upvotes = Math.max(0, discussionDoc.upvotes - 1);
+          upvoteDelta = -1;
         } else {
-          discussionDoc.downvotes = Math.max(0, discussionDoc.downvotes - 1);
+          downvoteDelta = -1;
         }
-        await discussionDoc.save();
-        await existingVote.deleteOne();
+        await discussionVoteRepository.deleteVote(discussionId, user.id);
         message = 'Vote removed';
       } else {
         // User is changing vote (up to down or down to up)
-        const oldVoteType = existingVote.voteType;
-
-        // Update vote counts
-        if (oldVoteType === 'up') {
-          discussionDoc.upvotes = Math.max(0, discussionDoc.upvotes - 1);
-          discussionDoc.downvotes += 1;
+        if (existingVote.voteType === 'up') {
+          upvoteDelta = -1;
+          downvoteDelta = 1;
         } else {
-          discussionDoc.downvotes = Math.max(0, discussionDoc.downvotes - 1);
-          discussionDoc.upvotes += 1;
+          downvoteDelta = -1;
+          upvoteDelta = 1;
         }
-
-        // Update vote document
-        existingVote.voteType = voteType;
-        await existingVote.save();
-        await discussionDoc.save();
+        await discussionVoteRepository.upsertVote(discussionId, user.id, voteType);
         message = 'Vote updated';
       }
     } else {
       // New vote
-      const voteId = `${discussionId}_${user.id}`;
-      await DiscussionVoteModel.create({
-        _id: voteId,
-        discussionId,
-        userId: user.id,
-        voteType,
-      });
-
-      // Increment vote count
+      await discussionVoteRepository.upsertVote(discussionId, user.id, voteType);
       if (voteType === 'up') {
-        discussionDoc.upvotes += 1;
+        upvoteDelta = 1;
       } else {
-        discussionDoc.downvotes += 1;
+        downvoteDelta = 1;
       }
-      await discussionDoc.save();
       message = 'Vote recorded';
     }
+
+    // Update vote counts on the discussion
+    const updatedDiscussion = await discussionRepository.updateVoteCounts(
+      discussionDoc.courseId,
+      discussionDoc.lessonId,
+      discussionId,
+      upvoteDelta,
+      downvoteDelta
+    );
+
+    const finalUpvotes =
+      updatedDiscussion?.upvotes ?? Math.max(0, discussionDoc.upvotes + upvoteDelta);
+    const finalDownvotes =
+      updatedDiscussion?.downvotes ?? Math.max(0, discussionDoc.downvotes + downvoteDelta);
 
     const response: ApiResponse<{ upvotes: number; downvotes: number; netScore: number }> = {
       success: true,
       data: {
-        upvotes: discussionDoc.upvotes,
-        downvotes: discussionDoc.downvotes,
-        netScore: discussionDoc.upvotes - discussionDoc.downvotes,
+        upvotes: finalUpvotes,
+        downvotes: finalDownvotes,
+        netScore: finalUpvotes - finalDownvotes,
       },
       message,
     };

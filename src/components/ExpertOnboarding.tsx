@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import ImageUploadCrop from '@/components/ImageUploadCrop';
+import VideoUpload from '@/components/VideoUpload';
+import type { VideoUploadResult } from '@/components/VideoUpload';
 import type { Asset } from '@/types';
 
 interface ExpertOnboardingProps {
@@ -11,16 +12,13 @@ interface ExpertOnboardingProps {
 }
 
 export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardingProps) {
-  const router = useRouter();
+  // Suppress unused variable warning - used for future functionality
+  void userEmail;
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [uploadError, setUploadError] = useState('');
   const [avatarAsset, setAvatarAsset] = useState<Asset | null>(null);
-  const [selectedPromoFile, setSelectedPromoFile] = useState<File | null>(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [isUploading, setIsUploading] = useState(false);
-  const [pollingVideoId, setPollingVideoId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     id: '',
@@ -78,128 +76,21 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
     setUploadError(error);
   };
 
-  // Poll video status for processing promo videos
-  useEffect(() => {
-    if (!pollingVideoId) return;
-
-    const pollInterval = setInterval(async () => {
-      try {
-        console.log('[DBG][ExpertOnboarding] Polling video status for:', pollingVideoId);
-
-        const response = await fetch(`/api/cloudflare/video-status/${pollingVideoId}`);
-        const data = await response.json();
-
-        if (data.success) {
-          const videoStatus = data.data.status;
-          const isReady = data.data.readyToStream;
-
-          console.log('[DBG][ExpertOnboarding] Video status:', videoStatus, 'Ready:', isReady);
-
-          if (formData.promoVideoCloudflareId === pollingVideoId) {
-            const newStatus = isReady ? 'ready' : videoStatus === 'error' ? 'error' : 'processing';
-
-            setFormData(prev => ({
-              ...prev,
-              promoVideoStatus: newStatus,
-            }));
-
-            if (isReady || videoStatus === 'error') {
-              console.log('[DBG][ExpertOnboarding] Video processing complete, stopping poll');
-              setPollingVideoId(null);
-            }
-          }
-        }
-      } catch (err) {
-        console.error('[DBG][ExpertOnboarding] Error polling video status:', err);
-      }
-    }, 10000);
-
-    return () => clearInterval(pollInterval);
-  }, [pollingVideoId, formData.promoVideoCloudflareId]);
-
-  const handlePromoFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      console.log('[DBG][ExpertOnboarding] Promo video file selected:', file.name, file.size);
-      setSelectedPromoFile(file);
-    }
+  const handlePromoVideoUpload = (result: VideoUploadResult) => {
+    console.log('[DBG][ExpertOnboarding] Promo video upload result:', result);
+    setFormData(prev => ({
+      ...prev,
+      promoVideoCloudflareId: result.videoId,
+      promoVideoStatus: result.status,
+    }));
   };
 
-  const handlePromoVideoUpload = async () => {
-    if (!selectedPromoFile) {
-      setError('Please select a video file');
-      return;
-    }
-
-    setIsUploading(true);
-    setUploadProgress(0);
-    setError('');
-
-    try {
-      console.log('[DBG][ExpertOnboarding] Starting promo video upload');
-
-      const uploadUrlResponse = await fetch('/api/cloudflare/upload-url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ maxDurationSeconds: 300 }),
-      });
-
-      const uploadUrlData = await uploadUrlResponse.json();
-      if (!uploadUrlData.success) {
-        throw new Error(uploadUrlData.error || 'Failed to get upload URL');
-      }
-
-      const { uploadURL, uid } = uploadUrlData.data;
-      console.log('[DBG][ExpertOnboarding] Got upload URL for promo video:', uid);
-
-      const formDataUpload = new FormData();
-      formDataUpload.append('file', selectedPromoFile);
-
-      const xhr = new XMLHttpRequest();
-
-      xhr.upload.addEventListener('progress', e => {
-        if (e.lengthComputable) {
-          const percentComplete = Math.round((e.loaded / e.total) * 100);
-          setUploadProgress(percentComplete);
-          console.log('[DBG][ExpertOnboarding] Upload progress:', percentComplete, '%');
-        }
-      });
-
-      await new Promise<void>((resolve, reject) => {
-        xhr.addEventListener('load', () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            resolve();
-          } else {
-            reject(new Error(`Upload failed with status ${xhr.status}`));
-          }
-        });
-
-        xhr.addEventListener('error', () => {
-          reject(new Error('Upload failed'));
-        });
-
-        xhr.open('POST', uploadURL);
-        xhr.send(formDataUpload);
-      });
-
-      console.log('[DBG][ExpertOnboarding] Promo video uploaded successfully:', uid);
-
-      setFormData(prev => ({
-        ...prev,
-        promoVideoCloudflareId: uid,
-        promoVideoStatus: 'processing',
-      }));
-
-      setUploadProgress(100);
-      setPollingVideoId(uid);
-
-      alert('Promo video uploaded successfully! Processing status will update automatically.');
-    } catch (err) {
-      console.error('[DBG][ExpertOnboarding] Error uploading promo video:', err);
-      setError(err instanceof Error ? err.message : 'Failed to upload promo video');
-    } finally {
-      setIsUploading(false);
-    }
+  const handlePromoVideoClear = () => {
+    setFormData(prev => ({
+      ...prev,
+      promoVideoCloudflareId: '',
+      promoVideoStatus: '',
+    }));
   };
 
   const handleNext = () => {
@@ -527,129 +418,16 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
             be displayed prominently on your expert profile page.
           </p>
 
-          {formData.promoVideoCloudflareId ? (
-            <div
-              style={{
-                marginBottom: '16px',
-                padding: '16px',
-                background: '#f0fdf4',
-                border: '1px solid #bbf7d0',
-                borderRadius: '8px',
-              }}
-            >
-              <div
-                style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}
-              >
-                <span style={{ color: '#166534' }}>✓</span>
-                <span style={{ fontSize: '14px', fontWeight: '500', color: '#166534' }}>
-                  Promo video uploaded
-                </span>
-              </div>
-              <p style={{ fontSize: '12px', color: '#666' }}>
-                Video ID: {formData.promoVideoCloudflareId}
-              </p>
-              {formData.promoVideoStatus && (
-                <p style={{ fontSize: '12px', color: '#666' }}>
-                  Status: {formData.promoVideoStatus}
-                </p>
-              )}
-              <button
-                type="button"
-                onClick={() => {
-                  setFormData(prev => ({
-                    ...prev,
-                    promoVideoCloudflareId: '',
-                    promoVideoStatus: '',
-                  }));
-                  setSelectedPromoFile(null);
-                  setUploadProgress(0);
-                }}
-                style={{
-                  marginTop: '8px',
-                  fontSize: '12px',
-                  color: 'var(--color-primary)',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  textDecoration: 'underline',
-                }}
-              >
-                Upload different video
-              </button>
-            </div>
-          ) : (
-            <>
-              <input
-                type="file"
-                id="promoVideoFile"
-                accept="video/*"
-                onChange={handlePromoFileSelect}
-                disabled={isUploading}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                }}
-              />
-              {selectedPromoFile && (
-                <div style={{ marginTop: '12px' }}>
-                  <p style={{ fontSize: '12px', color: '#666' }}>
-                    Selected: {selectedPromoFile.name} (
-                    {(selectedPromoFile.size / 1024 / 1024).toFixed(2)} MB)
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handlePromoVideoUpload}
-                    disabled={isUploading}
-                    style={{
-                      marginTop: '12px',
-                      padding: '12px 24px',
-                      background: isUploading ? '#ccc' : 'var(--color-primary)',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      cursor: isUploading ? 'not-allowed' : 'pointer',
-                    }}
-                  >
-                    {isUploading ? 'Uploading...' : 'Upload Promo Video'}
-                  </button>
-                </div>
-              )}
-              {isUploading && (
-                <div style={{ marginTop: '12px' }}>
-                  <div
-                    style={{
-                      width: '100%',
-                      background: '#e2e8f0',
-                      borderRadius: '4px',
-                      height: '8px',
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: `${uploadProgress}%`,
-                        background: 'var(--color-primary)',
-                        height: '8px',
-                        borderRadius: '4px',
-                        transition: 'width 0.3s',
-                      }}
-                    />
-                  </div>
-                  <p style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-                    {uploadProgress}% uploaded
-                  </p>
-                </div>
-              )}
-            </>
-          )}
-          <p style={{ fontSize: '12px', color: '#999', marginTop: '16px' }}>
-            Recommended: Keep your video under 2 minutes. Introduce yourself, share your expertise,
-            and explain what makes your teaching unique.
-          </p>
+          <VideoUpload
+            label="Upload Your Promo Video"
+            maxDurationSeconds={300}
+            videoId={formData.promoVideoCloudflareId}
+            videoStatus={formData.promoVideoStatus}
+            onUploadComplete={handlePromoVideoUpload}
+            onClear={handlePromoVideoClear}
+            onError={handleUploadError}
+            helpText="Recommended: Keep your video under 2 minutes. Introduce yourself, share your expertise, and explain what makes your teaching unique."
+          />
         </div>
       )}
 

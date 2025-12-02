@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import type { ApiResponse, SurveyResponse } from '@/types';
-import { connectToDatabase } from '@/lib/mongodb';
-import SurveyResponseModel from '@/models/SurveyResponse';
+import type { ApiResponse } from '@/types';
+import * as surveyResponseRepository from '@/lib/repositories/surveyResponseRepository';
 import { getSession } from '@/lib/auth';
 
 export async function POST(
@@ -14,8 +13,6 @@ export async function POST(
   );
 
   try {
-    await connectToDatabase();
-
     // Get user session (if authenticated)
     const session = await getSession();
     const userId = session?.user?.cognitoSub;
@@ -34,10 +31,8 @@ export async function POST(
       );
     }
 
-    // Create survey response
-    const responseId = `sr_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const surveyResponseDoc = await SurveyResponseModel.create({
-      _id: responseId,
+    // Create survey response using repository
+    const surveyResponse = await surveyResponseRepository.createSurveyResponse({
       surveyId,
       expertId,
       userId,
@@ -47,12 +42,12 @@ export async function POST(
     });
 
     console.log(
-      `[DBG][experts/[expertId]/survey/response/route.ts] Created survey response: ${responseId}`
+      `[DBG][experts/[expertId]/survey/response/route.ts] Created survey response: ${surveyResponse.id}`
     );
 
     const response: ApiResponse<{ responseId: string }> = {
       success: true,
-      data: { responseId },
+      data: { responseId: surveyResponse.id },
       message: 'Survey response submitted successfully',
     };
 

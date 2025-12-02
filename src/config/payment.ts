@@ -60,11 +60,4 @@ export const PAYMENT_CONFIG = {
 export type PaymentGateway = 'razorpay' | 'stripe';
 export type PlanType = 'curious' | 'committed';
 export type BillingInterval = 'monthly' | 'yearly';
-export type PaymentType = 'course' | 'subscription';
-export type SubscriptionStatus =
-  | 'active'
-  | 'cancelled'
-  | 'expired'
-  | 'past_due'
-  | 'incomplete'
-  | 'trialing';
+export type PaymentType = 'course';

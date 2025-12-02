@@ -1,8 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { connectToDatabase } from '@/lib/mongodb';
-import SurveyResponse from '@/models/SurveyResponse';
+import * as surveyResponseRepository from '@/lib/repositories/surveyResponseRepository';
 import type { ApiResponse } from '@/types';
 import { sendBulkEmail } from '@/lib/email';
 
@@ -21,7 +20,7 @@ interface EmailRequest {
 export async function POST(
   request: NextRequest,
   { params }: RouteParams
-): Promise<NextResponse<ApiResponse<any>>> {
+): Promise<NextResponse<ApiResponse<unknown>>> {
   try {
     console.log('[DBG][survey-email-api] Sending emails to selected users');
 
@@ -63,14 +62,10 @@ export async function POST(
       );
     }
 
-    // Connect to database
-    await connectToDatabase();
-
     // Fetch the responses to get email addresses
-    const responses = await SurveyResponse.find({
-      _id: { $in: responseIds },
-      expertId,
-    }).lean();
+    // We need to get responses by expertId and filter by the provided responseIds
+    const allResponses = await surveyResponseRepository.getResponsesByExpert(expertId);
+    const responses = allResponses.filter(r => responseIds.includes(r.id));
 
     // Extract email addresses
     const recipients = responses

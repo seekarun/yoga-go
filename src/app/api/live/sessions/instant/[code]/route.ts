@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import LiveSessionModel from '@/models/LiveSession';
 import type { ApiResponse, LiveSession } from '@/types';
+import * as liveSessionRepository from '@/lib/repositories/liveSessionRepository';
 
 /**
  * GET /api/live/sessions/instant/[code]
@@ -11,8 +11,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ code
   console.log('[DBG][api/live/sessions/instant/code] GET called for code:', code);
 
   try {
-    // Find session by instant meeting code
-    const session = await LiveSessionModel.findOne({ instantMeetingCode: code });
+    // Find session by instant meeting code from DynamoDB
+    const session = await liveSessionRepository.getLiveSessionByInstantCode(code);
 
     if (!session) {
       return NextResponse.json(
@@ -21,43 +21,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ code
       );
     }
 
-    // Convert to LiveSession type
-    const sessionData: LiveSession = {
-      id: session._id,
-      expertId: session.expertId,
-      expertName: session.expertName,
-      expertAvatar: session.expertAvatar,
-      title: session.title,
-      description: session.description,
-      thumbnail: session.thumbnail,
-      sessionType: session.sessionType,
-      instantMeetingCode: session.instantMeetingCode,
-      scheduledStartTime: session.scheduledStartTime,
-      scheduledEndTime: session.scheduledEndTime,
-      actualStartTime: session.actualStartTime,
-      actualEndTime: session.actualEndTime,
-      maxParticipants: session.maxParticipants,
-      currentViewers: session.currentViewers || 0,
-      price: session.price,
-      currency: session.currency,
-      meetingLink: session.meetingLink,
-      meetingPlatform: session.meetingPlatform,
-      status: session.status,
-      recordingS3Key: session.recordingS3Key,
-      recordedLessonId: session.recordedLessonId,
-      recordingAvailable: session.recordingAvailable || false,
-      enrolledCount: session.enrolledCount || 0,
-      attendedCount: session.attendedCount || 0,
-      metadata: session.metadata,
-      featured: session.featured || false,
-      isFree: session.isFree !== undefined ? session.isFree : true,
-      createdAt: session.createdAt,
-      updatedAt: session.updatedAt,
-    };
-
     const response: ApiResponse<LiveSession> = {
       success: true,
-      data: sessionData,
+      data: session,
     };
 
     return NextResponse.json(response);

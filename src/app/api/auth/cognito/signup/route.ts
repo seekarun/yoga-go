@@ -4,9 +4,8 @@
  */
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/mongodb';
-import { PendingAuth } from '@/models/PendingAuth';
 import { signUp, getCognitoErrorMessage, isCognitoError } from '@/lib/cognito-auth';
+import { SignJWT } from 'jose';
 import type { UserRole } from '@/types';
 
 interface SignupRequestBody {
@@ -16,13 +15,15 @@ interface SignupRequestBody {
   phone?: string;
   roles?: UserRole[]; // New: roles array
   role?: UserRole; // Legacy: single role
-  authToken?: string; // From expert signup flow
 }
+
+// Cookie name for pending signup data
+const PENDING_SIGNUP_COOKIE = 'pending-signup';
 
 export async function POST(request: NextRequest) {
   try {
     const body: SignupRequestBody = await request.json();
-    const { email, password, name, phone, roles, role, authToken } = body;
+    const { email, password, name, phone, roles, role } = body;
 
     // Validate required fields
     if (!email || !password || !name) {
@@ -71,17 +72,7 @@ export async function POST(request: NextRequest) {
     // Determine user roles array
     let userRoles: UserRole[] = ['learner']; // Default
 
-    // If authToken provided (from expert signup), verify and get role
-    if (authToken) {
-      await connectToDatabase();
-      const pendingAuth = await PendingAuth.findById(authToken);
-      if (pendingAuth && pendingAuth.role) {
-        // Use roles from pending auth (could be array or legacy string)
-        userRoles = Array.isArray(pendingAuth.role) ? pendingAuth.role : [pendingAuth.role];
-        // Delete the old pending auth (it was for the code validation step)
-        await PendingAuth.deleteOne({ _id: authToken });
-      }
-    } else if (roles && roles.length > 0) {
+    if (roles && roles.length > 0) {
       // Use provided roles array
       userRoles = roles;
     } else if (role) {
@@ -89,27 +80,62 @@ export async function POST(request: NextRequest) {
       userRoles = role === 'expert' ? ['learner', 'expert'] : ['learner'];
     }
 
-    // Create new PendingAuth to store roles for verification callback
-    if (result.requiresVerification && result.userSub) {
-      await connectToDatabase();
-      const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
-
-      await PendingAuth.create({
-        _id: result.userSub, // Use Cognito sub as ID for easy lookup
-        role: userRoles,
-        expiresAt,
-      });
-
-      console.log('[DBG][signup] Created PendingAuth for:', result.userSub, 'roles:', userRoles);
-    }
-
-    return NextResponse.json({
+    // Create response
+    const response = NextResponse.json({
       success: true,
       message: result.message,
       email: email.toLowerCase().trim(),
       requiresVerification: result.requiresVerification,
       userSub: result.userSub,
     });
+
+    // Store roles in a signed cookie for verification callback (instead of MongoDB PendingAuth)
+    if (result.requiresVerification && result.userSub) {
+      const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET);
+
+      // Create a signed JWT with the pending signup data
+      const signedToken = await new SignJWT({
+        sub: result.userSub,
+        roles: userRoles,
+        email: email.toLowerCase().trim(),
+      })
+        .setProtectedHeader({ alg: 'HS256' })
+        .setExpirationTime('30m') // 30 minutes expiry
+        .setIssuedAt()
+        .sign(secret);
+
+      // Set cookie with pending signup data
+      const cookieOptions: {
+        httpOnly: boolean;
+        secure: boolean;
+        sameSite: 'lax' | 'strict' | 'none';
+        path: string;
+        maxAge: number;
+        domain?: string;
+      } = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 30 * 60, // 30 minutes
+      };
+
+      // Set domain for production
+      if (process.env.NODE_ENV === 'production') {
+        cookieOptions.domain = '.myyoga.guru';
+      }
+
+      response.cookies.set(PENDING_SIGNUP_COOKIE, signedToken, cookieOptions);
+
+      console.log(
+        '[DBG][signup] Set pending-signup cookie for:',
+        result.userSub,
+        'roles:',
+        userRoles
+      );
+    }
+
+    return response;
   } catch (error) {
     console.error('[DBG][signup] Error:', error);
 

@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { Lesson, ApiResponse } from '@/types';
-import { connectToDatabase } from '@/lib/mongodb';
-import LessonModel from '@/models/Lesson';
-import CourseModel from '@/models/Course';
+import * as courseRepository from '@/lib/repositories/courseRepository';
+import * as lessonRepository from '@/lib/repositories/lessonRepository';
 
 export async function GET(
   request: Request,
@@ -14,10 +13,8 @@ export async function GET(
   );
 
   try {
-    await connectToDatabase();
-
-    // Fetch specific lesson from MongoDB
-    const lessonDoc = await LessonModel.findOne({ _id: itemId, courseId }).lean().exec();
+    // Fetch specific lesson from DynamoDB
+    const lessonDoc = await lessonRepository.getLessonById(courseId, itemId);
 
     if (!lessonDoc) {
       const errorResponse: ApiResponse<never> = {
@@ -27,11 +24,8 @@ export async function GET(
       return NextResponse.json(errorResponse, { status: 404 });
     }
 
-    // Transform MongoDB document to Lesson type
-    const item: Lesson = {
-      ...(lessonDoc as any),
-      id: (lessonDoc as any)._id as string,
-    };
+    // Lesson is already in correct format from repository
+    const item: Lesson = lessonDoc;
 
     const response: ApiResponse<Lesson> = {
       success: true,
@@ -62,10 +56,8 @@ export async function PUT(
   );
 
   try {
-    await connectToDatabase();
-
     // Check if lesson exists
-    const existingLesson = await LessonModel.findOne({ _id: itemId, courseId }).lean().exec();
+    const existingLesson = await lessonRepository.getLessonById(courseId, itemId);
     if (!existingLesson) {
       return NextResponse.json(
         {
@@ -80,7 +72,7 @@ export async function PUT(
     const body = await request.json();
 
     // Build update object - only include provided fields
-    const updateData: Record<string, unknown> = {};
+    const updateData: Partial<Lesson> = {};
 
     if (body.title !== undefined) updateData.title = body.title;
     if (body.duration !== undefined) updateData.duration = body.duration;
@@ -96,23 +88,13 @@ export async function PUT(
     if (body.notes !== undefined) updateData.notes = body.notes;
     if (body.locked !== undefined) updateData.locked = body.locked;
 
-    // Update lesson
-    const updatedLesson = await LessonModel.findOneAndUpdate(
-      { _id: itemId, courseId },
-      updateData,
-      {
-        new: true,
-        lean: true,
-      }
-    ).exec();
+    // Update lesson in DynamoDB
+    const updatedLesson = await lessonRepository.updateLesson(courseId, itemId, updateData);
 
     console.log(`[DBG][courses/[courseId]/items/[itemId]/route.ts] ✓ Updated lesson: ${itemId}`);
 
-    // Transform response
-    const item: Lesson = {
-      ...(updatedLesson as any),
-      id: (updatedLesson as any)._id as string,
-    };
+    // Lesson is already in correct format from repository
+    const item: Lesson = updatedLesson;
 
     const response: ApiResponse<Lesson> = {
       success: true,
@@ -144,10 +126,8 @@ export async function DELETE(
   );
 
   try {
-    await connectToDatabase();
-
     // Check if lesson exists
-    const existingLesson = await LessonModel.findOne({ _id: itemId, courseId }).lean().exec();
+    const existingLesson = await lessonRepository.getLessonById(courseId, itemId);
     if (!existingLesson) {
       return NextResponse.json(
         {
@@ -158,19 +138,19 @@ export async function DELETE(
       );
     }
 
-    // Delete the lesson
-    await LessonModel.findOneAndDelete({ _id: itemId, courseId }).exec();
+    // Delete the lesson from DynamoDB
+    await lessonRepository.deleteLesson(courseId, itemId);
     console.log(`[DBG][courses/[courseId]/items/[itemId]/route.ts] ✓ Deleted lesson: ${itemId}`);
 
-    // Remove lesson from course curriculum
-    const course = await CourseModel.findOne({ _id: courseId }).lean().exec();
+    // Remove lesson from course curriculum in DynamoDB
+    const course = await courseRepository.getCourseById(courseId);
     if (course) {
-      const curriculum =
-        ((course as Record<string, unknown>).curriculum as {
-          week: number;
-          title: string;
-          lessonIds?: string[];
-        }[]) || [];
+      // Access curriculum with lessonIds property
+      const curriculum = (course.curriculum || []).map(w => ({
+        week: w.week,
+        title: w.title,
+        lessonIds: (w as { lessonIds?: string[] }).lessonIds || [],
+      }));
       let lessonRemoved = false;
 
       // Remove lesson ID from all weeks in curriculum
@@ -187,16 +167,11 @@ export async function DELETE(
 
       // Update course if lesson was removed from curriculum
       if (lessonRemoved) {
-        await CourseModel.findOneAndUpdate(
-          { _id: courseId },
-          {
-            curriculum: updatedCurriculum,
-            totalLessons: Math.max(
-              0,
-              ((course as Record<string, unknown>).totalLessons as number) - 1
-            ),
-          }
-        );
+        // Cast curriculum through unknown since storage format differs from API format
+        await courseRepository.updateCourse(courseId, {
+          curriculum: updatedCurriculum as unknown as typeof course.curriculum,
+          totalLessons: Math.max(0, (course.totalLessons || 0) - 1),
+        });
         console.log(
           `[DBG][courses/[courseId]/items/[itemId]/route.ts] ✓ Removed lesson from course curriculum`
         );

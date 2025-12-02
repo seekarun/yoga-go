@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getSession, getUserByAuth0Id } from '@/lib/auth';
-import { connectToDatabase } from '@/lib/mongodb';
-import LiveSession from '@/models/LiveSession';
-import LiveSessionParticipant from '@/models/LiveSessionParticipant';
 import type { ApiResponse, LiveSession as LiveSessionType } from '@/types';
+import * as liveSessionRepository from '@/lib/repositories/liveSessionRepository';
+import * as liveSessionParticipantRepository from '@/lib/repositories/liveSessionParticipantRepository';
 
 /**
  * GET /api/app/live/my-sessions
@@ -36,11 +35,8 @@ export async function GET() {
 
     const userId = user.id;
 
-    // Connect to database
-    await connectToDatabase();
-
-    // Find all sessions where this user is enrolled as a participant
-    const participantRecords = await LiveSessionParticipant.find({ userId });
+    // Find all sessions where this user is enrolled as a participant from DynamoDB
+    const participantRecords = await liveSessionParticipantRepository.getSessionsByUser(userId);
 
     if (!participantRecords || participantRecords.length === 0) {
       console.log('[DBG][api/app/live/my-sessions] No enrollments found for user:', userId);
@@ -62,50 +58,25 @@ export async function GET() {
       userId
     );
 
-    // Fetch the actual session details for these sessions
-    // Only return active sessions (scheduled or live, not ended/cancelled)
-    const sessions = await LiveSession.find({
-      _id: { $in: sessionIds },
-      status: { $in: ['scheduled', 'live'] },
-    }).sort({ scheduledStartTime: 1 });
+    // Fetch the actual session details for these sessions from DynamoDB
+    const sessionsPromises = sessionIds.map(id => liveSessionRepository.getLiveSessionByIdOnly(id));
+    const sessionsResults = await Promise.all(sessionsPromises);
+
+    // Filter out null results and only return active sessions (scheduled or live, not ended/cancelled)
+    const sessions = sessionsResults
+      .filter((s): s is LiveSessionType => s !== null)
+      .filter(s => ['scheduled', 'live'].includes(s.status))
+      .sort(
+        (a, b) =>
+          new Date(a.scheduledStartTime).getTime() - new Date(b.scheduledStartTime).getTime()
+      );
 
     console.log('[DBG][api/app/live/my-sessions] Returning', sessions.length, 'active sessions');
 
-    // Transform to API format
-    const sessionsData: LiveSessionType[] = sessions.map(session => ({
-      id: session._id,
-      expertId: session.expertId,
-      expertName: session.expertName,
-      expertAvatar: session.expertAvatar,
-      title: session.title,
-      description: session.description,
-      thumbnail: session.thumbnail,
-      sessionType: session.sessionType,
-      scheduledStartTime: session.scheduledStartTime,
-      scheduledEndTime: session.scheduledEndTime,
-      actualStartTime: session.actualStartTime,
-      actualEndTime: session.actualEndTime,
-      maxParticipants: session.maxParticipants,
-      currentViewers: session.currentViewers,
-      price: session.price,
-      currency: session.currency,
-      status: session.status,
-      recordingS3Key: session.recordingS3Key,
-      recordedLessonId: session.recordedLessonId,
-      recordingAvailable: session.recordingAvailable,
-      enrolledCount: session.enrolledCount,
-      attendedCount: session.attendedCount,
-      metadata: session.metadata,
-      featured: session.featured,
-      isFree: session.isFree,
-      createdAt: session.createdAt?.toISOString(),
-      updatedAt: session.updatedAt?.toISOString(),
-    }));
-
     const response: ApiResponse<LiveSessionType[]> = {
       success: true,
-      data: sessionsData,
-      total: sessionsData.length,
+      data: sessions,
+      total: sessions.length,
     };
 
     return NextResponse.json(response);

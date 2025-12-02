@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { ApiResponse, Survey } from '@/types';
-import { connectToDatabase } from '@/lib/mongodb';
-import SurveyModel from '@/models/Survey';
+import * as surveyRepository from '@/lib/repositories/surveyRepository';
 
 export async function GET(request: Request, { params }: { params: Promise<{ expertId: string }> }) {
   const { expertId } = await params;
@@ -10,29 +9,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ expe
   );
 
   try {
-    await connectToDatabase();
+    // Fetch active survey for this expert from DynamoDB
+    const survey = await surveyRepository.getActiveSurveyByExpert(expertId);
 
-    // Fetch active survey for this expert
-    const surveyDoc = await SurveyModel.findOne({
-      expertId,
-      isActive: true,
-    })
-      .lean()
-      .exec();
-
-    if (!surveyDoc) {
+    if (!survey) {
       const errorResponse: ApiResponse<never> = {
         success: false,
         error: 'No active survey found for this expert',
       };
       return NextResponse.json(errorResponse, { status: 404 });
     }
-
-    // Transform MongoDB document to Survey type
-    const survey: Survey = {
-      ...(surveyDoc as any),
-      id: (surveyDoc as any)._id as string,
-    };
 
     console.log(`[DBG][experts/[expertId]/survey/route.ts] Found survey: ${survey.title}`);
 

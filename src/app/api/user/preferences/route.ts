@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth';
-import User from '@/models/User';
+import { getSession, getUserByCognitoSub } from '@/lib/auth';
+import * as userRepository from '@/lib/repositories/userRepository';
 
 export async function PATCH(request: NextRequest) {
   try {
@@ -31,17 +31,22 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    // Update user preferences
-    const user = await User.findOneAndUpdate(
-      { cognitoSub },
-      { 'preferences.autoPlayEnabled': autoPlayEnabled },
-      { new: true }
-    );
-
-    if (!user) {
+    // Get current user to merge preferences
+    const currentUser = await getUserByCognitoSub(cognitoSub);
+    if (!currentUser) {
       console.log('[DBG][api/user/preferences] User not found');
       return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
     }
+
+    // Update user preferences
+    const updatedPreferences = {
+      ...currentUser.preferences,
+      autoPlayEnabled,
+    };
+
+    const user = await userRepository.updateUser(cognitoSub, {
+      preferences: updatedPreferences,
+    });
 
     console.log('[DBG][api/user/preferences] Preferences updated successfully');
 
@@ -74,8 +79,8 @@ export async function GET() {
     const cognitoSub = session.user.cognitoSub;
     console.log('[DBG][api/user/preferences] Cognito Sub:', cognitoSub);
 
-    // Get user preferences
-    const user = await User.findOne({ cognitoSub }).select('preferences');
+    // Get user preferences from DynamoDB
+    const user = await getUserByCognitoSub(cognitoSub);
 
     if (!user) {
       console.log('[DBG][api/user/preferences] User not found');

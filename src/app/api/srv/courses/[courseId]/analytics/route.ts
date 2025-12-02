@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/mongodb';
-import CourseAnalyticsEvent from '@/models/CourseAnalyticsEvent';
-import Payment from '@/models/Payment';
-import CourseProgress from '@/models/CourseProgress';
+import * as courseProgressRepository from '@/lib/repositories/courseProgressRepository';
+import * as courseAnalyticsEventRepository from '@/lib/repositories/courseAnalyticsEventRepository';
+import * as paymentRepository from '@/lib/repositories/paymentRepository';
 import type { ApiResponse } from '@/types';
 
 /**
@@ -42,121 +41,83 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
         startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     }
 
-    // Connect to database
-    await connectToDatabase();
+    const startDateStr = startDate.toISOString();
 
-    // Aggregate analytics events
+    // Get analytics data from DynamoDB
     const [
       totalViews,
       uniqueViewers,
-      subscriptionClicks,
+      enrollClicks,
       paymentModalOpens,
-      enrollmentCompletes,
-      videoProgress,
+      _enrollmentCompletes,
+      totalWatchTime,
     ] = await Promise.all([
       // Total course views
-      CourseAnalyticsEvent.countDocuments({
+      courseAnalyticsEventRepository.countEventsByCourseAndType(
         courseId,
-        eventType: 'course_view',
-        timestamp: { $gte: startDate },
-      }),
+        'course_view',
+        startDateStr
+      ),
 
       // Unique viewers (distinct userId + sessionId)
-      CourseAnalyticsEvent.aggregate([
-        {
-          $match: {
-            courseId,
-            eventType: 'course_view',
-            timestamp: { $gte: startDate },
-          },
-        },
-        {
-          $group: {
-            _id: {
-              userId: '$userId',
-              sessionId: '$sessionId',
-            },
-          },
-        },
-        { $count: 'count' },
-      ]),
+      courseAnalyticsEventRepository.getUniqueViewersByCourse(courseId, startDateStr),
 
-      // Subscription button clicks
-      CourseAnalyticsEvent.countDocuments({
+      // Enroll button clicks
+      courseAnalyticsEventRepository.countEventsByCourseAndType(
         courseId,
-        eventType: 'subscription_click',
-        timestamp: { $gte: startDate },
-      }),
+        'enroll_click',
+        startDateStr
+      ),
 
       // Payment modal opens
-      CourseAnalyticsEvent.countDocuments({
+      courseAnalyticsEventRepository.countEventsByCourseAndType(
         courseId,
-        eventType: 'payment_modal_open',
-        timestamp: { $gte: startDate },
-      }),
+        'payment_modal_open',
+        startDateStr
+      ),
 
       // Enrollment completes
-      CourseAnalyticsEvent.countDocuments({
+      courseAnalyticsEventRepository.countEventsByCourseAndType(
         courseId,
-        eventType: 'enrollment_complete',
-        timestamp: { $gte: startDate },
-      }),
+        'enrollment_complete',
+        startDateStr
+      ),
 
       // Video watch time
-      CourseAnalyticsEvent.aggregate([
-        {
-          $match: {
-            courseId,
-            eventType: 'video_progress',
-            timestamp: { $gte: startDate },
-          },
-        },
-        {
-          $group: {
-            _id: null,
-            totalWatchTime: { $sum: '$metadata.watchTime' },
-          },
-        },
-      ]),
+      courseAnalyticsEventRepository.getTotalWatchTimeByCourse(courseId, startDateStr),
     ]);
 
-    // Get payment data
-    const [payments, successfulPayments] = await Promise.all([
-      Payment.find({
-        courseId,
-        status: { $in: ['initiated', 'pending', 'succeeded'] },
-        initiatedAt: { $gte: startDate },
-      }),
+    // Get payment data from DynamoDB
+    const allPayments = await paymentRepository.getPaymentsByCourse(courseId);
 
-      Payment.find({
-        courseId,
-        status: 'succeeded',
-        initiatedAt: { $gte: startDate },
-      }),
-    ]);
+    // Filter payments by date
+    const payments = allPayments.filter(
+      p =>
+        ['initiated', 'pending', 'succeeded'].includes(p.status) &&
+        new Date(p.initiatedAt) >= startDate
+    );
+
+    const successfulPayments = allPayments.filter(
+      p => p.status === 'succeeded' && new Date(p.initiatedAt) >= startDate
+    );
 
     const totalPaymentInitiated = payments.length;
     const totalEnrollments = successfulPayments.length;
     const totalRevenue = successfulPayments.reduce((sum, p) => sum + p.amount, 0);
 
     // Calculate conversion rates
-    const clickToPaymentRate =
-      subscriptionClicks > 0 ? (totalPaymentInitiated / subscriptionClicks) * 100 : 0;
-    const conversionRate =
-      subscriptionClicks > 0 ? (totalEnrollments / subscriptionClicks) * 100 : 0;
+    const clickToPaymentRate = enrollClicks > 0 ? (totalPaymentInitiated / enrollClicks) * 100 : 0;
+    const conversionRate = enrollClicks > 0 ? (totalEnrollments / enrollClicks) * 100 : 0;
     const paymentSuccessRate =
       totalPaymentInitiated > 0 ? (totalEnrollments / totalPaymentInitiated) * 100 : 0;
 
-    // Get engagement data from CourseProgress
-    const courseProgressData = await CourseProgress.find({
+    // Get engagement data from CourseProgress (DynamoDB)
+    const courseProgressData = await courseProgressRepository.getCourseProgressByCourseIdAfterDate(
       courseId,
-      enrolledAt: { $gte: startDate },
-    });
+      startDateStr
+    );
 
-    const totalWatchTimeMinutes =
-      videoProgress.length > 0 && videoProgress[0].totalWatchTime
-        ? Math.round(videoProgress[0].totalWatchTime / 60)
-        : 0;
+    const totalWatchTimeMinutes = totalWatchTime > 0 ? Math.round(totalWatchTime / 60) : 0;
 
     const avgWatchTimePerStudent =
       totalEnrollments > 0
@@ -168,92 +129,39 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
     const completedCourses = courseProgressData.filter(p => p.percentComplete === 100).length;
     const completionRate = totalEnrollments > 0 ? (completedCourses / totalEnrollments) * 100 : 0;
 
-    // Get daily breakdown
-    const dailyBreakdown = await CourseAnalyticsEvent.aggregate([
-      {
-        $match: {
-          courseId,
-          timestamp: { $gte: startDate },
-        },
-      },
-      {
-        $group: {
-          _id: {
-            date: {
-              $dateToString: {
-                format: '%Y-%m-%d',
-                date: '$timestamp',
-              },
-            },
-            eventType: '$eventType',
-          },
-          count: { $sum: 1 },
-        },
-      },
-      {
-        $group: {
-          _id: '$_id.date',
-          events: {
-            $push: {
-              type: '$_id.eventType',
-              count: '$count',
-            },
-          },
-        },
-      },
-      { $sort: { _id: 1 } },
-    ]);
+    // Get daily breakdown from DynamoDB
+    const dailyEventCounts = await courseAnalyticsEventRepository.getDailyEventCountsByCourse(
+      courseId,
+      startDateStr,
+      now.toISOString()
+    );
 
-    // Get lesson-level engagement
-    const lessonEngagement = await CourseAnalyticsEvent.aggregate([
-      {
-        $match: {
-          courseId,
-          eventType: { $in: ['lesson_view', 'lesson_complete'] },
-          timestamp: { $gte: startDate },
-          lessonId: { $exists: true, $ne: null },
-        },
-      },
-      {
-        $group: {
-          _id: {
-            lessonId: '$lessonId',
-            eventType: '$eventType',
-          },
-          count: { $sum: 1 },
-        },
-      },
-      {
-        $group: {
-          _id: '$_id.lessonId',
-          views: {
-            $sum: {
-              $cond: [{ $eq: ['$_id.eventType', 'lesson_view'] }, '$count', 0],
-            },
-          },
-          completions: {
-            $sum: {
-              $cond: [{ $eq: ['$_id.eventType', 'lesson_complete'] }, '$count', 0],
-            },
-          },
-        },
-      },
-      {
-        $project: {
-          lessonId: '$_id',
-          views: 1,
-          completions: 1,
-          completionRate: {
-            $cond: [
-              { $gt: ['$views', 0] },
-              { $multiply: [{ $divide: ['$completions', '$views'] }, 100] },
-              0,
-            ],
-          },
-        },
-      },
-      { $sort: { views: -1 } },
-    ]);
+    // Transform daily counts to match expected format
+    const dailyBreakdownMap = new Map<string, Array<{ type: string; count: number }>>();
+    for (const item of dailyEventCounts) {
+      if (!dailyBreakdownMap.has(item.date)) {
+        dailyBreakdownMap.set(item.date, []);
+      }
+      dailyBreakdownMap.get(item.date)!.push({ type: item.eventType, count: item.count });
+    }
+
+    const dailyBreakdown = Array.from(dailyBreakdownMap.entries())
+      .map(([date, events]) => ({ _id: date, events }))
+      .sort((a, b) => a._id.localeCompare(b._id));
+
+    // Get lesson-level engagement from DynamoDB
+    const lessonEngagementData = await courseAnalyticsEventRepository.getLessonEngagementStats(
+      courseId,
+      startDateStr
+    );
+
+    const lessonEngagement = lessonEngagementData.map(item => ({
+      _id: item.lessonId,
+      lessonId: item.lessonId,
+      views: item.views,
+      completions: item.completions,
+      completionRate: Math.round(item.completionRate * 100) / 100,
+    }));
 
     const analytics = {
       courseId,
@@ -264,8 +172,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
       },
       overview: {
         totalViews,
-        uniqueViewers: uniqueViewers[0]?.count || 0,
-        subscriptionClicks,
+        uniqueViewers,
+        enrollClicks,
         paymentModalOpens,
         totalPaymentInitiated,
         totalEnrollments,

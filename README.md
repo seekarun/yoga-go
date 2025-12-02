@@ -147,7 +147,7 @@ The application uses MongoDB for data persistence. All collections are actively 
 **Key Fields**:
 
 - `_id`: Course ID (string)
-- `title`, `description`, `longDescription`: Course content
+- `title`, `description`: Course content
 - `instructor`: Instructor details (id, name, title, avatar)
 - `thumbnail`, `coverImage`: Image assets
 - `promoVideoCloudflareId`: Cloudflare Stream video UID for promo

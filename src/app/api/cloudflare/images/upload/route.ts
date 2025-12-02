@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { ApiResponse, Asset } from '@/types';
-import { connectToDatabase } from '@/lib/mongodb';
-import AssetModel from '@/models/Asset';
+import * as assetRepository from '@/lib/repositories/assetRepository';
 
 const CF_ACCOUNT_ID = process.env.CF_ACCOUNT_ID;
 const CF_TOKEN = process.env.CF_TOKEN;
@@ -104,21 +103,20 @@ export async function POST(request: Request) {
     const buffer = Buffer.from(arrayBuffer);
     const dimensions = await getImageDimensions(buffer);
 
-    // Save to MongoDB
-    await connectToDatabase();
-
+    // Save to DynamoDB
     const assetId = `asset_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const cropData = cropDataStr ? JSON.parse(cropDataStr) : undefined;
+    const now = new Date().toISOString();
 
-    const assetData = {
-      _id: assetId,
+    const assetData: Asset = {
+      id: assetId,
       filename: originalFile.name,
       originalUrl,
       croppedUrl,
       cloudflareImageId: originalImageId,
       croppedCloudflareImageId: croppedImageId,
       type: 'image' as const,
-      category: category || 'other',
+      category: (category || 'other') as Asset['category'],
       dimensions,
       cropData,
       size: originalFile.size,
@@ -133,21 +131,19 @@ export async function POST(request: Request) {
           : undefined,
       metadata: {
         originalFilename: originalFile.name,
-        uploadedAt: new Date().toISOString(),
+        uploadedAt: now,
       },
+      createdAt: now,
+      updatedAt: now,
     };
 
-    const asset = new AssetModel(assetData);
-    await asset.save();
+    const asset = await assetRepository.createAsset(assetData);
 
     console.log('[DBG][cloudflare/images/upload] Asset saved to DB:', assetId);
 
     const response: ApiResponse<Asset> = {
       success: true,
-      data: {
-        ...asset.toObject(),
-        id: asset._id,
-      },
+      data: asset,
       message: 'Image uploaded successfully',
     };
 

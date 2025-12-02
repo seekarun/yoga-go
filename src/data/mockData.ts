@@ -474,9 +474,7 @@ export const mockCourses: Record<string, Course> = {
     id: 'course-deepak-1',
     title: 'Traditional Hatha Yoga Practice',
     description:
-      'Master the ancient art of Hatha Yoga with traditional techniques and modern adaptations for holistic wellness.',
-    longDescription:
-      'This comprehensive 8-week program guides you through the fundamentals of Traditional Hatha Yoga, combining asanas, pranayama, and meditation. Perfect for all levels seeking authentic yogic practice.',
+      'Master the ancient art of Hatha Yoga with traditional techniques and modern adaptations for holistic wellness. This comprehensive 8-week program guides you through the fundamentals of Traditional Hatha Yoga, combining asanas, pranayama, and meditation. Perfect for all levels seeking authentic yogic practice.',
     instructor: {
       id: 'deepak',
       name: 'Deepak',
@@ -562,9 +560,7 @@ export const mockCourses: Record<string, Course> = {
     id: 'course-deepak-2',
     title: 'Ashtanga Primary Series Mastery',
     description:
-      'Dive deep into the dynamic Ashtanga practice with detailed instruction on the Primary Series sequence.',
-    longDescription:
-      'This intensive 12-week program breaks down the entire Ashtanga Primary Series, teaching proper vinyasa, breath coordination, and the meditative flow of this powerful practice.',
+      'Dive deep into the dynamic Ashtanga practice with detailed instruction on the Primary Series sequence. This intensive 12-week program breaks down the entire Ashtanga Primary Series, teaching proper vinyasa, breath coordination, and the meditative flow of this powerful practice.',
     instructor: {
       id: 'deepak',
       name: 'Deepak',
@@ -650,9 +646,7 @@ export const mockCourses: Record<string, Course> = {
     id: 'course-kavitha-1',
     title: 'Gentle Vinyasa Flow Journey',
     description:
-      'Experience the joy of flowing movement through gentle Vinyasa sequences designed for beginners and mindful practitioners.',
-    longDescription:
-      'This 6-week journey introduces you to the art of Vinyasa yoga with accessible sequences that build strength, flexibility, and inner peace. Perfect for beginners or those seeking a gentler practice.',
+      'Experience the joy of flowing movement through gentle Vinyasa sequences designed for beginners and mindful practitioners. This 6-week journey introduces you to the art of Vinyasa yoga with accessible sequences that build strength, flexibility, and inner peace. Perfect for beginners or those seeking a gentler practice.',
     instructor: {
       id: 'kavitha',
       name: 'Kavitha',
@@ -733,9 +727,7 @@ export const mockCourses: Record<string, Course> = {
     id: 'course-kavitha-2',
     title: 'Therapeutic Yoga for Back Pain Relief',
     description:
-      'Specialized therapeutic yoga sequences designed to alleviate back pain and strengthen your spine safely and effectively.',
-    longDescription:
-      'This 8-week therapeutic program combines gentle movement, targeted strengthening, and pain relief techniques to help you manage and overcome back pain through yoga.',
+      'Specialized therapeutic yoga sequences designed to alleviate back pain and strengthen your spine safely and effectively. This 8-week therapeutic program combines gentle movement, targeted strengthening, and pain relief techniques to help you manage and overcome back pain through yoga.',
     instructor: {
       id: 'kavitha',
       name: 'Kavitha',

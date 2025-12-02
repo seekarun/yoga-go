@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getSession, getUserByAuth0Id } from '@/lib/auth';
-import { connectToDatabase } from '@/lib/mongodb';
-import DiscussionModel from '@/models/Discussion';
-import DiscussionVoteModel from '@/models/DiscussionVote';
-import type { ApiResponse, DiscussionThread } from '@/types';
+import * as discussionRepository from '@/lib/repositories/discussionRepository';
+import * as discussionVoteRepository from '@/lib/repositories/discussionVoteRepository';
+import type { ApiResponse, DiscussionThread, Discussion } from '@/types';
 
 export async function GET(request: Request, { params }: { params: Promise<{ courseId: string }> }) {
   const { courseId } = await params;
@@ -20,7 +19,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
       return NextResponse.json(response, { status: 401 });
     }
 
-    // Get user from MongoDB
+    // Get user from DynamoDB
     const user = await getUserByAuth0Id(session.user.cognitoSub);
     if (!user) {
       const response: ApiResponse<null> = {
@@ -44,67 +43,44 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
     const { searchParams } = new URL(request.url);
     const lessonId = searchParams.get('lessonId');
 
-    // Connect to MongoDB
-    await connectToDatabase();
-
-    // Build query
-    const query: any = {
-      courseId,
-      isHidden: false,
-      deletedAt: { $exists: false },
-    };
-
+    // Fetch discussions using DynamoDB
+    let discussions: Discussion[];
     if (lessonId) {
-      query.lessonId = lessonId;
+      discussions = await discussionRepository.getDiscussionsByLesson(courseId, lessonId);
+      // Also get replies
+      const allDiscussions = [...discussions];
+      for (const discussion of discussions) {
+        const replies = await discussionRepository.getReplies(discussion.id);
+        allDiscussions.push(...replies);
+      }
+      discussions = allDiscussions;
+    } else {
+      discussions = await discussionRepository.getDiscussionsByCourse(courseId);
     }
 
-    // Fetch discussions
-    const discussions = await DiscussionModel.find(query)
-      .sort({ isPinned: -1, createdAt: -1 }) // Pinned first, then newest
-      .lean()
-      .exec();
+    // Filter out hidden and deleted discussions
+    const visibleDiscussions = discussions.filter(d => !d.isHidden && !d.deletedAt);
 
     // Fetch user's votes for these discussions
-    const discussionIds = discussions.map(d => d._id);
-    const userVotes = await DiscussionVoteModel.find({
-      discussionId: { $in: discussionIds },
-      userId: user.id,
-    })
-      .lean()
-      .exec();
-
-    const userVoteMap = new Map(userVotes.map(v => [v.discussionId, v.voteType]));
+    const discussionIds = visibleDiscussions.map(d => d.id);
+    const userVoteMap = await discussionVoteRepository.getUserVotesForDiscussions(
+      user.id,
+      discussionIds
+    );
 
     // Build threaded structure
     const discussionMap = new Map<string, DiscussionThread>();
     const topLevelDiscussions: DiscussionThread[] = [];
 
     // First pass: convert all discussions to DiscussionThread
-    discussions.forEach((doc: any) => {
+    visibleDiscussions.forEach((doc: Discussion) => {
       const thread: DiscussionThread = {
-        id: doc._id,
-        courseId: doc.courseId,
-        lessonId: doc.lessonId,
-        userId: doc.userId,
-        userRole: doc.userRole,
-        userName: doc.userName,
-        userAvatar: doc.userAvatar,
-        content: doc.content,
-        parentId: doc.parentId,
-        upvotes: doc.upvotes,
-        downvotes: doc.downvotes,
-        isPinned: doc.isPinned,
-        isResolved: doc.isResolved,
-        isHidden: doc.isHidden,
-        editedAt: doc.editedAt,
-        deletedAt: doc.deletedAt,
-        createdAt: doc.createdAt?.toISOString(),
-        updatedAt: doc.updatedAt?.toISOString(),
+        ...doc,
         replies: [],
-        userVote: userVoteMap.get(doc._id),
+        userVote: userVoteMap.get(doc.id),
         netScore: doc.upvotes - doc.downvotes,
       };
-      discussionMap.set(doc._id, thread);
+      discussionMap.set(doc.id, thread);
     });
 
     // Second pass: build hierarchy
@@ -119,16 +95,19 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
       }
     });
 
-    // Sort replies by score
-    const sortReplies = (threads: DiscussionThread[]) => {
-      threads.sort((a, b) => b.netScore - a.netScore);
+    // Sort by pinned first, then by score
+    const sortDiscussions = (threads: DiscussionThread[]) => {
+      threads.sort((a, b) => {
+        if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+        return b.netScore - a.netScore;
+      });
       threads.forEach(thread => {
         if (thread.replies.length > 0) {
-          sortReplies(thread.replies);
+          sortDiscussions(thread.replies);
         }
       });
     };
-    sortReplies(topLevelDiscussions);
+    sortDiscussions(topLevelDiscussions);
 
     const response: ApiResponse<DiscussionThread[]> = {
       success: true,

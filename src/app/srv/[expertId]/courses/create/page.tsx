@@ -16,10 +16,7 @@ export default function CreateCoursePage() {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    longDescription: '',
-    thumbnail: '',
     coverImage: '',
-    promoVideo: '',
     promoVideoCloudflareId: '',
     promoVideoStatus: '' as 'uploading' | 'processing' | 'ready' | 'error' | '',
     level: 'Beginner',
@@ -99,15 +96,13 @@ export default function CreateCoursePage() {
       const courseData = {
         title: formData.title,
         description: formData.description,
-        longDescription: formData.longDescription || formData.description,
         instructor: {
           id: expertId,
           name: expertId.charAt(0).toUpperCase() + expertId.slice(1), // Capitalize first letter
           title: 'Yoga Expert',
         },
-        thumbnail: formData.thumbnail || '/images/default-course.jpg',
+        thumbnail: '/images/default-course.jpg',
         coverImage: formData.coverImage || undefined,
-        promoVideo: formData.promoVideo || undefined,
         promoVideoCloudflareId: formData.promoVideoCloudflareId || undefined,
         promoVideoStatus: formData.promoVideoStatus || undefined,
         level: formData.level,
@@ -213,7 +208,7 @@ export default function CreateCoursePage() {
                   htmlFor="description"
                   className="block text-sm font-medium text-gray-700 mb-2"
                 >
-                  Short Description *
+                  Course Description *
                 </label>
                 <textarea
                   id="description"
@@ -221,27 +216,9 @@ export default function CreateCoursePage() {
                   required
                   value={formData.description}
                   onChange={handleChange}
-                  rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Brief description of your course (1-2 sentences)"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="longDescription"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Detailed Description
-                </label>
-                <textarea
-                  id="longDescription"
-                  name="longDescription"
-                  value={formData.longDescription}
-                  onChange={handleChange}
                   rows={5}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Detailed description of what students will learn"
+                  placeholder="Describe what students will learn in this course"
                 />
               </div>
 
@@ -341,22 +318,6 @@ export default function CreateCoursePage() {
             <h2 className="text-xl font-bold text-gray-900 mb-6">Media</h2>
 
             <div className="space-y-4">
-              <div>
-                <label htmlFor="thumbnail" className="block text-sm font-medium text-gray-700 mb-2">
-                  Thumbnail URL
-                </label>
-                <input
-                  type="text"
-                  id="thumbnail"
-                  name="thumbnail"
-                  value={formData.thumbnail}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="/images/courses/my-course.jpg"
-                />
-                <p className="text-sm text-gray-500 mt-1">Leave empty to use default image</p>
-              </div>
-
               {/* Cover Image Upload */}
               <div>
                 <ImageUploadCrop
@@ -404,28 +365,6 @@ export default function CreateCoursePage() {
                   onError={handlePromoVideoError}
                   helpText="Upload a promo video file (MP4, MOV, etc.). Max duration: 10 minutes. This video will be shown to users to preview your course."
                 />
-
-                <div className="mt-4">
-                  <label
-                    htmlFor="promoVideo"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    Or enter a Promo Video URL (YouTube, Vimeo, etc.)
-                  </label>
-                  <input
-                    type="text"
-                    id="promoVideo"
-                    name="promoVideo"
-                    value={formData.promoVideo}
-                    onChange={handleChange}
-                    disabled={!!formData.promoVideoCloudflareId}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
-                    placeholder="https://youtube.com/watch?v=..."
-                  />
-                  <p className="text-sm text-gray-500 mt-1">
-                    Optional: Use this if you have a promo video hosted elsewhere
-                  </p>
-                </div>
               </div>
             </div>
           </div>

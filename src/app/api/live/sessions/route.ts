@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getSession, getUserByAuth0Id } from '@/lib/auth';
-import { connectToDatabase } from '@/lib/mongodb';
-import LiveSession from '@/models/LiveSession';
-import Expert from '@/models/Expert';
-import { nanoid } from 'nanoid';
 import type { ApiResponse, LiveSession as LiveSessionType } from '@/types';
+import * as expertRepository from '@/lib/repositories/expertRepository';
+import * as liveSessionRepository from '@/lib/repositories/liveSessionRepository';
 
 /**
  * POST /api/live/sessions
@@ -91,11 +89,8 @@ export async function POST(request: Request) {
       return NextResponse.json(response, { status: 400 });
     }
 
-    // Connect to database
-    await connectToDatabase();
-
-    // Get expert details
-    const expert = await Expert.findById(user.expertProfile);
+    // Get expert details from DynamoDB
+    const expert = await expertRepository.getExpertById(user.expertProfile);
     if (!expert) {
       const response: ApiResponse<null> = {
         success: false,
@@ -113,11 +108,9 @@ export async function POST(request: Request) {
       return NextResponse.json(response, { status: 403 });
     }
 
-    // Create live session document
-    const sessionId = nanoid();
-    const liveSession = new LiveSession({
-      _id: sessionId,
-      expertId: user.expertProfile,
+    // Create live session in DynamoDB
+    const liveSession = await liveSessionRepository.createLiveSession({
+      expertId: expert.id,
       expertName: expert.name,
       expertAvatar: expert.avatar,
       title,
@@ -143,42 +136,18 @@ export async function POST(request: Request) {
       scheduledByRole: 'expert',
     });
 
-    await liveSession.save();
+    // Update expert's session counts in DynamoDB
+    await expertRepository.updateExpert(expert.id, {
+      totalLiveSessions: (expert.totalLiveSessions || 0) + 1,
+      upcomingLiveSessions: (expert.upcomingLiveSessions || 0) + 1,
+    });
 
-    // Update expert's session counts
-    expert.totalLiveSessions = (expert.totalLiveSessions || 0) + 1;
-    expert.upcomingLiveSessions = (expert.upcomingLiveSessions || 0) + 1;
-    await expert.save();
-
-    console.log('[DBG][api/live/sessions] Live session created:', sessionId);
+    console.log('[DBG][api/live/sessions] Live session created:', liveSession.id);
 
     const response: ApiResponse<{ session: LiveSessionType }> = {
       success: true,
       data: {
-        session: {
-          id: liveSession._id,
-          expertId: liveSession.expertId,
-          expertName: liveSession.expertName,
-          expertAvatar: liveSession.expertAvatar,
-          title: liveSession.title,
-          description: liveSession.description,
-          thumbnail: liveSession.thumbnail,
-          sessionType: liveSession.sessionType,
-          scheduledStartTime: liveSession.scheduledStartTime,
-          scheduledEndTime: liveSession.scheduledEndTime,
-          maxParticipants: liveSession.maxParticipants,
-          currentViewers: liveSession.currentViewers,
-          price: liveSession.price,
-          currency: liveSession.currency,
-          status: liveSession.status,
-          enrolledCount: liveSession.enrolledCount,
-          attendedCount: liveSession.attendedCount,
-          metadata: liveSession.metadata,
-          featured: liveSession.featured,
-          isFree: liveSession.isFree,
-          createdAt: liveSession.createdAt?.toISOString(),
-          updatedAt: liveSession.updatedAt?.toISOString(),
-        } as LiveSessionType,
+        session: liveSession,
       },
       message:
         'Live session created successfully. Start the session when ready to generate streaming details.',
@@ -216,75 +185,50 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get('limit') || '20');
     const skip = parseInt(searchParams.get('skip') || '0');
 
-    // Connect to database
-    await connectToDatabase();
+    let sessions: LiveSessionType[];
 
-    // Build query
-    const query: any = {};
-
-    if (status) {
-      query.status = status;
-    }
-
+    // Get sessions based on filters
     if (expertId) {
-      query.expertId = expertId;
+      // Get sessions by expert
+      sessions = await liveSessionRepository.getLiveSessionsByExpert(expertId);
+    } else if (status) {
+      // Get sessions by status
+      sessions = await liveSessionRepository.getLiveSessionsByStatus(
+        status as 'scheduled' | 'live' | 'ended' | 'cancelled'
+      );
+    } else {
+      // Get all scheduled and live sessions (default public view)
+      const [scheduled, live] = await Promise.all([
+        liveSessionRepository.getLiveSessionsByStatus('scheduled'),
+        liveSessionRepository.getLiveSessionsByStatus('live'),
+      ]);
+      sessions = [...scheduled, ...live];
     }
 
+    // Apply status filter if we didn't query by status directly
+    if (status && expertId) {
+      sessions = sessions.filter(s => s.status === status);
+    }
+
+    // Apply featured filter
     if (featured === 'true') {
-      query.featured = true;
+      sessions = sessions.filter(s => s.featured);
     }
 
-    // Get sessions
-    const sessions = await LiveSession.find(query)
-      .sort({ scheduledStartTime: 1 }) // Upcoming first
-      .limit(limit)
-      .skip(skip)
-      .lean();
+    // Sort by scheduledStartTime ascending (upcoming first)
+    sessions.sort(
+      (a, b) => new Date(a.scheduledStartTime).getTime() - new Date(b.scheduledStartTime).getTime()
+    );
 
-    // Get total count
-    const total = await LiveSession.countDocuments(query);
+    // Apply pagination
+    const total = sessions.length;
+    sessions = sessions.slice(skip, skip + limit);
 
     console.log('[DBG][api/live/sessions] Found sessions:', sessions.length);
 
-    // Transform sessions to match API type
-    const transformedSessions = sessions.map((session: any) => ({
-      id: session._id,
-      expertId: session.expertId,
-      expertName: session.expertName,
-      expertAvatar: session.expertAvatar,
-      title: session.title,
-      description: session.description,
-      thumbnail: session.thumbnail,
-      sessionType: session.sessionType,
-      instantMeetingCode: session.instantMeetingCode,
-      scheduledStartTime: session.scheduledStartTime,
-      scheduledEndTime: session.scheduledEndTime,
-      actualStartTime: session.actualStartTime,
-      actualEndTime: session.actualEndTime,
-      maxParticipants: session.maxParticipants,
-      currentViewers: session.currentViewers,
-      price: session.price,
-      currency: session.currency,
-      meetingLink: session.meetingLink,
-      meetingPlatform: session.meetingPlatform,
-      status: session.status,
-      recordingAvailable: session.recordingAvailable,
-      recordedLessonId: session.recordedLessonId,
-      enrolledCount: session.enrolledCount,
-      attendedCount: session.attendedCount,
-      metadata: session.metadata,
-      scheduledByUserId: session.scheduledByUserId,
-      scheduledByName: session.scheduledByName,
-      scheduledByRole: session.scheduledByRole,
-      featured: session.featured,
-      isFree: session.isFree,
-      createdAt: session.createdAt,
-      updatedAt: session.updatedAt,
-    }));
-
     const response: ApiResponse<LiveSessionType[]> = {
       success: true,
-      data: transformedSessions,
+      data: sessions,
       total,
     };
 

@@ -14,13 +14,11 @@ import { posthog } from '@/providers/PostHogProvider';
 interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  type: 'course' | 'subscription';
+  type: 'course';
   item: {
     id: string;
     title: string;
-    price?: number; // For courses
-    planType?: 'curious' | 'committed'; // For subscriptions
-    billingInterval?: 'monthly' | 'yearly'; // For subscriptions
+    price: number;
   };
 }
 
@@ -35,11 +33,9 @@ export default function PaymentModal({ isOpen, onClose, type, item }: PaymentMod
   useEffect(() => {
     if (isOpen) {
       // Custom analytics (existing)
-      if (type === 'course') {
-        trackPaymentModalOpen(item.id).catch(err => {
-          console.error('[DBG][PaymentModal] Failed to track payment modal open:', err);
-        });
-      }
+      trackPaymentModalOpen(item.id).catch(err => {
+        console.error('[DBG][PaymentModal] Failed to track payment modal open:', err);
+      });
 
       // PostHog analytics
       const amount = getAmount();
@@ -47,30 +43,19 @@ export default function PaymentModal({ isOpen, onClose, type, item }: PaymentMod
         type,
         itemId: item.id,
         itemTitle: item.title,
-        planType: item.planType,
-        billingInterval: item.billingInterval,
         amount,
         currency,
         gateway,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, type, item.id, item.title, item.planType, item.billingInterval, currency, gateway]);
+  }, [isOpen, type, item.id, item.title, currency, gateway]);
 
   if (!isOpen) return null;
 
-  // Calculate amount based on type
+  // Calculate amount - course price in smallest unit (paise/cents)
   const getAmount = () => {
-    if (type === 'course') {
-      // Course price in smallest unit (paise/cents)
-      return (item.price || 0) * 100;
-    } else if (type === 'subscription' && item.planType) {
-      // Subscription price from config
-      const plan = PAYMENT_CONFIG.plans[item.planType];
-      const interval = item.billingInterval || 'yearly';
-      return currency === 'INR' ? plan[interval].inr : plan[interval].usd;
-    }
-    return 0;
+    return item.price * 100;
   };
 
   const amount = getAmount();
@@ -80,19 +65,15 @@ export default function PaymentModal({ isOpen, onClose, type, item }: PaymentMod
     console.log('[DBG][PaymentModal] Payment successful:', paymentId);
 
     // Track enrollment completion (custom analytics)
-    if (type === 'course') {
-      trackEnrollmentComplete(item.id, paymentId).catch(err => {
-        console.error('[DBG][PaymentModal] Failed to track enrollment complete:', err);
-      });
-    }
+    trackEnrollmentComplete(item.id, paymentId).catch(err => {
+      console.error('[DBG][PaymentModal] Failed to track enrollment complete:', err);
+    });
 
     // PostHog analytics
     posthog.capture('payment_success', {
       type,
       itemId: item.id,
       itemTitle: item.title,
-      planType: item.planType,
-      billingInterval: item.billingInterval,
       paymentId,
       amount,
       currency,
@@ -106,11 +87,7 @@ export default function PaymentModal({ isOpen, onClose, type, item }: PaymentMod
 
     // Redirect after success
     setTimeout(() => {
-      if (type === 'course') {
-        router.push(`/app/courses/${item.id}`);
-      } else {
-        router.push('/app/profile');
-      }
+      router.push(`/app/courses/${item.id}`);
       router.refresh(); // Force refresh the page data
       onClose();
     }, 2000);
@@ -126,8 +103,6 @@ export default function PaymentModal({ isOpen, onClose, type, item }: PaymentMod
       type,
       itemId: item.id,
       itemTitle: item.title,
-      planType: item.planType,
-      billingInterval: item.billingInterval,
       error,
       amount,
       currency,
@@ -196,9 +171,7 @@ export default function PaymentModal({ isOpen, onClose, type, item }: PaymentMod
               Payment Successful!
             </h2>
             <p style={{ color: '#666', marginBottom: '16px' }}>
-              {type === 'course'
-                ? 'You now have access to the course.'
-                : 'Your subscription has been activated.'}
+              You now have access to the course.
             </p>
             <p style={{ fontSize: '14px', color: '#999' }}>Redirecting...</p>
           </div>
@@ -264,11 +237,6 @@ export default function PaymentModal({ isOpen, onClose, type, item }: PaymentMod
                   {formatPrice(amount, currency)}
                 </span>
               </div>
-              {type === 'subscription' && (
-                <div style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
-                  Billed annually
-                </div>
-              )}
             </div>
 
             {/* Gateway Info */}
@@ -308,11 +276,8 @@ export default function PaymentModal({ isOpen, onClose, type, item }: PaymentMod
                   <StripeCheckout
                     amount={amount}
                     currency={currency}
-                    type={type}
                     itemId={item.id}
                     itemName={item.title}
-                    planType={item.planType}
-                    billingInterval={item.billingInterval}
                     onSuccess={handleSuccess}
                     onFailure={handleFailure}
                   />

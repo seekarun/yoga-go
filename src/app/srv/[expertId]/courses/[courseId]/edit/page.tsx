@@ -17,10 +17,7 @@ export default function EditCoursePage() {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    longDescription: '',
-    thumbnail: '',
     coverImage: '',
-    promoVideo: '',
     promoVideoCloudflareId: '',
     promoVideoStatus: '' as 'uploading' | 'processing' | 'ready' | 'error' | '',
     level: 'Beginner',
@@ -62,10 +59,7 @@ export default function EditCoursePage() {
       setFormData({
         title: course.title || '',
         description: course.description || '',
-        longDescription: course.longDescription || '',
-        thumbnail: course.thumbnail || '',
         coverImage: course.coverImage || '',
-        promoVideo: course.promoVideo || '',
         promoVideoCloudflareId: course.promoVideoCloudflareId || '',
         promoVideoStatus: course.promoVideoStatus || '',
         level: course.level || 'Beginner',
@@ -147,10 +141,7 @@ export default function EditCoursePage() {
       const courseData = {
         title: formData.title,
         description: formData.description,
-        longDescription: formData.longDescription || formData.description,
-        thumbnail: formData.thumbnail || '/images/default-course.jpg',
         coverImage: formData.coverImage || undefined,
-        promoVideo: formData.promoVideo || undefined,
         promoVideoCloudflareId: formData.promoVideoCloudflareId || undefined,
         promoVideoStatus: formData.promoVideoStatus || undefined,
         level: formData.level,
@@ -259,7 +250,7 @@ export default function EditCoursePage() {
                   htmlFor="description"
                   className="block text-sm font-medium text-gray-700 mb-2"
                 >
-                  Short Description *
+                  Course Description *
                 </label>
                 <textarea
                   id="description"
@@ -267,27 +258,9 @@ export default function EditCoursePage() {
                   required
                   value={formData.description}
                   onChange={handleChange}
-                  rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Brief description of your course (1-2 sentences)"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="longDescription"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Detailed Description
-                </label>
-                <textarea
-                  id="longDescription"
-                  name="longDescription"
-                  value={formData.longDescription}
-                  onChange={handleChange}
                   rows={5}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Detailed description of what students will learn"
+                  placeholder="Describe what students will learn in this course"
                 />
               </div>
 
@@ -409,22 +382,6 @@ export default function EditCoursePage() {
                 </p>
               </div>
 
-              <div>
-                <label htmlFor="thumbnail" className="block text-sm font-medium text-gray-700 mb-2">
-                  Thumbnail URL
-                </label>
-                <input
-                  type="text"
-                  id="thumbnail"
-                  name="thumbnail"
-                  value={formData.thumbnail}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="/images/courses/my-course.jpg"
-                />
-                <p className="text-sm text-gray-500 mt-1">Leave empty to use default image</p>
-              </div>
-
               {/* Promo Video Upload */}
               <div>
                 <VideoUpload
@@ -437,28 +394,6 @@ export default function EditCoursePage() {
                   onError={handlePromoVideoError}
                   helpText="Upload a promo video file (MP4, MOV, etc.). Max duration: 10 minutes. This video will be shown to users to preview your course."
                 />
-
-                <div className="mt-4">
-                  <label
-                    htmlFor="promoVideo"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    Or enter a Promo Video URL (YouTube, Vimeo, etc.)
-                  </label>
-                  <input
-                    type="text"
-                    id="promoVideo"
-                    name="promoVideo"
-                    value={formData.promoVideo}
-                    onChange={handleChange}
-                    disabled={!!formData.promoVideoCloudflareId}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
-                    placeholder="https://youtube.com/watch?v=..."
-                  />
-                  <p className="text-sm text-gray-500 mt-1">
-                    Optional: Use this if you have a promo video hosted elsewhere
-                  </p>
-                </div>
               </div>
             </div>
           </div>

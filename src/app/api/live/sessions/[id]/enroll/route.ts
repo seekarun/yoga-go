@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getSession, getUserByAuth0Id } from '@/lib/auth';
-import { connectToDatabase } from '@/lib/mongodb';
-import LiveSession from '@/models/LiveSession';
-import LiveSessionParticipant from '@/models/LiveSessionParticipant';
-import { nanoid } from 'nanoid';
 import type { ApiResponse } from '@/types';
+import * as liveSessionRepository from '@/lib/repositories/liveSessionRepository';
+import * as liveSessionParticipantRepository from '@/lib/repositories/liveSessionParticipantRepository';
 
 /**
  * POST /api/live/sessions/[id]/enroll
@@ -39,11 +37,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const body = await request.json().catch(() => ({}));
     const { paymentId, paymentGateway } = body;
 
-    // Connect to database
-    await connectToDatabase();
-
-    // Get live session
-    const liveSession = await LiveSession.findById(sessionId);
+    // Get live session from DynamoDB
+    const liveSession = await liveSessionRepository.getLiveSessionByIdOnly(sessionId);
     if (!liveSession) {
       const response: ApiResponse<null> = {
         success: false,
@@ -62,15 +57,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
 
     // Check if user is already enrolled
-    const existingParticipant = await LiveSessionParticipant.findOne({
-      sessionId: sessionId,
-      userId: user.id,
-    });
+    const existingParticipant =
+      await liveSessionParticipantRepository.getParticipantBySessionAndUser(sessionId, user.id);
 
     if (existingParticipant) {
       const response: ApiResponse<{ participantId: string }> = {
         success: true,
-        data: { participantId: existingParticipant._id },
+        data: { participantId: existingParticipant.id },
         message: 'Already enrolled in this session',
       };
       return NextResponse.json(response);
@@ -95,10 +88,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     //   return NextResponse.json(response, { status: 400 });
     // }
 
-    // Create participant record
-    const participantId = nanoid();
-    const participant = new LiveSessionParticipant({
-      _id: participantId,
+    // Create participant record in DynamoDB
+    const participant = await liveSessionParticipantRepository.createParticipant({
       sessionId: sessionId,
       userId: user.id,
       userName: user.profile.name,
@@ -113,17 +104,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       chatMessages: 0,
     });
 
-    await participant.save();
-
-    // Update session enrolled count
-    liveSession.enrolledCount = (liveSession.enrolledCount || 0) + 1;
-    await liveSession.save();
+    // Update session enrolled count in DynamoDB
+    await liveSessionRepository.incrementEnrolledCount(liveSession.expertId, sessionId);
 
     console.log('[DBG][api/live/sessions/[id]/enroll] User enrolled successfully');
 
     const response: ApiResponse<{ participantId: string }> = {
       success: true,
-      data: { participantId },
+      data: { participantId: participant.id },
       message: 'Successfully enrolled in live session',
     };
 

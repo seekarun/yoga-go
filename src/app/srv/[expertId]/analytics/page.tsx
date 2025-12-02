@@ -13,7 +13,7 @@ interface AnalyticsData {
     publishedCourses: number;
     totalViews: number;
     uniqueViewers: number;
-    subscriptionClicks: number;
+    enrollClicks: number;
     totalEnrollments: number;
     totalRevenue: number;
     currency: string;
@@ -31,7 +31,7 @@ interface AnalyticsData {
     courseId: string;
     title: string;
     views: number;
-    subscriptionClicks: number;
+    enrollClicks: number;
     enrollments: number;
     revenue: number;
   }>;
@@ -242,7 +242,7 @@ export default function AnalyticsDashboard() {
               {analytics.overview.totalEnrollments.toLocaleString()}
             </p>
             <p className="text-sm text-gray-500 mt-1">
-              From {analytics.overview.subscriptionClicks} clicks
+              From {analytics.overview.enrollClicks} clicks
             </p>
           </div>
 
@@ -405,7 +405,7 @@ export default function AnalyticsDashboard() {
                         {course.views.toLocaleString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {course.subscriptionClicks.toLocaleString()}
+                        {course.enrollClicks.toLocaleString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {course.enrollments.toLocaleString()}

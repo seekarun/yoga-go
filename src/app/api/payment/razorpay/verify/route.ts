@@ -49,47 +49,6 @@ export async function POST(request: Request) {
       }
 
       console.log(`[Razorpay] Enrolled user ${userId} in course ${itemId}`);
-    } else if (type === 'subscription') {
-      // Update user membership
-      const { connectToDatabase } = await import('@/lib/mongodb');
-      const User = (await import('@/models/User')).default;
-
-      await connectToDatabase();
-      const user = await User.findById(userId);
-
-      if (user) {
-        const now = new Date().toISOString();
-        const oneYearFromNow = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
-
-        user.membership = {
-          type: itemId as 'free' | 'basic' | 'premium' | 'lifetime',
-          status: 'active',
-          startDate: now,
-          renewalDate: oneYearFromNow,
-          benefits: [],
-        };
-
-        // Add payment to history
-        if (!user.billing) {
-          user.billing = { paymentHistory: [] };
-        }
-        if (!user.billing.paymentHistory) {
-          user.billing.paymentHistory = [];
-        }
-
-        user.billing.paymentHistory.push({
-          date: now,
-          amount: 0, // Amount should come from payment gateway
-          method: 'online',
-          status: 'paid',
-          description: `Subscription: ${itemId}`,
-          invoice: paymentId,
-        });
-
-        await user.save();
-      }
-
-      console.log(`[Razorpay] Updated user ${userId} subscription to ${itemId}`);
     }
 
     // TODO: Send confirmation email

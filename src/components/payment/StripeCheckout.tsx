@@ -10,11 +10,8 @@ import { PAYMENT_CONFIG } from '@/config/payment';
 interface StripeCheckoutProps {
   amount: number; // in cents
   currency: string;
-  type: 'course' | 'subscription';
   itemId: string;
   itemName: string;
-  planType?: 'curious' | 'committed'; // For subscriptions
-  billingInterval?: 'monthly' | 'yearly'; // For subscriptions
   onSuccess: (paymentId: string) => void;
   onFailure: (error: string) => void;
 }
@@ -57,11 +54,8 @@ const CARD_ELEMENT_OPTIONS = {
 function CheckoutForm({
   amount,
   currency,
-  type,
   itemId,
   itemName,
-  planType,
-  billingInterval,
   onSuccess,
   onFailure,
 }: StripeCheckoutProps) {
@@ -88,139 +82,70 @@ function CheckoutForm({
         throw new Error('Card element not found');
       }
 
-      let clientSecret: string;
-      let paymentId: string;
+      // One-time Payment Flow for course purchases
+      console.log('[DBG][stripe] Creating payment...');
 
-      if (type === 'subscription') {
-        // Subscription Flow
-        console.log('[DBG][stripe] Creating subscription...');
+      // Step 1: Create PaymentIntent on backend
+      const intentResponse = await fetch('/api/payment/stripe/create-payment-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount,
+          currency,
+          type: 'course',
+          itemId,
+          userId: user.id,
+        }),
+      });
 
-        if (!planType || !billingInterval) {
-          throw new Error('Plan type and billing interval are required for subscriptions');
-        }
+      const intentData = await intentResponse.json();
 
-        // Step 1: Create subscription on backend
-        const subscriptionResponse = await fetch('/api/payment/stripe/create-subscription', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            planType,
-            billingInterval,
-            userId: user.id,
-            userEmail: user.profile.email,
-            userName: user.profile.name,
-            currency: currency.toUpperCase(),
-          }),
-        });
+      if (!intentData.success) {
+        throw new Error(intentData.error || 'Failed to create payment intent');
+      }
 
-        const subscriptionData = await subscriptionResponse.json();
+      const clientSecret = intentData.data.clientSecret;
+      const paymentIntentId = intentData.data.paymentIntentId;
 
-        if (!subscriptionData.success) {
-          throw new Error(subscriptionData.error || 'Failed to create subscription');
-        }
+      // Step 2: Confirm payment with card element
+      const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: cardElement,
+          billing_details: {
+            name: user.profile.name,
+            email: user.profile.email,
+          },
+        },
+      });
 
-        clientSecret = subscriptionData.data.clientSecret;
-        paymentId = subscriptionData.data.subscriptionId;
+      if (confirmError) {
+        throw new Error(confirmError.message);
+      }
 
-        if (!clientSecret) {
-          throw new Error('No client secret returned from subscription creation');
-        }
+      if (paymentIntent?.status !== 'succeeded') {
+        throw new Error('Payment not completed');
+      }
 
-        console.log('[DBG][stripe] Subscription created, confirming payment...');
+      console.log('[DBG][stripe] Payment succeeded:', paymentIntent.id);
 
-        // Step 2: Confirm subscription payment with card
-        const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(
-          clientSecret,
-          {
-            payment_method: {
-              card: cardElement,
-              billing_details: {
-                name: user.profile.name,
-                email: user.profile.email,
-              },
-            },
-          }
-        );
+      // Step 3: Verify payment on backend and enroll user
+      const confirmResponse = await fetch('/api/payment/stripe/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paymentIntentId,
+          type: 'course',
+          itemId,
+          userId: user.id,
+        }),
+      });
 
-        if (confirmError) {
-          throw new Error(confirmError.message);
-        }
+      const confirmData = await confirmResponse.json();
 
-        if (paymentIntent?.status !== 'succeeded') {
-          throw new Error('Subscription payment not completed');
-        }
-
-        console.log('[DBG][stripe] Subscription payment succeeded:', paymentIntent.id);
-        onSuccess(paymentId);
+      if (confirmData.success) {
+        onSuccess(paymentIntent.id);
       } else {
-        // One-time Payment Flow (existing code for course purchases)
-        console.log('[DBG][stripe] Creating one-time payment...');
-
-        // Step 1: Create PaymentIntent on backend
-        const intentResponse = await fetch('/api/payment/stripe/create-payment-intent', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            amount,
-            currency,
-            type,
-            itemId,
-            userId: user.id,
-          }),
-        });
-
-        const intentData = await intentResponse.json();
-
-        if (!intentData.success) {
-          throw new Error(intentData.error || 'Failed to create payment intent');
-        }
-
-        clientSecret = intentData.data.clientSecret;
-        const paymentIntentId = intentData.data.paymentIntentId;
-
-        // Step 2: Confirm payment with card element
-        const { error: confirmError, paymentIntent } = await stripe.confirmCardPayment(
-          clientSecret,
-          {
-            payment_method: {
-              card: cardElement,
-              billing_details: {
-                name: user.profile.name,
-                email: user.profile.email,
-              },
-            },
-          }
-        );
-
-        if (confirmError) {
-          throw new Error(confirmError.message);
-        }
-
-        if (paymentIntent?.status !== 'succeeded') {
-          throw new Error('Payment not completed');
-        }
-
-        console.log('[DBG][stripe] Payment succeeded:', paymentIntent.id);
-
-        // Step 3: Verify payment on backend and enroll user
-        const confirmResponse = await fetch('/api/payment/stripe/confirm', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            paymentIntentId,
-            type,
-            itemId,
-            userId: user.id,
-          }),
-        });
-
-        const confirmData = await confirmResponse.json();
-
-        if (confirmData.success) {
-          onSuccess(paymentIntent.id);
-        } else {
-          onFailure(confirmData.error || 'Payment verification failed');
-        }
+        onFailure(confirmData.error || 'Payment verification failed');
       }
     } catch (err) {
       console.error('[DBG][stripe] Payment error:', err);

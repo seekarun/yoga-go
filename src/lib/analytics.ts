@@ -3,7 +3,7 @@
  * Provides functions to track events throughout the application
  */
 
-import type { EventType, EventMetadata } from '@/models/CourseAnalyticsEvent';
+import type { EventType, EventMetadata } from '@/lib/repositories/courseAnalyticsEventRepository';
 import { nanoid } from 'nanoid';
 
 // Get or create session ID from localStorage
@@ -87,11 +87,11 @@ export async function trackCoursePreview(courseId: string): Promise<boolean> {
 }
 
 /**
- * Track subscription button click
+ * Track enroll button click
  */
-export async function trackSubscriptionClick(courseId: string): Promise<boolean> {
+export async function trackEnrollClick(courseId: string): Promise<boolean> {
   return trackEvent({
-    eventType: 'subscription_click',
+    eventType: 'enroll_click',
     courseId,
   });
 }

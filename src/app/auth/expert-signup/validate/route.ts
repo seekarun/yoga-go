@@ -1,14 +1,16 @@
 /**
  * Expert Signup Code Validation API
  *
- * Validates expert signup code and creates a PendingAuth record.
- * Returns auth token for use in the login flow.
+ * Validates expert signup code and creates a signed cookie with expert role.
+ * Returns success status for use in the signup flow.
  */
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/mongodb';
-import { PendingAuth } from '@/models/PendingAuth';
+import { SignJWT } from 'jose';
+
+// Cookie name for pending OAuth auth data
+const PENDING_OAUTH_COOKIE = 'pending-oauth-role';
 
 export async function POST(request: NextRequest) {
   console.log('[DBG][expert-signup/validate] Validating expert code');
@@ -42,22 +44,48 @@ export async function POST(request: NextRequest) {
 
     console.log('[DBG][expert-signup/validate] Code validated successfully');
 
-    // Create PendingAuth record with expert role
-    await connectToDatabase();
-    const pendingAuth = await PendingAuth.create({
-      role: 'expert',
-      createdAt: new Date(),
-      expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
-    });
+    // Create signed cookie with expert role (instead of MongoDB PendingAuth)
+    const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET);
+    const signedToken = await new SignJWT({
+      roles: ['learner', 'expert'], // Expert users also have learner role
+      validated: true,
+    })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setExpirationTime('10m') // 10 minutes expiry
+      .setIssuedAt()
+      .sign(secret);
 
-    const authToken = pendingAuth._id;
-
-    console.log('[DBG][expert-signup/validate] Created pending auth:', authToken);
-
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
-      authToken,
+      message: 'Expert code validated successfully',
     });
+
+    // Set cookie with pending OAuth role
+    const cookieOptions: {
+      httpOnly: boolean;
+      secure: boolean;
+      sameSite: 'lax' | 'strict' | 'none';
+      path: string;
+      maxAge: number;
+      domain?: string;
+    } = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 10 * 60, // 10 minutes
+    };
+
+    // Set domain for production
+    if (process.env.NODE_ENV === 'production') {
+      cookieOptions.domain = '.myyoga.guru';
+    }
+
+    response.cookies.set(PENDING_OAUTH_COOKIE, signedToken, cookieOptions);
+
+    console.log('[DBG][expert-signup/validate] Set pending-oauth-role cookie');
+
+    return response;
   } catch (error) {
     console.error('[DBG][expert-signup/validate] Error:', error);
     return NextResponse.json(

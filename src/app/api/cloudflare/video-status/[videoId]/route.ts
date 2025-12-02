@@ -58,12 +58,16 @@ export async function GET(
 
     const video = data.result;
     const status = video.status?.state || 'unknown';
+    const errorReasonCode = video.status?.errorReasonCode;
+    const errorReasonText = video.status?.errorReasonText;
 
     console.log('[DBG][cloudflare-video-status] Video status:', {
       uid: video.uid,
       status,
       duration: video.duration,
       ready: video.readyToStream,
+      errorReasonCode,
+      errorReasonText,
     });
 
     return NextResponse.json({
@@ -77,6 +81,8 @@ export async function GET(
         preview: video.preview,
         playback: video.playback,
         meta: video.meta,
+        errorReasonCode,
+        errorReasonText,
       },
     });
   } catch (error) {

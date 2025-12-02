@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getSession, getUserByAuth0Id } from '@/lib/auth';
 import { getCourseProgress } from '@/lib/enrollment';
-import { connectToDatabase } from '@/lib/mongodb';
-import CourseModel from '@/models/Course';
-import LessonModel from '@/models/Lesson';
+import * as courseRepository from '@/lib/repositories/courseRepository';
+import * as lessonRepository from '@/lib/repositories/lessonRepository';
 import type { UserCourseData, ApiResponse, Course, Lesson } from '@/types';
 
 export async function GET(request: Request, { params }: { params: Promise<{ courseId: string }> }) {
@@ -41,11 +40,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
       return NextResponse.json(response, { status: 403 });
     }
 
-    // Connect to MongoDB
-    await connectToDatabase();
-
-    // Fetch course from MongoDB
-    const courseDoc = await CourseModel.findOne({ _id: courseId }).lean().exec();
+    // Fetch course from DynamoDB
+    const courseDoc = await courseRepository.getCourseById(courseId);
     if (!courseDoc) {
       const response: ApiResponse<null> = {
         success: false,
@@ -57,20 +53,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
     // Get progress from MongoDB
     const progress = await getCourseProgress(user.id, courseId);
 
-    // Fetch all lessons for this course and populate curriculum
-    const lessonDocs = await LessonModel.find({ courseId }).lean().exec();
-    const lessons: Lesson[] = lessonDocs.map((doc: any) => ({
-      ...doc,
-      id: doc._id as string,
-    }));
+    // Fetch all lessons for this course from DynamoDB
+    const lessonDocs = await lessonRepository.getLessonsByCourseId(courseId);
+    const lessons: Lesson[] = lessonDocs;
 
-    // Build curriculum with actual lessons (access curriculum from raw doc before casting to Course)
-    const rawCurriculum =
-      ((courseDoc as Record<string, unknown>).curriculum as {
-        week: number;
-        title: string;
-        lessonIds: string[];
-      }[]) || [];
+    // Build curriculum with actual lessons
+    const rawCurriculum = (courseDoc.curriculum || []).map(w => ({
+      week: w.week,
+      title: w.title,
+      lessonIds: (w as { lessonIds?: string[] }).lessonIds || [],
+    }));
 
     const completedLessonIds = progress?.completedLessons || [];
 
@@ -99,11 +91,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
       };
     });
 
-    // Transform to Course type
-    const course: Course = {
-      ...(courseDoc as any),
-      id: (courseDoc as any)._id as string,
-    };
+    // Use course directly since it's already typed as Course
+    const course: Course = { ...courseDoc };
 
     // Build user course data
     const userCourse: UserCourseData = {
@@ -124,9 +113,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
         : undefined,
       progress: {
         totalLessons: progress?.totalLessons || course.totalLessons,
-        completedLessons: Array.isArray(progress?.completedLessons)
-          ? progress.completedLessons
-          : [], // Return the actual array of lesson IDs
+        completedLessons: progress?.completedLessons?.length || 0,
         percentComplete: progress?.percentComplete || enrolledCourse.progress,
         currentLesson: progress?.currentLessonId
           ? {

@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession, getUserByAuth0Id } from '@/lib/auth';
-import { connectToDatabase } from '@/lib/mongodb';
-import ExpertAvailability from '@/models/ExpertAvailability';
+import * as availabilityRepository from '@/lib/repositories/availabilityRepository';
 import type { ApiResponse, ExpertAvailability as ExpertAvailabilityType } from '@/types';
 
 /**
@@ -35,10 +34,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
     const expertId = user.expertProfile;
 
-    await connectToDatabase();
-
-    // Get existing availability slot
-    const availability = await ExpertAvailability.findById(id);
+    // Get existing availability slot from DynamoDB
+    const availability = await availabilityRepository.getAvailabilityByIdOnly(id);
     if (!availability) {
       const response: ApiResponse<null> = {
         success: false,
@@ -58,15 +55,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
     // Parse request body
     const body = await request.json();
-    const { dayOfWeek, date, startTime, endTime, isRecurring, isActive } = body;
-
-    // Update fields if provided
-    if (dayOfWeek !== undefined) availability.dayOfWeek = dayOfWeek;
-    if (date !== undefined) availability.date = date;
-    if (startTime !== undefined) availability.startTime = startTime;
-    if (endTime !== undefined) availability.endTime = endTime;
-    if (isRecurring !== undefined) availability.isRecurring = isRecurring;
-    if (isActive !== undefined) availability.isActive = isActive;
+    const { startTime, endTime, isActive, sessionDuration, bufferMinutes, meetingLink } = body;
 
     // Validate time format if updated
     if (startTime || endTime) {
@@ -92,26 +81,31 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       }
     }
 
-    await availability.save();
+    // Build updates object
+    const updates: Parameters<typeof availabilityRepository.updateAvailability>[2] = {};
+    if (startTime !== undefined) updates.startTime = startTime;
+    if (endTime !== undefined) updates.endTime = endTime;
+    if (isActive !== undefined) updates.isActive = isActive;
+    if (sessionDuration !== undefined) updates.sessionDuration = sessionDuration;
+    if (bufferMinutes !== undefined) updates.bufferMinutes = bufferMinutes;
+    if (meetingLink !== undefined) updates.meetingLink = meetingLink;
+
+    // Update in DynamoDB
+    const updated = await availabilityRepository.updateAvailability(expertId, id, updates);
+
+    if (!updated) {
+      const response: ApiResponse<null> = {
+        success: false,
+        error: 'Failed to update availability slot',
+      };
+      return NextResponse.json(response, { status: 500 });
+    }
 
     console.log('[DBG][api/srv/live/availability/[id]] Availability updated:', id);
 
-    const data: ExpertAvailabilityType = {
-      id: availability._id,
-      expertId: availability.expertId,
-      dayOfWeek: availability.dayOfWeek,
-      date: availability.date,
-      startTime: availability.startTime,
-      endTime: availability.endTime,
-      isRecurring: availability.isRecurring,
-      isActive: availability.isActive,
-      createdAt: availability.createdAt,
-      updatedAt: availability.updatedAt,
-    };
-
     const response: ApiResponse<ExpertAvailabilityType> = {
       success: true,
-      data,
+      data: updated,
       message: 'Availability slot updated successfully',
     };
 
@@ -157,10 +151,8 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 
     const expertId = user.expertProfile;
 
-    await connectToDatabase();
-
-    // Get existing availability slot
-    const availability = await ExpertAvailability.findById(id);
+    // Get existing availability slot from DynamoDB
+    const availability = await availabilityRepository.getAvailabilityByIdOnly(id);
     if (!availability) {
       const response: ApiResponse<null> = {
         success: false,
@@ -179,8 +171,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     }
 
     // Soft delete by setting isActive = false
-    availability.isActive = false;
-    await availability.save();
+    await availabilityRepository.updateAvailability(expertId, id, { isActive: false });
 
     console.log('[DBG][api/srv/live/availability/[id]] Availability deleted (soft):', id);
 

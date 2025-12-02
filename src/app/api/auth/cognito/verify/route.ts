@@ -4,8 +4,6 @@
  */
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/mongodb';
-import { PendingAuth } from '@/models/PendingAuth';
 import {
   confirmSignUp,
   signIn,
@@ -15,12 +13,17 @@ import {
 } from '@/lib/cognito-auth';
 import { getOrCreateUser } from '@/lib/auth';
 import { encode } from 'next-auth/jwt';
+import { jwtVerify } from 'jose';
+import type { UserRole } from '@/types';
 
 interface VerifyRequestBody {
   email: string;
   code: string;
   password?: string; // Optional: for auto-login after verification
 }
+
+// Cookie name for pending signup data (must match signup route)
+const PENDING_SIGNUP_COOKIE = 'pending-signup';
 
 export async function POST(request: NextRequest) {
   try {
@@ -66,16 +69,27 @@ export async function POST(request: NextRequest) {
             name: userInfo.name,
           });
 
-          // Check for pending auth to get roles
-          await connectToDatabase();
-          const pendingAuth = await PendingAuth.findById(userInfo.sub);
-          // Get roles array from pending auth (handle both array and legacy string)
-          let roles: ('learner' | 'expert' | 'admin')[] = ['learner'];
-          if (pendingAuth?.role) {
-            roles = Array.isArray(pendingAuth.role) ? pendingAuth.role : [pendingAuth.role];
+          // Get roles from the signed cookie (instead of MongoDB PendingAuth)
+          let roles: UserRole[] = ['learner']; // Default
+          const pendingSignupCookie = request.cookies.get(PENDING_SIGNUP_COOKIE);
+
+          if (pendingSignupCookie?.value) {
+            try {
+              const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET);
+              const { payload } = await jwtVerify(pendingSignupCookie.value, secret);
+
+              // Verify this cookie is for the same user
+              if (payload.sub === userInfo.sub && payload.roles) {
+                roles = payload.roles as UserRole[];
+                console.log('[DBG][verify] Got roles from cookie:', roles);
+              }
+            } catch (cookieError) {
+              console.error('[DBG][verify] Error reading pending-signup cookie:', cookieError);
+              // Continue with default role
+            }
           }
 
-          // Create or update MongoDB user with roles array
+          // Create or update DynamoDB user with roles array
           const user = await getOrCreateUser(
             {
               sub: userInfo.sub,
@@ -86,11 +100,6 @@ export async function POST(request: NextRequest) {
           );
 
           console.log('[DBG][verify] Created/updated user:', user.id, 'roles:', roles);
-
-          // Delete pending auth
-          if (pendingAuth) {
-            await PendingAuth.deleteOne({ _id: userInfo.sub });
-          }
 
           // Create NextAuth JWT token
           const token = await encode({
@@ -141,6 +150,9 @@ export async function POST(request: NextRequest) {
 
           response.cookies.set('authjs.session-token', token, cookieOptions);
 
+          // Delete the pending-signup cookie
+          response.cookies.delete(PENDING_SIGNUP_COOKIE);
+
           return response;
         }
       } catch (signInError) {
@@ -151,11 +163,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Verification successful but no auto-login
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       message: 'Email verified successfully. Please sign in.',
       redirectUrl: '/auth/signin',
     });
+
+    // Delete the pending-signup cookie even if no auto-login
+    response.cookies.delete(PENDING_SIGNUP_COOKIE);
+
+    return response;
   } catch (error) {
     console.error('[DBG][verify] Error:', error);
 

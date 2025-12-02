@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/mongodb';
-import ExpertAvailability from '@/models/ExpertAvailability';
+import * as availabilityRepository from '@/lib/repositories/availabilityRepository';
 import type { ApiResponse, ExpertAvailability as ExpertAvailabilityType } from '@/types';
 
 /**
@@ -12,34 +11,25 @@ export async function GET(request: Request, { params }: { params: Promise<{ expe
   console.log('[DBG][api/live/experts/[expertId]/availability] GET request:', expertId);
 
   try {
-    await connectToDatabase();
+    // Get all active availability slots for this expert from DynamoDB
+    const availabilities = await availabilityRepository.getActiveAvailabilitiesByExpert(expertId);
 
-    // Get all active availability slots for this expert
-    const availabilities = await ExpertAvailability.find({
-      expertId,
-      isActive: true,
-    }).sort({ dayOfWeek: 1, startTime: 1 });
+    // Sort by dayOfWeek, then startTime
+    availabilities.sort((a, b) => {
+      if (a.dayOfWeek !== b.dayOfWeek) {
+        return (a.dayOfWeek ?? 7) - (b.dayOfWeek ?? 7);
+      }
+      return a.startTime.localeCompare(b.startTime);
+    });
 
-    // Transform to include 'id' field
-    const data: ExpertAvailabilityType[] = availabilities.map(av => ({
-      id: av._id,
-      expertId: av.expertId,
-      dayOfWeek: av.dayOfWeek,
-      date: av.date,
-      startTime: av.startTime,
-      endTime: av.endTime,
-      isRecurring: av.isRecurring,
-      isActive: av.isActive,
-      createdAt: av.createdAt,
-      updatedAt: av.updatedAt,
-    }));
-
-    console.log(`[DBG][api/live/experts/[expertId]/availability] Found ${data.length} slots`);
+    console.log(
+      `[DBG][api/live/experts/[expertId]/availability] Found ${availabilities.length} slots`
+    );
 
     const response: ApiResponse<ExpertAvailabilityType[]> = {
       success: true,
-      data,
-      total: data.length,
+      data: availabilities,
+      total: availabilities.length,
     };
 
     return NextResponse.json(response);

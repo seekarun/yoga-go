@@ -1,7 +1,6 @@
-import { connectToDatabase } from './mongodb';
-import User from '@/models/User';
-import CourseProgress from '@/models/CourseProgress';
-import CourseModel from '@/models/Course';
+import * as userRepository from './repositories/userRepository';
+import * as courseRepository from './repositories/courseRepository';
+import * as courseProgressRepository from './repositories/courseProgressRepository';
 import type { CourseReview } from '@/types';
 
 /**
@@ -22,22 +21,19 @@ export async function canUserReview(
   console.log('[DBG][reviews] Checking if user can review', { userId, courseId });
 
   try {
-    await connectToDatabase();
-
-    // Check if user is enrolled
-    const user = await User.findById(userId);
+    // Check if user is enrolled (from DynamoDB)
+    const user = await userRepository.getUserById(userId);
     if (!user) {
       return { canReview: false, reason: 'User not found' };
     }
 
-    const isEnrolled = user.enrolledCourses.some((ec: any) => ec.courseId === courseId);
+    const isEnrolled = user.enrolledCourses.some(ec => ec.courseId === courseId);
     if (!isEnrolled) {
       return { canReview: false, reason: 'You must be enrolled in this course to review it' };
     }
 
-    // Get course progress
-    const progressId = `${userId}_${courseId}`;
-    const courseProgress = await CourseProgress.findById(progressId);
+    // Get course progress from DynamoDB
+    const courseProgress = await courseProgressRepository.getCourseProgress(userId, courseId);
 
     if (!courseProgress) {
       return { canReview: false, reason: 'Course progress not found' };
@@ -54,8 +50,8 @@ export async function canUserReview(
       };
     }
 
-    // Check if user has already reviewed this course
-    const course = await CourseModel.findById(courseId);
+    // Check if user has already reviewed this course (from DynamoDB)
+    const course = await courseRepository.getCourseById(courseId);
     if (!course) {
       return { canReview: false, reason: 'Course not found' };
     }
@@ -83,11 +79,7 @@ export async function getUserCourseProgress(userId: string, courseId: string): P
   console.log('[DBG][reviews] Getting user course progress', { userId, courseId });
 
   try {
-    await connectToDatabase();
-
-    const progressId = `${userId}_${courseId}`;
-    const courseProgress = await CourseProgress.findById(progressId);
-
+    const courseProgress = await courseProgressRepository.getCourseProgress(userId, courseId);
     return courseProgress?.percentComplete || 0;
   } catch (error) {
     console.error('[DBG][reviews] Error getting course progress:', error);
@@ -105,9 +97,7 @@ export async function calculateCourseRating(courseId: string): Promise<{
   console.log('[DBG][reviews] Calculating course rating for', courseId);
 
   try {
-    await connectToDatabase();
-
-    const course = await CourseModel.findById(courseId);
+    const course = await courseRepository.getCourseById(courseId);
     if (!course) {
       console.error('[DBG][reviews] Course not found');
       return { averageRating: 0, totalRatings: 0 };
@@ -152,11 +142,9 @@ export async function updateCourseRatings(courseId: string): Promise<{
   console.log('[DBG][reviews] Updating course ratings for', courseId);
 
   try {
-    await connectToDatabase();
-
     const { averageRating, totalRatings } = await calculateCourseRating(courseId);
 
-    await CourseModel.findByIdAndUpdate(courseId, {
+    await courseRepository.updateCourseStats(courseId, {
       rating: averageRating,
       totalRatings,
     });
@@ -176,9 +164,7 @@ export async function hasUserReviewedCourse(userId: string, courseId: string): P
   console.log('[DBG][reviews] Checking if user has reviewed course', { userId, courseId });
 
   try {
-    await connectToDatabase();
-
-    const course = await CourseModel.findById(courseId);
+    const course = await courseRepository.getCourseById(courseId);
     if (!course) {
       return false;
     }

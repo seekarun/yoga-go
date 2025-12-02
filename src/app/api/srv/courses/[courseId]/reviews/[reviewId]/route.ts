@@ -1,8 +1,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { requireExpertAuth } from '@/lib/auth';
-import { connectToDatabase } from '@/lib/mongodb';
-import CourseModel from '@/models/Course';
+import * as courseRepository from '@/lib/repositories/courseRepository';
 import { updateCourseRatings } from '@/lib/reviews';
 import type { CourseReview, ApiResponse } from '@/types';
 
@@ -23,10 +22,8 @@ export async function PATCH(
 
     const { courseId, reviewId } = await params;
 
-    await connectToDatabase();
-
-    // Get course
-    const course = await CourseModel.findById(courseId);
+    // Get course from DynamoDB
+    const course = await courseRepository.getCourseById(courseId);
     if (!course) {
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: 'Course not found' },
@@ -35,7 +32,7 @@ export async function PATCH(
     }
 
     // Verify expert owns this course
-    if (course.instructor.id !== user.expertProfile) {
+    if (course.instructor?.id !== user.expertProfile) {
       console.log('[DBG][expert-review-approve-api] Expert does not own this course');
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: 'Forbidden - You do not own this course' },
@@ -56,9 +53,10 @@ export async function PATCH(
     }
 
     // Find the review
-    const reviewIndex = course.reviews?.findIndex((review: CourseReview) => review.id === reviewId);
+    const reviews = course.reviews || [];
+    const reviewIndex = reviews.findIndex((review: CourseReview) => review.id === reviewId);
 
-    if (reviewIndex === -1 || reviewIndex === undefined) {
+    if (reviewIndex === -1) {
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: 'Review not found' },
         { status: 404 }
@@ -66,11 +64,14 @@ export async function PATCH(
     }
 
     // Update review status
-    const oldStatus = course.reviews![reviewIndex].status;
-    course.reviews![reviewIndex].status = status;
-    course.reviews![reviewIndex].updatedAt = new Date().toISOString();
+    const oldStatus = reviews[reviewIndex].status;
+    const updatedReview: Partial<CourseReview> = {
+      status,
+      updatedAt: new Date().toISOString(),
+    };
 
-    await course.save();
+    // Update the review in DynamoDB
+    const updatedCourse = await courseRepository.updateReview(courseId, reviewId, updatedReview);
 
     console.log('[DBG][expert-review-approve-api] Review status updated:', {
       reviewId,
@@ -84,10 +85,13 @@ export async function PATCH(
       console.log('[DBG][expert-review-approve-api] Course ratings updated');
     }
 
+    // Get the updated review
+    const returnedReview = updatedCourse.reviews?.find((r: CourseReview) => r.id === reviewId);
+
     return NextResponse.json<ApiResponse<CourseReview>>(
       {
         success: true,
-        data: course.reviews![reviewIndex],
+        data: returnedReview!,
         message: `Review ${status === 'published' ? 'published' : 'unpublished'} successfully`,
       },
       { status: 200 }

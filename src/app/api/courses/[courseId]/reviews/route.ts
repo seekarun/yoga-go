@@ -1,10 +1,8 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth';
-import { connectToDatabase } from '@/lib/mongodb';
-import User from '@/models/User';
-import CourseModel from '@/models/Course';
-import { canUserReview, getUserCourseProgress, updateCourseRatings } from '@/lib/reviews';
+import { getSession, getUserByCognitoSub } from '@/lib/auth';
+import * as courseRepository from '@/lib/repositories/courseRepository';
+import { canUserReview } from '@/lib/reviews';
 import type { CourseReview, ApiResponse } from '@/types';
 import { nanoid } from 'nanoid';
 
@@ -31,10 +29,9 @@ export async function POST(
     }
 
     const cognitoSub = session.user.cognitoSub;
-    await connectToDatabase();
 
-    // Get user from database
-    const user = await User.findOne({ 'profile.email': session.user.email });
+    // Get user from DynamoDB
+    const user = await getUserByCognitoSub(cognitoSub);
     if (!user) {
       console.log('[DBG][review-api] User not found in database');
       return NextResponse.json<ApiResponse<null>>(
@@ -43,7 +40,7 @@ export async function POST(
       );
     }
 
-    const userId = user._id;
+    const userId = user.id; // cognitoSub is now the user id
 
     // Parse request body
     const body = await request.json();
@@ -97,21 +94,8 @@ export async function POST(
       updatedAt: now,
     };
 
-    // Add review to course
-    const course = await CourseModel.findById(courseId);
-    if (!course) {
-      return NextResponse.json<ApiResponse<null>>(
-        { success: false, error: 'Course not found' },
-        { status: 404 }
-      );
-    }
-
-    if (!course.reviews) {
-      course.reviews = [];
-    }
-
-    course.reviews.push(newReview);
-    await course.save();
+    // Add review to course in DynamoDB
+    await courseRepository.addReview(courseId, newReview);
 
     console.log('[DBG][review-api] Review submitted successfully:', {
       reviewId: newReview.id,
@@ -149,9 +133,7 @@ export async function GET(
   try {
     const { courseId } = await params;
 
-    await connectToDatabase();
-
-    const course = await CourseModel.findById(courseId);
+    const course = await courseRepository.getCourseById(courseId);
     if (!course) {
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: 'Course not found' },
