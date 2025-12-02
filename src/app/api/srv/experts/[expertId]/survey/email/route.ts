@@ -84,7 +84,7 @@ export async function POST(
 
     console.log(`[DBG][survey-email-api] Recipients: ${recipients.join(', ')}`);
 
-    // Send emails using SendGrid
+    // Send emails using AWS SES
     try {
       await sendBulkEmail({
         to: recipients,
@@ -108,7 +108,7 @@ export async function POST(
       return NextResponse.json(
         {
           success: false,
-          error: 'Failed to send emails. Please check SendGrid configuration.',
+          error: 'Failed to send emails. Please check email service configuration.',
         },
         { status: 500 }
       );

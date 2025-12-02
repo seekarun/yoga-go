@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { PAYMENT_CONFIG } from '@/config/payment';
+import * as userRepository from '@/lib/repositories/userRepository';
+import * as courseRepository from '@/lib/repositories/courseRepository';
+import { sendInvoiceEmail } from '@/lib/email';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { orderId, paymentId, signature, type, itemId, userId } = body;
+    const { orderId, paymentId, signature, type, itemId, userId, amount, currency } = body;
 
     // Validate required fields
     if (!orderId || !paymentId || !signature || !type || !itemId || !userId) {
@@ -51,13 +54,43 @@ export async function POST(request: Request) {
       console.log(`[Razorpay] Enrolled user ${userId} in course ${itemId}`);
     }
 
-    // TODO: Send confirmation email
-    // await sendEmail({
-    //   to: userEmail,
-    //   subject: 'Payment Confirmation',
-    //   template: 'payment-success',
-    //   data: { paymentId, itemName, amount },
-    // });
+    // Send invoice email
+    try {
+      const [user, course] = await Promise.all([
+        userRepository.getUserById(userId),
+        type === 'course' ? courseRepository.getCourseById(itemId) : null,
+      ]);
+
+      if (user?.profile?.email) {
+        // Amount from Razorpay is in paise (smallest unit)
+        const amountValue = amount ? amount / 100 : 0;
+        const currencySymbol =
+          currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency || 'INR';
+
+        await sendInvoiceEmail({
+          to: user.profile.email,
+          customerName: user.profile.name || 'Valued Customer',
+          orderId: orderId.slice(-8).toUpperCase(),
+          orderDate: new Date().toLocaleDateString('en-IN', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          }),
+          paymentMethod: 'Razorpay',
+          itemName: course?.title || 'Course Purchase',
+          itemDescription: course?.description?.slice(0, 100) || 'Online yoga course access',
+          currency: currencySymbol,
+          amount: amountValue.toFixed(2),
+          transactionId: paymentId,
+        });
+        console.log(`[Razorpay] Invoice email sent to ${user.profile.email}`);
+      } else {
+        console.warn('[Razorpay] No user email found, skipping invoice email');
+      }
+    } catch (emailError) {
+      // Log but don't fail the payment if email fails
+      console.error('[Razorpay] Failed to send invoice email:', emailError);
+    }
 
     return NextResponse.json({
       success: true,

@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { PAYMENT_CONFIG } from '@/config/payment';
 import * as paymentRepository from '@/lib/repositories/paymentRepository';
+import * as userRepository from '@/lib/repositories/userRepository';
+import * as courseRepository from '@/lib/repositories/courseRepository';
+import { sendInvoiceEmail } from '@/lib/email';
 
 function getStripeInstance() {
   if (!PAYMENT_CONFIG.stripe.secretKey) {
@@ -109,13 +112,41 @@ export async function POST(request: Request) {
       console.log(`[DBG][stripe] Enrolled user ${userId} in course ${itemId}`);
     }
 
-    // TODO: Send confirmation email
-    // await sendEmail({
-    //   to: userEmail,
-    //   subject: 'Payment Confirmation',
-    //   template: 'payment-success',
-    //   data: { paymentId: paymentIntentId, itemName, amount },
-    // });
+    // Send invoice email
+    try {
+      const [user, course] = await Promise.all([
+        userRepository.getUserById(userId),
+        type === 'course' ? courseRepository.getCourseById(itemId) : null,
+      ]);
+
+      if (user?.profile?.email) {
+        const amount = paymentIntent.amount / 100; // Convert from cents
+        const currency = paymentIntent.currency.toUpperCase();
+
+        await sendInvoiceEmail({
+          to: user.profile.email,
+          customerName: user.profile.name || 'Valued Customer',
+          orderId: paymentIntentId.slice(-8).toUpperCase(),
+          orderDate: new Date().toLocaleDateString('en-AU', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          }),
+          paymentMethod: 'Credit Card (Stripe)',
+          itemName: course?.title || 'Course Purchase',
+          itemDescription: course?.description?.slice(0, 100) || 'Online yoga course access',
+          currency: currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency,
+          amount: amount.toFixed(2),
+          transactionId: paymentIntentId,
+        });
+        console.log(`[DBG][stripe] Invoice email sent to ${user.profile.email}`);
+      } else {
+        console.warn('[DBG][stripe] No user email found, skipping invoice email');
+      }
+    } catch (emailError) {
+      // Log but don't fail the payment if email fails
+      console.error('[DBG][stripe] Failed to send invoice email:', emailError);
+    }
 
     return NextResponse.json({
       success: true,

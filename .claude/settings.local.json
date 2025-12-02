@@ -20,7 +20,8 @@
       "Bash(aws cloudformation describe-stacks:*)",
       "Bash(npx eslint:*)",
       "Bash(find:*)",
-      "Bash(xargs ls:*)"
+      "Bash(xargs ls:*)",
+      "Bash(npx cdk:*)"
     ],
     "deny": [],
     "ask": []

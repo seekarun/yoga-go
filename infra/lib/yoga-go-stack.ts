@@ -12,6 +12,10 @@ import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as route53Targets from 'aws-cdk-lib/aws-route53-targets';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as ses from 'aws-cdk-lib/aws-ses';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as nodejsLambda from 'aws-cdk-lib/aws-lambda-nodejs';
+import * as path from 'path';
 import type { Construct } from 'constructs';
 
 export class YogaGoStack extends cdk.Stack {
@@ -330,6 +334,277 @@ export class YogaGoStack extends cdk.Stack {
     });
 
     // ========================================
+    // AWS SES - Email Service
+    // ========================================
+    // Domain identity for sending emails from myyoga.guru
+    // This automatically creates DKIM records in Route 53
+    const emailIdentity = new ses.EmailIdentity(this, 'EmailIdentity', {
+      identity: ses.Identity.publicHostedZone(hostedZone),
+      mailFromDomain: 'mail.myyoga.guru',
+    });
+
+    // Configuration set for email tracking (opens, clicks, bounces, etc.)
+    const sesConfigSet = new ses.ConfigurationSet(this, 'SesConfigSet', {
+      configurationSetName: 'yoga-go-emails',
+      sendingEnabled: true,
+      reputationMetrics: true,
+    });
+
+    // Add CloudWatch destination for email event tracking
+    sesConfigSet.addEventDestination('CloudWatchDestination', {
+      destination: ses.EventDestination.cloudWatchDimensions([
+        {
+          name: 'EmailType',
+          source: ses.CloudWatchDimensionSource.MESSAGE_TAG,
+          defaultValue: 'transactional',
+        },
+      ]),
+      events: [
+        ses.EmailSendingEvent.SEND,
+        ses.EmailSendingEvent.DELIVERY,
+        ses.EmailSendingEvent.BOUNCE,
+        ses.EmailSendingEvent.COMPLAINT,
+        ses.EmailSendingEvent.REJECT,
+        ses.EmailSendingEvent.OPEN,
+        ses.EmailSendingEvent.CLICK,
+      ],
+    });
+
+    // ========================================
+    // SES Email Templates
+    // ========================================
+    const welcomeEmailTemplate = new ses.CfnTemplate(this, 'WelcomeEmailTemplate', {
+      template: {
+        templateName: 'yoga-go-welcome',
+        subjectPart: 'Welcome to MyYoga.Guru! 🧘',
+        textPart: `Hi {{name}},
+
+Welcome to MyYoga.Guru!
+
+We're thrilled to have you join our community of yoga enthusiasts. Whether you're a beginner or an experienced practitioner, we have courses designed just for you.
+
+Here's what you can do next:
+- Browse our expert-led courses
+- Start your first lesson
+- Connect with our yoga instructors
+
+If you have any questions, feel free to reach out to us.
+
+Namaste,
+The MyYoga.Guru Team
+
+---
+Visit us at https://www.myyoga.guru`,
+        htmlPart: `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="text-align: center; margin-bottom: 30px;">
+    <h1 style="color: #6366f1; margin: 0;">🧘 MyYoga.Guru</h1>
+  </div>
+
+  <h2 style="color: #1f2937;">Hi {{name}}!</h2>
+
+  <p>Welcome to <strong>MyYoga.Guru</strong>!</p>
+
+  <p>We're thrilled to have you join our community of yoga enthusiasts. Whether you're a beginner or an experienced practitioner, we have courses designed just for you.</p>
+
+  <h3 style="color: #4f46e5;">Here's what you can do next:</h3>
+  <ul style="padding-left: 20px;">
+    <li>📚 Browse our expert-led courses</li>
+    <li>▶️ Start your first lesson</li>
+    <li>🤝 Connect with our yoga instructors</li>
+  </ul>
+
+  <div style="text-align: center; margin: 30px 0;">
+    <a href="https://www.myyoga.guru/app" style="background-color: #6366f1; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: 600;">Start Exploring</a>
+  </div>
+
+  <p>If you have any questions, feel free to reach out to us.</p>
+
+  <p style="margin-top: 30px;">
+    <strong>Namaste,</strong><br>
+    The MyYoga.Guru Team
+  </p>
+
+  <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+
+  <p style="color: #6b7280; font-size: 12px; text-align: center;">
+    <a href="https://www.myyoga.guru" style="color: #6366f1;">www.myyoga.guru</a>
+  </p>
+</body>
+</html>`,
+      },
+    });
+
+    // Invoice/Payment Confirmation Template
+    const invoiceEmailTemplate = new ses.CfnTemplate(this, 'InvoiceEmailTemplate', {
+      template: {
+        templateName: 'yoga-go-invoice',
+        subjectPart: 'Payment Confirmation - Order #{{orderId}} 🧘',
+        textPart: `Hi {{customerName}},
+
+Thank you for your purchase!
+
+===========================================
+INVOICE
+===========================================
+
+Order ID: {{orderId}}
+Date: {{orderDate}}
+Payment Method: {{paymentMethod}}
+
+-------------------------------------------
+ITEM DETAILS
+-------------------------------------------
+{{itemName}}
+{{itemDescription}}
+
+-------------------------------------------
+PAYMENT SUMMARY
+-------------------------------------------
+Subtotal: {{currency}} {{amount}}
+Total: {{currency}} {{amount}}
+
+Payment Status: PAID
+
+-------------------------------------------
+
+You now have full access to your purchased content. Start learning now at:
+https://www.myyoga.guru/app
+
+If you have any questions about your purchase, please contact us at support@myyoga.guru
+
+Namaste,
+The MyYoga.Guru Team
+
+---
+This is an automated receipt for your records.
+Transaction ID: {{transactionId}}`,
+        htmlPart: `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+  <div style="background-color: white; border-radius: 8px; padding: 30px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+    <!-- Header -->
+    <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #6366f1; padding-bottom: 20px;">
+      <h1 style="color: #6366f1; margin: 0; font-size: 24px;">🧘 MyYoga.Guru</h1>
+      <p style="color: #6b7280; margin: 10px 0 0 0; font-size: 14px;">Payment Confirmation</p>
+    </div>
+
+    <!-- Greeting -->
+    <p style="font-size: 16px;">Hi <strong>{{customerName}}</strong>,</p>
+    <p>Thank you for your purchase! Your payment has been successfully processed.</p>
+
+    <!-- Invoice Box -->
+    <div style="background-color: #f3f4f6; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Order ID</td>
+          <td style="padding: 8px 0; text-align: right; font-weight: 600;">{{orderId}}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Date</td>
+          <td style="padding: 8px 0; text-align: right;">{{orderDate}}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Payment Method</td>
+          <td style="padding: 8px 0; text-align: right;">{{paymentMethod}}</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Item Details -->
+    <div style="border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <h3 style="margin: 0 0 15px 0; color: #1f2937; font-size: 16px;">📚 Item Purchased</h3>
+      <p style="margin: 0; font-weight: 600; color: #1f2937;">{{itemName}}</p>
+      <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 14px;">{{itemDescription}}</p>
+    </div>
+
+    <!-- Payment Summary -->
+    <div style="background-color: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 20px; margin: 20px 0;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 8px 0; font-size: 14px;">Subtotal</td>
+          <td style="padding: 8px 0; text-align: right;">{{currency}} {{amount}}</td>
+        </tr>
+        <tr style="border-top: 2px solid #86efac;">
+          <td style="padding: 12px 0 8px 0; font-weight: 700; font-size: 16px;">Total Paid</td>
+          <td style="padding: 12px 0 8px 0; text-align: right; font-weight: 700; font-size: 18px; color: #16a34a;">{{currency}} {{amount}}</td>
+        </tr>
+      </table>
+      <div style="text-align: center; margin-top: 10px;">
+        <span style="background-color: #16a34a; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">✓ PAID</span>
+      </div>
+    </div>
+
+    <!-- CTA -->
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="https://www.myyoga.guru/app" style="background-color: #6366f1; color: white; padding: 14px 40px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">Start Learning Now</a>
+    </div>
+
+    <!-- Footer -->
+    <div style="border-top: 1px solid #e5e7eb; padding-top: 20px; margin-top: 30px;">
+      <p style="margin: 0; color: #6b7280; font-size: 14px;">If you have any questions, contact us at <a href="mailto:support@myyoga.guru" style="color: #6366f1;">support@myyoga.guru</a></p>
+      <p style="margin-top: 20px;"><strong>Namaste,</strong><br>The MyYoga.Guru Team</p>
+    </div>
+
+    <!-- Transaction ID -->
+    <p style="color: #9ca3af; font-size: 11px; text-align: center; margin-top: 30px;">
+      Transaction ID: {{transactionId}}
+    </p>
+  </div>
+</body>
+</html>`,
+      },
+    });
+
+    // ========================================
+    // Welcome Email Lambda (Cognito Trigger)
+    // ========================================
+    const welcomeEmailLambda = new nodejsLambda.NodejsFunction(this, 'WelcomeEmailLambda', {
+      functionName: 'yoga-go-welcome-email',
+      runtime: lambda.Runtime.NODEJS_22_X,
+      handler: 'handler',
+      entry: path.join(__dirname, '../lambda/welcome-email.ts'),
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 128,
+      environment: {
+        // Note: AWS_REGION is automatically set by Lambda runtime
+        SES_FROM_EMAIL: 'hi@myyoga.guru',
+        SES_CONFIG_SET: sesConfigSet.configurationSetName,
+        SES_WELCOME_TEMPLATE: 'yoga-go-welcome',
+      },
+      bundling: {
+        minify: true,
+        sourceMap: false,
+      },
+    });
+
+    // Grant Lambda permission to send emails via SES
+    welcomeEmailLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['ses:SendEmail', 'ses:SendRawEmail', 'ses:SendTemplatedEmail'],
+        resources: ['*'],
+        conditions: {
+          StringEquals: {
+            'ses:FromAddress': 'hi@myyoga.guru',
+          },
+        },
+      })
+    );
+
+    // Add Lambda as Post Confirmation trigger to Cognito User Pool
+    userPool.addTrigger(cognito.UserPoolOperation.POST_CONFIRMATION, welcomeEmailLambda);
+
+    // ========================================
     // CloudWatch Log Group
     // ========================================
     const logGroup = new logs.LogGroup(this, 'EcsLogGroup', {
@@ -506,6 +781,20 @@ export class YogaGoStack extends cdk.Stack {
     analyticsTable.grantReadWriteData(taskRole);
     discussionsTable.grantReadWriteData(taskRole);
 
+    // Grant SES send permissions to the task role
+    taskRole.addToPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['ses:SendEmail', 'ses:SendRawEmail'],
+        resources: ['*'],
+        conditions: {
+          StringEquals: {
+            'ses:FromAddress': 'hi@myyoga.guru',
+          },
+        },
+      })
+    );
+
     // ========================================
     // ECS Task Definition
     // ========================================
@@ -543,6 +832,9 @@ export class YogaGoStack extends cdk.Stack {
         COGNITO_CLIENT_ID: appClient.userPoolClientId,
         COGNITO_ISSUER: `https://cognito-idp.${this.region}.amazonaws.com/${userPool.userPoolId}`,
         NEXTAUTH_URL: 'https://www.myyoga.guru',
+        // SES email configuration
+        SES_FROM_EMAIL: 'hi@myyoga.guru',
+        SES_CONFIG_SET: sesConfigSet.configurationSetName,
       },
       secrets: {
         // Load secrets from Secrets Manager
@@ -705,6 +997,39 @@ export class YogaGoStack extends cdk.Stack {
       value: cdk.Fn.join(', ', hostedZone.hostedZoneNameServers || []),
       description: 'Route 53 Name Servers - Update these in Namecheap',
       exportName: 'YogaGoNameServers',
+    });
+
+    // ========================================
+    // SES Outputs
+    // ========================================
+    new cdk.CfnOutput(this, 'SesConfigSetName', {
+      value: sesConfigSet.configurationSetName,
+      description: 'SES Configuration Set Name for email tracking',
+      exportName: 'YogaGoSesConfigSetName',
+    });
+
+    new cdk.CfnOutput(this, 'SesEmailIdentity', {
+      value: emailIdentity.emailIdentityName,
+      description: 'SES Email Identity (verified domain)',
+      exportName: 'YogaGoSesEmailIdentity',
+    });
+
+    new cdk.CfnOutput(this, 'WelcomeEmailLambdaArn', {
+      value: welcomeEmailLambda.functionArn,
+      description: 'Welcome Email Lambda ARN (Cognito Post Confirmation trigger)',
+      exportName: 'YogaGoWelcomeEmailLambdaArn',
+    });
+
+    new cdk.CfnOutput(this, 'WelcomeEmailTemplateName', {
+      value: welcomeEmailTemplate.ref,
+      description: 'SES Welcome Email Template Name',
+      exportName: 'YogaGoWelcomeEmailTemplateName',
+    });
+
+    new cdk.CfnOutput(this, 'InvoiceEmailTemplateName', {
+      value: invoiceEmailTemplate.ref,
+      description: 'SES Invoice Email Template Name',
+      exportName: 'YogaGoInvoiceEmailTemplateName',
     });
 
     // ========================================
