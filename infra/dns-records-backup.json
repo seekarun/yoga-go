@@ -1,0 +1,201 @@
+{
+    "ResourceRecordSets": [
+        {
+            "Name": "myyoga.guru.",
+            "Type": "A",
+            "AliasTarget": {
+                "HostedZoneId": "Z1GM3OXH4ZPM65",
+                "DNSName": "dualstack.yoga-go-alb-721063953.ap-southeast-2.elb.amazonaws.com.",
+                "EvaluateTargetHealth": false
+            }
+        },
+        {
+            "Name": "myyoga.guru.",
+            "Type": "MX",
+            "TTL": 60,
+            "ResourceRecords": [
+                {
+                    "Value": "1 SMTP.GOOGLE.COM."
+                }
+            ]
+        },
+        {
+            "Name": "myyoga.guru.",
+            "Type": "NS",
+            "TTL": 86400,
+            "ResourceRecords": [
+                {
+                    "Value": "ns-1430.awsdns-50.org."
+                },
+                {
+                    "Value": "ns-1932.awsdns-49.co.uk."
+                },
+                {
+                    "Value": "ns-504.awsdns-63.com."
+                },
+                {
+                    "Value": "ns-551.awsdns-04.net."
+                }
+            ]
+        },
+        {
+            "Name": "myyoga.guru.",
+            "Type": "SOA",
+            "TTL": 900,
+            "ResourceRecords": [
+                {
+                    "Value": "ns-1430.awsdns-50.org. awsdns-hostmaster.amazon.com. 1 7200 900 1209600 86400"
+                }
+            ]
+        },
+        {
+            "Name": "57198147.myyoga.guru.",
+            "Type": "CNAME",
+            "TTL": 300,
+            "ResourceRecords": [
+                {
+                    "Value": "sendgrid.net."
+                }
+            ]
+        },
+        {
+            "Name": "\\052.myyoga.guru.",
+            "Type": "CNAME",
+            "TTL": 300,
+            "ResourceRecords": [
+                {
+                    "Value": "yoga-go-alb-721063953.ap-southeast-2.elb.amazonaws.com."
+                }
+            ]
+        },
+        {
+            "Name": "\\100.myyoga.guru.",
+            "Type": "TXT",
+            "TTL": 300,
+            "ResourceRecords": [
+                {
+                    "Value": "\"google-site-verification=anjyUMbXV7oAEwBX3ZySiT1N5G4Do_VyUGFLW38J2R8\""
+                }
+            ]
+        },
+        {
+            "Name": "_34397122e226c362445f5b3c80f509ab.myyoga.guru.",
+            "Type": "CNAME",
+            "TTL": 300,
+            "ResourceRecords": [
+                {
+                    "Value": "_68ac4f4c419eb17022afdadc955c2d0a.jkddzztszm.acm-validations.aws."
+                }
+            ]
+        },
+        {
+            "Name": "_dmarc.myyoga.guru.",
+            "Type": "TXT",
+            "TTL": 300,
+            "ResourceRecords": [
+                {
+                    "Value": "\"v=DMARC1; p=none;\""
+                }
+            ]
+        },
+        {
+            "Name": "4hypzr43s36op372gvz4ht5wvk7xplq2._domainkey.myyoga.guru.",
+            "Type": "CNAME",
+            "TTL": 1800,
+            "ResourceRecords": [
+                {
+                    "Value": "4hypzr43s36op372gvz4ht5wvk7xplq2.dkim.amazonses.com"
+                }
+            ]
+        },
+        {
+            "Name": "7uxskjp2wle5ivcp6m7n66pxwvxhim2g._domainkey.myyoga.guru.",
+            "Type": "CNAME",
+            "TTL": 1800,
+            "ResourceRecords": [
+                {
+                    "Value": "7uxskjp2wle5ivcp6m7n66pxwvxhim2g.dkim.amazonses.com"
+                }
+            ]
+        },
+        {
+            "Name": "hpnrex7ot6tidj2ytzozoxynz2qguyid._domainkey.myyoga.guru.",
+            "Type": "CNAME",
+            "TTL": 1800,
+            "ResourceRecords": [
+                {
+                    "Value": "hpnrex7ot6tidj2ytzozoxynz2qguyid.dkim.amazonses.com"
+                }
+            ]
+        },
+        {
+            "Name": "s1._domainkey.myyoga.guru.",
+            "Type": "CNAME",
+            "TTL": 300,
+            "ResourceRecords": [
+                {
+                    "Value": "s1.domainkey.u57198147.wl148.sendgrid.net."
+                }
+            ]
+        },
+        {
+            "Name": "s2._domainkey.myyoga.guru.",
+            "Type": "CNAME",
+            "TTL": 300,
+            "ResourceRecords": [
+                {
+                    "Value": "s2.domainkey.u57198147.wl148.sendgrid.net."
+                }
+            ]
+        },
+        {
+            "Name": "em5826.myyoga.guru.",
+            "Type": "CNAME",
+            "TTL": 300,
+            "ResourceRecords": [
+                {
+                    "Value": "u57198147.wl148.sendgrid.net."
+                }
+            ]
+        },
+        {
+            "Name": "kpfrkjglxlxo.myyoga.guru.",
+            "Type": "CNAME",
+            "TTL": 300,
+            "ResourceRecords": [
+                {
+                    "Value": "gv-2qm46a4nuug5q5.dv.googlehosted.com."
+                }
+            ]
+        },
+        {
+            "Name": "mail.myyoga.guru.",
+            "Type": "MX",
+            "TTL": 1800,
+            "ResourceRecords": [
+                {
+                    "Value": "10 feedback-smtp.ap-southeast-2.amazonses.com"
+                }
+            ]
+        },
+        {
+            "Name": "mail.myyoga.guru.",
+            "Type": "TXT",
+            "TTL": 1800,
+            "ResourceRecords": [
+                {
+                    "Value": "\"v=spf1 include:amazonses.com ~all\""
+                }
+            ]
+        },
+        {
+            "Name": "www.myyoga.guru.",
+            "Type": "A",
+            "AliasTarget": {
+                "HostedZoneId": "Z1GM3OXH4ZPM65",
+                "DNSName": "dualstack.yoga-go-alb-721063953.ap-southeast-2.elb.amazonaws.com.",
+                "EvaluateTargetHealth": false
+            }
+        }
+    ]
+}

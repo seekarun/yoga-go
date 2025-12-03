@@ -5,13 +5,13 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# Next.js
-.next
-out
-dist
+# Next.js build outputs (will be recreated during build)
+*/.next
+*/out
+*/dist
 
-# Production
-build
+# Production builds
+*/build
 
 # Misc
 .DS_Store
@@ -20,13 +20,10 @@ build
 # Debug
 *.log
 
-# Local env files
-.env
-.env*.local
-.env.local
+# Local env files - keep these for Docker context
+# but they'll be overridden by runtime env vars
 .env.development.local
 .env.test.local
-.env.production.local
 
 # Testing
 coverage
@@ -44,41 +41,27 @@ coverage
 .gitignore
 .gitattributes
 
-# GitHub
+# GitHub (keep for CI/CD reference but not needed in image)
 .github
 
 # Documentation
 *.md
-README.md
-CHANGELOG.md
 LICENSE
-DEPLOYMENT.md
-DOCKER_AWS_SETUP.md
 
-# Docker
+# Docker files (don't need to copy these into the build)
 Dockerfile*
 docker-compose*.yml
-.dockerignore
 
-# Infrastructure & Scripts
-infra
-infrastructure
+# Infrastructure & Scripts (not needed for app build)
+infra/cdk.out
+infra/node_modules
 scripts
-docs
-cdk.out
 
-# Husky
+# Husky (not needed in container)
 .husky
 
-# ESLint & Prettier
-.eslintrc*
-.prettierrc*
-.prettierignore
-eslint.config.*
-
-# TypeScript
+# TypeScript build info
 *.tsbuildinfo
-next-env.d.ts
 
 # Vercel
 .vercel
@@ -90,3 +73,6 @@ mongodb-data
 tmp
 temp
 *.tmp
+
+# Claude config
+.claude

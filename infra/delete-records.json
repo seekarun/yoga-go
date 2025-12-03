@@ -1,0 +1,95 @@
+{
+  "Comment": "Delete all records to allow hosted zone deletion",
+  "Changes": [
+    {
+      "Action": "DELETE",
+      "ResourceRecordSet": {
+        "Name": "myyoga.guru.",
+        "Type": "MX",
+        "TTL": 60,
+        "ResourceRecords": [{ "Value": "1 SMTP.GOOGLE.COM." }]
+      }
+    },
+    {
+      "Action": "DELETE",
+      "ResourceRecordSet": {
+        "Name": "57198147.myyoga.guru.",
+        "Type": "CNAME",
+        "TTL": 300,
+        "ResourceRecords": [{ "Value": "sendgrid.net." }]
+      }
+    },
+    {
+      "Action": "DELETE",
+      "ResourceRecordSet": {
+        "Name": "\\052.myyoga.guru.",
+        "Type": "CNAME",
+        "TTL": 300,
+        "ResourceRecords": [{ "Value": "yoga-go-alb-721063953.ap-southeast-2.elb.amazonaws.com." }]
+      }
+    },
+    {
+      "Action": "DELETE",
+      "ResourceRecordSet": {
+        "Name": "\\100.myyoga.guru.",
+        "Type": "TXT",
+        "TTL": 300,
+        "ResourceRecords": [{ "Value": "\"google-site-verification=anjyUMbXV7oAEwBX3ZySiT1N5G4Do_VyUGFLW38J2R8\"" }]
+      }
+    },
+    {
+      "Action": "DELETE",
+      "ResourceRecordSet": {
+        "Name": "_34397122e226c362445f5b3c80f509ab.myyoga.guru.",
+        "Type": "CNAME",
+        "TTL": 300,
+        "ResourceRecords": [{ "Value": "_68ac4f4c419eb17022afdadc955c2d0a.jkddzztszm.acm-validations.aws." }]
+      }
+    },
+    {
+      "Action": "DELETE",
+      "ResourceRecordSet": {
+        "Name": "_dmarc.myyoga.guru.",
+        "Type": "TXT",
+        "TTL": 300,
+        "ResourceRecords": [{ "Value": "\"v=DMARC1; p=none;\"" }]
+      }
+    },
+    {
+      "Action": "DELETE",
+      "ResourceRecordSet": {
+        "Name": "s1._domainkey.myyoga.guru.",
+        "Type": "CNAME",
+        "TTL": 300,
+        "ResourceRecords": [{ "Value": "s1.domainkey.u57198147.wl148.sendgrid.net." }]
+      }
+    },
+    {
+      "Action": "DELETE",
+      "ResourceRecordSet": {
+        "Name": "s2._domainkey.myyoga.guru.",
+        "Type": "CNAME",
+        "TTL": 300,
+        "ResourceRecords": [{ "Value": "s2.domainkey.u57198147.wl148.sendgrid.net." }]
+      }
+    },
+    {
+      "Action": "DELETE",
+      "ResourceRecordSet": {
+        "Name": "em5826.myyoga.guru.",
+        "Type": "CNAME",
+        "TTL": 300,
+        "ResourceRecords": [{ "Value": "u57198147.wl148.sendgrid.net." }]
+      }
+    },
+    {
+      "Action": "DELETE",
+      "ResourceRecordSet": {
+        "Name": "kpfrkjglxlxo.myyoga.guru.",
+        "Type": "CNAME",
+        "TTL": 300,
+        "ResourceRecords": [{ "Value": "gv-2qm46a4nuug5q5.dv.googlehosted.com." }]
+      }
+    }
+  ]
+}

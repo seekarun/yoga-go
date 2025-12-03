@@ -1,0 +1,175 @@
+name: Deploy yoga-go Tag to ECS
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Image tag to deploy (e.g., b727c7a or latest)'
+        required: true
+        default: 'latest'
+        type: string
+
+env:
+  ECR_REPOSITORY: yoga-go
+  CLUSTER_NAME: yoga-go-cluster
+  SERVICE_NAME: yoga-go-service
+  TASK_FAMILY: yoga-go
+
+jobs:
+  deploy:
+    name: Deploy tag ${{ inputs.image_tag }} to ECS
+    runs-on: ubuntu-latest
+    environment: aws-dev
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Verify image exists
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        run: |
+          echo "🔍 Verifying image tag exists in ECR..."
+
+          aws ecr describe-images \
+            --repository-name $ECR_REPOSITORY \
+            --image-ids imageTag=$IMAGE_TAG \
+            --region ${{ secrets.AWS_REGION }} || {
+            echo "❌ Error: Image tag '$IMAGE_TAG' not found in ECR"
+            exit 1
+          }
+
+          echo "✅ Image tag verified: $IMAGE_TAG"
+
+      - name: Get current task definition
+        id: get-task-def
+        run: |
+          echo "📋 Fetching current task definition..."
+
+          TASK_DEF_ARN=$(aws ecs describe-services \
+            --cluster $CLUSTER_NAME \
+            --services $SERVICE_NAME \
+            --region ${{ secrets.AWS_REGION }} \
+            --query 'services[0].taskDefinition' \
+            --output text)
+
+          echo "task_def_arn=$TASK_DEF_ARN" >> $GITHUB_OUTPUT
+          echo "✅ Current task definition: $TASK_DEF_ARN"
+
+      - name: Create new task definition
+        id: new-task-def
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          TASK_DEF_ARN: ${{ steps.get-task-def.outputs.task_def_arn }}
+        run: |
+          echo "🔧 Creating new task definition with image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+          # Get task definition JSON
+          TASK_DEF_JSON=$(aws ecs describe-task-definition \
+            --task-definition $TASK_DEF_ARN \
+            --region ${{ secrets.AWS_REGION }} \
+            --query 'taskDefinition')
+
+          # Update image and remove unnecessary fields
+          NEW_IMAGE="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+          NEW_TASK_DEF=$(echo "$TASK_DEF_JSON" | jq \
+            --arg image "$NEW_IMAGE" \
+            'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy) |
+             .containerDefinitions[0].image = $image')
+
+          # Register new task definition
+          NEW_TASK_DEF_ARN=$(aws ecs register-task-definition \
+            --cli-input-json "$NEW_TASK_DEF" \
+            --region ${{ secrets.AWS_REGION }} \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+
+          echo "new_task_def_arn=$NEW_TASK_DEF_ARN" >> $GITHUB_OUTPUT
+          echo "✅ New task definition registered: $NEW_TASK_DEF_ARN"
+
+      - name: Update ECS service
+        env:
+          NEW_TASK_DEF_ARN: ${{ steps.new-task-def.outputs.new_task_def_arn }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        run: |
+          echo "🚀 Updating ECS service with new task definition..."
+
+          aws ecs update-service \
+            --cluster $CLUSTER_NAME \
+            --service $SERVICE_NAME \
+            --task-definition $NEW_TASK_DEF_ARN \
+            --region ${{ secrets.AWS_REGION }} \
+            --output json > /dev/null
+
+          echo ""
+          echo "═══════════════════════════════════════════"
+          echo "✅ Deployment Started!"
+          echo "═══════════════════════════════════════════"
+          echo ""
+          echo "📦 Image Tag:  $IMAGE_TAG"
+          echo "🎯 Cluster:    $CLUSTER_NAME"
+          echo "🔧 Service:    $SERVICE_NAME"
+          echo "📋 Task Def:   $NEW_TASK_DEF_ARN"
+          echo ""
+          echo "⏱️  Deployment in progress (2-3 minutes)..."
+          echo ""
+          echo "ECS will:"
+          echo "  1. Stop the current task"
+          echo "  2. Pull image: $IMAGE_TAG"
+          echo "  3. Start new task"
+          echo "  4. Wait for health checks"
+          echo ""
+          echo "📊 Monitor at:"
+          echo "  https://console.aws.amazon.com/ecs/v2/clusters/$CLUSTER_NAME/services/$SERVICE_NAME?region=${{ secrets.AWS_REGION }}"
+          echo ""
+
+      - name: Wait for deployment
+        run: |
+          echo "⏳ Waiting for deployment to stabilize..."
+
+          # Wait up to 10 minutes for service to stabilize
+          aws ecs wait services-stable \
+            --cluster $CLUSTER_NAME \
+            --services $SERVICE_NAME \
+            --region ${{ secrets.AWS_REGION }} || {
+            echo "⚠️  Warning: Deployment did not stabilize within timeout"
+            echo "Check ECS console for deployment status"
+            exit 0
+          }
+
+          echo "✅ Deployment completed successfully!"
+
+      - name: Get deployment status
+        if: always()
+        run: |
+          echo ""
+          echo "📊 Current service status:"
+          echo ""
+
+          aws ecs describe-services \
+            --cluster $CLUSTER_NAME \
+            --services $SERVICE_NAME \
+            --region ${{ secrets.AWS_REGION }} \
+            --query 'services[0].{DesiredCount:desiredCount,RunningCount:runningCount,PendingCount:pendingCount,Status:status}' \
+            --output table
+
+          echo ""
+          echo "📜 Recent service events:"
+          echo ""
+
+          aws ecs describe-services \
+            --cluster $CLUSTER_NAME \
+            --services $SERVICE_NAME \
+            --region ${{ secrets.AWS_REGION }} \
+            --query 'services[0].events[0:3]' \
+            --output table

@@ -21,7 +21,15 @@
       "Bash(npx eslint:*)",
       "Bash(find:*)",
       "Bash(xargs ls:*)",
-      "Bash(npx cdk:*)"
+      "Bash(npx cdk:*)",
+      "Bash(npm run build:yoga-go:*)",
+      "Bash(npm run build:app-two:*)",
+      "Bash(aws dynamodb list-tables:*)",
+      "Bash(aws route53 list-resource-record-sets:*)",
+      "Bash(aws cloudformation describe-stack-events:*)",
+      "Bash(aws ecr describe-repositories:*)",
+      "Bash(dig:*)",
+      "Bash(aws cognito-idp describe-user-pool-client:*)"
     ],
     "deny": [],
     "ask": []

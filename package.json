@@ -1,75 +1,45 @@
 {
-  "name": "yoga-go",
-  "version": "0.1.0",
+  "name": "myyoga-monorepo",
+  "version": "1.0.0",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "next dev -p 3111",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint",
-    "lint:fix": "eslint --fix",
-    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
-    "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
+    "dev:yoga-go": "npm run dev -w yoga-go",
+    "build:yoga-go": "npm run build -w yoga-go",
+    "start:yoga-go": "npm run start -w yoga-go",
+    "lint:yoga-go": "npm run lint -w yoga-go",
+    "lint:fix:yoga-go": "npm run lint:fix -w yoga-go",
+    "format:yoga-go": "npm run format -w yoga-go",
+    "dev:app-two": "npm run dev -w app-two",
+    "build:app-two": "npm run build -w app-two",
+    "start:app-two": "npm run start -w app-two",
+    "lint:app-two": "npm run lint -w app-two",
+    "lint:fix:app-two": "npm run lint:fix -w app-two",
+    "format:app-two": "npm run format -w app-two",
     "prepare": "husky",
     "infra:install": "cd infra && npm install",
     "infra:build": "cd infra && npm run build",
-    "infra:synth": "cd infra && cdk synth --profile myg",
-    "infra:deploy": "cd infra && cdk deploy --profile myg",
-    "infra:destroy": "cd infra && cdk destroy --profile myg",
-    "infra:diff": "cd infra && cdk diff --profile myg"
+    "infra:synth": "cd infra && npx cdk synth --profile myg",
+    "infra:synth:shared": "cd infra && npx cdk synth SharedInfraStack --profile myg",
+    "infra:synth:yoga-go": "cd infra && npx cdk synth YogaGoStack --profile myg",
+    "infra:synth:app-two": "cd infra && npx cdk synth AppTwoStack --profile myg",
+    "infra:deploy:shared": "cd infra && npx cdk deploy SharedInfraStack --profile myg",
+    "infra:deploy:yoga-go": "cd infra && npx cdk deploy YogaGoStack --profile myg",
+    "infra:deploy:app-two": "cd infra && npx cdk deploy AppTwoStack --profile myg",
+    "infra:diff": "cd infra && npx cdk diff --profile myg",
+    "infra:destroy": "cd infra && npx cdk destroy --profile myg"
   },
   "lint-staged": {
-    "*.{js,jsx,ts,tsx}": [
-      "eslint --fix --max-warnings=-1",
-      "prettier --write"
-    ],
-    "*.{json,css,md}": [
+    "apps/**/*.{js,jsx,ts,tsx,json,css,md}": [
       "prettier --write"
     ]
   },
-  "dependencies": {
-    "@aws-sdk/client-cognito-identity-provider": "^3.939.0",
-    "@aws-sdk/client-dynamodb": "^3.940.0",
-    "@aws-sdk/client-ses": "^3.940.0",
-    "@aws-sdk/lib-dynamodb": "^3.940.0",
-    "@sendgrid/mail": "^8.1.6",
-    "@stripe/react-stripe-js": "^5.2.0",
-    "@stripe/stripe-js": "^8.0.0",
-    "@types/jsonwebtoken": "^9.0.10",
-    "@types/uuid": "^10.0.0",
-    "aws-jwt-verify": "^5.1.1",
-    "date-fns": "^4.1.0",
-    "dotenv": "^17.2.3",
-    "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.19.1",
-    "nanoid": "^5.1.6",
-    "next": "15.5.3",
-    "next-auth": "^5.0.0-beta.30",
-    "posthog-js": "^1.280.1",
-    "razorpay": "^2.9.6",
-    "react": "19.1.0",
-    "react-calendar": "^6.0.0",
-    "react-dom": "19.1.0",
-    "react-easy-crop": "^5.5.3",
-    "stripe": "^19.1.0",
-    "uuid": "^13.0.0"
-  },
   "devDependencies": {
-    "@eslint/eslintrc": "^3",
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "@typescript-eslint/eslint-plugin": "^8.46.0",
-    "@typescript-eslint/parser": "^8.46.0",
-    "eslint": "^9",
-    "eslint-config-next": "15.5.3",
-    "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-prettier": "^5.5.4",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.3",
-    "prettier": "^3.6.2",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "prettier": "^3.7.4"
   }
 }
