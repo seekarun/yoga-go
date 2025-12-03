@@ -78,13 +78,13 @@ jobs:
         run: |
           echo "Deploying to ECS..."
           echo ""
-          echo "Cluster: app-two-cluster"
+          echo "Cluster: shared-cluster"
           echo "Service: app-two-service"
           echo "Region: $AWS_REGION"
           echo ""
 
           aws ecs update-service \
-            --cluster app-two-cluster \
+            --cluster shared-cluster \
             --service app-two-service \
             --force-new-deployment \
             --region $AWS_REGION
@@ -98,6 +98,6 @@ jobs:
           echo "  3. Start a new container with the updated image"
           echo ""
           echo "Monitor deployment:"
-          echo "  https://console.aws.amazon.com/ecs/v2/clusters/app-two-cluster/services/app-two-service?region=$AWS_REGION"
+          echo "  https://console.aws.amazon.com/ecs/v2/clusters/shared-cluster/services/app-two-service?region=$AWS_REGION"
           echo ""
           echo "Deployment typically takes 2-3 minutes to complete."

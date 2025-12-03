@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { useAuth } from '@/contexts/AuthContext';
 import PaymentModal from '@/components/payment/PaymentModal';
+import ReviewsList from '@/components/ReviewsList';
+import { useAuth } from '@/contexts/AuthContext';
 import { trackCourseView, trackEnrollClick } from '@/lib/analytics';
 import type { Course, Lesson } from '@/types';
-import ReviewsList from '@/components/ReviewsList';
+import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 export default function CourseDetailPage() {
   const params = useParams();
@@ -497,9 +497,7 @@ export default function CourseDetailPage() {
                   fontSize: '14px',
                   fontWeight: '500',
                 }}
-              >
-                🎥 Course Preview
-              </div>
+              />
             )}
           </div>
         </section>

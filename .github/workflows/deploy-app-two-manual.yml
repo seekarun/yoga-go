@@ -11,7 +11,7 @@ on:
 
 env:
   ECR_REPOSITORY: app-two
-  CLUSTER_NAME: app-two-cluster
+  CLUSTER_NAME: shared-cluster
   SERVICE_NAME: app-two-service
   TASK_FAMILY: app-two
 

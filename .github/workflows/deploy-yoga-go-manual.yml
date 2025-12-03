@@ -11,7 +11,7 @@ on:
 
 env:
   ECR_REPOSITORY: yoga-go
-  CLUSTER_NAME: yoga-go-cluster
+  CLUSTER_NAME: shared-cluster
   SERVICE_NAME: yoga-go-service
   TASK_FAMILY: yoga-go
 

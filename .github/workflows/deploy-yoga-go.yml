@@ -9,7 +9,7 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - 'tsconfig.json'
-      - '.github/workflows/deploy-ecr.yml'
+      - '.github/workflows/deploy-yoga-go.yml'
 
 env:
   ECR_REPOSITORY: yoga-go
@@ -78,13 +78,13 @@ jobs:
         run: |
           echo "🚀 Deploying to ECS..."
           echo ""
-          echo "Cluster: yoga-go-cluster"
+          echo "Cluster: shared-cluster"
           echo "Service: yoga-go-service"
           echo "Region: $AWS_REGION"
           echo ""
 
           aws ecs update-service \
-            --cluster yoga-go-cluster \
+            --cluster shared-cluster \
             --service yoga-go-service \
             --force-new-deployment \
             --region $AWS_REGION
@@ -98,6 +98,6 @@ jobs:
           echo "  3. Start a new container with the updated image"
           echo ""
           echo "📊 Monitor deployment:"
-          echo "  https://console.aws.amazon.com/ecs/v2/clusters/yoga-go-cluster/services/yoga-go-service?region=$AWS_REGION"
+          echo "  https://console.aws.amazon.com/ecs/v2/clusters/shared-cluster/services/yoga-go-service?region=$AWS_REGION"
           echo ""
           echo "⏱️  Deployment typically takes 2-3 minutes to complete."
