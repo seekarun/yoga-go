@@ -1,6 +1,5 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { auth } from './auth';
 import {
   getExpertIdFromHostname,
   isPrimaryDomain,
@@ -9,10 +8,19 @@ import {
 } from './config/domains';
 
 /**
+ * Check if user has a valid session by looking for the session token cookie
+ * This is a simple check - actual session validation happens in route handlers
+ */
+function hasSessionCookie(request: NextRequest): boolean {
+  const sessionToken = request.cookies.get('authjs.session-token')?.value;
+  return !!sessionToken;
+}
+
+/**
  * Middleware for authentication and domain-based routing
  * This middleware:
  * 1. Handles domain-based routing for expert-specific domains (e.g., kavithayoga.com)
- * 2. Uses NextAuth for session management
+ * 2. Checks for session cookie presence (not full validation - that's in route handlers)
  * 3. Redirects unauthenticated users to login for protected routes
  *
  * Domain routing:
@@ -24,12 +32,14 @@ import {
  * - /app/* - User dashboard (learners AND experts can access)
  * - /srv/* - Expert portal (only experts can access - checked in pages)
  * - /data/app/* - API routes for authenticated users
+ *
+ * Note: We don't use NextAuth's auth() wrapper here because it doesn't work
+ * reliably on Vercel Edge Runtime. Instead, we check for cookie presence.
  */
-export default auth(async function middleware(request: NextRequest) {
+export default async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hostname = request.headers.get('host') || '';
-  // @ts-expect-error - auth adds this property
-  const session = request.auth;
+  const hasSession = hasSessionCookie(request);
 
   console.log('[DBG][middleware] Request to:', pathname, 'from:', hostname);
 
@@ -103,8 +113,8 @@ export default auth(async function middleware(request: NextRequest) {
     isPrimary,
     'MyYoga.Guru subdomain:',
     myYogaGuruSubdomain,
-    'Session:',
-    session ? 'exists' : 'null'
+    'Has session cookie:',
+    hasSession
   );
 
   // Helper to add tenant headers to response
@@ -129,7 +139,7 @@ export default auth(async function middleware(request: NextRequest) {
     if (pathname.startsWith('/api') || pathname.startsWith('/data')) {
       // Protected API routes require authentication
       if (pathname.startsWith('/data/app/')) {
-        if (!session) {
+        if (!hasSession) {
           return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
       }
@@ -175,8 +185,8 @@ export default auth(async function middleware(request: NextRequest) {
       pathname.startsWith('/srv/') ||
       pathname.startsWith('/data/app/')
     ) {
-      if (!session) {
-        console.log('[DBG][middleware] No session, redirecting to signin');
+      if (!hasSession) {
+        console.log('[DBG][middleware] No session cookie, redirecting to signin');
         const loginUrl = new URL('/auth/signin', request.url);
         loginUrl.searchParams.set('callbackUrl', pathname);
         return NextResponse.redirect(loginUrl);
@@ -211,8 +221,8 @@ export default auth(async function middleware(request: NextRequest) {
     return addTenantHeaders(NextResponse.next());
   } else if (pathname.startsWith('/app/') || pathname.startsWith('/srv/')) {
     // Page routes: Redirect to login
-    if (!session) {
-      console.log('[DBG][middleware] No session, redirecting to signin');
+    if (!hasSession) {
+      console.log('[DBG][middleware] No session cookie, redirecting to signin');
       const loginUrl = new URL('/auth/signin', request.url);
       loginUrl.searchParams.set('callbackUrl', pathname);
       return NextResponse.redirect(loginUrl);
@@ -220,7 +230,7 @@ export default auth(async function middleware(request: NextRequest) {
   }
 
   return addTenantHeaders(NextResponse.next());
-});
+}
 
 export const config = {
   matcher: [
