@@ -493,6 +493,43 @@ export default function ExpertDetailPage() {
         </div>
       </section>
 
+      {/* Expert Promo Video Section */}
+      {expert.promoVideoCloudflareId && expert.promoVideoStatus === 'ready' && (
+        <section
+          style={{
+            padding: '60px 20px',
+            background: '#f8f8f8',
+          }}
+        >
+          <div className="container" style={{ maxWidth: '900px', margin: '0 auto' }}>
+            <div
+              style={{
+                borderRadius: '12px',
+                overflow: 'hidden',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+              }}
+            >
+              <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0 }}>
+                <iframe
+                  src={`https://customer-${process.env.NEXT_PUBLIC_CF_SUBDOMAIN || 'placeholder'}.cloudflarestream.com/${expert.promoVideoCloudflareId}/iframe?preload=auto&poster=https%3A%2F%2Fcustomer-${process.env.NEXT_PUBLIC_CF_SUBDOMAIN || 'placeholder'}.cloudflarestream.com%2F${expert.promoVideoCloudflareId}%2Fthumbnails%2Fthumbnail.jpg%3Ftime%3D1s%26height%3D600`}
+                  style={{
+                    border: 'none',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    height: '100%',
+                    width: '100%',
+                  }}
+                  allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+                  allowFullScreen={true}
+                  title={`${expert.name} - Introduction Video`}
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Value Propositions Section */}
       {expert.customLandingPage?.valuePropositions &&
         (expert.customLandingPage.valuePropositions.content ||
