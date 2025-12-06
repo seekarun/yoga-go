@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "regions": ["syd1"],
-  "buildCommand": "cd ../.. && npm run build:yoga-go && mkdir -p apps/yoga-go/.next/static/public && cp -r apps/yoga-go/public/* apps/yoga-go/.next/static/public/",
+  "buildCommand": "cd ../.. && npm run build:yoga-go",
   "installCommand": "cd ../.. && npm install",
   "outputDirectory": ".next",
   "env": {
