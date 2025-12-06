@@ -72,6 +72,14 @@ export interface CustomLandingPageConfig {
   };
 }
 
+// Expert Platform Preferences
+export interface ExpertPlatformPreferences {
+  featuredOnPlatform: boolean; // Show on myyoga.guru/courses
+  defaultEmail?: string; // <expertId>@myyoga.guru
+  customEmail?: string; // Expert-provided email (optional)
+  emailVerified?: boolean; // Whether custom email is SES-verified
+}
+
 export interface Expert extends BaseEntity {
   name: string;
   title: string;
@@ -92,6 +100,9 @@ export interface Expert extends BaseEntity {
   promoVideo?: string; // Deprecated: use promoVideoCloudflareId instead
   promoVideoCloudflareId?: string; // Cloudflare Stream video UID for expert promo
   promoVideoStatus?: 'uploading' | 'processing' | 'ready' | 'error';
+
+  // Platform preferences (subdomain, visibility, email)
+  platformPreferences?: ExpertPlatformPreferences;
 
   // Live streaming capabilities
   liveStreamingEnabled?: boolean;

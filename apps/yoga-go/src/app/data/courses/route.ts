@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
+import { headers } from 'next/headers';
 import type { ApiResponse, Course } from '@/types';
 import * as courseRepository from '@/lib/repositories/courseRepository';
 import * as expertRepository from '@/lib/repositories/expertRepository';
+import * as tenantRepository from '@/lib/repositories/tenantRepository';
 
 // Generate a unique course ID
 function generateCourseId(instructorId: string): string {
@@ -19,6 +21,18 @@ export async function GET(request: Request) {
     const instructorId = searchParams.get('instructorId');
     const includeAll = searchParams.get('includeAll') === 'true';
 
+    // Check if request is from an expert subdomain/domain
+    const headersList = await headers();
+    const expertIdFromHeader = headersList.get('x-expert-id');
+    const isExpertDomain = !!expertIdFromHeader;
+
+    console.log(
+      '[DBG][courses/route.ts] Expert domain:',
+      isExpertDomain,
+      'Expert ID:',
+      expertIdFromHeader
+    );
+
     let courseDocs: Course[];
 
     // Fetch courses from DynamoDB
@@ -33,6 +47,44 @@ export async function GET(request: Request) {
     } else {
       // For public course listing, only show PUBLISHED courses
       courseDocs = await courseRepository.getCoursesByStatus('PUBLISHED');
+
+      // If on expert domain, only show courses from that expert
+      if (isExpertDomain && expertIdFromHeader) {
+        courseDocs = courseDocs.filter(c => c.instructor?.id === expertIdFromHeader);
+        console.log(
+          '[DBG][courses/route.ts] Filtered to expert courses:',
+          courseDocs.length,
+          'courses'
+        );
+      } else if (!isExpertDomain) {
+        // On primary platform, filter by featuredOnPlatform
+        // Get all unique instructor IDs first
+        const uniqueInstructorIds = [
+          ...new Set(courseDocs.map(c => c.instructor?.id).filter(Boolean)),
+        ];
+
+        // Check which experts are featured on platform
+        const featuredInstructorIds = new Set<string>();
+        for (const instrId of uniqueInstructorIds) {
+          if (!instrId) continue;
+          const tenant = await tenantRepository.getTenantByExpertId(instrId);
+          // Include if no tenant (legacy) or if featuredOnPlatform is true
+          if (!tenant || tenant.featuredOnPlatform) {
+            featuredInstructorIds.add(instrId);
+          }
+        }
+
+        // Filter courses to only include those from featured instructors
+        courseDocs = courseDocs.filter(
+          c => c.instructor?.id && featuredInstructorIds.has(c.instructor.id)
+        );
+
+        console.log(
+          '[DBG][courses/route.ts] Filtered to platform-featured courses:',
+          courseDocs.length,
+          'courses'
+        );
+      }
     }
 
     // Fetch all unique instructor IDs

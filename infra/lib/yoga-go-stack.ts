@@ -1,13 +1,7 @@
 import * as cdk from 'aws-cdk-lib';
-import * as ecr from 'aws-cdk-lib/aws-ecr';
-import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as iam from 'aws-cdk-lib/aws-iam';
-import * as logs from 'aws-cdk-lib/aws-logs';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
-import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
-import * as route53 from 'aws-cdk-lib/aws-route53';
-import * as route53Targets from 'aws-cdk-lib/aws-route53-targets';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as ses from 'aws-cdk-lib/aws-ses';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
@@ -19,41 +13,34 @@ import type { SharedInfraStack } from './shared-infra-stack';
 export interface YogaGoStackProps extends cdk.StackProps {
   /** Reference to the shared infrastructure stack */
   sharedInfra: SharedInfraStack;
-  /** Listener rule priority (must be unique across all apps, lower = higher priority) */
-  listenerRulePriority?: number;
 }
 
 /**
- * Yoga Go Application Stack
+ * Yoga Go Application Stack (Vercel-optimized)
  *
- * Contains app-specific resources:
- * - ECR Repository
- * - ECS Service + Task Definition
- * - Target Group + Listener Rule
- * - Cognito User Pool
- * - DynamoDB Tables
- * - SES Email Configuration
- * - Route 53 Hosted Zone + DNS Records
+ * Contains app-specific AWS resources:
+ * - Cognito User Pool (authentication)
+ * - DynamoDB Tables (data storage)
+ * - SES Email Configuration (transactional emails)
+ * - Lambda for welcome emails
  *
- * Uses shared resources from SharedInfraStack:
- * - VPC, ALB, HTTPS Listener, ECS Cluster, Capacity Provider, Security Groups
+ * Note: Since we use Vercel for hosting, we no longer need:
+ * - ECR Repository, ECS Service, Task Definition
+ * - ALB Target Group, Listener Rule
+ * - CloudWatch Log Group (for ECS)
+ * - Route53 ALIAS records to ALB
+ *
+ * Vercel handles:
+ * - Next.js hosting and deployment
+ * - SSL certificates
+ * - CDN and edge network
+ * - Wildcard subdomains (*.myyoga.guru)
  */
 export class YogaGoStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: YogaGoStackProps) {
     super(scope, id, props);
 
-    const { sharedInfra, listenerRulePriority = 10 } = props;
-
-    // ========================================
-    // ECR Repository for Docker images (import existing)
-    // ========================================
-    // The repository was created by the previous stack with RETAIN policy
-    // so we import it instead of creating a new one
-    const repository = ecr.Repository.fromRepositoryName(
-      this,
-      'YogaGoRepository',
-      'yoga-go'
-    );
+    const { sharedInfra } = props;
 
     // ========================================
     // Cognito User Pool
@@ -118,9 +105,7 @@ export class YogaGoStack extends cdk.Stack {
       {
         userPool,
         clientId: appSecret.secretValueFromJson('FACEBOOK_APP_ID').unsafeUnwrap(),
-        clientSecret: appSecret
-          .secretValueFromJson('FACEBOOK_APP_SECRET')
-          .unsafeUnwrap(),
+        clientSecret: appSecret.secretValueFromJson('FACEBOOK_APP_SECRET').unsafeUnwrap(),
         scopes: ['email', 'public_profile'],
         attributeMapping: {
           email: cognito.ProviderAttribute.FACEBOOK_EMAIL,
@@ -154,11 +139,7 @@ export class YogaGoStack extends cdk.Stack {
           'https://myyoga.guru/api/auth/facebook/callback',
           'https://www.myyoga.guru/api/auth/facebook/callback',
         ],
-        logoutUrls: [
-          'http://localhost:3111',
-          'https://myyoga.guru',
-          'https://www.myyoga.guru',
-        ],
+        logoutUrls: ['http://localhost:3111', 'https://myyoga.guru', 'https://www.myyoga.guru'],
       },
       supportedIdentityProviders: [
         cognito.UserPoolClientIdentityProvider.COGNITO,
@@ -172,36 +153,17 @@ export class YogaGoStack extends cdk.Stack {
     appClient.node.addDependency(facebookProvider);
 
     // ========================================
-    // Route 53 DNS Records (Hosted Zone from SharedInfraStack)
+    // Route 53 Hosted Zone (from SharedInfraStack)
     // ========================================
     const hostedZone = sharedInfra.hostedZones.get('myyoga.guru');
     if (!hostedZone) {
       throw new Error('Hosted zone for myyoga.guru not found in SharedInfraStack');
     }
 
-    // ALIAS records pointing to shared ALB
-    new route53.ARecord(this, 'ApexAliasRecord', {
-      zone: hostedZone,
-      recordName: '',
-      target: route53.RecordTarget.fromAlias(
-        new route53Targets.LoadBalancerTarget(sharedInfra.alb)
-      ),
-      comment: 'Apex domain pointing to shared ALB',
-    });
-
-    new route53.ARecord(this, 'WwwAliasRecord', {
-      zone: hostedZone,
-      recordName: 'www',
-      target: route53.RecordTarget.fromAlias(
-        new route53Targets.LoadBalancerTarget(sharedInfra.alb)
-      ),
-      comment: 'WWW subdomain pointing to shared ALB',
-    });
-
     // ========================================
     // AWS SES - Email Service
     // ========================================
-    const emailIdentity = new ses.EmailIdentity(this, 'EmailIdentity', {
+    new ses.EmailIdentity(this, 'EmailIdentity', {
       identity: ses.Identity.publicHostedZone(hostedZone),
       mailFromDomain: 'mail.myyoga.guru',
     });
@@ -234,7 +196,7 @@ export class YogaGoStack extends cdk.Stack {
     // ========================================
     // SES Email Templates
     // ========================================
-    const welcomeEmailTemplate = new ses.CfnTemplate(this, 'WelcomeEmailTemplate', {
+    new ses.CfnTemplate(this, 'WelcomeEmailTemplate', {
       template: {
         templateName: 'yoga-go-welcome',
         subjectPart: 'Welcome to MyYoga.Guru! 🧘',
@@ -260,7 +222,7 @@ The MyYoga.Guru Team`,
       },
     });
 
-    const invoiceEmailTemplate = new ses.CfnTemplate(this, 'InvoiceEmailTemplate', {
+    new ses.CfnTemplate(this, 'InvoiceEmailTemplate', {
       template: {
         templateName: 'yoga-go-invoice',
         subjectPart: 'Payment Confirmation - Order #{{orderId}} 🧘',
@@ -292,24 +254,20 @@ The MyYoga.Guru Team`,
     // ========================================
     // Welcome Email Lambda (Cognito Trigger)
     // ========================================
-    const welcomeEmailLambda = new nodejsLambda.NodejsFunction(
-      this,
-      'WelcomeEmailLambda',
-      {
-        functionName: 'yoga-go-welcome-email',
-        runtime: lambda.Runtime.NODEJS_22_X,
-        handler: 'handler',
-        entry: path.join(__dirname, '../lambda/welcome-email.ts'),
-        timeout: cdk.Duration.seconds(10),
-        memorySize: 128,
-        environment: {
-          SES_FROM_EMAIL: 'hi@myyoga.guru',
-          SES_CONFIG_SET: sesConfigSet.configurationSetName,
-          SES_WELCOME_TEMPLATE: 'yoga-go-welcome',
-        },
-        bundling: { minify: true, sourceMap: false },
-      }
-    );
+    const welcomeEmailLambda = new nodejsLambda.NodejsFunction(this, 'WelcomeEmailLambda', {
+      functionName: 'yoga-go-welcome-email',
+      runtime: lambda.Runtime.NODEJS_22_X,
+      handler: 'handler',
+      entry: path.join(__dirname, '../lambda/welcome-email.ts'),
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 128,
+      environment: {
+        SES_FROM_EMAIL: 'hi@myyoga.guru',
+        SES_CONFIG_SET: sesConfigSet.configurationSetName,
+        SES_WELCOME_TEMPLATE: 'yoga-go-welcome',
+      },
+      bundling: { minify: true, sourceMap: false },
+    });
 
     welcomeEmailLambda.addToRolePolicy(
       new iam.PolicyStatement({
@@ -321,15 +279,6 @@ The MyYoga.Guru Team`,
     );
 
     userPool.addTrigger(cognito.UserPoolOperation.POST_CONFIRMATION, welcomeEmailLambda);
-
-    // ========================================
-    // CloudWatch Log Group
-    // ========================================
-    const logGroup = new logs.LogGroup(this, 'EcsLogGroup', {
-      logGroupName: '/ecs/yoga-go',
-      retention: logs.RetentionDays.ONE_WEEK,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
 
     // ========================================
     // DynamoDB Tables
@@ -350,7 +299,7 @@ The MyYoga.Guru Team`,
       projectionType: dynamodb.ProjectionType.ALL,
     });
 
-    const calendarTable = new dynamodb.Table(this, 'CalendarTable', {
+    new dynamodb.Table(this, 'CalendarTable', {
       tableName: 'yoga-go-calendar',
       partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
@@ -359,7 +308,7 @@ The MyYoga.Guru Team`,
       pointInTimeRecovery: false,
     });
 
-    const ordersTable = new dynamodb.Table(this, 'OrdersTable', {
+    new dynamodb.Table(this, 'OrdersTable', {
       tableName: 'yoga-go-orders',
       partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
@@ -368,7 +317,7 @@ The MyYoga.Guru Team`,
       pointInTimeRecovery: false,
     });
 
-    const analyticsTable = new dynamodb.Table(this, 'AnalyticsTable', {
+    new dynamodb.Table(this, 'AnalyticsTable', {
       tableName: 'yoga-go-analytics',
       partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
@@ -394,172 +343,86 @@ The MyYoga.Guru Team`,
     });
 
     // ========================================
-    // IAM Roles for ECS Tasks
+    // IAM User for Vercel Deployment
     // ========================================
-    const taskExecutionRole = new iam.Role(this, 'EcsTaskExecutionRole', {
-      assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
-      managedPolicies: [
-        iam.ManagedPolicy.fromAwsManagedPolicyName(
-          'service-role/AmazonECSTaskExecutionRolePolicy'
-        ),
+    // Since we're hosting on Vercel (not ECS), we need an IAM user
+    // with access keys for the app to access AWS services
+    const vercelUser = new iam.User(this, 'VercelUser', {
+      userName: 'yoga-go-vercel',
+    });
+
+    // DynamoDB access policy
+    const dynamoDbPolicy = new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'dynamodb:GetItem',
+        'dynamodb:PutItem',
+        'dynamodb:UpdateItem',
+        'dynamodb:DeleteItem',
+        'dynamodb:Query',
+        'dynamodb:Scan',
+        'dynamodb:BatchGetItem',
+        'dynamodb:BatchWriteItem',
+      ],
+      resources: [
+        coreTable.tableArn,
+        `${coreTable.tableArn}/index/*`,
+        `arn:aws:dynamodb:${this.region}:${this.account}:table/yoga-go-calendar`,
+        `arn:aws:dynamodb:${this.region}:${this.account}:table/yoga-go-calendar/index/*`,
+        `arn:aws:dynamodb:${this.region}:${this.account}:table/yoga-go-orders`,
+        `arn:aws:dynamodb:${this.region}:${this.account}:table/yoga-go-orders/index/*`,
+        `arn:aws:dynamodb:${this.region}:${this.account}:table/yoga-go-analytics`,
+        `arn:aws:dynamodb:${this.region}:${this.account}:table/yoga-go-analytics/index/*`,
+        discussionsTable.tableArn,
+        `${discussionsTable.tableArn}/index/*`,
       ],
     });
 
-    appSecret.grantRead(taskExecutionRole);
-
-    const taskRole = new iam.Role(this, 'EcsTaskRole', {
-      assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
-      description: 'Role used by the Yoga Go application',
-    });
-
-    // Grant DynamoDB access
-    coreTable.grantReadWriteData(taskRole);
-    calendarTable.grantReadWriteData(taskRole);
-    ordersTable.grantReadWriteData(taskRole);
-    analyticsTable.grantReadWriteData(taskRole);
-    discussionsTable.grantReadWriteData(taskRole);
-
-    // Grant SES access
-    taskRole.addToPolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: ['ses:SendEmail', 'ses:SendRawEmail'],
-        resources: ['*'],
-        conditions: { StringEquals: { 'ses:FromAddress': 'hi@myyoga.guru' } },
-      })
-    );
-
-    // ========================================
-    // ALB Target Group
-    // ========================================
-    const targetGroup = new elbv2.ApplicationTargetGroup(this, 'YogaGoTargetGroup', {
-      vpc: sharedInfra.vpc,
-      port: 3000,
-      protocol: elbv2.ApplicationProtocol.HTTP,
-      targetType: elbv2.TargetType.INSTANCE,
-      healthCheck: {
-        path: '/api/health',
-        healthyHttpCodes: '200',
-        interval: cdk.Duration.seconds(30),
-        timeout: cdk.Duration.seconds(5),
-        healthyThresholdCount: 2,
-        unhealthyThresholdCount: 3,
-      },
-      deregistrationDelay: cdk.Duration.seconds(30),
-    });
-
-    // ========================================
-    // ALB Listener Rule (Host-based routing)
-    // ========================================
-    new elbv2.ApplicationListenerRule(this, 'YogaGoListenerRule', {
-      listener: sharedInfra.httpsListener,
-      priority: listenerRulePriority,
-      conditions: [
-        elbv2.ListenerCondition.hostHeaders(['myyoga.guru', 'www.myyoga.guru']),
-      ],
-      action: elbv2.ListenerAction.forward([targetGroup]),
-    });
-
-    // ========================================
-    // ECS Task Definition
-    // ========================================
-    const taskDefinition = new ecs.Ec2TaskDefinition(this, 'YogaGoTaskDef', {
-      family: 'yoga-go',
-      executionRole: taskExecutionRole,
-      taskRole,
-      networkMode: ecs.NetworkMode.BRIDGE,
-    });
-
-    const container = taskDefinition.addContainer('yoga-go-container', {
-      image: ecs.ContainerImage.fromEcrRepository(repository, 'latest'),
-      memoryLimitMiB: 512,
-      cpu: 256,
-      logging: ecs.LogDrivers.awsLogs({ streamPrefix: 'yoga-go', logGroup }),
-      environment: {
-        NODE_ENV: 'production',
-        PORT: '3000',
-        AWS_REGION: this.region,
-        // DynamoDB table names are hardcoded in src/lib/dynamodb.ts
-        COGNITO_USER_POOL_ID: userPool.userPoolId,
-        COGNITO_CLIENT_ID: appClient.userPoolClientId,
-        COGNITO_ISSUER: `https://cognito-idp.${this.region}.amazonaws.com/${userPool.userPoolId}`,
-        NEXTAUTH_URL: 'https://www.myyoga.guru',
-        SES_FROM_EMAIL: 'hi@myyoga.guru',
-        SES_CONFIG_SET: sesConfigSet.configurationSetName,
-      },
-      secrets: {
-        MONGODB_URI: ecs.Secret.fromSecretsManager(appSecret, 'MONGODB_URI'),
-        NEXTAUTH_SECRET: ecs.Secret.fromSecretsManager(appSecret, 'NEXTAUTH_SECRET'),
-        EXPERT_SIGNUP_CODE: ecs.Secret.fromSecretsManager(appSecret, 'EXPERT_SIGNUP_CODE'),
-        COGNITO_CLIENT_SECRET: ecs.Secret.fromSecretsManager(
-          appSecret,
-          'COGNITO_CLIENT_SECRET'
-        ),
-      },
-      healthCheck: {
-        command: [
-          'CMD-SHELL',
-          "node -e \"require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})\"",
-        ],
-        interval: cdk.Duration.seconds(30),
-        timeout: cdk.Duration.seconds(5),
-        retries: 3,
-        startPeriod: cdk.Duration.seconds(60),
-      },
-    });
-
-    container.addPortMappings({
-      containerPort: 3000,
-      hostPort: 0,
-      protocol: ecs.Protocol.TCP,
-    });
-
-    // ========================================
-    // ECS Service (using shared cluster)
-    // ========================================
-    const service = new ecs.Ec2Service(this, 'YogaGoService', {
-      cluster: sharedInfra.cluster,
-      serviceName: 'yoga-go-service',
-      taskDefinition,
-      desiredCount: 1,
-      capacityProviderStrategies: [
-        {
-          capacityProvider: sharedInfra.capacityProvider.capacityProviderName,
-          weight: 1,
+    // SES email sending policy
+    const sesEmailPolicy = new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ['ses:SendEmail', 'ses:SendRawEmail', 'ses:SendTemplatedEmail'],
+      resources: ['*'],
+      conditions: {
+        StringLike: {
+          'ses:FromAddress': '*@myyoga.guru',
         },
-      ],
-      minHealthyPercent: 0,
-      maxHealthyPercent: 100,
-      healthCheckGracePeriod: cdk.Duration.seconds(120),
+      },
     });
 
-    service.attachToApplicationTargetGroup(targetGroup);
+    // SES email verification policy (for expert custom emails)
+    const sesVerificationPolicy = new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ['ses:CreateEmailIdentity', 'ses:DeleteEmailIdentity', 'ses:GetEmailIdentity'],
+      resources: ['*'],
+    });
+
+    // Cognito read-only policy
+    const cognitoPolicy = new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        'cognito-idp:DescribeUserPool',
+        'cognito-idp:DescribeUserPoolClient',
+        'cognito-idp:GetUser',
+      ],
+      resources: [userPool.userPoolArn],
+    });
+
+    // Create managed policy and attach to user
+    const vercelPolicy = new iam.ManagedPolicy(this, 'VercelPolicy', {
+      managedPolicyName: 'yoga-go-vercel-policy',
+      statements: [dynamoDbPolicy, sesEmailPolicy, sesVerificationPolicy, cognitoPolicy],
+    });
+
+    vercelUser.addManagedPolicy(vercelPolicy);
 
     // ========================================
     // Outputs
     // ========================================
-    new cdk.CfnOutput(this, 'RepositoryUri', {
-      value: repository.repositoryUri,
-      description: 'ECR repository URI',
-      exportName: 'YogaGoRepositoryUri',
-    });
-
-    new cdk.CfnOutput(this, 'RepositoryName', {
-      value: repository.repositoryName,
-      description: 'ECR repository name',
-      exportName: 'YogaGoRepositoryName',
-    });
-
-    new cdk.CfnOutput(this, 'ServiceName', {
-      value: service.serviceName,
-      description: 'ECS service name',
-      exportName: 'YogaGoServiceName',
-    });
-
-    new cdk.CfnOutput(this, 'LogGroupName', {
-      value: logGroup.logGroupName,
-      description: 'CloudWatch log group name',
-      exportName: 'YogaGoLogGroupName',
+    new cdk.CfnOutput(this, 'VercelUserArn', {
+      value: vercelUser.userArn,
+      description: 'IAM User ARN for Vercel - create access keys in AWS Console',
+      exportName: 'YogaGoVercelUserArn',
     });
 
     new cdk.CfnOutput(this, 'UserPoolId', {
@@ -584,6 +447,12 @@ The MyYoga.Guru Team`,
       value: coreTable.tableName,
       description: 'DynamoDB Core Table Name',
       exportName: 'YogaGoDynamoDBCoreTableName',
+    });
+
+    new cdk.CfnOutput(this, 'SESConfigSetName', {
+      value: sesConfigSet.configurationSetName,
+      description: 'SES Configuration Set Name',
+      exportName: 'YogaGoSESConfigSetName',
     });
   }
 }

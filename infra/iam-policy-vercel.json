@@ -1,0 +1,66 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DynamoDBAccess",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:BatchGetItem",
+        "dynamodb:BatchWriteItem"
+      ],
+      "Resource": [
+        "arn:aws:dynamodb:ap-southeast-2:710735877057:table/yoga-go-core",
+        "arn:aws:dynamodb:ap-southeast-2:710735877057:table/yoga-go-core/index/*",
+        "arn:aws:dynamodb:ap-southeast-2:710735877057:table/yoga-go-calendar",
+        "arn:aws:dynamodb:ap-southeast-2:710735877057:table/yoga-go-calendar/index/*",
+        "arn:aws:dynamodb:ap-southeast-2:710735877057:table/yoga-go-orders",
+        "arn:aws:dynamodb:ap-southeast-2:710735877057:table/yoga-go-orders/index/*",
+        "arn:aws:dynamodb:ap-southeast-2:710735877057:table/yoga-go-analytics",
+        "arn:aws:dynamodb:ap-southeast-2:710735877057:table/yoga-go-analytics/index/*",
+        "arn:aws:dynamodb:ap-southeast-2:710735877057:table/yoga-go-discussions",
+        "arn:aws:dynamodb:ap-southeast-2:710735877057:table/yoga-go-discussions/index/*"
+      ]
+    },
+    {
+      "Sid": "SESEmailSending",
+      "Effect": "Allow",
+      "Action": [
+        "ses:SendEmail",
+        "ses:SendRawEmail",
+        "ses:SendTemplatedEmail"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "ses:FromAddress": "hi@myyoga.guru"
+        }
+      }
+    },
+    {
+      "Sid": "SESVerification",
+      "Effect": "Allow",
+      "Action": [
+        "ses:CreateEmailIdentity",
+        "ses:DeleteEmailIdentity",
+        "ses:GetEmailIdentity"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "CognitoReadOnly",
+      "Effect": "Allow",
+      "Action": [
+        "cognito-idp:DescribeUserPool",
+        "cognito-idp:DescribeUserPoolClient",
+        "cognito-idp:GetUser"
+      ],
+      "Resource": "arn:aws:cognito-idp:ap-southeast-2:710735877057:userpool/*"
+    }
+  ]
+}

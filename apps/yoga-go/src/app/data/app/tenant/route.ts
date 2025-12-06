@@ -233,6 +233,24 @@ export async function PUT(request: Request): Promise<NextResponse<ApiResponse<Te
           );
         }
 
+        // Protect the default myyoga.guru subdomain
+        const normalizedDomain = body.domain.toLowerCase();
+        const defaultSubdomain = `${tenant.slug}.myyoga.guru`;
+        if (normalizedDomain === defaultSubdomain) {
+          return NextResponse.json(
+            { success: false, error: 'Cannot remove your default myyoga.guru subdomain' },
+            { status: 400 }
+          );
+        }
+
+        // Protect primary domain (it's the auto-generated subdomain)
+        if (normalizedDomain === tenant.primaryDomain.toLowerCase()) {
+          return NextResponse.json(
+            { success: false, error: 'Cannot remove your primary domain' },
+            { status: 400 }
+          );
+        }
+
         // Remove from Vercel
         const removeResult = await removeDomainFromVercel(body.domain);
         if (!removeResult.success) {

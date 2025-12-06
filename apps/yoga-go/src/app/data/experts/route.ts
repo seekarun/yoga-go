@@ -1,17 +1,55 @@
 import { NextResponse } from 'next/server';
+import { headers } from 'next/headers';
 import type { ApiResponse, Expert, UserRole } from '@/types';
 import { getSession, getUserByCognitoSub } from '@/lib/auth';
 import * as userRepository from '@/lib/repositories/userRepository';
 import * as expertRepository from '@/lib/repositories/expertRepository';
 import * as courseRepository from '@/lib/repositories/courseRepository';
 import * as paymentRepository from '@/lib/repositories/paymentRepository';
+import * as tenantRepository from '@/lib/repositories/tenantRepository';
+import { addDomainToVercel } from '@/lib/vercel';
 
 export async function GET() {
   console.log('[DBG][experts/route.ts] GET /data/experts called');
 
   try {
+    // Check if request is from an expert subdomain/domain
+    const headersList = await headers();
+    const expertIdFromHeader = headersList.get('x-expert-id');
+    const isExpertDomain = !!expertIdFromHeader;
+
+    console.log(
+      '[DBG][experts/route.ts] Expert domain:',
+      isExpertDomain,
+      'Expert ID:',
+      expertIdFromHeader
+    );
+
     // Fetch all experts from DynamoDB
-    const expertDocs = await expertRepository.getAllExperts();
+    let expertDocs = await expertRepository.getAllExperts();
+
+    // If on expert domain, only return that expert
+    if (isExpertDomain && expertIdFromHeader) {
+      expertDocs = expertDocs.filter(e => e.id === expertIdFromHeader);
+      console.log('[DBG][experts/route.ts] Filtered to single expert');
+    } else if (!isExpertDomain) {
+      // On primary platform, filter by featuredOnPlatform
+      const featuredExpertIds = new Set<string>();
+
+      for (const expert of expertDocs) {
+        const tenant = await tenantRepository.getTenantByExpertId(expert.id);
+        // Include if no tenant (legacy) or if featuredOnPlatform is true
+        if (!tenant || tenant.featuredOnPlatform) {
+          featuredExpertIds.add(expert.id);
+        }
+      }
+
+      expertDocs = expertDocs.filter(e => featuredExpertIds.has(e.id));
+      console.log(
+        '[DBG][experts/route.ts] Filtered to platform-featured experts:',
+        expertDocs.length
+      );
+    }
 
     // Calculate dynamic stats for each expert
     const expertsWithStats = await Promise.all(
@@ -128,8 +166,9 @@ export async function POST(request: Request) {
     }
 
     // Create new expert in DynamoDB
+    const expertId = body.id;
     const newExpert = await expertRepository.createExpert({
-      id: body.id,
+      id: expertId,
       userId: user.id, // Link to user account (cognitoSub)
       name: body.name,
       title: body.title,
@@ -144,9 +183,50 @@ export async function POST(request: Request) {
       experience: body.experience || '',
       socialLinks: body.socialLinks || {},
       onboardingCompleted: true, // Mark as completed since they filled the form
+      platformPreferences: body.platformPreferences || {
+        featuredOnPlatform: true,
+        defaultEmail: `${expertId}@myyoga.guru`,
+      },
     });
 
     console.log('[DBG][experts/route.ts] Expert created successfully:', newExpert.id);
+
+    // Auto-create tenant with subdomain
+    const subdomain = `${expertId}.myyoga.guru`;
+    const featuredOnPlatform = body.platformPreferences?.featuredOnPlatform ?? true;
+
+    try {
+      console.log('[DBG][experts/route.ts] Creating tenant for expert:', expertId);
+
+      await tenantRepository.createTenant({
+        id: expertId,
+        name: body.name,
+        slug: expertId,
+        expertId: expertId,
+        primaryDomain: subdomain,
+        additionalDomains: [],
+        featuredOnPlatform: featuredOnPlatform,
+        status: 'active',
+      });
+
+      console.log('[DBG][experts/route.ts] Tenant created with subdomain:', subdomain);
+
+      // Add subdomain to Vercel (non-blocking - don't fail if this fails)
+      const vercelResult = await addDomainToVercel(subdomain);
+      if (vercelResult.success) {
+        console.log('[DBG][experts/route.ts] Subdomain added to Vercel:', subdomain);
+      } else {
+        console.warn(
+          '[DBG][experts/route.ts] Failed to add subdomain to Vercel:',
+          vercelResult.error
+        );
+        // Don't throw - tenant is created, Vercel can be fixed manually
+      }
+    } catch (tenantError) {
+      console.error('[DBG][experts/route.ts] Error creating tenant:', tenantError);
+      // Don't throw - expert is created, tenant can be created manually
+      // This ensures expert creation doesn't fail due to tenant issues
+    }
 
     // Update user to set role to expert and link expert profile using userRepository
     const updatedRoles: UserRole[] = user.role.includes('expert')

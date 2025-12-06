@@ -60,26 +60,35 @@ export default auth(async function middleware(request: NextRequest) {
 
   // Check if this is a dynamic myyoga.guru subdomain (e.g., deepak.myyoga.guru)
   const myYogaGuruSubdomain = getSubdomainFromMyYogaGuru(hostname);
-  let expertId = myYogaGuruSubdomain;
-  let isExpertDomain = expertId !== null;
-
-  // If not a myyoga.guru subdomain, check configured expert domains (e.g., kavithayoga.com)
-  if (!expertId) {
-    expertId = getExpertIdFromHostname(hostname);
-    isExpertDomain = expertId !== null;
-  }
+  let expertId: string | null = null;
+  let isExpertDomain = false;
+  let tenantId: string | null = null;
 
   const isPrimary = isPrimaryDomain(hostname);
 
-  // Resolve tenant context (for multi-tenancy)
-  // Try dynamic lookup if not found in static config
-  let tenantId: string | null = expertId;
-  if (!tenantId && !isPrimary) {
+  // Resolve tenant context for all non-primary domains
+  // This now validates myyoga.guru subdomains against the database
+  if (!isPrimary) {
     const tenantResult = await resolveDomainToTenant(hostname);
     if (tenantResult) {
       tenantId = tenantResult.tenantId;
       expertId = tenantResult.expertId;
       isExpertDomain = true;
+    } else if (myYogaGuruSubdomain) {
+      // This is a myyoga.guru subdomain that doesn't exist in the database
+      // Redirect to the main site
+      console.log(
+        '[DBG][middleware] Invalid subdomain, redirecting to main site:',
+        myYogaGuruSubdomain
+      );
+      const mainUrl = new URL('/', 'https://myyoga.guru');
+      return NextResponse.redirect(mainUrl);
+    }
+    // For custom domains that don't resolve, fall through to check static config
+    if (!expertId) {
+      expertId = getExpertIdFromHostname(hostname);
+      isExpertDomain = expertId !== null;
+      tenantId = expertId;
     }
   }
 

@@ -210,6 +210,51 @@ export const sendInvoiceEmail = async (options: InvoiceEmailOptions): Promise<vo
 };
 
 // ========================================
+// Expert Email Helper
+// ========================================
+
+/**
+ * Get the default email address for an expert
+ */
+export function getExpertFromEmail(expertId: string): string {
+  return `${expertId}@myyoga.guru`;
+}
+
+export interface ExpertEmailOptions {
+  expertId: string;
+  customEmail?: string;
+  emailVerified?: boolean;
+  to: string | string[];
+  subject: string;
+  text: string;
+  html?: string;
+}
+
+/**
+ * Send an email on behalf of an expert
+ * Uses the expert's verified custom email if available, otherwise uses default
+ *
+ * @param options - Email options including expertId and recipient details
+ * @returns Promise that resolves when email is sent
+ */
+export const sendExpertEmail = async (options: ExpertEmailOptions): Promise<void> => {
+  const { expertId, customEmail, emailVerified, to, subject, text, html } = options;
+
+  // Determine which email address to send from
+  const from = customEmail && emailVerified ? customEmail : getExpertFromEmail(expertId);
+
+  console.log(`[DBG][email] Sending expert email from ${from}`);
+
+  await sendEmail({
+    to,
+    from,
+    subject,
+    text,
+    html,
+  });
+};
+
+// ========================================
 // SendGrid Fallback Implementation (commented out)
 // ========================================
 // export const sendEmail = async (options: EmailOptions): Promise<void> => {

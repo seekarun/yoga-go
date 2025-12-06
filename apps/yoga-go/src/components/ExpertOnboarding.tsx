@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import ImageUploadCrop from '@/components/ImageUploadCrop';
 import VideoUpload from '@/components/VideoUpload';
+import PlatformPreferencesStep from '@/components/onboarding/PlatformPreferencesStep';
 import type { VideoUploadResult } from '@/components/VideoUpload';
 import type { Asset } from '@/types';
 
@@ -32,6 +33,7 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
     promoVideo: '',
     promoVideoCloudflareId: '',
     promoVideoStatus: '' as 'uploading' | 'processing' | 'ready' | 'error' | '',
+    featuredOnPlatform: true, // Default to visible on platform
     socialLinks: {
       instagram: '',
       youtube: '',
@@ -93,6 +95,13 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
     }));
   };
 
+  const handleFeaturedOnPlatformChange = (featured: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      featuredOnPlatform: featured,
+    }));
+  };
+
   const handleNext = () => {
     setError('');
 
@@ -124,8 +133,9 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
 
     try {
       // Prepare data for API
+      const expertId = formData.id.trim();
       const expertData = {
-        id: formData.id.trim(),
+        id: expertId,
         name: formData.name.trim(),
         title: formData.title.trim(),
         bio: formData.bio.trim(),
@@ -146,6 +156,10 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
         promoVideo: formData.promoVideo.trim() || undefined,
         promoVideoCloudflareId: formData.promoVideoCloudflareId || undefined,
         promoVideoStatus: formData.promoVideoStatus || undefined,
+        platformPreferences: {
+          featuredOnPlatform: formData.featuredOnPlatform,
+          defaultEmail: `${expertId}@myyoga.guru`,
+        },
         socialLinks: {
           instagram: formData.socialLinks.instagram.trim() || undefined,
           youtube: formData.socialLinks.youtube.trim() || undefined,
@@ -187,11 +201,11 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
       {/* Progress Indicator */}
       <div style={{ marginBottom: '40px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-          {[1, 2, 3, 4, 5].map(num => (
+          {[1, 2, 3, 4, 5, 6].map(num => (
             <div
               key={num}
               style={{
-                width: '19%',
+                width: '15.5%',
                 height: '4px',
                 background: num <= step ? 'var(--color-primary)' : '#e2e8f0',
                 borderRadius: '2px',
@@ -199,7 +213,7 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
             />
           ))}
         </div>
-        <div style={{ textAlign: 'center', fontSize: '14px', color: '#666' }}>Step {step} of 5</div>
+        <div style={{ textAlign: 'center', fontSize: '14px', color: '#666' }}>Step {step} of 6</div>
       </div>
 
       {/* Welcome Header */}
@@ -513,8 +527,17 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
         </div>
       )}
 
-      {/* Step 5: Social Links */}
+      {/* Step 5: Platform Preferences */}
       {step === 5 && (
+        <PlatformPreferencesStep
+          expertId={formData.id}
+          featuredOnPlatform={formData.featuredOnPlatform}
+          onFeaturedChange={handleFeaturedOnPlatformChange}
+        />
+      )}
+
+      {/* Step 6: Social Links */}
+      {step === 6 && (
         <div
           style={{
             background: '#fff',
@@ -614,7 +637,7 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
           Back
         </button>
 
-        {step < 5 ? (
+        {step < 6 ? (
           <button
             onClick={handleNext}
             disabled={loading}

@@ -144,8 +144,8 @@ export function getAllExpertIds(): string[] {
  * Resolution order:
  * 1. Check if it's a primary domain -> return null
  * 2. Check static EXPERT_DOMAINS config (backwards compat)
- * 3. Check myyoga.guru subdomains
- * 4. Try dynamic lookup from DynamoDB
+ * 3. Check myyoga.guru subdomains (validated against DB)
+ * 4. Try dynamic lookup from DynamoDB for custom domains
  *
  * Note: This function is async because of DynamoDB lookup.
  * For middleware use, import from tenantRepository.
@@ -167,18 +167,30 @@ export async function resolveDomainToTenant(
     };
   }
 
-  // 3. Check myyoga.guru subdomains
-  const subdomain = getSubdomainFromMyYogaGuru(hostname);
-  if (subdomain) {
-    return {
-      tenantId: subdomain,
-      expertId: subdomain,
-    };
-  }
-
-  // 4. Dynamic lookup from DynamoDB
   // Import here to avoid circular dependency
   const { getTenantByDomain } = await import('@/lib/repositories/tenantRepository');
+
+  // 3. Check myyoga.guru subdomains - validate against database
+  const subdomain = getSubdomainFromMyYogaGuru(hostname);
+  if (subdomain) {
+    // Look up the subdomain in the database to validate it exists
+    const fullDomain = `${subdomain}.myyoga.guru`;
+    const tenant = await getTenantByDomain(fullDomain);
+
+    if (tenant) {
+      console.log('[DBG][domains] Found tenant for subdomain:', subdomain);
+      return {
+        tenantId: tenant.id,
+        expertId: tenant.expertId,
+      };
+    }
+
+    // Subdomain doesn't have a tenant - return null to trigger 404/redirect
+    console.log('[DBG][domains] No tenant found for subdomain:', subdomain);
+    return null;
+  }
+
+  // 4. Dynamic lookup from DynamoDB for custom domains
   const tenant = await getTenantByDomain(hostname);
 
   if (tenant) {

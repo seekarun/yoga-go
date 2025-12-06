@@ -39,6 +39,7 @@ export interface CreateExpertInput {
   experience?: string;
   socialLinks?: Expert['socialLinks'];
   onboardingCompleted?: boolean;
+  platformPreferences?: Expert['platformPreferences'];
 }
 
 /**
@@ -150,6 +151,10 @@ export async function createExpert(input: CreateExpertInput): Promise<Expert> {
     experience: input.experience ?? '',
     socialLinks: input.socialLinks ?? {},
     onboardingCompleted: input.onboardingCompleted ?? false,
+    platformPreferences: input.platformPreferences ?? {
+      featuredOnPlatform: true,
+      defaultEmail: `${input.id}@myyoga.guru`,
+    },
     liveStreamingEnabled: true,
     totalLiveSessions: 0,
     upcomingLiveSessions: 0,

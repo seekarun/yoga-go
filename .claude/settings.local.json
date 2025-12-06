@@ -45,7 +45,11 @@
       "Bash(curl:*)",
       "WebFetch(domain:www.myyoga.guru)",
       "Bash(git checkout:*)",
-      "Bash(xxd:*)"
+      "Bash(xxd:*)",
+      "Bash(tree:*)",
+      "Bash(npm run infra:build:*)",
+      "Bash(aws ecs list-clusters:*)",
+      "Bash(npm run infra:diff:*)"
     ],
     "deny": [],
     "ask": []
