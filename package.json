@@ -7,6 +7,7 @@
     "packages/*"
   ],
   "scripts": {
+    "dev": "npm run devH -w yoga-go",
     "dev:yoga-go": "npm run dev -w yoga-go",
     "build:yoga-go": "npm run build -w yoga-go",
     "start:yoga-go": "npm run start -w yoga-go",
