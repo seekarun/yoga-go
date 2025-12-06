@@ -149,6 +149,9 @@ export function getAllExpertIds(): string[] {
  *
  * Note: This function is async because of DynamoDB lookup.
  * For middleware use, import from tenantRepository.
+ *
+ * IMPORTANT: DynamoDB calls may fail in Edge Middleware due to missing
+ * AWS credentials. This function handles those errors gracefully.
  */
 export async function resolveDomainToTenant(
   hostname: string
@@ -167,37 +170,55 @@ export async function resolveDomainToTenant(
     };
   }
 
-  // Import here to avoid circular dependency
-  const { getTenantByDomain } = await import('@/lib/repositories/tenantRepository');
-
-  // 3. Check myyoga.guru subdomains - validate against database
+  // 3. Check myyoga.guru subdomains
   const subdomain = getSubdomainFromMyYogaGuru(hostname);
-  if (subdomain) {
-    // Look up the subdomain in the database to validate it exists
-    const fullDomain = `${subdomain}.myyoga.guru`;
-    const tenant = await getTenantByDomain(fullDomain);
+
+  // Try DynamoDB lookup, but handle Edge Middleware credential errors gracefully
+  try {
+    // Import here to avoid circular dependency
+    const { getTenantByDomain } = await import('@/lib/repositories/tenantRepository');
+
+    if (subdomain) {
+      // Look up the subdomain in the database to validate it exists
+      const fullDomain = `${subdomain}.myyoga.guru`;
+      const tenant = await getTenantByDomain(fullDomain);
+
+      if (tenant) {
+        console.log('[DBG][domains] Found tenant for subdomain:', subdomain);
+        return {
+          tenantId: tenant.id,
+          expertId: tenant.expertId,
+        };
+      }
+
+      // Subdomain doesn't have a tenant - return null to trigger 404/redirect
+      console.log('[DBG][domains] No tenant found for subdomain:', subdomain);
+      return null;
+    }
+
+    // 4. Dynamic lookup from DynamoDB for custom domains
+    const tenant = await getTenantByDomain(hostname);
 
     if (tenant) {
-      console.log('[DBG][domains] Found tenant for subdomain:', subdomain);
       return {
         tenantId: tenant.id,
         expertId: tenant.expertId,
       };
     }
+  } catch (error) {
+    // DynamoDB may fail in Edge Middleware due to missing AWS credentials
+    // This is expected behavior - fall back to static config only
+    console.error('[DBG][domains] DynamoDB lookup failed (expected in Edge):', error);
 
-    // Subdomain doesn't have a tenant - return null to trigger 404/redirect
-    console.log('[DBG][domains] No tenant found for subdomain:', subdomain);
-    return null;
-  }
-
-  // 4. Dynamic lookup from DynamoDB for custom domains
-  const tenant = await getTenantByDomain(hostname);
-
-  if (tenant) {
-    return {
-      tenantId: tenant.id,
-      expertId: tenant.expertId,
-    };
+    // For myyoga.guru subdomains without static config, allow the request
+    // through - the page/API will handle the 404 if tenant doesn't exist
+    if (subdomain) {
+      console.log('[DBG][domains] Allowing subdomain through without DB validation:', subdomain);
+      return {
+        tenantId: subdomain,
+        expertId: subdomain,
+      };
+    }
   }
 
   return null;
