@@ -33,7 +33,10 @@
       "Bash(npm run)",
       "Bash(npm run lint:yoga-go:*)",
       "Bash(npx prettier:*)",
-      "Bash(npm run lint:fix:yoga-go:*)"
+      "Bash(npm run lint:fix:yoga-go:*)",
+      "Bash(npm show:*)",
+      "Bash(npm install:*)",
+      "Bash(npm audit fix:*)"
     ],
     "deny": [],
     "ask": []
