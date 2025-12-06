@@ -5,7 +5,12 @@
  * Works in both server and client environments
  */
 
-import { getExpertIdFromHostname, isPrimaryDomain, getExpertConfig } from '@/config/domains';
+import {
+  getExpertIdFromHostname,
+  isPrimaryDomain,
+  getExpertConfig,
+  getSubdomainFromMyYogaGuru,
+} from '@/config/domains';
 import type { ExpertDomainConfig } from '@/config/domains';
 
 /**
@@ -39,6 +44,8 @@ export async function getExpertContext(): Promise<{
 /**
  * Get expert context from window.location (Client Component)
  * Use this in Client Components
+ *
+ * Checks both static domain config and dynamic myyoga.guru subdomains
  */
 export function getClientExpertContext(): {
   isExpertMode: boolean;
@@ -54,8 +61,19 @@ export function getClientExpertContext(): {
   }
 
   const host = window.location.host;
-  const expertId = getExpertIdFromHostname(host);
-  const isExpertMode = expertId !== null;
+
+  // First check static domain config
+  let expertId = getExpertIdFromHostname(host);
+
+  // If not found in static config, check for myyoga.guru subdomain
+  if (!expertId) {
+    const subdomain = getSubdomainFromMyYogaGuru(host);
+    if (subdomain) {
+      expertId = subdomain;
+    }
+  }
+
+  const isExpertMode = expertId !== null && !isPrimaryDomain(host);
   const expertConfig = expertId ? getExpertConfig(expertId) : null;
 
   return {

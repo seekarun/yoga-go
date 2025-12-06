@@ -15,6 +15,7 @@ export default function EditLandingPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [uploadError, setUploadError] = useState('');
+  const [_logoImageAsset, setLogoImageAsset] = useState<Asset | null>(null);
   const [heroImageAsset, setHeroImageAsset] = useState<Asset | null>(null);
   const [_aboutImageAsset, setAboutImageAsset] = useState<Asset | null>(null);
   const [_actImageAsset, setActImageAsset] = useState<Asset | null>(null);
@@ -24,6 +25,7 @@ export default function EditLandingPage() {
   const [pollingAboutVideoId, setPollingAboutVideoId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
+    logo: '',
     heroImage: '',
     headline: '',
     description: '',
@@ -117,10 +119,12 @@ export default function EditLandingPage() {
       console.log('[DBG][landing-page-edit] Hero data:', expert.customLandingPage?.hero);
 
       // Populate form with existing landing page data
+      const brandingData = expert.customLandingPage?.branding;
       const valueProps = expert.customLandingPage?.valuePropositions;
       const aboutData = expert.customLandingPage?.about;
       const actData = expert.customLandingPage?.act;
       const loadedData = {
+        logo: brandingData?.logo || '',
         heroImage: expert.customLandingPage?.hero?.heroImage || '',
         headline: expert.customLandingPage?.hero?.headline || '',
         description: expert.customLandingPage?.hero?.description || '',
@@ -167,6 +171,18 @@ export default function EditLandingPage() {
       ...prev,
       [name]: value,
     }));
+  };
+
+  const handleLogoImageUpload = (asset: Asset) => {
+    console.log('[DBG][landing-page-edit] Logo image uploaded:', asset);
+    const imageUrl = asset.croppedUrl || asset.originalUrl;
+    console.log('[DBG][landing-page-edit] Setting logo to:', imageUrl);
+    setLogoImageAsset(asset);
+    setFormData(prev => ({
+      ...prev,
+      logo: imageUrl,
+    }));
+    setUploadError('');
   };
 
   const handleHeroImageUpload = (asset: Asset) => {
@@ -347,8 +363,12 @@ export default function EditLandingPage() {
           : undefined;
 
       // Prepare landing page data
+      // Prepare branding data
+      const brandingSection = formData.logo.trim() ? { logo: formData.logo.trim() } : undefined;
+
       const landingPageData = {
         customLandingPage: {
+          branding: brandingSection,
           hero: {
             heroImage: formData.heroImage.trim() || undefined,
             headline: formData.headline.trim() || undefined,
@@ -453,6 +473,38 @@ export default function EditLandingPage() {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-8 space-y-8">
+          {/* Branding Section */}
+          <div className="border-b border-gray-200 pb-8">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-2">Branding</h2>
+            <p className="text-sm text-gray-600 mb-6">
+              Upload your logo to display in the header when visitors access your subdomain
+            </p>
+
+            <div className="space-y-6">
+              {/* Logo Upload */}
+              <div>
+                <ImageUploadCrop
+                  width={300}
+                  height={100}
+                  category="logo"
+                  label="Logo (300x100px recommended, transparent PNG works best)"
+                  onUploadComplete={handleLogoImageUpload}
+                  onError={handleUploadError}
+                  relatedTo={{
+                    type: 'expert',
+                    id: expertId,
+                  }}
+                  currentImageUrl={formData.logo}
+                />
+                <p className="mt-2 text-sm text-gray-500">
+                  This logo will be displayed in the header on your subdomain (e.g.,{' '}
+                  <span className="font-mono text-blue-600">{expertId}.myyoga.guru</span>). If no
+                  logo is uploaded, your name will be shown instead.
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Hero Section */}
           <div className="border-b border-gray-200 pb-8">
             <h2 className="text-2xl font-semibold text-gray-900 mb-2">Hero Section</h2>

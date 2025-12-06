@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { getClientExpertContext } from '@/lib/domainContext';
+import type { Expert } from '@/types';
 
 export default function Header() {
   const { user, isAuthenticated, isExpert, login: _login, logout } = useAuth();
@@ -13,6 +14,7 @@ export default function Header() {
     isExpertMode: false,
     expertId: null,
   });
+  const [expertData, setExpertData] = useState<Expert | null>(null);
   const [isOnSrvPage, setIsOnSrvPage] = useState(false);
   const [scrollOpacity, setScrollOpacity] = useState(0);
 
@@ -27,6 +29,22 @@ export default function Header() {
     });
     setIsOnSrvPage(isOnSrv);
   }, []);
+
+  // Fetch expert data when in expert mode (subdomain) to get custom logo
+  useEffect(() => {
+    if (expertMode.isExpertMode && expertMode.expertId) {
+      fetch(`/data/experts/${expertMode.expertId}`)
+        .then(res => res.json())
+        .then(result => {
+          if (result.success && result.data) {
+            setExpertData(result.data);
+          }
+        })
+        .catch(err => {
+          console.error('[DBG][Header] Failed to fetch expert data:', err);
+        });
+    }
+  }, [expertMode.isExpertMode, expertMode.expertId]);
 
   // Track scroll position for background opacity
   useEffect(() => {
@@ -83,7 +101,7 @@ export default function Header() {
           height: '64px',
         }}
       >
-        {/* Logo */}
+        {/* Logo - show expert's logo/name on subdomains, MYG logo otherwise */}
         <Link
           href={logoHref}
           style={{
@@ -103,16 +121,47 @@ export default function Header() {
             }
           }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/myg.png"
-            alt="My Yoga.Guru"
-            width={40}
-            height={40}
-            style={{
-              objectFit: 'contain',
-            }}
-          />
+          {expertMode.isExpertMode && expertData ? (
+            // Show expert's custom logo or name on expert subdomains
+            expertData.customLandingPage?.branding?.logo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={expertData.customLandingPage.branding.logo}
+                alt={expertData.name}
+                height={40}
+                style={{
+                  height: '40px',
+                  width: 'auto',
+                  maxWidth: '150px',
+                  objectFit: 'contain',
+                }}
+              />
+            ) : (
+              // Show expert name as text logo if no custom logo
+              <span
+                style={{
+                  fontSize: '20px',
+                  fontWeight: '700',
+                  color: scrollOpacity < 0.5 ? '#fff' : '#000',
+                  textShadow: scrollOpacity < 0.5 ? '0 2px 4px rgba(0,0,0,0.3)' : 'none',
+                }}
+              >
+                {expertData.name}
+              </span>
+            )
+          ) : (
+            // Show MYG logo on primary domain
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src="/myg.png"
+              alt="My Yoga.Guru"
+              width={40}
+              height={40}
+              style={{
+                objectFit: 'contain',
+              }}
+            />
+          )}
         </Link>
 
         {/* Desktop Nav - Hidden in expert mode */}

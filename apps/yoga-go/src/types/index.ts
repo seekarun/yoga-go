@@ -26,6 +26,9 @@ export interface ExpertCourse {
 }
 
 export interface CustomLandingPageConfig {
+  branding?: {
+    logo?: string; // Custom logo URL for header on expert subdomain
+  };
   hero?: {
     heroImage?: string; // Hero background image URL
     headline?: string; // Custom headline (problem hook)
@@ -564,6 +567,7 @@ export type AssetCategory =
   | 'course'
   | 'lesson'
   | 'about'
+  | 'logo'
   | 'other';
 
 export interface AssetDimensions {
