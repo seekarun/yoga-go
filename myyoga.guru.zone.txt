@@ -1,0 +1,33 @@
+; Zone file for myyoga.guru
+; Import this into Vercel DNS
+; Generated from Route53 records
+
+$ORIGIN myyoga.guru.
+$TTL 300
+
+; Email - Google Workspace
+@                   IN  MX   1 SMTP.GOOGLE.COM.
+
+; Google Site Verification
+@                   IN  TXT  "google-site-verification=anjyUMbXV7oAEwBX3ZySiT1N5G4Do_VyUGFLW38J2R8"
+
+; DMARC Policy
+_dmarc              IN  TXT  "v=DMARC1; p=none;"
+
+; AWS SES DKIM Records
+4hypzr43s36op372gvz4ht5wvk7xplq2._domainkey  IN  CNAME  4hypzr43s36op372gvz4ht5wvk7xplq2.dkim.amazonses.com.
+7uxskjp2wle5ivcp6m7n66pxwvxhim2g._domainkey  IN  CNAME  7uxskjp2wle5ivcp6m7n66pxwvxhim2g.dkim.amazonses.com.
+hpnrex7ot6tidj2ytzozoxynz2qguyid._domainkey  IN  CNAME  hpnrex7ot6tidj2ytzozoxynz2qguyid.dkim.amazonses.com.
+
+; AWS SES Mail subdomain
+mail                IN  MX   10 feedback-smtp.ap-southeast-2.amazonses.com.
+mail                IN  TXT  "v=spf1 include:amazonses.com ~all"
+
+; SendGrid Records
+57198147            IN  CNAME  sendgrid.net.
+s1._domainkey       IN  CNAME  s1.domainkey.u57198147.wl148.sendgrid.net.
+s2._domainkey       IN  CNAME  s2.domainkey.u57198147.wl148.sendgrid.net.
+em5826              IN  CNAME  u57198147.wl148.sendgrid.net.
+
+; Google Verification
+kpfrkjglxlxo        IN  CNAME  gv-2qm46a4nuug5q5.dv.googlehosted.com.

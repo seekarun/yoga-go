@@ -36,7 +36,8 @@
       "Bash(npm run lint:fix:yoga-go:*)",
       "Bash(npm show:*)",
       "Bash(npm install:*)",
-      "Bash(npm audit fix:*)"
+      "Bash(npm audit fix:*)",
+      "Bash(aws route53:*)"
     ],
     "deny": [],
     "ask": []
