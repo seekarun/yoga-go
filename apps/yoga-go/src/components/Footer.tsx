@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { getClientExpertContext } from '@/lib/domainContext';
 
 export default function Footer() {
@@ -61,7 +60,8 @@ export default function Footer() {
                 marginBottom: '16px',
               }}
             >
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src="/myg.png"
                 alt="My Yoga.Guru"
                 width={40}
