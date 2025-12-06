@@ -5,6 +5,7 @@ import {
   getExpertIdFromHostname,
   isPrimaryDomain,
   getSubdomainFromMyYogaGuru,
+  resolveDomainToTenant,
 } from './config/domains';
 
 /**
@@ -70,11 +71,25 @@ export default auth(async function middleware(request: NextRequest) {
 
   const isPrimary = isPrimaryDomain(hostname);
 
+  // Resolve tenant context (for multi-tenancy)
+  // Try dynamic lookup if not found in static config
+  let tenantId: string | null = expertId;
+  if (!tenantId && !isPrimary) {
+    const tenantResult = await resolveDomainToTenant(hostname);
+    if (tenantResult) {
+      tenantId = tenantResult.tenantId;
+      expertId = tenantResult.expertId;
+      isExpertDomain = true;
+    }
+  }
+
   console.log(
     '[DBG][middleware] Expert domain:',
     isExpertDomain,
     'Expert ID:',
     expertId,
+    'Tenant ID:',
+    tenantId,
     'Is primary:',
     isPrimary,
     'MyYoga.Guru subdomain:',
@@ -83,11 +98,22 @@ export default auth(async function middleware(request: NextRequest) {
     session ? 'exists' : 'null'
   );
 
+  // Helper to add tenant headers to response
+  const addTenantHeaders = (response: NextResponse): NextResponse => {
+    if (tenantId) {
+      response.headers.set('x-tenant-id', tenantId);
+    }
+    if (expertId) {
+      response.headers.set('x-expert-id', expertId);
+    }
+    return response;
+  };
+
   // Handle expert domain routing (domain isolation for dedicated expert sites)
   if (isExpertDomain && expertId) {
     // Allow Next.js internals
     if (pathname.startsWith('/_next')) {
-      return NextResponse.next();
+      return addTenantHeaders(NextResponse.next());
     }
 
     // Allow API routes but check auth for protected ones
@@ -98,18 +124,18 @@ export default auth(async function middleware(request: NextRequest) {
           return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
       }
-      return NextResponse.next();
+      return addTenantHeaders(NextResponse.next());
     }
 
     // Allow Auth routes to pass through to custom route handlers
     if (pathname.startsWith('/auth')) {
       console.log('[DBG][middleware] Auth route detected on expert domain, bypassing');
-      return NextResponse.next();
+      return addTenantHeaders(NextResponse.next());
     }
 
     // Allow static assets
     if (pathname.startsWith('/public') || pathname.match(/\.(ico|png|jpg|jpeg|svg|css|js)$/)) {
-      return NextResponse.next();
+      return addTenantHeaders(NextResponse.next());
     }
 
     const expertPath = `/experts/${expertId}`;
@@ -119,19 +145,19 @@ export default auth(async function middleware(request: NextRequest) {
       const url = request.nextUrl.clone();
       url.pathname = expertPath;
       console.log(`[DBG][middleware] Rewriting root to ${expertPath} for expert domain`);
-      return NextResponse.rewrite(url);
+      return addTenantHeaders(NextResponse.rewrite(url));
     }
 
     // Expert's own page: Allow access
     if (pathname === expertPath || pathname.startsWith(`${expertPath}/`)) {
       console.log(`[DBG][middleware] Allowing access to ${expertPath}`);
-      return NextResponse.next();
+      return addTenantHeaders(NextResponse.next());
     }
 
     // Courses belonging to this expert: Allow access
     if (pathname.startsWith('/courses/')) {
       console.log('[DBG][middleware] Allowing access to course page (will validate expert)');
-      return NextResponse.next();
+      return addTenantHeaders(NextResponse.next());
     }
 
     // Protected routes: Check authentication
@@ -147,7 +173,7 @@ export default auth(async function middleware(request: NextRequest) {
         return NextResponse.redirect(loginUrl);
       }
       console.log('[DBG][middleware] Allowing access to protected route');
-      return NextResponse.next();
+      return addTenantHeaders(NextResponse.next());
     }
 
     // All other routes: Block access (redirect to expert page)
@@ -165,7 +191,7 @@ export default auth(async function middleware(request: NextRequest) {
   // Allow Auth routes to pass through to custom route handlers
   if (pathname.startsWith('/auth')) {
     console.log('[DBG][middleware] Auth route on primary domain, bypassing to custom handler');
-    return NextResponse.next();
+    return addTenantHeaders(NextResponse.next());
   }
 
   // Protected routes: Check authentication
@@ -182,7 +208,7 @@ export default auth(async function middleware(request: NextRequest) {
     }
   }
 
-  return NextResponse.next();
+  return addTenantHeaders(NextResponse.next());
 });
 
 export const config = {

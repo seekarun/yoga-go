@@ -99,6 +99,25 @@ export interface Expert extends BaseEntity {
   upcomingLiveSessions?: number;
 }
 
+// Tenant Related Types (Multi-tenancy)
+export type TenantStatus = 'active' | 'pending' | 'suspended';
+
+export interface Tenant extends BaseEntity {
+  name: string; // Display name (e.g., "Kavitha Yoga")
+  slug: string; // URL-safe identifier (e.g., "kavitha")
+  expertId: string; // Link to Expert entity
+
+  // Domains
+  primaryDomain: string; // e.g., "kavithayoga.com"
+  additionalDomains?: string[]; // e.g., ["kavitha.myyoga.guru"]
+
+  // Platform visibility
+  featuredOnPlatform: boolean; // Show on myyoga.guru browse
+
+  // Status
+  status: TenantStatus;
+}
+
 // Course Related Types
 export type CourseStatus = 'IN_PROGRESS' | 'PUBLISHED' | 'ARCHIVED';
 

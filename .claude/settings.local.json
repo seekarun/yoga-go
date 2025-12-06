@@ -31,7 +31,9 @@
       "Bash(dig:*)",
       "Bash(aws cognito-idp describe-user-pool-client:*)",
       "Bash(npm run)",
-      "Bash(npm run lint:yoga-go:*)"
+      "Bash(npm run lint:yoga-go:*)",
+      "Bash(npx prettier:*)",
+      "Bash(npm run lint:fix:yoga-go:*)"
     ],
     "deny": [],
     "ask": []

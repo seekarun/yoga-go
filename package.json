@@ -19,7 +19,7 @@
     "lint:app-two": "npm run lint -w app-two",
     "lint:fix:app-two": "npm run lint:fix -w app-two",
     "format:app-two": "npm run format -w app-two",
-    "prepare": "husky",
+    "prepare": "node -e \"try { require('husky').install() } catch (e) { if (e.code !== 'MODULE_NOT_FOUND') throw e }\"",
     "infra:install": "cd infra && npm install",
     "infra:build": "cd infra && npm run build",
     "infra:synth": "cd infra && npx cdk synth --profile myg",

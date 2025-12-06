@@ -67,6 +67,9 @@ export const CorePK = {
   SURVEY_RESPONSE: (surveyId: string) => `RESP#${surveyId}`,
   // GSI1 for courses by instructor
   INSTRUCTOR: (instructorId: string) => `INSTRUCTOR#${instructorId}`,
+  // Tenant (multi-tenancy)
+  TENANT: 'TENANT',
+  TENANT_DOMAIN: (domain: string) => `TENANT#DOMAIN#${domain}`,
 } as const;
 
 // ============================================
@@ -126,6 +129,7 @@ export const EntityType = {
   LIVE_PARTICIPANT: 'LIVE_PARTICIPANT',
   AVAILABILITY: 'AVAILABILITY',
   ANALYTICS_EVENT: 'ANALYTICS_EVENT',
+  TENANT: 'TENANT',
 } as const;
 
 export type EntityTypeValue = (typeof EntityType)[keyof typeof EntityType];

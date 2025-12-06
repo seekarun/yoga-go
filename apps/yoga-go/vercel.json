@@ -1,0 +1,30 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "regions": ["syd1"],
+  "buildCommand": "cd ../.. && npm run build:yoga-go",
+  "installCommand": "cd ../.. && npm install",
+  "outputDirectory": ".next",
+  "env": {
+    "VERCEL_FORCE_NO_BUILD_CACHE": "1"
+  },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        }
+      ]
+    }
+  ]
+}

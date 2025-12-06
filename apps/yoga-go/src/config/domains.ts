@@ -137,3 +137,56 @@ export function getExpertConfig(expertId: string): ExpertDomainConfig | null {
 export function getAllExpertIds(): string[] {
   return Object.keys(EXPERT_DOMAINS);
 }
+
+/**
+ * Resolve domain to tenant (dynamic multi-tenancy)
+ *
+ * Resolution order:
+ * 1. Check if it's a primary domain -> return null
+ * 2. Check static EXPERT_DOMAINS config (backwards compat)
+ * 3. Check myyoga.guru subdomains
+ * 4. Try dynamic lookup from DynamoDB
+ *
+ * Note: This function is async because of DynamoDB lookup.
+ * For middleware use, import from tenantRepository.
+ */
+export async function resolveDomainToTenant(
+  hostname: string
+): Promise<{ tenantId: string; expertId: string } | null> {
+  // 1. Primary domains don't have tenants
+  if (isPrimaryDomain(hostname)) {
+    return null;
+  }
+
+  // 2. Check static config first (backwards compatibility)
+  const staticExpertId = getExpertIdFromHostname(hostname);
+  if (staticExpertId) {
+    return {
+      tenantId: staticExpertId,
+      expertId: staticExpertId,
+    };
+  }
+
+  // 3. Check myyoga.guru subdomains
+  const subdomain = getSubdomainFromMyYogaGuru(hostname);
+  if (subdomain) {
+    return {
+      tenantId: subdomain,
+      expertId: subdomain,
+    };
+  }
+
+  // 4. Dynamic lookup from DynamoDB
+  // Import here to avoid circular dependency
+  const { getTenantByDomain } = await import('@/lib/repositories/tenantRepository');
+  const tenant = await getTenantByDomain(hostname);
+
+  if (tenant) {
+    return {
+      tenantId: tenant.id,
+      expertId: tenant.expertId,
+    };
+  }
+
+  return null;
+}
