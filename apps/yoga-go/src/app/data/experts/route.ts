@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import type { ApiResponse, Expert, UserRole } from '@/types';
-import { getSession, getUserByCognitoSub } from '@/lib/auth';
+import { getSessionFromCookies, getUserByCognitoSub } from '@/lib/auth';
 import * as userRepository from '@/lib/repositories/userRepository';
 import * as expertRepository from '@/lib/repositories/expertRepository';
 import * as courseRepository from '@/lib/repositories/courseRepository';
@@ -109,8 +109,8 @@ export async function POST(request: Request) {
   console.log('[DBG][experts/route.ts] POST /data/experts called');
 
   try {
-    // Check authentication
-    const session = await getSession();
+    // Check authentication - use cookie-based session for Vercel
+    const session = await getSessionFromCookies();
     if (!session || !session.user || !session.user.cognitoSub) {
       console.log('[DBG][experts/route.ts] Unauthorized - no session');
       return NextResponse.json({ success: false, error: 'Unauthorized' } as ApiResponse<Expert>, {
