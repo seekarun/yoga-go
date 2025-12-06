@@ -204,12 +204,11 @@ export default auth(async function middleware(request: NextRequest) {
   }
 
   // Protected routes: Check authentication
+  // Note: /data/app/* routes handle their own auth via getSessionFromCookies()
+  // because the middleware's auth() wrapper doesn't work reliably on Vercel for fetch requests
   if (pathname.startsWith('/data/app/')) {
-    // API routes: Return JSON 401 instead of redirect
-    if (!session) {
-      console.log('[DBG][middleware] No session for API route, returning 401');
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-    }
+    console.log('[DBG][middleware] API route - letting through for route handler auth');
+    return addTenantHeaders(NextResponse.next());
   } else if (pathname.startsWith('/app/') || pathname.startsWith('/srv/')) {
     // Page routes: Redirect to login
     if (!session) {
