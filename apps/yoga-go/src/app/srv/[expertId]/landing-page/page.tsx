@@ -123,6 +123,22 @@ export default function EditLandingPage() {
       const valueProps = expert.customLandingPage?.valuePropositions;
       const aboutData = expert.customLandingPage?.about;
       const actData = expert.customLandingPage?.act;
+
+      // Use about video if set, otherwise fall back to expert's promo video from onboarding
+      const aboutVideoId =
+        aboutData?.videoCloudflareId ||
+        (expert.promoVideoCloudflareId && expert.promoVideoStatus === 'ready'
+          ? expert.promoVideoCloudflareId
+          : '');
+      const aboutVideoStat =
+        aboutData?.videoStatus ||
+        (expert.promoVideoCloudflareId && expert.promoVideoStatus === 'ready'
+          ? expert.promoVideoStatus
+          : '');
+
+      // Auto-set layout type to video if promo video exists but no layout was chosen
+      const aboutLayout = aboutData?.layoutType || (aboutVideoId ? 'video' : '');
+
       const loadedData = {
         logo: brandingData?.logo || '',
         heroImage: expert.customLandingPage?.hero?.heroImage || '',
@@ -139,14 +155,9 @@ export default function EditLandingPage() {
         valueItem1: valueProps?.items?.[0] || '',
         valueItem2: valueProps?.items?.[1] || '',
         valueItem3: valueProps?.items?.[2] || '',
-        aboutLayoutType: (aboutData?.layoutType || '') as '' | 'video' | 'image-text',
-        aboutVideoCloudflareId: aboutData?.videoCloudflareId || '',
-        aboutVideoStatus: (aboutData?.videoStatus || '') as
-          | ''
-          | 'uploading'
-          | 'processing'
-          | 'ready'
-          | 'error',
+        aboutLayoutType: aboutLayout as '' | 'video' | 'image-text',
+        aboutVideoCloudflareId: aboutVideoId,
+        aboutVideoStatus: aboutVideoStat as '' | 'uploading' | 'processing' | 'ready' | 'error',
         aboutImageUrl: aboutData?.imageUrl || '',
         aboutText: aboutData?.text || '',
         actImageUrl: actData?.imageUrl || '',
