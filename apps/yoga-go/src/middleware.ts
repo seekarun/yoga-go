@@ -204,11 +204,14 @@ export default auth(async function middleware(request: NextRequest) {
   }
 
   // Protected routes: Check authentication
-  if (
-    pathname.startsWith('/app/') ||
-    pathname.startsWith('/srv/') ||
-    pathname.startsWith('/data/app/')
-  ) {
+  if (pathname.startsWith('/data/app/')) {
+    // API routes: Return JSON 401 instead of redirect
+    if (!session) {
+      console.log('[DBG][middleware] No session for API route, returning 401');
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+  } else if (pathname.startsWith('/app/') || pathname.startsWith('/srv/')) {
+    // Page routes: Redirect to login
     if (!session) {
       console.log('[DBG][middleware] No session, redirecting to signin');
       const loginUrl = new URL('/auth/signin', request.url);
