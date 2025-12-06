@@ -5,7 +5,8 @@
   "scripts": {
     "devH": "next dev -p 3111 -H 0.0.0.0",
     "dev": "next dev -p 3111",
-    "build": "next build",
+    "build": "next build && npm run postbuild",
+    "postbuild": "mkdir -p .next/static/public && cp -r public/* .next/static/public/",
     "start": "next start",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
