@@ -40,7 +40,10 @@
       "Bash(aws route53:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push)"
+      "Bash(git push)",
+      "WebFetch(domain:myyoga.guru)",
+      "Bash(curl:*)",
+      "WebFetch(domain:www.myyoga.guru)"
     ],
     "deny": [],
     "ask": []
