@@ -89,10 +89,17 @@ export function isAdminDomain(hostname: string): boolean {
 
 /**
  * Check if hostname is a primary domain (not expert-specific)
+ * Uses exact match (with optional port) to avoid matching subdomains
  */
 export function isPrimaryDomain(hostname: string): boolean {
-  const cleanHostname = hostname.toLowerCase();
-  return PRIMARY_DOMAINS.some(domain => cleanHostname.includes(domain));
+  // Remove port if present for comparison
+  const cleanHostname = hostname.toLowerCase().split(':')[0];
+
+  // Check exact match against primary domains (also removing ports from them)
+  return PRIMARY_DOMAINS.some(domain => {
+    const cleanDomain = domain.split(':')[0];
+    return cleanHostname === cleanDomain;
+  });
 }
 
 /**
