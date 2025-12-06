@@ -14,8 +14,19 @@ export async function POST() {
     // Get Auth0 session
     const session = await getSession();
 
+    console.log('[DBG][api/user/become-expert] Session:', JSON.stringify(session, null, 2));
+    console.log('[DBG][api/user/become-expert] Session exists:', !!session);
+    console.log('[DBG][api/user/become-expert] Session.user exists:', !!session?.user);
+    console.log(
+      '[DBG][api/user/become-expert] Session.user.cognitoSub:',
+      session?.user?.cognitoSub
+    );
+
     if (!session || !session.user || !session.user.cognitoSub) {
-      console.log('[DBG][api/user/become-expert] No session found');
+      console.log('[DBG][api/user/become-expert] No session found - details:');
+      console.log('[DBG][api/user/become-expert]   session:', session);
+      console.log('[DBG][api/user/become-expert]   session?.user:', session?.user);
+      console.log('[DBG][api/user/become-expert]   cognitoSub:', session?.user?.cognitoSub);
       const response: ApiResponse<null> = {
         success: false,
         error: 'Not authenticated',
