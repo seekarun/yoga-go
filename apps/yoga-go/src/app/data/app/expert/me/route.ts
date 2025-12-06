@@ -1,18 +1,20 @@
 import { NextResponse } from 'next/server';
 import type { ApiResponse, Expert } from '@/types';
-import { getSession, getUserByCognitoSub } from '@/lib/auth';
+import { getSessionFromCookies, getUserByCognitoSub } from '@/lib/auth';
 import * as expertRepository from '@/lib/repositories/expertRepository';
 
 /**
  * GET /data/app/expert/me
  * Get current user's expert profile
+ *
+ * Uses getSessionFromCookies() for Vercel compatibility
  */
 export async function GET() {
   console.log('[DBG][expert/me/route.ts] GET /data/app/expert/me called');
 
   try {
-    // Require authentication
-    const session = await getSession();
+    // Require authentication - use cookie-based session for Vercel
+    const session = await getSessionFromCookies();
     if (!session || !session.user || !session.user.cognitoSub) {
       console.log('[DBG][expert/me/route.ts] Unauthorized - no session');
       return NextResponse.json({ success: false, error: 'Unauthorized' } as ApiResponse<Expert>, {
@@ -79,13 +81,15 @@ export async function GET() {
 /**
  * PATCH /data/app/expert/me
  * Update current user's expert profile
+ *
+ * Uses getSessionFromCookies() for Vercel compatibility
  */
 export async function PATCH(request: Request) {
   console.log('[DBG][expert/me/route.ts] PATCH /data/app/expert/me called');
 
   try {
-    // Require authentication
-    const session = await getSession();
+    // Require authentication - use cookie-based session for Vercel
+    const session = await getSessionFromCookies();
     if (!session || !session.user || !session.user.cognitoSub) {
       console.log('[DBG][expert/me/route.ts] Unauthorized - no session');
       return NextResponse.json({ success: false, error: 'Unauthorized' } as ApiResponse<Expert>, {
