@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import ExpertOnboarding from '@/components/ExpertOnboarding';
@@ -306,12 +305,19 @@ function ExpertLandingPage({ isAuthenticated = false }: { isAuthenticated?: bool
         }}
       >
         {/* Background Image */}
-        <Image
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
           src="/yg_teach1.jpg"
           alt="Yoga instructor teaching"
-          fill
-          style={{ objectFit: 'cover', objectPosition: 'center' }}
-          priority
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            objectPosition: 'center',
+          }}
         />
 
         {/* Gradient Overlay with Primary Color */}
