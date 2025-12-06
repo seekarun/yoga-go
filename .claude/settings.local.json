@@ -29,7 +29,9 @@
       "Bash(aws cloudformation describe-stack-events:*)",
       "Bash(aws ecr describe-repositories:*)",
       "Bash(dig:*)",
-      "Bash(aws cognito-idp describe-user-pool-client:*)"
+      "Bash(aws cognito-idp describe-user-pool-client:*)",
+      "Bash(npm run)",
+      "Bash(npm run lint:yoga-go:*)"
     ],
     "deny": [],
     "ask": []

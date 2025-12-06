@@ -94,113 +94,73 @@ export default function Dashboard() {
 
   return (
     <div style={{ paddingTop: '64px', minHeight: '100vh' }}>
-      {/* Welcome Section */}
+      {/* Compact Stats Bar */}
       <section
         style={{
           background:
             'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%)',
           color: '#fff',
-          padding: '60px 20px',
+          padding: '16px 20px',
         }}
       >
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '32px' }}>
-            <div
-              style={{
-                width: '80px',
-                height: '80px',
-                borderRadius: '50%',
-                background: user.profile.avatar ? `url(${user.profile.avatar})` : '#fff',
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '32px',
-                fontWeight: 'bold',
-                color: 'var(--color-primary)',
-              }}
-            >
-              {!user.profile.avatar &&
-                (user.profile?.name?.charAt(0)?.toUpperCase() ||
-                  user.profile.email?.charAt(0)?.toUpperCase() ||
-                  'U')}
-            </div>
-            <div>
-              <h1
-                style={{
-                  fontSize: '36px',
-                  fontWeight: '600',
-                  marginBottom: '8px',
-                }}
-              >
-                Welcome back,{' '}
-                {user.profile?.name?.split(' ')[0] || user.profile.email.split('@')[0] || 'User'}!
-                🧘‍♀️
-              </h1>
-              <p style={{ fontSize: '18px', opacity: 0.9 }}>Ready to continue your yoga journey?</p>
-            </div>
-          </div>
+        <div
+          style={{
+            maxWidth: '1200px',
+            margin: '0 auto',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '24px',
+            flexWrap: 'wrap',
+          }}
+        >
+          <span style={{ fontSize: '18px', fontWeight: '500' }}>
+            Hi {user.profile?.name?.split(' ')[0] || user.profile.email.split('@')[0] || 'User'}{' '}
+            <span role="img" aria-label="wave">
+              👋
+            </span>
+          </span>
 
-          {/* Quick Stats */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: '24px',
-            }}
-          >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             <div
-              style={{
-                background: 'rgba(255,255,255,0.1)',
-                borderRadius: '12px',
-                padding: '24px',
-                textAlign: 'center',
-              }}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'default' }}
+              title={`Day Streak: ${user.statistics.currentStreak} days`}
             >
-              <div style={{ fontSize: '32px', fontWeight: '700', marginBottom: '8px' }}>
-                {user.statistics.currentStreak}
-              </div>
-              <div style={{ fontSize: '14px', opacity: 0.9 }}>Day Streak 🔥</div>
+              <span role="img" aria-label="streak">
+                🔥
+              </span>
+              <span style={{ fontWeight: '600' }}>{user.statistics.currentStreak}</span>
             </div>
+
             <div
-              style={{
-                background: 'rgba(255,255,255,0.1)',
-                borderRadius: '12px',
-                padding: '24px',
-                textAlign: 'center',
-              }}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'default' }}
+              title={`Total Practice Time: ${formatTime(user.statistics.totalPracticeTime)}`}
             >
-              <div style={{ fontSize: '32px', fontWeight: '700', marginBottom: '8px' }}>
+              <span role="img" aria-label="time">
+                🕐
+              </span>
+              <span style={{ fontWeight: '600' }}>
                 {formatTime(user.statistics.totalPracticeTime)}
-              </div>
-              <div style={{ fontSize: '14px', opacity: 0.9 }}>Total Practice Time</div>
+              </span>
             </div>
+
             <div
-              style={{
-                background: 'rgba(255,255,255,0.1)',
-                borderRadius: '12px',
-                padding: '24px',
-                textAlign: 'center',
-              }}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'default' }}
+              title={`Courses Completed: ${user.statistics.completedCourses}`}
             >
-              <div style={{ fontSize: '32px', fontWeight: '700', marginBottom: '8px' }}>
-                {user.statistics.completedCourses}
-              </div>
-              <div style={{ fontSize: '14px', opacity: 0.9 }}>Courses Completed</div>
+              <span role="img" aria-label="completed">
+                🏁
+              </span>
+              <span style={{ fontWeight: '600' }}>{user.statistics.completedCourses}</span>
             </div>
+
             <div
-              style={{
-                background: 'rgba(255,255,255,0.1)',
-                borderRadius: '12px',
-                padding: '24px',
-                textAlign: 'center',
-              }}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'default' }}
+              title={`Achievements Earned: ${user.achievements.length}`}
             >
-              <div style={{ fontSize: '32px', fontWeight: '700', marginBottom: '8px' }}>
-                {user.achievements.length}
-              </div>
-              <div style={{ fontSize: '14px', opacity: 0.9 }}>Achievements</div>
+              <span role="img" aria-label="achievements">
+                🏆
+              </span>
+              <span style={{ fontWeight: '600' }}>{user.achievements.length}</span>
             </div>
           </div>
         </div>
