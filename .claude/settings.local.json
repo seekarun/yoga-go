@@ -49,7 +49,8 @@
       "Bash(tree:*)",
       "Bash(npm run infra:build:*)",
       "Bash(aws ecs list-clusters:*)",
-      "Bash(npm run infra:diff:*)"
+      "Bash(npm run infra:diff:*)",
+      "Bash(npx vercel:*)"
     ],
     "deny": [],
     "ask": []

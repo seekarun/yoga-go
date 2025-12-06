@@ -39,6 +39,11 @@ const config: NextAuthConfig = {
       if (account && profile) {
         token.cognitoSub = profile.sub as string;
       }
+      // Fallback: if cognitoSub is missing but sub exists, use sub
+      // This handles existing sessions that were created before cognitoSub was added
+      if (!token.cognitoSub && token.sub) {
+        token.cognitoSub = token.sub;
+      }
       return token;
     },
     async session({ session, token }) {
