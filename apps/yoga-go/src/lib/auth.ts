@@ -1,4 +1,3 @@
-import { auth } from '@/auth';
 import type { NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
 import { decode } from 'next-auth/jwt';
@@ -14,67 +13,8 @@ interface DecodedToken {
 }
 
 /**
- * Get the current session from NextAuth
- * Note: This uses auth() which may not work reliably on Vercel.
- * For API routes, prefer getSessionFromRequest() or getSessionFromCookies()
- */
-export async function getSession() {
-  try {
-    const session = await auth();
-    return session;
-  } catch (error) {
-    console.error('[DBG][auth] Error getting session:', error);
-    return null;
-  }
-}
-
-/**
- * Get session from request cookies - works reliably on Vercel
- * Use this in API routes instead of getSession()
- */
-export async function getSessionFromRequest(request: NextRequest) {
-  try {
-    const sessionToken = request.cookies.get('authjs.session-token')?.value;
-
-    if (!sessionToken) {
-      console.log('[DBG][auth] No session token cookie found');
-      return null;
-    }
-
-    const decoded = (await decode({
-      token: sessionToken,
-      secret: process.env.NEXTAUTH_SECRET!,
-      salt: 'authjs.session-token',
-    })) as DecodedToken | null;
-
-    if (!decoded) {
-      console.log('[DBG][auth] Failed to decode token');
-      return null;
-    }
-
-    const cognitoSub = decoded.cognitoSub || decoded.sub;
-
-    if (!cognitoSub) {
-      console.log('[DBG][auth] No cognitoSub in token');
-      return null;
-    }
-
-    return {
-      user: {
-        cognitoSub,
-        email: decoded.email,
-        name: decoded.name,
-      },
-    };
-  } catch (error) {
-    console.error('[DBG][auth] Error getting session from request:', error);
-    return null;
-  }
-}
-
-/**
  * Get session from Next.js cookies() - works in server components and API routes
- * Use this when you don't have access to the request object
+ * This is the primary session retrieval method for Vercel compatibility
  */
 export async function getSessionFromCookies() {
   try {
@@ -82,7 +22,6 @@ export async function getSessionFromCookies() {
     const sessionToken = cookieStore.get('authjs.session-token')?.value;
 
     if (!sessionToken) {
-      console.log('[DBG][auth] No session token cookie found');
       return null;
     }
 
@@ -93,14 +32,12 @@ export async function getSessionFromCookies() {
     })) as DecodedToken | null;
 
     if (!decoded) {
-      console.log('[DBG][auth] Failed to decode token');
       return null;
     }
 
     const cognitoSub = decoded.cognitoSub || decoded.sub;
 
     if (!cognitoSub) {
-      console.log('[DBG][auth] No cognitoSub in token');
       return null;
     }
 
@@ -113,6 +50,56 @@ export async function getSessionFromCookies() {
     };
   } catch (error) {
     console.error('[DBG][auth] Error getting session from cookies:', error);
+    return null;
+  }
+}
+
+/**
+ * Get the current session
+ * Uses cookie-based session reading for Vercel compatibility
+ * (NextAuth's auth() doesn't work reliably on Vercel Edge/Serverless)
+ */
+export async function getSession() {
+  return getSessionFromCookies();
+}
+
+/**
+ * Get session from request cookies - works reliably on Vercel
+ * Use this when you have access to the NextRequest object
+ */
+export async function getSessionFromRequest(request: NextRequest) {
+  try {
+    const sessionToken = request.cookies.get('authjs.session-token')?.value;
+
+    if (!sessionToken) {
+      return null;
+    }
+
+    const decoded = (await decode({
+      token: sessionToken,
+      secret: process.env.NEXTAUTH_SECRET!,
+      salt: 'authjs.session-token',
+    })) as DecodedToken | null;
+
+    if (!decoded) {
+      return null;
+    }
+
+    const cognitoSub = decoded.cognitoSub || decoded.sub;
+
+    if (!cognitoSub) {
+      return null;
+    }
+
+    return {
+      user: {
+        cognitoSub,
+        email: decoded.email,
+        name: decoded.name,
+      },
+    };
+  } catch (error) {
+    console.error('[DBG][auth] Error getting session from request:', error);
     return null;
   }
 }
