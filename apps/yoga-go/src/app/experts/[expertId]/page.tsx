@@ -886,34 +886,32 @@ export default function ExpertDetailPage() {
                       </div>
                     </div>
 
-                    {/* CTA Button */}
-                    {!expertMode.isExpertMode && (
-                      <Link
-                        href={`/experts/${expertId}/courses/${course.id}`}
-                        style={{
-                          display: 'inline-block',
-                          padding: '14px 32px',
-                          background:
-                            'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%)',
-                          color: '#fff',
-                          fontSize: '16px',
-                          fontWeight: '600',
-                          borderRadius: '8px',
-                          textDecoration: 'none',
-                          transition: 'transform 0.2s, box-shadow 0.2s',
-                        }}
-                        onMouseEnter={e => {
-                          e.currentTarget.style.transform = 'translateY(-2px)';
-                          e.currentTarget.style.boxShadow = '0 6px 20px rgba(118, 75, 162, 0.4)';
-                        }}
-                        onMouseLeave={e => {
-                          e.currentTarget.style.transform = 'translateY(0)';
-                          e.currentTarget.style.boxShadow = 'none';
-                        }}
-                      >
-                        View Course
-                      </Link>
-                    )}
+                    {/* CTA Button - Links to course detail page where users can buy */}
+                    <Link
+                      href={`/courses/${course.id}`}
+                      style={{
+                        display: 'inline-block',
+                        padding: '14px 32px',
+                        background:
+                          'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%)',
+                        color: '#fff',
+                        fontSize: '16px',
+                        fontWeight: '600',
+                        borderRadius: '8px',
+                        textDecoration: 'none',
+                        transition: 'transform 0.2s, box-shadow 0.2s',
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = '0 6px 20px rgba(118, 75, 162, 0.4)';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
+                    >
+                      More Details
+                    </Link>
                   </div>
                 </div>
               ))}
