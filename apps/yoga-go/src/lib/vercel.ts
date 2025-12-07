@@ -107,6 +107,8 @@ export async function addDomainToVercel(domain: string): Promise<AddDomainResult
     );
 
     const data = (await response.json()) as VercelDomainResponse;
+    console.log('[DBG][vercel] API response status:', response.status);
+    console.log('[DBG][vercel] API response data:', JSON.stringify(data, null, 2));
 
     if (!response.ok) {
       console.error('[DBG][vercel] Failed to add domain:', data.error);
@@ -120,6 +122,38 @@ export async function addDomainToVercel(domain: string): Promise<AddDomainResult
       }
 
       return { success: false, error: data.error?.message || 'Failed to add domain' };
+    }
+
+    // Handle case where domain object is missing (shouldn't happen on success)
+    if (!data.domain) {
+      // Check if the response itself contains domain info (different API response format)
+      const domainData = data as unknown as VercelDomainConfig;
+      if (domainData.name) {
+        console.log(
+          '[DBG][vercel] Domain added (alt format):',
+          domainData.name,
+          'verified:',
+          domainData.verified
+        );
+        const verification: DomainVerification[] = [];
+        if (domainData.verification && domainData.verification.length > 0) {
+          for (const v of domainData.verification) {
+            verification.push({
+              type: v.type as 'TXT' | 'CNAME',
+              name: v.domain,
+              value: v.value,
+            });
+          }
+        }
+        return {
+          success: true,
+          domain: domainData.name,
+          verified: domainData.verified,
+          verification,
+        };
+      }
+      console.error('[DBG][vercel] Unexpected response format - no domain data');
+      return { success: false, error: 'Unexpected API response format' };
     }
 
     console.log('[DBG][vercel] Domain added:', data.domain.name, 'verified:', data.domain.verified);
