@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { getClientExpertContext } from '@/lib/domainContext';
 import type { UserCoursesData } from '@/types';
 
 export default function MyCourses() {
@@ -13,6 +14,19 @@ export default function MyCourses() {
   const [filter, setFilter] = useState<'all' | 'in-progress' | 'completed' | 'not-started'>('all');
   const [sortBy, setSortBy] = useState<'recent' | 'progress' | 'enrollment'>('recent');
   const [searchQuery, setSearchQuery] = useState('');
+  const [expertMode, setExpertMode] = useState<{ isExpertMode: boolean; expertId: string | null }>({
+    isExpertMode: false,
+    expertId: null,
+  });
+
+  // Detect expert mode on mount
+  useEffect(() => {
+    const context = getClientExpertContext();
+    setExpertMode({
+      isExpertMode: context.isExpertMode,
+      expertId: context.expertId,
+    });
+  }, []);
 
   useEffect(() => {
     const fetchUserCourses = async () => {
@@ -24,7 +38,7 @@ export default function MyCourses() {
           setUserCourses(data.data);
         }
       } catch (error) {
-        console.error('[my-courses] Error fetching user courses:', error);
+        console.error('[DBG][my-courses] Error fetching user courses:', error);
       } finally {
         setLoading(false);
       }
@@ -43,7 +57,12 @@ export default function MyCourses() {
     );
   }
 
-  const enrolledCourses = userCourses?.enrolled || [];
+  // Get enrolled courses, filtered by expert if on expert subdomain
+  const allEnrolledCourses = userCourses?.enrolled || [];
+  const enrolledCourses =
+    expertMode.isExpertMode && expertMode.expertId
+      ? allEnrolledCourses.filter(course => course.instructor.id === expertMode.expertId)
+      : allEnrolledCourses;
 
   // Filter courses
   const filteredCourses = enrolledCourses.filter(course => {
