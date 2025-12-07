@@ -6,6 +6,7 @@ export interface Preferences {
   timezone: string;
   dateFormat: string;
   timeFormat: "12h" | "24h";
+  location: string;
 }
 
 const DEFAULT_PREFERENCES: Preferences = {
@@ -15,6 +16,7 @@ const DEFAULT_PREFERENCES: Preferences = {
       : "UTC",
   dateFormat: "MM/dd/yyyy",
   timeFormat: "12h",
+  location: "",
 };
 
 interface PreferencesContextType {

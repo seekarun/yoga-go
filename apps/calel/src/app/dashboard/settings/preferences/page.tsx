@@ -62,6 +62,78 @@ const TIMEZONE_OPTIONS = [
   },
 ];
 
+// Major cities for autocomplete
+const CITIES = [
+  "New York, USA",
+  "Los Angeles, USA",
+  "Chicago, USA",
+  "Houston, USA",
+  "San Francisco, USA",
+  "Seattle, USA",
+  "Miami, USA",
+  "Boston, USA",
+  "Denver, USA",
+  "Toronto, Canada",
+  "Vancouver, Canada",
+  "Montreal, Canada",
+  "London, UK",
+  "Manchester, UK",
+  "Edinburgh, UK",
+  "Paris, France",
+  "Berlin, Germany",
+  "Munich, Germany",
+  "Amsterdam, Netherlands",
+  "Madrid, Spain",
+  "Barcelona, Spain",
+  "Rome, Italy",
+  "Milan, Italy",
+  "Vienna, Austria",
+  "Zurich, Switzerland",
+  "Stockholm, Sweden",
+  "Oslo, Norway",
+  "Copenhagen, Denmark",
+  "Dublin, Ireland",
+  "Brussels, Belgium",
+  "Moscow, Russia",
+  "Dubai, UAE",
+  "Abu Dhabi, UAE",
+  "Mumbai, India",
+  "Delhi, India",
+  "Bangalore, India",
+  "Chennai, India",
+  "Hyderabad, India",
+  "Kolkata, India",
+  "Singapore",
+  "Hong Kong",
+  "Tokyo, Japan",
+  "Osaka, Japan",
+  "Seoul, South Korea",
+  "Beijing, China",
+  "Shanghai, China",
+  "Bangkok, Thailand",
+  "Kuala Lumpur, Malaysia",
+  "Jakarta, Indonesia",
+  "Manila, Philippines",
+  "Ho Chi Minh City, Vietnam",
+  "Sydney, Australia",
+  "Melbourne, Australia",
+  "Brisbane, Australia",
+  "Perth, Australia",
+  "Auckland, New Zealand",
+  "Wellington, New Zealand",
+  "Cape Town, South Africa",
+  "Johannesburg, South Africa",
+  "Cairo, Egypt",
+  "Lagos, Nigeria",
+  "Nairobi, Kenya",
+  "Sao Paulo, Brazil",
+  "Rio de Janeiro, Brazil",
+  "Buenos Aires, Argentina",
+  "Mexico City, Mexico",
+  "Lima, Peru",
+  "Bogota, Colombia",
+];
+
 function getTimezoneOffset(timezone: string): string {
   try {
     const now = new Date();
@@ -186,6 +258,31 @@ export default function PreferencesPage() {
                   </optgroup>
                 ))}
               </select>
+            </section>
+
+            {/* Location Section */}
+            <section className="bg-white rounded-xl shadow-sm p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                Location
+              </h2>
+              <p className="text-sm text-gray-600 mb-4">
+                Set your city for location-based features.
+              </p>
+              <div className="relative">
+                <input
+                  type="text"
+                  list="cities-list"
+                  value={preferences.location}
+                  onChange={(e) => updatePreference("location", e.target.value)}
+                  placeholder="Start typing a city name..."
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+                <datalist id="cities-list">
+                  {CITIES.map((city) => (
+                    <option key={city} value={city} />
+                  ))}
+                </datalist>
+              </div>
             </section>
 
             {/* Date & Time Format Section */}
