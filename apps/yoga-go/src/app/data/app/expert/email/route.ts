@@ -42,9 +42,13 @@ export async function GET() {
       });
     }
 
+    // Use user's profile email as default forwarding email if not explicitly set
+    const forwardingEmail =
+      expert.platformPreferences?.forwardingEmail || user.profile?.email || null;
+
     const emailSettings: EmailSettings = {
       platformEmail: expert.platformPreferences?.defaultEmail || `${expert.id}@myyoga.guru`,
-      forwardingEmail: expert.platformPreferences?.forwardingEmail || null,
+      forwardingEmail,
       emailForwardingEnabled: expert.platformPreferences?.emailForwardingEnabled ?? true,
     };
 
