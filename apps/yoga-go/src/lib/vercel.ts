@@ -61,6 +61,10 @@ export interface AddDomainResult {
  */
 function getHeaders(): HeadersInit {
   const token = process.env.VERCEL_TOKEN;
+  console.log('[DBG][vercel] VERCEL_TOKEN present:', !!token);
+  console.log('[DBG][vercel] VERCEL_PROJECT_ID:', process.env.VERCEL_PROJECT_ID);
+  console.log('[DBG][vercel] VERCEL_TEAM_ID:', process.env.VERCEL_TEAM_ID);
+
   if (!token) {
     throw new Error('VERCEL_TOKEN environment variable is required');
   }
@@ -139,8 +143,9 @@ export async function addDomainToVercel(domain: string): Promise<AddDomainResult
       verification,
     };
   } catch (error) {
-    console.error('[DBG][vercel] Error adding domain:', error);
-    return { success: false, error: 'Failed to connect to Vercel API' };
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('[DBG][vercel] Error adding domain:', errorMessage);
+    return { success: false, error: `Failed to connect to Vercel API: ${errorMessage}` };
   }
 }
 
