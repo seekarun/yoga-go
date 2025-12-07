@@ -8,6 +8,7 @@
  */
 
 import { format, setHours, setMinutes, isBefore, isAfter } from "date-fns";
+import { usePreferences } from "@/contexts";
 
 export type SlotStatus = "available" | "unavailable" | "busy";
 
@@ -45,6 +46,7 @@ function generateTimeSlots(date: Date, existingSlots: TimeSlot[]): TimeSlot[] {
 }
 
 export function TimeGrid({ date, slots, onSlotClick }: TimeGridProps) {
+  const { preferences } = usePreferences();
   const timeSlots = generateTimeSlots(date, slots);
 
   // Check if current time falls within a slot
@@ -75,7 +77,8 @@ export function TimeGrid({ date, slots, onSlotClick }: TimeGridProps) {
   const formatTimeLabel = (time: string) => {
     const [hour, minute] = time.split(":").map(Number);
     const d = setMinutes(setHours(new Date(), hour), minute);
-    return format(d, "h:mm a");
+    // Use 24h or 12h format based on preferences
+    return format(d, preferences.timeFormat === "24h" ? "HH:mm" : "h:mm a");
   };
 
   return (

@@ -19,6 +19,7 @@ import {
   ChatInput,
   type TimeSlot,
 } from "@/components/calendar";
+import { Sidebar } from "@/components/layout";
 
 interface User {
   email: string;
@@ -291,130 +292,144 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <header className="bg-white shadow-sm sticky top-0 z-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
-          <h1 className="text-xl font-bold text-indigo-600">Calel</h1>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600 hidden sm:block">
-              {user?.email}
-            </span>
-            <button
-              onClick={handleSignOut}
-              className="text-sm text-gray-500 hover:text-gray-700"
-            >
-              Sign out
-            </button>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-gray-100 flex">
+      {/* Sidebar */}
+      <Sidebar />
 
-      {/* Main content */}
-      <main className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-        {/* Chat Input - Prominent at top */}
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">
-            Set Your Availability
-          </h2>
-          <ChatInput
-            onSubmit={processCommand}
-            isProcessing={isProcessing}
-            placeholder="Tell me when you're available... (e.g., 'Available 9am to 5pm weekdays')"
-          />
-        </div>
-
-        {/* Recent messages */}
-        {chatMessages.length > 0 && (
-          <div className="bg-white rounded-lg shadow p-4 space-y-3">
-            <h3 className="text-sm font-medium text-gray-500">
-              Recent Updates
-            </h3>
-            <div className="space-y-2 max-h-40 overflow-y-auto">
-              {chatMessages.slice(-4).map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`text-sm p-2 rounded ${
-                    msg.type === "user"
-                      ? "bg-indigo-50 text-indigo-900"
-                      : "bg-gray-50 text-gray-700"
-                  }`}
-                >
-                  <span className="font-medium">
-                    {msg.type === "user" ? "You: " : "Calel: "}
-                  </span>
-                  <span className="whitespace-pre-wrap">{msg.content}</span>
-                </div>
-              ))}
+      {/* Main area */}
+      <div className="flex-1 flex flex-col min-h-screen">
+        {/* Header */}
+        <header className="bg-white shadow-sm sticky top-0 z-20">
+          <div className="px-6 py-3 flex justify-between items-center">
+            <h1 className="text-lg font-semibold text-gray-900">Dashboard</h1>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-600 hidden sm:block">
+                {user?.email}
+              </span>
+              <button
+                onClick={handleSignOut}
+                className="text-sm text-gray-500 hover:text-gray-700"
+              >
+                Sign out
+              </button>
             </div>
           </div>
-        )}
+        </header>
 
-        {/* Date Scroller */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <DateScroller
-            selectedDate={selectedDate}
-            onDateSelect={setSelectedDate}
-          />
-        </div>
+        {/* Main content */}
+        <main className="flex-1 p-6 overflow-y-auto">
+          <div className="max-w-3xl mx-auto space-y-6">
+            {/* Chat Input - Prominent at top */}
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 mb-3">
+                Set Your Availability
+              </h2>
+              <ChatInput
+                onSubmit={processCommand}
+                isProcessing={isProcessing}
+                placeholder="Tell me when you're available... (e.g., 'Available 9am to 5pm weekdays')"
+              />
+            </div>
 
-        {/* Time Grid */}
-        <div>
-          <div className="mb-3">
-            <h3 className="text-lg font-semibold text-gray-900">
-              {format(selectedDate, "EEEE")}&#39;s Schedule
-            </h3>
+            {/* Recent messages */}
+            {chatMessages.length > 0 && (
+              <div className="bg-white rounded-lg shadow p-4 space-y-3">
+                <h3 className="text-sm font-medium text-gray-500">
+                  Recent Updates
+                </h3>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {chatMessages.slice(-4).map((msg) => (
+                    <div
+                      key={msg.id}
+                      className={`text-sm p-2 rounded ${
+                        msg.type === "user"
+                          ? "bg-indigo-50 text-indigo-900"
+                          : "bg-gray-50 text-gray-700"
+                      }`}
+                    >
+                      <span className="font-medium">
+                        {msg.type === "user" ? "You: " : "Calel: "}
+                      </span>
+                      <span className="whitespace-pre-wrap">{msg.content}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Date Scroller */}
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <DateScroller
+                selectedDate={selectedDate}
+                onDateSelect={setSelectedDate}
+              />
+            </div>
+
+            {/* Time Grid */}
+            <div>
+              <div className="mb-3">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {format(selectedDate, "EEEE")}&#39;s Schedule
+                </h3>
+              </div>
+              <TimeGrid
+                date={selectedDate}
+                slots={slots}
+                onSlotClick={handleSlotClick}
+              />
+            </div>
+
+            {/* Current Rules Summary */}
+            <div className="bg-white rounded-lg shadow p-4">
+              <h3 className="text-sm font-medium text-gray-500 mb-3">
+                Current Availability Rules
+              </h3>
+              {availabilityRules.length === 0 ? (
+                <p className="text-sm text-gray-400">
+                  No rules set. Use the chat above to set your availability.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {availabilityRules.map((rule, idx) => (
+                    <li
+                      key={idx}
+                      className="text-sm text-gray-700 flex items-center gap-2"
+                    >
+                      <span
+                        className={`w-2 h-2 rounded-full ${rule.available ? "bg-green-500" : "bg-red-500"}`}
+                      />
+                      {rule.type === "weekly" && (
+                        <span>
+                          {rule.days
+                            ?.map(
+                              (d) =>
+                                [
+                                  "Sun",
+                                  "Mon",
+                                  "Tue",
+                                  "Wed",
+                                  "Thu",
+                                  "Fri",
+                                  "Sat",
+                                ][d],
+                            )
+                            .join(", ")}
+                          : {rule.startTime} - {rule.endTime}
+                        </span>
+                      )}
+                      {rule.type === "date-specific" && (
+                        <span>
+                          {rule.date}: {rule.startTime} - {rule.endTime}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
-          <TimeGrid
-            date={selectedDate}
-            slots={slots}
-            onSlotClick={handleSlotClick}
-          />
-        </div>
-
-        {/* Current Rules Summary */}
-        <div className="bg-white rounded-lg shadow p-4">
-          <h3 className="text-sm font-medium text-gray-500 mb-3">
-            Current Availability Rules
-          </h3>
-          {availabilityRules.length === 0 ? (
-            <p className="text-sm text-gray-400">
-              No rules set. Use the chat above to set your availability.
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {availabilityRules.map((rule, idx) => (
-                <li
-                  key={idx}
-                  className="text-sm text-gray-700 flex items-center gap-2"
-                >
-                  <span
-                    className={`w-2 h-2 rounded-full ${rule.available ? "bg-green-500" : "bg-red-500"}`}
-                  />
-                  {rule.type === "weekly" && (
-                    <span>
-                      {rule.days
-                        ?.map(
-                          (d) =>
-                            ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][
-                              d
-                            ],
-                        )
-                        .join(", ")}
-                      : {rule.startTime} - {rule.endTime}
-                    </span>
-                  )}
-                  {rule.type === "date-specific" && (
-                    <span>
-                      {rule.date}: {rule.startTime} - {rule.endTime}
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

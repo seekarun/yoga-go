@@ -7,7 +7,7 @@
  * The selected date is centered and highlighted.
  */
 
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect } from "react";
 import {
   format,
   addDays,
@@ -28,33 +28,29 @@ export function DateScroller({
   onDateSelect,
   daysToShow = 14,
 }: DateScrollerProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
   const selectedRef = useRef<HTMLButtonElement>(null);
 
-  // Generate dates array centered around selected date
-  const dates = Array.from({ length: daysToShow * 2 + 1 }, (_, i) =>
-    addDays(startOfDay(selectedDate), i - daysToShow),
+  // Generate dates starting from selected date going forward
+  const dates = Array.from({ length: daysToShow * 2 }, (_, i) =>
+    addDays(startOfDay(selectedDate), i),
   );
 
-  // Scroll to center the selected date
-  const scrollToSelected = useCallback(() => {
-    if (selectedRef.current && scrollRef.current) {
-      const container = scrollRef.current;
-      const element = selectedRef.current;
-      const containerWidth = container.offsetWidth;
-      const elementLeft = element.offsetLeft;
-      const elementWidth = element.offsetWidth;
+  const isInitialMount = useRef(true);
 
-      container.scrollTo({
-        left: elementLeft - containerWidth / 2 + elementWidth / 2,
-        behavior: "smooth",
-      });
-    }
-  }, []);
-
+  // Scroll to show the selected date at the start
   useEffect(() => {
-    scrollToSelected();
-  }, [selectedDate, scrollToSelected]);
+    const timer = setTimeout(() => {
+      if (selectedRef.current) {
+        selectedRef.current.scrollIntoView({
+          behavior: isInitialMount.current ? "instant" : "smooth",
+          block: "nearest",
+          inline: "start",
+        });
+        isInitialMount.current = false;
+      }
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [selectedDate]);
 
   const handlePrevWeek = () => {
     onDateSelect(subDays(selectedDate, 7));
@@ -122,8 +118,7 @@ export function DateScroller({
 
       {/* Date scroller */}
       <div
-        ref={scrollRef}
-        className="flex overflow-x-auto scrollbar-hide py-4 px-2 gap-1"
+        className="flex overflow-x-auto scrollbar-hide py-4 pl-4 pr-2 gap-1"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
         {dates.map((date) => {
