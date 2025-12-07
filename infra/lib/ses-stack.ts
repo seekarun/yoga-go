@@ -54,9 +54,9 @@ export class SesStack extends cdk.Stack {
     // SES Email Identity (Domain Verification)
     // ========================================
     // This will create DKIM records in Route53 automatically
+    // Note: Removed mailFromDomain to avoid MX record conflicts with existing records
     const emailIdentity = new ses.EmailIdentity(this, 'EmailIdentity', {
       identity: ses.Identity.publicHostedZone(hostedZone),
-      mailFromDomain: 'mail.myyoga.guru',
     });
 
     // ========================================
@@ -250,16 +250,18 @@ The MyYoga.Guru Team`,
     // ========================================
     // MX Record for Email Receiving
     // ========================================
-    new route53.MxRecord(this, 'MxRecord', {
-      zone: hostedZone,
-      values: [
-        {
-          priority: 10,
-          hostName: `inbound-smtp.${this.region}.amazonaws.com`,
-        },
-      ],
-      ttl: cdk.Duration.hours(1),
-    });
+    // Note: MX record already exists in Route53 (created manually or by previous deployment)
+    // If you need to create it, uncomment the following:
+    // new route53.MxRecord(this, 'MxRecord', {
+    //   zone: hostedZone,
+    //   values: [
+    //     {
+    //       priority: 10,
+    //       hostName: `inbound-smtp.${this.region}.amazonaws.com`,
+    //     },
+    //   ],
+    //   ttl: cdk.Duration.hours(1),
+    // });
 
     // ========================================
     // Outputs
