@@ -108,15 +108,46 @@ export interface Expert extends BaseEntity {
 
   // Platform preferences (subdomain, visibility, email)
   platformPreferences?: ExpertPlatformPreferences;
-
-  // Live streaming capabilities
-  liveStreamingEnabled?: boolean;
-  totalLiveSessions?: number;
-  upcomingLiveSessions?: number;
 }
 
 // Tenant Related Types (Multi-tenancy)
 export type TenantStatus = 'active' | 'pending' | 'suspended';
+export type SesVerificationStatus = 'pending' | 'verified' | 'failed';
+export type DkimStatus = 'PENDING' | 'SUCCESS' | 'FAILED' | 'NOT_STARTED' | 'TEMPORARY_FAILURE';
+
+// BYOD Email Configuration for custom domains
+export interface TenantEmailConfig {
+  // Domain email (e.g., contact@kavithayoga.com)
+  domainEmail: string;
+
+  // SES verification
+  sesIdentityArn?: string;
+  sesVerificationStatus: SesVerificationStatus;
+  sesDkimTokens?: string[]; // 3 DKIM tokens from SES
+
+  // DNS verification status
+  dkimVerified: boolean;
+  dkimStatus?: DkimStatus;
+  mxVerified: boolean;
+  spfVerified?: boolean;
+
+  // Forwarding
+  forwardToEmail: string; // Expert's personal email for receiving
+  forwardingEnabled: boolean;
+
+  // Timestamps
+  enabledAt?: string;
+  verifiedAt?: string;
+}
+
+// DNS Record information for expert to add
+export interface TenantDnsRecord {
+  type: 'MX' | 'TXT' | 'CNAME';
+  name: string; // Host/Name field
+  value: string; // Value field
+  priority?: number; // For MX records
+  purpose: string; // Human-readable purpose (e.g., "Email receiving", "DKIM 1")
+}
 
 export interface Tenant extends BaseEntity {
   name: string; // Display name (e.g., "Kavitha Yoga")
@@ -132,6 +163,9 @@ export interface Tenant extends BaseEntity {
 
   // Status
   status: TenantStatus;
+
+  // BYOD Email Configuration (for custom domain email)
+  emailConfig?: TenantEmailConfig;
 }
 
 // Course Related Types
@@ -354,7 +388,7 @@ export interface User extends BaseEntity {
   billing?: Billing;
   savedItems?: SavedItem;
   social?: UserSocial;
-  // Expert meeting settings (for live sessions)
+  // Expert meeting settings
   defaultMeetingLink?: string;
   defaultMeetingPlatform?: 'zoom' | 'google-meet' | 'other';
 }
@@ -620,118 +654,6 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]> {
   totalPages: number;
   hasNext: boolean;
   hasPrevious: boolean;
-}
-
-// Live Session Related Types
-export type LiveSessionType = '1-on-1' | 'group' | 'instant';
-export type LiveSessionStatus = 'scheduled' | 'live' | 'ended' | 'cancelled';
-
-export interface LiveSessionMetadata {
-  tags?: string[];
-  difficulty?: string;
-  equipment?: string[];
-  category?: CourseCategory;
-}
-
-export interface LiveSession extends BaseEntity {
-  expertId: string;
-  expertName: string; // Denormalized for quick display
-  expertAvatar?: string; // Denormalized for quick display
-
-  title: string;
-  description: string;
-  thumbnail?: string;
-
-  sessionType: LiveSessionType;
-  instantMeetingCode?: string; // Shareable code for instant meetings
-  scheduledStartTime: string; // ISO date string
-  scheduledEndTime: string; // ISO date string
-  actualStartTime?: string;
-  actualEndTime?: string;
-
-  maxParticipants?: number; // null for unlimited
-  currentViewers?: number; // Live viewer count
-
-  price: number; // Can be 0 for free sessions
-  currency?: string; // Default 'INR'
-
-  // Manual meeting link (Zoom/Google Meet/etc)
-  meetingLink?: string; // The actual Zoom/Meet URL
-  meetingPlatform?: 'zoom' | 'google-meet' | 'other';
-
-  // Status
-  status: LiveSessionStatus;
-
-  // Recording
-  recordingS3Key?: string;
-  recordedLessonId?: string; // Links to Lesson document after processing
-  recordingAvailable?: boolean;
-
-  // Participants
-  enrolledCount: number;
-  attendedCount: number;
-
-  // Metadata
-  metadata?: LiveSessionMetadata;
-
-  // Scheduled By (who created/booked this session)
-  scheduledByUserId?: string;
-  scheduledByName?: string;
-  scheduledByRole?: 'student' | 'expert';
-
-  // Additional
-  featured?: boolean;
-  isFree?: boolean; // Quick access flag (price === 0)
-}
-
-export interface LiveSessionParticipant extends BaseEntity {
-  sessionId: string;
-  userId: string;
-  userName: string; // Denormalized
-  userEmail: string; // Denormalized
-  userAvatar?: string; // Denormalized
-
-  enrolledAt: string;
-  attended: boolean;
-  joinedAt?: string;
-  leftAt?: string;
-  watchTime?: number; // in seconds
-
-  // Payment
-  paid: boolean;
-  paymentId?: string;
-  paymentGateway?: 'stripe' | 'razorpay';
-  amountPaid?: number;
-
-  // Interaction
-  chatMessages?: number;
-  feedbackRating?: number;
-  feedbackComment?: string;
-}
-
-// Expert Availability Types
-export interface ExpertAvailability extends BaseEntity {
-  expertId: string;
-  dayOfWeek?: number; // 0=Sunday, 6=Saturday, null for one-time slots
-  date?: string; // ISO date for one-time slots
-  startTime: string; // "09:00" (24-hour format)
-  endTime: string; // "17:00" (24-hour format)
-  isRecurring: boolean; // true for weekly recurring, false for one-time
-  isActive: boolean; // soft delete flag
-  // Session configuration
-  sessionDuration?: number; // Session length in minutes (30, 60, 90)
-  bufferMinutes?: number; // Break time between consecutive sessions (0, 5, 10, 15)
-  // MVP: 1-on-1 sessions only - group session fields commented out for future use
-  // maxParticipants?: number; // max students per session
-  // meetingPlatform?: 'google-meet' | 'zoom' | 'other';
-  meetingLink?: string; // meeting URL for 1-on-1 sessions
-}
-
-export interface AvailableSlot {
-  startTime: string; // ISO datetime string
-  endTime: string; // ISO datetime string
-  duration: number; // in minutes
-  available: boolean;
 }
 
 // Survey Related Types

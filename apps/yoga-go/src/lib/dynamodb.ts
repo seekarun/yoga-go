@@ -1,22 +1,19 @@
 /**
  * DynamoDB Client Configuration
  *
- * 5-table design:
+ * 4-table design:
  *
  * 1. CORE TABLE - Main business entities
  *    - User, Expert, Course, Lesson, CourseProgress
  *    - Asset, Survey, SurveyResponse
  *
- * 2. CALENDAR TABLE - Scheduling & live sessions
- *    - LiveSession, LiveSessionParticipant, Availability
- *
- * 3. ORDERS TABLE - Payments
+ * 2. ORDERS TABLE - Payments
  *    - Payment (dual-write for user lookup and intent lookup)
  *
- * 4. ANALYTICS TABLE - Course analytics events
+ * 3. ANALYTICS TABLE - Course analytics events
  *    - CourseAnalyticsEvent
  *
- * 5. DISCUSSIONS TABLE - Discussions and votes
+ * 4. DISCUSSIONS TABLE - Discussions and votes
  *    - Discussion, DiscussionVote (dual-write for efficient lookups)
  */
 
@@ -42,7 +39,6 @@ export const docClient = DynamoDBDocumentClient.from(client, {
 // Table names - same for dev and prod
 export const Tables = {
   CORE: 'yoga-go-core',
-  CALENDAR: 'yoga-go-calendar',
   ORDERS: 'yoga-go-orders',
   ANALYTICS: 'yoga-go-analytics',
   DISCUSSIONS: 'yoga-go-discussions',
@@ -70,17 +66,6 @@ export const CorePK = {
   // Tenant (multi-tenancy)
   TENANT: 'TENANT',
   TENANT_DOMAIN: (domain: string) => `TENANT#DOMAIN#${domain}`,
-} as const;
-
-// ============================================
-// CALENDAR TABLE - PK/SK Prefixes
-// ============================================
-export const CalendarPK = {
-  SESSION: 'SESSION', // Direct session lookup: PK=SESSION, SK={sessionId}
-  EXPERT_SESSIONS: (expertId: string) => `EXPERT#${expertId}`, // Expert's sessions
-  PARTICIPANTS: (sessionId: string) => `PARTICIPANTS#${sessionId}`, // Session participants
-  ENROLLED: (userId: string) => `ENROLLED#${userId}`, // User's enrolled sessions
-  AVAILABILITY: (expertId: string) => `AVAIL#${expertId}`, // Expert's availability
 } as const;
 
 // ============================================
@@ -125,9 +110,6 @@ export const EntityType = {
   SURVEY: 'SURVEY',
   SURVEY_RESPONSE: 'SURVEY_RESPONSE',
   PAYMENT: 'PAYMENT',
-  LIVE_SESSION: 'LIVE_SESSION',
-  LIVE_PARTICIPANT: 'LIVE_PARTICIPANT',
-  AVAILABILITY: 'AVAILABILITY',
   ANALYTICS_EVENT: 'ANALYTICS_EVENT',
   TENANT: 'TENANT',
 } as const;

@@ -1,18 +1,16 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 
-export type NotificationType = 'success' | 'error' | 'info' | 'warning';
-
-interface NotificationOverlayProps {
+export interface NotificationOverlayProps {
   isOpen: boolean;
   onClose: () => void;
   message: string;
-  type?: NotificationType;
-  duration?: number; // Auto-close duration in ms (0 = no auto-close)
-  onConfirm?: () => void; // Optional: turns this into a confirmation dialog
-  confirmText?: string; // Text for confirm button (default: "Confirm")
-  cancelText?: string; // Text for cancel button (default: "Cancel")
+  type?: 'success' | 'warning' | 'error' | 'info';
+  duration?: number;
+  onConfirm?: () => void;
+  confirmText?: string;
+  cancelText?: string;
 }
 
 export default function NotificationOverlay({
@@ -20,108 +18,168 @@ export default function NotificationOverlay({
   onClose,
   message,
   type = 'info',
-  duration = 3000,
+  duration,
   onConfirm,
   confirmText = 'Confirm',
   cancelText = 'Cancel',
 }: NotificationOverlayProps) {
-  const isConfirmation = !!onConfirm;
-
+  // Auto-close after duration (only for non-confirmation notifications)
   useEffect(() => {
-    // Only auto-close if this is not a confirmation dialog
-    if (isOpen && duration > 0 && !isConfirmation) {
+    if (isOpen && duration && !onConfirm) {
       const timer = setTimeout(() => {
         onClose();
       }, duration);
-
       return () => clearTimeout(timer);
     }
-  }, [isOpen, duration, onClose, isConfirmation]);
+  }, [isOpen, duration, onClose, onConfirm]);
 
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
+  // Handle escape key
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
         onClose();
       }
-    };
+    },
+    [onClose]
+  );
 
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onClose]);
+  useEffect(() => {
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [isOpen, handleKeyDown]);
 
   if (!isOpen) return null;
 
-  const getTypeStyles = () => {
-    switch (type) {
-      case 'success':
-        return {
-          bg: 'bg-green-50',
-          border: 'border-green-200',
-          text: 'text-green-800',
-          icon: '✓',
-          iconBg: 'bg-green-100',
-        };
-      case 'error':
-        return {
-          bg: 'bg-red-50',
-          border: 'border-red-200',
-          text: 'text-red-800',
-          icon: '⚠️',
-          iconBg: 'bg-red-100',
-        };
-      case 'warning':
-        return {
-          bg: 'bg-yellow-50',
-          border: 'border-yellow-200',
-          text: 'text-yellow-800',
-          icon: '⚠',
-          iconBg: 'bg-yellow-100',
-        };
-      case 'info':
-      default:
-        return {
-          bg: 'bg-blue-50',
-          border: 'border-blue-200',
-          text: 'text-blue-800',
-          icon: 'ℹ️',
-          iconBg: 'bg-blue-100',
-        };
-    }
+  const typeStyles = {
+    success: {
+      bg: 'bg-green-50',
+      border: 'border-green-200',
+      icon: (
+        <svg
+          className="w-6 h-6 text-green-600"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        </svg>
+      ),
+      iconBg: 'bg-green-100',
+    },
+    warning: {
+      bg: 'bg-amber-50',
+      border: 'border-amber-200',
+      icon: (
+        <svg
+          className="w-6 h-6 text-amber-600"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+          />
+        </svg>
+      ),
+      iconBg: 'bg-amber-100',
+    },
+    error: {
+      bg: 'bg-red-50',
+      border: 'border-red-200',
+      icon: (
+        <svg className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M6 18L18 6M6 6l12 12"
+          />
+        </svg>
+      ),
+      iconBg: 'bg-red-100',
+    },
+    info: {
+      bg: 'bg-blue-50',
+      border: 'border-blue-200',
+      icon: (
+        <svg
+          className="w-6 h-6 text-blue-600"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        </svg>
+      ),
+      iconBg: 'bg-blue-100',
+    },
   };
 
-  const styles = getTypeStyles();
+  const styles = typeStyles[type];
+  const isConfirmation = !!onConfirm;
 
   return (
-    <>
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black bg-opacity-40 z-50 transition-opacity duration-300"
-        onClick={onClose}
-        style={{
-          animation: 'fadeIn 0.3s ease-out',
-        }}
-      />
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
       {/* Notification Card */}
       <div
-        className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 max-w-md w-full mx-4"
-        style={{
-          animation: 'slideDown 0.3s ease-out',
-        }}
+        className={`relative ${styles.bg} ${styles.border} border rounded-xl shadow-xl max-w-md w-full mx-4 p-6 animate-in fade-in zoom-in-95 duration-200`}
       >
-        <div
-          className={`${styles.bg} ${styles.border} border rounded-lg shadow-lg p-6 relative`}
-          role="alert"
-          aria-live="assertive"
-        >
-          {/* Close button - only show for non-confirmation dialogs */}
+        <div className="flex items-start gap-4">
+          {/* Icon */}
+          <div className={`${styles.iconBg} rounded-full p-2 flex-shrink-0`}>{styles.icon}</div>
+
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            <p className="text-gray-800 text-sm leading-relaxed">{message}</p>
+
+            {/* Buttons for confirmation dialogs */}
+            {isConfirmation && (
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={onClose}
+                  className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  {cancelText}
+                </button>
+                <button
+                  onClick={() => {
+                    onConfirm();
+                    onClose();
+                  }}
+                  className={`flex-1 px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors ${
+                    type === 'warning'
+                      ? 'bg-amber-600 hover:bg-amber-700'
+                      : type === 'error'
+                        ? 'bg-red-600 hover:bg-red-700'
+                        : 'bg-indigo-600 hover:bg-indigo-700'
+                  }`}
+                >
+                  {confirmText}
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Close button (only for non-confirmation) */}
           {!isConfirmation && (
             <button
               onClick={onClose}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
-              aria-label="Close notification"
+              className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -131,84 +189,8 @@ export default function NotificationOverlay({
               </svg>
             </button>
           )}
-
-          {/* Content */}
-          <div className={`flex items-start gap-4 ${isConfirmation ? '' : 'pr-8'}`}>
-            <div
-              className={`${styles.iconBg} rounded-full p-2 flex-shrink-0 flex items-center justify-center w-10 h-10`}
-            >
-              <span className="text-xl">{styles.icon}</span>
-            </div>
-            <div className="flex-1">
-              <p className={`${styles.text} text-base font-medium leading-relaxed`}>{message}</p>
-            </div>
-          </div>
-
-          {/* Action buttons for confirmation dialogs */}
-          {isConfirmation && (
-            <div className="mt-6 flex items-center justify-end gap-3">
-              <button
-                onClick={onClose}
-                className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium"
-              >
-                {cancelText}
-              </button>
-              <button
-                onClick={() => {
-                  onConfirm();
-                  onClose();
-                }}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-              >
-                {confirmText}
-              </button>
-            </div>
-          )}
-
-          {/* Progress bar for auto-close - only show for non-confirmation dialogs */}
-          {duration > 0 && !isConfirmation && (
-            <div className="mt-4 h-1 bg-gray-200 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-blue-500 rounded-full"
-                style={{
-                  animation: `shrink ${duration}ms linear`,
-                }}
-              />
-            </div>
-          )}
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
-        }
-
-        @keyframes slideDown {
-          from {
-            opacity: 0;
-            transform: translate(-50%, -60%);
-          }
-          to {
-            opacity: 1;
-            transform: translate(-50%, -50%);
-          }
-        }
-
-        @keyframes shrink {
-          from {
-            width: 100%;
-          }
-          to {
-            width: 0%;
-          }
-        }
-      `}</style>
-    </>
+    </div>
   );
 }

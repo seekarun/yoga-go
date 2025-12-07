@@ -325,32 +325,6 @@ export default function ExpertDetailPage() {
                 >
                   {heroCtaText}
                 </a>
-                {expert.liveStreamingEnabled && (
-                  <Link
-                    href={`/app/live/book/${expert.id}`}
-                    style={{
-                      display: 'inline-block',
-                      padding: '16px 48px',
-                      background: '#667eea',
-                      color: '#fff',
-                      fontSize: '18px',
-                      fontWeight: '600',
-                      borderRadius: '8px',
-                      textDecoration: 'none',
-                      transition: 'transform 0.2s, background 0.2s',
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.background = '#5568d3';
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.background = '#667eea';
-                    }}
-                  >
-                    📅 Book 1:1 Session
-                  </Link>
-                )}
               </div>
             )}
           </div>
@@ -462,32 +436,6 @@ export default function ExpertDetailPage() {
               >
                 {heroCtaText}
               </a>
-              {expert.liveStreamingEnabled && (
-                <Link
-                  href={`/app/live/book/${expert.id}`}
-                  style={{
-                    display: 'inline-block',
-                    padding: '14px 32px',
-                    background: '#667eea',
-                    color: '#fff',
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    borderRadius: '8px',
-                    textDecoration: 'none',
-                    transition: 'transform 0.2s, background 0.2s',
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.background = '#5568d3';
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.background = '#667eea';
-                  }}
-                >
-                  📅 Book 1:1 Session
-                </Link>
-              )}
             </div>
           )}
         </div>

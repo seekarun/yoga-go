@@ -1,6 +1,6 @@
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { SESClient, SendRawEmailCommand } from '@aws-sdk/client-ses';
-import { DynamoDBClient, QueryCommand } from '@aws-sdk/client-dynamodb';
+import { DynamoDBClient, QueryCommand, GetItemCommand } from '@aws-sdk/client-dynamodb';
 import type { SESEvent, SESEventRecord } from 'aws-lambda';
 
 const s3 = new S3Client({});
@@ -11,10 +11,92 @@ const dynamodb = new DynamoDBClient({ region: 'ap-southeast-2' });
 const TABLE_NAME = process.env.DYNAMODB_TABLE || 'yoga-go-core';
 const BUCKET_NAME = process.env.EMAIL_BUCKET || '';
 const DEFAULT_FROM = process.env.DEFAULT_FROM_EMAIL || 'hi@myyoga.guru';
+const PLATFORM_DOMAIN = 'myyoga.guru';
 
 interface ExpertData {
   forwardingEmail?: string;
   emailForwardingEnabled?: boolean;
+}
+
+// Tenant email config for BYOD domains
+interface TenantEmailConfig {
+  domainEmail?: string;
+  forwardToEmail?: string;
+  forwardingEnabled?: boolean;
+  sesVerificationStatus?: string;
+}
+
+interface TenantData {
+  id: string;
+  expertId: string;
+  primaryDomain: string;
+  emailConfig?: TenantEmailConfig;
+}
+
+/**
+ * Get tenant by domain from DynamoDB
+ * Key pattern: PK = "TENANT#DOMAIN#{domain}", SK = {domain}
+ */
+async function getTenantByDomain(domain: string): Promise<TenantData | null> {
+  const normalizedDomain = domain.toLowerCase();
+  console.log(`[DBG][email-forwarder] Looking up tenant by domain: ${normalizedDomain}`);
+
+  // First look up domain reference to get tenant ID
+  const domainResult = await dynamodb.send(
+    new GetItemCommand({
+      TableName: TABLE_NAME,
+      Key: {
+        PK: { S: `TENANT#DOMAIN#${normalizedDomain}` },
+        SK: { S: normalizedDomain },
+      },
+    })
+  );
+
+  if (!domainResult.Item) {
+    console.log(`[DBG][email-forwarder] Domain not found: ${normalizedDomain}`);
+    return null;
+  }
+
+  const tenantId = domainResult.Item.tenantId?.S;
+  if (!tenantId) {
+    console.log(`[DBG][email-forwarder] No tenantId for domain: ${normalizedDomain}`);
+    return null;
+  }
+
+  // Now get the actual tenant record
+  const tenantResult = await dynamodb.send(
+    new GetItemCommand({
+      TableName: TABLE_NAME,
+      Key: {
+        PK: { S: 'TENANT' },
+        SK: { S: tenantId },
+      },
+    })
+  );
+
+  if (!tenantResult.Item) {
+    console.log(`[DBG][email-forwarder] Tenant not found: ${tenantId}`);
+    return null;
+  }
+
+  const item = tenantResult.Item;
+  const emailConfigMap = item.emailConfig?.M;
+
+  console.log(`[DBG][email-forwarder] Found tenant: ${tenantId}, hasEmailConfig: ${!!emailConfigMap}`);
+
+  return {
+    id: item.id?.S || tenantId,
+    expertId: item.expertId?.S || '',
+    primaryDomain: item.primaryDomain?.S || '',
+    emailConfig: emailConfigMap
+      ? {
+          domainEmail: emailConfigMap.domainEmail?.S,
+          forwardToEmail: emailConfigMap.forwardToEmail?.S,
+          forwardingEnabled: emailConfigMap.forwardingEnabled?.BOOL ?? true,
+          sesVerificationStatus: emailConfigMap.sesVerificationStatus?.S,
+        }
+      : undefined,
+  };
 }
 
 /**
@@ -74,14 +156,23 @@ async function getEmailFromS3(messageId: string): Promise<string> {
 
 /**
  * Forward email to the expert's personal email
+ * @param rawEmail - Raw email content from S3
+ * @param forwardTo - Email address to forward to
+ * @param originalRecipient - Original recipient email address
+ * @param originalSender - Original sender email address
+ * @param sourceDomain - Domain to send from (for BYOD, defaults to platform)
  */
 async function forwardEmail(
   rawEmail: string,
   forwardTo: string,
   originalRecipient: string,
-  originalSender: string
+  originalSender: string,
+  sourceDomain?: string
 ): Promise<void> {
-  console.log(`[DBG][email-forwarder] Forwarding email to: ${forwardTo}`);
+  // Determine the From address - use BYOD domain if provided
+  const fromEmail = sourceDomain ? `noreply@${sourceDomain}` : DEFAULT_FROM;
+
+  console.log(`[DBG][email-forwarder] Forwarding email to: ${forwardTo} from: ${fromEmail}`);
 
   // Parse and modify email headers for forwarding
   // We need to:
@@ -114,7 +205,7 @@ async function forwardEmail(
         modifiedLines.push(`Reply-To: ${originalSender}`);
       } else if (line.toLowerCase().startsWith('return-path:')) {
         // Update Return-Path to our domain
-        modifiedLines.push(`Return-Path: <${DEFAULT_FROM}>`);
+        modifiedLines.push(`Return-Path: <${fromEmail}>`);
       } else if (
         line.toLowerCase().startsWith('dkim-signature:') ||
         line.toLowerCase().startsWith('domainkey-signature:')
@@ -134,7 +225,7 @@ async function forwardEmail(
   await ses.send(
     new SendRawEmailCommand({
       RawMessage: { Data: Buffer.from(modifiedEmail) },
-      Source: DEFAULT_FROM,
+      Source: fromEmail,
       Destinations: [forwardTo],
     })
   );
@@ -158,6 +249,106 @@ export async function handler(event: SESEvent): Promise<void> {
   }
 }
 
+/**
+ * Handle platform email (myyoga.guru)
+ */
+async function handlePlatformEmail(
+  localPart: string,
+  recipient: string,
+  mail: SESEventRecord['ses']['mail']
+): Promise<void> {
+  // Skip platform emails (hi@, support@, etc.)
+  const platformEmails = ['hi', 'support', 'info', 'contact', 'admin', 'noreply', 'mail'];
+  if (platformEmails.includes(localPart)) {
+    console.log(`[DBG][email-forwarder] Skipping platform email: ${recipient}`);
+    return;
+  }
+
+  const expertId = localPart;
+
+  // Look up expert's forwarding settings
+  const expert = await getExpert(expertId);
+
+  if (!expert) {
+    console.log(`[DBG][email-forwarder] No expert found for: ${expertId}`);
+    return;
+  }
+
+  if (!expert.emailForwardingEnabled) {
+    console.log(`[DBG][email-forwarder] Forwarding disabled for: ${expertId}`);
+    return;
+  }
+
+  if (!expert.forwardingEmail) {
+    console.log(`[DBG][email-forwarder] No forwarding email configured for: ${expertId}`);
+    return;
+  }
+
+  // Get original email from S3
+  const emailContent = await getEmailFromS3(mail.messageId);
+
+  // Forward the email (using platform domain)
+  await forwardEmail(emailContent, expert.forwardingEmail, recipient, mail.source);
+
+  console.log(
+    `[DBG][email-forwarder] Successfully forwarded platform email for ${expertId} to ${expert.forwardingEmail}`
+  );
+}
+
+/**
+ * Handle BYOD domain email (custom domains)
+ */
+async function handleByodEmail(
+  domain: string,
+  recipient: string,
+  mail: SESEventRecord['ses']['mail']
+): Promise<void> {
+  // Look up tenant by domain
+  const tenant = await getTenantByDomain(domain);
+
+  if (!tenant) {
+    console.log(`[DBG][email-forwarder] No tenant found for domain: ${domain}`);
+    return;
+  }
+
+  // Check if email is configured and verified
+  if (!tenant.emailConfig) {
+    console.log(`[DBG][email-forwarder] Email not configured for tenant: ${tenant.id}`);
+    return;
+  }
+
+  if (tenant.emailConfig.sesVerificationStatus !== 'verified') {
+    console.log(`[DBG][email-forwarder] Email not verified for tenant: ${tenant.id}`);
+    return;
+  }
+
+  if (!tenant.emailConfig.forwardingEnabled) {
+    console.log(`[DBG][email-forwarder] Email forwarding disabled for tenant: ${tenant.id}`);
+    return;
+  }
+
+  if (!tenant.emailConfig.forwardToEmail) {
+    console.log(`[DBG][email-forwarder] No forwarding email for tenant: ${tenant.id}`);
+    return;
+  }
+
+  // Get original email from S3
+  const emailContent = await getEmailFromS3(mail.messageId);
+
+  // Forward from the BYOD domain (must be SES verified)
+  await forwardEmail(
+    emailContent,
+    tenant.emailConfig.forwardToEmail,
+    recipient,
+    mail.source,
+    domain // Use BYOD domain as source
+  );
+
+  console.log(
+    `[DBG][email-forwarder] Successfully forwarded BYOD email for ${domain} to ${tenant.emailConfig.forwardToEmail}`
+  );
+}
+
 async function processRecord(record: SESEventRecord): Promise<void> {
   const mail = record.ses.mail;
   const receipt = record.ses.receipt;
@@ -171,50 +362,19 @@ async function processRecord(record: SESEventRecord): Promise<void> {
 
   for (const recipient of receipt.recipients) {
     try {
-      // Extract expert ID from email (e.g., "arun" from "arun@myyoga.guru")
+      // Extract local part and domain from email
       const [localPart, domain] = recipient.toLowerCase().split('@');
 
-      if (domain !== 'myyoga.guru') {
-        console.log(`[DBG][email-forwarder] Skipping non-myyoga.guru recipient: ${recipient}`);
+      // Handle platform email (myyoga.guru)
+      if (domain === PLATFORM_DOMAIN) {
+        await handlePlatformEmail(localPart, recipient, mail);
         continue;
       }
 
-      // Skip platform emails (hi@, support@, etc.)
-      const platformEmails = ['hi', 'support', 'info', 'contact', 'admin', 'noreply', 'mail'];
-      if (platformEmails.includes(localPart)) {
-        console.log(`[DBG][email-forwarder] Skipping platform email: ${recipient}`);
-        continue;
-      }
-
-      const expertId = localPart;
-
-      // Look up expert's forwarding settings
-      const expert = await getExpert(expertId);
-
-      if (!expert) {
-        console.log(`[DBG][email-forwarder] No expert found for: ${expertId}`);
-        continue;
-      }
-
-      if (!expert.emailForwardingEnabled) {
-        console.log(`[DBG][email-forwarder] Forwarding disabled for: ${expertId}`);
-        continue;
-      }
-
-      if (!expert.forwardingEmail) {
-        console.log(`[DBG][email-forwarder] No forwarding email configured for: ${expertId}`);
-        continue;
-      }
-
-      // Get original email from S3
-      const emailContent = await getEmailFromS3(mail.messageId);
-
-      // Forward the email
-      await forwardEmail(emailContent, expert.forwardingEmail, recipient, mail.source);
-
-      console.log(
-        `[DBG][email-forwarder] Successfully forwarded email for ${expertId} to ${expert.forwardingEmail}`
-      );
+      // Handle BYOD custom domain email
+      // Any non-myyoga.guru domain is treated as BYOD
+      console.log(`[DBG][email-forwarder] Processing BYOD domain email: ${recipient}`);
+      await handleByodEmail(domain, recipient, mail);
     } catch (error) {
       console.error(`[DBG][email-forwarder] Error processing recipient ${recipient}:`, error);
     }

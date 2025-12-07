@@ -53,11 +53,15 @@ export class SesStack extends cdk.Stack {
     // ========================================
     // SES Email Identity (Domain Verification)
     // ========================================
-    // This will create DKIM records in Route53 automatically
-    // Note: Removed mailFromDomain to avoid MX record conflicts with existing records
+    // Using ses.Identity.domain() instead of publicHostedZone() to avoid
+    // auto-creating MX records that already exist in Route53
+    // DKIM and other DNS records are already set up manually
     const emailIdentity = new ses.EmailIdentity(this, 'EmailIdentity', {
-      identity: ses.Identity.publicHostedZone(hostedZone),
+      identity: ses.Identity.domain(hostedZoneName),
     });
+
+    // Suppress the unused variable warning - emailIdentity is used for implicit dependency
+    void emailIdentity;
 
     // ========================================
     // SES Configuration Set
@@ -231,9 +235,30 @@ The MyYoga.Guru Team`,
       receiptRuleSetName: 'yoga-go-inbound',
     });
 
-    // Add rule to receive all @myyoga.guru emails
-    receiptRuleSet.addRule('ForwardExpertEmails', {
+    // Rule 1: Platform emails (@myyoga.guru)
+    // This matches all @myyoga.guru emails
+    receiptRuleSet.addRule('ForwardPlatformEmails', {
       recipients: ['myyoga.guru'],
+      actions: [
+        new sesActions.S3({
+          bucket: emailBucket,
+          objectKeyPrefix: 'incoming/',
+        }),
+        new sesActions.Lambda({
+          function: emailForwarderLambda,
+          invocationType: sesActions.LambdaInvocationType.EVENT,
+        }),
+      ],
+      scanEnabled: true,
+    });
+
+    // Rule 2: BYOD custom domain emails (catch-all for any verified domain)
+    // Empty recipients array = catch all emails for any verified domain in SES
+    // Lambda filters by domain to find the right tenant
+    // Note: This rule is processed after the platform rule, so myyoga.guru
+    // emails are handled by the first rule and don't fall through here
+    receiptRuleSet.addRule('ForwardByodEmails', {
+      recipients: [], // Catch-all for any SES-verified domain
       actions: [
         new sesActions.S3({
           bucket: emailBucket,

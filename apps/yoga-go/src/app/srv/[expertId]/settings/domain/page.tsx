@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import type { Tenant } from '@/types';
+import type { Tenant, TenantDnsRecord, TenantEmailConfig } from '@/types';
 
 // Extended tenant type with domain verification info
 interface TenantWithVerification extends Tenant {
@@ -15,6 +15,15 @@ interface TenantWithVerification extends Tenant {
       name: string;
       value: string;
     }>;
+  };
+  // Email setup response fields
+  emailDnsRecords?: TenantDnsRecord[];
+  emailVerificationStatus?: {
+    sesVerified: boolean;
+    dkimVerified: boolean;
+    mxVerified: boolean;
+    spfVerified: boolean;
+    allVerified: boolean;
   };
 }
 
@@ -42,6 +51,11 @@ export default function DomainSettingsPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [domainStatuses, setDomainStatuses] = useState<Record<string, DomainStatus>>({});
+
+  // Email setup state
+  const [emailDnsRecords, setEmailDnsRecords] = useState<TenantDnsRecord[]>([]);
+  const [emailSetupLoading, setEmailSetupLoading] = useState(false);
+  const [emailVerifying, setEmailVerifying] = useState(false);
 
   // Check if user owns this expert profile
   useEffect(() => {
@@ -368,6 +382,137 @@ export default function DomainSettingsPage() {
       setSaving(false);
     }
   };
+
+  // Email setup handlers
+  const handleEnableEmail = async () => {
+    if (!tenant) return;
+
+    // Can only enable email for custom domains (not myyoga.guru subdomains)
+    const customDomain = getCustomDomain();
+    if (!customDomain) {
+      setError('Please add a custom domain first (not a myyoga.guru subdomain)');
+      return;
+    }
+
+    setEmailSetupLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await fetch('/data/app/tenant', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'enable_domain_email',
+          domain: customDomain,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setTenant(data.data);
+        if (data.data?.emailDnsRecords) {
+          setEmailDnsRecords(data.data.emailDnsRecords);
+        }
+        setSuccess('Email enabled! Add the DNS records below to your domain registrar.');
+      } else {
+        setError(data.error || 'Failed to enable email');
+      }
+    } catch (err) {
+      console.error('[DBG][domain-settings] Error enabling email:', err);
+      setError('Failed to enable email');
+    } finally {
+      setEmailSetupLoading(false);
+    }
+  };
+
+  const handleVerifyEmail = async () => {
+    if (!tenant) return;
+
+    const customDomain = getCustomDomain();
+    if (!customDomain) return;
+
+    setEmailVerifying(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await fetch('/data/app/tenant', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'verify_domain_email',
+          domain: customDomain,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setTenant(data.data);
+        if (data.data?.emailVerificationStatus?.allVerified) {
+          setSuccess('Email verified and ready to use!');
+        } else {
+          setError('Some DNS records are still pending. Please check your DNS configuration.');
+        }
+      } else {
+        setError(data.error || 'Failed to verify email');
+      }
+    } catch (err) {
+      console.error('[DBG][domain-settings] Error verifying email:', err);
+      setError('Failed to verify email');
+    } finally {
+      setEmailVerifying(false);
+    }
+  };
+
+  const handleGetEmailDnsRecords = async () => {
+    if (!tenant?.emailConfig) return;
+
+    const customDomain = getCustomDomain();
+    if (!customDomain) return;
+
+    try {
+      const response = await fetch('/data/app/tenant', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'get_email_dns_records',
+          domain: customDomain,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success && data.data?.emailDnsRecords) {
+        setEmailDnsRecords(data.data.emailDnsRecords);
+      }
+    } catch (err) {
+      console.error('[DBG][domain-settings] Error getting email DNS records:', err);
+    }
+  };
+
+  // Get the first custom domain (not myyoga.guru)
+  const getCustomDomain = (): string | null => {
+    if (!tenant) return null;
+    const allDomains = [tenant.primaryDomain, ...(tenant.additionalDomains || [])];
+    return allDomains.find(d => !d.endsWith('.myyoga.guru') && d !== 'myyoga.guru') || null;
+  };
+
+  // Check if custom domain is verified
+  const isCustomDomainVerified = (): boolean => {
+    const customDomain = getCustomDomain();
+    if (!customDomain) return false;
+    return domainStatuses[customDomain]?.verified || false;
+  };
+
+  // Load email DNS records if email is enabled
+  useEffect(() => {
+    if (tenant?.emailConfig && !emailDnsRecords.length) {
+      handleGetEmailDnsRecords();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenant?.emailConfig]);
 
   // Get all domains for display
   const getAllDomains = (): string[] => {
@@ -797,6 +942,286 @@ export default function DomainSettingsPage() {
                     cases). Click &quot;Verify DNS&quot; once you&apos;ve added the records.
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Email Setup Section - Only show if custom domain exists */}
+            {getCustomDomain() && (
+              <div
+                style={{
+                  background: '#fff',
+                  borderRadius: '12px',
+                  padding: '24px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  marginBottom: '24px',
+                }}
+              >
+                <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
+                  Custom Domain Email
+                </h2>
+
+                {/* Email not yet enabled */}
+                {!tenant?.emailConfig && (
+                  <>
+                    <p style={{ color: '#666', marginBottom: '16px' }}>
+                      Enable email for your custom domain to send and receive emails from{' '}
+                      <strong>contact@{getCustomDomain()}</strong>
+                    </p>
+                    <button
+                      onClick={handleEnableEmail}
+                      disabled={emailSetupLoading || !isCustomDomainVerified()}
+                      style={{
+                        padding: '12px 24px',
+                        background: isCustomDomainVerified() ? 'var(--color-primary)' : '#ccc',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        cursor:
+                          emailSetupLoading || !isCustomDomainVerified()
+                            ? 'not-allowed'
+                            : 'pointer',
+                      }}
+                    >
+                      {emailSetupLoading ? 'Setting up...' : 'Enable Custom Email'}
+                    </button>
+                    {!isCustomDomainVerified() && (
+                      <p style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
+                        Verify your custom domain DNS first before enabling email.
+                      </p>
+                    )}
+                  </>
+                )}
+
+                {/* Email enabled - show status and DNS records */}
+                {tenant?.emailConfig && (
+                  <>
+                    {/* Email Address */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        padding: '16px',
+                        background: '#f8f8f8',
+                        borderRadius: '8px',
+                        marginBottom: '16px',
+                      }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: '500', marginBottom: '4px' }}>
+                          Your Email Address
+                        </div>
+                        <div
+                          style={{
+                            fontFamily: 'monospace',
+                            fontSize: '16px',
+                            color: 'var(--color-primary)',
+                          }}
+                        >
+                          {tenant.emailConfig.domainEmail}
+                        </div>
+                      </div>
+                      {tenant.emailConfig.sesVerificationStatus === 'verified' ? (
+                        <span
+                          style={{
+                            background: '#0a0',
+                            color: '#fff',
+                            padding: '4px 12px',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            fontWeight: '500',
+                          }}
+                        >
+                          Verified
+                        </span>
+                      ) : (
+                        <span
+                          style={{
+                            background: '#f90',
+                            color: '#fff',
+                            padding: '4px 12px',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            fontWeight: '500',
+                          }}
+                        >
+                          Pending
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Verification Status Details */}
+                    {tenant.emailConfig.sesVerificationStatus !== 'verified' && (
+                      <>
+                        <div
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: '1fr 1fr 1fr',
+                            gap: '12px',
+                            marginBottom: '16px',
+                          }}
+                        >
+                          <div
+                            style={{
+                              padding: '12px',
+                              background: tenant.emailConfig.dkimVerified ? '#efe' : '#fef',
+                              borderRadius: '8px',
+                              textAlign: 'center',
+                            }}
+                          >
+                            <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                              DKIM
+                            </div>
+                            <div
+                              style={{
+                                fontWeight: '500',
+                                color: tenant.emailConfig.dkimVerified ? '#060' : '#c00',
+                              }}
+                            >
+                              {tenant.emailConfig.dkimVerified ? 'Verified' : 'Pending'}
+                            </div>
+                          </div>
+                          <div
+                            style={{
+                              padding: '12px',
+                              background: tenant.emailConfig.mxVerified ? '#efe' : '#fef',
+                              borderRadius: '8px',
+                              textAlign: 'center',
+                            }}
+                          >
+                            <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                              MX Record
+                            </div>
+                            <div
+                              style={{
+                                fontWeight: '500',
+                                color: tenant.emailConfig.mxVerified ? '#060' : '#c00',
+                              }}
+                            >
+                              {tenant.emailConfig.mxVerified ? 'Verified' : 'Pending'}
+                            </div>
+                          </div>
+                          <div
+                            style={{
+                              padding: '12px',
+                              background: tenant.emailConfig.spfVerified ? '#efe' : '#fef',
+                              borderRadius: '8px',
+                              textAlign: 'center',
+                            }}
+                          >
+                            <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                              SPF Record
+                            </div>
+                            <div
+                              style={{
+                                fontWeight: '500',
+                                color: tenant.emailConfig.spfVerified ? '#060' : '#c00',
+                              }}
+                            >
+                              {tenant.emailConfig.spfVerified ? 'Verified' : 'Pending'}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* DNS Records for Email */}
+                        {emailDnsRecords.length > 0 && (
+                          <div
+                            style={{
+                              background: '#f8f8f8',
+                              borderRadius: '8px',
+                              padding: '16px',
+                              marginBottom: '16px',
+                            }}
+                          >
+                            <h3
+                              style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px' }}
+                            >
+                              Add these DNS records:
+                            </h3>
+                            {emailDnsRecords.map((record, index) => (
+                              <div
+                                key={index}
+                                style={{
+                                  marginBottom: index < emailDnsRecords.length - 1 ? '16px' : 0,
+                                  paddingBottom: index < emailDnsRecords.length - 1 ? '16px' : 0,
+                                  borderBottom:
+                                    index < emailDnsRecords.length - 1 ? '1px solid #ddd' : 'none',
+                                }}
+                              >
+                                <div
+                                  style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}
+                                >
+                                  {record.purpose}
+                                </div>
+                                <div
+                                  style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: '60px 1fr',
+                                    gap: '4px',
+                                    fontFamily: 'monospace',
+                                    fontSize: '12px',
+                                  }}
+                                >
+                                  <strong>Type:</strong>
+                                  <span>{record.type}</span>
+                                  <strong>Name:</strong>
+                                  <span style={{ wordBreak: 'break-all' }}>{record.name}</span>
+                                  <strong>Value:</strong>
+                                  <span style={{ wordBreak: 'break-all' }}>
+                                    {record.priority ? `${record.priority} ` : ''}
+                                    {record.value}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <button
+                          onClick={handleVerifyEmail}
+                          disabled={emailVerifying}
+                          style={{
+                            padding: '10px 20px',
+                            background: '#eef',
+                            color: '#00a',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            cursor: emailVerifying ? 'not-allowed' : 'pointer',
+                          }}
+                        >
+                          {emailVerifying ? 'Verifying...' : 'Verify Email DNS'}
+                        </button>
+                      </>
+                    )}
+
+                    {/* Email verified - show forwarding info */}
+                    {tenant.emailConfig.sesVerificationStatus === 'verified' && (
+                      <div
+                        style={{
+                          padding: '12px 16px',
+                          background: '#f0f9ff',
+                          borderRadius: '8px',
+                          fontSize: '13px',
+                          color: '#0369a1',
+                        }}
+                      >
+                        <strong>Forwarding to:</strong>{' '}
+                        {tenant.emailConfig.forwardToEmail || 'Not configured'}
+                        <br />
+                        <Link
+                          href={`/srv/${expertId}/settings/email`}
+                          style={{ color: '#0369a1', textDecoration: 'underline' }}
+                        >
+                          Manage email settings
+                        </Link>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             )}
 

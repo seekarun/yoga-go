@@ -50,7 +50,20 @@
       "Bash(npm run infra:build:*)",
       "Bash(aws ecs list-clusters:*)",
       "Bash(npm run infra:diff:*)",
-      "Bash(npx vercel:*)"
+      "Bash(npx vercel:*)",
+      "Bash(git -C /Users/arunsubramaniam/garage/yoga-go status)",
+      "Bash(git -C /Users/arunsubramaniam/garage/yoga-go diff apps/yoga-go/src/app/api/user/become-expert/route.ts)",
+      "Bash(git -C /Users/arunsubramaniam/garage/yoga-go push)",
+      "Bash(git -C /Users/arunsubramaniam/garage/yoga-go add apps/yoga-go/src/lib/auth.ts apps/yoga-go/src/app/data/app/expert/me/route.ts)",
+      "Bash(git -C /Users/arunsubramaniam/garage/yoga-go add apps/yoga-go/src/middleware.ts)",
+      "Bash(git -C /Users/arunsubramaniam/garage/yoga-go add apps/yoga-go/src/app/data/experts/route.ts)",
+      "Bash(git -C /Users/arunsubramaniam/garage/yoga-go add apps/yoga-go/src/lib/auth.ts)",
+      "Bash(aws dynamodb get-item:*)",
+      "Bash(aws dynamodb scan:*)",
+      "WebFetch(domain:arun.myyoga.guru)",
+      "Bash(aws dynamodb query:*)",
+      "Bash(jq:*)",
+      "Bash(aws dynamodb describe-table:*)"
     ],
     "deny": [],
     "ask": []

@@ -25,7 +25,14 @@ import {
   getDomainStatus,
   verifyDomain,
 } from '@/lib/vercel';
-import type { ApiResponse, Tenant } from '@/types';
+import {
+  createDomainIdentity,
+  getDomainVerificationStatus,
+  getDnsRecordsForDomain,
+  verifyAllDnsRecords,
+  deleteDomainIdentity,
+} from '@/lib/ses';
+import type { ApiResponse, Tenant, TenantEmailConfig, TenantDnsRecord } from '@/types';
 
 // Extended response type to include domain verification info
 interface TenantWithVerification extends Tenant {
@@ -36,6 +43,15 @@ interface TenantWithVerification extends Tenant {
       name: string;
       value: string;
     }>;
+  };
+  // Email setup response fields
+  emailDnsRecords?: TenantDnsRecord[];
+  emailVerificationStatus?: {
+    sesVerified: boolean;
+    dkimVerified: boolean;
+    mxVerified: boolean;
+    spfVerified: boolean;
+    allVerified: boolean;
   };
 }
 
@@ -326,6 +342,258 @@ export async function PUT(request: Request): Promise<NextResponse<ApiResponse<Te
         });
         console.log('[DBG][tenant-api] Updated tenant:', tenant.id);
         break;
+
+      case 'enable_domain_email': {
+        // Enable email for the custom domain via SES
+        // Requires a verified custom domain in Vercel first
+        const emailDomain = body.domain || tenant.primaryDomain;
+
+        if (!emailDomain) {
+          return NextResponse.json(
+            { success: false, error: 'No domain configured. Add a custom domain first.' },
+            { status: 400 }
+          );
+        }
+
+        // Don't allow enabling email for myyoga.guru subdomains
+        if (emailDomain.endsWith('.myyoga.guru') || emailDomain === 'myyoga.guru') {
+          return NextResponse.json(
+            { success: false, error: 'Cannot enable custom email for myyoga.guru subdomains' },
+            { status: 400 }
+          );
+        }
+
+        console.log('[DBG][tenant-api] Enabling domain email for:', emailDomain);
+
+        try {
+          // Create SES identity for the domain
+          const sesResult = await createDomainIdentity(emailDomain);
+
+          // Get user's personal email for forwarding
+          const expert = await getExpertById(user.expertProfile);
+          const forwardToEmail =
+            body.forwardToEmail ||
+            expert?.platformPreferences?.forwardingEmail ||
+            user.profile?.email ||
+            '';
+
+          // Update tenant with email config
+          const emailConfig: TenantEmailConfig = {
+            domainEmail: `contact@${emailDomain}`,
+            sesVerificationStatus: 'pending',
+            sesDkimTokens: sesResult.dkimTokens,
+            dkimVerified: false,
+            mxVerified: false,
+            forwardToEmail,
+            forwardingEnabled: true,
+            enabledAt: new Date().toISOString(),
+          };
+
+          updatedTenant = await updateTenant(tenant.id, { emailConfig });
+
+          // Generate DNS records for the expert to add
+          const emailDnsRecords = getDnsRecordsForDomain(emailDomain, sesResult.dkimTokens);
+
+          console.log('[DBG][tenant-api] Email enabled for domain:', emailDomain);
+
+          const response: TenantWithVerification = {
+            ...updatedTenant,
+            emailDnsRecords,
+          };
+
+          return NextResponse.json({
+            success: true,
+            data: response,
+            message: 'Email enabled. Add the DNS records shown to your domain registrar.',
+          });
+        } catch (error) {
+          console.error('[DBG][tenant-api] Failed to enable email:', error);
+          return NextResponse.json(
+            {
+              success: false,
+              error: error instanceof Error ? error.message : 'Failed to enable email',
+            },
+            { status: 500 }
+          );
+        }
+      }
+
+      case 'verify_domain_email': {
+        // Verify DNS records and SES status for domain email
+        const emailDomain = body.domain || tenant.primaryDomain;
+
+        if (!tenant.emailConfig) {
+          return NextResponse.json(
+            { success: false, error: 'Email not enabled for this domain' },
+            { status: 400 }
+          );
+        }
+
+        console.log('[DBG][tenant-api] Verifying domain email for:', emailDomain);
+
+        try {
+          // Check all DNS records
+          const dnsStatus = await verifyAllDnsRecords(emailDomain);
+
+          // Map SES status to our type
+          const sesVerificationStatus = dnsStatus.allVerified
+            ? 'verified'
+            : dnsStatus.dkimVerified
+              ? 'pending'
+              : 'pending';
+
+          // Update tenant with verification status
+          const emailConfig: TenantEmailConfig = {
+            ...tenant.emailConfig,
+            sesVerificationStatus,
+            dkimVerified: dnsStatus.dkimVerified,
+            dkimStatus: dnsStatus.dkimStatus,
+            mxVerified: dnsStatus.mxVerified,
+            spfVerified: dnsStatus.spfVerified,
+            ...(dnsStatus.allVerified && { verifiedAt: new Date().toISOString() }),
+          };
+
+          updatedTenant = await updateTenant(tenant.id, { emailConfig });
+
+          console.log('[DBG][tenant-api] Domain email verification result:', {
+            domain: emailDomain,
+            allVerified: dnsStatus.allVerified,
+          });
+
+          const response: TenantWithVerification = {
+            ...updatedTenant,
+            emailVerificationStatus: {
+              sesVerified: dnsStatus.dkimVerified,
+              dkimVerified: dnsStatus.dkimVerified,
+              mxVerified: dnsStatus.mxVerified,
+              spfVerified: dnsStatus.spfVerified,
+              allVerified: dnsStatus.allVerified,
+            },
+          };
+
+          return NextResponse.json({
+            success: true,
+            data: response,
+            message: dnsStatus.allVerified
+              ? 'Email verified and ready to use!'
+              : 'Some DNS records are still pending verification.',
+          });
+        } catch (error) {
+          console.error('[DBG][tenant-api] Failed to verify email:', error);
+          return NextResponse.json(
+            {
+              success: false,
+              error: error instanceof Error ? error.message : 'Failed to verify email',
+            },
+            { status: 500 }
+          );
+        }
+      }
+
+      case 'get_email_dns_records': {
+        // Get DNS records needed for domain email (if already enabled)
+        if (!tenant.emailConfig?.sesDkimTokens) {
+          return NextResponse.json(
+            { success: false, error: 'Email not enabled for this domain' },
+            { status: 400 }
+          );
+        }
+
+        const emailDomain = body.domain || tenant.primaryDomain;
+        const emailDnsRecords = getDnsRecordsForDomain(
+          emailDomain,
+          tenant.emailConfig.sesDkimTokens
+        );
+
+        return NextResponse.json({
+          success: true,
+          data: {
+            ...tenant,
+            emailDnsRecords,
+          },
+        });
+      }
+
+      case 'disable_domain_email': {
+        // Disable email for the custom domain
+        const emailDomain = body.domain || tenant.primaryDomain;
+
+        if (!tenant.emailConfig) {
+          return NextResponse.json(
+            { success: false, error: 'Email not enabled for this domain' },
+            { status: 400 }
+          );
+        }
+
+        console.log('[DBG][tenant-api] Disabling domain email for:', emailDomain);
+
+        try {
+          // Delete SES identity
+          await deleteDomainIdentity(emailDomain);
+
+          // Clear email config from tenant
+          updatedTenant = await updateTenant(tenant.id, { emailConfig: undefined });
+
+          console.log('[DBG][tenant-api] Email disabled for domain:', emailDomain);
+
+          return NextResponse.json({
+            success: true,
+            data: updatedTenant,
+            message: 'Domain email disabled. You can remove the DNS records from your registrar.',
+          });
+        } catch (error) {
+          console.error('[DBG][tenant-api] Failed to disable email:', error);
+          return NextResponse.json(
+            {
+              success: false,
+              error: error instanceof Error ? error.message : 'Failed to disable email',
+            },
+            { status: 500 }
+          );
+        }
+      }
+
+      case 'update_email_forwarding': {
+        // Update forwarding email address
+        if (!tenant.emailConfig) {
+          return NextResponse.json(
+            { success: false, error: 'Email not enabled for this domain' },
+            { status: 400 }
+          );
+        }
+
+        const { forwardToEmail, forwardingEnabled } = body;
+
+        // Validate email if provided
+        if (forwardToEmail) {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(forwardToEmail)) {
+            return NextResponse.json(
+              { success: false, error: 'Invalid email format' },
+              { status: 400 }
+            );
+          }
+        }
+
+        const emailConfig: TenantEmailConfig = {
+          ...tenant.emailConfig,
+          forwardToEmail: forwardToEmail ?? tenant.emailConfig.forwardToEmail,
+          forwardingEnabled: forwardingEnabled ?? tenant.emailConfig.forwardingEnabled,
+        };
+
+        updatedTenant = await updateTenant(tenant.id, { emailConfig });
+
+        console.log('[DBG][tenant-api] Updated email forwarding:', {
+          forwardToEmail: emailConfig.forwardToEmail,
+          enabled: emailConfig.forwardingEnabled,
+        });
+
+        return NextResponse.json({
+          success: true,
+          data: updatedTenant,
+          message: 'Email forwarding settings updated.',
+        });
+      }
 
       default:
         return NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 });

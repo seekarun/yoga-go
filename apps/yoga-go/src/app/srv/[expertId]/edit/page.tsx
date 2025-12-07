@@ -21,14 +21,6 @@ export default function EditExpertPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [pollingVideoId, setPollingVideoId] = useState<string | null>(null);
 
-  // Meeting settings state
-  const [meetingSettings, setMeetingSettings] = useState({
-    defaultMeetingLink: '',
-    defaultMeetingPlatform: 'google-meet' as 'zoom' | 'google-meet',
-  });
-  const [savingMeetingSettings, setSavingMeetingSettings] = useState(false);
-  const [meetingSettingsError, setMeetingSettingsError] = useState('');
-  const [meetingSettingsSuccess, setMeetingSettingsSuccess] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     title: '',
@@ -55,57 +47,8 @@ export default function EditExpertPage() {
 
   useEffect(() => {
     fetchExpertData();
-    fetchMeetingSettings();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchExpertData is stable, only runs on mount/expertId change
   }, [expertId]);
-
-  // Fetch meeting settings
-  const fetchMeetingSettings = async () => {
-    try {
-      const response = await fetch('/api/user/meeting-settings');
-      const data = await response.json();
-
-      if (data.success && data.data) {
-        setMeetingSettings({
-          defaultMeetingLink: data.data.defaultMeetingLink || '',
-          defaultMeetingPlatform: data.data.defaultMeetingPlatform || 'google-meet',
-        });
-      }
-    } catch (err) {
-      console.error('[DBG][expert-edit] Error fetching meeting settings:', err);
-    }
-  };
-
-  // Save meeting settings
-  const handleSaveMeetingSettings = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSavingMeetingSettings(true);
-    setMeetingSettingsError('');
-    setMeetingSettingsSuccess(false);
-
-    try {
-      const response = await fetch('/api/user/meeting-settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(meetingSettings),
-      });
-
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to save meeting settings');
-      }
-
-      setMeetingSettingsSuccess(true);
-      setTimeout(() => setMeetingSettingsSuccess(false), 3000);
-    } catch (err) {
-      setMeetingSettingsError(
-        err instanceof Error ? err.message : 'Failed to save meeting settings'
-      );
-    } finally {
-      setSavingMeetingSettings(false);
-    }
-  };
 
   // Poll video status for processing promo videos
   useEffect(() => {
@@ -434,95 +377,6 @@ export default function EditExpertPage() {
             <p className="text-sm">{uploadError}</p>
           </div>
         )}
-
-        {/* Meeting Settings Section */}
-        <div className="bg-white rounded-lg shadow-md p-8 mb-8">
-          <div className="border-b border-gray-200 pb-4 mb-6">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-              Live Session Meeting Settings
-            </h2>
-            <p className="text-gray-600 text-sm">
-              Configure your default meeting link for 1-on-1 sessions. This link will be
-              automatically used when students book 1-on-1 time slots with you.
-            </p>
-          </div>
-
-          {meetingSettingsSuccess && (
-            <div className="mb-4 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
-              <p className="font-medium">Success!</p>
-              <p className="text-sm">Meeting settings saved successfully</p>
-            </div>
-          )}
-
-          {meetingSettingsError && (
-            <div className="mb-4 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
-              <p className="font-medium">Error</p>
-              <p className="text-sm">{meetingSettingsError}</p>
-            </div>
-          )}
-
-          <form onSubmit={handleSaveMeetingSettings} className="space-y-6">
-            <div>
-              <label
-                htmlFor="defaultMeetingPlatform"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                Meeting Platform <span className="text-red-500">*</span>
-              </label>
-              <select
-                id="defaultMeetingPlatform"
-                value={meetingSettings.defaultMeetingPlatform}
-                onChange={e =>
-                  setMeetingSettings({
-                    ...meetingSettings,
-                    defaultMeetingPlatform: e.target.value as 'zoom' | 'google-meet',
-                  })
-                }
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="google-meet">Google Meet</option>
-                <option value="zoom">Zoom</option>
-              </select>
-            </div>
-
-            <div>
-              <label
-                htmlFor="defaultMeetingLink"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                Default Meeting Link <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="url"
-                id="defaultMeetingLink"
-                required
-                value={meetingSettings.defaultMeetingLink}
-                onChange={e =>
-                  setMeetingSettings({
-                    ...meetingSettings,
-                    defaultMeetingLink: e.target.value,
-                  })
-                }
-                placeholder="https://meet.google.com/xxx-xxxx-xxx or https://zoom.us/j/..."
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <p className="mt-2 text-sm text-gray-500">
-                This link will be used for all 1-on-1 sessions booked by students. Make sure
-                it&apos;s a permanent link (not a one-time meeting).
-              </p>
-            </div>
-
-            <div className="flex justify-end">
-              <button
-                type="submit"
-                disabled={savingMeetingSettings}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium transition-colors"
-              >
-                {savingMeetingSettings ? 'Saving...' : 'Save Meeting Settings'}
-              </button>
-            </div>
-          </form>
-        </div>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-8 space-y-6">

@@ -299,15 +299,6 @@ The MyYoga.Guru Team`,
       projectionType: dynamodb.ProjectionType.ALL,
     });
 
-    new dynamodb.Table(this, 'CalendarTable', {
-      tableName: 'yoga-go-calendar',
-      partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
-      pointInTimeRecovery: false,
-    });
-
     new dynamodb.Table(this, 'OrdersTable', {
       tableName: 'yoga-go-orders',
       partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
@@ -367,8 +358,6 @@ The MyYoga.Guru Team`,
       resources: [
         coreTable.tableArn,
         `${coreTable.tableArn}/index/*`,
-        `arn:aws:dynamodb:${this.region}:${this.account}:table/yoga-go-calendar`,
-        `arn:aws:dynamodb:${this.region}:${this.account}:table/yoga-go-calendar/index/*`,
         `arn:aws:dynamodb:${this.region}:${this.account}:table/yoga-go-orders`,
         `arn:aws:dynamodb:${this.region}:${this.account}:table/yoga-go-orders/index/*`,
         `arn:aws:dynamodb:${this.region}:${this.account}:table/yoga-go-analytics`,

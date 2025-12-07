@@ -155,9 +155,6 @@ export async function createExpert(input: CreateExpertInput): Promise<Expert> {
       featuredOnPlatform: true,
       defaultEmail: `${input.id}@myyoga.guru`,
     },
-    liveStreamingEnabled: true,
-    totalLiveSessions: 0,
-    upcomingLiveSessions: 0,
     createdAt: now,
     updatedAt: now,
   };

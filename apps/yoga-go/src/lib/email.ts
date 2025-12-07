@@ -1,4 +1,5 @@
 import { SESClient, SendEmailCommand, SendTemplatedEmailCommand } from '@aws-sdk/client-ses';
+import { getTenantByExpertId } from '@/lib/repositories/tenantRepository';
 
 // ========================================
 // AWS SES Email Service
@@ -224,6 +225,46 @@ export const sendInvoiceEmail = async (options: InvoiceEmailOptions): Promise<vo
  */
 export function getExpertFromEmail(expertId: string): string {
   return `${expertId}@myyoga.guru`;
+}
+
+/**
+ * Get the appropriate "from" email address for an expert
+ * Checks if expert has a verified BYOD domain email, otherwise falls back to platform email
+ *
+ * Priority:
+ * 1. BYOD domain email (if verified) - e.g., contact@kavithayoga.com
+ * 2. Platform email - e.g., kavitha@myyoga.guru
+ *
+ * @param expertId - The expert's ID
+ * @returns Promise resolving to the email address to use for sending
+ */
+export async function getFromEmailForExpert(expertId: string): Promise<string> {
+  console.log(`[DBG][email] Getting from email for expert: ${expertId}`);
+
+  try {
+    // Look up tenant for the expert to check for BYOD email
+    const tenant = await getTenantByExpertId(expertId);
+
+    // If tenant has verified BYOD email, use it
+    if (
+      tenant?.emailConfig?.sesVerificationStatus === 'verified' &&
+      tenant.emailConfig.domainEmail
+    ) {
+      console.log(
+        `[DBG][email] Using BYOD email for ${expertId}: ${tenant.emailConfig.domainEmail}`
+      );
+      return tenant.emailConfig.domainEmail;
+    }
+
+    // Fall back to platform email
+    const platformEmail = getExpertFromEmail(expertId);
+    console.log(`[DBG][email] Using platform email for ${expertId}: ${platformEmail}`);
+    return platformEmail;
+  } catch (error) {
+    console.error(`[DBG][email] Error getting from email for ${expertId}:`, error);
+    // On error, fall back to platform email
+    return getExpertFromEmail(expertId);
+  }
 }
 
 /**

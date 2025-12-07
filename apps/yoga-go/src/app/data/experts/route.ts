@@ -80,10 +80,6 @@ export async function GET() {
           ...doc,
           totalCourses,
           totalStudents,
-          // Ensure liveStreamingEnabled is always present (default to true if not set)
-          liveStreamingEnabled: doc.liveStreamingEnabled ?? true,
-          totalLiveSessions: doc.totalLiveSessions ?? 0,
-          upcomingLiveSessions: doc.upcomingLiveSessions ?? 0,
         };
       })
     );
