@@ -63,7 +63,8 @@
       "WebFetch(domain:arun.myyoga.guru)",
       "Bash(aws dynamodb query:*)",
       "Bash(jq:*)",
-      "Bash(aws dynamodb describe-table:*)"
+      "Bash(aws dynamodb describe-table:*)",
+      "Bash(npm run build:calel:*)"
     ],
     "deny": [],
     "ask": []

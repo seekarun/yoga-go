@@ -4,6 +4,7 @@ import * as cdk from 'aws-cdk-lib';
 import { SharedInfraStack } from '../lib/shared-infra-stack';
 import { YogaGoStack } from '../lib/yoga-go-stack';
 import { SesStack } from '../lib/ses-stack';
+import { CalelStack } from '../lib/calel-stack';
 
 const app = new cdk.App();
 
@@ -90,3 +91,20 @@ const sesStack = new SesStack(app, 'YogaGoSesStack', {
 });
 
 sesStack.addDependency(sharedInfra);
+
+// ========================================
+// Calel Stack (Standalone Scheduling Service)
+// ========================================
+// Contains: DynamoDB (calel-core), SQS Queues, IAM User
+//
+// This is a standalone service that can be used by yoga-go
+// and other future apps for calendar/scheduling functionality.
+new CalelStack(app, 'CalelStack', {
+  description: 'Calel - Calendar & Scheduling Service',
+  env: envSydney,
+  tags: {
+    Application: 'Calel',
+    Environment: 'production',
+    ManagedBy: 'CDK',
+  },
+});
