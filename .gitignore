@@ -43,3 +43,4 @@ sendgrid.env
 
 # CDK
 cdk.out
+.env*.local

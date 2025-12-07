@@ -2,7 +2,11 @@ import * as cdk from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
+import * as cognito from 'aws-cdk-lib/aws-cognito';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as lambdaNode from 'aws-cdk-lib/aws-lambda-nodejs';
 import type { Construct } from 'constructs';
+import * as path from 'path';
 
 /**
  * Calel Application Stack
@@ -30,6 +34,8 @@ export class CalelStack extends cdk.Stack {
   public readonly coreTable: dynamodb.Table;
   public readonly notificationQueue: sqs.Queue;
   public readonly webhookQueue: sqs.Queue;
+  public readonly userPool: cognito.UserPool;
+  public readonly userPoolClient: cognito.UserPoolClient;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -109,6 +115,100 @@ export class CalelStack extends cdk.Stack {
     });
 
     // ========================================
+    // Cognito User Pool
+    // ========================================
+
+    // Post-confirmation Lambda - creates tenant when user signs up
+    const postConfirmationLambda = new lambdaNode.NodejsFunction(
+      this,
+      'PostConfirmationLambda',
+      {
+        runtime: lambda.Runtime.NODEJS_20_X,
+        handler: 'handler',
+        entry: path.join(__dirname, '../lambda/calel-post-confirmation.ts'),
+        environment: {
+          TABLE_NAME: this.coreTable.tableName,
+        },
+        timeout: cdk.Duration.seconds(10),
+      },
+    );
+
+    // Grant Lambda permission to write to DynamoDB
+    this.coreTable.grantWriteData(postConfirmationLambda);
+    this.coreTable.grantReadData(postConfirmationLambda);
+
+    // Cognito User Pool with email/password sign-up
+    this.userPool = new cognito.UserPool(this, 'CalelUserPool', {
+      userPoolName: 'calel-users',
+      selfSignUpEnabled: true,
+      signInAliases: {
+        email: true,
+        username: false,
+      },
+      autoVerify: {
+        email: true,
+      },
+      standardAttributes: {
+        email: {
+          required: true,
+          mutable: true,
+        },
+        givenName: {
+          required: false,
+          mutable: true,
+        },
+        familyName: {
+          required: false,
+          mutable: true,
+        },
+      },
+      customAttributes: {
+        tenantId: new cognito.StringAttribute({ mutable: false }),
+        tenantName: new cognito.StringAttribute({ mutable: true }),
+      },
+      passwordPolicy: {
+        minLength: 8,
+        requireLowercase: true,
+        requireUppercase: true,
+        requireDigits: true,
+        requireSymbols: false,
+      },
+      accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      lambdaTriggers: {
+        postConfirmation: postConfirmationLambda,
+      },
+    });
+
+    // User Pool Client (for web app)
+    this.userPoolClient = new cognito.UserPoolClient(this, 'CalelWebClient', {
+      userPool: this.userPool,
+      userPoolClientName: 'calel-web',
+      authFlows: {
+        userPassword: true,
+        userSrp: true,
+      },
+      generateSecret: false,
+      preventUserExistenceErrors: true,
+      accessTokenValidity: cdk.Duration.hours(1),
+      idTokenValidity: cdk.Duration.hours(1),
+      refreshTokenValidity: cdk.Duration.days(30),
+    });
+
+    // Grant Lambda permission to update user attributes
+    // Note: Using a separate construct to avoid circular dependency
+    const cognitoPolicy = new iam.Policy(this, 'PostConfirmationCognitoPolicy', {
+      statements: [
+        new iam.PolicyStatement({
+          effect: iam.Effect.ALLOW,
+          actions: ['cognito-idp:AdminUpdateUserAttributes'],
+          resources: ['*'], // Will be updated after deployment with specific ARN
+        }),
+      ],
+    });
+    postConfirmationLambda.role?.attachInlinePolicy(cognitoPolicy);
+
+    // ========================================
     // IAM User for Vercel Deployment
     // ========================================
     const vercelUser = new iam.User(this, 'VercelUser', {
@@ -177,6 +277,24 @@ export class CalelStack extends cdk.Stack {
       value: vercelUser.userArn,
       description: 'IAM User ARN for Vercel - create access keys in AWS Console',
       exportName: 'CalelVercelUserArn',
+    });
+
+    new cdk.CfnOutput(this, 'UserPoolId', {
+      value: this.userPool.userPoolId,
+      description: 'Calel Cognito User Pool ID',
+      exportName: 'CalelUserPoolId',
+    });
+
+    new cdk.CfnOutput(this, 'UserPoolClientId', {
+      value: this.userPoolClient.userPoolClientId,
+      description: 'Calel Cognito User Pool Client ID',
+      exportName: 'CalelUserPoolClientId',
+    });
+
+    new cdk.CfnOutput(this, 'CognitoRegion', {
+      value: this.region,
+      description: 'AWS Region for Cognito',
+      exportName: 'CalelCognitoRegion',
     });
   }
 }

@@ -21,11 +21,10 @@ import { NextResponse } from "next/server";
  * This is a simple presence check - actual validation happens in route handlers
  */
 function hasSessionCookie(request: NextRequest): boolean {
-  // Check for NextAuth session token (if using NextAuth)
-  const nextAuthToken = request.cookies.get("authjs.session-token")?.value;
-  // Check for Cognito session cookie (if sharing with yoga-go)
-  const cognitoToken = request.cookies.get("calel-session")?.value;
-  return !!(nextAuthToken || cognitoToken);
+  // Check for Calel session cookie (Cognito)
+  const calelSession = request.cookies.get("calel-session")?.value;
+  const calelIdToken = request.cookies.get("calel-id-token")?.value;
+  return !!(calelSession && calelIdToken);
 }
 
 /**
