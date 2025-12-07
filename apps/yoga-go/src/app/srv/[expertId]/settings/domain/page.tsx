@@ -906,7 +906,7 @@ export default function DomainSettingsPage() {
                         <strong>Name:</strong>
                         <span>@ (or leave blank)</span>
                         <strong>Value:</strong>
-                        <span>76.76.21.21</span>
+                        <span>216.150.1.1</span>
                       </div>
                       <div
                         style={{
