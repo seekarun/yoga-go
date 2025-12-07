@@ -5,8 +5,9 @@ import { SESClient, SendEmailCommand, SendTemplatedEmailCommand } from '@aws-sdk
 // ========================================
 // Uses IAM role credentials automatically in ECS
 
+// SES is in us-west-2 for email receiving support (receiving only available in us-east-1, us-west-2, eu-west-1)
 const sesClient = new SESClient({
-  region: process.env.AWS_REGION || 'ap-southeast-2',
+  region: process.env.SES_REGION || 'us-west-2',
 });
 
 const fromEmail = process.env.SES_FROM_EMAIL || 'hi@myyoga.guru';
