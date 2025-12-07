@@ -3,7 +3,7 @@
   "framework": "nextjs",
   "regions": ["syd1"],
   "buildCommand": "cd ../.. && npm run build:yoga-go",
-  "installCommand": "cd ../.. && npm install",
+  "installCommand": "cd ../.. && npm ci",
   "outputDirectory": ".next",
   "env": {
     "VERCEL_FORCE_NO_BUILD_CACHE": "1"
