@@ -12,7 +12,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { format, isWeekend, getDay } from "date-fns";
+import { format, getDay } from "date-fns";
 import {
   DateScroller,
   TimeGrid,
@@ -128,7 +128,7 @@ export default function DashboardPage() {
     setSlots(calculateSlots(selectedDate));
   }, [selectedDate, calculateSlots]);
 
-  // Parse natural language command and update availability
+  // Parse natural language command using OpenAI and update availability
   const processCommand = async (command: string) => {
     setIsProcessing(true);
 
@@ -141,113 +141,50 @@ export default function DashboardPage() {
     };
     setChatMessages((prev) => [...prev, userMessage]);
 
-    // Simple command parsing (in production, this would use an LLM)
-    const lowerCommand = command.toLowerCase();
     let response = "";
     let newRules: AvailabilityRule[] = [...availabilityRules];
 
     try {
-      // Parse "available X to Y weekdays" pattern
-      const weekdayMatch = lowerCommand.match(
-        /available\s+(\d{1,2})\s*(?:am|pm)?\s*to\s+(\d{1,2})\s*(?:am|pm)?\s*(?:on\s+)?weekdays/i,
-      );
-      const weekdayMatch2 = lowerCommand.match(
-        /available\s+(\d{1,2}):?(\d{2})?\s*(am|pm)?\s*(?:to|-)\s*(\d{1,2}):?(\d{2})?\s*(am|pm)?/i,
-      );
+      // Call OpenAI-powered API to parse the command
+      const apiResponse = await fetch("/api/parse-availability", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          command,
+          currentDate: format(selectedDate, "yyyy-MM-dd"),
+        }),
+      });
 
-      // Parse "unavailable except X to Y" pattern
-      const exceptMatch = lowerCommand.match(
-        /unavailable.*except\s+(\d{1,2})\s*(?:am|pm)?\s*to\s+(\d{1,2})\s*(?:am|pm)?/i,
-      );
+      const result = await apiResponse.json();
 
-      if (
-        exceptMatch ||
-        lowerCommand.includes("9 to 5") ||
-        lowerCommand.includes("9am to 5pm")
-      ) {
-        // Set available only during business hours on weekdays
-        newRules = [
-          {
-            type: "weekly",
-            days: [1, 2, 3, 4, 5],
-            startTime: "09:00",
-            endTime: "17:00",
-            available: true,
-          },
-        ];
+      if (!result.success) {
+        console.error("[DBG][dashboard] API error:", result.error);
         response =
-          "Got it! I've set you as available Monday to Friday, 9 AM to 5 PM. All other times are unavailable.";
-      } else if (weekdayMatch || weekdayMatch2) {
-        const match = weekdayMatch || weekdayMatch2;
-        let startHour = parseInt(match![1]);
-        let endHour = parseInt(match![4] || match![2]);
-
-        // Handle AM/PM
-        if (lowerCommand.includes("pm") && endHour < 12) {
-          endHour += 12;
-        }
-        if (lowerCommand.includes("am") && startHour === 12) {
-          startHour = 0;
-        }
-
-        newRules = [
-          {
-            type: "weekly",
-            days: [1, 2, 3, 4, 5],
-            startTime: `${startHour.toString().padStart(2, "0")}:00`,
-            endTime: `${endHour.toString().padStart(2, "0")}:00`,
-            available: true,
-          },
-        ];
-        response = `Updated! You're now available weekdays from ${startHour > 12 ? startHour - 12 : startHour}${startHour >= 12 ? "PM" : "AM"} to ${endHour > 12 ? endHour - 12 : endHour}${endHour >= 12 ? "PM" : "AM"}.`;
-      } else if (
-        lowerCommand.includes("clear") ||
-        lowerCommand.includes("reset")
-      ) {
-        newRules = [];
-        response =
-          "All availability cleared. You're now showing as unavailable for all times.";
-      } else if (
-        lowerCommand.includes("block") ||
-        lowerCommand.includes("unavailable")
-      ) {
-        // For now, just acknowledge
-        response =
-          "I understand you want to block some time. Could you be more specific? For example: 'Block off Friday afternoon' or 'Unavailable December 25th'.";
-      } else if (
-        lowerCommand.includes("saturday") ||
-        lowerCommand.includes("sunday")
-      ) {
-        const isSaturday = lowerCommand.includes("saturday");
-        const day = isSaturday ? 6 : 0;
-        const timeMatch = lowerCommand.match(
-          /(\d{1,2})\s*(am|pm)?\s*to\s*(\d{1,2})\s*(am|pm)?/i,
-        );
-
-        if (timeMatch) {
-          let startHour = parseInt(timeMatch[1]);
-          let endHour = parseInt(timeMatch[3]);
-
-          if (timeMatch[2]?.toLowerCase() === "pm" && startHour < 12)
-            startHour += 12;
-          if (timeMatch[4]?.toLowerCase() === "pm" && endHour < 12)
-            endHour += 12;
-
-          newRules.push({
-            type: "weekly",
-            days: [day],
-            startTime: `${startHour.toString().padStart(2, "0")}:00`,
-            endTime: `${endHour.toString().padStart(2, "0")}:00`,
-            available: true,
-          });
-          response = `Added! You're now available on ${isSaturday ? "Saturday" : "Sunday"}s from ${startHour > 12 ? startHour - 12 : startHour}${startHour >= 12 ? "PM" : "AM"} to ${endHour > 12 ? endHour - 12 : endHour}${endHour >= 12 ? "PM" : "AM"}.`;
-        }
+          "Sorry, I had trouble processing that. Please try again later.";
       } else {
-        response =
-          "I'm not sure how to process that command yet. Try something like:\n• 'Available 9am to 5pm weekdays'\n• 'Unavailable except 9 to 5 weekdays'\n• 'Available Saturday 10am to 2pm'";
-      }
+        const { rules, message, action } = result.data;
+        response = message;
 
-      setAvailabilityRules(newRules);
+        switch (action) {
+          case "set":
+            // Replace all rules
+            newRules = rules;
+            break;
+          case "add":
+            // Add to existing rules
+            newRules = [...availabilityRules, ...rules];
+            break;
+          case "clear":
+            // Clear all rules
+            newRules = [];
+            break;
+          case "error":
+            // Keep existing rules, just show the error message
+            break;
+        }
+
+        setAvailabilityRules(newRules);
+      }
     } catch (error) {
       console.error("[DBG][dashboard] Command processing error:", error);
       response =

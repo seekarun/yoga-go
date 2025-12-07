@@ -64,7 +64,9 @@
       "Bash(aws dynamodb query:*)",
       "Bash(jq:*)",
       "Bash(aws dynamodb describe-table:*)",
-      "Bash(npm run build:calel:*)"
+      "Bash(npm run build:calel:*)",
+      "Bash(grep:*)",
+      "Bash(npm run lint:*)"
     ],
     "deny": [],
     "ask": []
