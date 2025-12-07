@@ -139,6 +139,7 @@ export const sendBulkEmail = async (options: EmailOptions): Promise<void> => {
 
 export interface InvoiceEmailOptions {
   to: string;
+  from?: string; // Optional custom from address (e.g., expert@myyoga.guru)
   customerName: string;
   orderId: string;
   orderDate: string;
@@ -158,6 +159,7 @@ export interface InvoiceEmailOptions {
 export const sendInvoiceEmail = async (options: InvoiceEmailOptions): Promise<void> => {
   const {
     to,
+    from,
     customerName,
     orderId,
     orderDate,
@@ -169,7 +171,10 @@ export const sendInvoiceEmail = async (options: InvoiceEmailOptions): Promise<vo
     transactionId,
   } = options;
 
-  console.log(`[DBG][email] Sending invoice email to ${to}`);
+  // Use custom from address if provided, otherwise default
+  const sourceEmail = from || fromEmail;
+
+  console.log(`[DBG][email] Sending invoice email to ${to} from ${sourceEmail}`);
   console.log(`[DBG][email] Order ID: ${orderId}, Amount: ${currency} ${amount}`);
 
   const templateData = {
@@ -185,7 +190,7 @@ export const sendInvoiceEmail = async (options: InvoiceEmailOptions): Promise<vo
   };
 
   const command = new SendTemplatedEmailCommand({
-    Source: fromEmail,
+    Source: sourceEmail,
     Destination: {
       ToAddresses: [to],
     },
@@ -218,6 +223,34 @@ export const sendInvoiceEmail = async (options: InvoiceEmailOptions): Promise<vo
  */
 export function getExpertFromEmail(expertId: string): string {
   return `${expertId}@myyoga.guru`;
+}
+
+/**
+ * Determine which "from" email to use based on context
+ * - On expert subdomain: use expert's email (expertId@myyoga.guru)
+ * - On main domain: use platform email (hi@myyoga.guru)
+ *
+ * @param expertId - The expert's ID (from course instructor)
+ * @param referer - The referer header from the request
+ * @returns The appropriate from email address
+ */
+export function getContextualFromEmail(expertId: string | null, referer: string | null): string {
+  if (!expertId || !referer) {
+    return fromEmail;
+  }
+
+  // Check if referer is from an expert subdomain (e.g., arun.myyoga.guru)
+  const isExpertSubdomain =
+    referer.includes('.myyoga.guru') &&
+    !referer.includes('www.myyoga.guru') &&
+    !referer.startsWith('https://myyoga.guru') &&
+    !referer.startsWith('http://myyoga.guru');
+
+  if (isExpertSubdomain) {
+    return getExpertFromEmail(expertId);
+  }
+
+  return fromEmail;
 }
 
 export interface ExpertEmailOptions {

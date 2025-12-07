@@ -183,9 +183,12 @@ export async function POST(request: Request) {
       experience: body.experience || '',
       socialLinks: body.socialLinks || {},
       onboardingCompleted: true, // Mark as completed since they filled the form
-      platformPreferences: body.platformPreferences || {
-        featuredOnPlatform: true,
+      platformPreferences: {
+        featuredOnPlatform: body.platformPreferences?.featuredOnPlatform ?? true,
         defaultEmail: `${expertId}@myyoga.guru`,
+        forwardingEmail: user.profile?.email, // Forward incoming emails to user's login email
+        emailForwardingEnabled: true, // Enable forwarding by default
+        ...body.platformPreferences, // Allow overrides from request body
       },
     });
 

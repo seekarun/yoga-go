@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { PAYMENT_CONFIG } from '@/config/payment';
 import * as userRepository from '@/lib/repositories/userRepository';
 import * as courseRepository from '@/lib/repositories/courseRepository';
-import { sendInvoiceEmail } from '@/lib/email';
+import { sendInvoiceEmail, getContextualFromEmail } from '@/lib/email';
 
 export async function POST(request: Request) {
   try {
@@ -67,8 +67,14 @@ export async function POST(request: Request) {
         const currencySymbol =
           currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency || 'INR';
 
+        // Determine from address based on context (expert subdomain vs main domain)
+        const referer = request.headers.get('referer');
+        const expertId = course?.instructor?.id || null;
+        const fromEmail = getContextualFromEmail(expertId, referer);
+
         await sendInvoiceEmail({
           to: user.profile.email,
+          from: fromEmail,
           customerName: user.profile.name || 'Valued Customer',
           orderId: orderId.slice(-8).toUpperCase(),
           orderDate: new Date().toLocaleDateString('en-IN', {
@@ -83,7 +89,7 @@ export async function POST(request: Request) {
           amount: amountValue.toFixed(2),
           transactionId: paymentId,
         });
-        console.log(`[Razorpay] Invoice email sent to ${user.profile.email}`);
+        console.log(`[Razorpay] Invoice email sent to ${user.profile.email} from ${fromEmail}`);
       } else {
         console.warn('[Razorpay] No user email found, skipping invoice email');
       }

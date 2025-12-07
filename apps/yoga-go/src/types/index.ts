@@ -78,9 +78,11 @@ export interface CustomLandingPageConfig {
 // Expert Platform Preferences
 export interface ExpertPlatformPreferences {
   featuredOnPlatform: boolean; // Show on myyoga.guru/courses
-  defaultEmail?: string; // <expertId>@myyoga.guru
-  customEmail?: string; // Expert-provided email (optional)
+  defaultEmail?: string; // <expertId>@myyoga.guru (auto-assigned on signup)
+  customEmail?: string; // Expert-provided email for sending (optional)
   emailVerified?: boolean; // Whether custom email is SES-verified
+  forwardingEmail?: string; // Expert's personal email for receiving/forwarding
+  emailForwardingEnabled?: boolean; // Whether to forward incoming emails
 }
 
 export interface Expert extends BaseEntity {

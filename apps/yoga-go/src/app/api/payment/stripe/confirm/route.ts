@@ -4,7 +4,7 @@ import { PAYMENT_CONFIG } from '@/config/payment';
 import * as paymentRepository from '@/lib/repositories/paymentRepository';
 import * as userRepository from '@/lib/repositories/userRepository';
 import * as courseRepository from '@/lib/repositories/courseRepository';
-import { sendInvoiceEmail } from '@/lib/email';
+import { sendInvoiceEmail, getContextualFromEmail } from '@/lib/email';
 
 function getStripeInstance() {
   if (!PAYMENT_CONFIG.stripe.secretKey) {
@@ -123,8 +123,14 @@ export async function POST(request: Request) {
         const amount = paymentIntent.amount / 100; // Convert from cents
         const currency = paymentIntent.currency.toUpperCase();
 
+        // Determine from address based on context (expert subdomain vs main domain)
+        const referer = request.headers.get('referer');
+        const expertId = course?.instructor?.id || null;
+        const fromEmail = getContextualFromEmail(expertId, referer);
+
         await sendInvoiceEmail({
           to: user.profile.email,
+          from: fromEmail,
           customerName: user.profile.name || 'Valued Customer',
           orderId: paymentIntentId.slice(-8).toUpperCase(),
           orderDate: new Date().toLocaleDateString('en-AU', {
@@ -139,7 +145,7 @@ export async function POST(request: Request) {
           amount: amount.toFixed(2),
           transactionId: paymentIntentId,
         });
-        console.log(`[DBG][stripe] Invoice email sent to ${user.profile.email}`);
+        console.log(`[DBG][stripe] Invoice email sent to ${user.profile.email} from ${fromEmail}`);
       } else {
         console.warn('[DBG][stripe] No user email found, skipping invoice email');
       }
