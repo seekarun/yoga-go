@@ -132,7 +132,7 @@ export default function ExpertDashboard() {
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Expert Dashboard</h1>
             <div className="flex items-center gap-4">
               <Link
-                href={`/srv/${expertId}/live`}
+                href={`/srv/${expertId}/settings`}
                 className="px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition-colors font-medium inline-flex items-center"
               >
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -140,10 +140,10 @@ export default function ExpertDashboard() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                    d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"
                   />
                 </svg>
-                Live Sessions
+                Domain & Email
               </Link>
               <Link
                 href={`/srv/${expertId}/analytics`}
