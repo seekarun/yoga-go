@@ -19,6 +19,7 @@ interface ExpertData {
 
 /**
  * Get expert data from DynamoDB
+ * Key pattern: PK = "EXPERT", SK = expertId
  */
 async function getExpert(expertId: string): Promise<ExpertData | null> {
   console.log(`[DBG][email-forwarder] Looking up expert: ${expertId}`);
@@ -28,8 +29,8 @@ async function getExpert(expertId: string): Promise<ExpertData | null> {
       TableName: TABLE_NAME,
       KeyConditionExpression: 'PK = :pk AND SK = :sk',
       ExpressionAttributeValues: {
-        ':pk': { S: `EXPERT#${expertId}` },
-        ':sk': { S: `PROFILE#${expertId}` },
+        ':pk': { S: 'EXPERT' },
+        ':sk': { S: expertId },
       },
     })
   );
@@ -42,9 +43,11 @@ async function getExpert(expertId: string): Promise<ExpertData | null> {
   const item = result.Items[0];
   const platformPreferences = item.platformPreferences?.M;
 
+  console.log(`[DBG][email-forwarder] Found expert: ${expertId}, forwarding: ${platformPreferences?.forwardingEmail?.S}`);
+
   return {
     forwardingEmail: platformPreferences?.forwardingEmail?.S,
-    emailForwardingEnabled: platformPreferences?.emailForwardingEnabled?.BOOL,
+    emailForwardingEnabled: platformPreferences?.emailForwardingEnabled?.BOOL ?? true,
   };
 }
 
