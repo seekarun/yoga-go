@@ -151,14 +151,11 @@ export function getAllExpertIds(): string[] {
  * Resolution order:
  * 1. Check if it's a primary domain -> return null
  * 2. Check static EXPERT_DOMAINS config (backwards compat)
- * 3. Check myyoga.guru subdomains (validated against DB)
- * 4. Try dynamic lookup from DynamoDB for custom domains
+ * 3. Check myyoga.guru subdomains (validated via API)
+ * 4. Try dynamic lookup via internal API for custom domains
  *
- * Note: This function is async because of DynamoDB lookup.
- * For middleware use, import from tenantRepository.
- *
- * IMPORTANT: DynamoDB calls may fail in Edge Middleware due to missing
- * AWS credentials. This function handles those errors gracefully.
+ * Note: This function uses an internal API route for DynamoDB lookups
+ * because Edge Middleware cannot reliably use the AWS SDK directly.
  */
 export async function resolveDomainToTenant(
   hostname: string
@@ -180,47 +177,61 @@ export async function resolveDomainToTenant(
   // 3. Check myyoga.guru subdomains
   const subdomain = getSubdomainFromMyYogaGuru(hostname);
 
-  // Try DynamoDB lookup, but handle Edge Middleware credential errors gracefully
+  // Use internal API route for domain lookup (works in Edge Runtime)
   try {
-    // Import here to avoid circular dependency
-    const { getTenantByDomain } = await import('@/lib/repositories/tenantRepository');
+    // Determine the base URL for the API call
+    // In Edge Middleware, we need to construct the full URL
+    const protocol = hostname.includes('localhost') ? 'http' : 'https';
+    // Use myyoga.guru as the API host since custom domains point to the same deployment
+    const apiHost = hostname.includes('localhost') ? hostname : 'myyoga.guru';
+    const lookupDomain = subdomain ? `${subdomain}.myyoga.guru` : hostname;
 
-    if (subdomain) {
-      // Look up the subdomain in the database to validate it exists
-      const fullDomain = `${subdomain}.myyoga.guru`;
-      const tenant = await getTenantByDomain(fullDomain);
+    const apiUrl = `${protocol}://${apiHost}/api/internal/resolve-domain?domain=${encodeURIComponent(lookupDomain)}`;
 
-      if (tenant) {
-        console.log('[DBG][domains] Found tenant for subdomain:', subdomain);
+    console.log('[DBG][domains] Calling resolve-domain API:', apiUrl);
+
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      // Don't follow redirects, and set a timeout
+      redirect: 'manual',
+    });
+
+    if (!response.ok) {
+      console.error('[DBG][domains] API call failed:', response.status);
+      // Fall through to subdomain handling
+    } else {
+      const data = await response.json();
+
+      if (data.tenantId && data.expertId) {
+        console.log(
+          '[DBG][domains] Found tenant via API:',
+          data.tenantId,
+          'expert:',
+          data.expertId
+        );
         return {
-          tenantId: tenant.id,
-          expertId: tenant.expertId,
+          tenantId: data.tenantId,
+          expertId: data.expertId,
         };
       }
 
-      // Subdomain doesn't have a tenant - return null to trigger 404/redirect
-      console.log('[DBG][domains] No tenant found for subdomain:', subdomain);
-      return null;
-    }
-
-    // 4. Dynamic lookup from DynamoDB for custom domains
-    const tenant = await getTenantByDomain(hostname);
-
-    if (tenant) {
-      return {
-        tenantId: tenant.id,
-        expertId: tenant.expertId,
-      };
+      // No tenant found
+      if (subdomain) {
+        console.log('[DBG][domains] No tenant found for subdomain:', subdomain);
+        return null;
+      }
     }
   } catch (error) {
-    // DynamoDB may fail in Edge Middleware due to missing AWS credentials
-    // This is expected behavior - fall back to static config only
-    console.error('[DBG][domains] DynamoDB lookup failed (expected in Edge):', error);
+    // API call failed - fall back gracefully
+    console.error('[DBG][domains] Domain resolution API failed:', error);
 
-    // For myyoga.guru subdomains without static config, allow the request
+    // For myyoga.guru subdomains without API access, allow the request
     // through - the page/API will handle the 404 if tenant doesn't exist
     if (subdomain) {
-      console.log('[DBG][domains] Allowing subdomain through without DB validation:', subdomain);
+      console.log('[DBG][domains] Allowing subdomain through without API validation:', subdomain);
       return {
         tenantId: subdomain,
         expertId: subdomain,
