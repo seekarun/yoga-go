@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ImageUploadCrop from '@/components/ImageUploadCrop';
+import VideoUpload from '@/components/VideoUpload';
+import type { VideoUploadResult } from '@/components/VideoUpload';
 import type { Asset, Expert } from '@/types';
 
 export default function EditLandingPage() {
@@ -19,10 +21,6 @@ export default function EditLandingPage() {
   const [heroImageAsset, setHeroImageAsset] = useState<Asset | null>(null);
   const [_aboutImageAsset, setAboutImageAsset] = useState<Asset | null>(null);
   const [_actImageAsset, setActImageAsset] = useState<Asset | null>(null);
-  const [selectedAboutVideoFile, setSelectedAboutVideoFile] = useState<File | null>(null);
-  const [isUploadingAboutVideo, setIsUploadingAboutVideo] = useState(false);
-  const [aboutVideoUploadProgress, setAboutVideoUploadProgress] = useState(0);
-  const [pollingAboutVideoId, setPollingAboutVideoId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     logo: '',
@@ -51,55 +49,6 @@ export default function EditLandingPage() {
     fetchExpertData();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchExpertData is stable, only runs on mount/expertId change
   }, [expertId]);
-
-  // Poll video status for processing about videos
-  useEffect(() => {
-    if (!pollingAboutVideoId) return;
-
-    const pollInterval = setInterval(async () => {
-      try {
-        console.log(
-          '[DBG][landing-page-edit] Polling about video status for:',
-          pollingAboutVideoId
-        );
-
-        const response = await fetch(`/api/cloudflare/video-status/${pollingAboutVideoId}`);
-        const data = await response.json();
-
-        if (data.success) {
-          const videoStatus = data.data.status;
-          const isReady = data.data.readyToStream;
-
-          console.log(
-            '[DBG][landing-page-edit] About video status:',
-            videoStatus,
-            'Ready:',
-            isReady
-          );
-
-          if (formData.aboutVideoCloudflareId === pollingAboutVideoId) {
-            const newStatus = isReady ? 'ready' : videoStatus === 'error' ? 'error' : 'processing';
-
-            setFormData(prev => ({
-              ...prev,
-              aboutVideoStatus: newStatus as 'uploading' | 'processing' | 'ready' | 'error',
-            }));
-
-            if (isReady || videoStatus === 'error') {
-              console.log(
-                '[DBG][landing-page-edit] About video processing complete, stopping poll'
-              );
-              setPollingAboutVideoId(null);
-            }
-          }
-        }
-      } catch (err) {
-        console.error('[DBG][landing-page-edit] Error polling about video status:', err);
-      }
-    }, 5000);
-
-    return () => clearInterval(pollInterval);
-  }, [pollingAboutVideoId, formData.aboutVideoCloudflareId]);
 
   const fetchExpertData = async () => {
     try {
@@ -236,89 +185,26 @@ export default function EditLandingPage() {
     setUploadError('');
   };
 
-  const handleAboutVideoFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      console.log('[DBG][landing-page-edit] About video file selected:', file.name, file.size);
-      setSelectedAboutVideoFile(file);
-    }
+  const handleAboutVideoUploadComplete = (result: VideoUploadResult) => {
+    console.log('[DBG][landing-page-edit] About video upload complete:', result);
+    setFormData(prev => ({
+      ...prev,
+      aboutVideoCloudflareId: result.videoId,
+      aboutVideoStatus: result.status,
+    }));
   };
 
-  const handleAboutVideoUpload = async () => {
-    if (!selectedAboutVideoFile) {
-      setError('Please select a video file');
-      return;
-    }
+  const handleAboutVideoClear = () => {
+    setFormData(prev => ({
+      ...prev,
+      aboutVideoCloudflareId: '',
+      aboutVideoStatus: '',
+    }));
+  };
 
-    setIsUploadingAboutVideo(true);
-    setAboutVideoUploadProgress(0);
-    setError('');
-
-    try {
-      console.log('[DBG][landing-page-edit] Starting about video upload');
-
-      const uploadUrlResponse = await fetch('/api/cloudflare/upload-url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ maxDurationSeconds: 300 }),
-      });
-
-      const uploadUrlData = await uploadUrlResponse.json();
-      if (!uploadUrlData.success) {
-        throw new Error(uploadUrlData.error || 'Failed to get upload URL');
-      }
-
-      const { uploadURL, uid } = uploadUrlData.data;
-      console.log('[DBG][landing-page-edit] Got upload URL, uid:', uid);
-
-      const formDataUpload = new FormData();
-      formDataUpload.append('file', selectedAboutVideoFile);
-
-      await new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-
-        xhr.upload.addEventListener('progress', e => {
-          if (e.lengthComputable) {
-            const percentComplete = (e.loaded / e.total) * 100;
-            setAboutVideoUploadProgress(percentComplete);
-            console.log('[DBG][landing-page-edit] About video upload progress:', percentComplete);
-          }
-        });
-
-        xhr.addEventListener('load', () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            resolve(xhr.response);
-          } else {
-            reject(new Error('Upload failed with status: ' + xhr.status));
-          }
-        });
-
-        xhr.addEventListener('error', () => {
-          reject(new Error('Upload failed'));
-        });
-
-        xhr.open('POST', uploadURL);
-        xhr.send(formDataUpload);
-      });
-
-      console.log('[DBG][landing-page-edit] About video uploaded successfully:', uid);
-
-      setFormData(prev => ({
-        ...prev,
-        aboutVideoCloudflareId: uid,
-        aboutVideoStatus: 'processing',
-      }));
-
-      setAboutVideoUploadProgress(100);
-      setPollingAboutVideoId(uid);
-
-      alert('About video uploaded successfully! Processing status will update automatically.');
-    } catch (err) {
-      console.error('[DBG][landing-page-edit] Error uploading about video:', err);
-      setError(err instanceof Error ? err.message : 'Failed to upload about video');
-    } finally {
-      setIsUploadingAboutVideo(false);
-    }
+  const handleAboutVideoError = (errorMsg: string) => {
+    console.error('[DBG][landing-page-edit] About video upload error:', errorMsg);
+    setError(errorMsg);
   };
 
   const handleUploadError = (error: string) => {
@@ -784,104 +670,16 @@ export default function EditLandingPage() {
 
               {/* Video Layout Fields */}
               {formData.aboutLayoutType === 'video' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    About Video
-                  </label>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Upload a video to display in your about section
-                  </p>
-
-                  {formData.aboutVideoCloudflareId ? (
-                    <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-green-600">✓</span>
-                        <span className="text-sm font-medium text-green-800">
-                          About video uploaded
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-1">
-                        Video ID: {formData.aboutVideoCloudflareId}
-                      </p>
-                      {formData.aboutVideoStatus && (
-                        <p className="text-sm text-gray-600 mb-2">
-                          Status: <span className="capitalize">{formData.aboutVideoStatus}</span>
-                        </p>
-                      )}
-                      {formData.aboutVideoStatus === 'ready' && (
-                        <div className="mt-3 rounded-lg overflow-hidden">
-                          <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0 }}>
-                            <iframe
-                              src={`https://customer-${process.env.NEXT_PUBLIC_CF_SUBDOMAIN || 'placeholder'}.cloudflarestream.com/${formData.aboutVideoCloudflareId}/iframe?preload=auto&poster=https%3A%2F%2Fcustomer-${process.env.NEXT_PUBLIC_CF_SUBDOMAIN || 'placeholder'}.cloudflarestream.com%2F${formData.aboutVideoCloudflareId}%2Fthumbnails%2Fthumbnail.jpg%3Ftime%3D1s%26height%3D600`}
-                              style={{
-                                border: 'none',
-                                position: 'absolute',
-                                top: 0,
-                                left: 0,
-                                height: '100%',
-                                width: '100%',
-                              }}
-                              allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
-                              allowFullScreen={true}
-                            />
-                          </div>
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFormData(prev => ({
-                            ...prev,
-                            aboutVideoCloudflareId: '',
-                            aboutVideoStatus: '',
-                          }));
-                          setSelectedAboutVideoFile(null);
-                        }}
-                        className="mt-3 text-sm text-red-600 hover:text-red-700"
-                      >
-                        Remove video
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <input
-                        type="file"
-                        accept="video/*"
-                        onChange={handleAboutVideoFileSelect}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                      />
-                      {selectedAboutVideoFile && (
-                        <div className="mt-3">
-                          <p className="text-sm text-gray-600">
-                            Selected: {selectedAboutVideoFile.name} (
-                            {(selectedAboutVideoFile.size / 1024 / 1024).toFixed(2)} MB)
-                          </p>
-                          <button
-                            type="button"
-                            onClick={handleAboutVideoUpload}
-                            disabled={isUploadingAboutVideo}
-                            className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed text-sm font-medium"
-                          >
-                            {isUploadingAboutVideo ? 'Uploading...' : 'Upload About Video'}
-                          </button>
-                        </div>
-                      )}
-                      {isUploadingAboutVideo && (
-                        <div className="mt-3">
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                              style={{ width: `${aboutVideoUploadProgress}%` }}
-                            />
-                          </div>
-                          <p className="text-sm text-gray-600 mt-1">
-                            Uploading: {Math.round(aboutVideoUploadProgress)}%
-                          </p>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
+                <VideoUpload
+                  label="About Video"
+                  maxDurationSeconds={300}
+                  videoId={formData.aboutVideoCloudflareId}
+                  videoStatus={formData.aboutVideoStatus}
+                  onUploadComplete={handleAboutVideoUploadComplete}
+                  onClear={handleAboutVideoClear}
+                  onError={handleAboutVideoError}
+                  helpText="Upload a video to display in your about section (max 5 minutes)"
+                />
               )}
 
               {/* Image + Text Layout Fields */}
