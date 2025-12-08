@@ -3,21 +3,28 @@
 /**
  * Dashboard Page
  *
- * Chat-based calendar management interface.
- * Features:
- * - Natural language command input for setting availability
- * - Horizontal date scroller
- * - 30-minute time slot grid
+ * Calendar interface with columnar navigation:
+ * Month → Date → Day → Event
+ *
+ * Desktop: Shows 2 columns (50% each)
+ * Mobile: Shows 1 column
+ *
+ * Animated transitions between views.
  */
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { format, getDay } from "date-fns";
+import { format, getDay, getYear, startOfYear } from "date-fns";
 import {
-  DateScroller,
-  TimeGrid,
+  CalendarCarousel,
+  CarouselColumn,
+  useCarousel,
+  YearView,
+  MonthView,
+  DateView,
+  DayView,
+  EventView,
   ChatInput,
-  EventModal,
   type TimeSlot,
   type CalendarEvent,
 } from "@/components/calendar";
@@ -37,14 +44,142 @@ interface ChatMessage {
   timestamp: Date;
 }
 
-// Default availability rules
 interface AvailabilityRule {
   type: "weekly" | "date-specific";
-  days?: number[]; // 0-6 for weekly (0 = Sunday)
-  date?: string; // ISO date for date-specific
-  startTime: string; // HH:mm
-  endTime: string; // HH:mm
+  days?: number[];
+  date?: string;
+  startTime: string;
+  endTime: string;
   available: boolean;
+}
+
+// Inner component that uses carousel context
+function CalendarContent({
+  selectedDate,
+  setSelectedDate,
+  selectedYear,
+  setSelectedYear,
+  events,
+  slots,
+  selectedTime,
+  setSelectedTime,
+  selectedEvent,
+  setSelectedEvent,
+  onSaveEvent,
+  onDeleteEvent,
+}: {
+  selectedDate: Date;
+  setSelectedDate: (date: Date) => void;
+  selectedYear: number;
+  setSelectedYear: (year: number) => void;
+  events: CalendarEvent[];
+  slots: TimeSlot[];
+  selectedTime: string;
+  setSelectedTime: (time: string) => void;
+  selectedEvent: CalendarEvent | null;
+  setSelectedEvent: (event: CalendarEvent | null) => void;
+  onSaveEvent: (event: Omit<CalendarEvent, "id">) => void;
+  onDeleteEvent: (eventId: string) => void;
+}) {
+  const { navigateTo, navigateRight, isRightColumn } = useCarousel();
+
+  // Handle year selection from year view (never navigates - year is always leftmost)
+  const handleYearSelect = (year: number) => {
+    setSelectedYear(year);
+    // Set selectedDate to January 1st of that year
+    setSelectedDate(startOfYear(new Date(year, 0, 1)));
+  };
+
+  // Handle date selection from month view (only navigate if in right column)
+  const handleMonthDateSelect = (date: Date) => {
+    setSelectedDate(date);
+    if (isRightColumn("month")) {
+      navigateRight();
+    }
+  };
+
+  // Handle date selection from date view (only navigate if in right column)
+  const handleDateViewSelect = (date: Date) => {
+    setSelectedDate(date);
+    if (isRightColumn("date")) {
+      navigateRight();
+    }
+  };
+
+  // Handle slot click in day view (only navigate if in right column)
+  const handleSlotClick = (time: string) => {
+    setSelectedTime(time);
+    setSelectedEvent(null);
+    if (isRightColumn("day")) {
+      navigateTo("day"); // Show day+event columns
+    }
+  };
+
+  // Handle event click in day view (only navigate if in right column)
+  const handleEventClick = (event: CalendarEvent) => {
+    setSelectedEvent(event);
+    setSelectedTime(event.startTime);
+    if (isRightColumn("day")) {
+      navigateTo("day"); // Show day+event columns
+    }
+  };
+
+  return (
+    <>
+      {/* Year View Column */}
+      <CarouselColumn view="year" title="Year">
+        <YearView selectedYear={selectedYear} onYearSelect={handleYearSelect} />
+      </CarouselColumn>
+
+      {/* Month View Column */}
+      <CarouselColumn view="month" title="Calendar" showBackButton>
+        <MonthView
+          selectedDate={selectedDate}
+          onDateSelect={handleMonthDateSelect}
+          events={events}
+        />
+      </CarouselColumn>
+
+      {/* Date View Column */}
+      <CarouselColumn view="date" title="Dates" showBackButton>
+        <DateView
+          selectedDate={selectedDate}
+          onDateSelect={handleDateViewSelect}
+          events={events}
+        />
+      </CarouselColumn>
+
+      {/* Day View Column */}
+      <CarouselColumn
+        view="day"
+        title={format(selectedDate, "EEE, MMM d")}
+        showBackButton
+      >
+        <DayView
+          date={selectedDate}
+          slots={slots}
+          events={events}
+          onSlotClick={handleSlotClick}
+          onEventClick={handleEventClick}
+        />
+      </CarouselColumn>
+
+      {/* Event View Column */}
+      <CarouselColumn
+        view="event"
+        title={selectedEvent ? "Edit Event" : "New Event"}
+        showBackButton
+      >
+        <EventView
+          date={selectedDate}
+          initialTime={selectedTime}
+          event={selectedEvent}
+          onSave={onSaveEvent}
+          onDelete={onDeleteEvent}
+        />
+      </CarouselColumn>
+    </>
+  );
 }
 
 export default function DashboardPage() {
@@ -57,20 +192,21 @@ export default function DashboardPage() {
   const [availabilityRules, setAvailabilityRules] = useState<
     AvailabilityRule[]
   >([
-    // Default: Available 9-5 on weekdays
     {
       type: "weekly",
-      days: [1, 2, 3, 4, 5], // Mon-Fri
+      days: [1, 2, 3, 4, 5],
       startTime: "09:00",
       endTime: "17:00",
       available: true,
     },
   ]);
 
-  // Event modal state
   const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTime, setSelectedTime] = useState("09:00");
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(
+    null,
+  );
+  const [selectedYear, setSelectedYear] = useState(() => getYear(new Date()));
 
   // Fetch events from API
   const fetchEvents = async () => {
@@ -98,8 +234,6 @@ export default function DashboardPage() {
         }
 
         setUser(data.data.user);
-
-        // Fetch events after authentication
         await fetchEvents();
       } catch (error) {
         console.error("[DBG][dashboard] Session check failed:", error);
@@ -124,7 +258,6 @@ export default function DashboardPage() {
           const time = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
           let status: TimeSlot["status"] = "unavailable";
 
-          // Check rules in order (later rules override earlier ones)
           for (const rule of availabilityRules) {
             if (rule.type === "weekly" && rule.days?.includes(dayOfWeek)) {
               if (time >= rule.startTime && time < rule.endTime) {
@@ -152,11 +285,10 @@ export default function DashboardPage() {
     setSlots(calculateSlots(selectedDate));
   }, [selectedDate, calculateSlots]);
 
-  // Parse natural language command using OpenAI and update availability
+  // Parse natural language command
   const processCommand = async (command: string) => {
     setIsProcessing(true);
 
-    // Add user message
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       type: "user",
@@ -169,7 +301,6 @@ export default function DashboardPage() {
     let newRules: AvailabilityRule[] = [...availabilityRules];
 
     try {
-      // Call OpenAI-powered API to parse the command
       const apiResponse = await fetch("/api/parse-availability", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -182,7 +313,6 @@ export default function DashboardPage() {
       const result = await apiResponse.json();
 
       if (!result.success) {
-        console.error("[DBG][dashboard] API error:", result.error);
         response =
           "Sorry, I had trouble processing that. Please try again later.";
       } else {
@@ -191,19 +321,13 @@ export default function DashboardPage() {
 
         switch (action) {
           case "set":
-            // Replace all rules
             newRules = rules;
             break;
           case "add":
-            // Add to existing rules
             newRules = [...availabilityRules, ...rules];
             break;
           case "clear":
-            // Clear all rules
             newRules = [];
-            break;
-          case "error":
-            // Keep existing rules, just show the error message
             break;
         }
 
@@ -211,11 +335,9 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error("[DBG][dashboard] Command processing error:", error);
-      response =
-        "Sorry, I had trouble understanding that. Please try rephrasing your request.";
+      response = "Sorry, I had trouble understanding that.";
     }
 
-    // Add system response
     const systemMessage: ChatMessage = {
       id: (Date.now() + 1).toString(),
       type: "system",
@@ -227,14 +349,8 @@ export default function DashboardPage() {
     setIsProcessing(false);
   };
 
-  const handleSlotClick = (time: string) => {
-    console.log("[DBG][dashboard] Slot clicked:", time);
-    setSelectedTime(time);
-    setIsModalOpen(true);
-  };
-
   const handleSaveEvent = async (eventData: Omit<CalendarEvent, "id">) => {
-    console.log("[DBG][dashboard] Saving event to API:", eventData);
+    console.log("[DBG][dashboard] Saving event:", eventData);
 
     try {
       const response = await fetch("/data/app/events", {
@@ -247,16 +363,32 @@ export default function DashboardPage() {
 
       if (data.success) {
         console.log("[DBG][dashboard] Event saved:", data.data.id);
-        // Refresh events list from API
         await fetchEvents();
-      } else {
-        console.error("[DBG][dashboard] Failed to save event:", data.error);
+        setSelectedEvent(null);
       }
     } catch (error) {
       console.error("[DBG][dashboard] Error saving event:", error);
     }
+  };
 
-    setIsModalOpen(false);
+  const handleDeleteEvent = async (eventId: string) => {
+    console.log("[DBG][dashboard] Deleting event:", eventId);
+
+    try {
+      const response = await fetch(`/data/app/events/${eventId}`, {
+        method: "DELETE",
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        console.log("[DBG][dashboard] Event deleted");
+        await fetchEvents();
+        setSelectedEvent(null);
+      }
+    } catch (error) {
+      console.error("[DBG][dashboard] Error deleting event:", error);
+    }
   };
 
   const handleSignOut = async () => {
@@ -280,16 +412,16 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex">
+    <div className="h-screen bg-gray-100 flex overflow-hidden">
       {/* Sidebar */}
       <Sidebar />
 
       {/* Main area */}
-      <div className="flex-1 flex flex-col min-h-screen">
+      <div className="flex-1 flex flex-col min-h-0">
         {/* Header */}
-        <header className="bg-white shadow-sm sticky top-0 z-20">
+        <header className="bg-white shadow-sm flex-shrink-0 z-20">
           <div className="px-6 py-3 flex justify-between items-center">
-            <h1 className="text-lg font-semibold text-gray-900">Dashboard</h1>
+            <h1 className="text-lg font-semibold text-gray-900">Calendar</h1>
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-600 hidden sm:block">
                 {user?.email}
@@ -304,130 +436,56 @@ export default function DashboardPage() {
           </div>
         </header>
 
-        {/* Main content */}
-        <main className="flex-1 p-6 overflow-y-auto">
-          <div className="max-w-3xl mx-auto space-y-6">
-            {/* Chat Input - Prominent at top */}
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">
-                Set Your Availability
-              </h2>
-              <ChatInput
-                onSubmit={processCommand}
-                isProcessing={isProcessing}
-                placeholder="Tell me when you're available... (e.g., 'Available 9am to 5pm weekdays')"
-              />
-            </div>
-
-            {/* Recent messages */}
+        {/* Chat input - collapsible */}
+        <div className="bg-white border-b flex-shrink-0">
+          <div className="p-3">
+            <ChatInput
+              onSubmit={processCommand}
+              isProcessing={isProcessing}
+              placeholder="Set availability... (e.g., 'Available 9-5 weekdays')"
+            />
             {chatMessages.length > 0 && (
-              <div className="bg-white rounded-lg shadow p-4 space-y-3">
-                <h3 className="text-sm font-medium text-gray-500">
-                  Recent Updates
-                </h3>
-                <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {chatMessages.slice(-4).map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={`text-sm p-2 rounded ${
-                        msg.type === "user"
-                          ? "bg-indigo-50 text-indigo-900"
-                          : "bg-gray-50 text-gray-700"
-                      }`}
-                    >
-                      <span className="font-medium">
-                        {msg.type === "user" ? "You: " : "Calel: "}
-                      </span>
-                      <span className="whitespace-pre-wrap">{msg.content}</span>
-                    </div>
-                  ))}
-                </div>
+              <div className="mt-2 space-y-1 max-h-20 overflow-y-auto">
+                {chatMessages.slice(-2).map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={`text-xs px-2 py-1 rounded ${
+                      msg.type === "user"
+                        ? "bg-indigo-50 text-indigo-900"
+                        : "bg-gray-100 text-gray-700"
+                    }`}
+                  >
+                    <span className="font-medium">
+                      {msg.type === "user" ? "You: " : "Calel: "}
+                    </span>
+                    {msg.content}
+                  </div>
+                ))}
               </div>
             )}
-
-            {/* Date Scroller */}
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-              <DateScroller
-                selectedDate={selectedDate}
-                onDateSelect={setSelectedDate}
-              />
-            </div>
-
-            {/* Time Grid */}
-            <div>
-              <div className="mb-3">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {format(selectedDate, "EEEE")}&#39;s Schedule
-                </h3>
-              </div>
-              <TimeGrid
-                date={selectedDate}
-                slots={slots}
-                events={events}
-                onSlotClick={handleSlotClick}
-              />
-            </div>
-
-            {/* Current Rules Summary */}
-            <div className="bg-white rounded-lg shadow p-4">
-              <h3 className="text-sm font-medium text-gray-500 mb-3">
-                Current Availability Rules
-              </h3>
-              {availabilityRules.length === 0 ? (
-                <p className="text-sm text-gray-400">
-                  No rules set. Use the chat above to set your availability.
-                </p>
-              ) : (
-                <ul className="space-y-2">
-                  {availabilityRules.map((rule, idx) => (
-                    <li
-                      key={idx}
-                      className="text-sm text-gray-700 flex items-center gap-2"
-                    >
-                      <span
-                        className={`w-2 h-2 rounded-full ${rule.available ? "bg-green-500" : "bg-red-500"}`}
-                      />
-                      {rule.type === "weekly" && (
-                        <span>
-                          {rule.days
-                            ?.map(
-                              (d) =>
-                                [
-                                  "Sun",
-                                  "Mon",
-                                  "Tue",
-                                  "Wed",
-                                  "Thu",
-                                  "Fri",
-                                  "Sat",
-                                ][d],
-                            )
-                            .join(", ")}
-                          : {rule.startTime} - {rule.endTime}
-                        </span>
-                      )}
-                      {rule.type === "date-specific" && (
-                        <span>
-                          {rule.date}: {rule.startTime} - {rule.endTime}
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
           </div>
+        </div>
+
+        {/* Calendar Carousel */}
+        <main className="flex-1 min-h-0">
+          <CalendarCarousel initialView="month">
+            <CalendarContent
+              selectedDate={selectedDate}
+              setSelectedDate={setSelectedDate}
+              selectedYear={selectedYear}
+              setSelectedYear={setSelectedYear}
+              events={events}
+              slots={slots}
+              selectedTime={selectedTime}
+              setSelectedTime={setSelectedTime}
+              selectedEvent={selectedEvent}
+              setSelectedEvent={setSelectedEvent}
+              onSaveEvent={handleSaveEvent}
+              onDeleteEvent={handleDeleteEvent}
+            />
+          </CalendarCarousel>
         </main>
       </div>
-
-      {/* Event Modal */}
-      <EventModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSave={handleSaveEvent}
-        date={selectedDate}
-        initialTime={selectedTime}
-      />
     </div>
   );
 }
