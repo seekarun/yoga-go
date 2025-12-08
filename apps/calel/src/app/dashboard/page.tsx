@@ -17,7 +17,9 @@ import {
   DateScroller,
   TimeGrid,
   ChatInput,
+  EventModal,
   type TimeSlot,
+  type CalendarEvent,
 } from "@/components/calendar";
 import { Sidebar } from "@/components/layout";
 
@@ -65,6 +67,25 @@ export default function DashboardPage() {
     },
   ]);
 
+  // Event modal state
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedTime, setSelectedTime] = useState("09:00");
+
+  // Fetch events from API
+  const fetchEvents = async () => {
+    try {
+      const response = await fetch("/data/app/events");
+      const data = await response.json();
+      if (data.success) {
+        console.log("[DBG][dashboard] Fetched", data.data.length, "events");
+        setEvents(data.data);
+      }
+    } catch (error) {
+      console.error("[DBG][dashboard] Failed to fetch events:", error);
+    }
+  };
+
   useEffect(() => {
     async function checkSession() {
       try {
@@ -77,6 +98,9 @@ export default function DashboardPage() {
         }
 
         setUser(data.data.user);
+
+        // Fetch events after authentication
+        await fetchEvents();
       } catch (error) {
         console.error("[DBG][dashboard] Session check failed:", error);
         router.push("/auth/signin");
@@ -205,7 +229,34 @@ export default function DashboardPage() {
 
   const handleSlotClick = (time: string) => {
     console.log("[DBG][dashboard] Slot clicked:", time);
-    // Could toggle individual slots or show a context menu
+    setSelectedTime(time);
+    setIsModalOpen(true);
+  };
+
+  const handleSaveEvent = async (eventData: Omit<CalendarEvent, "id">) => {
+    console.log("[DBG][dashboard] Saving event to API:", eventData);
+
+    try {
+      const response = await fetch("/data/app/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(eventData),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        console.log("[DBG][dashboard] Event saved:", data.data.id);
+        // Refresh events list from API
+        await fetchEvents();
+      } else {
+        console.error("[DBG][dashboard] Failed to save event:", data.error);
+      }
+    } catch (error) {
+      console.error("[DBG][dashboard] Error saving event:", error);
+    }
+
+    setIsModalOpen(false);
   };
 
   const handleSignOut = async () => {
@@ -312,6 +363,7 @@ export default function DashboardPage() {
               <TimeGrid
                 date={selectedDate}
                 slots={slots}
+                events={events}
                 onSlotClick={handleSlotClick}
               />
             </div>
@@ -367,6 +419,15 @@ export default function DashboardPage() {
           </div>
         </main>
       </div>
+
+      {/* Event Modal */}
+      <EventModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleSaveEvent}
+        date={selectedDate}
+        initialTime={selectedTime}
+      />
     </div>
   );
 }

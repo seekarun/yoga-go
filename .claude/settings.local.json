@@ -66,7 +66,10 @@
       "Bash(aws dynamodb describe-table:*)",
       "Bash(npm run build:calel:*)",
       "Bash(grep:*)",
-      "Bash(npm run lint:*)"
+      "Bash(npm run lint:*)",
+      "Bash(npm run lint:calel:*)",
+      "Bash(npm run:*)",
+      "Bash(aws cloudformation list-stacks:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,2 +1,2 @@
 export { PreferencesProvider, usePreferences } from "./PreferencesContext";
-export type { Preferences } from "./PreferencesContext";
+export type { Preferences, EventTag } from "./PreferencesContext";

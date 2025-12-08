@@ -4,11 +4,12 @@
  * TimeGrid Component
  *
  * Displays a day view with 30-minute time slots in a single column.
- * Slots can be available (green), unavailable (gray), or busy (red).
+ * Events are rendered as floating overlays for precise positioning.
  */
 
 import { format, setHours, setMinutes, isBefore, isAfter } from "date-fns";
 import { usePreferences } from "@/contexts";
+import type { CalendarEvent } from "./EventModal";
 
 export type SlotStatus = "available" | "unavailable" | "busy";
 
@@ -21,8 +22,14 @@ export interface TimeSlot {
 interface TimeGridProps {
   date: Date;
   slots: TimeSlot[];
+  events?: CalendarEvent[];
   onSlotClick?: (time: string) => void;
+  onEventClick?: (event: CalendarEvent) => void;
 }
+
+// Constants for layout calculations
+const SLOT_HEIGHT = 44; // pixels per 30-min slot
+const PIXELS_PER_MINUTE = SLOT_HEIGHT / 30;
 
 // Generate time slots for the full day (00:00 - 23:30)
 function generateTimeSlots(date: Date, existingSlots: TimeSlot[]): TimeSlot[] {
@@ -45,9 +52,41 @@ function generateTimeSlots(date: Date, existingSlots: TimeSlot[]): TimeSlot[] {
   return slots;
 }
 
-export function TimeGrid({ date, slots, onSlotClick }: TimeGridProps) {
+// Calculate event position and dimensions
+function getEventStyle(event: CalendarEvent): React.CSSProperties {
+  const [startHour, startMin] = event.startTime.split(":").map(Number);
+  const [endHour, endMin] = event.endTime.split(":").map(Number);
+
+  const startMinutes = startHour * 60 + startMin;
+  const endMinutes = endHour * 60 + endMin;
+  const durationMinutes = endMinutes - startMinutes;
+
+  return {
+    top: `${startMinutes * PIXELS_PER_MINUTE}px`,
+    height: `${Math.max(durationMinutes * PIXELS_PER_MINUTE, 22)}px`, // min height for visibility
+  };
+}
+
+export function TimeGrid({
+  date,
+  slots,
+  events = [],
+  onSlotClick,
+  onEventClick,
+}: TimeGridProps) {
   const { preferences } = usePreferences();
   const timeSlots = generateTimeSlots(date, slots);
+  const dateStr = format(date, "yyyy-MM-dd");
+
+  // Filter events for the selected date
+  const dayEvents = events.filter((event) => event.date === dateStr);
+
+  // Get tag color for an event
+  const getTagColor = (tagId?: string): string | undefined => {
+    if (!tagId) return undefined;
+    const tag = preferences.tags.find((t) => t.id === tagId);
+    return tag?.color;
+  };
 
   // Check if current time falls within a slot
   const now = new Date();
@@ -64,84 +103,69 @@ export function TimeGrid({ date, slots, onSlotClick }: TimeGridProps) {
     const baseStyle = "transition-all duration-150 cursor-pointer";
 
     switch (slot.status) {
-      case "available":
-        return `${baseStyle} bg-green-100 hover:bg-green-200 ${isCurrentSlot ? "ring-2 ring-green-500 ring-inset" : ""}`;
       case "busy":
         return `${baseStyle} bg-red-100 hover:bg-red-200 ${isCurrentSlot ? "ring-2 ring-red-500 ring-inset" : ""}`;
+      case "available":
       case "unavailable":
       default:
-        return `${baseStyle} bg-gray-50 hover:bg-gray-100 ${isCurrentSlot ? "ring-2 ring-indigo-500 ring-inset" : ""}`;
+        return `${baseStyle} bg-white hover:bg-gray-50 ${isCurrentSlot ? "ring-2 ring-indigo-500 ring-inset" : ""}`;
     }
   };
 
   const formatTimeLabel = (time: string) => {
     const [hour, minute] = time.split(":").map(Number);
     const d = setMinutes(setHours(new Date(), hour), minute);
-    // Use 24h or 12h format based on preferences
     return format(d, preferences.timeFormat === "24h" ? "HH:mm" : "h:mm a");
+  };
+
+  const formatEventTime = (startTime: string, endTime: string) => {
+    const formatTime = (time: string) => {
+      const [hour, minute] = time.split(":").map(Number);
+      const d = setMinutes(setHours(new Date(), hour), minute);
+      return format(d, preferences.timeFormat === "24h" ? "HH:mm" : "h:mm a");
+    };
+    return `${formatTime(startTime)} - ${formatTime(endTime)}`;
   };
 
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
-      {/* Legend */}
-      <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b">
-        <span className="text-sm font-medium text-gray-700">
-          Daily Schedule
-        </span>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded bg-green-200 border border-green-400" />
-            <span className="text-xs text-gray-600">Available</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded bg-gray-200 border border-gray-400" />
-            <span className="text-xs text-gray-600">Unavailable</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded bg-red-200 border border-red-400" />
-            <span className="text-xs text-gray-600">Busy</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Time grid - single column */}
+      {/* Time grid with event overlay */}
       <div className="overflow-y-auto max-h-[600px]">
-        {timeSlots.map((slot, idx) => {
-          const isHourStart = slot.time.endsWith(":00");
-          const [hour] = slot.time.split(":").map(Number);
-
-          return (
-            <button
-              key={slot.time}
-              onClick={() => onSlotClick?.(slot.time)}
-              className={`
-                w-full flex items-center border-b last:border-b-0
-                ${isHourStart ? "border-t border-gray-300" : "border-gray-100"}
-                ${getSlotStyle(slot)}
-              `}
-            >
-              {/* Time label */}
-              <div
-                className={`
-                w-24 flex-shrink-0 py-2 px-3 text-right border-r border-gray-200
-                ${isHourStart ? "bg-gray-100" : "bg-gray-50"}
-              `}
-              >
-                <span
-                  className={`text-sm ${isHourStart ? "font-semibold text-gray-800" : "text-gray-500"}`}
+        <div className="flex">
+          {/* Time labels column */}
+          <div className="w-24 flex-shrink-0 border-r border-gray-200">
+            {timeSlots.map((slot) => {
+              const isHourStart = slot.time.endsWith(":00");
+              return (
+                <div
+                  key={slot.time}
+                  className="h-[44px] px-2 flex items-start justify-end relative bg-gray-50"
                 >
-                  {formatTimeLabel(slot.time)}
-                </span>
-              </div>
-
-              {/* Slot content */}
-              <div className="flex-1 py-2 px-4 flex items-center justify-between min-h-[44px]">
-                <div className="flex items-center gap-2">
-                  {slot.status === "available" && (
-                    <span className="text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded">
-                      Available
+                  {isHourStart && (
+                    <span className="text-sm -translate-y-1/2 px-2 py-0.5 rounded-md border border-gray-300 bg-white font-semibold text-gray-800">
+                      {formatTimeLabel(slot.time)}
                     </span>
                   )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Content area with event overlay */}
+          <div className="flex-1 relative">
+            {/* Base slot rows */}
+            {timeSlots.map((slot) => {
+              const isHourStart = slot.time.endsWith(":00");
+              return (
+                <button
+                  key={slot.time}
+                  onClick={() => onSlotClick?.(slot.time)}
+                  className={`
+                    h-[44px] w-full flex items-center justify-end pr-4 border-b
+                    ${isHourStart ? "border-gray-100" : "border-gray-300"}
+                    ${getSlotStyle(slot)}
+                  `}
+                >
                   {slot.status === "busy" && (
                     <span className="text-xs font-medium text-red-700 bg-red-50 px-2 py-0.5 rounded">
                       Busy
@@ -150,26 +174,45 @@ export function TimeGrid({ date, slots, onSlotClick }: TimeGridProps) {
                   {slot.label && (
                     <span className="text-sm text-gray-700">{slot.label}</span>
                   )}
-                </div>
+                </button>
+              );
+            })}
 
-                {/* Hover indicator */}
-                <svg
-                  className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </div>
-            </button>
-          );
-        })}
+            {/* Event overlay layer */}
+            <div className="absolute inset-0 pointer-events-none">
+              {dayEvents.map((event) => {
+                const tagColor = getTagColor(event.tagId);
+                return (
+                  <div
+                    key={event.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEventClick?.(event);
+                    }}
+                    className="absolute left-1 right-1 bg-stone-100 rounded-md shadow-sm border border-stone-200
+                      overflow-hidden cursor-pointer pointer-events-auto
+                      hover:bg-stone-200 transition-colors"
+                    style={{
+                      ...getEventStyle(event),
+                      borderLeft: tagColor
+                        ? `4px solid ${tagColor}`
+                        : undefined,
+                    }}
+                  >
+                    <div className="px-2 py-1 h-full">
+                      <p className="text-xs font-medium text-gray-900 truncate">
+                        {event.title}
+                      </p>
+                      <p className="text-xs text-gray-600 truncate">
+                        {formatEventTime(event.startTime, event.endTime)}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

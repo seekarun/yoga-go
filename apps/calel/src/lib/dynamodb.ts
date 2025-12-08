@@ -111,6 +111,12 @@ export const WebhookPK = {
   WEBHOOK: (tenantId: string) => `WEBHOOK#${tenantId}`,
 } as const;
 
+// Calendar Event key patterns
+// PK=EVENT#HOST#{hostId}, SK={date}#{eventId}
+export const CalendarEventPK = {
+  HOST: (hostId: string) => `EVENT#HOST#${hostId}`,
+} as const;
+
 // Entity type constants for type field
 export const EntityType = {
   TENANT: "TENANT",
@@ -120,4 +126,5 @@ export const EntityType = {
   EVENT_TYPE: "EVENT_TYPE",
   BOOKING: "BOOKING",
   WEBHOOK: "WEBHOOK",
+  CALENDAR_EVENT: "CALENDAR_EVENT",
 } as const;

@@ -2,12 +2,25 @@
 
 import { createContext, useContext, useState, useEffect } from "react";
 
+export interface EventTag {
+  id: string;
+  label: string;
+  color: string; // hex color code
+}
+
 export interface Preferences {
   timezone: string;
   dateFormat: string;
   timeFormat: "12h" | "24h";
   location: string;
+  tags: EventTag[];
 }
+
+const DEFAULT_TAGS: EventTag[] = [
+  { id: "work", label: "Work", color: "#3B82F6" },
+  { id: "personal", label: "Personal", color: "#10B981" },
+  { id: "meeting", label: "Meeting", color: "#8B5CF6" },
+];
 
 const DEFAULT_PREFERENCES: Preferences = {
   timezone:
@@ -17,6 +30,7 @@ const DEFAULT_PREFERENCES: Preferences = {
   dateFormat: "MM/dd/yyyy",
   timeFormat: "12h",
   location: "",
+  tags: DEFAULT_TAGS,
 };
 
 interface PreferencesContextType {

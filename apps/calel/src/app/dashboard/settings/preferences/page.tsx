@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/layout";
-import { usePreferences } from "@/contexts";
+import { usePreferences, type EventTag } from "@/contexts";
 
 interface User {
   email: string;
@@ -134,6 +134,20 @@ const CITIES = [
   "Bogota, Colombia",
 ];
 
+// Preset colors for tags
+const TAG_COLORS = [
+  "#3B82F6", // Blue
+  "#10B981", // Green
+  "#8B5CF6", // Purple
+  "#F59E0B", // Amber
+  "#EF4444", // Red
+  "#EC4899", // Pink
+  "#06B6D4", // Cyan
+  "#84CC16", // Lime
+  "#F97316", // Orange
+  "#6366F1", // Indigo
+];
+
 function getTimezoneOffset(timezone: string): string {
   try {
     const now = new Date();
@@ -157,6 +171,36 @@ export default function PreferencesPage() {
   const [saved, setSaved] = useState(false);
 
   const { preferences, updatePreference } = usePreferences();
+
+  // Tag editing state
+  const [editingTag, setEditingTag] = useState<EventTag | null>(null);
+  const [newTagLabel, setNewTagLabel] = useState("");
+  const [newTagColor, setNewTagColor] = useState(TAG_COLORS[0]);
+
+  const handleAddTag = () => {
+    if (!newTagLabel.trim()) return;
+    const newTag: EventTag = {
+      id: `tag-${Date.now()}`,
+      label: newTagLabel.trim(),
+      color: newTagColor,
+    };
+    updatePreference("tags", [...preferences.tags, newTag]);
+    setNewTagLabel("");
+    setNewTagColor(TAG_COLORS[0]);
+  };
+
+  const handleUpdateTag = (tag: EventTag) => {
+    const updatedTags = preferences.tags.map((t) =>
+      t.id === tag.id ? tag : t,
+    );
+    updatePreference("tags", updatedTags);
+    setEditingTag(null);
+  };
+
+  const handleDeleteTag = (tagId: string) => {
+    const updatedTags = preferences.tags.filter((t) => t.id !== tagId);
+    updatePreference("tags", updatedTags);
+  };
 
   useEffect(() => {
     async function checkSession() {
@@ -343,6 +387,167 @@ export default function PreferencesPage() {
                       </span>
                     </label>
                   </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Event Tags Section */}
+            <section className="bg-white rounded-xl shadow-sm p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                Event Tags
+              </h2>
+              <p className="text-sm text-gray-600 mb-4">
+                Create tags to categorize your events. Tags will appear as
+                colored borders on the calendar.
+              </p>
+
+              {/* Existing Tags */}
+              <div className="space-y-3 mb-6">
+                {preferences.tags.map((tag) => (
+                  <div
+                    key={tag.id}
+                    className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg"
+                  >
+                    {editingTag?.id === tag.id ? (
+                      <>
+                        <input
+                          type="text"
+                          value={editingTag.label}
+                          onChange={(e) =>
+                            setEditingTag({
+                              ...editingTag,
+                              label: e.target.value,
+                            })
+                          }
+                          className="flex-1 px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        />
+                        <div className="flex gap-1">
+                          {TAG_COLORS.map((color) => (
+                            <button
+                              key={color}
+                              type="button"
+                              onClick={() =>
+                                setEditingTag({ ...editingTag, color })
+                              }
+                              className={`w-6 h-6 rounded-full border-2 ${
+                                editingTag.color === color
+                                  ? "border-gray-800"
+                                  : "border-transparent"
+                              }`}
+                              style={{ backgroundColor: color }}
+                            />
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateTag(editingTag)}
+                          className="px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingTag(null)}
+                          className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <div
+                          className="w-4 h-4 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: tag.color }}
+                        />
+                        <span className="flex-1 text-sm text-gray-700">
+                          {tag.label}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setEditingTag(tag)}
+                          className="text-sm text-indigo-600 hover:text-indigo-800"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteTag(tag.id)}
+                          className="text-sm text-red-600 hover:text-red-800"
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
+                  </div>
+                ))}
+                {preferences.tags.length === 0 && (
+                  <p className="text-sm text-gray-400 italic">
+                    No tags created yet. Add one below.
+                  </p>
+                )}
+              </div>
+
+              {/* Add New Tag */}
+              <div className="border-t border-gray-200 pt-4">
+                <h3 className="text-sm font-medium text-gray-700 mb-3">
+                  Add New Tag
+                </h3>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    value={newTagLabel}
+                    onChange={(e) => setNewTagLabel(e.target.value)}
+                    placeholder="Tag name..."
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddTag();
+                      }
+                    }}
+                  />
+                  <div className="flex gap-1">
+                    {TAG_COLORS.slice(0, 5).map((color) => (
+                      <button
+                        key={color}
+                        type="button"
+                        onClick={() => setNewTagColor(color)}
+                        className={`w-6 h-6 rounded-full border-2 ${
+                          newTagColor === color
+                            ? "border-gray-800"
+                            : "border-transparent"
+                        }`}
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddTag}
+                    disabled={!newTagLabel.trim()}
+                    className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Add
+                  </button>
+                </div>
+                {/* More colors */}
+                <div className="mt-2 flex items-center gap-1">
+                  <span className="text-xs text-gray-500 mr-2">
+                    More colors:
+                  </span>
+                  {TAG_COLORS.slice(5).map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => setNewTagColor(color)}
+                      className={`w-5 h-5 rounded-full border-2 ${
+                        newTagColor === color
+                          ? "border-gray-800"
+                          : "border-transparent"
+                      }`}
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
                 </div>
               </div>
             </section>

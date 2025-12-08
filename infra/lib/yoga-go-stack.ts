@@ -6,13 +6,15 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as ses from 'aws-cdk-lib/aws-ses';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as nodejsLambda from 'aws-cdk-lib/aws-lambda-nodejs';
+import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as path from 'path';
 import type { Construct } from 'constructs';
-import type { SharedInfraStack } from './shared-infra-stack';
 
 export interface YogaGoStackProps extends cdk.StackProps {
-  /** Reference to the shared infrastructure stack */
-  sharedInfra: SharedInfraStack;
+  /** Route53 Hosted Zone ID for myyoga.guru */
+  hostedZoneId: string;
+  /** Hosted Zone Name */
+  hostedZoneName: string;
 }
 
 /**
@@ -40,7 +42,7 @@ export class YogaGoStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: YogaGoStackProps) {
     super(scope, id, props);
 
-    const { sharedInfra } = props;
+    const { hostedZoneId, hostedZoneName } = props;
 
     // ========================================
     // Cognito User Pool
@@ -153,12 +155,12 @@ export class YogaGoStack extends cdk.Stack {
     appClient.node.addDependency(facebookProvider);
 
     // ========================================
-    // Route 53 Hosted Zone (from SharedInfraStack)
+    // Route 53 Hosted Zone (imported by ID)
     // ========================================
-    const hostedZone = sharedInfra.hostedZones.get('myyoga.guru');
-    if (!hostedZone) {
-      throw new Error('Hosted zone for myyoga.guru not found in SharedInfraStack');
-    }
+    const hostedZone = route53.HostedZone.fromHostedZoneAttributes(this, 'ImportedHostedZone', {
+      hostedZoneId,
+      zoneName: hostedZoneName,
+    });
 
     // ========================================
     // AWS SES - Email Service

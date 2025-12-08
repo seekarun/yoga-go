@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
-import { SharedInfraStack } from '../lib/shared-infra-stack';
 import { YogaGoStack } from '../lib/yoga-go-stack';
 import { SesStack } from '../lib/ses-stack';
 import { CalelStack } from '../lib/calel-stack';
@@ -21,41 +20,23 @@ const envOregon = {
 };
 
 // ========================================
-// Shared Infrastructure Stack (Vercel-optimized)
+// Domain Configuration
 // ========================================
-// Contains: Route53 Hosted Zones (for DNS and SES)
-//
-// Note: Since we use Vercel for hosting, we no longer need:
-// - VPC, ALB, ECS Cluster, EC2, Security Groups, ACM Certificates
-//
-// Vercel handles hosting, SSL, CDN, and wildcard subdomains
-const sharedInfra = new SharedInfraStack(app, 'SharedInfraStack', {
-  description: 'Shared infrastructure - Route53 for DNS/SES',
-  env: envSydney,
-  tags: {
-    Application: 'Shared',
-    Environment: 'production',
-    ManagedBy: 'CDK',
-  },
-  // ========================================
-  // APP DOMAINS - Add new app domains here
-  // ========================================
-  appDomains: [
-    // yoga-go
-    { domain: 'myyoga.guru', alternativeDomains: ['*.myyoga.guru'] },
-  ],
-});
+// Route53 Hosted Zone is managed outside CDK (created once, rarely changes)
+// Import by ID to avoid circular dependencies between stacks
+const MYYOGA_GURU_HOSTED_ZONE_ID = 'Z0330211ZA8COIPSU5JT';
+const MYYOGA_GURU_DOMAIN = 'myyoga.guru';
 
 // ========================================
 // Yoga-Go Application Stack (Vercel-optimized)
 // ========================================
-// Contains: Cognito, DynamoDB, Lambda
+// Contains: Cognito, DynamoDB, SES, Lambda
 //
 // Note: Since we use Vercel for hosting, we no longer need:
 // - ECR, ECS Service, Task Definition, ALB Target Group/Rules
 //
 // SES has been moved to SesStack in us-west-2 for email receiving support
-const yogaGoStack = new YogaGoStack(app, 'YogaGoStack', {
+new YogaGoStack(app, 'YogaGoStack', {
   description: 'Yoga Go - Cognito, DynamoDB (hosted on Vercel)',
   env: envSydney,
   tags: {
@@ -63,10 +44,9 @@ const yogaGoStack = new YogaGoStack(app, 'YogaGoStack', {
     Environment: 'production',
     ManagedBy: 'CDK',
   },
-  sharedInfra,
+  hostedZoneId: MYYOGA_GURU_HOSTED_ZONE_ID,
+  hostedZoneName: MYYOGA_GURU_DOMAIN,
 });
-
-yogaGoStack.addDependency(sharedInfra);
 
 // ========================================
 // SES Stack (us-west-2 for email receiving)
@@ -75,7 +55,7 @@ yogaGoStack.addDependency(sharedInfra);
 //
 // Note: SES email receiving is only available in us-east-1, us-west-2, eu-west-1
 // We use us-west-2 for both sending and receiving emails
-const sesStack = new SesStack(app, 'YogaGoSesStack', {
+new SesStack(app, 'YogaGoSesStack', {
   description: 'Yoga Go SES - Email sending and receiving (us-west-2)',
   env: envOregon,
   crossRegionReferences: true,
@@ -84,13 +64,11 @@ const sesStack = new SesStack(app, 'YogaGoSesStack', {
     Environment: 'production',
     ManagedBy: 'CDK',
   },
-  hostedZoneId: sharedInfra.hostedZones.get('myyoga.guru')?.hostedZoneId || '',
-  hostedZoneName: 'myyoga.guru',
+  hostedZoneId: MYYOGA_GURU_HOSTED_ZONE_ID,
+  hostedZoneName: MYYOGA_GURU_DOMAIN,
   coreTableArn: `arn:aws:dynamodb:ap-southeast-2:${account}:table/yoga-go-core`,
   coreTableName: 'yoga-go-core',
 });
-
-sesStack.addDependency(sharedInfra);
 
 // ========================================
 // Calel Stack (Standalone Scheduling Service)

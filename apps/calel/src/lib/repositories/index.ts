@@ -34,3 +34,19 @@ export {
   deleteHost,
 } from "./hostRepository";
 export type { CreateHostInput, UpdateHostInput } from "./hostRepository";
+
+// Calendar Event operations
+export {
+  getEventById,
+  getEventsByHost,
+  getEventsByDateRange,
+  getEventsByDate,
+  createEvent,
+  updateEvent,
+  deleteEvent,
+} from "./eventRepository";
+export type {
+  CalendarEvent,
+  CreateEventInput,
+  UpdateEventInput,
+} from "./eventRepository";
