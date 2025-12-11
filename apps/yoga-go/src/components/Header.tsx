@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { getClientExpertContext } from '@/lib/domainContext';
+import { isPrimaryDomain } from '@/config/domains';
 import type { Expert } from '@/types';
 
 export default function Header() {
@@ -19,15 +20,56 @@ export default function Header() {
   const [scrollOpacity, setScrollOpacity] = useState(0);
 
   // Detect expert mode on mount AND when viewing /experts/[expertId] pages
+  // Also handles custom domains by calling the resolve-domain API
   useEffect(() => {
-    const context = getClientExpertContext();
-    const isOnExpertPage = window.location.pathname.startsWith('/experts/');
-    const isOnSrv = window.location.pathname.startsWith('/srv');
-    setExpertMode({
-      isExpertMode: context.isExpertMode || isOnExpertPage,
-      expertId: context.expertId,
-    });
-    setIsOnSrvPage(isOnSrv);
+    const detectExpertMode = async () => {
+      const context = getClientExpertContext();
+      const isOnExpertPage = window.location.pathname.startsWith('/experts/');
+      const isOnSrv = window.location.pathname.startsWith('/srv');
+      setIsOnSrvPage(isOnSrv);
+
+      // If we already detected expert mode from static config or subdomain, use that
+      if (context.isExpertMode || isOnExpertPage) {
+        setExpertMode({
+          isExpertMode: true,
+          expertId: context.expertId,
+        });
+        return;
+      }
+
+      // Check if this might be a custom domain (not primary, not detected above)
+      const host = window.location.host;
+      if (!isPrimaryDomain(host)) {
+        // Try resolving via API for custom domains
+        try {
+          console.log('[DBG][Header] Resolving custom domain:', host);
+          const res = await fetch(
+            `/api/internal/resolve-domain?domain=${encodeURIComponent(host)}`
+          );
+          if (res.ok) {
+            const data = await res.json();
+            if (data.expertId) {
+              console.log('[DBG][Header] Custom domain resolved to expert:', data.expertId);
+              setExpertMode({
+                isExpertMode: true,
+                expertId: data.expertId,
+              });
+              return;
+            }
+          }
+        } catch (err) {
+          console.error('[DBG][Header] Failed to resolve custom domain:', err);
+        }
+      }
+
+      // Default: not expert mode
+      setExpertMode({
+        isExpertMode: false,
+        expertId: null,
+      });
+    };
+
+    detectExpertMode();
   }, []);
 
   // Fetch expert data when in expert mode (subdomain) to get custom logo

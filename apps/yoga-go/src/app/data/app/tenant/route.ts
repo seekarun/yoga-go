@@ -32,7 +32,13 @@ import {
   verifyAllDnsRecords,
   deleteDomainIdentity,
 } from '@/lib/ses';
-import type { ApiResponse, Tenant, TenantEmailConfig, TenantDnsRecord } from '@/types';
+import type {
+  ApiResponse,
+  Tenant,
+  TenantEmailConfig,
+  TenantDnsRecord,
+  TenantBranding,
+} from '@/types';
 
 // Extended response type to include domain verification info
 interface TenantWithVerification extends Tenant {
@@ -592,6 +598,33 @@ export async function PUT(request: Request): Promise<NextResponse<ApiResponse<Te
           success: true,
           data: updatedTenant,
           message: 'Email forwarding settings updated.',
+        });
+      }
+
+      case 'update_branding': {
+        // Update branding settings (favicon, site title, description, OG image)
+        const { faviconUrl, siteTitle, siteDescription, ogImage } = body;
+
+        // Build branding object, merging with existing
+        const branding: TenantBranding = {
+          ...tenant.branding,
+          ...(faviconUrl !== undefined && { faviconUrl }),
+          ...(siteTitle !== undefined && { siteTitle }),
+          ...(siteDescription !== undefined && { siteDescription }),
+          ...(ogImage !== undefined && { ogImage }),
+        };
+
+        updatedTenant = await updateTenant(tenant.id, { branding });
+
+        console.log('[DBG][tenant-api] Updated branding:', {
+          faviconUrl: branding.faviconUrl,
+          siteTitle: branding.siteTitle,
+        });
+
+        return NextResponse.json({
+          success: true,
+          data: updatedTenant,
+          message: 'Branding settings updated.',
         });
       }
 

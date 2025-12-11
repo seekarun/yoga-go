@@ -58,7 +58,6 @@ function CalendarContent({
   selectedDate,
   setSelectedDate,
   selectedYear,
-  setSelectedYear,
   events,
   slots,
   selectedTime,
@@ -71,7 +70,6 @@ function CalendarContent({
   selectedDate: Date;
   setSelectedDate: (date: Date) => void;
   selectedYear: number;
-  setSelectedYear: (year: number) => void;
   events: CalendarEvent[];
   slots: TimeSlot[];
   selectedTime: string;
@@ -83,10 +81,9 @@ function CalendarContent({
 }) {
   const { navigateTo, navigateRight, isRightColumn } = useCarousel();
 
-  // Handle year selection from year view (never navigates - year is always leftmost)
+  // Handle year selection - updates selectedDate to January 1st of that year
+  // This will automatically update selectedYear since it's derived from selectedDate
   const handleYearSelect = (year: number) => {
-    setSelectedYear(year);
-    // Set selectedDate to January 1st of that year
     setSelectedDate(startOfYear(new Date(year, 0, 1)));
   };
 
@@ -206,7 +203,9 @@ export default function DashboardPage() {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(
     null,
   );
-  const [selectedYear, setSelectedYear] = useState(() => getYear(new Date()));
+
+  // Derive selectedYear from selectedDate to keep all views in sync
+  const selectedYear = getYear(selectedDate);
 
   // Fetch events from API
   const fetchEvents = async () => {
@@ -473,7 +472,6 @@ export default function DashboardPage() {
               selectedDate={selectedDate}
               setSelectedDate={setSelectedDate}
               selectedYear={selectedYear}
-              setSelectedYear={setSelectedYear}
               events={events}
               slots={slots}
               selectedTime={selectedTime}

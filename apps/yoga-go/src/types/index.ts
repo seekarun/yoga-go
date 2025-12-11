@@ -115,6 +115,14 @@ export type TenantStatus = 'active' | 'pending' | 'suspended';
 export type SesVerificationStatus = 'pending' | 'verified' | 'failed';
 export type DkimStatus = 'PENDING' | 'SUCCESS' | 'FAILED' | 'NOT_STARTED' | 'TEMPORARY_FAILURE';
 
+// Tenant Branding Configuration (for custom domain metadata)
+export interface TenantBranding {
+  faviconUrl?: string; // Custom favicon URL (use Cloudflare Images)
+  siteTitle?: string; // Custom site title for browser tab
+  siteDescription?: string; // Custom meta description
+  ogImage?: string; // Custom Open Graph image for social sharing
+}
+
 // BYOD Email Configuration for custom domains
 export interface TenantEmailConfig {
   // Domain email (e.g., contact@kavithayoga.com)
@@ -166,6 +174,9 @@ export interface Tenant extends BaseEntity {
 
   // BYOD Email Configuration (for custom domain email)
   emailConfig?: TenantEmailConfig;
+
+  // Custom branding (favicon, metadata for custom domains)
+  branding?: TenantBranding;
 }
 
 // Course Related Types

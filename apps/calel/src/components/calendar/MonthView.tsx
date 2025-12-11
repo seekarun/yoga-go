@@ -8,7 +8,7 @@
  * Clicking a date navigates to date view.
  */
 
-import { useRef, useEffect, useState, useCallback } from "react";
+import { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import {
   format,
   startOfMonth,
@@ -143,15 +143,23 @@ export function MonthView({
   events = [],
 }: MonthViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [monthsToShow, setMonthsToShow] = useState<Date[]>(() => {
-    // Start with 3 months before and 6 months after current
-    const today = new Date();
+  const isInitialMount = useRef(true);
+
+  // Generate initial months starting from selectedDate (so it appears at top)
+  // Past months will be loaded when user scrolls up
+  const initialMonths = useMemo(() => {
+    const selectedMonth = startOfMonth(selectedDate);
     const months: Date[] = [];
-    for (let i = -3; i <= 6; i++) {
-      months.push(startOfMonth(addMonths(today, i)));
+    // Start from 1 month before (for scroll buffer) and go 9 months forward
+    for (let i = -1; i <= 9; i++) {
+      months.push(startOfMonth(addMonths(selectedMonth, i)));
     }
     return months;
-  });
+    // Only compute once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const [monthsToShow, setMonthsToShow] = useState<Date[]>(initialMonths);
 
   // Load more months when scrolling
   const handleScroll = useCallback(() => {
@@ -213,16 +221,24 @@ export function MonthView({
     });
 
     // Scroll to the selected month (use scrollTo to avoid affecting parent containers)
+    // Use "instant" on initial mount, "smooth" on subsequent changes
     const timer = setTimeout(() => {
       const container = containerRef.current;
       const selectedMonthEl = container?.querySelector(
         '[data-selected-month="true"]',
       ) as HTMLElement | null;
       if (container && selectedMonthEl) {
+        // For first month, scroll to top to show header
+        // For other months, scroll so month header is at top with small buffer
+        const scrollTop =
+          selectedMonthEl.offsetTop === 0
+            ? 0
+            : Math.max(0, selectedMonthEl.offsetTop - 4);
         container.scrollTo({
-          top: selectedMonthEl.offsetTop,
-          behavior: "smooth",
+          top: scrollTop,
+          behavior: isInitialMount.current ? "instant" : "smooth",
         });
+        isInitialMount.current = false;
       }
     }, 100);
     return () => clearTimeout(timer);

@@ -69,7 +69,9 @@
       "Bash(npm run lint:*)",
       "Bash(npm run lint:calel:*)",
       "Bash(npm run:*)",
-      "Bash(aws cloudformation list-stacks:*)"
+      "Bash(aws cloudformation list-stacks:*)",
+      "Bash(aws ses get-identity-dkim-attributes:*)",
+      "Bash(aws ses list-identities:*)"
     ],
     "deny": [],
     "ask": []

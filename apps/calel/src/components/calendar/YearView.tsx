@@ -74,23 +74,30 @@ export function YearView({ selectedYear, onYearSelect }: YearViewProps) {
     }
   }, []);
 
-  // Scroll to current year on mount (use scrollTo to avoid affecting parent containers)
+  // Scroll to selected year when it changes (use scrollTo to avoid affecting parent containers)
   useEffect(() => {
+    // Ensure selected year is in the list
+    setYears((prev) => {
+      if (prev.includes(selectedYear)) return prev;
+      // Regenerate years centered around selected year
+      return generateYears(selectedYear, 10);
+    });
+
     const timer = setTimeout(() => {
       const container = containerRef.current;
-      const currentYearEl = container?.querySelector(
-        '[data-current-year="true"]',
+      const selectedYearEl = container?.querySelector(
+        '[data-selected-year="true"]',
       ) as HTMLElement | null;
-      if (container && currentYearEl) {
+      if (container && selectedYearEl) {
         const scrollTop =
-          currentYearEl.offsetTop -
+          selectedYearEl.offsetTop -
           container.clientHeight / 2 +
-          currentYearEl.offsetHeight / 2;
-        container.scrollTo({ top: scrollTop, behavior: "instant" });
+          selectedYearEl.offsetHeight / 2;
+        container.scrollTo({ top: scrollTop, behavior: "smooth" });
       }
     }, 100);
     return () => clearTimeout(timer);
-  }, []);
+  }, [selectedYear]);
 
   return (
     <div
@@ -107,6 +114,7 @@ export function YearView({ selectedYear, onYearSelect }: YearViewProps) {
           <button
             key={year}
             data-current-year={isCurrent}
+            data-selected-year={isSelected}
             onClick={() => onYearSelect(year)}
             className={`
               w-full px-4 py-3 text-left border-b border-gray-200

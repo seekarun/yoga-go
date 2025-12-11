@@ -5,15 +5,13 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as nodejsLambda from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as iam from 'aws-cdk-lib/aws-iam';
-import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as path from 'path';
 import type { Construct } from 'constructs';
 
+// Domain configuration (DNS managed by Vercel)
+const MYYOGA_GURU_DOMAIN = 'myyoga.guru';
+
 export interface SesStackProps extends cdk.StackProps {
-  /** Hosted Zone ID for myyoga.guru */
-  hostedZoneId: string;
-  /** Hosted Zone Name */
-  hostedZoneName: string;
   /** DynamoDB Core Table ARN (for Lambda to read expert data) */
   coreTableArn: string;
   /** DynamoDB Core Table Name */
@@ -40,24 +38,15 @@ export class SesStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: SesStackProps) {
     super(scope, id, props);
 
-    const { hostedZoneId, hostedZoneName, coreTableArn, coreTableName } = props;
-
-    // ========================================
-    // Import Hosted Zone from SharedInfraStack
-    // ========================================
-    const hostedZone = route53.HostedZone.fromHostedZoneAttributes(this, 'ImportedHostedZone', {
-      hostedZoneId,
-      zoneName: hostedZoneName,
-    });
+    const { coreTableArn, coreTableName } = props;
 
     // ========================================
     // SES Email Identity (Domain Verification)
     // ========================================
-    // Using ses.Identity.domain() instead of publicHostedZone() to avoid
-    // auto-creating MX records that already exist in Route53
-    // DKIM and other DNS records are already set up manually
+    // Using ses.Identity.domain() since DNS is managed by Vercel, not Route53
+    // DKIM and other DNS records are configured manually in Vercel DNS
     const emailIdentity = new ses.EmailIdentity(this, 'EmailIdentity', {
-      identity: ses.Identity.domain(hostedZoneName),
+      identity: ses.Identity.domain(MYYOGA_GURU_DOMAIN),
     });
 
     // Suppress the unused variable warning - emailIdentity is used for implicit dependency
@@ -275,18 +264,9 @@ The MyYoga.Guru Team`,
     // ========================================
     // MX Record for Email Receiving
     // ========================================
-    // Note: MX record already exists in Route53 (created manually or by previous deployment)
-    // If you need to create it, uncomment the following:
-    // new route53.MxRecord(this, 'MxRecord', {
-    //   zone: hostedZone,
-    //   values: [
-    //     {
-    //       priority: 10,
-    //       hostName: `inbound-smtp.${this.region}.amazonaws.com`,
-    //     },
-    //   ],
-    //   ttl: cdk.Duration.hours(1),
-    // });
+    // Note: MX record must be configured in Vercel DNS (not Route53)
+    // Add this record in Vercel DNS dashboard:
+    // Type: MX, Name: @, Value: 10 inbound-smtp.us-west-2.amazonaws.com
 
     // ========================================
     // Outputs

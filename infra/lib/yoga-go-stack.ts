@@ -6,16 +6,13 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as ses from 'aws-cdk-lib/aws-ses';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as nodejsLambda from 'aws-cdk-lib/aws-lambda-nodejs';
-import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as path from 'path';
 import type { Construct } from 'constructs';
 
-export interface YogaGoStackProps extends cdk.StackProps {
-  /** Route53 Hosted Zone ID for myyoga.guru */
-  hostedZoneId: string;
-  /** Hosted Zone Name */
-  hostedZoneName: string;
-}
+// Domain configuration (DNS managed by Vercel)
+const MYYOGA_GURU_DOMAIN = 'myyoga.guru';
+
+export type YogaGoStackProps = cdk.StackProps;
 
 /**
  * Yoga Go Application Stack (Vercel-optimized)
@@ -39,10 +36,8 @@ export interface YogaGoStackProps extends cdk.StackProps {
  * - Wildcard subdomains (*.myyoga.guru)
  */
 export class YogaGoStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props: YogaGoStackProps) {
+  constructor(scope: Construct, id: string, props?: YogaGoStackProps) {
     super(scope, id, props);
-
-    const { hostedZoneId, hostedZoneName } = props;
 
     // ========================================
     // Cognito User Pool
@@ -155,19 +150,13 @@ export class YogaGoStack extends cdk.Stack {
     appClient.node.addDependency(facebookProvider);
 
     // ========================================
-    // Route 53 Hosted Zone (imported by ID)
-    // ========================================
-    const hostedZone = route53.HostedZone.fromHostedZoneAttributes(this, 'ImportedHostedZone', {
-      hostedZoneId,
-      zoneName: hostedZoneName,
-    });
-
-    // ========================================
     // AWS SES - Email Service
     // ========================================
+    // Using ses.Identity.domain() since DNS is managed by Vercel, not Route53
+    // DKIM and other DNS records are configured manually in Vercel DNS
     new ses.EmailIdentity(this, 'EmailIdentity', {
-      identity: ses.Identity.publicHostedZone(hostedZone),
-      mailFromDomain: 'mail.myyoga.guru',
+      identity: ses.Identity.domain(MYYOGA_GURU_DOMAIN),
+      mailFromDomain: `mail.${MYYOGA_GURU_DOMAIN}`,
     });
 
     const sesConfigSet = new ses.ConfigurationSet(this, 'SesConfigSet', {

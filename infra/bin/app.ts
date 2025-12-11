@@ -20,20 +20,13 @@ const envOregon = {
 };
 
 // ========================================
-// Domain Configuration
-// ========================================
-// Route53 Hosted Zone is managed outside CDK (created once, rarely changes)
-// Import by ID to avoid circular dependencies between stacks
-const MYYOGA_GURU_HOSTED_ZONE_ID = 'Z0330211ZA8COIPSU5JT';
-const MYYOGA_GURU_DOMAIN = 'myyoga.guru';
-
-// ========================================
 // Yoga-Go Application Stack (Vercel-optimized)
 // ========================================
 // Contains: Cognito, DynamoDB, SES, Lambda
 //
 // Note: Since we use Vercel for hosting, we no longer need:
 // - ECR, ECS Service, Task Definition, ALB Target Group/Rules
+// - Route53 Hosted Zone (DNS is managed by Vercel)
 //
 // SES has been moved to SesStack in us-west-2 for email receiving support
 new YogaGoStack(app, 'YogaGoStack', {
@@ -44,8 +37,6 @@ new YogaGoStack(app, 'YogaGoStack', {
     Environment: 'production',
     ManagedBy: 'CDK',
   },
-  hostedZoneId: MYYOGA_GURU_HOSTED_ZONE_ID,
-  hostedZoneName: MYYOGA_GURU_DOMAIN,
 });
 
 // ========================================
@@ -55,6 +46,7 @@ new YogaGoStack(app, 'YogaGoStack', {
 //
 // Note: SES email receiving is only available in us-east-1, us-west-2, eu-west-1
 // We use us-west-2 for both sending and receiving emails
+// DNS (DKIM, MX records) is managed in Vercel DNS
 new SesStack(app, 'YogaGoSesStack', {
   description: 'Yoga Go SES - Email sending and receiving (us-west-2)',
   env: envOregon,
@@ -64,8 +56,6 @@ new SesStack(app, 'YogaGoSesStack', {
     Environment: 'production',
     ManagedBy: 'CDK',
   },
-  hostedZoneId: MYYOGA_GURU_HOSTED_ZONE_ID,
-  hostedZoneName: MYYOGA_GURU_DOMAIN,
   coreTableArn: `arn:aws:dynamodb:ap-southeast-2:${account}:table/yoga-go-core`,
   coreTableName: 'yoga-go-core',
 });
