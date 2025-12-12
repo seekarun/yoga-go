@@ -73,6 +73,9 @@ export interface CustomLandingPageConfig {
     phone?: string;
     bookingUrl?: string;
   };
+  // Section ordering and visibility for visual editor
+  sectionOrder?: string[]; // e.g., ['hero', 'valuePropositions', 'about', 'act']
+  disabledSections?: string[]; // Sections that are hidden but data preserved
 }
 
 // Expert Platform Preferences
