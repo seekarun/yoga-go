@@ -152,7 +152,7 @@ export default function SurveyResponsesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="min-h-screen bg-gray-50 pt-16 py-8 px-4">
         <div className="max-w-7xl mx-auto">
           <div className="text-center py-12">
             <div className="text-gray-600">Loading survey responses...</div>
@@ -164,7 +164,7 @@ export default function SurveyResponsesPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="min-h-screen bg-gray-50 pt-16 py-8 px-4">
         <div className="max-w-7xl mx-auto">
           <div className="bg-red-50 border border-red-200 rounded-lg p-6">
             <h2 className="text-red-800 font-semibold mb-2">Error</h2>
@@ -189,7 +189,7 @@ export default function SurveyResponsesPage() {
   const hasFilters = filterQuestion && filterAnswer;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-gray-50 pt-16 py-8 px-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">

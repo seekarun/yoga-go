@@ -358,7 +358,7 @@ export default function EditExpertPage() {
                 d="M15 19l-7-7 7-7"
               />
             </svg>
-            Back to Home
+            ← Back
           </Link>
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Edit Expert Profile</h1>
           <p className="text-gray-600">Update your expert profile information</p>

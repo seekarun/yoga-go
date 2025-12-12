@@ -9,6 +9,8 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { PaymentProvider } from '@/contexts/PaymentContext';
 import { PostHogProvider } from '@/providers/PostHogProvider';
 import { getTenantByDomain } from '@/lib/repositories/tenantRepository';
+import { ToastProvider } from '@/components/Toast';
+import UploadNotifications from '@/components/UploadNotifications';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -103,9 +105,12 @@ export default function RootLayout({
           <AuthProvider>
             <PostHogProvider>
               <PaymentProvider>
-                <Header />
-                <main className="flex-1">{children}</main>
-                <Footer />
+                <ToastProvider>
+                  <UploadNotifications />
+                  <Header />
+                  <main className="flex-1">{children}</main>
+                  <Footer />
+                </ToastProvider>
               </PaymentProvider>
             </PostHogProvider>
           </AuthProvider>

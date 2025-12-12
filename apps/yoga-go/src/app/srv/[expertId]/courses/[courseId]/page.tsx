@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { Course, Lesson } from '@/types';
 import NotificationOverlay from '@/components/NotificationOverlay';
+import { useToast } from '@/components/Toast';
 
 // Helper function to format duration from seconds to MM:SS
 const formatDuration = (seconds: number): string => {
@@ -46,6 +47,9 @@ export default function CourseManagement() {
   const [showNotification, setShowNotification] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState('');
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
+  const [showUploadConfirmation, setShowUploadConfirmation] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const { showToast } = useToast();
 
   useEffect(() => {
     fetchCourseAndLessons();
@@ -93,6 +97,13 @@ export default function CourseManagement() {
             if (isReady || videoStatus === 'error') {
               console.log('[DBG][course-management] Video processing complete, stopping poll');
               setPollingVideoId(null);
+
+              // Show toast notification
+              if (isReady) {
+                showToast('Video processing complete! Your video is ready.', 'success', 5000);
+              } else if (videoStatus === 'error') {
+                showToast('Video processing failed', 'error', 5000);
+              }
 
               // Update the lesson in the database with new status
               if (editingLessonId) {
@@ -231,7 +242,26 @@ export default function CourseManagement() {
     const file = e.target.files?.[0];
     if (file) {
       console.log('[DBG][course-management] File selected:', file.name, file.size);
-      setSelectedFile(file);
+      setPendingFile(file);
+      setShowUploadConfirmation(true);
+    }
+  };
+
+  const handleConfirmUpload = () => {
+    if (pendingFile) {
+      setSelectedFile(pendingFile);
+      setPendingFile(null);
+      setShowUploadConfirmation(false);
+    }
+  };
+
+  const handleCancelUpload = () => {
+    setPendingFile(null);
+    setShowUploadConfirmation(false);
+    // Reset the file input
+    const fileInput = document.getElementById('videoFile') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
     }
   };
 
@@ -342,17 +372,23 @@ export default function CourseManagement() {
       // Start polling for video status
       console.log('[DBG][course-management] Starting status polling for:', uid);
       setPollingVideoId(uid);
-
-      // Show notification overlay
-      setNotificationMessage('Video uploaded successfully! Duration auto-detected from video.');
-      setShowNotification(true);
     } catch (err) {
       console.error('[DBG][course-management] Error uploading video:', err);
       setError(err instanceof Error ? err.message : 'Failed to upload video');
+      showToast('Video upload failed', 'error', 4000);
     } finally {
       setIsUploading(false);
     }
   };
+
+  // Auto-trigger upload when file is confirmed (selectedFile changes from null)
+  useEffect(() => {
+    if (selectedFile && !isUploading && !formData.cloudflareVideoId) {
+      console.log('[DBG][course-management] Auto-triggering upload for confirmed file');
+      handleVideoUpload();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedFile]);
 
   const handleSaveLesson = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -497,7 +533,7 @@ export default function CourseManagement() {
             href={`/srv/${expertId}`}
             className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700"
           >
-            ← Back to Home
+            ← Back
           </Link>
         </div>
       </div>
@@ -505,7 +541,7 @@ export default function CourseManagement() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pt-16">
       {/* Header */}
       <div className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -513,7 +549,7 @@ export default function CourseManagement() {
             href={`/srv/${expertId}`}
             className="text-blue-600 hover:text-blue-700 text-sm mb-3 inline-block"
           >
-            ← Back to Home
+            ← Back
           </Link>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
@@ -712,17 +748,9 @@ export default function CourseManagement() {
                     {selectedFile && (
                       <div className="mt-2">
                         <p className="text-sm text-gray-600">
-                          Selected: {selectedFile.name} (
-                          {(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+                          {isUploading ? 'Uploading: ' : 'Selected: '}
+                          {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
                         </p>
-                        <button
-                          type="button"
-                          onClick={handleVideoUpload}
-                          disabled={isUploading}
-                          className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed text-sm"
-                        >
-                          {isUploading ? 'Uploading...' : 'Upload Video'}
-                        </button>
                       </div>
                     )}
                     {isUploading && (
@@ -933,6 +961,17 @@ export default function CourseManagement() {
         type="warning"
         onConfirm={confirmPublishCourse}
         confirmText="Publish Course"
+        cancelText="Cancel"
+      />
+
+      {/* Upload Confirmation Overlay */}
+      <NotificationOverlay
+        isOpen={showUploadConfirmation}
+        onClose={handleCancelUpload}
+        message={`Ready to upload "${pendingFile?.name}"? You can continue using the app while we upload and process your video in the background.`}
+        type="info"
+        onConfirm={handleConfirmUpload}
+        confirmText="Start Upload"
         cancelText="Cancel"
       />
 

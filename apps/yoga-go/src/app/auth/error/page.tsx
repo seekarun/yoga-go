@@ -125,7 +125,7 @@ function AuthErrorContent() {
                   textAlign: 'center',
                 }}
               >
-                Back to Home
+                ← Back
               </Link>
             </div>
           </div>

@@ -1,6 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import NotificationOverlay from '@/components/NotificationOverlay';
+import { useToast } from '@/components/Toast';
+import { startBackgroundUpload } from '@/lib/backgroundUploader';
+import type { PendingUpload } from '@/lib/uploadManager';
 
 export interface VideoUploadResult {
   videoId: string;
@@ -19,6 +23,10 @@ interface VideoUploadProps {
   onError?: (error: string) => void;
   helpText?: string;
   className?: string;
+  // Entity tracking for background uploads
+  entityType?: PendingUpload['entityType'];
+  entityId?: string;
+  parentId?: string; // courseId for lessons
 }
 
 // Helper function to format duration from seconds to MM:SS
@@ -40,6 +48,9 @@ export default function VideoUpload({
   onError,
   helpText,
   className = '',
+  entityType,
+  entityId,
+  parentId,
 }: VideoUploadProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -51,6 +62,9 @@ export default function VideoUpload({
   const [duration, setDuration] = useState<string>('');
   const [errorReason, setErrorReason] = useState<string>('');
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [showUploadConfirmation, setShowUploadConfirmation] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const { showToast } = useToast();
 
   // Sync internal status with prop
   useEffect(() => {
@@ -58,6 +72,24 @@ export default function VideoUpload({
       setInternalStatus(videoStatus);
     }
   }, [videoStatus]);
+
+  // Start polling when component loads with existing video in processing state
+  useEffect(() => {
+    // Only start polling if:
+    // 1. We have a videoId from props
+    // 2. Status is processing or uploading
+    // 3. We're not currently uploading locally
+    // 4. We haven't already started polling
+    if (
+      videoId &&
+      (videoStatus === 'processing' || videoStatus === 'uploading') &&
+      !isUploading &&
+      !pollingVideoId
+    ) {
+      console.log('[DBG][VideoUpload] Starting poll for existing processing video:', videoId);
+      setPollingVideoId(videoId);
+    }
+  }, [videoId, videoStatus, isUploading, pollingVideoId]);
 
   // Poll video status for processing videos
   useEffect(() => {
@@ -107,6 +139,17 @@ export default function VideoUpload({
             console.log('[DBG][VideoUpload] Video processing complete, stopping poll');
             setPollingVideoId(null);
 
+            // Show toast notification
+            if (isReady) {
+              showToast('Video processing complete! Your video is ready.', 'success', 5000);
+            } else if (status === 'error') {
+              showToast(
+                `Video processing failed: ${errorReasonText || errorReasonCode || 'Unknown error'}`,
+                'error',
+                6000
+              );
+            }
+
             onUploadComplete({
               videoId: pollingVideoId,
               status: newStatus as 'ready' | 'error',
@@ -121,18 +164,40 @@ export default function VideoUpload({
       } catch (err) {
         console.error('[DBG][VideoUpload] Error polling video status:', err);
       }
-    }, 10000); // Poll every 10 seconds
+    }, 5000); // Poll every 5 seconds
 
     return () => clearInterval(pollInterval);
-  }, [pollingVideoId, duration, onUploadComplete]);
+  }, [pollingVideoId, duration, onUploadComplete, showToast]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       console.log('[DBG][VideoUpload] File selected:', file.name, file.size);
-      setSelectedFile(file);
+      setPendingFile(file);
+      setShowUploadConfirmation(true);
     }
   };
+
+  const handleConfirmUpload = useCallback(() => {
+    if (pendingFile) {
+      setSelectedFile(pendingFile);
+      setPendingFile(null);
+      setShowUploadConfirmation(false);
+    }
+  }, [pendingFile]);
+
+  const handleCancelUpload = useCallback(() => {
+    setPendingFile(null);
+    setShowUploadConfirmation(false);
+    // Reset the file input
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
+    }
+  }, []);
+
+  // Track if we've already triggered upload for this file
+  const [uploadTriggered, setUploadTriggered] = useState(false);
 
   const handleVideoUpload = useCallback(async () => {
     if (!selectedFile) {
@@ -162,7 +227,52 @@ export default function VideoUpload({
       const { uploadURL, uid } = uploadUrlData.data;
       console.log('[DBG][VideoUpload] Got upload URL for video:', uid);
 
-      // Step 2: Upload video to Cloudflare
+      // IMMEDIATELY notify parent with 'uploading' status
+      // This allows them to save the videoId to the entity right away
+      onUploadComplete({
+        videoId: uid,
+        status: 'uploading',
+      });
+
+      // Step 2: Use background uploader if entity tracking is provided
+      if (entityType && entityId) {
+        console.log('[DBG][VideoUpload] Using background uploader for:', entityType, entityId);
+
+        await startBackgroundUpload({
+          file: selectedFile,
+          uploadUrl: uploadURL,
+          videoId: uid,
+          entityType,
+          entityId,
+          parentId,
+          onProgress: progress => {
+            setUploadProgress(progress);
+          },
+          onComplete: () => {
+            console.log('[DBG][VideoUpload] Background upload complete');
+            setUploadProgress(100);
+            setInternalStatus('processing');
+            showToast('Video upload complete! Processing...', 'success', 4000);
+          },
+          onError: error => {
+            console.error('[DBG][VideoUpload] Background upload error:', error);
+            setInternalStatus('error');
+            showToast(`Upload failed: ${error}`, 'error', 5000);
+          },
+        });
+
+        // Show success message immediately - upload is now in background
+        setShowSuccessMessage(true);
+        setTimeout(() => setShowSuccessMessage(false), 4000);
+        setIsUploading(false);
+
+        // Don't poll locally - the global notifications hook handles it
+        return;
+      }
+
+      // Fallback: Direct upload (for cases without entity tracking)
+      console.log('[DBG][VideoUpload] Using direct upload (no entity tracking)');
+
       const formData = new FormData();
       formData.append('file', selectedFile);
 
@@ -195,7 +305,7 @@ export default function VideoUpload({
 
       console.log('[DBG][VideoUpload] Video uploaded successfully:', uid);
 
-      // Step 3: Fetch video status immediately to get duration
+      // Fetch video status immediately to get duration
       let videoDuration: string | undefined;
       try {
         const statusResponse = await fetch(`/api/cloudflare/video-status/${uid}`);
@@ -220,7 +330,7 @@ export default function VideoUpload({
         duration: videoDuration,
       });
 
-      // Start polling for video status
+      // Start polling for video status (only for direct uploads without entity tracking)
       console.log('[DBG][VideoUpload] Starting status polling for:', uid);
       setPollingVideoId(uid);
 
@@ -234,7 +344,25 @@ export default function VideoUpload({
     } finally {
       setIsUploading(false);
     }
-  }, [selectedFile, maxDurationSeconds, onUploadComplete, onError]);
+  }, [
+    selectedFile,
+    maxDurationSeconds,
+    onUploadComplete,
+    onError,
+    entityType,
+    entityId,
+    parentId,
+    showToast,
+  ]);
+
+  // Auto-trigger upload when file is confirmed (selectedFile changes from null)
+  useEffect(() => {
+    if (selectedFile && !uploadTriggered && !isUploading) {
+      console.log('[DBG][VideoUpload] Auto-triggering upload for confirmed file');
+      setUploadTriggered(true);
+      handleVideoUpload();
+    }
+  }, [selectedFile, uploadTriggered, isUploading, handleVideoUpload]);
 
   const handleClear = () => {
     setSelectedFile(null);
@@ -243,6 +371,7 @@ export default function VideoUpload({
     setDuration('');
     setErrorReason('');
     setPollingVideoId(null);
+    setUploadTriggered(false);
     onClear?.();
   };
 
@@ -367,16 +496,9 @@ export default function VideoUpload({
           {selectedFile && (
             <div className="mt-2">
               <p className="text-sm text-gray-600">
-                Selected: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+                {isUploading ? 'Uploading: ' : 'Selected: '}
+                {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
               </p>
-              <button
-                type="button"
-                onClick={handleVideoUpload}
-                disabled={isUploading}
-                className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed text-sm"
-              >
-                {isUploading ? 'Uploading...' : 'Upload Video'}
-              </button>
             </div>
           )}
           {isUploading && (
@@ -422,6 +544,17 @@ export default function VideoUpload({
           animation: gentle-pulse 2s ease-in-out infinite;
         }
       `}</style>
+
+      {/* Upload Confirmation Overlay */}
+      <NotificationOverlay
+        isOpen={showUploadConfirmation}
+        onClose={handleCancelUpload}
+        message={`Ready to upload "${pendingFile?.name}"? You can continue using the app while we upload and process your video in the background.`}
+        type="info"
+        onConfirm={handleConfirmUpload}
+        confirmText="Start Upload"
+        cancelText="Cancel"
+      />
     </div>
   );
 }

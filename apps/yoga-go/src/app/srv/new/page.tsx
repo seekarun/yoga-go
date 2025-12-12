@@ -142,7 +142,7 @@ export default function NewExpertPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pt-16">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Header */}
         <div className="mb-8">
@@ -158,7 +158,7 @@ export default function NewExpertPage() {
                 d="M15 19l-7-7 7-7"
               />
             </svg>
-            Back to Home
+            ← Back
           </Link>
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Add New Expert</h1>
           <p className="text-gray-600">Create a new expert profile in the system</p>
