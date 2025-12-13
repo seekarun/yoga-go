@@ -2,13 +2,15 @@
  * Blog Post Repository for DynamoDB operations
  * Handles CRUD operations for expert blog posts
  *
+ * Uses dedicated BLOG table (yoga-go-blog)
+ *
  * Access Patterns:
- * - List posts by expert: PK=BLOG#{expertId}, SK=POST#{postId}
- * - Direct lookup: PK=BLOGPOST#{postId}, SK=META
+ * - List posts by expert: PK=EXPERT#{expertId}, SK=POST#{publishedAt}#{postId}
+ * - Direct lookup: PK=POST#{postId}, SK=META
  */
 
 import { GetCommand, QueryCommand, BatchWriteCommand } from '@aws-sdk/lib-dynamodb';
-import { docClient, Tables, CorePK, EntityType } from '../dynamodb';
+import { docClient, Tables, BlogPK, EntityType } from '../dynamodb';
 import type { BlogPost, BlogPostAttachment, BlogPostStatus } from '@/types';
 
 // Helper to generate a unique post ID
@@ -115,22 +117,22 @@ export async function createBlogPost(input: CreateBlogPostInput): Promise<BlogPo
 
   // Dual-write: Multiple items for different access patterns
   const writeRequests = [
-    // 1. Expert blog listing: PK=BLOG#{expertId}, SK=POST#{postId}
+    // 1. Expert blog listing: PK=EXPERT#{expertId}, SK=POST#{postId}
     {
       PutRequest: {
         Item: {
-          PK: CorePK.BLOG(input.expertId),
+          PK: BlogPK.EXPERT(input.expertId),
           SK: `POST#${postId}`,
           entityType: EntityType.BLOG_POST,
           ...blogPost,
         },
       },
     },
-    // 2. Direct post lookup: PK=BLOGPOST#{postId}, SK=META
+    // 2. Direct post lookup: PK=POST#{postId}, SK=META
     {
       PutRequest: {
         Item: {
-          PK: CorePK.BLOG_POST(postId),
+          PK: BlogPK.POST(postId),
           SK: 'META',
           entityType: EntityType.BLOG_POST,
           ...blogPost,
@@ -142,7 +144,7 @@ export async function createBlogPost(input: CreateBlogPostInput): Promise<BlogPo
   await docClient.send(
     new BatchWriteCommand({
       RequestItems: {
-        [Tables.CORE]: writeRequests,
+        [Tables.BLOG]: writeRequests,
       },
     })
   );
@@ -160,9 +162,9 @@ export async function getBlogPostById(postId: string): Promise<BlogPost | null> 
 
   const result = await docClient.send(
     new GetCommand({
-      TableName: Tables.CORE,
+      TableName: Tables.BLOG,
       Key: {
-        PK: CorePK.BLOG_POST(postId),
+        PK: BlogPK.POST(postId),
         SK: 'META',
       },
     })
@@ -188,10 +190,10 @@ export async function getBlogPostsByExpert(
 
   const result = await docClient.send(
     new QueryCommand({
-      TableName: Tables.CORE,
+      TableName: Tables.BLOG,
       KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
       ExpressionAttributeValues: {
-        ':pk': CorePK.BLOG(expertId),
+        ':pk': BlogPK.EXPERT(expertId),
         ':skPrefix': 'POST#',
       },
       ScanIndexForward: false, // Most recent first
@@ -266,7 +268,7 @@ export async function updateBlogPost(
     {
       PutRequest: {
         Item: {
-          PK: CorePK.BLOG(current.expertId),
+          PK: BlogPK.EXPERT(current.expertId),
           SK: `POST#${postId}`,
           entityType: EntityType.BLOG_POST,
           ...updatedPost,
@@ -276,7 +278,7 @@ export async function updateBlogPost(
     {
       PutRequest: {
         Item: {
-          PK: CorePK.BLOG_POST(postId),
+          PK: BlogPK.POST(postId),
           SK: 'META',
           entityType: EntityType.BLOG_POST,
           ...updatedPost,
@@ -288,7 +290,7 @@ export async function updateBlogPost(
   await docClient.send(
     new BatchWriteCommand({
       RequestItems: {
-        [Tables.CORE]: writeRequests,
+        [Tables.BLOG]: writeRequests,
       },
     })
   );
@@ -315,7 +317,7 @@ export async function deleteBlogPost(postId: string): Promise<boolean> {
     {
       DeleteRequest: {
         Key: {
-          PK: CorePK.BLOG(post.expertId),
+          PK: BlogPK.EXPERT(post.expertId),
           SK: `POST#${post.id}`,
         },
       },
@@ -323,7 +325,7 @@ export async function deleteBlogPost(postId: string): Promise<boolean> {
     {
       DeleteRequest: {
         Key: {
-          PK: CorePK.BLOG_POST(postId),
+          PK: BlogPK.POST(postId),
           SK: 'META',
         },
       },
@@ -333,7 +335,7 @@ export async function deleteBlogPost(postId: string): Promise<boolean> {
   await docClient.send(
     new BatchWriteCommand({
       RequestItems: {
-        [Tables.CORE]: deleteRequests,
+        [Tables.BLOG]: deleteRequests,
       },
     })
   );
@@ -364,7 +366,7 @@ export async function incrementCommentCount(postId: string, delta: number): Prom
       {
         PutRequest: {
           Item: {
-            PK: CorePK.BLOG(current.expertId),
+            PK: BlogPK.EXPERT(current.expertId),
             SK: `POST#${postId}`,
             entityType: EntityType.BLOG_POST,
             ...updatedPost,
@@ -374,7 +376,7 @@ export async function incrementCommentCount(postId: string, delta: number): Prom
       {
         PutRequest: {
           Item: {
-            PK: CorePK.BLOG_POST(postId),
+            PK: BlogPK.POST(postId),
             SK: 'META',
             entityType: EntityType.BLOG_POST,
             ...updatedPost,
@@ -386,7 +388,7 @@ export async function incrementCommentCount(postId: string, delta: number): Prom
     await docClient.send(
       new BatchWriteCommand({
         RequestItems: {
-          [Tables.CORE]: writeRequests,
+          [Tables.BLOG]: writeRequests,
         },
       })
     );
@@ -412,7 +414,7 @@ export async function incrementLikeCount(postId: string, delta: number): Promise
     {
       PutRequest: {
         Item: {
-          PK: CorePK.BLOG(post.expertId),
+          PK: BlogPK.EXPERT(post.expertId),
           SK: `POST#${postId}`,
           entityType: EntityType.BLOG_POST,
           ...updatedPost,
@@ -422,7 +424,7 @@ export async function incrementLikeCount(postId: string, delta: number): Promise
     {
       PutRequest: {
         Item: {
-          PK: CorePK.BLOG_POST(postId),
+          PK: BlogPK.POST(postId),
           SK: 'META',
           entityType: EntityType.BLOG_POST,
           ...updatedPost,
@@ -434,7 +436,7 @@ export async function incrementLikeCount(postId: string, delta: number): Promise
   await docClient.send(
     new BatchWriteCommand({
       RequestItems: {
-        [Tables.CORE]: writeRequests,
+        [Tables.BLOG]: writeRequests,
       },
     })
   );

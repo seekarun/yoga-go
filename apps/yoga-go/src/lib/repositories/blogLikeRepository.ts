@@ -2,13 +2,15 @@
  * Blog Like Repository for DynamoDB operations
  * Handles like/unlike operations for blog posts
  *
+ * Uses dedicated BLOG table (yoga-go-blog)
+ *
  * Access Patterns:
- * - Check if user liked post: PK=BLOGLIKE#{postId}, SK={userId}
+ * - Check if user liked post: PK=LIKES#{postId}, SK={userId}
  * - Get user's liked posts: PK=USERLIKES#{userId}, SK={postId}
  */
 
 import { GetCommand, BatchWriteCommand } from '@aws-sdk/lib-dynamodb';
-import { docClient, Tables, CorePK, EntityType } from '../dynamodb';
+import { docClient, Tables, BlogPK, EntityType } from '../dynamodb';
 import type { BlogLike } from '@/types';
 import { incrementLikeCount } from './blogPostRepository';
 
@@ -41,9 +43,9 @@ export async function getLikeStatus(postId: string, userId: string): Promise<boo
 
   const result = await docClient.send(
     new GetCommand({
-      TableName: Tables.CORE,
+      TableName: Tables.BLOG,
       Key: {
-        PK: CorePK.BLOG_LIKE(postId),
+        PK: BlogPK.LIKES(postId),
         SK: userId,
       },
     })
@@ -70,11 +72,11 @@ async function addLike(postId: string, userId: string): Promise<void> {
 
   // Dual-write: Store both for post lookup and user lookup
   const writeRequests = [
-    // 1. Post's likes: PK=BLOGLIKE#{postId}, SK={userId}
+    // 1. Post's likes: PK=LIKES#{postId}, SK={userId}
     {
       PutRequest: {
         Item: {
-          PK: CorePK.BLOG_LIKE(postId),
+          PK: BlogPK.LIKES(postId),
           SK: userId,
           entityType: EntityType.BLOG_LIKE,
           ...like,
@@ -85,7 +87,7 @@ async function addLike(postId: string, userId: string): Promise<void> {
     {
       PutRequest: {
         Item: {
-          PK: CorePK.USER_LIKES(userId),
+          PK: BlogPK.USER_LIKES(userId),
           SK: postId,
           entityType: EntityType.BLOG_LIKE,
           ...like,
@@ -97,7 +99,7 @@ async function addLike(postId: string, userId: string): Promise<void> {
   await docClient.send(
     new BatchWriteCommand({
       RequestItems: {
-        [Tables.CORE]: writeRequests,
+        [Tables.BLOG]: writeRequests,
       },
     })
   );
@@ -119,7 +121,7 @@ async function removeLike(postId: string, userId: string): Promise<void> {
     {
       DeleteRequest: {
         Key: {
-          PK: CorePK.BLOG_LIKE(postId),
+          PK: BlogPK.LIKES(postId),
           SK: userId,
         },
       },
@@ -127,7 +129,7 @@ async function removeLike(postId: string, userId: string): Promise<void> {
     {
       DeleteRequest: {
         Key: {
-          PK: CorePK.USER_LIKES(userId),
+          PK: BlogPK.USER_LIKES(userId),
           SK: postId,
         },
       },
@@ -137,7 +139,7 @@ async function removeLike(postId: string, userId: string): Promise<void> {
   await docClient.send(
     new BatchWriteCommand({
       RequestItems: {
-        [Tables.CORE]: deleteRequests,
+        [Tables.BLOG]: deleteRequests,
       },
     })
   );

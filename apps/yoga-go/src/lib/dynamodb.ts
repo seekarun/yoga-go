@@ -1,7 +1,7 @@
 /**
  * DynamoDB Client Configuration
  *
- * 4-table design:
+ * 5-table design:
  *
  * 1. CORE TABLE - Main business entities
  *    - User, Expert, Course, Lesson, CourseProgress
@@ -15,6 +15,9 @@
  *
  * 4. DISCUSSIONS TABLE - Discussions and votes
  *    - Discussion, DiscussionVote (dual-write for efficient lookups)
+ *
+ * 5. BLOG TABLE - Blog posts, comments, and likes
+ *    - BlogPost, BlogComment, BlogLike
  */
 
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
@@ -42,6 +45,7 @@ export const Tables = {
   ORDERS: 'yoga-go-orders',
   ANALYTICS: 'yoga-go-analytics',
   DISCUSSIONS: 'yoga-go-discussions',
+  BLOG: 'yoga-go-blog',
 } as const;
 
 // Legacy export for backward compatibility during migration
@@ -66,12 +70,6 @@ export const CorePK = {
   // Tenant (multi-tenancy)
   TENANT: 'TENANT',
   TENANT_DOMAIN: (domain: string) => `TENANT#DOMAIN#${domain}`,
-  // Blog
-  BLOG: (expertId: string) => `BLOG#${expertId}`,
-  BLOG_POST: (postId: string) => `BLOGPOST#${postId}`,
-  BLOG_COMMENT: (postId: string) => `BLOGCMT#${postId}`,
-  BLOG_LIKE: (postId: string) => `BLOGLIKE#${postId}`,
-  USER_LIKES: (userId: string) => `USERLIKES#${userId}`,
 } as const;
 
 // ============================================
@@ -101,6 +99,22 @@ export const DiscussionsPK = {
   // Vote access patterns
   VOTES: (discussionId: string) => `VOTE#${discussionId}`, // Votes by discussion: PK=VOTE#{discussionId}, SK={userId}
   USER_VOTES: (userId: string) => `USERVOTE#${userId}`, // User's votes: PK=USERVOTE#{userId}, SK={discussionId}
+} as const;
+
+// ============================================
+// BLOG TABLE - PK/SK Prefixes
+// ============================================
+export const BlogPK = {
+  // Blog posts by expert: PK=EXPERT#{expertId}, SK=POST#{publishedAt}#{postId}
+  EXPERT: (expertId: string) => `EXPERT#${expertId}`,
+  // Direct post lookup: PK=POST#{postId}, SK=META
+  POST: (postId: string) => `POST#${postId}`,
+  // Comments by post: PK=COMMENTS#{postId}, SK={createdAt}#{commentId}
+  COMMENTS: (postId: string) => `COMMENTS#${postId}`,
+  // Likes by post: PK=LIKES#{postId}, SK={userId}
+  LIKES: (postId: string) => `LIKES#${postId}`,
+  // User's likes: PK=USERLIKES#{userId}, SK={postId}
+  USER_LIKES: (userId: string) => `USERLIKES#${userId}`,
 } as const;
 
 // Legacy EntityType export for backward compatibility

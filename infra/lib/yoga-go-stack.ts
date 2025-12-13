@@ -324,6 +324,15 @@ The MyYoga.Guru Team`,
       projectionType: dynamodb.ProjectionType.ALL,
     });
 
+    const blogTable = new dynamodb.Table(this, 'BlogTable', {
+      tableName: 'yoga-go-blog',
+      partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      pointInTimeRecovery: false,
+    });
+
     // ========================================
     // IAM User for Vercel Deployment
     // ========================================
@@ -355,6 +364,8 @@ The MyYoga.Guru Team`,
         `arn:aws:dynamodb:${this.region}:${this.account}:table/yoga-go-analytics/index/*`,
         discussionsTable.tableArn,
         `${discussionsTable.tableArn}/index/*`,
+        blogTable.tableArn,
+        `${blogTable.tableArn}/index/*`,
       ],
     });
 

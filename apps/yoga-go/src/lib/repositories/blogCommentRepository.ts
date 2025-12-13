@@ -2,12 +2,14 @@
  * Blog Comment Repository for DynamoDB operations
  * Handles CRUD operations for blog post comments
  *
+ * Uses dedicated BLOG table (yoga-go-blog)
+ *
  * Access Patterns:
- * - List comments by post: PK=BLOGCMT#{postId}, SK={createdAt}#{commentId}
+ * - List comments by post: PK=COMMENTS#{postId}, SK={createdAt}#{commentId}
  */
 
 import { PutCommand, QueryCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
-import { docClient, Tables, CorePK, EntityType } from '../dynamodb';
+import { docClient, Tables, BlogPK, EntityType } from '../dynamodb';
 import type { BlogComment } from '@/types';
 import { incrementCommentCount } from './blogPostRepository';
 
@@ -46,9 +48,9 @@ export async function createBlogComment(input: CreateBlogCommentInput): Promise<
 
   await docClient.send(
     new PutCommand({
-      TableName: Tables.CORE,
+      TableName: Tables.BLOG,
       Item: {
-        PK: CorePK.BLOG_COMMENT(input.postId),
+        PK: BlogPK.COMMENTS(input.postId),
         SK: `${now}#${commentId}`,
         entityType: EntityType.BLOG_COMMENT,
         ...comment,
@@ -71,10 +73,10 @@ export async function getCommentsByPost(postId: string): Promise<BlogComment[]> 
 
   const result = await docClient.send(
     new QueryCommand({
-      TableName: Tables.CORE,
+      TableName: Tables.BLOG,
       KeyConditionExpression: 'PK = :pk',
       ExpressionAttributeValues: {
-        ':pk': CorePK.BLOG_COMMENT(postId),
+        ':pk': BlogPK.COMMENTS(postId),
       },
       ScanIndexForward: true, // Oldest first
     })
@@ -98,11 +100,11 @@ export async function getCommentById(
   // Query all comments for the post and filter
   const result = await docClient.send(
     new QueryCommand({
-      TableName: Tables.CORE,
+      TableName: Tables.BLOG,
       KeyConditionExpression: 'PK = :pk',
       FilterExpression: 'id = :commentId',
       ExpressionAttributeValues: {
-        ':pk': CorePK.BLOG_COMMENT(postId),
+        ':pk': BlogPK.COMMENTS(postId),
         ':commentId': commentId,
       },
     })
@@ -145,9 +147,9 @@ export async function updateBlogComment(
 
   await docClient.send(
     new PutCommand({
-      TableName: Tables.CORE,
+      TableName: Tables.BLOG,
       Item: {
-        PK: CorePK.BLOG_COMMENT(postId),
+        PK: BlogPK.COMMENTS(postId),
         SK: sk,
         entityType: EntityType.BLOG_COMMENT,
         ...updatedComment,
@@ -176,9 +178,9 @@ export async function deleteBlogComment(postId: string, commentId: string): Prom
 
   await docClient.send(
     new DeleteCommand({
-      TableName: Tables.CORE,
+      TableName: Tables.BLOG,
       Key: {
-        PK: CorePK.BLOG_COMMENT(postId),
+        PK: BlogPK.COMMENTS(postId),
         SK: sk,
       },
     })
