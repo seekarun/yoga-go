@@ -102,26 +102,31 @@ function CalendarContent({
   onDeleteEvent: (eventId: string) => void;
   onEventFormChange: (data: EventFormData) => void;
 }) {
-  const { navigateTo, navigateRight, isRightColumn } = useCarousel();
+  const { navigateTo, navigateRight, isRightColumn, isMobile } = useCarousel();
 
   // Navigate to event view when prefillData is set (from NL command)
   useEffect(() => {
     if (prefillEventData && !selectedEvent) {
-      // Creating new event - navigate to day view which shows day + event columns
-      navigateTo("day");
+      // Creating new event - navigate to event view
+      navigateTo("event");
     } else if (prefillEventData && selectedEvent) {
-      // Editing existing event - also navigate to day view
-      navigateTo("day");
+      // Editing existing event - navigate to event view
+      navigateTo("event");
     }
   }, [prefillEventData, selectedEvent, navigateTo]);
 
   // Handle year selection - updates selectedDate to January 1st of that year
-  // This will automatically update selectedYear since it's derived from selectedDate
+  // On mobile, also navigate to month view
   const handleYearSelect = (year: number) => {
     setSelectedDate(startOfYear(new Date(year, 0, 1)));
+    if (isMobile) {
+      navigateRight();
+    }
   };
 
-  // Handle date selection from month view (only navigate if in right column)
+  // Handle date selection from month view
+  // Desktop: only navigate if in right column
+  // Mobile: always navigate (single column visible)
   const handleMonthDateSelect = (date: Date) => {
     setSelectedDate(date);
     if (isRightColumn("month")) {
@@ -129,7 +134,9 @@ function CalendarContent({
     }
   };
 
-  // Handle date selection from date view (only navigate if in right column)
+  // Handle date selection from date view
+  // Desktop: only navigate if in right column
+  // Mobile: always navigate (single column visible)
   const handleDateViewSelect = (date: Date) => {
     setSelectedDate(date);
     if (isRightColumn("date")) {
@@ -137,22 +144,22 @@ function CalendarContent({
     }
   };
 
-  // Handle slot click in day view (only navigate if in right column)
+  // Handle slot click in day view - navigate to event view
   const handleSlotClick = (time: string, clickedDate: Date) => {
     setSelectedTime(time);
     setSelectedDate(clickedDate);
     setSelectedEvent(null);
     if (isRightColumn("day")) {
-      navigateTo("day"); // Show day+event columns
+      navigateRight(); // Go to event view
     }
   };
 
-  // Handle event click in day view (only navigate if in right column)
+  // Handle event click in day view - navigate to event view
   const handleEventClick = (event: CalendarEvent) => {
     setSelectedEvent(event);
     setSelectedTime(event.startTime);
     if (isRightColumn("day")) {
-      navigateTo("day"); // Show day+event columns
+      navigateRight(); // Go to event view
     }
   };
 
@@ -916,7 +923,7 @@ export default function DashboardPage() {
       <Sidebar />
 
       {/* Main area */}
-      <div className="flex-1 flex flex-col min-h-0">
+      <div className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden">
         {/* Header */}
         <header className="bg-white shadow-sm flex-shrink-0 z-20">
           <div className="px-6 py-3 flex justify-between items-center">
@@ -936,8 +943,8 @@ export default function DashboardPage() {
         </header>
 
         {/* Chat input - collapsible */}
-        <div className="bg-white border-b flex-shrink-0">
-          <div className="p-3">
+        <div className="bg-white border-b flex-shrink-0 overflow-hidden">
+          <div className="p-3 max-w-full">
             <ChatInput onSubmit={processCommand} isProcessing={isProcessing} />
 
             {/* Chat messages */}

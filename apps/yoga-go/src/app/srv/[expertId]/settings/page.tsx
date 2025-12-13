@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import type { Tenant, TenantDnsRecord } from '@/types';
+import type { Tenant, TenantDnsRecord, TenantBranding } from '@/types';
 
 // Extended tenant type with domain verification info
 interface TenantWithVerification extends Tenant {
@@ -74,6 +74,12 @@ export default function SettingsPage() {
   const [forwardingEmail, setForwardingEmail] = useState('');
   const [emailForwardingEnabled, setEmailForwardingEnabled] = useState(true);
 
+  // Branding state
+  const [branding, setBranding] = useState<TenantBranding>({});
+  const [brandingSaving, setBrandingSaving] = useState(false);
+  const [faviconUploading, setFaviconUploading] = useState(false);
+  const [ogImageUploading, setOgImageUploading] = useState(false);
+
   // Check if user owns this expert profile
   useEffect(() => {
     if (user && user.expertProfile !== expertId) {
@@ -88,7 +94,25 @@ export default function SettingsPage() {
 
       if (data.success) {
         setTenant(data.data);
-        if (data.data?.domainVerification) {
+
+        // Initialize domain verification statuses from API response
+        if (data.data?.domainsVerification) {
+          // API now returns verification status for all domains
+          const statuses: Record<string, DomainStatus> = {};
+          for (const [domain, status] of Object.entries(data.data.domainsVerification)) {
+            const verificationStatus = status as {
+              verified: boolean;
+              records?: Array<{ type: string; name: string; value: string }>;
+            };
+            statuses[domain] = {
+              verified: verificationStatus.verified,
+              checking: false,
+              records: verificationStatus.records,
+            };
+          }
+          setDomainStatuses(statuses);
+        } else if (data.data?.domainVerification) {
+          // Fallback for legacy response format
           setDomainStatuses(prev => ({
             ...prev,
             [data.data.primaryDomain]: {
@@ -97,6 +121,11 @@ export default function SettingsPage() {
               records: data.data.domainVerification.records,
             },
           }));
+        }
+
+        // Initialize branding state from tenant
+        if (data.data?.branding) {
+          setBranding(data.data.branding);
         }
       }
     } catch (err) {
@@ -450,6 +479,139 @@ export default function SettingsPage() {
       setError('Failed to save settings');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Branding handlers
+  const handleSaveBranding = async () => {
+    if (!tenant) return;
+
+    setBrandingSaving(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await fetch('/data/app/tenant', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update_branding',
+          ...branding,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setTenant(data.data);
+        setSuccess('Branding settings saved!');
+      } else {
+        setError(data.error || 'Failed to save branding');
+      }
+    } catch (err) {
+      console.error('[DBG][settings] Error saving branding:', err);
+      setError('Failed to save branding');
+    } finally {
+      setBrandingSaving(false);
+    }
+  };
+
+  const handleFaviconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type (Cloudflare Images only supports these formats)
+    const validTypes = ['image/png', 'image/svg+xml', 'image/jpeg', 'image/webp', 'image/gif'];
+    if (!validTypes.includes(file.type)) {
+      setError('Please upload a PNG, SVG, JPEG, or WebP file. ICO files are not supported.');
+      return;
+    }
+
+    // Validate file size (max 500KB for favicon)
+    if (file.size > 500 * 1024) {
+      setError('Favicon file must be less than 500KB');
+      return;
+    }
+
+    setFaviconUploading(true);
+    setError('');
+
+    try {
+      const formData = new FormData();
+      formData.append('original', file);
+      formData.append('category', 'logo');
+      formData.append('relatedToType', 'expert');
+      formData.append('relatedToId', expertId);
+
+      const response = await fetch('/api/cloudflare/images/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.data?.originalUrl) {
+        setBranding(prev => ({ ...prev, faviconUrl: data.data.originalUrl }));
+        setSuccess('Favicon uploaded! Click "Save Branding" to apply.');
+      } else {
+        setError(data.error || 'Failed to upload favicon');
+      }
+    } catch (err) {
+      console.error('[DBG][settings] Error uploading favicon:', err);
+      setError('Failed to upload favicon');
+    } finally {
+      setFaviconUploading(false);
+      // Reset file input
+      e.target.value = '';
+    }
+  };
+
+  const handleOgImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/png', 'image/jpeg', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      setError('Please upload a PNG, JPEG, or WebP file for the OG image.');
+      return;
+    }
+
+    // Validate file size (max 2MB for OG image)
+    if (file.size > 2 * 1024 * 1024) {
+      setError('OG image must be less than 2MB');
+      return;
+    }
+
+    setOgImageUploading(true);
+    setError('');
+
+    try {
+      const formData = new FormData();
+      formData.append('original', file);
+      formData.append('category', 'banner');
+      formData.append('relatedToType', 'expert');
+      formData.append('relatedToId', expertId);
+
+      const response = await fetch('/api/cloudflare/images/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.data?.originalUrl) {
+        setBranding(prev => ({ ...prev, ogImage: data.data.originalUrl }));
+        setSuccess('OG image uploaded! Click "Save Branding" to apply.');
+      } else {
+        setError(data.error || 'Failed to upload OG image');
+      }
+    } catch (err) {
+      console.error('[DBG][settings] Error uploading OG image:', err);
+      setError('Failed to upload OG image');
+    } finally {
+      setOgImageUploading(false);
+      e.target.value = '';
     }
   };
 
@@ -1136,6 +1298,345 @@ export default function SettingsPage() {
                         )}
                       </>
                     )}
+                  </div>
+                )}
+
+                {/* Custom Domain Branding - Only show for custom domains */}
+                {getCustomDomain() && (
+                  <div
+                    style={{
+                      background: '#fff',
+                      borderRadius: '12px',
+                      padding: '24px',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                    }}
+                  >
+                    <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
+                      Custom Domain Branding
+                    </h2>
+                    <p style={{ color: '#666', marginBottom: '20px', fontSize: '14px' }}>
+                      Customize how your site appears when visitors access it via your custom
+                      domain. These settings apply to <strong>{getCustomDomain()}</strong>.
+                    </p>
+
+                    {/* Favicon Upload */}
+                    <div style={{ marginBottom: '20px' }}>
+                      <label
+                        style={{ display: 'block', fontWeight: '500', marginBottom: '8px' }}
+                        htmlFor="faviconUpload"
+                      >
+                        Favicon
+                      </label>
+
+                      {/* Current Favicon Preview */}
+                      {branding.faviconUrl && (
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            marginBottom: '12px',
+                            padding: '12px',
+                            background: '#f8f8f8',
+                            borderRadius: '8px',
+                          }}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={branding.faviconUrl}
+                            alt="Current favicon"
+                            style={{
+                              width: '32px',
+                              height: '32px',
+                              objectFit: 'contain',
+                              background: '#fff',
+                              border: '1px solid #ddd',
+                              borderRadius: '4px',
+                            }}
+                          />
+                          <span style={{ fontSize: '13px', color: '#666', flex: 1 }}>
+                            Current favicon
+                          </span>
+                          <button
+                            onClick={() => setBranding({ ...branding, faviconUrl: '' })}
+                            style={{
+                              padding: '4px 8px',
+                              background: '#fee',
+                              color: '#c00',
+                              border: 'none',
+                              borderRadius: '4px',
+                              fontSize: '12px',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Upload Button */}
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                        <label
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '10px 16px',
+                            background: faviconUploading ? '#ccc' : '#f0f0f0',
+                            border: '1px solid #ddd',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            cursor: faviconUploading ? 'not-allowed' : 'pointer',
+                          }}
+                        >
+                          <input
+                            id="faviconUpload"
+                            type="file"
+                            accept=".png,.svg,.jpg,.jpeg,.webp,image/png,image/svg+xml,image/jpeg,image/webp"
+                            onChange={handleFaviconUpload}
+                            disabled={faviconUploading}
+                            style={{ display: 'none' }}
+                          />
+                          {faviconUploading ? 'Uploading...' : 'Upload Favicon'}
+                        </label>
+                        <span style={{ color: '#999', fontSize: '12px' }}>
+                          PNG, SVG, or JPEG (max 500KB)
+                        </span>
+                      </div>
+
+                      {/* Or enter URL manually */}
+                      <div style={{ marginTop: '12px' }}>
+                        <label
+                          style={{
+                            display: 'block',
+                            fontSize: '12px',
+                            color: '#666',
+                            marginBottom: '4px',
+                          }}
+                          htmlFor="faviconUrl"
+                        >
+                          Or enter URL manually:
+                        </label>
+                        <input
+                          id="faviconUrl"
+                          type="url"
+                          value={branding.faviconUrl || ''}
+                          onChange={e => setBranding({ ...branding, faviconUrl: e.target.value })}
+                          placeholder="https://example.com/favicon.ico"
+                          style={{
+                            width: '100%',
+                            padding: '8px 12px',
+                            border: '1px solid #ddd',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                          }}
+                        />
+                      </div>
+                      <p style={{ color: '#999', fontSize: '12px', marginTop: '8px' }}>
+                        The icon shown in browser tabs. Use PNG or SVG format. Recommended size:
+                        32x32px or 64x64px. ICO files are not supported.
+                      </p>
+                    </div>
+
+                    {/* Site Title */}
+                    <div style={{ marginBottom: '20px' }}>
+                      <label
+                        style={{ display: 'block', fontWeight: '500', marginBottom: '8px' }}
+                        htmlFor="siteTitle"
+                      >
+                        Site Title
+                      </label>
+                      <input
+                        id="siteTitle"
+                        type="text"
+                        value={branding.siteTitle || ''}
+                        onChange={e => setBranding({ ...branding, siteTitle: e.target.value })}
+                        placeholder={tenant?.name || 'My Yoga Studio'}
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          border: '1px solid #ddd',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                        }}
+                      />
+                      <p style={{ color: '#999', fontSize: '12px', marginTop: '4px' }}>
+                        Shown in browser tabs and search results.
+                      </p>
+                    </div>
+
+                    {/* Site Description */}
+                    <div style={{ marginBottom: '20px' }}>
+                      <label
+                        style={{ display: 'block', fontWeight: '500', marginBottom: '8px' }}
+                        htmlFor="siteDescription"
+                      >
+                        Site Description
+                      </label>
+                      <textarea
+                        id="siteDescription"
+                        value={branding.siteDescription || ''}
+                        onChange={e =>
+                          setBranding({ ...branding, siteDescription: e.target.value })
+                        }
+                        placeholder="Expert-led yoga courses for every level..."
+                        rows={3}
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          border: '1px solid #ddd',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          resize: 'vertical',
+                        }}
+                      />
+                      <p style={{ color: '#999', fontSize: '12px', marginTop: '4px' }}>
+                        Meta description for search engines (recommended: 150-160 characters).
+                      </p>
+                    </div>
+
+                    {/* OG Image Upload */}
+                    <div style={{ marginBottom: '24px' }}>
+                      <label
+                        style={{ display: 'block', fontWeight: '500', marginBottom: '8px' }}
+                        htmlFor="ogImageUpload"
+                      >
+                        Social Share Image (OG Image)
+                      </label>
+
+                      {/* Current OG Image Preview */}
+                      {branding.ogImage && (
+                        <div
+                          style={{
+                            marginBottom: '12px',
+                            padding: '12px',
+                            background: '#f8f8f8',
+                            borderRadius: '8px',
+                          }}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={branding.ogImage}
+                            alt="Current OG image"
+                            style={{
+                              width: '100%',
+                              maxWidth: '300px',
+                              height: 'auto',
+                              objectFit: 'cover',
+                              borderRadius: '4px',
+                              border: '1px solid #ddd',
+                            }}
+                          />
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              marginTop: '8px',
+                            }}
+                          >
+                            <span style={{ fontSize: '13px', color: '#666' }}>
+                              Current OG image
+                            </span>
+                            <button
+                              onClick={() => setBranding({ ...branding, ogImage: '' })}
+                              style={{
+                                padding: '4px 8px',
+                                background: '#fee',
+                                color: '#c00',
+                                border: 'none',
+                                borderRadius: '4px',
+                                fontSize: '12px',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Upload Button */}
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                        <label
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '10px 16px',
+                            background: ogImageUploading ? '#ccc' : '#f0f0f0',
+                            border: '1px solid #ddd',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            cursor: ogImageUploading ? 'not-allowed' : 'pointer',
+                          }}
+                        >
+                          <input
+                            id="ogImageUpload"
+                            type="file"
+                            accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+                            onChange={handleOgImageUpload}
+                            disabled={ogImageUploading}
+                            style={{ display: 'none' }}
+                          />
+                          {ogImageUploading ? 'Uploading...' : 'Upload Image'}
+                        </label>
+                        <span style={{ color: '#999', fontSize: '12px' }}>
+                          PNG, JPEG, or WebP (max 2MB)
+                        </span>
+                      </div>
+
+                      {/* Or enter URL manually */}
+                      <div style={{ marginTop: '12px' }}>
+                        <label
+                          style={{
+                            display: 'block',
+                            fontSize: '12px',
+                            color: '#666',
+                            marginBottom: '4px',
+                          }}
+                          htmlFor="ogImage"
+                        >
+                          Or enter URL manually:
+                        </label>
+                        <input
+                          id="ogImage"
+                          type="url"
+                          value={branding.ogImage || ''}
+                          onChange={e => setBranding({ ...branding, ogImage: e.target.value })}
+                          placeholder="https://example.com/og-image.jpg"
+                          style={{
+                            width: '100%',
+                            padding: '8px 12px',
+                            border: '1px solid #ddd',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                          }}
+                        />
+                      </div>
+                      <p style={{ color: '#999', fontSize: '12px', marginTop: '8px' }}>
+                        Image shown when sharing on social media. Recommended size: 1200x630px.
+                      </p>
+                    </div>
+
+                    {/* Save Button */}
+                    <button
+                      onClick={handleSaveBranding}
+                      disabled={brandingSaving}
+                      style={{
+                        padding: '12px 24px',
+                        background: 'var(--color-primary)',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        cursor: brandingSaving ? 'not-allowed' : 'pointer',
+                        opacity: brandingSaving ? 0.7 : 1,
+                      }}
+                    >
+                      {brandingSaving ? 'Saving...' : 'Save Branding'}
+                    </button>
                   </div>
                 )}
               </>

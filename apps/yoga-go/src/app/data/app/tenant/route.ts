@@ -40,16 +40,21 @@ import type {
   TenantBranding,
 } from '@/types';
 
+// Domain verification status for a single domain
+interface DomainVerificationStatus {
+  verified: boolean;
+  records?: Array<{
+    type: 'TXT' | 'CNAME';
+    name: string;
+    value: string;
+  }>;
+}
+
 // Extended response type to include domain verification info
 interface TenantWithVerification extends Tenant {
-  domainVerification?: {
-    verified: boolean;
-    records?: Array<{
-      type: 'TXT' | 'CNAME';
-      name: string;
-      value: string;
-    }>;
-  };
+  domainVerification?: DomainVerificationStatus;
+  // Verification status for all domains (keyed by domain name)
+  domainsVerification?: Record<string, DomainVerificationStatus>;
   // Email setup response fields
   emailDnsRecords?: TenantDnsRecord[];
   emailVerificationStatus?: {
@@ -64,7 +69,7 @@ interface TenantWithVerification extends Tenant {
 /**
  * GET - Get tenant for authenticated expert
  */
-export async function GET(): Promise<NextResponse<ApiResponse<Tenant | null>>> {
+export async function GET(): Promise<NextResponse<ApiResponse<TenantWithVerification | null>>> {
   try {
     const session = await getSession();
     if (!session?.user?.cognitoSub) {
@@ -89,9 +94,44 @@ export async function GET(): Promise<NextResponse<ApiResponse<Tenant | null>>> {
       tenant ? 'found' : 'not found'
     );
 
+    if (!tenant) {
+      return NextResponse.json({
+        success: true,
+        data: null,
+      });
+    }
+
+    // Fetch domain verification status for all domains from Vercel
+    const allDomains = [tenant.primaryDomain, ...(tenant.additionalDomains || [])];
+    const domainsVerification: Record<string, DomainVerificationStatus> = {};
+
+    // Check verification status for each domain in parallel
+    await Promise.all(
+      allDomains.map(async domain => {
+        try {
+          const status = await getDomainStatus(domain);
+          domainsVerification[domain] = {
+            verified: status.verified,
+            records: status.verification,
+          };
+        } catch (err) {
+          console.error('[DBG][tenant-api] Error checking domain status:', domain, err);
+          // Default to unverified on error
+          domainsVerification[domain] = { verified: false };
+        }
+      })
+    );
+
+    console.log('[DBG][tenant-api] Domain verification statuses:', domainsVerification);
+
+    const response: TenantWithVerification = {
+      ...tenant,
+      domainsVerification,
+    };
+
     return NextResponse.json({
       success: true,
-      data: tenant,
+      data: response,
     });
   } catch (error) {
     console.error('[DBG][tenant-api] GET error:', error);

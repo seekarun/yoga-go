@@ -4,7 +4,7 @@
  * CalendarCarousel Component
  *
  * Manages a horizontal carousel of calendar views:
- * Month → Date → Day → Event
+ * Year → Month → Date → Day → Event
  *
  * Desktop: Shows 2 columns (50% each)
  * Mobile: Shows 1 column (100%)
@@ -18,6 +18,7 @@ import {
   useContext,
   useState,
   useCallback,
+  useEffect,
   type ReactNode,
 } from "react";
 
@@ -25,6 +26,10 @@ import {
 export type ViewType = "year" | "month" | "date" | "day" | "event";
 
 const VIEW_ORDER: ViewType[] = ["year", "month", "date", "day", "event"];
+const NUM_COLUMNS = VIEW_ORDER.length;
+
+// Breakpoint for mobile (matches Tailwind md: breakpoint)
+const MOBILE_BREAKPOINT = 768;
 
 interface CarouselContextType {
   currentIndex: number;
@@ -34,6 +39,7 @@ interface CarouselContextType {
   canGoLeft: boolean;
   canGoRight: boolean;
   isRightColumn: (view: ViewType) => boolean;
+  isMobile: boolean;
 }
 
 const CarouselContext = createContext<CarouselContextType | null>(null);
@@ -55,42 +61,81 @@ export function CalendarCarousel({
   children,
   initialView = "date",
 }: CalendarCarouselProps) {
-  // Index represents the LEFT column's position
-  // So index 0 = [month, date], index 1 = [date, day], index 2 = [day, event]
+  // Track mobile state - start with null to detect SSR
+  const [isMobile, setIsMobile] = useState<boolean | null>(null);
+
+  // Check viewport on mount and resize
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
+    };
+
+    // Initial check
+    checkMobile();
+
+    // Listen for resize
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  // Use mobile=true as default for SSR to avoid layout shift on mobile devices
+  const isMobileResolved = isMobile ?? true;
+
+  // Calculate max index based on viewport
+  // Mobile: can go to last column (NUM_COLUMNS - 1)
+  // Desktop: show 2 columns, so max is NUM_COLUMNS - 2
+  const maxIndex = isMobileResolved ? NUM_COLUMNS - 1 : NUM_COLUMNS - 2;
+
+  // Index represents the visible column position
   const [currentIndex, setCurrentIndex] = useState(() => {
     const idx = VIEW_ORDER.indexOf(initialView);
-    // For desktop, we show 2 columns, so max index is VIEW_ORDER.length - 2
-    return Math.min(Math.max(0, idx), VIEW_ORDER.length - 2);
+    return Math.min(Math.max(0, idx), NUM_COLUMNS - 1);
   });
 
-  const navigateTo = useCallback((view: ViewType) => {
-    const idx = VIEW_ORDER.indexOf(view);
-    // Ensure we don't go past the last valid position (showing last 2 columns)
-    const maxIndex = VIEW_ORDER.length - 2;
-    setCurrentIndex(Math.min(Math.max(0, idx), maxIndex));
-  }, []);
+  // Clamp index when switching between mobile/desktop
+  useEffect(() => {
+    setCurrentIndex((prev) => Math.min(prev, maxIndex));
+  }, [maxIndex]);
+
+  const navigateTo = useCallback(
+    (view: ViewType) => {
+      const idx = VIEW_ORDER.indexOf(view);
+      setCurrentIndex(Math.min(Math.max(0, idx), maxIndex));
+    },
+    [maxIndex],
+  );
 
   const navigateLeft = useCallback(() => {
     setCurrentIndex((prev) => Math.max(0, prev - 1));
   }, []);
 
   const navigateRight = useCallback(() => {
-    const maxIndex = VIEW_ORDER.length - 2;
     setCurrentIndex((prev) => Math.min(maxIndex, prev + 1));
-  }, []);
+  }, [maxIndex]);
 
   const canGoLeft = currentIndex > 0;
-  const canGoRight = currentIndex < VIEW_ORDER.length - 2;
+  const canGoRight = currentIndex < maxIndex;
 
-  // Check if a view is currently displayed in the right column
+  // Check if a view is currently displayed in the right column (desktop only)
   const isRightColumn = useCallback(
     (view: ViewType) => {
+      if (isMobileResolved) {
+        // On mobile, single column - current view can trigger navigation
+        const viewIndex = VIEW_ORDER.indexOf(view);
+        return viewIndex === currentIndex;
+      }
       const viewIndex = VIEW_ORDER.indexOf(view);
       // Right column is at currentIndex + 1
       return viewIndex === currentIndex + 1;
     },
-    [currentIndex],
+    [currentIndex, isMobileResolved],
   );
+
+  // Calculate widths using vw units for predictable sizing
+  // Mobile: each column is 100vw, Desktop: each column is 50vw
+  const columnWidthVw = isMobileResolved ? 100 : 50;
+  const containerWidthVw = NUM_COLUMNS * columnWidthVw;
+  const translateVw = currentIndex * columnWidthVw;
 
   return (
     <CarouselContext.Provider
@@ -102,15 +147,16 @@ export function CalendarCarousel({
         canGoLeft,
         canGoRight,
         isRightColumn,
+        isMobile: isMobileResolved,
       }}
     >
       <div className="relative h-full w-full overflow-hidden">
-        {/* Sliding container */}
+        {/* Sliding container - uses vw units for predictable sizing */}
         <div
           className="flex h-full transition-transform duration-300 ease-in-out"
           style={{
-            width: `${VIEW_ORDER.length * 50}%`, // Each column is 50% of viewport on desktop
-            transform: `translateX(-${currentIndex * (100 / VIEW_ORDER.length)}%)`,
+            width: `${containerWidthVw}vw`,
+            transform: `translateX(-${translateVw}vw)`,
           }}
         >
           {children}
@@ -134,7 +180,7 @@ export function CarouselColumn({
   title,
   showBackButton = false,
 }: CarouselColumnProps) {
-  const { navigateLeft, currentIndex } = useCarousel();
+  const { navigateLeft, currentIndex, isMobile } = useCarousel();
   const viewIndex = VIEW_ORDER.indexOf(view);
 
   // Show back button if:
@@ -145,10 +191,13 @@ export function CarouselColumn({
   const canGoBack = currentIndex > 0;
   const shouldShowBack = showBackButton && isLeftColumn && canGoBack;
 
+  // Column width in vw - matches parent calculation
+  const columnWidthVw = isMobile ? 100 : 50;
+
   return (
     <div
       className="h-full flex-shrink-0 flex flex-col border-r border-gray-200 bg-white"
-      style={{ width: `${100 / VIEW_ORDER.length}%` }}
+      style={{ width: `${columnWidthVw}vw` }}
     >
       {/* Column header - fixed height */}
       <div className="flex items-center gap-2 px-3 h-10 border-b border-gray-200 bg-gray-50 flex-shrink-0">

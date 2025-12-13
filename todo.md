@@ -46,3 +46,7 @@ notes
 
 
 
+CALEL
+
+[ ] localization
+[ ] 

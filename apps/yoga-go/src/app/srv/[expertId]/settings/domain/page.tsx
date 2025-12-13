@@ -79,8 +79,25 @@ export default function DomainSettingsPage() {
 
       if (data.success) {
         setTenant(data.data);
-        // Initialize domain verification if available
-        if (data.data?.domainVerification) {
+
+        // Initialize domain verification statuses from API response
+        if (data.data?.domainsVerification) {
+          // API now returns verification status for all domains
+          const statuses: Record<string, DomainStatus> = {};
+          for (const [domain, status] of Object.entries(data.data.domainsVerification)) {
+            const verificationStatus = status as {
+              verified: boolean;
+              records?: Array<{ type: 'TXT' | 'CNAME'; name: string; value: string }>;
+            };
+            statuses[domain] = {
+              verified: verificationStatus.verified,
+              checking: false,
+              records: verificationStatus.records,
+            };
+          }
+          setDomainStatuses(statuses);
+        } else if (data.data?.domainVerification) {
+          // Fallback for legacy response format
           setDomainStatuses(prev => ({
             ...prev,
             [data.data.primaryDomain]: {
@@ -90,6 +107,7 @@ export default function DomainSettingsPage() {
             },
           }));
         }
+
         // Initialize branding state from tenant
         if (data.data?.branding) {
           setBranding(data.data.branding);

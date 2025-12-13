@@ -83,7 +83,7 @@ export function Sidebar() {
     subItems?.some((item) => pathname === item.href);
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 flex flex-col h-full">
+    <aside className="hidden md:flex w-64 bg-white border-r border-gray-200 flex-col h-full">
       {/* Logo */}
       <div className="h-16 flex items-center px-6 border-b border-gray-200">
         <span className="text-xl font-bold text-indigo-600">Calel</span>

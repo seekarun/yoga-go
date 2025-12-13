@@ -8,7 +8,7 @@
  * finding availability, querying calendar, setting availability.
  */
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 
 interface ChatInputProps {
   onSubmit: (message: string) => void;
@@ -37,14 +37,7 @@ export function ChatInput({
 }: ChatInputProps) {
   const [message, setMessage] = useState("");
   const [showExamples, setShowExamples] = useState(false);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.style.height = "auto";
-      inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 120)}px`;
-    }
-  }, [message]);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,13 +45,6 @@ export function ChatInput({
       onSubmit(message.trim());
       setMessage("");
       setShowExamples(false);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit(e);
     }
   };
 
@@ -72,22 +58,21 @@ export function ChatInput({
     <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
       <form onSubmit={handleSubmit}>
         <div className="relative">
-          <textarea
+          <input
             ref={inputRef}
+            type="text"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            onKeyDown={handleKeyDown}
             onFocus={() => setShowExamples(true)}
             onBlur={() => setTimeout(() => setShowExamples(false), 200)}
             placeholder={placeholder}
             disabled={isProcessing}
-            className="w-full px-4 py-4 pr-24 text-lg resize-none border-0 focus:ring-0 focus:outline-none placeholder-gray-400"
-            rows={1}
+            className="w-full px-4 py-3 pr-14 text-base border-0 focus:ring-0 focus:outline-none placeholder-gray-400"
           />
 
-          <div className="absolute right-2 bottom-2 flex items-center gap-2">
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center">
             {isProcessing ? (
-              <div className="flex items-center gap-2 px-3 py-2 text-gray-500">
+              <div className="flex items-center gap-1 px-2 text-gray-500">
                 <svg
                   className="animate-spin h-5 w-5"
                   fill="none"
@@ -107,16 +92,15 @@ export function ChatInput({
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                   />
                 </svg>
-                <span className="text-sm">Processing...</span>
               </div>
             ) : (
               <button
                 type="submit"
                 disabled={!message.trim()}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <svg
-                  className="w-5 h-5"
+                  className="w-4 h-4"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
