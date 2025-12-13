@@ -3,6 +3,10 @@ import type { ApiResponse, Survey } from '@/types';
 import * as surveyRepository from '@/lib/repositories/surveyRepository';
 import { getSession } from '@/lib/auth';
 
+/**
+ * GET /api/srv/experts/[expertId]/survey
+ * Get all surveys for an expert (excludes archived)
+ */
 export async function GET(request: Request, { params }: { params: Promise<{ expertId: string }> }) {
   const { expertId } = await params;
   console.log(
@@ -22,43 +26,43 @@ export async function GET(request: Request, { params }: { params: Promise<{ expe
       );
     }
 
-    // Fetch active survey for this expert from DynamoDB
-    const survey = await surveyRepository.getActiveSurveyByExpert(expertId);
+    // Fetch all surveys for this expert from DynamoDB (excludes archived)
+    const surveys = await surveyRepository.getSurveysByExpert(expertId);
 
-    if (!survey) {
-      // Return empty survey structure if none exists
-      const response: ApiResponse<Survey | null> = {
-        success: true,
-        data: null,
-      };
-      return NextResponse.json(response);
-    }
+    console.log(
+      `[DBG][srv/experts/[expertId]/survey/route.ts] Found ${surveys.length} surveys for expert`
+    );
 
-    console.log(`[DBG][srv/experts/[expertId]/survey/route.ts] Found survey: ${survey.title}`);
-
-    const response: ApiResponse<Survey> = {
+    const response: ApiResponse<Survey[]> = {
       success: true,
-      data: survey,
+      data: surveys,
     };
 
     return NextResponse.json(response);
   } catch (error) {
     console.error(
-      `[DBG][srv/experts/[expertId]/survey/route.ts] Error fetching survey for expert ${expertId}:`,
+      `[DBG][srv/experts/[expertId]/survey/route.ts] Error fetching surveys for expert ${expertId}:`,
       error
     );
     const response: ApiResponse<never> = {
       success: false,
-      error: 'Failed to fetch survey',
+      error: 'Failed to fetch surveys',
     };
     return NextResponse.json(response, { status: 500 });
   }
 }
 
-export async function PUT(request: Request, { params }: { params: Promise<{ expertId: string }> }) {
+/**
+ * POST /api/srv/experts/[expertId]/survey
+ * Create a new survey (status defaults to 'draft')
+ */
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ expertId: string }> }
+) {
   const { expertId } = await params;
   console.log(
-    `[DBG][srv/experts/[expertId]/survey/route.ts] PUT /api/srv/experts/${expertId}/survey called`
+    `[DBG][srv/experts/[expertId]/survey/route.ts] POST /api/srv/experts/${expertId}/survey called`
   );
 
   try {
@@ -76,61 +80,53 @@ export async function PUT(request: Request, { params }: { params: Promise<{ expe
 
     // Parse request body
     const body = await request.json();
-    const { title, description, contactInfo, questions } = body;
+    const { title, description, contactInfo, questions, status } = body;
 
-    console.log(`[DBG][srv/experts/[expertId]/survey/route.ts] Updating survey with data:`, body);
+    console.log(`[DBG][srv/experts/[expertId]/survey/route.ts] Creating survey with data:`, {
+      title,
+      status: status || 'draft',
+    });
 
-    // Check if survey exists
-    const existingSurvey = await surveyRepository.getActiveSurveyByExpert(expertId);
-
-    let survey: Survey;
-
-    if (existingSurvey) {
-      // Update existing survey
-      const updatedSurvey = await surveyRepository.updateSurvey(expertId, existingSurvey.id, {
-        title,
-        description,
-        contactInfo,
-        questions,
-      });
-
-      if (!updatedSurvey) {
-        throw new Error('Failed to update survey');
-      }
-
-      survey = updatedSurvey;
-      console.log(
-        `[DBG][srv/experts/[expertId]/survey/route.ts] Updated existing survey: ${existingSurvey.id}`
+    // Validate required fields
+    if (!title || !title.trim()) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Survey title is required',
+        },
+        { status: 400 }
       );
-    } else {
-      // Create new survey
-      survey = await surveyRepository.createSurvey({
-        expertId,
-        title,
-        description,
-        contactInfo,
-        questions,
-        isActive: true,
-      });
-
-      console.log(`[DBG][srv/experts/[expertId]/survey/route.ts] Created new survey: ${survey.id}`);
     }
+
+    // Create new survey
+    const survey = await surveyRepository.createSurvey({
+      expertId,
+      title: title.trim(),
+      description: description?.trim(),
+      contactInfo,
+      questions: questions || [],
+      status: status || 'draft',
+    });
+
+    console.log(
+      `[DBG][srv/experts/[expertId]/survey/route.ts] Created new survey: ${survey.id} with status: ${survey.status}`
+    );
 
     const response: ApiResponse<Survey> = {
       success: true,
       data: survey,
-      message: 'Survey updated successfully',
+      message: 'Survey created successfully',
     };
 
-    return NextResponse.json(response);
+    return NextResponse.json(response, { status: 201 });
   } catch (error) {
     console.error(
-      `[DBG][srv/experts/[expertId]/survey/route.ts] Error updating survey for expert ${expertId}:`,
+      `[DBG][srv/experts/[expertId]/survey/route.ts] Error creating survey for expert ${expertId}:`,
       error
     );
     const response: ApiResponse<never> = {
       success: false,
-      error: 'Failed to update survey',
+      error: 'Failed to create survey',
     };
     return NextResponse.json(response, { status: 500 });
   }

@@ -4,10 +4,8 @@
  * ChatInput Component
  *
  * A prominent text input for natural language calendar commands.
- * Examples:
- * - "unavailable for all hours except 9 to 5 weekdays"
- * - "available Monday to Friday 9am to 5pm"
- * - "block off December 25th"
+ * Supports: creating events, updating events, deleting events,
+ * finding availability, querying calendar, setting availability.
  */
 
 import { useState, useRef, useEffect } from "react";
@@ -19,17 +17,23 @@ interface ChatInputProps {
 }
 
 const EXAMPLE_COMMANDS = [
-  "Available 9am to 5pm weekdays",
-  "Block off this Friday afternoon",
-  "Available every Saturday 10am to 2pm",
-  "Unavailable December 24-26",
-  "Clear all availability for next week",
+  // Event creation
+  "Block 2pm tomorrow for lunch with Sarah",
+  "Schedule dentist at 10am next Monday",
+  // Event management
+  "Cancel my 3pm meeting",
+  "Move standup to 10am",
+  // Queries
+  "What's on my calendar tomorrow?",
+  "Find next 30 min free slot",
+  // Availability
+  "Available 9-5 weekdays",
 ];
 
 export function ChatInput({
   onSubmit,
   isProcessing = false,
-  placeholder = "Tell me about your availability...",
+  placeholder = "Try 'Schedule lunch at 2pm tomorrow' or 'What's on today?'",
 }: ChatInputProps) {
   const [message, setMessage] = useState("");
   const [showExamples, setShowExamples] = useState(false);
@@ -111,9 +115,8 @@ export function ChatInput({
                 disabled={!message.trim()}
                 className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
               >
-                <span>Apply</span>
                 <svg
-                  className="w-4 h-4"
+                  className="w-5 h-5"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -122,7 +125,7 @@ export function ChatInput({
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M14 5l7 7m0 0l-7 7m7-7H3"
+                    d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
                   />
                 </svg>
               </button>

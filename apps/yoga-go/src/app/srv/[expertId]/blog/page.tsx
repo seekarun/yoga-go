@@ -1,77 +1,23 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import type { BlogPost, User } from '@/types';
+import type { BlogPost } from '@/types';
 
 export default function ExpertBlogDashboard() {
   const params = useParams();
-  const router = useRouter();
   const expertId = params.expertId as string;
 
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [authChecking, setAuthChecking] = useState(true);
   const [deletingPostId, setDeletingPostId] = useState<string | null>(null);
 
-  // Check authorization first
   useEffect(() => {
-    checkAuthorization();
+    fetchBlogPosts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expertId]);
-
-  useEffect(() => {
-    if (!authChecking) {
-      fetchBlogPosts();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expertId, authChecking]);
-
-  const checkAuthorization = async () => {
-    try {
-      console.log('[DBG][blog-dashboard] Checking authorization for expertId:', expertId);
-
-      const response = await fetch('/api/auth/me');
-      const data = await response.json();
-
-      if (!data.success || !data.data) {
-        console.log('[DBG][blog-dashboard] Not authenticated, redirecting to login');
-        router.push('/');
-        return;
-      }
-
-      const user: User = data.data;
-
-      const isExpert = Array.isArray(user.role)
-        ? user.role.includes('expert')
-        : user.role === 'expert';
-      if (!isExpert) {
-        console.log('[DBG][blog-dashboard] User is not an expert, redirecting to home');
-        router.push('/');
-        return;
-      }
-
-      if (!user.expertProfile) {
-        console.log('[DBG][blog-dashboard] Expert profile not set up yet');
-        router.push('/srv');
-        return;
-      }
-
-      if (user.expertProfile !== expertId) {
-        console.log("[DBG][blog-dashboard] User doesn't own this profile, redirecting");
-        router.push(`/srv/${user.expertProfile}/blog`);
-        return;
-      }
-
-      console.log('[DBG][blog-dashboard] Authorization check passed');
-      setAuthChecking(false);
-    } catch (err) {
-      console.error('[DBG][blog-dashboard] Error checking authorization:', err);
-      router.push('/');
-    }
-  };
 
   const fetchBlogPosts = async () => {
     try {
@@ -124,78 +70,36 @@ export default function ExpertBlogDashboard() {
     }
   };
 
-  if (authChecking) {
-    return (
-      <div style={{ paddingTop: '64px', minHeight: '100vh', background: '#f8f8f8' }}>
-        <div
-          className="container"
-          style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}
-        >
-          <div style={{ textAlign: 'center', padding: '60px' }}>
-            <div style={{ fontSize: '16px', color: '#666' }}>Checking authorization...</div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div style={{ paddingTop: '64px', minHeight: '100vh', background: '#f8f8f8' }}>
+    <>
       {/* Header */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #eee' }}>
-        <div
-          className="container"
-          style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px 20px' }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: '16px',
-            }}
-          >
+      <div className="bg-white shadow">
+        <div className="px-6 lg:px-8 py-6">
+          <div className="flex items-center justify-between">
             <div>
-              <Link
-                href={`/srv/${expertId}`}
-                style={{
-                  color: '#666',
-                  fontSize: '14px',
-                  textDecoration: 'none',
-                  marginBottom: '8px',
-                  display: 'inline-block',
-                }}
-              >
-                ← Back to Dashboard
-              </Link>
-              <h1 style={{ fontSize: '28px', fontWeight: '700', color: '#111' }}>
-                Blog Management
-              </h1>
+              <h1 className="text-2xl font-bold text-gray-900">Blog</h1>
+              <p className="text-sm text-gray-500 mt-1">Manage your blog posts</p>
             </div>
             <Link
               href={`/srv/${expertId}/blog/new`}
-              style={{
-                padding: '12px 24px',
-                background: '#2563eb',
-                color: '#fff',
-                borderRadius: '8px',
-                textDecoration: 'none',
-                fontWeight: '500',
-                display: 'inline-block',
-              }}
+              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors font-medium inline-flex items-center"
             >
-              + New Post
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
+              New Post
             </Link>
           </div>
         </div>
       </div>
 
       {/* Content */}
-      <div
-        className="container"
-        style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}
-      >
+      <div className="px-6 lg:px-8 py-8">
         {loading ? (
           <div style={{ textAlign: 'center', padding: '60px' }}>
             <div style={{ fontSize: '16px', color: '#666' }}>Loading blog posts...</div>
@@ -397,6 +301,6 @@ export default function ExpertBlogDashboard() {
           </div>
         )}
       </div>
-    </div>
+    </>
   );
 }

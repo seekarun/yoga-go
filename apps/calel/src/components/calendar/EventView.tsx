@@ -11,13 +11,23 @@ import { useState, useEffect } from "react";
 import { format, setHours, setMinutes } from "date-fns";
 import { usePreferences } from "@/contexts";
 import type { CalendarEvent } from "./EventModal";
+import type { EventPrefill } from "@/types";
+
+// Form data for preview
+export interface EventFormData {
+  title: string;
+  startTime: string;
+  endTime: string;
+}
 
 interface EventViewProps {
   date: Date;
   initialTime?: string;
   event?: CalendarEvent | null;
+  prefillData?: EventPrefill | null; // Pre-filled data from NL parsing
   onSave?: (event: Omit<CalendarEvent, "id">) => void;
   onDelete?: (eventId: string) => void;
+  onChange?: (data: EventFormData) => void; // Report form changes for preview
 }
 
 function generateTimeOptions(): string[] {
@@ -36,17 +46,46 @@ export function EventView({
   date,
   initialTime = "09:00",
   event,
+  prefillData,
   onSave,
   onDelete,
+  onChange,
 }: EventViewProps) {
   const { preferences } = usePreferences();
   const timeOptions = generateTimeOptions();
 
-  const [title, setTitle] = useState(event?.title || "");
-  const [description, setDescription] = useState(event?.description || "");
-  const [startTime, setStartTime] = useState(event?.startTime || initialTime);
-  const [endTime, setEndTime] = useState(event?.endTime || "");
+  // Priority: prefillData > event > defaults
+  const [title, setTitle] = useState(prefillData?.title || event?.title || "");
+  const [description, setDescription] = useState(
+    prefillData?.description || event?.description || "",
+  );
+  const [startTime, setStartTime] = useState(
+    prefillData?.startTime || event?.startTime || initialTime,
+  );
+  const [endTime, setEndTime] = useState(
+    prefillData?.endTime || event?.endTime || "",
+  );
   const [selectedTag, setSelectedTag] = useState(event?.tagId || "");
+
+  // Track if user has explicitly entered values (vs just defaults)
+  // Preview only shows when there's explicit input or prefillData
+  const [hasExplicitInput, setHasExplicitInput] = useState(
+    !!(prefillData?.startTime || prefillData?.endTime),
+  );
+
+  // Update form when prefillData changes (e.g., new NL command)
+  useEffect(() => {
+    if (prefillData) {
+      if (prefillData.title) setTitle(prefillData.title);
+      if (prefillData.description) setDescription(prefillData.description);
+      if (prefillData.startTime) setStartTime(prefillData.startTime);
+      if (prefillData.endTime) setEndTime(prefillData.endTime);
+      // Mark as explicit input when prefillData is provided
+      if (prefillData.startTime || prefillData.endTime) {
+        setHasExplicitInput(true);
+      }
+    }
+  }, [prefillData]);
 
   // Calculate default end time (1 hour after start)
   useEffect(() => {
@@ -58,6 +97,13 @@ export function EventView({
       );
     }
   }, [startTime, event, endTime]);
+
+  // Report form changes for preview (only when user has explicitly entered values)
+  useEffect(() => {
+    if (onChange && startTime && endTime && hasExplicitInput) {
+      onChange({ title, startTime, endTime });
+    }
+  }, [title, startTime, endTime, onChange, hasExplicitInput]);
 
   const formatTimeLabel = (time: string) => {
     const [hour, minute] = time.split(":").map(Number);
@@ -104,7 +150,10 @@ export function EventView({
           <input
             type="text"
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              setHasExplicitInput(true);
+            }}
             placeholder="What's happening?"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
           />
@@ -118,7 +167,10 @@ export function EventView({
             </label>
             <select
               value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
+              onChange={(e) => {
+                setStartTime(e.target.value);
+                setHasExplicitInput(true);
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
             >
               {timeOptions.map((time) => (
@@ -134,7 +186,10 @@ export function EventView({
             </label>
             <select
               value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
+              onChange={(e) => {
+                setEndTime(e.target.value);
+                setHasExplicitInput(true);
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
             >
               {timeOptions

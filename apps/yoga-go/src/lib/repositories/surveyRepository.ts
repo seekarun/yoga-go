@@ -4,6 +4,8 @@
  *
  * PK: SURVEY
  * SK: {expertId}#{surveyId}
+ *
+ * Status: draft | active | closed | archived
  */
 
 import { docClient, Tables, EntityType } from '../dynamodb';
@@ -14,7 +16,7 @@ import {
   UpdateCommand,
   DeleteCommand,
 } from '@aws-sdk/lib-dynamodb';
-import type { Survey } from '@/types';
+import type { Survey, SurveyStatus } from '@/types';
 
 // Helper to generate survey SK
 const generateSK = (expertId: string, surveyId: string) => `${expertId}#${surveyId}`;
@@ -22,21 +24,26 @@ const generateSK = (expertId: string, surveyId: string) => `${expertId}#${survey
 // Helper to generate a unique survey ID
 const generateSurveyId = () => `survey_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
+// Helper to generate GSI2SK based on status
+const generateGSI2SK = (status: SurveyStatus, timestamp: string) =>
+  `${status.toUpperCase()}#${timestamp}`;
+
 /**
- * Create a new survey
+ * Create a new survey (status defaults to 'draft')
  */
 export async function createSurvey(
-  input: Omit<Survey, 'id' | 'createdAt' | 'updatedAt'>
+  input: Omit<Survey, 'id' | 'createdAt' | 'updatedAt' | 'status'> & { status?: SurveyStatus }
 ): Promise<Survey> {
   console.log('[DBG][surveyRepository] Creating survey for expert:', input.expertId);
 
   const now = new Date().toISOString();
   const surveyId = generateSurveyId();
+  const status = input.status || 'draft';
 
   const survey: Survey = {
     ...input,
     id: surveyId,
-    isActive: input.isActive ?? true,
+    status,
     createdAt: now,
     updatedAt: now,
   };
@@ -48,9 +55,9 @@ export async function createSurvey(
     // GSI for querying by surveyId alone
     GSI1PK: `SURVEYID#${surveyId}`,
     GSI1SK: EntityType.SURVEY,
-    // GSI for querying active surveys by expert
+    // GSI for querying surveys by expert and status
     GSI2PK: `EXPERT#${input.expertId}`,
-    GSI2SK: input.isActive ? `ACTIVE#${now}` : `INACTIVE#${now}`,
+    GSI2SK: generateGSI2SK(status, now),
     ...survey,
   };
 
@@ -61,7 +68,7 @@ export async function createSurvey(
     })
   );
 
-  console.log('[DBG][surveyRepository] Survey created:', surveyId);
+  console.log('[DBG][surveyRepository] Survey created:', surveyId, 'status:', status);
   return survey;
 }
 
@@ -116,9 +123,12 @@ export async function getSurveyByIdOnly(surveyId: string): Promise<Survey | null
 }
 
 /**
- * Get all surveys for an expert
+ * Get all surveys for an expert (excludes archived by default)
  */
-export async function getSurveysByExpert(expertId: string): Promise<Survey[]> {
+export async function getSurveysByExpert(
+  expertId: string,
+  includeArchived: boolean = false
+): Promise<Survey[]> {
   console.log('[DBG][surveyRepository] Getting surveys for expert:', expertId);
 
   const result = await docClient.send(
@@ -133,16 +143,25 @@ export async function getSurveysByExpert(expertId: string): Promise<Survey[]> {
     })
   );
 
-  const surveys = (result.Items || []).map(mapToSurvey);
+  let surveys = (result.Items || []).map(mapToSurvey);
+
+  // Filter out archived unless requested
+  if (!includeArchived) {
+    surveys = surveys.filter(s => s.status !== 'archived');
+  }
+
   console.log('[DBG][surveyRepository] Found', surveys.length, 'surveys');
   return surveys;
 }
 
 /**
- * Get active survey for an expert
+ * Get surveys by status for an expert
  */
-export async function getActiveSurveyByExpert(expertId: string): Promise<Survey | null> {
-  console.log('[DBG][surveyRepository] Getting active survey for expert:', expertId);
+export async function getSurveysByExpertByStatus(
+  expertId: string,
+  status: SurveyStatus
+): Promise<Survey[]> {
+  console.log('[DBG][surveyRepository] Getting', status, 'surveys for expert:', expertId);
 
   const result = await docClient.send(
     new QueryCommand({
@@ -151,19 +170,31 @@ export async function getActiveSurveyByExpert(expertId: string): Promise<Survey 
       KeyConditionExpression: 'GSI2PK = :gsi2pk AND begins_with(GSI2SK, :gsi2skPrefix)',
       ExpressionAttributeValues: {
         ':gsi2pk': `EXPERT#${expertId}`,
-        ':gsi2skPrefix': 'ACTIVE#',
+        ':gsi2skPrefix': `${status.toUpperCase()}#`,
       },
-      Limit: 1,
-      ScanIndexForward: false, // Most recent active survey
+      ScanIndexForward: false, // Most recent first
     })
   );
 
-  if (!result.Items || result.Items.length === 0) {
-    console.log('[DBG][surveyRepository] No active survey found for expert:', expertId);
-    return null;
-  }
+  const surveys = (result.Items || []).map(mapToSurvey);
+  console.log('[DBG][surveyRepository] Found', surveys.length, status, 'surveys');
+  return surveys;
+}
 
-  return mapToSurvey(result.Items[0]);
+/**
+ * Get all active surveys for an expert (can have multiple)
+ */
+export async function getActiveSurveysByExpert(expertId: string): Promise<Survey[]> {
+  return getSurveysByExpertByStatus(expertId, 'active');
+}
+
+/**
+ * Get single active survey for an expert (for backward compatibility)
+ * @deprecated Use getActiveSurveysByExpert instead
+ */
+export async function getActiveSurveyByExpert(expertId: string): Promise<Survey | null> {
+  const surveys = await getActiveSurveysByExpert(expertId);
+  return surveys.length > 0 ? surveys[0] : null;
 }
 
 /**
@@ -172,7 +203,9 @@ export async function getActiveSurveyByExpert(expertId: string): Promise<Survey 
 export async function updateSurvey(
   expertId: string,
   surveyId: string,
-  updates: Partial<Pick<Survey, 'title' | 'description' | 'contactInfo' | 'questions' | 'isActive'>>
+  updates: Partial<
+    Pick<Survey, 'title' | 'description' | 'contactInfo' | 'questions' | 'status' | 'responseCount'>
+  >
 ): Promise<Survey | null> {
   console.log('[DBG][surveyRepository] Updating survey:', surveyId);
 
@@ -201,13 +234,31 @@ export async function updateSurvey(
     expressionAttributeNames['#questions'] = 'questions';
     expressionAttributeValues[':questions'] = updates.questions;
   }
-  if (updates.isActive !== undefined) {
-    updateExpressions.push('#isActive = :isActive');
+  if (updates.responseCount !== undefined) {
+    updateExpressions.push('#responseCount = :responseCount');
+    expressionAttributeNames['#responseCount'] = 'responseCount';
+    expressionAttributeValues[':responseCount'] = updates.responseCount;
+  }
+  if (updates.status !== undefined) {
+    updateExpressions.push('#status = :status');
     updateExpressions.push('#GSI2SK = :gsi2sk');
-    expressionAttributeNames['#isActive'] = 'isActive';
+    expressionAttributeNames['#status'] = 'status';
     expressionAttributeNames['#GSI2SK'] = 'GSI2SK';
-    expressionAttributeValues[':isActive'] = updates.isActive;
-    expressionAttributeValues[':gsi2sk'] = updates.isActive ? `ACTIVE#${now}` : `INACTIVE#${now}`;
+    expressionAttributeValues[':status'] = updates.status;
+    expressionAttributeValues[':gsi2sk'] = generateGSI2SK(updates.status, now);
+
+    // Set closedAt if closing
+    if (updates.status === 'closed') {
+      updateExpressions.push('#closedAt = :closedAt');
+      expressionAttributeNames['#closedAt'] = 'closedAt';
+      expressionAttributeValues[':closedAt'] = now;
+    }
+    // Set archivedAt if archiving
+    if (updates.status === 'archived') {
+      updateExpressions.push('#archivedAt = :archivedAt');
+      expressionAttributeNames['#archivedAt'] = 'archivedAt';
+      expressionAttributeValues[':archivedAt'] = now;
+    }
   }
 
   const result = await docClient.send(
@@ -234,7 +285,79 @@ export async function updateSurvey(
 }
 
 /**
- * Delete a survey
+ * Publish a survey (draft -> active)
+ */
+export async function publishSurvey(expertId: string, surveyId: string): Promise<Survey | null> {
+  console.log('[DBG][surveyRepository] Publishing survey:', surveyId);
+  return updateSurvey(expertId, surveyId, { status: 'active' });
+}
+
+/**
+ * Close a survey (active -> closed)
+ */
+export async function closeSurvey(expertId: string, surveyId: string): Promise<Survey | null> {
+  console.log('[DBG][surveyRepository] Closing survey:', surveyId);
+  return updateSurvey(expertId, surveyId, { status: 'closed' });
+}
+
+/**
+ * Reopen a survey (closed -> active)
+ */
+export async function reopenSurvey(expertId: string, surveyId: string): Promise<Survey | null> {
+  console.log('[DBG][surveyRepository] Reopening survey:', surveyId);
+  return updateSurvey(expertId, surveyId, { status: 'active' });
+}
+
+/**
+ * Archive a survey (soft delete)
+ */
+export async function archiveSurvey(expertId: string, surveyId: string): Promise<Survey | null> {
+  console.log('[DBG][surveyRepository] Archiving survey:', surveyId);
+  return updateSurvey(expertId, surveyId, { status: 'archived' });
+}
+
+/**
+ * Increment response count for a survey
+ */
+export async function incrementResponseCount(
+  expertId: string,
+  surveyId: string
+): Promise<Survey | null> {
+  console.log('[DBG][surveyRepository] Incrementing response count for survey:', surveyId);
+
+  const now = new Date().toISOString();
+
+  const result = await docClient.send(
+    new UpdateCommand({
+      TableName: Tables.CORE,
+      Key: {
+        PK: EntityType.SURVEY,
+        SK: generateSK(expertId, surveyId),
+      },
+      UpdateExpression:
+        'SET #responseCount = if_not_exists(#responseCount, :zero) + :inc, #updatedAt = :updatedAt',
+      ExpressionAttributeNames: {
+        '#responseCount': 'responseCount',
+        '#updatedAt': 'updatedAt',
+      },
+      ExpressionAttributeValues: {
+        ':inc': 1,
+        ':zero': 0,
+        ':updatedAt': now,
+      },
+      ReturnValues: 'ALL_NEW',
+    })
+  );
+
+  if (!result.Attributes) {
+    return null;
+  }
+
+  return mapToSurvey(result.Attributes);
+}
+
+/**
+ * Delete a survey (hard delete - use archiveSurvey for soft delete)
  */
 export async function deleteSurvey(expertId: string, surveyId: string): Promise<boolean> {
   console.log('[DBG][surveyRepository] Deleting survey:', surveyId);
@@ -257,6 +380,12 @@ export async function deleteSurvey(expertId: string, surveyId: string): Promise<
  * Map DynamoDB item to Survey type
  */
 function mapToSurvey(item: Record<string, unknown>): Survey {
+  // Handle backward compatibility: convert isActive to status
+  let status: SurveyStatus = (item.status as SurveyStatus) || 'active';
+  if (!item.status && item.isActive !== undefined) {
+    status = item.isActive ? 'active' : 'closed';
+  }
+
   return {
     id: item.id as string,
     expertId: item.expertId as string,
@@ -264,7 +393,10 @@ function mapToSurvey(item: Record<string, unknown>): Survey {
     description: item.description as string | undefined,
     contactInfo: item.contactInfo as Survey['contactInfo'] | undefined,
     questions: (item.questions || []) as Survey['questions'],
-    isActive: (item.isActive as boolean) ?? true,
+    status,
+    closedAt: item.closedAt as string | undefined,
+    archivedAt: item.archivedAt as string | undefined,
+    responseCount: (item.responseCount as number) || 0,
     createdAt: item.createdAt as string,
     updatedAt: item.updatedAt as string,
   };

@@ -59,8 +59,8 @@ export default function SectionWrapper({
           fontWeight: '500',
           borderRadius: '4px',
           pointerEvents: 'none',
-          opacity: 0,
-          transform: 'translateY(-4px)',
+          opacity: isSelected ? 1 : 0,
+          transform: isSelected ? 'translateY(0)' : 'translateY(-4px)',
           transition: 'all 0.2s ease',
         }}
         className="section-label"

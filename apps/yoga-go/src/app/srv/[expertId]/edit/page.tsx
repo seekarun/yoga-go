@@ -332,7 +332,7 @@ export default function EditExpertPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
           <p className="mt-4 text-gray-600">Loading expert data...</p>
@@ -342,463 +342,453 @@ export default function EditExpertPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-16">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header */}
-        <div className="mb-8">
-          <Link
-            href="/srv"
-            className="text-blue-600 hover:text-blue-800 font-medium inline-flex items-center mb-4"
-          >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-            ← Back
-          </Link>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Edit Expert Profile</h1>
-          <p className="text-gray-600">Update your expert profile information</p>
+    <>
+      {/* Header */}
+      <div className="bg-white shadow">
+        <div className="px-6 lg:px-8 py-6">
+          <h1 className="text-2xl font-bold text-gray-900">Edit Profile</h1>
+          <p className="text-sm text-gray-500 mt-1">Update your expert profile information</p>
         </div>
-
-        {/* Error Messages */}
-        {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
-            <p className="font-medium">Error</p>
-            <p className="text-sm">{error}</p>
-          </div>
-        )}
-        {uploadError && (
-          <div className="mb-6 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
-            <p className="font-medium">Upload Error</p>
-            <p className="text-sm">{uploadError}</p>
-          </div>
-        )}
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-8 space-y-6">
-          {/* Basic Information */}
-          <div className="border-b border-gray-200 pb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Basic Information</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                  Full Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  required
-                  value={formData.name}
-                  onChange={handleChange}
-                  placeholder="e.g., Deepak Sharma"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
-                  Professional Title <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="title"
-                  name="title"
-                  required
-                  value={formData.title}
-                  onChange={handleChange}
-                  placeholder="e.g., Yoga Master & Wellness Coach"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label htmlFor="bio" className="block text-sm font-medium text-gray-700 mb-2">
-                  Biography <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  id="bio"
-                  name="bio"
-                  required
-                  rows={4}
-                  value={formData.bio}
-                  onChange={handleChange}
-                  placeholder="Write a compelling biography..."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <ImageUploadCrop
-                  width={500}
-                  height={500}
-                  category="avatar"
-                  label="Profile Picture (500x500px) *"
-                  onUploadComplete={handleAvatarUpload}
-                  onError={handleUploadError}
-                  relatedTo={{
-                    type: 'expert',
-                    id: expertId,
-                  }}
-                  currentImageUrl={formData.avatar}
-                />
-                {avatarAsset && (
-                  <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <p className="text-sm text-green-800">✓ Avatar updated successfully</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Professional Details */}
-          <div className="border-b border-gray-200 pb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Professional Details</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <label htmlFor="rating" className="block text-sm font-medium text-gray-700 mb-2">
-                  Rating (0-5)
-                </label>
-                <input
-                  type="number"
-                  id="rating"
-                  name="rating"
-                  min="0"
-                  max="5"
-                  step="0.1"
-                  value={formData.rating}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="totalCourses"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Total Courses
-                </label>
-                <input
-                  type="number"
-                  id="totalCourses"
-                  name="totalCourses"
-                  min="0"
-                  value={formData.totalCourses}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="totalStudents"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Total Students
-                </label>
-                <input
-                  type="number"
-                  id="totalStudents"
-                  name="totalStudents"
-                  min="0"
-                  value={formData.totalStudents}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div className="md:col-span-3">
-                <label
-                  htmlFor="specializations"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Specializations
-                </label>
-                <input
-                  type="text"
-                  id="specializations"
-                  name="specializations"
-                  value={formData.specializations}
-                  onChange={handleChange}
-                  placeholder="Vinyasa Flow, Power Yoga, Meditation (comma-separated)"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <p className="mt-1 text-xs text-gray-500">Separate multiple items with commas</p>
-              </div>
-
-              <div className="md:col-span-3">
-                <label
-                  htmlFor="certifications"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Certifications
-                </label>
-                <input
-                  type="text"
-                  id="certifications"
-                  name="certifications"
-                  value={formData.certifications}
-                  onChange={handleChange}
-                  placeholder="RYT-500, E-RYT 200 (comma-separated)"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <p className="mt-1 text-xs text-gray-500">Separate multiple items with commas</p>
-              </div>
-
-              <div className="md:col-span-3">
-                <label
-                  htmlFor="experience"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Years of Experience
-                </label>
-                <input
-                  type="text"
-                  id="experience"
-                  name="experience"
-                  value={formData.experience}
-                  onChange={handleChange}
-                  placeholder="e.g., 15+ years"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div className="md:col-span-3">
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    name="featured"
-                    checked={formData.featured}
-                    onChange={handleChange}
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                  />
-                  <span className="ml-2 text-sm font-medium text-gray-700">Featured Expert</span>
-                </label>
-              </div>
-            </div>
-          </div>
-
-          {/* Promo Video */}
-          <div className="border-b border-gray-200 pb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Promo Video</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              Upload a short promotional video to introduce yourself to potential students. This
-              will be displayed prominently on your expert profile page.
-            </p>
-
-            {formData.promoVideoCloudflareId ? (
-              <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-green-600">✓</span>
-                  <span className="text-sm font-medium text-green-800">Promo video uploaded</span>
-                </div>
-                <p className="text-sm text-gray-600 mb-1">
-                  Video ID: {formData.promoVideoCloudflareId}
-                </p>
-                {formData.promoVideoStatus && (
-                  <p className="text-sm text-gray-600 mb-2">
-                    Status: <span className="capitalize">{formData.promoVideoStatus}</span>
-                  </p>
-                )}
-                {formData.promoVideoStatus === 'ready' && (
-                  <div className="mt-3 rounded-lg overflow-hidden">
-                    <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0 }}>
-                      <iframe
-                        src={`https://customer-${process.env.NEXT_PUBLIC_CF_SUBDOMAIN || 'placeholder'}.cloudflarestream.com/${formData.promoVideoCloudflareId}/iframe?preload=auto&poster=https%3A%2F%2Fcustomer-${process.env.NEXT_PUBLIC_CF_SUBDOMAIN || 'placeholder'}.cloudflarestream.com%2F${formData.promoVideoCloudflareId}%2Fthumbnails%2Fthumbnail.jpg%3Ftime%3D1s%26height%3D600`}
-                        style={{
-                          border: 'none',
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          height: '100%',
-                          width: '100%',
-                        }}
-                        allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
-                        allowFullScreen={true}
-                      />
-                    </div>
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFormData(prev => ({
-                      ...prev,
-                      promoVideoCloudflareId: '',
-                      promoVideoStatus: '',
-                    }));
-                    setSelectedPromoFile(null);
-                    setUploadProgress(0);
-                  }}
-                  className="mt-3 text-sm text-blue-600 hover:text-blue-700 font-medium"
-                >
-                  Upload different video
-                </button>
-              </div>
-            ) : (
-              <>
-                <input
-                  type="file"
-                  id="promoVideoFile"
-                  accept="video/*"
-                  onChange={handlePromoFileSelect}
-                  disabled={isUploading}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                />
-                {selectedPromoFile && (
-                  <div className="mt-3">
-                    <p className="text-sm text-gray-600">
-                      Selected: {selectedPromoFile.name} (
-                      {(selectedPromoFile.size / 1024 / 1024).toFixed(2)} MB)
-                    </p>
-                    <button
-                      type="button"
-                      onClick={handlePromoVideoUpload}
-                      disabled={isUploading}
-                      className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed text-sm font-medium"
-                    >
-                      {isUploading ? 'Uploading...' : 'Upload Promo Video'}
-                    </button>
-                  </div>
-                )}
-                {isUploading && (
-                  <div className="mt-3">
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${uploadProgress}%` }}
-                      />
-                    </div>
-                    <p className="text-sm text-gray-600 mt-1">{uploadProgress}% uploaded</p>
-                  </div>
-                )}
-              </>
-            )}
-            <p className="text-xs text-gray-500 mt-3">
-              Recommended: Keep your video under 2 minutes. Introduce yourself, share your
-              expertise, and explain what makes your teaching unique. Max duration: 5 minutes.
-            </p>
-          </div>
-
-          {/* Social Links */}
-          <div className="pb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Social Links</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label
-                  htmlFor="socialLinks.instagram"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Instagram
-                </label>
-                <input
-                  type="url"
-                  id="socialLinks.instagram"
-                  name="socialLinks.instagram"
-                  value={formData.socialLinks.instagram}
-                  onChange={handleChange}
-                  placeholder="https://instagram.com/username"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="socialLinks.youtube"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  YouTube
-                </label>
-                <input
-                  type="url"
-                  id="socialLinks.youtube"
-                  name="socialLinks.youtube"
-                  value={formData.socialLinks.youtube}
-                  onChange={handleChange}
-                  placeholder="https://youtube.com/@username"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="socialLinks.facebook"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Facebook
-                </label>
-                <input
-                  type="url"
-                  id="socialLinks.facebook"
-                  name="socialLinks.facebook"
-                  value={formData.socialLinks.facebook}
-                  onChange={handleChange}
-                  placeholder="https://facebook.com/username"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="socialLinks.twitter"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Twitter
-                </label>
-                <input
-                  type="url"
-                  id="socialLinks.twitter"
-                  name="socialLinks.twitter"
-                  value={formData.socialLinks.twitter}
-                  onChange={handleChange}
-                  placeholder="https://twitter.com/username"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label
-                  htmlFor="socialLinks.website"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Website
-                </label>
-                <input
-                  type="url"
-                  id="socialLinks.website"
-                  name="socialLinks.website"
-                  value={formData.socialLinks.website}
-                  onChange={handleChange}
-                  placeholder="https://example.com"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Submit Button */}
-          <div className="flex items-center justify-end gap-4 pt-6 border-t border-gray-200">
-            <Link
-              href={`/srv/${expertId}`}
-              className="px-6 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium transition-colors"
-            >
-              Cancel
-            </Link>
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium transition-colors"
-            >
-              {saving ? 'Saving...' : 'Save Changes'}
-            </button>
-          </div>
-        </form>
       </div>
-    </div>
+
+      <div className="px-6 lg:px-8 py-8">
+        <div className="max-w-4xl">
+          {/* Error Messages */}
+          {error && (
+            <div className="mb-6 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+              <p className="font-medium">Error</p>
+              <p className="text-sm">{error}</p>
+            </div>
+          )}
+          {uploadError && (
+            <div className="mb-6 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+              <p className="font-medium">Upload Error</p>
+              <p className="text-sm">{uploadError}</p>
+            </div>
+          )}
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-8 space-y-6">
+            {/* Basic Information */}
+            <div className="border-b border-gray-200 pb-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Basic Information</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+                    Full Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="name"
+                    name="name"
+                    required
+                    value={formData.name}
+                    onChange={handleChange}
+                    placeholder="e.g., Deepak Sharma"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
+                    Professional Title <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="title"
+                    name="title"
+                    required
+                    value={formData.title}
+                    onChange={handleChange}
+                    placeholder="e.g., Yoga Master & Wellness Coach"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label htmlFor="bio" className="block text-sm font-medium text-gray-700 mb-2">
+                    Biography <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    id="bio"
+                    name="bio"
+                    required
+                    rows={4}
+                    value={formData.bio}
+                    onChange={handleChange}
+                    placeholder="Write a compelling biography..."
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <ImageUploadCrop
+                    width={500}
+                    height={500}
+                    category="avatar"
+                    label="Profile Picture (500x500px) *"
+                    onUploadComplete={handleAvatarUpload}
+                    onError={handleUploadError}
+                    relatedTo={{
+                      type: 'expert',
+                      id: expertId,
+                    }}
+                    currentImageUrl={formData.avatar}
+                  />
+                  {avatarAsset && (
+                    <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-sm text-green-800">✓ Avatar updated successfully</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Professional Details */}
+            <div className="border-b border-gray-200 pb-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Professional Details</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <label htmlFor="rating" className="block text-sm font-medium text-gray-700 mb-2">
+                    Rating (0-5)
+                  </label>
+                  <input
+                    type="number"
+                    id="rating"
+                    name="rating"
+                    min="0"
+                    max="5"
+                    step="0.1"
+                    value={formData.rating}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="totalCourses"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Total Courses
+                  </label>
+                  <input
+                    type="number"
+                    id="totalCourses"
+                    name="totalCourses"
+                    min="0"
+                    value={formData.totalCourses}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="totalStudents"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Total Students
+                  </label>
+                  <input
+                    type="number"
+                    id="totalStudents"
+                    name="totalStudents"
+                    min="0"
+                    value={formData.totalStudents}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div className="md:col-span-3">
+                  <label
+                    htmlFor="specializations"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Specializations
+                  </label>
+                  <input
+                    type="text"
+                    id="specializations"
+                    name="specializations"
+                    value={formData.specializations}
+                    onChange={handleChange}
+                    placeholder="Vinyasa Flow, Power Yoga, Meditation (comma-separated)"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Separate multiple items with commas</p>
+                </div>
+
+                <div className="md:col-span-3">
+                  <label
+                    htmlFor="certifications"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Certifications
+                  </label>
+                  <input
+                    type="text"
+                    id="certifications"
+                    name="certifications"
+                    value={formData.certifications}
+                    onChange={handleChange}
+                    placeholder="RYT-500, E-RYT 200 (comma-separated)"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Separate multiple items with commas</p>
+                </div>
+
+                <div className="md:col-span-3">
+                  <label
+                    htmlFor="experience"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Years of Experience
+                  </label>
+                  <input
+                    type="text"
+                    id="experience"
+                    name="experience"
+                    value={formData.experience}
+                    onChange={handleChange}
+                    placeholder="e.g., 15+ years"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div className="md:col-span-3">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      name="featured"
+                      checked={formData.featured}
+                      onChange={handleChange}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="ml-2 text-sm font-medium text-gray-700">Featured Expert</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Promo Video */}
+            <div className="border-b border-gray-200 pb-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Promo Video</h2>
+              <p className="text-sm text-gray-600 mb-4">
+                Upload a short promotional video to introduce yourself to potential students. This
+                will be displayed prominently on your expert profile page.
+              </p>
+
+              {formData.promoVideoCloudflareId ? (
+                <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-green-600">✓</span>
+                    <span className="text-sm font-medium text-green-800">Promo video uploaded</span>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-1">
+                    Video ID: {formData.promoVideoCloudflareId}
+                  </p>
+                  {formData.promoVideoStatus && (
+                    <p className="text-sm text-gray-600 mb-2">
+                      Status: <span className="capitalize">{formData.promoVideoStatus}</span>
+                    </p>
+                  )}
+                  {formData.promoVideoStatus === 'ready' && (
+                    <div className="mt-3 rounded-lg overflow-hidden">
+                      <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0 }}>
+                        <iframe
+                          src={`https://customer-${process.env.NEXT_PUBLIC_CF_SUBDOMAIN || 'placeholder'}.cloudflarestream.com/${formData.promoVideoCloudflareId}/iframe?preload=auto&poster=https%3A%2F%2Fcustomer-${process.env.NEXT_PUBLIC_CF_SUBDOMAIN || 'placeholder'}.cloudflarestream.com%2F${formData.promoVideoCloudflareId}%2Fthumbnails%2Fthumbnail.jpg%3Ftime%3D1s%26height%3D600`}
+                          style={{
+                            border: 'none',
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            height: '100%',
+                            width: '100%',
+                          }}
+                          allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+                          allowFullScreen={true}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        promoVideoCloudflareId: '',
+                        promoVideoStatus: '',
+                      }));
+                      setSelectedPromoFile(null);
+                      setUploadProgress(0);
+                    }}
+                    className="mt-3 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    Upload different video
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <input
+                    type="file"
+                    id="promoVideoFile"
+                    accept="video/*"
+                    onChange={handlePromoFileSelect}
+                    disabled={isUploading}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                  />
+                  {selectedPromoFile && (
+                    <div className="mt-3">
+                      <p className="text-sm text-gray-600">
+                        Selected: {selectedPromoFile.name} (
+                        {(selectedPromoFile.size / 1024 / 1024).toFixed(2)} MB)
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handlePromoVideoUpload}
+                        disabled={isUploading}
+                        className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed text-sm font-medium"
+                      >
+                        {isUploading ? 'Uploading...' : 'Upload Promo Video'}
+                      </button>
+                    </div>
+                  )}
+                  {isUploading && (
+                    <div className="mt-3">
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${uploadProgress}%` }}
+                        />
+                      </div>
+                      <p className="text-sm text-gray-600 mt-1">{uploadProgress}% uploaded</p>
+                    </div>
+                  )}
+                </>
+              )}
+              <p className="text-xs text-gray-500 mt-3">
+                Recommended: Keep your video under 2 minutes. Introduce yourself, share your
+                expertise, and explain what makes your teaching unique. Max duration: 5 minutes.
+              </p>
+            </div>
+
+            {/* Social Links */}
+            <div className="pb-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Social Links</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label
+                    htmlFor="socialLinks.instagram"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Instagram
+                  </label>
+                  <input
+                    type="url"
+                    id="socialLinks.instagram"
+                    name="socialLinks.instagram"
+                    value={formData.socialLinks.instagram}
+                    onChange={handleChange}
+                    placeholder="https://instagram.com/username"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="socialLinks.youtube"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    YouTube
+                  </label>
+                  <input
+                    type="url"
+                    id="socialLinks.youtube"
+                    name="socialLinks.youtube"
+                    value={formData.socialLinks.youtube}
+                    onChange={handleChange}
+                    placeholder="https://youtube.com/@username"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="socialLinks.facebook"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Facebook
+                  </label>
+                  <input
+                    type="url"
+                    id="socialLinks.facebook"
+                    name="socialLinks.facebook"
+                    value={formData.socialLinks.facebook}
+                    onChange={handleChange}
+                    placeholder="https://facebook.com/username"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="socialLinks.twitter"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Twitter
+                  </label>
+                  <input
+                    type="url"
+                    id="socialLinks.twitter"
+                    name="socialLinks.twitter"
+                    value={formData.socialLinks.twitter}
+                    onChange={handleChange}
+                    placeholder="https://twitter.com/username"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label
+                    htmlFor="socialLinks.website"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Website
+                  </label>
+                  <input
+                    type="url"
+                    id="socialLinks.website"
+                    name="socialLinks.website"
+                    value={formData.socialLinks.website}
+                    onChange={handleChange}
+                    placeholder="https://example.com"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <div className="flex items-center justify-end gap-4 pt-6 border-t border-gray-200">
+              <Link
+                href={`/srv/${expertId}`}
+                className="px-6 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium transition-colors"
+              >
+                Cancel
+              </Link>
+              <button
+                type="submit"
+                disabled={saving}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium transition-colors"
+              >
+                {saving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </>
   );
 }

@@ -704,6 +704,9 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]> {
 // Survey Related Types
 export type QuestionType = 'multiple-choice' | 'text';
 
+// Survey status: draft (not visible), active (accepting responses), closed (preserved, can reopen), archived (soft delete)
+export type SurveyStatus = 'draft' | 'active' | 'closed' | 'archived';
+
 export interface QuestionOption {
   id: string;
   label: string;
@@ -733,7 +736,12 @@ export interface Survey extends BaseEntity {
   description?: string;
   contactInfo?: SurveyContactInfo;
   questions: SurveyQuestion[];
-  isActive: boolean;
+  status: SurveyStatus;
+  closedAt?: string;
+  archivedAt?: string;
+  responseCount?: number;
+  // Deprecated: isActive - use status instead
+  isActive?: boolean;
 }
 
 export interface SurveyAnswer {

@@ -1,0 +1,261 @@
+{
+  "info": {
+    "_postman_id": "calel-api-collection",
+    "name": "Calel Calendar API",
+    "description": "API collection for Calel scheduling application",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3113",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "health"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Sign Up",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"Password123!\",\n  \"name\": \"Test User\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "signup"]
+            }
+          }
+        },
+        {
+          "name": "Sign In",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signin",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "signin"]
+            }
+          }
+        },
+        {
+          "name": "Confirm Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"code\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/confirm",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "confirm"]
+            }
+          }
+        },
+        {
+          "name": "Get Session",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/session",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "session"]
+            }
+          }
+        },
+        {
+          "name": "Sign Out",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "signout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "NL Commands",
+      "item": [
+        {
+          "name": "Parse Command (All Actions)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"command\": \"block my calendar for 2pm tomorrow, lunch with mom\",\n  \"currentDate\": \"2024-12-13\",\n  \"currentTime\": \"10:00\",\n  \"existingEvents\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/parse-command",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "parse-command"]
+            },
+            "description": "Parse natural language calendar commands. Supports:\n- create_event: \"block 2pm tomorrow for lunch\"\n- update_event: \"move dentist to next Tuesday\"\n- delete_event: \"cancel my 3pm meeting\"\n- find_availability: \"find next 30 min slot\"\n- query_event: \"what's on my calendar tomorrow?\"\n- set_availability: \"available 9-5 weekdays\""
+          }
+        },
+        {
+          "name": "Parse Availability (Legacy)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"command\": \"Available 9am to 5pm weekdays\",\n  \"currentDate\": \"2024-12-13\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/parse-availability",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "parse-availability"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Events",
+      "item": [
+        {
+          "name": "Get All Events",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/data/app/events",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "events"]
+            },
+            "description": "Get all calendar events for the authenticated user"
+          }
+        },
+        {
+          "name": "Create Event",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Lunch with Mom\",\n  \"description\": \"Meeting at the cafe\",\n  \"date\": \"2024-12-14\",\n  \"startTime\": \"14:00\",\n  \"endTime\": \"15:00\",\n  \"tagId\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/data/app/events",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "events"]
+            },
+            "description": "Create a new calendar event"
+          }
+        },
+        {
+          "name": "Update Event",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Event Title\",\n  \"description\": \"Updated description\",\n  \"date\": \"2024-12-15\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"11:00\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/data/app/events/:eventId",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "events", ":eventId"],
+              "variable": [
+                {
+                  "key": "eventId",
+                  "value": "evt_123456"
+                }
+              ]
+            },
+            "description": "Update an existing calendar event"
+          }
+        },
+        {
+          "name": "Delete Event",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/data/app/events/:eventId",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "events", ":eventId"],
+              "variable": [
+                {
+                  "key": "eventId",
+                  "value": "evt_123456"
+                }
+              ]
+            },
+            "description": "Delete a calendar event"
+          }
+        }
+      ]
+    }
+  ]
+}

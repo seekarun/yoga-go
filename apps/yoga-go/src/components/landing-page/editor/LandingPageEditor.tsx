@@ -199,7 +199,7 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
           <p className="mt-4 text-gray-600">Loading landing page editor...</p>
@@ -211,7 +211,7 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
   // Error state (failed to load)
   if (!expert) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <p className="text-red-600 mb-4">{error || 'Failed to load expert data'}</p>
           <Link href={`/srv/${expertId}`} className="text-blue-600 hover:underline">
@@ -225,43 +225,17 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
   return (
     <div className="h-[calc(100vh-64px)] flex flex-col bg-gray-100">
       {/* Header */}
-      <header className="flex-shrink-0 bg-white border-b border-gray-200 px-6 py-4 relative z-50">
+      <header className="flex-shrink-0 bg-white border-b border-gray-200 shadow px-6 py-4 relative z-50">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link
-              href={`/srv/${expertId}`}
-              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-              title="Back to dashboard"
-            >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M19 12H5M12 19l-7-7 7-7" />
-              </svg>
-            </Link>
-            <div>
-              <h1 className="text-xl font-semibold text-gray-900">Edit Landing Page</h1>
-              <p className="text-sm text-gray-500">
-                {expert.name}
-                {isDirty && <span className="ml-2 text-amber-600">(unsaved changes)</span>}
-              </p>
-            </div>
+          <div>
+            <h1 className="text-xl font-semibold text-gray-900">Landing Page</h1>
+            <p className="text-sm text-gray-500">
+              {expert.name}
+              {isDirty && <span className="ml-2 text-amber-600">(unsaved changes)</span>}
+            </p>
           </div>
 
           <div className="flex items-center gap-3">
-            <Link
-              href={`/srv/${expertId}`}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 font-medium transition-colors"
-            >
-              Cancel
-            </Link>
             <button
               onClick={handleSave}
               disabled={saving || !isDirty}

@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import type { User } from '@/types';
 
 interface AnalyticsData {
   expertId: string;
@@ -39,79 +38,16 @@ interface AnalyticsData {
 
 export default function AnalyticsDashboard() {
   const params = useParams();
-  const router = useRouter();
   const expertId = params.expertId as string;
   const [period, setPeriod] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [authChecking, setAuthChecking] = useState(true);
-
-  // Check authorization first
-  useEffect(() => {
-    checkAuthorization();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expertId]);
 
   useEffect(() => {
-    if (!authChecking) {
-      fetchAnalytics();
-    }
+    fetchAnalytics();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expertId, period, authChecking]);
-
-  const checkAuthorization = async () => {
-    try {
-      console.log('[DBG][analytics-dashboard] Checking authorization for expertId:', expertId);
-
-      // Fetch current user
-      const response = await fetch('/api/auth/me');
-      const data = await response.json();
-
-      if (!data.success || !data.data) {
-        console.log('[DBG][analytics-dashboard] Not authenticated, redirecting to login');
-        router.push('/');
-        return;
-      }
-
-      const user: User = data.data;
-
-      // Check if user is an expert (role is now an array)
-      const isExpert = Array.isArray(user.role)
-        ? user.role.includes('expert')
-        : user.role === 'expert';
-      if (!isExpert) {
-        console.log('[DBG][analytics-dashboard] User is not an expert, redirecting to home');
-        router.push('/');
-        return;
-      }
-
-      // Check if expert profile is set up
-      if (!user.expertProfile) {
-        console.log(
-          '[DBG][analytics-dashboard] Expert profile not set up yet, redirecting to onboarding'
-        );
-        router.push('/srv');
-        return;
-      }
-
-      // Check if user owns this expert profile
-      if (user.expertProfile !== expertId) {
-        console.log(
-          `[DBG][analytics-dashboard] User doesn't own this profile. user.expertProfile=${user.expertProfile}, requested=${expertId}`
-        );
-        console.log('[DBG][analytics-dashboard] Redirecting to own dashboard:', user.expertProfile);
-        router.push(`/srv/${user.expertProfile}`);
-        return;
-      }
-
-      console.log('[DBG][analytics-dashboard] Authorization check passed');
-      setAuthChecking(false);
-    } catch (err) {
-      console.error('[DBG][analytics-dashboard] Error checking authorization:', err);
-      router.push('/');
-    }
-  };
+  }, [expertId, period]);
 
   const fetchAnalytics = async () => {
     try {
@@ -144,14 +80,12 @@ export default function AnalyticsDashboard() {
     }).format(amount / 100); // Convert from cents
   };
 
-  if (authChecking || loading) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 pt-16 flex items-center justify-center">
+      <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
-          <p className="mt-4 text-gray-600">
-            {authChecking ? 'Verifying access...' : 'Loading analytics...'}
-          </p>
+          <p className="mt-4 text-gray-600">Loading analytics...</p>
         </div>
       </div>
     );
@@ -159,17 +93,15 @@ export default function AnalyticsDashboard() {
 
   if (error || !analytics) {
     return (
-      <div className="min-h-screen bg-gray-50 pt-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <span className="text-red-400 text-xl">⚠️</span>
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">Error</h3>
-                <p className="text-sm text-red-700 mt-1">{error || 'Failed to load analytics'}</p>
-              </div>
+      <div className="px-6 lg:px-8 py-8">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <span className="text-red-400 text-xl">⚠️</span>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">Error</h3>
+              <p className="text-sm text-red-700 mt-1">{error || 'Failed to load analytics'}</p>
             </div>
           </div>
         </div>
@@ -178,17 +110,16 @@ export default function AnalyticsDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-16">
+    <>
       {/* Header */}
       <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <Link href="/srv" className="text-blue-600 hover:text-blue-700 text-sm mb-3 inline-block">
-            ← Back
-          </Link>
+        <div className="px-6 lg:px-8 py-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Course Analytics</h1>
-              <p className="text-gray-600 mt-1">Track your course performance and engagement</p>
+              <h1 className="text-2xl font-bold text-gray-900">Course Analytics</h1>
+              <p className="text-sm text-gray-500 mt-1">
+                Track your course performance and engagement
+              </p>
             </div>
 
             {/* Period Selector */}
@@ -217,7 +148,7 @@ export default function AnalyticsDashboard() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="px-6 lg:px-8 py-8">
         {/* Overview Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow p-6">
@@ -438,6 +369,6 @@ export default function AnalyticsDashboard() {
           </div>
         )}
       </div>
-    </div>
+    </>
   );
 }
