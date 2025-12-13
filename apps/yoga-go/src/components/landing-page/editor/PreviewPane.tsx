@@ -14,6 +14,7 @@ interface PreviewPaneProps {
   selectedSection: SectionType | null;
   expertName?: string;
   expertBio?: string;
+  expertId?: string;
   onSelectSection: (sectionId: SectionType | null) => void;
 }
 
@@ -24,6 +25,7 @@ export default function PreviewPane({
   selectedSection,
   expertName,
   expertBio,
+  expertId,
   onSelectSection,
 }: PreviewPaneProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('desktop');
@@ -147,7 +149,12 @@ export default function PreviewPane({
                       onSelectSection(sectionId);
                     }}
                   >
-                    <PreviewComponent data={data} expertName={expertName} expertBio={expertBio} />
+                    <PreviewComponent
+                      data={data}
+                      expertName={expertName}
+                      expertBio={expertBio}
+                      expertId={expertId}
+                    />
                   </SectionWrapper>
                 );
               })

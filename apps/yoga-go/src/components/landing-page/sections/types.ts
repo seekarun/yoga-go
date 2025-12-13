@@ -2,16 +2,32 @@ import type { ReactNode } from 'react';
 import type { CustomLandingPageConfig, Asset } from '@/types';
 
 // Section type union
-export type SectionType = 'hero' | 'valuePropositions' | 'about' | 'act';
+export type SectionType =
+  | 'hero'
+  | 'valuePropositions'
+  | 'about'
+  | 'courses'
+  | 'blog'
+  | 'act'
+  | 'footer';
 
 // Default section order
-export const DEFAULT_SECTION_ORDER: SectionType[] = ['hero', 'valuePropositions', 'about', 'act'];
+export const DEFAULT_SECTION_ORDER: SectionType[] = [
+  'hero',
+  'valuePropositions',
+  'about',
+  'courses',
+  'blog',
+  'act',
+  'footer',
+];
 
 // Props for preview components
 export interface SectionPreviewProps {
   data: CustomLandingPageConfig;
   expertName?: string;
   expertBio?: string;
+  expertId?: string;
 }
 
 // Props for editor components

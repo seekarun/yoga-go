@@ -54,8 +54,29 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
         setData(landingPage);
 
         // Load section order or use default
+        // Also add any new sections that aren't in the saved order
         if (landingPage.sectionOrder && landingPage.sectionOrder.length > 0) {
-          setSectionOrder(landingPage.sectionOrder as SectionType[]);
+          const savedOrder = landingPage.sectionOrder as SectionType[];
+          // Find sections in DEFAULT that aren't in saved order
+          const newSections = DEFAULT_SECTION_ORDER.filter(s => !savedOrder.includes(s));
+          // Insert new sections before 'act' (CTA), or at the end
+          if (newSections.length > 0) {
+            const actIndex = savedOrder.indexOf('act');
+            if (actIndex !== -1) {
+              // Insert new sections before 'act'
+              const updatedOrder = [
+                ...savedOrder.slice(0, actIndex),
+                ...newSections,
+                ...savedOrder.slice(actIndex),
+              ];
+              setSectionOrder(updatedOrder);
+            } else {
+              // Just append at the end
+              setSectionOrder([...savedOrder, ...newSections]);
+            }
+          } else {
+            setSectionOrder(savedOrder);
+          }
         }
 
         // Load disabled sections
@@ -281,6 +302,7 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
             selectedSection={selectedSection}
             expertName={expert.name}
             expertBio={expert.bio}
+            expertId={expertId}
             onSelectSection={handleSelectSection}
           />
         </div>

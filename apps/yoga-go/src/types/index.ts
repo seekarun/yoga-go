@@ -56,6 +56,34 @@ export interface CustomLandingPageConfig {
     title?: string; // Act section title
     text?: string; // Act section description text
   };
+  blog?: {
+    title?: string; // Section title (default: "From the Blog")
+    description?: string; // Section description
+  };
+  courses?: {
+    title?: string; // Section title (default: "Courses")
+    description?: string; // Section description
+  };
+  footer?: {
+    copyrightText?: string; // e.g., "© 2024 Yoga with Jane. All rights reserved."
+    tagline?: string; // e.g., "Transform your practice, transform your life."
+    showSocialLinks?: boolean;
+    socialLinks?: {
+      instagram?: string;
+      youtube?: string;
+      facebook?: string;
+      twitter?: string;
+      tiktok?: string;
+    };
+    showLegalLinks?: boolean;
+    legalLinks?: {
+      privacyPolicy?: string;
+      termsOfService?: string;
+      refundPolicy?: string;
+    };
+    showContactInfo?: boolean;
+    contactEmail?: string;
+  };
   featuredCourses?: string[]; // Array of course IDs
   testimonials?: Array<{
     id: string;
@@ -618,6 +646,9 @@ export type AssetCategory =
   | 'lesson'
   | 'about'
   | 'logo'
+  | 'blog_cover'
+  | 'blog_inline'
+  | 'blog_attachment'
   | 'other';
 
 export interface AssetDimensions {
@@ -843,4 +874,47 @@ export interface PaymentTransaction extends BaseEntity {
   failedAt?: string;
   refundedAt?: string;
   metadata?: PaymentMetadata;
+}
+
+// Blog Related Types
+export type BlogPostStatus = 'draft' | 'published';
+
+export interface BlogPostAttachment {
+  id: string;
+  filename: string;
+  url: string;
+  size: number;
+  mimeType: string;
+}
+
+export interface BlogPost extends BaseEntity {
+  expertId: string;
+  title: string;
+  slug: string;
+  excerpt: string;
+  content: string; // Tiptap JSON content stored as string
+  coverImage?: string;
+  status: BlogPostStatus;
+  publishedAt?: string;
+  readTimeMinutes: number;
+  tags?: string[];
+  attachments?: BlogPostAttachment[];
+  likeCount: number;
+  commentCount: number;
+}
+
+export interface BlogComment extends BaseEntity {
+  postId: string;
+  expertId: string;
+  userId: string;
+  userName: string;
+  userAvatar?: string;
+  content: string;
+  editedAt?: string;
+}
+
+export interface BlogLike {
+  postId: string;
+  userId: string;
+  createdAt: string;
 }
