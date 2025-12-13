@@ -119,6 +119,16 @@ export default function ExpertDetailPage() {
     );
   }
 
+  // Helper to resolve CTA links - transforms /survey/{id} to full path
+  const resolveCtaLink = (link: string | undefined): string => {
+    if (!link) return '#courses';
+    // If link starts with /survey/, prepend the expert path
+    if (link.startsWith('/survey/')) {
+      return `/experts/${expertId}${link}`;
+    }
+    return link;
+  };
+
   // Get custom landing page data or use defaults
   const customHero = expert.customLandingPage?.hero;
   const hasCustomHero = !!(
@@ -335,7 +345,7 @@ export default function ExpertDetailPage() {
                     }}
                   >
                     <a
-                      href={customHero?.ctaLink || '#courses'}
+                      href={resolveCtaLink(customHero?.ctaLink)}
                       style={{
                         display: 'inline-block',
                         padding: '16px 48px',
@@ -450,7 +460,7 @@ export default function ExpertDetailPage() {
                   }}
                 >
                   <a
-                    href={customHero?.ctaLink || '#courses'}
+                    href={resolveCtaLink(customHero?.ctaLink)}
                     style={{
                       display: 'inline-block',
                       padding: '14px 32px',
