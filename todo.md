@@ -46,9 +46,9 @@ notes
 [ ] asset management
 [ ] via amazonses email going to spam. can expert just view email on platform?
 [ ] razor pay for live sessions
-[ ] integrate zoom
+[x] integrate zoom
 [ ] loading screen
-
+[ ] custom colour scheme for expert landing page
 
 CALEL
 

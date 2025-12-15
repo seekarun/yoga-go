@@ -47,6 +47,12 @@ export const ADMIN_DOMAINS = [
 ];
 
 /**
+ * Learner domains - show learner-focused homepage (browse courses, experts)
+ * These domains bypass the expert platform redirect on myyoga.guru
+ */
+export const LEARNER_DOMAINS = ['learn.myyoga.guru', 'www.learn.myyoga.guru'];
+
+/**
  * Primary app domains (non-expert domains that show full platform)
  */
 export const PRIMARY_DOMAINS = [
@@ -85,6 +91,25 @@ export function getExpertIdFromHostname(hostname: string): string | null {
 export function isAdminDomain(hostname: string): boolean {
   const cleanHostname = hostname.split(':')[0].toLowerCase();
   return ADMIN_DOMAINS.includes(cleanHostname);
+}
+
+/**
+ * Check if hostname is a learner domain (learn.myyoga.guru)
+ * Learner domains show the learner-focused homepage with courses and experts
+ */
+export function isLearnerDomain(hostname: string): boolean {
+  const cleanHostname = hostname.split(':')[0].toLowerCase();
+  return LEARNER_DOMAINS.includes(cleanHostname);
+}
+
+/**
+ * Check if hostname is the main expert platform domain (myyoga.guru without subdomains)
+ * This is where experts manage their business
+ */
+export function isExpertPlatformDomain(hostname: string): boolean {
+  const cleanHostname = hostname.split(':')[0].toLowerCase();
+  // Only match myyoga.guru and www.myyoga.guru (not subdomains like learn.myyoga.guru)
+  return cleanHostname === 'myyoga.guru' || cleanHostname === 'www.myyoga.guru';
 }
 
 /**
