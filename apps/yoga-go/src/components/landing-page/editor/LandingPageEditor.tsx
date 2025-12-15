@@ -7,6 +7,7 @@ import type { CustomLandingPageConfig, Expert } from '@/types';
 import { DEFAULT_SECTION_ORDER, type SectionType } from '../sections';
 import PreviewPane from './PreviewPane';
 import EditPane from './EditPane';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 interface LandingPageEditorProps {
   expertId: string;
@@ -200,10 +201,7 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
-          <p className="mt-4 text-gray-600">Loading landing page editor...</p>
-        </div>
+        <LoadingSpinner size="lg" message="Loading landing page editor..." />
       </div>
     );
   }
@@ -214,7 +212,11 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
       <div className="flex items-center justify-center py-20">
         <div className="text-center">
           <p className="text-red-600 mb-4">{error || 'Failed to load expert data'}</p>
-          <Link href={`/srv/${expertId}`} className="text-blue-600 hover:underline">
+          <Link
+            href={`/srv/${expertId}`}
+            className="hover:underline"
+            style={{ color: 'var(--color-primary)' }}
+          >
             Back to Dashboard
           </Link>
         </div>
@@ -239,7 +241,8 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
             <button
               onClick={handleSave}
               disabled={saving || !isDirty}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
+              className="px-4 py-2 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
+              style={{ background: saving || !isDirty ? undefined : 'var(--color-primary)' }}
             >
               {saving ? 'Saving...' : 'Save Changes'}
             </button>

@@ -164,7 +164,7 @@ export default function EditBlogPostPage() {
             <h2 style={{ fontSize: '24px', marginBottom: '16px', color: '#dc2626' }}>
               {error || 'Post not found'}
             </h2>
-            <Link href={`/srv/${expertId}/blog`} style={{ color: '#2563eb' }}>
+            <Link href={`/srv/${expertId}/blog`} style={{ color: 'var(--color-primary)' }}>
               ← Back to Blog Management
             </Link>
           </div>

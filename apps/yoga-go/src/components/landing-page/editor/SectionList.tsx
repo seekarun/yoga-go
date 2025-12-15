@@ -50,9 +50,14 @@ function SortableItem({ id, isDisabled, onToggle, onSelect }: SortableItemProps)
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={{
+        ...style,
+        ...(isDragging
+          ? ({ '--tw-ring-color': 'var(--color-primary)' } as React.CSSProperties)
+          : {}),
+      }}
       className={`flex items-center gap-3 p-4 bg-white border rounded-lg ${
-        isDragging ? 'shadow-lg ring-2 ring-blue-500' : 'border-gray-200 hover:border-gray-300'
+        isDragging ? 'shadow-lg ring-2' : 'border-gray-200 hover:border-gray-300'
       } ${isDisabled ? 'opacity-50' : ''}`}
     >
       {/* Drag Handle */}
@@ -68,7 +73,10 @@ function SortableItem({ id, isDisabled, onToggle, onSelect }: SortableItemProps)
       </button>
 
       {/* Section Icon */}
-      <div className={`flex-shrink-0 ${isDisabled ? 'text-gray-400' : 'text-blue-600'}`}>
+      <div
+        className="flex-shrink-0"
+        style={{ color: isDisabled ? '#9ca3af' : 'var(--color-primary)' }}
+      >
         {section.icon}
       </div>
 
@@ -96,9 +104,10 @@ function SortableItem({ id, isDisabled, onToggle, onSelect }: SortableItemProps)
           e.stopPropagation();
           onToggle();
         }}
-        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-          isDisabled ? 'bg-gray-200' : 'bg-blue-600'
+        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+          isDisabled ? 'bg-gray-200' : ''
         }`}
+        style={{ background: isDisabled ? undefined : 'var(--color-primary)' }}
         role="switch"
         aria-checked={!isDisabled}
         title={isDisabled ? 'Enable section' : 'Disable section'}

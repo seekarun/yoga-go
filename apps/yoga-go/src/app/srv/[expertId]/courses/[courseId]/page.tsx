@@ -6,6 +6,7 @@ import Link from 'next/link';
 import type { Course, Lesson } from '@/types';
 import NotificationOverlay from '@/components/NotificationOverlay';
 import { useToast } from '@/components/Toast';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 // Helper function to format duration from seconds to MM:SS
 const formatDuration = (seconds: number): string => {
@@ -520,10 +521,7 @@ export default function CourseManagement() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
-          <p className="mt-4 text-gray-600">Loading course...</p>
-        </div>
+        <LoadingSpinner size="lg" message="Loading course..." />
       </div>
     );
   }

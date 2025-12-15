@@ -80,7 +80,7 @@ export default function EditPane({
             </svg>
           </button>
           <div className="flex items-center gap-2">
-            <span className="text-blue-600">{section.icon}</span>
+            <span style={{ color: 'var(--color-primary)' }}>{section.icon}</span>
             <h2 className="text-lg font-semibold text-gray-900">{section.label}</h2>
           </div>
         </div>

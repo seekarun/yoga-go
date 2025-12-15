@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import type { Course } from '@/types';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 export default function ExpertDashboard() {
   const params = useParams();
@@ -43,10 +44,7 @@ export default function ExpertDashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
-          <p className="mt-4 text-gray-600">Loading dashboard...</p>
-        </div>
+        <LoadingSpinner size="lg" message="Loading dashboard..." />
       </div>
     );
   }
@@ -67,7 +65,8 @@ export default function ExpertDashboard() {
             <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
             <Link
               href={`/srv/${expertId}/courses/create`}
-              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors font-medium inline-flex items-center"
+              className="px-4 py-2 text-white text-sm rounded-lg transition-colors font-medium inline-flex items-center"
+              style={{ background: 'var(--color-primary)' }}
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -153,7 +152,7 @@ export default function ExpertDashboard() {
                 {courses.map(course => (
                   <div
                     key={course.id}
-                    className="border border-gray-200 rounded-lg p-6 hover:border-blue-300 transition-colors"
+                    className="border border-gray-200 rounded-lg p-6 hover:border-gray-400 transition-colors"
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
@@ -195,7 +194,8 @@ export default function ExpertDashboard() {
                       ) : (
                         <Link
                           href={`/srv/${expertId}/courses/${course.id}`}
-                          className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                          className="px-4 py-2 text-white text-sm rounded-lg transition-colors font-medium"
+                          style={{ background: 'var(--color-primary)' }}
                         >
                           Manage Course
                         </Link>
@@ -225,7 +225,8 @@ export default function ExpertDashboard() {
                 </p>
                 <Link
                   href={`/srv/${expertId}/courses/create`}
-                  className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+                  className="inline-flex items-center px-6 py-3 text-white font-semibold rounded-lg transition-colors"
+                  style={{ background: 'var(--color-primary)' }}
                 >
                   <span className="text-xl mr-2">+</span>
                   Create First Course
@@ -236,7 +237,14 @@ export default function ExpertDashboard() {
         </div>
 
         {/* Add New Course Section */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg shadow mb-8 border border-blue-200">
+        <div
+          className="rounded-lg shadow mb-8"
+          style={{
+            background:
+              'linear-gradient(to right, color-mix(in srgb, var(--color-primary) 10%, white), color-mix(in srgb, var(--color-primary) 15%, white))',
+            border: '1px solid color-mix(in srgb, var(--color-primary) 30%, white)',
+          }}
+        >
           <div className="p-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
@@ -247,7 +255,8 @@ export default function ExpertDashboard() {
               </div>
               <Link
                 href={`/srv/${expertId}/courses/create`}
-                className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors shadow-md hover:shadow-lg"
+                className="inline-flex items-center px-6 py-3 text-white font-semibold rounded-lg transition-colors shadow-md hover:shadow-lg"
+                style={{ background: 'var(--color-primary)' }}
               >
                 <span className="text-xl mr-2">+</span>
                 Add New Course

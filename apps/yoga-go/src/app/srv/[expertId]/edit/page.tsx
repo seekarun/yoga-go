@@ -6,6 +6,7 @@ import Link from 'next/link';
 import ImageUploadCrop from '@/components/ImageUploadCrop';
 import NotificationOverlay from '@/components/NotificationOverlay';
 import type { Asset, Expert } from '@/types';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 export default function EditExpertPage() {
   const params = useParams();
@@ -341,10 +342,7 @@ export default function EditExpertPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
-          <p className="mt-4 text-gray-600">Loading expert data...</p>
-        </div>
+        <LoadingSpinner size="lg" message="Loading expert data..." />
       </div>
     );
   }
@@ -657,7 +655,8 @@ export default function EditExpertPage() {
                         type="button"
                         onClick={handlePromoVideoUpload}
                         disabled={isUploading}
-                        className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed text-sm font-medium"
+                        className="mt-2 px-4 py-2 text-white rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed text-sm font-medium"
+                        style={{ background: isUploading ? undefined : 'var(--color-primary)' }}
                       >
                         {isUploading ? 'Uploading...' : 'Upload Promo Video'}
                       </button>
@@ -667,8 +666,11 @@ export default function EditExpertPage() {
                     <div className="mt-3">
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
-                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${uploadProgress}%` }}
+                          className="h-2 rounded-full transition-all duration-300"
+                          style={{
+                            width: `${uploadProgress}%`,
+                            background: 'var(--color-primary)',
+                          }}
                         />
                       </div>
                       <p className="text-sm text-gray-600 mt-1">{uploadProgress}% uploaded</p>
@@ -789,7 +791,8 @@ export default function EditExpertPage() {
               <button
                 type="submit"
                 disabled={saving}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium transition-colors"
+                className="px-6 py-2 text-white rounded-lg disabled:bg-gray-400 disabled:cursor-not-allowed font-medium transition-colors"
+                style={{ background: saving ? undefined : 'var(--color-primary)' }}
               >
                 {saving ? 'Saving...' : 'Save Changes'}
               </button>

@@ -91,7 +91,8 @@ export default function ExpertBlogDashboard() {
             </div>
             <Link
               href={`/srv/${expertId}/blog/new`}
-              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors font-medium inline-flex items-center"
+              className="px-4 py-2 text-white text-sm rounded-lg transition-colors font-medium inline-flex items-center"
+              style={{ background: 'var(--color-primary)' }}
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -247,7 +248,7 @@ export default function ExpertBlogDashboard() {
                           href={`/srv/${expertId}/blog/${post.id}/edit`}
                           style={{
                             padding: '6px 12px',
-                            background: '#2563eb',
+                            background: 'var(--color-primary)',
                             color: '#fff',
                             borderRadius: '6px',
                             textDecoration: 'none',
@@ -297,7 +298,7 @@ export default function ExpertBlogDashboard() {
               href={`/srv/${expertId}/blog/new`}
               style={{
                 padding: '12px 24px',
-                background: '#2563eb',
+                background: 'var(--color-primary)',
                 color: '#fff',
                 borderRadius: '8px',
                 textDecoration: 'none',

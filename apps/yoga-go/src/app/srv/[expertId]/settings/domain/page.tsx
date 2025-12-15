@@ -702,8 +702,8 @@ export default function DomainSettingsPage() {
 
   if (loading) {
     return (
-      <div style={{ padding: '80px 20px', textAlign: 'center' }}>
-        <div style={{ fontSize: '16px', color: '#666' }}>Loading domain settings...</div>
+      <div className="flex items-center justify-center py-20">
+        <div className="text-gray-600">Loading domain settings...</div>
       </div>
     );
   }
@@ -711,201 +711,107 @@ export default function DomainSettingsPage() {
   const verificationRecords = getVerificationRecords();
 
   return (
-    <div style={{ paddingTop: '80px', minHeight: '100vh', background: '#f5f5f5' }}>
-      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
-        {/* Header */}
-        <div style={{ marginBottom: '24px' }}>
-          <Link
-            href={`/srv/${expertId}`}
-            style={{ color: 'var(--color-primary)', textDecoration: 'none', fontSize: '14px' }}
-          >
-            &larr; Back to Dashboard
-          </Link>
-          <h1 style={{ fontSize: '28px', fontWeight: '600', marginTop: '16px' }}>
-            Domain Settings
-          </h1>
-          <p style={{ color: '#666', marginTop: '8px' }}>
-            Configure custom domains for your expert portal. SSL certificates are provisioned
-            automatically.
+    <>
+      {/* Header */}
+      <div className="bg-white shadow">
+        <div className="px-6 lg:px-8 py-6">
+          <h1 className="text-2xl font-bold text-gray-900">Domain Settings</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Configure custom domains for your expert portal
           </p>
         </div>
+      </div>
 
-        {/* Messages */}
-        {error && (
-          <div
-            style={{
-              background: '#fee',
-              color: '#c00',
-              padding: '12px 16px',
-              borderRadius: '8px',
-              marginBottom: '16px',
-            }}
-          >
-            {error}
-          </div>
-        )}
-        {success && (
-          <div
-            style={{
-              background: '#efe',
-              color: '#060',
-              padding: '12px 16px',
-              borderRadius: '8px',
-              marginBottom: '16px',
-            }}
-          >
-            {success}
-          </div>
-        )}
-
-        {/* No Tenant Yet */}
-        {!tenant && (
-          <div
-            style={{
-              background: '#fff',
-              borderRadius: '12px',
-              padding: '32px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            }}
-          >
-            <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px' }}>
-              Set Up Your Custom Domain
-            </h2>
-            <p style={{ color: '#666', marginBottom: '24px' }}>
-              Add a custom domain to create your own branded yoga portal. SSL certificates are
-              automatically provisioned - no additional configuration needed!
-            </p>
-
-            <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-              <input
-                type="text"
-                value={newDomain}
-                onChange={e => setNewDomain(e.target.value)}
-                placeholder="e.g., youryogastudio.com"
-                style={{
-                  flex: 1,
-                  padding: '12px 16px',
-                  border: '1px solid #ddd',
-                  borderRadius: '8px',
-                  fontSize: '16px',
-                }}
-              />
-              <button
-                onClick={handleCreateTenant}
-                disabled={saving}
-                style={{
-                  padding: '12px 24px',
-                  background: 'var(--color-primary)',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: saving ? 'not-allowed' : 'pointer',
-                  opacity: saving ? 0.7 : 1,
-                }}
-              >
-                {saving ? 'Setting up...' : 'Set Up Domain'}
-              </button>
+      <div className="px-6 lg:px-8 py-8">
+        <div className="max-w-3xl">
+          {/* Messages */}
+          {error && (
+            <div className="mb-4 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+              {error}
             </div>
+          )}
+          {success && (
+            <div className="mb-4 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
+              {success}
+            </div>
+          )}
 
-            <p style={{ fontSize: '12px', color: '#999' }}>
-              After setup, you&apos;ll just need to point your domain to our servers.
-            </p>
-          </div>
-        )}
-
-        {/* Existing Tenant */}
-        {tenant && (
-          <>
-            {/* Current Domains */}
+          {/* No Tenant Yet */}
+          {!tenant && (
             <div
               style={{
                 background: '#fff',
                 borderRadius: '12px',
-                padding: '24px',
+                padding: '32px',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                marginBottom: '24px',
               }}
             >
-              <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
-                Your Domains
+              <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px' }}>
+                Set Up Your Custom Domain
               </h2>
+              <p style={{ color: '#666', marginBottom: '24px' }}>
+                Add a custom domain to create your own branded yoga portal. SSL certificates are
+                automatically provisioned - no additional configuration needed!
+              </p>
 
-              {/* Primary Domain */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '12px 16px',
-                  background: '#f8f8f8',
-                  borderRadius: '8px',
-                  marginBottom: '8px',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontWeight: '500' }}>{tenant.primaryDomain}</span>
-                  <span
-                    style={{
-                      background: 'var(--color-primary)',
-                      color: '#fff',
-                      padding: '2px 8px',
-                      borderRadius: '4px',
-                      fontSize: '11px',
-                    }}
-                  >
-                    Primary
-                  </span>
-                  {domainStatuses[tenant.primaryDomain]?.verified ? (
-                    <span
-                      style={{
-                        background: '#0a0',
-                        color: '#fff',
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        fontSize: '11px',
-                      }}
-                    >
-                      Verified
-                    </span>
-                  ) : (
-                    <span
-                      style={{
-                        background: '#f90',
-                        color: '#fff',
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        fontSize: '11px',
-                      }}
-                    >
-                      Pending DNS
-                    </span>
-                  )}
-                </div>
-                {!domainStatuses[tenant.primaryDomain]?.verified && (
-                  <button
-                    onClick={() => verifyDomain(tenant.primaryDomain)}
-                    disabled={domainStatuses[tenant.primaryDomain]?.checking}
-                    style={{
-                      padding: '4px 12px',
-                      background: '#eef',
-                      color: '#00a',
-                      border: 'none',
-                      borderRadius: '4px',
-                      fontSize: '12px',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {domainStatuses[tenant.primaryDomain]?.checking ? 'Checking...' : 'Verify DNS'}
-                  </button>
-                )}
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+                <input
+                  type="text"
+                  value={newDomain}
+                  onChange={e => setNewDomain(e.target.value)}
+                  placeholder="e.g., youryogastudio.com"
+                  style={{
+                    flex: 1,
+                    padding: '12px 16px',
+                    border: '1px solid #ddd',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                  }}
+                />
+                <button
+                  onClick={handleCreateTenant}
+                  disabled={saving}
+                  style={{
+                    padding: '12px 24px',
+                    background: 'var(--color-primary)',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: saving ? 'not-allowed' : 'pointer',
+                    opacity: saving ? 0.7 : 1,
+                  }}
+                >
+                  {saving ? 'Setting up...' : 'Set Up Domain'}
+                </button>
               </div>
 
-              {/* Additional Domains */}
-              {tenant.additionalDomains?.map(domain => (
+              <p style={{ fontSize: '12px', color: '#999' }}>
+                After setup, you&apos;ll just need to point your domain to our servers.
+              </p>
+            </div>
+          )}
+
+          {/* Existing Tenant */}
+          {tenant && (
+            <>
+              {/* Current Domains */}
+              <div
+                style={{
+                  background: '#fff',
+                  borderRadius: '12px',
+                  padding: '24px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  marginBottom: '24px',
+                }}
+              >
+                <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
+                  Your Domains
+                </h2>
+
+                {/* Primary Domain */}
                 <div
-                  key={domain}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -917,8 +823,19 @@ export default function DomainSettingsPage() {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span>{domain}</span>
-                    {domainStatuses[domain]?.verified ? (
+                    <span style={{ fontWeight: '500' }}>{tenant.primaryDomain}</span>
+                    <span
+                      style={{
+                        background: 'var(--color-primary)',
+                        color: '#fff',
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        fontSize: '11px',
+                      }}
+                    >
+                      Primary
+                    </span>
+                    {domainStatuses[tenant.primaryDomain]?.verified ? (
                       <span
                         style={{
                           background: '#0a0',
@@ -944,262 +861,51 @@ export default function DomainSettingsPage() {
                       </span>
                     )}
                   </div>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    {!domainStatuses[domain]?.verified && (
-                      <button
-                        onClick={() => verifyDomain(domain)}
-                        disabled={domainStatuses[domain]?.checking}
-                        style={{
-                          padding: '4px 12px',
-                          background: '#eef',
-                          color: '#00a',
-                          border: 'none',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        {domainStatuses[domain]?.checking ? 'Checking...' : 'Verify'}
-                      </button>
-                    )}
-                    {/* Don't allow removing the default myyoga.guru subdomain */}
-                    {!domain.endsWith('.myyoga.guru') && (
-                      <button
-                        onClick={() => handleRemoveDomainClick(domain)}
-                        disabled={saving}
-                        style={{
-                          padding: '4px 12px',
-                          background: '#fee',
-                          color: '#c00',
-                          border: 'none',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-
-              {/* Add Domain */}
-              <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
-                <input
-                  type="text"
-                  value={newDomain}
-                  onChange={e => setNewDomain(e.target.value)}
-                  placeholder="Add another domain..."
-                  style={{
-                    flex: 1,
-                    padding: '10px 14px',
-                    border: '1px solid #ddd',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                  }}
-                />
-                <button
-                  onClick={handleAddDomain}
-                  disabled={saving || !newDomain.trim()}
-                  style={{
-                    padding: '10px 20px',
-                    background: 'var(--color-primary)',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    cursor: saving || !newDomain.trim() ? 'not-allowed' : 'pointer',
-                    opacity: saving || !newDomain.trim() ? 0.7 : 1,
-                  }}
-                >
-                  {saving ? 'Adding...' : 'Add Domain'}
-                </button>
-              </div>
-            </div>
-
-            {/* DNS Instructions - Only show if there are unverified domains */}
-            {hasUnverifiedDomains() && (
-              <div
-                style={{
-                  background: '#fff',
-                  borderRadius: '12px',
-                  padding: '24px',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                  marginBottom: '24px',
-                }}
-              >
-                <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
-                  DNS Configuration
-                </h2>
-                <p style={{ color: '#666', marginBottom: '16px' }}>
-                  Add the following DNS record with your domain provider to complete setup:
-                </p>
-
-                <div
-                  style={{
-                    background: '#f8f8f8',
-                    borderRadius: '8px',
-                    padding: '16px',
-                    fontFamily: 'monospace',
-                    fontSize: '13px',
-                  }}
-                >
-                  {verificationRecords.length > 0 ? (
-                    verificationRecords.map((record, index) => (
-                      <div
-                        key={index}
-                        style={{
-                          marginBottom: index < verificationRecords.length - 1 ? '16px' : 0,
-                        }}
-                      >
-                        <div
-                          style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '4px' }}
-                        >
-                          <strong>Type:</strong>
-                          <span>{record.type}</span>
-                          <strong>Name:</strong>
-                          <span style={{ wordBreak: 'break-all' }}>{record.name}</span>
-                          <strong>Value:</strong>
-                          <span style={{ wordBreak: 'break-all' }}>{record.value}</span>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '4px' }}>
-                        <strong>Type:</strong>
-                        <span>A</span>
-                        <strong>Name:</strong>
-                        <span>@ (or leave blank)</span>
-                        <strong>Value:</strong>
-                        <span>216.150.1.1</span>
-                      </div>
-                      <div
-                        style={{
-                          marginTop: '16px',
-                          paddingTop: '16px',
-                          borderTop: '1px solid #ddd',
-                        }}
-                      >
-                        <div
-                          style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '4px' }}
-                        >
-                          <strong>Type:</strong>
-                          <span>CNAME</span>
-                          <strong>Name:</strong>
-                          <span>www</span>
-                          <strong>Value:</strong>
-                          <span>cname.vercel-dns.com</span>
-                        </div>
-                      </div>
-                    </div>
+                  {!domainStatuses[tenant.primaryDomain]?.verified && (
+                    <button
+                      onClick={() => verifyDomain(tenant.primaryDomain)}
+                      disabled={domainStatuses[tenant.primaryDomain]?.checking}
+                      style={{
+                        padding: '4px 12px',
+                        background: '#eef',
+                        color: '#00a',
+                        border: 'none',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {domainStatuses[tenant.primaryDomain]?.checking
+                        ? 'Checking...'
+                        : 'Verify DNS'}
+                    </button>
                   )}
+                </div>
 
+                {/* Additional Domains */}
+                {tenant.additionalDomains?.map(domain => (
                   <div
+                    key={domain}
                     style={{
-                      color: '#666',
-                      fontSize: '12px',
-                      marginTop: '16px',
-                      paddingTop: '12px',
-                      borderTop: '1px solid #ddd',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '12px 16px',
+                      background: '#f8f8f8',
+                      borderRadius: '8px',
+                      marginBottom: '8px',
                     }}
                   >
-                    DNS changes typically take 1-10 minutes to propagate (up to 48 hours in some
-                    cases). Click &quot;Verify DNS&quot; once you&apos;ve added the records.
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Email Setup Section - Only show if custom domain exists */}
-            {getCustomDomain() && (
-              <div
-                style={{
-                  background: '#fff',
-                  borderRadius: '12px',
-                  padding: '24px',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                  marginBottom: '24px',
-                }}
-              >
-                <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
-                  Custom Domain Email
-                </h2>
-
-                {/* Email not yet enabled */}
-                {!tenant?.emailConfig && (
-                  <>
-                    <p style={{ color: '#666', marginBottom: '16px' }}>
-                      Enable email for your custom domain to send and receive emails from{' '}
-                      <strong>contact@{getCustomDomain()}</strong>
-                    </p>
-                    <button
-                      onClick={handleEnableEmail}
-                      disabled={emailSetupLoading || !isCustomDomainVerified()}
-                      style={{
-                        padding: '12px 24px',
-                        background: isCustomDomainVerified() ? 'var(--color-primary)' : '#ccc',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '8px',
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        cursor:
-                          emailSetupLoading || !isCustomDomainVerified()
-                            ? 'not-allowed'
-                            : 'pointer',
-                      }}
-                    >
-                      {emailSetupLoading ? 'Setting up...' : 'Enable Custom Email'}
-                    </button>
-                    {!isCustomDomainVerified() && (
-                      <p style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
-                        Verify your custom domain DNS first before enabling email.
-                      </p>
-                    )}
-                  </>
-                )}
-
-                {/* Email enabled - show status and DNS records */}
-                {tenant?.emailConfig && (
-                  <>
-                    {/* Email Address */}
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        padding: '16px',
-                        background: '#f8f8f8',
-                        borderRadius: '8px',
-                        marginBottom: '16px',
-                      }}
-                    >
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: '500', marginBottom: '4px' }}>
-                          Your Email Address
-                        </div>
-                        <div
-                          style={{
-                            fontFamily: 'monospace',
-                            fontSize: '16px',
-                            color: 'var(--color-primary)',
-                          }}
-                        >
-                          {tenant.emailConfig.domainEmail}
-                        </div>
-                      </div>
-                      {tenant.emailConfig.sesVerificationStatus === 'verified' ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span>{domain}</span>
+                      {domainStatuses[domain]?.verified ? (
                         <span
                           style={{
                             background: '#0a0',
                             color: '#fff',
-                            padding: '4px 12px',
+                            padding: '2px 8px',
                             borderRadius: '4px',
-                            fontSize: '12px',
-                            fontWeight: '500',
+                            fontSize: '11px',
                           }}
                         >
                           Verified
@@ -1209,458 +915,563 @@ export default function DomainSettingsPage() {
                           style={{
                             background: '#f90',
                             color: '#fff',
-                            padding: '4px 12px',
+                            padding: '2px 8px',
                             borderRadius: '4px',
-                            fontSize: '12px',
-                            fontWeight: '500',
+                            fontSize: '11px',
                           }}
                         >
-                          Pending
+                          Pending DNS
                         </span>
                       )}
                     </div>
-
-                    {/* Verification Status Details */}
-                    {tenant.emailConfig.sesVerificationStatus !== 'verified' && (
-                      <>
-                        <div
-                          style={{
-                            display: 'grid',
-                            gridTemplateColumns: '1fr 1fr 1fr',
-                            gap: '12px',
-                            marginBottom: '16px',
-                          }}
-                        >
-                          <div
-                            style={{
-                              padding: '12px',
-                              background: tenant.emailConfig.dkimVerified ? '#efe' : '#fef',
-                              borderRadius: '8px',
-                              textAlign: 'center',
-                            }}
-                          >
-                            <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
-                              DKIM
-                            </div>
-                            <div
-                              style={{
-                                fontWeight: '500',
-                                color: tenant.emailConfig.dkimVerified ? '#060' : '#c00',
-                              }}
-                            >
-                              {tenant.emailConfig.dkimVerified ? 'Verified' : 'Pending'}
-                            </div>
-                          </div>
-                          <div
-                            style={{
-                              padding: '12px',
-                              background: tenant.emailConfig.mxVerified ? '#efe' : '#fef',
-                              borderRadius: '8px',
-                              textAlign: 'center',
-                            }}
-                          >
-                            <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
-                              MX Record
-                            </div>
-                            <div
-                              style={{
-                                fontWeight: '500',
-                                color: tenant.emailConfig.mxVerified ? '#060' : '#c00',
-                              }}
-                            >
-                              {tenant.emailConfig.mxVerified ? 'Verified' : 'Pending'}
-                            </div>
-                          </div>
-                          <div
-                            style={{
-                              padding: '12px',
-                              background: tenant.emailConfig.spfVerified ? '#efe' : '#fef',
-                              borderRadius: '8px',
-                              textAlign: 'center',
-                            }}
-                          >
-                            <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
-                              SPF Record
-                            </div>
-                            <div
-                              style={{
-                                fontWeight: '500',
-                                color: tenant.emailConfig.spfVerified ? '#060' : '#c00',
-                              }}
-                            >
-                              {tenant.emailConfig.spfVerified ? 'Verified' : 'Pending'}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* DNS Records for Email */}
-                        {emailDnsRecords.length > 0 && (
-                          <div
-                            style={{
-                              background: '#f8f8f8',
-                              borderRadius: '8px',
-                              padding: '16px',
-                              marginBottom: '16px',
-                            }}
-                          >
-                            <h3
-                              style={{ fontSize: '14px', fontWeight: '600', marginBottom: '12px' }}
-                            >
-                              Add these DNS records:
-                            </h3>
-                            {emailDnsRecords.map((record, index) => (
-                              <div
-                                key={index}
-                                style={{
-                                  marginBottom: index < emailDnsRecords.length - 1 ? '16px' : 0,
-                                  paddingBottom: index < emailDnsRecords.length - 1 ? '16px' : 0,
-                                  borderBottom:
-                                    index < emailDnsRecords.length - 1 ? '1px solid #ddd' : 'none',
-                                }}
-                              >
-                                <div
-                                  style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}
-                                >
-                                  {record.purpose}
-                                </div>
-                                <div
-                                  style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: '60px 1fr',
-                                    gap: '4px',
-                                    fontFamily: 'monospace',
-                                    fontSize: '12px',
-                                  }}
-                                >
-                                  <strong>Type:</strong>
-                                  <span>{record.type}</span>
-                                  <strong>Name:</strong>
-                                  <span style={{ wordBreak: 'break-all' }}>{record.name}</span>
-                                  <strong>Value:</strong>
-                                  <span style={{ wordBreak: 'break-all' }}>
-                                    {record.priority ? `${record.priority} ` : ''}
-                                    {record.value}
-                                  </span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      {!domainStatuses[domain]?.verified && (
                         <button
-                          onClick={handleVerifyEmail}
-                          disabled={emailVerifying}
+                          onClick={() => verifyDomain(domain)}
+                          disabled={domainStatuses[domain]?.checking}
                           style={{
-                            padding: '10px 20px',
+                            padding: '4px 12px',
                             background: '#eef',
                             color: '#00a',
                             border: 'none',
-                            borderRadius: '8px',
-                            fontSize: '14px',
-                            fontWeight: '500',
-                            cursor: emailVerifying ? 'not-allowed' : 'pointer',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            cursor: 'pointer',
                           }}
                         >
-                          {emailVerifying ? 'Verifying...' : 'Verify Email DNS'}
+                          {domainStatuses[domain]?.checking ? 'Checking...' : 'Verify'}
                         </button>
-                      </>
-                    )}
-
-                    {/* Email verified - show forwarding info */}
-                    {tenant.emailConfig.sesVerificationStatus === 'verified' && (
-                      <div
-                        style={{
-                          padding: '12px 16px',
-                          background: '#f0f9ff',
-                          borderRadius: '8px',
-                          fontSize: '13px',
-                          color: '#0369a1',
-                        }}
-                      >
-                        <strong>Forwarding to:</strong>{' '}
-                        {tenant.emailConfig.forwardToEmail || 'Not configured'}
-                        <br />
-                        <Link
-                          href={`/srv/${expertId}/settings/email`}
-                          style={{ color: '#0369a1', textDecoration: 'underline' }}
+                      )}
+                      {/* Don't allow removing the default myyoga.guru subdomain */}
+                      {!domain.endsWith('.myyoga.guru') && (
+                        <button
+                          onClick={() => handleRemoveDomainClick(domain)}
+                          disabled={saving}
+                          style={{
+                            padding: '4px 12px',
+                            background: '#fee',
+                            color: '#c00',
+                            border: 'none',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                          }}
                         >
-                          Manage email settings
-                        </Link>
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                {/* Add Domain */}
+                <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+                  <input
+                    type="text"
+                    value={newDomain}
+                    onChange={e => setNewDomain(e.target.value)}
+                    placeholder="Add another domain..."
+                    style={{
+                      flex: 1,
+                      padding: '10px 14px',
+                      border: '1px solid #ddd',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                    }}
+                  />
+                  <button
+                    onClick={handleAddDomain}
+                    disabled={saving || !newDomain.trim()}
+                    style={{
+                      padding: '10px 20px',
+                      background: 'var(--color-primary)',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      cursor: saving || !newDomain.trim() ? 'not-allowed' : 'pointer',
+                      opacity: saving || !newDomain.trim() ? 0.7 : 1,
+                    }}
+                  >
+                    {saving ? 'Adding...' : 'Add Domain'}
+                  </button>
+                </div>
+              </div>
+
+              {/* DNS Instructions - Only show if there are unverified domains */}
+              {hasUnverifiedDomains() && (
+                <div
+                  style={{
+                    background: '#fff',
+                    borderRadius: '12px',
+                    padding: '24px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                    marginBottom: '24px',
+                  }}
+                >
+                  <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
+                    DNS Configuration
+                  </h2>
+                  <p style={{ color: '#666', marginBottom: '16px' }}>
+                    Add the following DNS record with your domain provider to complete setup:
+                  </p>
+
+                  <div
+                    style={{
+                      background: '#f8f8f8',
+                      borderRadius: '8px',
+                      padding: '16px',
+                      fontFamily: 'monospace',
+                      fontSize: '13px',
+                    }}
+                  >
+                    {verificationRecords.length > 0 ? (
+                      verificationRecords.map((record, index) => (
+                        <div
+                          key={index}
+                          style={{
+                            marginBottom: index < verificationRecords.length - 1 ? '16px' : 0,
+                          }}
+                        >
+                          <div
+                            style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '4px' }}
+                          >
+                            <strong>Type:</strong>
+                            <span>{record.type}</span>
+                            <strong>Name:</strong>
+                            <span style={{ wordBreak: 'break-all' }}>{record.name}</span>
+                            <strong>Value:</strong>
+                            <span style={{ wordBreak: 'break-all' }}>{record.value}</span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div>
+                        <div
+                          style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '4px' }}
+                        >
+                          <strong>Type:</strong>
+                          <span>A</span>
+                          <strong>Name:</strong>
+                          <span>@ (or leave blank)</span>
+                          <strong>Value:</strong>
+                          <span>216.150.1.1</span>
+                        </div>
+                        <div
+                          style={{
+                            marginTop: '16px',
+                            paddingTop: '16px',
+                            borderTop: '1px solid #ddd',
+                          }}
+                        >
+                          <div
+                            style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '4px' }}
+                          >
+                            <strong>Type:</strong>
+                            <span>CNAME</span>
+                            <strong>Name:</strong>
+                            <span>www</span>
+                            <strong>Value:</strong>
+                            <span>cname.vercel-dns.com</span>
+                          </div>
+                        </div>
                       </div>
                     )}
-                  </>
-                )}
-              </div>
-            )}
 
-            {/* Platform Visibility */}
-            <div
-              style={{
-                background: '#fff',
-                borderRadius: '12px',
-                padding: '24px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                marginBottom: '24px',
-              }}
-            >
-              <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
-                Platform Visibility
-              </h2>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <label
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
+                    <div
+                      style={{
+                        color: '#666',
+                        fontSize: '12px',
+                        marginTop: '16px',
+                        paddingTop: '12px',
+                        borderTop: '1px solid #ddd',
+                      }}
+                    >
+                      DNS changes typically take 1-10 minutes to propagate (up to 48 hours in some
+                      cases). Click &quot;Verify DNS&quot; once you&apos;ve added the records.
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Email Setup Section - Only show if custom domain exists */}
+              {getCustomDomain() && (
+                <div
+                  style={{
+                    background: '#fff',
+                    borderRadius: '12px',
+                    padding: '24px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                    marginBottom: '24px',
+                  }}
                 >
-                  <input
-                    type="checkbox"
-                    checked={tenant.featuredOnPlatform}
-                    onChange={handleToggleFeatured}
-                    disabled={saving}
-                    style={{ width: '18px', height: '18px' }}
-                  />
-                  <span>Show my profile on myyoga.guru platform</span>
-                </label>
-              </div>
-              <p style={{ color: '#666', fontSize: '13px', marginTop: '8px' }}>
-                When enabled, your profile and courses will be visible to all platform users.
-                Disable this if you want to operate independently with only your custom domain.
-              </p>
-            </div>
+                  <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
+                    Custom Domain Email
+                  </h2>
 
-            {/* Custom Branding - Only show for custom domains */}
-            {getCustomDomain() && (
+                  {/* Email not yet enabled */}
+                  {!tenant?.emailConfig && (
+                    <>
+                      <p style={{ color: '#666', marginBottom: '16px' }}>
+                        Enable email for your custom domain to send and receive emails from{' '}
+                        <strong>contact@{getCustomDomain()}</strong>
+                      </p>
+                      <button
+                        onClick={handleEnableEmail}
+                        disabled={emailSetupLoading || !isCustomDomainVerified()}
+                        style={{
+                          padding: '12px 24px',
+                          background: isCustomDomainVerified() ? 'var(--color-primary)' : '#ccc',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          cursor:
+                            emailSetupLoading || !isCustomDomainVerified()
+                              ? 'not-allowed'
+                              : 'pointer',
+                        }}
+                      >
+                        {emailSetupLoading ? 'Setting up...' : 'Enable Custom Email'}
+                      </button>
+                      {!isCustomDomainVerified() && (
+                        <p style={{ fontSize: '12px', color: '#999', marginTop: '8px' }}>
+                          Verify your custom domain DNS first before enabling email.
+                        </p>
+                      )}
+                    </>
+                  )}
+
+                  {/* Email enabled - show status and DNS records */}
+                  {tenant?.emailConfig && (
+                    <>
+                      {/* Email Address */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                          padding: '16px',
+                          background: '#f8f8f8',
+                          borderRadius: '8px',
+                          marginBottom: '16px',
+                        }}
+                      >
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: '500', marginBottom: '4px' }}>
+                            Your Email Address
+                          </div>
+                          <div
+                            style={{
+                              fontFamily: 'monospace',
+                              fontSize: '16px',
+                              color: 'var(--color-primary)',
+                            }}
+                          >
+                            {tenant.emailConfig.domainEmail}
+                          </div>
+                        </div>
+                        {tenant.emailConfig.sesVerificationStatus === 'verified' ? (
+                          <span
+                            style={{
+                              background: '#0a0',
+                              color: '#fff',
+                              padding: '4px 12px',
+                              borderRadius: '4px',
+                              fontSize: '12px',
+                              fontWeight: '500',
+                            }}
+                          >
+                            Verified
+                          </span>
+                        ) : (
+                          <span
+                            style={{
+                              background: '#f90',
+                              color: '#fff',
+                              padding: '4px 12px',
+                              borderRadius: '4px',
+                              fontSize: '12px',
+                              fontWeight: '500',
+                            }}
+                          >
+                            Pending
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Verification Status Details */}
+                      {tenant.emailConfig.sesVerificationStatus !== 'verified' && (
+                        <>
+                          <div
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns: '1fr 1fr 1fr',
+                              gap: '12px',
+                              marginBottom: '16px',
+                            }}
+                          >
+                            <div
+                              style={{
+                                padding: '12px',
+                                background: tenant.emailConfig.dkimVerified ? '#efe' : '#fef',
+                                borderRadius: '8px',
+                                textAlign: 'center',
+                              }}
+                            >
+                              <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                                DKIM
+                              </div>
+                              <div
+                                style={{
+                                  fontWeight: '500',
+                                  color: tenant.emailConfig.dkimVerified ? '#060' : '#c00',
+                                }}
+                              >
+                                {tenant.emailConfig.dkimVerified ? 'Verified' : 'Pending'}
+                              </div>
+                            </div>
+                            <div
+                              style={{
+                                padding: '12px',
+                                background: tenant.emailConfig.mxVerified ? '#efe' : '#fef',
+                                borderRadius: '8px',
+                                textAlign: 'center',
+                              }}
+                            >
+                              <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                                MX Record
+                              </div>
+                              <div
+                                style={{
+                                  fontWeight: '500',
+                                  color: tenant.emailConfig.mxVerified ? '#060' : '#c00',
+                                }}
+                              >
+                                {tenant.emailConfig.mxVerified ? 'Verified' : 'Pending'}
+                              </div>
+                            </div>
+                            <div
+                              style={{
+                                padding: '12px',
+                                background: tenant.emailConfig.spfVerified ? '#efe' : '#fef',
+                                borderRadius: '8px',
+                                textAlign: 'center',
+                              }}
+                            >
+                              <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                                SPF Record
+                              </div>
+                              <div
+                                style={{
+                                  fontWeight: '500',
+                                  color: tenant.emailConfig.spfVerified ? '#060' : '#c00',
+                                }}
+                              >
+                                {tenant.emailConfig.spfVerified ? 'Verified' : 'Pending'}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* DNS Records for Email */}
+                          {emailDnsRecords.length > 0 && (
+                            <div
+                              style={{
+                                background: '#f8f8f8',
+                                borderRadius: '8px',
+                                padding: '16px',
+                                marginBottom: '16px',
+                              }}
+                            >
+                              <h3
+                                style={{
+                                  fontSize: '14px',
+                                  fontWeight: '600',
+                                  marginBottom: '12px',
+                                }}
+                              >
+                                Add these DNS records:
+                              </h3>
+                              {emailDnsRecords.map((record, index) => (
+                                <div
+                                  key={index}
+                                  style={{
+                                    marginBottom: index < emailDnsRecords.length - 1 ? '16px' : 0,
+                                    paddingBottom: index < emailDnsRecords.length - 1 ? '16px' : 0,
+                                    borderBottom:
+                                      index < emailDnsRecords.length - 1
+                                        ? '1px solid #ddd'
+                                        : 'none',
+                                  }}
+                                >
+                                  <div
+                                    style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}
+                                  >
+                                    {record.purpose}
+                                  </div>
+                                  <div
+                                    style={{
+                                      display: 'grid',
+                                      gridTemplateColumns: '60px 1fr',
+                                      gap: '4px',
+                                      fontFamily: 'monospace',
+                                      fontSize: '12px',
+                                    }}
+                                  >
+                                    <strong>Type:</strong>
+                                    <span>{record.type}</span>
+                                    <strong>Name:</strong>
+                                    <span style={{ wordBreak: 'break-all' }}>{record.name}</span>
+                                    <strong>Value:</strong>
+                                    <span style={{ wordBreak: 'break-all' }}>
+                                      {record.priority ? `${record.priority} ` : ''}
+                                      {record.value}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          <button
+                            onClick={handleVerifyEmail}
+                            disabled={emailVerifying}
+                            style={{
+                              padding: '10px 20px',
+                              background: '#eef',
+                              color: '#00a',
+                              border: 'none',
+                              borderRadius: '8px',
+                              fontSize: '14px',
+                              fontWeight: '500',
+                              cursor: emailVerifying ? 'not-allowed' : 'pointer',
+                            }}
+                          >
+                            {emailVerifying ? 'Verifying...' : 'Verify Email DNS'}
+                          </button>
+                        </>
+                      )}
+
+                      {/* Email verified - show forwarding info */}
+                      {tenant.emailConfig.sesVerificationStatus === 'verified' && (
+                        <div
+                          style={{
+                            padding: '12px 16px',
+                            background: '#f0f9ff',
+                            borderRadius: '8px',
+                            fontSize: '13px',
+                            color: '#0369a1',
+                          }}
+                        >
+                          <strong>Forwarding to:</strong>{' '}
+                          {tenant.emailConfig.forwardToEmail || 'Not configured'}
+                          <br />
+                          <Link
+                            href={`/srv/${expertId}/settings/email`}
+                            style={{ color: '#0369a1', textDecoration: 'underline' }}
+                          >
+                            Manage email settings
+                          </Link>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Platform Visibility */}
               <div
                 style={{
                   background: '#fff',
                   borderRadius: '12px',
                   padding: '24px',
                   boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  marginBottom: '24px',
                 }}
               >
                 <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
-                  Custom Domain Branding
+                  Platform Visibility
                 </h2>
-                <p style={{ color: '#666', marginBottom: '20px', fontSize: '14px' }}>
-                  Customize how your site appears when visitors access it via your custom domain.
-                  These settings apply to <strong>{getCustomDomain()}</strong>.
-                </p>
-
-                {/* Favicon Upload */}
-                <div style={{ marginBottom: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <label
-                    style={{ display: 'block', fontWeight: '500', marginBottom: '8px' }}
-                    htmlFor="faviconUpload"
+                    style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
                   >
-                    Favicon
-                  </label>
-
-                  {/* Current Favicon Preview */}
-                  {branding.faviconUrl && (
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        marginBottom: '12px',
-                        padding: '12px',
-                        background: '#f8f8f8',
-                        borderRadius: '8px',
-                      }}
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={branding.faviconUrl}
-                        alt="Current favicon"
-                        style={{
-                          width: '32px',
-                          height: '32px',
-                          objectFit: 'contain',
-                          background: '#fff',
-                          border: '1px solid #ddd',
-                          borderRadius: '4px',
-                        }}
-                      />
-                      <span style={{ fontSize: '13px', color: '#666', flex: 1 }}>
-                        Current favicon
-                      </span>
-                      <button
-                        onClick={() => setBranding({ ...branding, faviconUrl: '' })}
-                        style={{
-                          padding: '4px 8px',
-                          background: '#fee',
-                          color: '#c00',
-                          border: 'none',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Upload Button */}
-                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                    <label
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '10px 16px',
-                        background: faviconUploading ? '#ccc' : '#f0f0f0',
-                        border: '1px solid #ddd',
-                        borderRadius: '8px',
-                        fontSize: '14px',
-                        cursor: faviconUploading ? 'not-allowed' : 'pointer',
-                      }}
-                    >
-                      <input
-                        id="faviconUpload"
-                        type="file"
-                        accept=".png,.svg,.jpg,.jpeg,.webp,image/png,image/svg+xml,image/jpeg,image/webp"
-                        onChange={handleFaviconUpload}
-                        disabled={faviconUploading}
-                        style={{ display: 'none' }}
-                      />
-                      {faviconUploading ? 'Uploading...' : 'Upload Favicon'}
-                    </label>
-                    <span style={{ color: '#999', fontSize: '12px' }}>
-                      PNG, SVG, or JPEG (max 500KB)
-                    </span>
-                  </div>
-
-                  {/* Or enter URL manually */}
-                  <div style={{ marginTop: '12px' }}>
-                    <label
-                      style={{
-                        display: 'block',
-                        fontSize: '12px',
-                        color: '#666',
-                        marginBottom: '4px',
-                      }}
-                      htmlFor="faviconUrl"
-                    >
-                      Or enter URL manually:
-                    </label>
                     <input
-                      id="faviconUrl"
-                      type="url"
-                      value={branding.faviconUrl || ''}
-                      onChange={e => setBranding({ ...branding, faviconUrl: e.target.value })}
-                      placeholder="https://example.com/favicon.ico"
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #ddd',
-                        borderRadius: '6px',
-                        fontSize: '13px',
-                      }}
+                      type="checkbox"
+                      checked={tenant.featuredOnPlatform}
+                      onChange={handleToggleFeatured}
+                      disabled={saving}
+                      style={{ width: '18px', height: '18px' }}
                     />
-                  </div>
-                  <p style={{ color: '#999', fontSize: '12px', marginTop: '8px' }}>
-                    The icon shown in browser tabs. Use PNG or SVG format. Recommended size: 32x32px
-                    or 64x64px. ICO files are not supported.
-                  </p>
-                </div>
-
-                {/* Site Title */}
-                <div style={{ marginBottom: '20px' }}>
-                  <label
-                    style={{ display: 'block', fontWeight: '500', marginBottom: '8px' }}
-                    htmlFor="siteTitle"
-                  >
-                    Site Title
+                    <span>Show my profile on myyoga.guru platform</span>
                   </label>
-                  <input
-                    id="siteTitle"
-                    type="text"
-                    value={branding.siteTitle || ''}
-                    onChange={e => setBranding({ ...branding, siteTitle: e.target.value })}
-                    placeholder={tenant.name || 'My Yoga Studio'}
-                    style={{
-                      width: '100%',
-                      padding: '10px 14px',
-                      border: '1px solid #ddd',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                    }}
-                  />
-                  <p style={{ color: '#999', fontSize: '12px', marginTop: '4px' }}>
-                    Shown in browser tabs and search results.
-                  </p>
                 </div>
+                <p style={{ color: '#666', fontSize: '13px', marginTop: '8px' }}>
+                  When enabled, your profile and courses will be visible to all platform users.
+                  Disable this if you want to operate independently with only your custom domain.
+                </p>
+              </div>
 
-                {/* Site Description */}
-                <div style={{ marginBottom: '20px' }}>
-                  <label
-                    style={{ display: 'block', fontWeight: '500', marginBottom: '8px' }}
-                    htmlFor="siteDescription"
-                  >
-                    Site Description
-                  </label>
-                  <textarea
-                    id="siteDescription"
-                    value={branding.siteDescription || ''}
-                    onChange={e => setBranding({ ...branding, siteDescription: e.target.value })}
-                    placeholder="Expert-led yoga courses for every level..."
-                    rows={3}
-                    style={{
-                      width: '100%',
-                      padding: '10px 14px',
-                      border: '1px solid #ddd',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      resize: 'vertical',
-                    }}
-                  />
-                  <p style={{ color: '#999', fontSize: '12px', marginTop: '4px' }}>
-                    Meta description for search engines (recommended: 150-160 characters).
+              {/* Custom Branding - Only show for custom domains */}
+              {getCustomDomain() && (
+                <div
+                  style={{
+                    background: '#fff',
+                    borderRadius: '12px',
+                    padding: '24px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  }}
+                >
+                  <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
+                    Custom Domain Branding
+                  </h2>
+                  <p style={{ color: '#666', marginBottom: '20px', fontSize: '14px' }}>
+                    Customize how your site appears when visitors access it via your custom domain.
+                    These settings apply to <strong>{getCustomDomain()}</strong>.
                   </p>
-                </div>
 
-                {/* OG Image Upload */}
-                <div style={{ marginBottom: '24px' }}>
-                  <label
-                    style={{ display: 'block', fontWeight: '500', marginBottom: '8px' }}
-                    htmlFor="ogImageUpload"
-                  >
-                    Social Share Image (OG Image)
-                  </label>
-
-                  {/* Current OG Image Preview */}
-                  {branding.ogImage && (
-                    <div
-                      style={{
-                        marginBottom: '12px',
-                        padding: '12px',
-                        background: '#f8f8f8',
-                        borderRadius: '8px',
-                      }}
+                  {/* Favicon Upload */}
+                  <div style={{ marginBottom: '20px' }}>
+                    <label
+                      style={{ display: 'block', fontWeight: '500', marginBottom: '8px' }}
+                      htmlFor="faviconUpload"
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={branding.ogImage}
-                        alt="Current OG image"
-                        style={{
-                          width: '100%',
-                          maxWidth: '300px',
-                          height: 'auto',
-                          objectFit: 'cover',
-                          borderRadius: '4px',
-                          border: '1px solid #ddd',
-                        }}
-                      />
+                      Favicon
+                    </label>
+
+                    {/* Current Favicon Preview */}
+                    {branding.faviconUrl && (
                       <div
                         style={{
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'space-between',
-                          marginTop: '8px',
+                          gap: '12px',
+                          marginBottom: '12px',
+                          padding: '12px',
+                          background: '#f8f8f8',
+                          borderRadius: '8px',
                         }}
                       >
-                        <span style={{ fontSize: '13px', color: '#666' }}>Current OG image</span>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={branding.faviconUrl}
+                          alt="Current favicon"
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            objectFit: 'contain',
+                            background: '#fff',
+                            border: '1px solid #ddd',
+                            borderRadius: '4px',
+                          }}
+                        />
+                        <span style={{ fontSize: '13px', color: '#666', flex: 1 }}>
+                          Current favicon
+                        </span>
                         <button
-                          onClick={() => setBranding({ ...branding, ogImage: '' })}
+                          onClick={() => setBranding({ ...branding, faviconUrl: '' })}
                           style={{
                             padding: '4px 8px',
                             background: '#fee',
@@ -1674,94 +1485,272 @@ export default function DomainSettingsPage() {
                           Remove
                         </button>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Upload Button */}
-                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    {/* Upload Button */}
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                      <label
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '10px 16px',
+                          background: faviconUploading ? '#ccc' : '#f0f0f0',
+                          border: '1px solid #ddd',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          cursor: faviconUploading ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        <input
+                          id="faviconUpload"
+                          type="file"
+                          accept=".png,.svg,.jpg,.jpeg,.webp,image/png,image/svg+xml,image/jpeg,image/webp"
+                          onChange={handleFaviconUpload}
+                          disabled={faviconUploading}
+                          style={{ display: 'none' }}
+                        />
+                        {faviconUploading ? 'Uploading...' : 'Upload Favicon'}
+                      </label>
+                      <span style={{ color: '#999', fontSize: '12px' }}>
+                        PNG, SVG, or JPEG (max 500KB)
+                      </span>
+                    </div>
+
+                    {/* Or enter URL manually */}
+                    <div style={{ marginTop: '12px' }}>
+                      <label
+                        style={{
+                          display: 'block',
+                          fontSize: '12px',
+                          color: '#666',
+                          marginBottom: '4px',
+                        }}
+                        htmlFor="faviconUrl"
+                      >
+                        Or enter URL manually:
+                      </label>
+                      <input
+                        id="faviconUrl"
+                        type="url"
+                        value={branding.faviconUrl || ''}
+                        onChange={e => setBranding({ ...branding, faviconUrl: e.target.value })}
+                        placeholder="https://example.com/favicon.ico"
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          border: '1px solid #ddd',
+                          borderRadius: '6px',
+                          fontSize: '13px',
+                        }}
+                      />
+                    </div>
+                    <p style={{ color: '#999', fontSize: '12px', marginTop: '8px' }}>
+                      The icon shown in browser tabs. Use PNG or SVG format. Recommended size:
+                      32x32px or 64x64px. ICO files are not supported.
+                    </p>
+                  </div>
+
+                  {/* Site Title */}
+                  <div style={{ marginBottom: '20px' }}>
                     <label
+                      style={{ display: 'block', fontWeight: '500', marginBottom: '8px' }}
+                      htmlFor="siteTitle"
+                    >
+                      Site Title
+                    </label>
+                    <input
+                      id="siteTitle"
+                      type="text"
+                      value={branding.siteTitle || ''}
+                      onChange={e => setBranding({ ...branding, siteTitle: e.target.value })}
+                      placeholder={tenant.name || 'My Yoga Studio'}
                       style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '10px 16px',
-                        background: ogImageUploading ? '#ccc' : '#f0f0f0',
+                        width: '100%',
+                        padding: '10px 14px',
                         border: '1px solid #ddd',
                         borderRadius: '8px',
                         fontSize: '14px',
-                        cursor: ogImageUploading ? 'not-allowed' : 'pointer',
-                      }}
-                    >
-                      <input
-                        id="ogImageUpload"
-                        type="file"
-                        accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
-                        onChange={handleOgImageUpload}
-                        disabled={ogImageUploading}
-                        style={{ display: 'none' }}
-                      />
-                      {ogImageUploading ? 'Uploading...' : 'Upload Image'}
-                    </label>
-                    <span style={{ color: '#999', fontSize: '12px' }}>
-                      PNG, JPEG, or WebP (max 2MB)
-                    </span>
-                  </div>
-
-                  {/* Or enter URL manually */}
-                  <div style={{ marginTop: '12px' }}>
-                    <label
-                      style={{
-                        display: 'block',
-                        fontSize: '12px',
-                        color: '#666',
-                        marginBottom: '4px',
-                      }}
-                      htmlFor="ogImage"
-                    >
-                      Or enter URL manually:
-                    </label>
-                    <input
-                      id="ogImage"
-                      type="url"
-                      value={branding.ogImage || ''}
-                      onChange={e => setBranding({ ...branding, ogImage: e.target.value })}
-                      placeholder="https://example.com/og-image.jpg"
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #ddd',
-                        borderRadius: '6px',
-                        fontSize: '13px',
                       }}
                     />
+                    <p style={{ color: '#999', fontSize: '12px', marginTop: '4px' }}>
+                      Shown in browser tabs and search results.
+                    </p>
                   </div>
-                  <p style={{ color: '#999', fontSize: '12px', marginTop: '8px' }}>
-                    Image shown when sharing on social media. Recommended size: 1200x630px.
-                  </p>
-                </div>
 
-                {/* Save Button */}
-                <button
-                  onClick={handleSaveBranding}
-                  disabled={brandingSaving}
-                  style={{
-                    padding: '12px 24px',
-                    background: 'var(--color-primary)',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: brandingSaving ? 'not-allowed' : 'pointer',
-                    opacity: brandingSaving ? 0.7 : 1,
-                  }}
-                >
-                  {brandingSaving ? 'Saving...' : 'Save Branding'}
-                </button>
-              </div>
-            )}
-          </>
-        )}
+                  {/* Site Description */}
+                  <div style={{ marginBottom: '20px' }}>
+                    <label
+                      style={{ display: 'block', fontWeight: '500', marginBottom: '8px' }}
+                      htmlFor="siteDescription"
+                    >
+                      Site Description
+                    </label>
+                    <textarea
+                      id="siteDescription"
+                      value={branding.siteDescription || ''}
+                      onChange={e => setBranding({ ...branding, siteDescription: e.target.value })}
+                      placeholder="Expert-led yoga courses for every level..."
+                      rows={3}
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        border: '1px solid #ddd',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        resize: 'vertical',
+                      }}
+                    />
+                    <p style={{ color: '#999', fontSize: '12px', marginTop: '4px' }}>
+                      Meta description for search engines (recommended: 150-160 characters).
+                    </p>
+                  </div>
+
+                  {/* OG Image Upload */}
+                  <div style={{ marginBottom: '24px' }}>
+                    <label
+                      style={{ display: 'block', fontWeight: '500', marginBottom: '8px' }}
+                      htmlFor="ogImageUpload"
+                    >
+                      Social Share Image (OG Image)
+                    </label>
+
+                    {/* Current OG Image Preview */}
+                    {branding.ogImage && (
+                      <div
+                        style={{
+                          marginBottom: '12px',
+                          padding: '12px',
+                          background: '#f8f8f8',
+                          borderRadius: '8px',
+                        }}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={branding.ogImage}
+                          alt="Current OG image"
+                          style={{
+                            width: '100%',
+                            maxWidth: '300px',
+                            height: 'auto',
+                            objectFit: 'cover',
+                            borderRadius: '4px',
+                            border: '1px solid #ddd',
+                          }}
+                        />
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            marginTop: '8px',
+                          }}
+                        >
+                          <span style={{ fontSize: '13px', color: '#666' }}>Current OG image</span>
+                          <button
+                            onClick={() => setBranding({ ...branding, ogImage: '' })}
+                            style={{
+                              padding: '4px 8px',
+                              background: '#fee',
+                              color: '#c00',
+                              border: 'none',
+                              borderRadius: '4px',
+                              fontSize: '12px',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Upload Button */}
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                      <label
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '10px 16px',
+                          background: ogImageUploading ? '#ccc' : '#f0f0f0',
+                          border: '1px solid #ddd',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          cursor: ogImageUploading ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        <input
+                          id="ogImageUpload"
+                          type="file"
+                          accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"
+                          onChange={handleOgImageUpload}
+                          disabled={ogImageUploading}
+                          style={{ display: 'none' }}
+                        />
+                        {ogImageUploading ? 'Uploading...' : 'Upload Image'}
+                      </label>
+                      <span style={{ color: '#999', fontSize: '12px' }}>
+                        PNG, JPEG, or WebP (max 2MB)
+                      </span>
+                    </div>
+
+                    {/* Or enter URL manually */}
+                    <div style={{ marginTop: '12px' }}>
+                      <label
+                        style={{
+                          display: 'block',
+                          fontSize: '12px',
+                          color: '#666',
+                          marginBottom: '4px',
+                        }}
+                        htmlFor="ogImage"
+                      >
+                        Or enter URL manually:
+                      </label>
+                      <input
+                        id="ogImage"
+                        type="url"
+                        value={branding.ogImage || ''}
+                        onChange={e => setBranding({ ...branding, ogImage: e.target.value })}
+                        placeholder="https://example.com/og-image.jpg"
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          border: '1px solid #ddd',
+                          borderRadius: '6px',
+                          fontSize: '13px',
+                        }}
+                      />
+                    </div>
+                    <p style={{ color: '#999', fontSize: '12px', marginTop: '8px' }}>
+                      Image shown when sharing on social media. Recommended size: 1200x630px.
+                    </p>
+                  </div>
+
+                  {/* Save Button */}
+                  <button
+                    onClick={handleSaveBranding}
+                    disabled={brandingSaving}
+                    style={{
+                      padding: '12px 24px',
+                      background: 'var(--color-primary)',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: brandingSaving ? 'not-allowed' : 'pointer',
+                      opacity: brandingSaving ? 0.7 : 1,
+                    }}
+                  >
+                    {brandingSaving ? 'Saving...' : 'Save Branding'}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Remove Domain Confirmation Overlay */}
@@ -1774,6 +1763,6 @@ export default function DomainSettingsPage() {
         confirmText="Remove"
         cancelText="Cancel"
       />
-    </div>
+    </>
   );
 }

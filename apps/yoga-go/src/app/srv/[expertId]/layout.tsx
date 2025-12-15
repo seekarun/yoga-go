@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import type { User } from '@/types';
 import ExpertSidebar from '@/components/dashboard/ExpertSidebar';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 const SIDEBAR_COLLAPSED_KEY = 'expert-sidebar-collapsed';
 
@@ -97,10 +98,7 @@ export default function ExpertDashboardLayout({ children }: { children: React.Re
   if (authChecking) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center pt-16">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
-          <p className="mt-4 text-gray-600">Verifying access...</p>
-        </div>
+        <LoadingSpinner size="lg" message="Verifying access..." />
       </div>
     );
   }

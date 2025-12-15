@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import type { Survey } from '@/types';
 import SurveyCard from '@/components/survey/SurveyCard';
+import LoadingSpinner from '@/components/LoadingSpinner';
 import NotificationOverlay from '@/components/NotificationOverlay';
 
 type ConfirmAction = 'publish' | 'close' | 'reopen' | 'delete' | null;
@@ -236,10 +237,7 @@ export default function SurveyListPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
-          <p className="mt-4 text-gray-600">Loading surveys...</p>
-        </div>
+        <LoadingSpinner size="lg" message="Loading surveys..." />
       </div>
     );
   }

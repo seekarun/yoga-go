@@ -7,6 +7,7 @@ import type { Course, Asset } from '@/types';
 import ImageUploadCrop from '@/components/ImageUploadCrop';
 import VideoUpload from '@/components/VideoUpload';
 import type { VideoUploadResult } from '@/components/VideoUpload';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 export default function EditCoursePage() {
   const params = useParams();
@@ -187,10 +188,7 @@ export default function EditCoursePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
-          <p className="mt-4 text-gray-600">Loading course...</p>
-        </div>
+        <LoadingSpinner size="lg" message="Loading course..." />
       </div>
     );
   }

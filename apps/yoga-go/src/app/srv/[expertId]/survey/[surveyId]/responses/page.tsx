@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { SurveyQuestion } from '@/types';
 import SurveyStatusBadge from '@/components/survey/SurveyStatusBadge';
+import LoadingSpinner from '@/components/LoadingSpinner';
 import NotificationOverlay from '@/components/NotificationOverlay';
 import type { SurveyStatus } from '@/types';
 
@@ -169,10 +170,7 @@ export default function SurveyResponsesPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
-          <p className="mt-4 text-gray-600">Loading responses...</p>
-        </div>
+        <LoadingSpinner size="lg" message="Loading responses..." />
       </div>
     );
   }

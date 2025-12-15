@@ -162,7 +162,7 @@ export default function ExpertPlatform() {
               }}
               style={{
                 padding: '12px 24px',
-                background: '#667eea',
+                background: 'var(--color-primary)',
                 color: '#fff',
                 border: 'none',
                 borderRadius: '8px',
@@ -181,8 +181,8 @@ export default function ExpertPlatform() {
               style={{
                 padding: '12px 24px',
                 background: '#fff',
-                color: '#667eea',
-                border: '2px solid #667eea',
+                color: 'var(--color-primary)',
+                border: '2px solid var(--color-primary)',
                 borderRadius: '8px',
                 fontSize: '16px',
                 fontWeight: '600',

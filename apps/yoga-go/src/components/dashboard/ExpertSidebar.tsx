@@ -235,14 +235,21 @@ export default function ExpertSidebar({ expertId }: ExpertSidebarProps) {
               key={item.id}
               href={item.href}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group ${
-                active
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                active ? '' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
               }`}
+              style={
+                active
+                  ? {
+                      backgroundColor: 'color-mix(in srgb, var(--color-primary) 10%, white)',
+                      color: 'var(--color-primary)',
+                    }
+                  : undefined
+              }
               title={isCollapsed ? item.label : undefined}
             >
               <span
-                className={`flex-shrink-0 ${active ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-600'}`}
+                className={`flex-shrink-0 ${active ? '' : 'text-gray-400 group-hover:text-gray-600'}`}
+                style={active ? { color: 'var(--color-primary)' } : undefined}
               >
                 {item.icon}
               </span>
