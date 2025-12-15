@@ -31,6 +31,12 @@ const config: NextAuthConfig = {
       clientId: process.env.COGNITO_CLIENT_ID!,
       clientSecret: process.env.COGNITO_CLIENT_SECRET!,
       issuer: process.env.COGNITO_ISSUER!,
+      authorization: {
+        params: {
+          // Force account selection on every login
+          prompt: 'login',
+        },
+      },
     }),
   ],
   callbacks: {
