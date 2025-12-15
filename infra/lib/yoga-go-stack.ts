@@ -6,11 +6,13 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as ses from 'aws-cdk-lib/aws-ses';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as nodejsLambda from 'aws-cdk-lib/aws-lambda-nodejs';
+import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as path from 'path';
 import type { Construct } from 'constructs';
 
 // Domain configuration (DNS managed by Vercel)
 const MYYOGA_GURU_DOMAIN = 'myyoga.guru';
+const COGNITO_CUSTOM_DOMAIN = `signin.${MYYOGA_GURU_DOMAIN}`;
 
 export type YogaGoStackProps = cdk.StackProps;
 
@@ -64,9 +66,51 @@ export class YogaGoStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
-    const userPoolDomain = userPool.addDomain('YogaGoDomain', {
-      cognitoDomain: { domainPrefix: 'yoga-go-auth' },
-    });
+    // ========================================
+    // Cognito Domain Configuration
+    // ========================================
+    // Custom domain (signin.myyoga.guru) requires a certificate in us-east-1
+    // To enable custom domain:
+    // 1. Create certificate in ACM us-east-1 for signin.myyoga.guru
+    // 2. Add DNS validation CNAME records to Vercel
+    // 3. Wait for certificate validation
+    // 4. Deploy with: cdk deploy -c cognitoCertificateArn=arn:aws:acm:us-east-1:...
+    // 5. Add CNAME record in Vercel: signin.myyoga.guru -> [CloudFront domain from output]
+    const cognitoCertificateArn = this.node.tryGetContext('cognitoCertificateArn');
+
+    let cognitoDomainName: string;
+
+    if (cognitoCertificateArn) {
+      // Use custom domain with provided certificate
+      const certificate = acm.Certificate.fromCertificateArn(
+        this,
+        'CognitoCertificate',
+        cognitoCertificateArn
+      );
+
+      const customDomain = userPool.addDomain('YogaGoCustomDomain', {
+        customDomain: {
+          domainName: COGNITO_CUSTOM_DOMAIN,
+          certificate,
+        },
+      });
+
+      cognitoDomainName = customDomain.domainName;
+
+      // Output the CloudFront domain for DNS CNAME record
+      new cdk.CfnOutput(this, 'CognitoCloudFrontDomain', {
+        value: customDomain.cloudFrontEndpoint,
+        description: `Add CNAME record in Vercel: ${COGNITO_CUSTOM_DOMAIN} -> this value`,
+        exportName: 'YogaGoCognitoCloudFrontDomain',
+      });
+    } else {
+      // Use default Cognito domain (fallback)
+      const defaultDomain = userPool.addDomain('YogaGoDomain', {
+        cognitoDomain: { domainPrefix: 'yoga-go-auth' },
+      });
+
+      cognitoDomainName = `${defaultDomain.domainName}.auth.${this.region}.amazoncognito.com`;
+    }
 
     // ========================================
     // Secrets Manager
@@ -429,7 +473,7 @@ The MyYoga.Guru Team`,
     });
 
     new cdk.CfnOutput(this, 'CognitoDomain', {
-      value: `${userPoolDomain.domainName}.auth.${this.region}.amazoncognito.com`,
+      value: cognitoDomainName,
       description: 'Cognito Hosted UI Domain',
       exportName: 'YogaGoCognitoDomain',
     });

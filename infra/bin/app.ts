@@ -4,6 +4,7 @@ import * as cdk from 'aws-cdk-lib';
 import { YogaGoStack } from '../lib/yoga-go-stack';
 import { SesStack } from '../lib/ses-stack';
 import { CalelStack } from '../lib/calel-stack';
+import { CognitoCertStack } from '../lib/cognito-cert-stack';
 
 const app = new cdk.App();
 
@@ -17,6 +18,11 @@ const envSydney = {
 const envOregon = {
   account,
   region: 'us-west-2',
+};
+
+const envVirginia = {
+  account,
+  region: 'us-east-1',
 };
 
 // ========================================
@@ -75,4 +81,29 @@ new CalelStack(app, 'CalelStack', {
     Environment: 'production',
     ManagedBy: 'CDK',
   },
+});
+
+// ========================================
+// Cognito Certificate Stack (us-east-1)
+// ========================================
+// Creates ACM certificate for Cognito custom domain (signin.myyoga.guru)
+// Must be in us-east-1 as required by Cognito custom domains.
+//
+// Deployment steps:
+// 1. Deploy this stack: cdk deploy CognitoCertStack
+// 2. Add DNS validation CNAME to Vercel (check ACM console)
+// 3. Wait for certificate to show "Issued"
+// 4. Deploy YogaGoStack with: cdk deploy YogaGoStack -c cognitoCertificateArn=<ARN>
+// 5. Add CNAME for signin.myyoga.guru -> CloudFront domain (from YogaGoStack output)
+// 6. Update COGNITO_DOMAIN env var in Vercel to signin.myyoga.guru
+new CognitoCertStack(app, 'CognitoCertStack', {
+  description: 'Cognito Certificate for signin.myyoga.guru (us-east-1)',
+  env: envVirginia,
+  crossRegionReferences: true,
+  tags: {
+    Application: 'YogaGo',
+    Environment: 'production',
+    ManagedBy: 'CDK',
+  },
+  domainName: 'signin.myyoga.guru',
 });
