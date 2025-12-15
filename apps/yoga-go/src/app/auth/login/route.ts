@@ -86,7 +86,8 @@ export async function GET(request: NextRequest) {
     console.log('[DBG][auth/login] Created pending OAuth role:', roles);
 
     // Construct redirect URL to go through /auth/callback for proper user creation
-    const finalDestination = callbackUrl || '/app';
+    // Default to /srv (expert portal) since myyoga.guru targets yoga experts
+    const finalDestination = callbackUrl || '/srv';
     const callbackPath = `/auth/callback?redirectTo=${encodeURIComponent(finalDestination)}`;
 
     // Build the Cognito OAuth URL manually

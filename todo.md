@@ -49,6 +49,8 @@ notes
 [x] integrate zoom
 [ ] loading screen
 [ ] custom colour scheme for expert landing page
+[ ] what if expert already has a domain email, and want to use that?
+
 
 CALEL
 

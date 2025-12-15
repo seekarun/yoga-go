@@ -37,8 +37,9 @@ export async function GET(request: NextRequest) {
     console.log('[DBG][auth/callback] User:', session.user.cognitoSub);
 
     // Extract redirectTo from query params
+    // Default to /srv (expert portal) since myyoga.guru targets yoga experts
     const searchParams = request.nextUrl.searchParams;
-    const redirectTo = searchParams.get('redirectTo') || '/app';
+    const redirectTo = searchParams.get('redirectTo') || '/srv';
 
     let roles: UserRole[] = ['learner'];
 

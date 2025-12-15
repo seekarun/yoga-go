@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { getClientExpertContext } from '@/lib/domainContext';
@@ -11,6 +11,7 @@ export default function Header() {
   const { user, isAuthenticated, isExpert, login: _login, logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const [expertMode, setExpertMode] = useState<{ isExpertMode: boolean; expertId: string | null }>({
     isExpertMode: false,
     expertId: null,
@@ -100,6 +101,23 @@ export default function Header() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Close user menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    if (isUserMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isUserMenuOpen]);
 
   const handleLogout = () => {
     // Redirect experts to /srv after logout, others to landing page
@@ -249,7 +267,7 @@ export default function Header() {
         {/* Auth Button */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', paddingRight: '20px' }}>
           {isAuthenticated ? (
-            <div style={{ position: 'relative' }}>
+            <div ref={userMenuRef} style={{ position: 'relative' }}>
               <button
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                 style={{
@@ -304,119 +322,6 @@ export default function Header() {
                       {user?.profile?.email || 'user@example.com'}
                     </div>
                   </div>
-                  <Link
-                    href="/app"
-                    style={{
-                      display: 'block',
-                      padding: '12px 20px',
-                      textDecoration: 'none',
-                      color: '#000',
-                      fontSize: '14px',
-                    }}
-                    onClick={() => setIsUserMenuOpen(false)}
-                  >
-                    My Dashboard
-                  </Link>
-                  <Link
-                    href="/app/my-courses"
-                    style={{
-                      display: 'block',
-                      padding: '12px 20px',
-                      textDecoration: 'none',
-                      color: '#000',
-                      fontSize: '14px',
-                    }}
-                    onClick={() => setIsUserMenuOpen(false)}
-                  >
-                    My Courses
-                  </Link>
-                  <Link
-                    href="/app/live"
-                    style={{
-                      display: 'block',
-                      padding: '12px 20px',
-                      textDecoration: 'none',
-                      color: '#000',
-                      fontSize: '14px',
-                    }}
-                    onClick={() => setIsUserMenuOpen(false)}
-                  >
-                    My 1:1 Sessions
-                  </Link>
-                  <Link
-                    href="/app/profile"
-                    style={{
-                      display: 'block',
-                      padding: '12px 20px',
-                      textDecoration: 'none',
-                      color: '#000',
-                      fontSize: '14px',
-                    }}
-                    onClick={() => setIsUserMenuOpen(false)}
-                  >
-                    Profile
-                  </Link>
-                  {isExpert && (
-                    <>
-                      <div style={{ height: '1px', background: '#e0e0e0', margin: '8px 0' }} />
-                      <div
-                        style={{
-                          padding: '8px 20px 4px',
-                          fontSize: '11px',
-                          fontWeight: '600',
-                          color: '#999',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.5px',
-                        }}
-                      >
-                        Expert Tools
-                      </div>
-                      <Link
-                        href="/srv"
-                        style={{
-                          display: 'block',
-                          padding: '12px 20px',
-                          textDecoration: 'none',
-                          color: 'var(--color-primary)',
-                          fontSize: '14px',
-                          fontWeight: '500',
-                        }}
-                        onClick={() => setIsUserMenuOpen(false)}
-                      >
-                        📊 Expert Dashboard
-                      </Link>
-                      {user?.expertProfile && (
-                        <Link
-                          href={`/srv/${user.expertProfile}/live`}
-                          style={{
-                            display: 'block',
-                            padding: '12px 20px',
-                            textDecoration: 'none',
-                            color: '#764ba2',
-                            fontSize: '14px',
-                            fontWeight: '500',
-                          }}
-                          onClick={() => setIsUserMenuOpen(false)}
-                        >
-                          🎥 Manage 1-on-1 Sessions
-                        </Link>
-                      )}
-                      <Link
-                        href="/app?view=learning"
-                        style={{
-                          display: 'block',
-                          padding: '12px 20px',
-                          textDecoration: 'none',
-                          color: '#000',
-                          fontSize: '14px',
-                        }}
-                        onClick={() => setIsUserMenuOpen(false)}
-                      >
-                        📚 My Learning
-                      </Link>
-                    </>
-                  )}
-                  <div style={{ height: '1px', background: '#e0e0e0', margin: '8px 0' }} />
                   <button
                     onClick={() => {
                       handleLogout();
