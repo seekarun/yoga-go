@@ -79,23 +79,10 @@ export async function GET(request: NextRequest) {
       name: payload.name,
     });
 
-    // Check if this is an expert signup based on source parameter
-    // The source param is encoded in the state/callbackUrl
-    const stateUrl = state ? new URL(state, baseUrl) : null;
-    const source = stateUrl?.searchParams?.get('source');
-    const isExpertSignup = source === 'srv';
-    const roles: ('learner' | 'expert' | 'admin')[] = isExpertSignup
-      ? ['learner', 'expert']
-      : ['learner'];
+    // All signups on this domain are expert signups
+    const roles: ('learner' | 'expert' | 'admin')[] = ['learner', 'expert'];
 
-    console.log(
-      '[DBG][auth/facebook/callback] source:',
-      source,
-      'isExpertSignup:',
-      isExpertSignup,
-      'roles:',
-      roles
-    );
+    console.log('[DBG][auth/facebook/callback] Creating user with roles:', roles);
 
     // Create or update user in MongoDB
     const user = await getOrCreateUser(
@@ -123,8 +110,8 @@ export async function GET(request: NextRequest) {
       salt: 'authjs.session-token',
     });
 
-    // Determine redirect URL
-    const callbackUrl = state || '/app';
+    // Determine redirect URL - default to /srv since all signups are expert signups
+    const callbackUrl = state || '/srv';
 
     console.log('[DBG][auth/facebook/callback] Creating session and redirecting to:', callbackUrl);
 

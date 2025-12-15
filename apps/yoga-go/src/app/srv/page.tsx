@@ -413,7 +413,7 @@ function ExpertLandingPage({ isAuthenticated = false }: { isAuthenticated?: bool
                   ) : (
                     // Unauthenticated - show signup link
                     <Link
-                      href="/auth/signup?source=srv"
+                      href="/auth/signup"
                       style={{
                         padding: '16px 40px',
                         background: '#fff',

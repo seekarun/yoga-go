@@ -17,7 +17,6 @@ export default function Header() {
     expertId: null,
   });
   const [expertData, setExpertData] = useState<Expert | null>(null);
-  const [isOnSrvPage, setIsOnSrvPage] = useState(false);
   const [scrollOpacity, setScrollOpacity] = useState(0);
 
   // Detect expert mode on mount AND when viewing /experts/[expertId] pages
@@ -26,8 +25,6 @@ export default function Header() {
     const detectExpertMode = async () => {
       const context = getClientExpertContext();
       const isOnExpertPage = window.location.pathname.startsWith('/experts/');
-      const isOnSrv = window.location.pathname.startsWith('/srv');
-      setIsOnSrvPage(isOnSrv);
 
       // If we already detected expert mode from static config or subdomain, use that
       if (context.isExpertMode || isOnExpertPage) {
@@ -233,34 +230,7 @@ export default function Header() {
             }}
             className="desktop-nav"
           >
-            {!(isOnSrvPage && isAuthenticated) && (
-              <>
-                <Link
-                  href="/courses"
-                  style={{
-                    textDecoration: 'none',
-                    color: scrollOpacity < 0.5 ? '#fff' : '#666',
-                    fontSize: '16px',
-                    transition: 'color 0.2s',
-                    textShadow: scrollOpacity < 0.5 ? '0 2px 4px rgba(0,0,0,0.3)' : 'none',
-                  }}
-                >
-                  Courses
-                </Link>
-                <Link
-                  href="/experts"
-                  style={{
-                    textDecoration: 'none',
-                    color: scrollOpacity < 0.5 ? '#fff' : '#666',
-                    fontSize: '16px',
-                    transition: 'color 0.2s',
-                    textShadow: scrollOpacity < 0.5 ? '0 2px 4px rgba(0,0,0,0.3)' : 'none',
-                  }}
-                >
-                  Experts
-                </Link>
-              </>
-            )}
+            {/* Navigation links removed - focusing on expert experience */}
           </nav>
         )}
 

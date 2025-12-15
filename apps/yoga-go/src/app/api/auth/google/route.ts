@@ -11,7 +11,8 @@ export async function GET(request: NextRequest) {
   console.log('[DBG][auth/google] Initiating Google OAuth flow');
 
   const searchParams = request.nextUrl.searchParams;
-  const callbackUrl = searchParams.get('callbackUrl') || '/app';
+  // Default to /srv since all signups are expert signups
+  const callbackUrl = searchParams.get('callbackUrl') || '/srv';
 
   // Determine the base URL for redirect
   const hostname = request.headers.get('host') || 'localhost:3111';
@@ -43,7 +44,9 @@ export async function GET(request: NextRequest) {
     hostname,
     baseUrl,
     redirectUri,
+    callbackUrl, // Log what we're sending as state
   });
+  console.log('[DBG][auth/google] State being sent:', callbackUrl);
   console.log('[DBG][auth/google] Redirecting to:', googleOAuthUrl);
 
   return NextResponse.redirect(googleOAuthUrl);

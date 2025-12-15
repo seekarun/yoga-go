@@ -161,81 +161,7 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Practice - Hidden in expert mode */}
-          {!expertMode.isExpertMode && (
-            <div>
-              <h3
-                style={{
-                  fontWeight: '600',
-                  fontSize: '16px',
-                  marginBottom: '20px',
-                  color: '#000',
-                }}
-              >
-                Practice
-              </h3>
-              <ul
-                style={{
-                  listStyle: 'none',
-                  padding: 0,
-                  margin: 0,
-                }}
-              >
-                <li style={{ marginBottom: '12px' }}>
-                  <Link
-                    href="/courses"
-                    style={{
-                      color: '#666',
-                      fontSize: '14px',
-                      textDecoration: 'none',
-                      transition: 'color 0.2s',
-                    }}
-                  >
-                    All Courses
-                  </Link>
-                </li>
-                <li style={{ marginBottom: '12px' }}>
-                  <Link
-                    href="/courses?level=beginner"
-                    style={{
-                      color: '#666',
-                      fontSize: '14px',
-                      textDecoration: 'none',
-                      transition: 'color 0.2s',
-                    }}
-                  >
-                    Beginner
-                  </Link>
-                </li>
-                <li style={{ marginBottom: '12px' }}>
-                  <Link
-                    href="/courses?level=intermediate"
-                    style={{
-                      color: '#666',
-                      fontSize: '14px',
-                      textDecoration: 'none',
-                      transition: 'color 0.2s',
-                    }}
-                  >
-                    Intermediate
-                  </Link>
-                </li>
-                <li style={{ marginBottom: '12px' }}>
-                  <Link
-                    href="/courses?level=advanced"
-                    style={{
-                      color: '#666',
-                      fontSize: '14px',
-                      textDecoration: 'none',
-                      transition: 'color 0.2s',
-                    }}
-                  >
-                    Advanced
-                  </Link>
-                </li>
-              </ul>
-            </div>
-          )}
+          {/* Practice section removed - focusing on expert experience */}
 
           {/* Company - Hidden in expert mode */}
           {!expertMode.isExpertMode && (
@@ -268,19 +194,6 @@ export default function Footer() {
                     }}
                   >
                     About Us
-                  </Link>
-                </li>
-                <li style={{ marginBottom: '12px' }}>
-                  <Link
-                    href="/experts"
-                    style={{
-                      color: '#666',
-                      fontSize: '14px',
-                      textDecoration: 'none',
-                      transition: 'color 0.2s',
-                    }}
-                  >
-                    Our Experts
                   </Link>
                 </li>
                 <li style={{ marginBottom: '12px' }}>

@@ -19,6 +19,13 @@ export async function GET(request: NextRequest) {
   const error = searchParams.get('error');
   const errorDescription = searchParams.get('error_description');
 
+  // Debug: Log all query params to understand what's coming back from Cognito
+  console.log(
+    '[DBG][auth/google/callback] All query params:',
+    Object.fromEntries(searchParams.entries())
+  );
+  console.log('[DBG][auth/google/callback] State parameter value:', state);
+
   // Determine base URL
   const hostname = request.headers.get('host') || 'localhost:3111';
   const protocol = hostname.includes('localhost') ? 'http' : 'https';
@@ -79,23 +86,10 @@ export async function GET(request: NextRequest) {
       name: payload.name,
     });
 
-    // Check if this is an expert signup based on source parameter
-    // The source param is encoded in the state/callbackUrl
-    const stateUrl = state ? new URL(state, baseUrl) : null;
-    const source = stateUrl?.searchParams?.get('source');
-    const isExpertSignup = source === 'srv';
-    const roles: ('learner' | 'expert' | 'admin')[] = isExpertSignup
-      ? ['learner', 'expert']
-      : ['learner'];
+    // All signups on this domain are expert signups
+    const roles: ('learner' | 'expert' | 'admin')[] = ['learner', 'expert'];
 
-    console.log(
-      '[DBG][auth/google/callback] source:',
-      source,
-      'isExpertSignup:',
-      isExpertSignup,
-      'roles:',
-      roles
-    );
+    console.log('[DBG][auth/google/callback] Creating user with roles:', roles);
 
     // Create or update user in MongoDB
     const user = await getOrCreateUser(
@@ -123,8 +117,8 @@ export async function GET(request: NextRequest) {
       salt: 'authjs.session-token',
     });
 
-    // Determine redirect URL
-    const callbackUrl = state || '/app';
+    // Determine redirect URL - default to /srv since all signups are expert signups
+    const callbackUrl = state || '/srv';
 
     console.log('[DBG][auth/google/callback] Creating session and redirecting to:', callbackUrl);
 
