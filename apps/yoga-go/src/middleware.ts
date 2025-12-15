@@ -45,6 +45,30 @@ export default async function middleware(request: NextRequest) {
 
   console.log('[DBG][middleware] Request to:', pathname, 'from:', hostname);
 
+  // Check for post-logout-redirect cookie (set during Cognito logout flow)
+  // This handles redirecting to the intended destination after Cognito logout
+  // Cognito only accepts base URLs in logout_uri, so we store the final path in a cookie
+  const postLogoutRedirect = request.cookies.get('post-logout-redirect');
+  if (postLogoutRedirect && pathname === '/') {
+    const redirectPath = postLogoutRedirect.value;
+    console.log('[DBG][middleware] ========== POST LOGOUT REDIRECT ==========');
+    console.log('[DBG][middleware] Redirecting to:', redirectPath);
+
+    const protocol = hostname.includes('localhost') ? 'http' : 'https';
+    const baseUrl = `${protocol}://${hostname}`;
+    const redirectUrl = new URL(redirectPath, baseUrl);
+
+    const response = NextResponse.redirect(redirectUrl.toString());
+
+    // Clear the cookie
+    response.cookies.set('post-logout-redirect', '', {
+      path: '/',
+      maxAge: 0,
+    });
+
+    return response;
+  }
+
   // Check for pending_logout cookie (set during logout flow)
   // If found, clear it and redirect to NextAuth signout to clear any remaining session
   const pendingLogout = request.cookies.get('pending_logout');

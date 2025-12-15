@@ -30,6 +30,8 @@ export async function GET(request: NextRequest) {
     redirect_uri: redirectUri,
     identity_provider: 'Google',
     state: callbackUrl, // Preserve the callback URL in state
+    // Force Google to show account selection every time
+    prompt: 'select_account',
   });
 
   const googleOAuthUrl = `https://${domain}/oauth2/authorize?${params.toString()}`;

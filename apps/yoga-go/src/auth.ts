@@ -33,8 +33,10 @@ const config: NextAuthConfig = {
       issuer: process.env.COGNITO_ISSUER!,
       authorization: {
         params: {
-          // Force account selection on every login
-          prompt: 'login',
+          // Force fresh login and account selection
+          prompt: 'select_account login',
+          // max_age=0 forces re-authentication even with existing session
+          max_age: 0,
         },
       },
     }),

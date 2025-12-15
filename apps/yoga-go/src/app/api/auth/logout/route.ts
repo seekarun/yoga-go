@@ -1,12 +1,14 @@
 /**
  * GET /api/auth/logout
  *
- * Simple logout endpoint that clears the session cookie and redirects.
- * Navigate directly to this URL to log out.
+ * Logout endpoint that clears the session cookie and redirects to Cognito logout.
+ * This ensures both the local session and Cognito session are cleared,
+ * forcing a fresh login (with account selection) on next login attempt.
  */
 
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import { getCognitoUrls, cognitoConfig } from '@/lib/cognito';
 
 export async function GET(request: NextRequest) {
   console.log('[DBG][logout] ========== LOGOUT ==========');
@@ -15,18 +17,29 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const returnTo = searchParams.get('returnTo') || '/';
 
-  // Determine the redirect URL
+  // Determine the base URL
   const hostname = request.headers.get('host') || 'localhost:3111';
   const protocol = hostname.includes('localhost') ? 'http' : 'https';
   const baseUrl = `${protocol}://${hostname}`;
-  const redirectUrl = returnTo.startsWith('http')
-    ? returnTo
-    : new URL(returnTo, baseUrl).toString();
 
-  console.log('[DBG][logout] Redirecting to:', redirectUrl);
+  // Cognito requires logout_uri to EXACTLY match one of the configured allowed logout URLs
+  // We only have base URLs configured (http://localhost:3111, https://myyoga.guru, etc.)
+  // So we use the base URL as logout_uri and pass the final destination via a cookie
+  const finalPath = returnTo.startsWith('/') ? returnTo : `/${returnTo}`;
 
-  // Create redirect response
-  const response = NextResponse.redirect(redirectUrl);
+  console.log('[DBG][logout] Base URL for Cognito:', baseUrl);
+  console.log('[DBG][logout] Final path after logout:', finalPath);
+
+  // Build Cognito logout URL - use base URL as logout_uri (which is allowed in Cognito config)
+  const cognitoUrls = getCognitoUrls();
+  const cognitoLogoutUrl = new URL(cognitoUrls.logout);
+  cognitoLogoutUrl.searchParams.set('client_id', cognitoConfig.clientId);
+  cognitoLogoutUrl.searchParams.set('logout_uri', baseUrl);
+
+  console.log('[DBG][logout] Cognito logout URL:', cognitoLogoutUrl.toString());
+
+  // Create redirect response to Cognito logout
+  const response = NextResponse.redirect(cognitoLogoutUrl.toString());
 
   // Clear the session cookie
   // IMPORTANT: Must match exactly how it was set in login
@@ -41,6 +54,20 @@ export async function GET(request: NextRequest) {
     maxAge: 0,
     ...(isProduction && { domain: '.myyoga.guru' }),
   });
+
+  // Store the final destination in a cookie so the landing page can redirect
+  // This allows us to use just the base URL as logout_uri (required by Cognito)
+  // while still redirecting to the intended destination
+  if (finalPath !== '/') {
+    response.cookies.set('post-logout-redirect', finalPath, {
+      httpOnly: false, // Needs to be readable by client JS
+      secure: isProduction,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60, // 1 minute - should be used immediately
+      ...(isProduction && { domain: '.myyoga.guru' }),
+    });
+  }
 
   console.log('[DBG][logout] Cookie cleared, isProduction:', isProduction);
 
