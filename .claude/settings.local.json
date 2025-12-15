@@ -72,7 +72,9 @@
       "Bash(aws cloudformation list-stacks:*)",
       "Bash(aws ses get-identity-dkim-attributes:*)",
       "Bash(aws ses list-identities:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(wc:*)",
+      "Bash(head:*)"
     ],
     "deny": [],
     "ask": []

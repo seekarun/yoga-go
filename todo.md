@@ -43,10 +43,17 @@ notes
 [ ] privacy and other footer links handled for platform 
 [ ] privacy and other footer links handled for individuals
 [ ] colour scheme for landing page
-
+[ ] asset management
+[ ] via amazonses email going to spam. can expert just view email on platform?
+[ ] razor pay for live sessions
+[ ] integrate zoom
+[ ] loading screen
 
 
 CALEL
 
 [ ] localization
 [ ] 
+
+yes
+
