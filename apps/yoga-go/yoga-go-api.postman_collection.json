@@ -330,6 +330,46 @@
               "response": []
             }
           ]
+        },
+        {
+          "name": "Webinars",
+          "item": [
+            {
+              "name": "Get All Webinars",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/data/webinars",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["data", "webinars"]
+                },
+                "description": "Retrieve list of all published webinars"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Webinar by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/data/webinars/:webinarId",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["data", "webinars", ":webinarId"],
+                  "variable": [
+                    {
+                      "key": "webinarId",
+                      "value": "webinar-123",
+                      "description": "Webinar ID"
+                    }
+                  ]
+                },
+                "description": "Retrieve detailed information about a specific webinar including sessions, expert info, and feedback"
+              },
+              "response": []
+            }
+          ]
         }
       ]
     },
@@ -549,6 +589,131 @@
                   ]
                 },
                 "description": "Retrieve detailed user profile information including membership, statistics, enrolled courses, and achievements"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "User Webinars",
+          "description": "Authenticated user webinar endpoints - view registrations, access sessions, submit feedback",
+          "item": [
+            {
+              "name": "Get User Webinars",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/data/app/webinars",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["data", "app", "webinars"]
+                },
+                "description": "Retrieve all webinars the authenticated user is registered for"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Registered Webinar",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/data/app/webinars/:webinarId",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["data", "app", "webinars", ":webinarId"],
+                  "variable": [
+                    {
+                      "key": "webinarId",
+                      "value": "webinar-123",
+                      "description": "Webinar ID"
+                    }
+                  ]
+                },
+                "description": "Retrieve webinar details with session links (Google Meet) for registered users"
+              },
+              "response": []
+            },
+            {
+              "name": "Register for Webinar",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"paymentId\": \"pay_abc123\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/data/app/webinars/:webinarId/register",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["data", "app", "webinars", ":webinarId", "register"],
+                  "variable": [
+                    {
+                      "key": "webinarId",
+                      "value": "webinar-123",
+                      "description": "Webinar ID"
+                    }
+                  ]
+                },
+                "description": "Register for a webinar after payment. For free webinars, paymentId is optional."
+              },
+              "response": []
+            },
+            {
+              "name": "Submit Webinar Feedback",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"rating\": 5,\n  \"comment\": \"Amazing session! Learned so much about breathing techniques.\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/data/app/webinars/:webinarId/feedback",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["data", "app", "webinars", ":webinarId", "feedback"],
+                  "variable": [
+                    {
+                      "key": "webinarId",
+                      "value": "webinar-123",
+                      "description": "Webinar ID"
+                    }
+                  ]
+                },
+                "description": "Submit feedback for a webinar. User must be registered. Rating: 1-5, Comment: min 10 chars."
               },
               "response": []
             }
@@ -866,6 +1031,477 @@
               ]
             },
             "description": "Check the processing status of an uploaded video. Poll this endpoint after upload to check when video is ready.\n\nResponse:\n{\n  \"success\": true,\n  \"data\": {\n    \"uid\": \"abc123def456\",\n    \"status\": \"ready\",\n    \"readyToStream\": true,\n    \"duration\": 123.45,\n    \"thumbnail\": \"https://...\",\n    \"preview\": \"https://...\",\n    \"playback\": { ... }\n  }\n}\n\nStatus values:\n- queued: Video is queued for processing\n- inprogress: Video is being processed\n- ready: Video is ready to stream\n- error: Processing failed"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Expert Webinars",
+      "description": "Expert webinar management endpoints - create, update, manage sessions and registrations",
+      "item": [
+        {
+          "name": "Get Expert Webinars",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/webinars",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "webinars"]
+            },
+            "description": "Retrieve all webinars created by the authenticated expert"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Webinar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Morning Yoga Flow\",\n  \"description\": \"Join us for an energizing morning yoga session\",\n  \"price\": 49,\n  \"maxParticipants\": 50,\n  \"category\": \"Vinyasa Yoga\",\n  \"level\": \"Beginner\",\n  \"sessions\": [\n    {\n      \"title\": \"Session 1 - Foundations\",\n      \"description\": \"Introduction to morning flows\",\n      \"startTime\": \"2025-01-15T06:00:00.000Z\",\n      \"endTime\": \"2025-01-15T07:00:00.000Z\",\n      \"duration\": 60\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/webinars",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "webinars"]
+            },
+            "description": "Create a new webinar. Starts in DRAFT status. Add sessions and then update status to SCHEDULED."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Webinar Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/webinars/:webinarId",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "webinars", ":webinarId"],
+              "variable": [
+                {
+                  "key": "webinarId",
+                  "value": "webinar-123",
+                  "description": "Webinar ID"
+                }
+              ]
+            },
+            "description": "Get detailed webinar information including all sessions and registrations count"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Webinar",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Morning Yoga Flow - Updated\",\n  \"status\": \"SCHEDULED\",\n  \"price\": 39\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/webinars/:webinarId",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "webinars", ":webinarId"],
+              "variable": [
+                {
+                  "key": "webinarId",
+                  "value": "webinar-123",
+                  "description": "Webinar ID"
+                }
+              ]
+            },
+            "description": "Update webinar details. When status changes from DRAFT to SCHEDULED, Google Meet links are created."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Webinar",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/webinars/:webinarId",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "webinars", ":webinarId"],
+              "variable": [
+                {
+                  "key": "webinarId",
+                  "value": "webinar-123",
+                  "description": "Webinar ID"
+                }
+              ]
+            },
+            "description": "Delete a webinar and all associated registrations"
+          },
+          "response": []
+        },
+        {
+          "name": "Add Session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Session 2 - Advanced Poses\",\n  \"description\": \"Building on the foundations\",\n  \"startTime\": \"2025-01-16T06:00:00.000Z\",\n  \"endTime\": \"2025-01-16T07:00:00.000Z\",\n  \"duration\": 60\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/webinars/:webinarId/sessions",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "webinars", ":webinarId", "sessions"],
+              "variable": [
+                {
+                  "key": "webinarId",
+                  "value": "webinar-123",
+                  "description": "Webinar ID"
+                }
+              ]
+            },
+            "description": "Add a new session to a webinar. If webinar is SCHEDULED, a Google Meet link is automatically created."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Session",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Session 2 - Advanced Poses (Updated)\",\n  \"startTime\": \"2025-01-16T07:00:00.000Z\",\n  \"endTime\": \"2025-01-16T08:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/webinars/:webinarId/sessions?sessionId=session-123",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "webinars", ":webinarId", "sessions"],
+              "query": [
+                {
+                  "key": "sessionId",
+                  "value": "session-123",
+                  "description": "Session ID to update"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "webinarId",
+                  "value": "webinar-123",
+                  "description": "Webinar ID"
+                }
+              ]
+            },
+            "description": "Update a session. Google Calendar event is updated if linked."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Session",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/webinars/:webinarId/sessions?sessionId=session-123",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "webinars", ":webinarId", "sessions"],
+              "query": [
+                {
+                  "key": "sessionId",
+                  "value": "session-123",
+                  "description": "Session ID to delete"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "webinarId",
+                  "value": "webinar-123",
+                  "description": "Webinar ID"
+                }
+              ]
+            },
+            "description": "Delete a session. Google Calendar event is also deleted if linked."
+          },
+          "response": []
+        },
+        {
+          "name": "Generate Meet Links",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/webinars/:webinarId/meet",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "webinars", ":webinarId", "meet"],
+              "variable": [
+                {
+                  "key": "webinarId",
+                  "value": "webinar-123",
+                  "description": "Webinar ID"
+                }
+              ]
+            },
+            "description": "Generate Google Meet links for all sessions. Requires Google Calendar to be connected."
+          },
+          "response": []
+        },
+        {
+          "name": "Generate Zoom Links",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/webinars/:webinarId/zoom",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "webinars", ":webinarId", "zoom"],
+              "variable": [
+                {
+                  "key": "webinarId",
+                  "value": "webinar-123",
+                  "description": "Webinar ID"
+                }
+              ]
+            },
+            "description": "Generate Zoom meeting links for all sessions. Requires Zoom to be connected."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Registrations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/webinars/:webinarId/registrations",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "webinars", ":webinarId", "registrations"],
+              "variable": [
+                {
+                  "key": "webinarId",
+                  "value": "webinar-123",
+                  "description": "Webinar ID"
+                }
+              ]
+            },
+            "description": "Get all registrations for a webinar with user details and status counts"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Google Calendar",
+      "description": "Google Calendar OAuth and connection management",
+      "item": [
+        {
+          "name": "Check Connection Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/google-calendar/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "google-calendar", "status"]
+            },
+            "description": "Check if the expert has connected their Google Calendar"
+          },
+          "response": []
+        },
+        {
+          "name": "Connect Google Calendar",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/google-calendar/connect",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "google-calendar", "connect"]
+            },
+            "description": "Initiate Google OAuth flow to connect Calendar. Returns redirect URL."
+          },
+          "response": []
+        },
+        {
+          "name": "Disconnect Google Calendar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/google-calendar/disconnect",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "google-calendar", "disconnect"]
+            },
+            "description": "Disconnect Google Calendar and remove stored tokens"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Zoom",
+      "description": "Zoom OAuth and connection management for webinars",
+      "item": [
+        {
+          "name": "Check Connection Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/zoom/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "zoom", "status"]
+            },
+            "description": "Check if the expert has connected their Zoom account"
+          },
+          "response": []
+        },
+        {
+          "name": "Connect Zoom",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/zoom/connect",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "zoom", "connect"]
+            },
+            "description": "Initiate Zoom OAuth flow to connect account. Redirects to Zoom."
+          },
+          "response": []
+        },
+        {
+          "name": "Disconnect Zoom",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/zoom/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "zoom", "status"]
+            },
+            "description": "Disconnect Zoom account and remove stored tokens"
           },
           "response": []
         }

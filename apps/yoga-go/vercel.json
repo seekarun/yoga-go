@@ -31,6 +31,10 @@
     {
       "path": "/api/cron/check-video-status",
       "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/webinar-reminders",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

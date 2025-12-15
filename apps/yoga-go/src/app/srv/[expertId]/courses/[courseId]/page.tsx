@@ -49,6 +49,7 @@ export default function CourseManagement() {
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
   const [showUploadConfirmation, setShowUploadConfirmation] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [lessonToDelete, setLessonToDelete] = useState<string | null>(null);
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -447,10 +448,13 @@ export default function CourseManagement() {
     }
   };
 
-  const handleDeleteLesson = async (lessonId: string) => {
-    if (!confirm('Are you sure you want to delete this lesson?')) {
-      return;
-    }
+  const handleDeleteLessonClick = (lessonId: string) => {
+    setLessonToDelete(lessonId);
+  };
+
+  const handleDeleteLessonConfirm = async () => {
+    if (!lessonToDelete) return;
+    const lessonId = lessonToDelete;
 
     try {
       const response = await fetch(`/data/courses/${courseId}/items/${lessonId}`, {
@@ -912,7 +916,7 @@ export default function CourseManagement() {
                           Edit
                         </button>
                         <button
-                          onClick={() => handleDeleteLesson(lesson.id)}
+                          onClick={() => handleDeleteLessonClick(lesson.id)}
                           className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium"
                         >
                           Delete
@@ -972,6 +976,17 @@ export default function CourseManagement() {
         type="info"
         onConfirm={handleConfirmUpload}
         confirmText="Start Upload"
+        cancelText="Cancel"
+      />
+
+      {/* Delete Lesson Confirmation Overlay */}
+      <NotificationOverlay
+        isOpen={!!lessonToDelete}
+        onClose={() => setLessonToDelete(null)}
+        message="Are you sure you want to delete this lesson? This action cannot be undone."
+        type="error"
+        onConfirm={handleDeleteLessonConfirm}
+        confirmText="Delete"
         cancelText="Cancel"
       />
 

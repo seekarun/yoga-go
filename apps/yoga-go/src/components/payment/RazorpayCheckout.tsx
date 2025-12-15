@@ -6,8 +6,8 @@ import { useAuth } from '@/contexts/AuthContext';
 interface RazorpayCheckoutProps {
   amount: number; // in paise
   currency: string;
-  type: 'course';
-  itemId: string; // courseId
+  type: 'course' | 'webinar';
+  itemId: string; // courseId or webinarId
   itemName: string;
   onSuccess: (paymentId: string) => void;
   onFailure: (error: string) => void;
@@ -120,6 +120,8 @@ export default function RazorpayCheckout({
                 type,
                 itemId,
                 userId: user.id,
+                amount,
+                currency,
               }),
             });
 

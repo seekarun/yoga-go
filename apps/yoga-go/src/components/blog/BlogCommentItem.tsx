@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import NotificationOverlay from '@/components/NotificationOverlay';
 import type { BlogComment } from '@/types';
 
 interface BlogCommentItemProps {
@@ -24,6 +25,7 @@ export default function BlogCommentItem({
   const [editContent, setEditContent] = useState(comment.content);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const isCommentAuthor = isAuthenticated && user?.id === comment.userId;
   const isPostExpert = isAuthenticated && user?.expertProfile === expertId;
@@ -77,11 +79,12 @@ export default function BlogCommentItem({
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this comment?')) {
-      return;
-    }
+  const handleDeleteClick = () => {
+    setShowDeleteConfirm(true);
+  };
 
+  const handleDeleteConfirm = async () => {
+    setShowDeleteConfirm(false);
     setIsSubmitting(true);
     setError('');
 
@@ -184,7 +187,7 @@ export default function BlogCommentItem({
                 )}
                 {canDelete && (
                   <button
-                    onClick={handleDelete}
+                    onClick={handleDeleteClick}
                     disabled={isSubmitting}
                     className="text-red-500 text-sm hover:text-red-700 disabled:opacity-50"
                   >
@@ -196,6 +199,17 @@ export default function BlogCommentItem({
           </>
         )}
       </div>
+
+      {/* Delete Confirmation */}
+      <NotificationOverlay
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        message="Are you sure you want to delete this comment?"
+        type="warning"
+        onConfirm={handleDeleteConfirm}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
     </div>
   );
 }

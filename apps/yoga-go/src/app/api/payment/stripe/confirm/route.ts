@@ -4,7 +4,12 @@ import { PAYMENT_CONFIG } from '@/config/payment';
 import * as paymentRepository from '@/lib/repositories/paymentRepository';
 import * as userRepository from '@/lib/repositories/userRepository';
 import * as courseRepository from '@/lib/repositories/courseRepository';
-import { sendInvoiceEmail, getContextualFromEmail } from '@/lib/email';
+import * as webinarRepository from '@/lib/repositories/webinarRepository';
+import {
+  sendInvoiceEmail,
+  sendWebinarRegistrationEmail,
+  getContextualFromEmail,
+} from '@/lib/email';
 
 function getStripeInstance() {
   if (!PAYMENT_CONFIG.stripe.secretKey) {
@@ -110,13 +115,31 @@ export async function POST(request: Request) {
       }
 
       console.log(`[DBG][stripe] Enrolled user ${userId} in course ${itemId}`);
+    } else if (type === 'webinar') {
+      // Register user for webinar
+      const { registerUserForWebinar } = await import('@/lib/enrollment');
+      const registrationResult = await registerUserForWebinar(userId, itemId, paymentIntentId);
+
+      if (!registrationResult.success) {
+        console.error('[DBG][stripe] Webinar registration failed:', registrationResult.error);
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Payment verified but registration failed: ${registrationResult.error}`,
+          },
+          { status: 500 }
+        );
+      }
+
+      console.log(`[DBG][stripe] Registered user ${userId} for webinar ${itemId}`);
     }
 
-    // Send invoice email
+    // Send invoice/confirmation email
     try {
-      const [user, course] = await Promise.all([
+      const [user, course, webinar] = await Promise.all([
         userRepository.getUserById(userId),
         type === 'course' ? courseRepository.getCourseById(itemId) : null,
+        type === 'webinar' ? webinarRepository.getWebinarById(itemId) : null,
       ]);
 
       if (user?.profile?.email) {
@@ -125,33 +148,59 @@ export async function POST(request: Request) {
 
         // Determine from address based on context (expert subdomain vs main domain)
         const referer = request.headers.get('referer');
-        const expertId = course?.instructor?.id || null;
+        const expertId = course?.instructor?.id || webinar?.expertId || null;
         const fromEmail = getContextualFromEmail(expertId, referer);
+        const currencySymbol = currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency;
 
-        await sendInvoiceEmail({
-          to: user.profile.email,
-          from: fromEmail,
-          customerName: user.profile.name || 'Valued Customer',
-          orderId: paymentIntentId.slice(-8).toUpperCase(),
-          orderDate: new Date().toLocaleDateString('en-AU', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          }),
-          paymentMethod: 'Credit Card (Stripe)',
-          itemName: course?.title || 'Course Purchase',
-          itemDescription: course?.description?.slice(0, 100) || 'Online yoga course access',
-          currency: currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency,
-          amount: amount.toFixed(2),
-          transactionId: paymentIntentId,
-        });
-        console.log(`[DBG][stripe] Invoice email sent to ${user.profile.email} from ${fromEmail}`);
+        if (type === 'webinar' && webinar) {
+          // Send webinar registration confirmation email
+          await sendWebinarRegistrationEmail({
+            to: user.profile.email,
+            from: fromEmail,
+            customerName: user.profile.name || 'Valued Customer',
+            webinarTitle: webinar.title,
+            webinarDescription: webinar.description?.slice(0, 200) || '',
+            sessions: webinar.sessions.map(s => ({
+              title: s.title,
+              startTime: s.startTime,
+              duration: s.duration,
+            })),
+            currency: currencySymbol,
+            amount: amount.toFixed(2),
+            transactionId: paymentIntentId,
+          });
+          console.log(
+            `[DBG][stripe] Webinar registration email sent to ${user.profile.email} from ${fromEmail}`
+          );
+        } else {
+          // Send course invoice email
+          await sendInvoiceEmail({
+            to: user.profile.email,
+            from: fromEmail,
+            customerName: user.profile.name || 'Valued Customer',
+            orderId: paymentIntentId.slice(-8).toUpperCase(),
+            orderDate: new Date().toLocaleDateString('en-AU', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            }),
+            paymentMethod: 'Credit Card (Stripe)',
+            itemName: course?.title || 'Course Purchase',
+            itemDescription: course?.description?.slice(0, 100) || 'Online yoga course access',
+            currency: currencySymbol,
+            amount: amount.toFixed(2),
+            transactionId: paymentIntentId,
+          });
+          console.log(
+            `[DBG][stripe] Invoice email sent to ${user.profile.email} from ${fromEmail}`
+          );
+        }
       } else {
-        console.warn('[DBG][stripe] No user email found, skipping invoice email');
+        console.warn('[DBG][stripe] No user email found, skipping email');
       }
     } catch (emailError) {
       // Log but don't fail the payment if email fails
-      console.error('[DBG][stripe] Failed to send invoice email:', emailError);
+      console.error('[DBG][stripe] Failed to send email:', emailError);
     }
 
     return NextResponse.json({

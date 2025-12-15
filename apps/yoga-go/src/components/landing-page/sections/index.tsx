@@ -5,6 +5,7 @@ import HeroPreview from './hero/HeroPreview';
 import ValuePropsPreview from './value-props/ValuePropsPreview';
 import AboutPreview from './about/AboutPreview';
 import CoursesPreview from './courses/CoursesPreview';
+import WebinarsPreview from './webinars/WebinarsPreview';
 import BlogPreview from './blog/BlogPreview';
 import ActPreview from './act/ActPreview';
 import FooterPreview from './footer/FooterPreview';
@@ -14,6 +15,7 @@ import HeroEditor from './hero/HeroEditor';
 import ValuePropsEditor from './value-props/ValuePropsEditor';
 import AboutEditor from './about/AboutEditor';
 import CoursesEditor from './courses/CoursesEditor';
+import WebinarsEditor from './webinars/WebinarsEditor';
 import BlogEditor from './blog/BlogEditor';
 import ActEditor from './act/ActEditor';
 import FooterEditor from './footer/FooterEditor';
@@ -121,6 +123,21 @@ const CoursesIcon = () => (
   </svg>
 );
 
+const WebinarsIcon = () => (
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+  </svg>
+);
+
 const FooterIcon = () => (
   <svg
     width="20"
@@ -171,6 +188,14 @@ export const sectionRegistry: Record<SectionType, SectionConfig> = {
     PreviewComponent: CoursesPreview,
     EditorComponent: CoursesEditor,
   },
+  webinars: {
+    id: 'webinars',
+    label: 'Live Sessions',
+    description: 'Showcase your upcoming webinars and live sessions',
+    icon: <WebinarsIcon />,
+    PreviewComponent: WebinarsPreview,
+    EditorComponent: WebinarsEditor,
+  },
   blog: {
     id: 'blog',
     label: 'Blog Section',
@@ -205,6 +230,7 @@ export { HeroPreview, HeroEditor };
 export { ValuePropsPreview, ValuePropsEditor };
 export { AboutPreview, AboutEditor };
 export { CoursesPreview, CoursesEditor };
+export { WebinarsPreview, WebinarsEditor };
 export { BlogPreview, BlogEditor };
 export { ActPreview, ActEditor };
 export { FooterPreview, FooterEditor };

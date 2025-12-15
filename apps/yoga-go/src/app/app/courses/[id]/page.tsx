@@ -8,6 +8,7 @@ import { trackLessonView, trackLessonComplete } from '@/lib/analytics';
 import type { UserCourseData, Lesson } from '@/types';
 import ReviewModal from '@/components/ReviewModal';
 import DiscussionThread from '@/components/discussions/DiscussionThread';
+import NotificationOverlay from '@/components/NotificationOverlay';
 
 export default function CoursePlayer() {
   const { isAuthenticated } = useAuth();
@@ -24,6 +25,10 @@ export default function CoursePlayer() {
   const [activeTab, setActiveTab] = useState<'details' | 'discussions'>('details');
   const [autoPlayEnabled, setAutoPlayEnabled] = useState(false);
   const [isLoadingPreferences, setIsLoadingPreferences] = useState(true);
+  const [notification, setNotification] = useState<{
+    message: string;
+    type: 'error';
+  } | null>(null);
 
   // Load auto-play preference from database on mount
   useEffect(() => {
@@ -305,11 +310,14 @@ export default function CoursePlayer() {
         }
       } else {
         console.error('[DBG][course-player] Failed to mark complete:', result.error);
-        alert('Failed to mark lesson as complete. Please try again.');
+        setNotification({
+          message: 'Failed to mark lesson as complete. Please try again.',
+          type: 'error',
+        });
       }
     } catch (error) {
       console.error('[DBG][course-player] Error marking complete:', error);
-      alert('An error occurred. Please try again.');
+      setNotification({ message: 'An error occurred. Please try again.', type: 'error' });
     }
   };
 
@@ -1197,6 +1205,15 @@ export default function CoursePlayer() {
           }
         }
       `}</style>
+
+      {/* Notification Overlay */}
+      <NotificationOverlay
+        isOpen={notification !== null}
+        onClose={() => setNotification(null)}
+        message={notification?.message || ''}
+        type="error"
+        duration={4000}
+      />
     </div>
   );
 }

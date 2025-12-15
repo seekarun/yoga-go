@@ -5,6 +5,9 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import type { Survey } from '@/types';
 import SurveyCard from '@/components/survey/SurveyCard';
+import NotificationOverlay from '@/components/NotificationOverlay';
+
+type ConfirmAction = 'publish' | 'close' | 'reopen' | 'delete' | null;
 
 export default function SurveyListPage() {
   const params = useParams();
@@ -14,6 +17,14 @@ export default function SurveyListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // Confirmation overlay state
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
+  const [confirmSurveyId, setConfirmSurveyId] = useState<string | null>(null);
+  const [notification, setNotification] = useState<{
+    message: string;
+    type: 'success' | 'error';
+  } | null>(null);
 
   useEffect(() => {
     fetchSurveys();
@@ -40,10 +51,24 @@ export default function SurveyListPage() {
     }
   };
 
-  const handlePublish = async (surveyId: string) => {
-    if (!confirm('Are you sure you want to publish this survey? It will be visible to users.')) {
-      return;
-    }
+  // Show confirmation overlay
+  const showConfirm = (action: ConfirmAction, surveyId: string) => {
+    setConfirmAction(action);
+    setConfirmSurveyId(surveyId);
+  };
+
+  const hideConfirm = () => {
+    setConfirmAction(null);
+    setConfirmSurveyId(null);
+  };
+
+  const handlePublish = (surveyId: string) => {
+    showConfirm('publish', surveyId);
+  };
+
+  const handlePublishConfirm = async () => {
+    if (!confirmSurveyId) return;
+    const surveyId = confirmSurveyId;
 
     setActionLoading(surveyId);
     try {
@@ -53,27 +78,25 @@ export default function SurveyListPage() {
       const data = await response.json();
 
       if (data.success) {
-        // Update the survey in the list
         setSurveys(surveys.map(s => (s.id === surveyId ? data.data : s)));
       } else {
-        alert(data.error || 'Failed to publish survey');
+        setNotification({ message: data.error || 'Failed to publish survey', type: 'error' });
       }
     } catch (err) {
       console.error('[DBG][survey-list] Error publishing survey:', err);
-      alert('Failed to publish survey');
+      setNotification({ message: 'Failed to publish survey', type: 'error' });
     } finally {
       setActionLoading(null);
     }
   };
 
-  const handleClose = async (surveyId: string) => {
-    if (
-      !confirm(
-        'Are you sure you want to close this survey? Users will no longer be able to submit responses.'
-      )
-    ) {
-      return;
-    }
+  const handleClose = (surveyId: string) => {
+    showConfirm('close', surveyId);
+  };
+
+  const handleCloseConfirm = async () => {
+    if (!confirmSurveyId) return;
+    const surveyId = confirmSurveyId;
 
     setActionLoading(surveyId);
     try {
@@ -85,24 +108,23 @@ export default function SurveyListPage() {
       if (data.success) {
         setSurveys(surveys.map(s => (s.id === surveyId ? data.data : s)));
       } else {
-        alert(data.error || 'Failed to close survey');
+        setNotification({ message: data.error || 'Failed to close survey', type: 'error' });
       }
     } catch (err) {
       console.error('[DBG][survey-list] Error closing survey:', err);
-      alert('Failed to close survey');
+      setNotification({ message: 'Failed to close survey', type: 'error' });
     } finally {
       setActionLoading(null);
     }
   };
 
-  const handleReopen = async (surveyId: string) => {
-    if (
-      !confirm(
-        'Are you sure you want to reopen this survey? Users will be able to submit responses again.'
-      )
-    ) {
-      return;
-    }
+  const handleReopen = (surveyId: string) => {
+    showConfirm('reopen', surveyId);
+  };
+
+  const handleReopenConfirm = async () => {
+    if (!confirmSurveyId) return;
+    const surveyId = confirmSurveyId;
 
     setActionLoading(surveyId);
     try {
@@ -114,23 +136,23 @@ export default function SurveyListPage() {
       if (data.success) {
         setSurveys(surveys.map(s => (s.id === surveyId ? data.data : s)));
       } else {
-        alert(data.error || 'Failed to reopen survey');
+        setNotification({ message: data.error || 'Failed to reopen survey', type: 'error' });
       }
     } catch (err) {
       console.error('[DBG][survey-list] Error reopening survey:', err);
-      alert('Failed to reopen survey');
+      setNotification({ message: 'Failed to reopen survey', type: 'error' });
     } finally {
       setActionLoading(null);
     }
   };
 
-  const handleDelete = async (surveyId: string) => {
-    const survey = surveys.find(s => s.id === surveyId);
-    if (
-      !confirm(`Are you sure you want to delete "${survey?.title}"? This action cannot be undone.`)
-    ) {
-      return;
-    }
+  const handleDelete = (surveyId: string) => {
+    showConfirm('delete', surveyId);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!confirmSurveyId) return;
+    const surveyId = confirmSurveyId;
 
     setActionLoading(surveyId);
     try {
@@ -142,13 +164,72 @@ export default function SurveyListPage() {
       if (data.success) {
         setSurveys(surveys.filter(s => s.id !== surveyId));
       } else {
-        alert(data.error || 'Failed to delete survey');
+        setNotification({ message: data.error || 'Failed to delete survey', type: 'error' });
       }
     } catch (err) {
       console.error('[DBG][survey-list] Error deleting survey:', err);
-      alert('Failed to delete survey');
+      setNotification({ message: 'Failed to delete survey', type: 'error' });
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const handleConfirmAction = () => {
+    switch (confirmAction) {
+      case 'publish':
+        handlePublishConfirm();
+        break;
+      case 'close':
+        handleCloseConfirm();
+        break;
+      case 'reopen':
+        handleReopenConfirm();
+        break;
+      case 'delete':
+        handleDeleteConfirm();
+        break;
+    }
+  };
+
+  const getConfirmMessage = () => {
+    const survey = surveys.find(s => s.id === confirmSurveyId);
+    switch (confirmAction) {
+      case 'publish':
+        return 'Are you sure you want to publish this survey? It will be visible to users.';
+      case 'close':
+        return 'Are you sure you want to close this survey? Users will no longer be able to submit responses.';
+      case 'reopen':
+        return 'Are you sure you want to reopen this survey? Users will be able to submit responses again.';
+      case 'delete':
+        return `Are you sure you want to delete "${survey?.title}"? This action cannot be undone.`;
+      default:
+        return '';
+    }
+  };
+
+  const getConfirmType = (): 'info' | 'warning' | 'error' => {
+    switch (confirmAction) {
+      case 'delete':
+        return 'error';
+      case 'close':
+        return 'warning';
+      default:
+        return 'info';
+    }
+  };
+
+  const getConfirmText = () => {
+    switch (confirmAction) {
+      case 'publish':
+        return 'Publish';
+      case 'close':
+        return 'Close Survey';
+      case 'reopen':
+        return 'Reopen';
+      case 'delete':
+        return 'Delete';
+      default:
+        return 'Confirm';
     }
   };
 
@@ -298,6 +379,26 @@ export default function SurveyListPage() {
           </div>
         )}
       </div>
+
+      {/* Confirmation Overlay */}
+      <NotificationOverlay
+        isOpen={!!confirmAction}
+        onClose={hideConfirm}
+        message={getConfirmMessage()}
+        type={getConfirmType()}
+        onConfirm={handleConfirmAction}
+        confirmText={getConfirmText()}
+        cancelText="Cancel"
+      />
+
+      {/* Error/Success Notification */}
+      <NotificationOverlay
+        isOpen={!!notification}
+        onClose={() => setNotification(null)}
+        message={notification?.message || ''}
+        type={notification?.type || 'error'}
+        duration={4000}
+      />
     </>
   );
 }

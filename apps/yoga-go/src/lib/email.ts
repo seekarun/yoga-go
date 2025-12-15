@@ -217,6 +217,241 @@ export const sendInvoiceEmail = async (options: InvoiceEmailOptions): Promise<vo
 };
 
 // ========================================
+// Webinar Registration Email
+// ========================================
+
+export interface WebinarRegistrationEmailOptions {
+  to: string;
+  from?: string;
+  customerName: string;
+  webinarTitle: string;
+  webinarDescription: string;
+  sessions: Array<{
+    title: string;
+    startTime: string;
+    duration: number;
+  }>;
+  currency: string;
+  amount: string;
+  transactionId: string;
+}
+
+/**
+ * Format date and time for display in email
+ */
+function formatSessionDateTime(isoString: string): { date: string; time: string } {
+  const date = new Date(isoString);
+  return {
+    date: date.toLocaleDateString('en-IN', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    }),
+    time: date.toLocaleTimeString('en-IN', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZoneName: 'short',
+    }),
+  };
+}
+
+/**
+ * Send a webinar registration confirmation email
+ * @param options - Webinar registration details for the email
+ * @returns Promise that resolves when email is sent
+ */
+export const sendWebinarRegistrationEmail = async (
+  options: WebinarRegistrationEmailOptions
+): Promise<void> => {
+  const {
+    to,
+    from,
+    customerName,
+    webinarTitle,
+    webinarDescription,
+    sessions,
+    currency,
+    amount,
+    transactionId,
+  } = options;
+
+  const sourceEmail = from || fromEmail;
+
+  console.log(`[DBG][email] Sending webinar registration email to ${to} from ${sourceEmail}`);
+  console.log(`[DBG][email] Webinar: ${webinarTitle}, Sessions: ${sessions.length}`);
+
+  // Build session list HTML
+  const sessionListHtml = sessions
+    .map(session => {
+      const { date, time } = formatSessionDateTime(session.startTime);
+      return `
+      <tr>
+        <td style="padding: 12px 0; border-bottom: 1px solid #eee;">
+          <strong>${session.title}</strong><br/>
+          <span style="color: #666;">${date} at ${time}</span><br/>
+          <span style="color: #888; font-size: 13px;">Duration: ${session.duration} minutes</span>
+        </td>
+      </tr>
+    `;
+    })
+    .join('');
+
+  const sessionListText = sessions
+    .map(session => {
+      const { date, time } = formatSessionDateTime(session.startTime);
+      return `- ${session.title}\n  ${date} at ${time}\n  Duration: ${session.duration} minutes`;
+    })
+    .join('\n\n');
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif; background-color: #f5f5f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 24px;">You're Registered!</h1>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 30px;">
+              <p style="font-size: 16px; color: #333; margin: 0 0 20px 0;">
+                Hi ${customerName},
+              </p>
+
+              <p style="font-size: 16px; color: #333; margin: 0 0 20px 0;">
+                Thank you for registering for <strong>${webinarTitle}</strong>! We're excited to have you join us.
+              </p>
+
+              ${webinarDescription ? `<p style="font-size: 14px; color: #666; margin: 0 0 25px 0; padding: 15px; background: #f8f9fa; border-radius: 6px;">${webinarDescription}</p>` : ''}
+
+              <!-- Sessions -->
+              <h2 style="font-size: 18px; color: #333; margin: 0 0 15px 0; padding-bottom: 10px; border-bottom: 2px solid #667eea;">
+                Your Sessions
+              </h2>
+
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 25px;">
+                ${sessionListHtml}
+              </table>
+
+              <div style="background: #f0f7ff; padding: 15px; border-radius: 6px; margin-bottom: 25px;">
+                <p style="margin: 0; font-size: 14px; color: #0066cc;">
+                  <strong>Important:</strong> You'll receive meeting links closer to each session. Make sure to add these dates to your calendar!
+                </p>
+              </div>
+
+              <!-- Payment Details -->
+              <h2 style="font-size: 18px; color: #333; margin: 0 0 15px 0; padding-bottom: 10px; border-bottom: 2px solid #667eea;">
+                Payment Confirmation
+              </h2>
+
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 25px;">
+                <tr>
+                  <td style="padding: 8px 0; color: #666;">Amount Paid</td>
+                  <td style="padding: 8px 0; text-align: right; font-weight: bold; color: #333;">${currency} ${amount}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #666;">Transaction ID</td>
+                  <td style="padding: 8px 0; text-align: right; font-family: monospace; color: #333;">${transactionId}</td>
+                </tr>
+              </table>
+
+              <p style="font-size: 14px; color: #666; margin: 0;">
+                If you have any questions, simply reply to this email.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f8f9fa; padding: 20px; text-align: center;">
+              <p style="margin: 0; font-size: 13px; color: #888;">
+                &copy; ${new Date().getFullYear()} MyYoga.guru. All rights reserved.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`;
+
+  const text = `
+Hi ${customerName},
+
+Thank you for registering for ${webinarTitle}! We're excited to have you join us.
+
+${webinarDescription ? `About this webinar:\n${webinarDescription}\n` : ''}
+YOUR SESSIONS
+${sessionListText}
+
+IMPORTANT: You'll receive meeting links closer to each session. Make sure to add these dates to your calendar!
+
+PAYMENT CONFIRMATION
+Amount Paid: ${currency} ${amount}
+Transaction ID: ${transactionId}
+
+If you have any questions, simply reply to this email.
+
+© ${new Date().getFullYear()} MyYoga.guru. All rights reserved.
+`;
+
+  const command = new SendEmailCommand({
+    Source: sourceEmail,
+    Destination: {
+      ToAddresses: [to],
+    },
+    Message: {
+      Subject: {
+        Data: `You're registered for ${webinarTitle}!`,
+        Charset: 'UTF-8',
+      },
+      Body: {
+        Text: {
+          Data: text,
+          Charset: 'UTF-8',
+        },
+        Html: {
+          Data: html,
+          Charset: 'UTF-8',
+        },
+      },
+    },
+    ConfigurationSetName: configSet,
+    Tags: [
+      {
+        Name: 'EmailType',
+        Value: 'webinar-registration',
+      },
+    ],
+  });
+
+  try {
+    const response = await sesClient.send(command);
+    console.log(
+      `[DBG][email] Webinar registration email sent successfully. MessageId: ${response.MessageId}`
+    );
+  } catch (error) {
+    console.error('[DBG][email] Error sending webinar registration email:', error);
+    throw error;
+  }
+};
+
+// ========================================
 // Expert Email Helper
 // ========================================
 
@@ -399,3 +634,200 @@ export const sendExpertEmail = async (options: ExpertEmailOptions): Promise<void
 //     throw error;
 //   }
 // };
+
+// ========================================
+// Webinar Reminder Email
+// ========================================
+
+export interface WebinarReminderEmailOptions {
+  to: string;
+  from?: string;
+  customerName: string;
+  webinarTitle: string;
+  sessionTitle: string;
+  startTime: string;
+  duration: number;
+  meetLink?: string;
+  reminderType: 'dayBefore' | 'hourBefore';
+}
+
+/**
+ * Send a webinar reminder email
+ * @param options - Webinar reminder details
+ * @returns Promise that resolves when email is sent
+ */
+export const sendWebinarReminderEmail = async (
+  options: WebinarReminderEmailOptions
+): Promise<void> => {
+  const {
+    to,
+    from,
+    customerName,
+    webinarTitle,
+    sessionTitle,
+    startTime,
+    duration,
+    meetLink,
+    reminderType,
+  } = options;
+
+  const sourceEmail = from || fromEmail;
+  const { date, time } = formatSessionDateTime(startTime);
+
+  const reminderText = reminderType === 'dayBefore' ? 'starts tomorrow' : 'starts in 1 hour';
+  const subject =
+    reminderType === 'dayBefore'
+      ? `Reminder: ${webinarTitle} is tomorrow!`
+      : `Starting Soon: ${webinarTitle} in 1 hour!`;
+
+  console.log(`[DBG][email] Sending webinar ${reminderType} reminder to ${to}`);
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif; background-color: #f5f5f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, ${reminderType === 'hourBefore' ? '#e53e3e' : '#667eea'} 0%, ${reminderType === 'hourBefore' ? '#c53030' : '#764ba2'} 100%); padding: 30px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 24px;">
+                ${reminderType === 'hourBefore' ? '⏰ Starting Soon!' : '📅 Reminder'}
+              </h1>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 30px;">
+              <p style="font-size: 16px; color: #333; margin: 0 0 20px 0;">
+                Hi ${customerName},
+              </p>
+
+              <p style="font-size: 16px; color: #333; margin: 0 0 20px 0;">
+                Your session <strong>${sessionTitle}</strong> from <strong>${webinarTitle}</strong> ${reminderText}!
+              </p>
+
+              <!-- Session Details -->
+              <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                <h3 style="margin: 0 0 15px 0; color: #333;">${sessionTitle}</h3>
+                <p style="margin: 0 0 8px 0; color: #666;">
+                  <strong>Date:</strong> ${date}
+                </p>
+                <p style="margin: 0 0 8px 0; color: #666;">
+                  <strong>Time:</strong> ${time}
+                </p>
+                <p style="margin: 0; color: #666;">
+                  <strong>Duration:</strong> ${duration} minutes
+                </p>
+              </div>
+
+              ${
+                meetLink
+                  ? `
+              <!-- Join Button -->
+              <div style="text-align: center; margin-bottom: 25px;">
+                <a href="${meetLink}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: bold;">
+                  Join Google Meet
+                </a>
+              </div>
+
+              <p style="font-size: 14px; color: #666; text-align: center; margin: 0 0 20px 0;">
+                Or copy this link: <br/>
+                <a href="${meetLink}" style="color: #667eea; word-break: break-all;">${meetLink}</a>
+              </p>
+              `
+                  : `
+              <div style="background: #fff3cd; padding: 15px; border-radius: 6px; margin-bottom: 25px;">
+                <p style="margin: 0; font-size: 14px; color: #856404;">
+                  <strong>Note:</strong> The meeting link will be available on your webinar page.
+                </p>
+              </div>
+              `
+              }
+
+              <p style="font-size: 14px; color: #666; margin: 0;">
+                We look forward to seeing you there!
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f8f9fa; padding: 20px; text-align: center;">
+              <p style="margin: 0; font-size: 13px; color: #888;">
+                &copy; ${new Date().getFullYear()} MyYoga.guru. All rights reserved.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`;
+
+  const text = `
+Hi ${customerName},
+
+Your session "${sessionTitle}" from "${webinarTitle}" ${reminderText}!
+
+SESSION DETAILS
+- Date: ${date}
+- Time: ${time}
+- Duration: ${duration} minutes
+
+${meetLink ? `JOIN LINK: ${meetLink}` : 'The meeting link will be available on your webinar page.'}
+
+We look forward to seeing you there!
+
+© ${new Date().getFullYear()} MyYoga.guru. All rights reserved.
+`;
+
+  const command = new SendEmailCommand({
+    Source: sourceEmail,
+    Destination: {
+      ToAddresses: [to],
+    },
+    Message: {
+      Subject: {
+        Data: subject,
+        Charset: 'UTF-8',
+      },
+      Body: {
+        Text: {
+          Data: text,
+          Charset: 'UTF-8',
+        },
+        Html: {
+          Data: html,
+          Charset: 'UTF-8',
+        },
+      },
+    },
+    ConfigurationSetName: configSet,
+    Tags: [
+      {
+        Name: 'EmailType',
+        Value: `webinar-reminder-${reminderType}`,
+      },
+    ],
+  });
+
+  try {
+    const response = await sesClient.send(command);
+    console.log(
+      `[DBG][email] Webinar reminder email sent successfully. MessageId: ${response.MessageId}`
+    );
+  } catch (error) {
+    console.error('[DBG][email] Error sending webinar reminder email:', error);
+    throw error;
+  }
+};

@@ -70,6 +70,15 @@ export const CorePK = {
   // Tenant (multi-tenancy)
   TENANT: 'TENANT',
   TENANT_DOMAIN: (domain: string) => `TENANT#DOMAIN#${domain}`,
+  // Webinar entities
+  WEBINAR: 'WEBINAR',
+  WEBINAR_REGISTRATION: (webinarId: string) => `REG#${webinarId}`,
+  WEBINAR_BY_EXPERT: (expertId: string) => `WEBINAR#EXPERT#${expertId}`,
+  USER_REGISTRATIONS: (userId: string) => `USERREG#${userId}`,
+  // Expert Google OAuth
+  GOOGLE_AUTH: 'GOOGLE_AUTH',
+  // Expert Zoom OAuth
+  ZOOM_AUTH: 'ZOOM_AUTH',
 } as const;
 
 // ============================================
@@ -135,6 +144,11 @@ export const EntityType = {
   BLOG_POST: 'BLOG_POST',
   BLOG_COMMENT: 'BLOG_COMMENT',
   BLOG_LIKE: 'BLOG_LIKE',
+  // Webinar entities
+  WEBINAR: 'WEBINAR',
+  WEBINAR_REGISTRATION: 'WEBINAR_REGISTRATION',
+  GOOGLE_AUTH: 'GOOGLE_AUTH',
+  ZOOM_AUTH: 'ZOOM_AUTH',
 } as const;
 
 export type EntityTypeValue = (typeof EntityType)[keyof typeof EntityType];

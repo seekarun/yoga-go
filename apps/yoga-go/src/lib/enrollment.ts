@@ -1,7 +1,15 @@
 import * as userRepository from './repositories/userRepository';
 import * as courseRepository from './repositories/courseRepository';
 import * as courseProgressRepository from './repositories/courseProgressRepository';
-import type { EnrolledCourse, Achievement, User, CourseProgress } from '@/types';
+import * as webinarRepository from './repositories/webinarRepository';
+import * as webinarRegistrationRepository from './repositories/webinarRegistrationRepository';
+import type {
+  EnrolledCourse,
+  Achievement,
+  User,
+  CourseProgress,
+  WebinarRegistration,
+} from '@/types';
 
 /**
  * Enroll a user in a course
@@ -228,4 +236,94 @@ export async function isUserEnrolled(userId: string, courseId: string): Promise<
   if (!user) return false;
 
   return user.enrolledCourses.some((ec: EnrolledCourse) => ec.courseId === courseId);
+}
+
+/**
+ * Register a user for a webinar
+ * Creates registration record and updates webinar registration count
+ */
+export async function registerUserForWebinar(
+  userId: string,
+  webinarId: string,
+  paymentId?: string
+): Promise<{ success: boolean; registration?: WebinarRegistration; error?: string }> {
+  console.log('[DBG][enrollment] Registering user', userId, 'for webinar', webinarId);
+
+  try {
+    // Get user from DynamoDB
+    const user = await userRepository.getUserById(userId);
+    if (!user) {
+      return { success: false, error: 'User not found' };
+    }
+
+    // Get webinar details from DynamoDB
+    const webinar = await webinarRepository.getWebinarById(webinarId);
+    if (!webinar) {
+      return { success: false, error: 'Webinar not found' };
+    }
+
+    // Check if webinar is open for registration
+    if (webinar.status !== 'SCHEDULED' && webinar.status !== 'DRAFT') {
+      return { success: false, error: 'Webinar is not open for registration' };
+    }
+
+    // Check if already registered
+    const existingRegistration = await webinarRegistrationRepository.getRegistration(
+      webinarId,
+      userId
+    );
+    if (existingRegistration && existingRegistration.status === 'registered') {
+      console.log('[DBG][enrollment] User already registered for webinar');
+      return { success: true, registration: existingRegistration };
+    }
+
+    // Check capacity
+    const hasCapacity = await webinarRepository.hasCapacity(webinarId);
+    if (!hasCapacity) {
+      return { success: false, error: 'Webinar is at full capacity' };
+    }
+
+    // Create registration ID
+    const registrationId = `reg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+    // Create registration record
+    const registration = await webinarRegistrationRepository.createRegistration({
+      id: registrationId,
+      webinarId,
+      userId,
+      expertId: webinar.expertId,
+      userName: user.profile.name,
+      userEmail: user.profile.email,
+      paymentId,
+    });
+
+    // Increment webinar registration count
+    await webinarRepository.incrementRegistrations(webinarId);
+
+    console.log('[DBG][enrollment] Webinar registration successful:', registrationId);
+    return { success: true, registration };
+  } catch (error) {
+    console.error('[DBG][enrollment] Error registering for webinar:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Registration failed',
+    };
+  }
+}
+
+/**
+ * Check if user is registered for a webinar
+ */
+export async function isUserRegisteredForWebinar(
+  userId: string,
+  webinarId: string
+): Promise<boolean> {
+  return webinarRegistrationRepository.isUserRegistered(webinarId, userId);
+}
+
+/**
+ * Get user's webinar registrations
+ */
+export async function getUserWebinarRegistrations(userId: string): Promise<WebinarRegistration[]> {
+  return webinarRegistrationRepository.getRegistrationsByUserId(userId);
 }

@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import TiptapEditor from './TiptapEditor';
 import ImageUploadCrop from '../ImageUploadCrop';
+import NotificationOverlay from '@/components/NotificationOverlay';
 import type { BlogPost, BlogPostAttachment, BlogPostStatus, Asset } from '@/types';
 
 interface BlogPostEditorProps {
@@ -39,14 +40,18 @@ export default function BlogPostEditor({
   const [imageUploadResolve, setImageUploadResolve] = useState<
     ((url: string | null) => void) | null
   >(null);
+  const [notification, setNotification] = useState<{
+    message: string;
+    type: 'warning' | 'error';
+  } | null>(null);
 
   const handleSubmit = async (saveStatus: BlogPostStatus) => {
     if (!title.trim()) {
-      alert('Please enter a title');
+      setNotification({ message: 'Please enter a title', type: 'warning' });
       return;
     }
     if (!content.trim()) {
-      alert('Please add some content');
+      setNotification({ message: 'Please add some content', type: 'warning' });
       return;
     }
 
@@ -263,7 +268,7 @@ export default function BlogPostEditor({
               onUploadComplete={handleCoverImageUpload}
               onError={error => {
                 console.error('Cover upload error:', error);
-                alert('Failed to upload cover image');
+                setNotification({ message: 'Failed to upload cover image', type: 'error' });
               }}
               label="Cover Image"
             />
@@ -290,7 +295,7 @@ export default function BlogPostEditor({
               onUploadComplete={handleInlineImageComplete}
               onError={error => {
                 console.error('Image upload error:', error);
-                alert('Failed to upload image');
+                setNotification({ message: 'Failed to upload image', type: 'error' });
                 handleInlineImageCancel();
               }}
               label="Blog Image"
@@ -305,6 +310,15 @@ export default function BlogPostEditor({
           </div>
         </div>
       )}
+
+      {/* Notification Overlay */}
+      <NotificationOverlay
+        isOpen={notification !== null}
+        onClose={() => setNotification(null)}
+        message={notification?.message || ''}
+        type={notification?.type || 'warning'}
+        duration={4000}
+      />
     </div>
   );
 }

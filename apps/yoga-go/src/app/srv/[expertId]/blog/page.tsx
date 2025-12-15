@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import type { BlogPost } from '@/types';
+import NotificationOverlay from '@/components/NotificationOverlay';
 
 export default function ExpertBlogDashboard() {
   const params = useParams();
@@ -13,6 +14,11 @@ export default function ExpertBlogDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingPostId, setDeletingPostId] = useState<string | null>(null);
+  const [postToDelete, setPostToDelete] = useState<BlogPost | null>(null);
+  const [notification, setNotification] = useState<{
+    message: string;
+    type: 'success' | 'error';
+  } | null>(null);
 
   useEffect(() => {
     fetchBlogPosts();
@@ -43,10 +49,13 @@ export default function ExpertBlogDashboard() {
     }
   };
 
-  const handleDelete = async (postId: string) => {
-    if (!confirm('Are you sure you want to delete this blog post? This action cannot be undone.')) {
-      return;
-    }
+  const handleDeleteClick = (post: BlogPost) => {
+    setPostToDelete(post);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!postToDelete) return;
+    const postId = postToDelete.id;
 
     setDeletingPostId(postId);
     try {
@@ -60,11 +69,11 @@ export default function ExpertBlogDashboard() {
       if (data.success) {
         setPosts(posts.filter(p => p.id !== postId));
       } else {
-        alert(data.error || 'Failed to delete post');
+        setNotification({ message: data.error || 'Failed to delete post', type: 'error' });
       }
     } catch (err) {
       console.error('[DBG][blog-dashboard] Error deleting post:', err);
-      alert('Failed to delete post');
+      setNotification({ message: 'Failed to delete post', type: 'error' });
     } finally {
       setDeletingPostId(null);
     }
@@ -248,7 +257,7 @@ export default function ExpertBlogDashboard() {
                           Edit
                         </Link>
                         <button
-                          onClick={() => handleDelete(post.id)}
+                          onClick={() => handleDeleteClick(post)}
                           disabled={deletingPostId === post.id}
                           style={{
                             padding: '6px 12px',
@@ -301,6 +310,26 @@ export default function ExpertBlogDashboard() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Overlay */}
+      <NotificationOverlay
+        isOpen={!!postToDelete}
+        onClose={() => setPostToDelete(null)}
+        message={`Are you sure you want to delete "${postToDelete?.title}"? This action cannot be undone.`}
+        type="error"
+        onConfirm={handleDeleteConfirm}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
+
+      {/* Error Notification */}
+      <NotificationOverlay
+        isOpen={!!notification}
+        onClose={() => setNotification(null)}
+        message={notification?.message || ''}
+        type={notification?.type || 'error'}
+        duration={4000}
+      />
     </>
   );
 }

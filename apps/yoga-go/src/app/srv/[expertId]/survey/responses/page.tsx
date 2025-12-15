@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import type { SurveyQuestion } from '@/types';
+import NotificationOverlay from '@/components/NotificationOverlay';
 
 interface SurveyResponseData {
   _id: string;
@@ -49,6 +50,10 @@ export default function SurveyResponsesPage() {
   const [emailSubject, setEmailSubject] = useState('');
   const [emailMessage, setEmailMessage] = useState('');
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [notification, setNotification] = useState<{
+    message: string;
+    type: 'success' | 'error' | 'warning';
+  } | null>(null);
 
   useEffect(() => {
     fetchResponses();
@@ -103,12 +108,12 @@ export default function SurveyResponsesPage() {
 
   const handleSendEmail = async () => {
     if (selectedResponses.size === 0) {
-      alert('Please select at least one response');
+      setNotification({ message: 'Please select at least one response', type: 'warning' });
       return;
     }
 
     if (!emailSubject.trim() || !emailMessage.trim()) {
-      alert('Please enter both subject and message');
+      setNotification({ message: 'Please enter both subject and message', type: 'warning' });
       return;
     }
 
@@ -129,17 +134,23 @@ export default function SurveyResponsesPage() {
       const result = await response.json();
 
       if (result.success) {
-        alert(`Email sent to ${result.data.sent} recipients!\n\n${result.data.message}`);
+        setNotification({
+          message: `Email sent to ${result.data.sent} recipients!`,
+          type: 'success',
+        });
         setShowEmailModal(false);
         setEmailSubject('');
         setEmailMessage('');
         setSelectedResponses(new Set());
       } else {
-        alert(`Error: ${result.error?.message || 'Failed to send email'}`);
+        setNotification({
+          message: result.error?.message || 'Failed to send email',
+          type: 'error',
+        });
       }
     } catch (err) {
       console.error('[DBG][survey-responses-page] Error sending email:', err);
-      alert('An error occurred while sending email');
+      setNotification({ message: 'An error occurred while sending email', type: 'error' });
     } finally {
       setSendingEmail(false);
     }
@@ -451,6 +462,15 @@ export default function SurveyResponsesPage() {
           </div>
         </div>
       )}
+
+      {/* Notification Overlay */}
+      <NotificationOverlay
+        isOpen={notification !== null}
+        onClose={() => setNotification(null)}
+        message={notification?.message || ''}
+        type={notification?.type || 'error'}
+        duration={4000}
+      />
     </div>
   );
 }

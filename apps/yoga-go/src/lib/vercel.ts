@@ -222,7 +222,44 @@ export async function removeDomainFromVercel(
 }
 
 /**
+ * Get domain configuration status from Vercel
+ * This endpoint tells us if the domain's A/CNAME records point to Vercel
+ */
+async function getDomainConfig(domain: string): Promise<{
+  configuredBy: 'A' | 'CNAME' | null;
+  misconfigured: boolean;
+}> {
+  try {
+    const response = await fetch(`${VERCEL_API_BASE}/v6/domains/${domain}/config`, {
+      method: 'GET',
+      headers: getHeaders(),
+    });
+
+    if (!response.ok) {
+      console.log('[DBG][vercel] Domain config check failed:', response.status);
+      return { configuredBy: null, misconfigured: true };
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = (await response.json()) as any;
+    console.log('[DBG][vercel] Domain config response:', JSON.stringify(data, null, 2));
+
+    return {
+      configuredBy: data.configuredBy || null,
+      misconfigured: data.misconfigured === true,
+    };
+  } catch (error) {
+    console.error('[DBG][vercel] Error getting domain config:', error);
+    return { configuredBy: null, misconfigured: true };
+  }
+}
+
+/**
  * Get domain verification status from Vercel
+ *
+ * Note: Vercel's `verified` means DNS ownership is proven (TXT record),
+ * but the domain may still have configuration issues (A/CNAME not pointing to Vercel).
+ * We check both `verified` and the domain config endpoint for full verification.
  */
 export async function getDomainStatus(domain: string): Promise<{
   exists: boolean;
@@ -255,7 +292,10 @@ export async function getDomainStatus(domain: string): Promise<{
       return { exists: false, verified: false, error: data.error?.message };
     }
 
-    const data = (await response.json()) as VercelDomainConfig;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = (await response.json()) as any;
+
+    console.log('[DBG][vercel] Domain status response:', JSON.stringify(data, null, 2));
 
     const verification: DomainVerification[] = [];
     if (data.verification && data.verification.length > 0) {
@@ -268,9 +308,36 @@ export async function getDomainStatus(domain: string): Promise<{
       }
     }
 
+    // Check domain configuration (A/CNAME pointing to Vercel) using separate endpoint
+    const domainConfig = await getDomainConfig(normalizedDomain);
+
+    // A domain is fully verified only if:
+    // 1. DNS ownership is verified (data.verified === true)
+    // 2. No configuration errors exist
+    // 3. No pending verification requirements
+    // 4. Domain is configured to point to Vercel (configuredBy is 'A' or 'CNAME')
+    const hasConfigError =
+      !!data.error ||
+      data.misconfigured === true ||
+      domainConfig.misconfigured === true ||
+      domainConfig.configuredBy === null; // A/CNAME not pointing to Vercel
+    const hasPendingVerification = verification.length > 0;
+    const isFullyVerified = data.verified === true && !hasConfigError && !hasPendingVerification;
+
+    console.log('[DBG][vercel] Domain check:', {
+      domain: normalizedDomain,
+      verified: data.verified,
+      configuredBy: domainConfig.configuredBy,
+      misconfigured: domainConfig.misconfigured,
+      hasError: !!data.error,
+      hasConfigError,
+      hasPendingVerification,
+      isFullyVerified,
+    });
+
     return {
       exists: true,
-      verified: data.verified,
+      verified: isFullyVerified,
       verification,
     };
   } catch (error) {

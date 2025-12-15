@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ImageUploadCrop from '@/components/ImageUploadCrop';
+import NotificationOverlay from '@/components/NotificationOverlay';
 import type { Asset, Expert } from '@/types';
 
 export default function EditExpertPage() {
@@ -20,6 +21,10 @@ export default function EditExpertPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [pollingVideoId, setPollingVideoId] = useState<string | null>(null);
+  const [notification, setNotification] = useState<{
+    message: string;
+    type: 'success' | 'info';
+  } | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -248,7 +253,10 @@ export default function EditExpertPage() {
       setUploadProgress(100);
       setPollingVideoId(uid);
 
-      alert('Promo video uploaded successfully! Processing status will update automatically.');
+      setNotification({
+        message: 'Promo video uploaded successfully! Processing status will update automatically.',
+        type: 'success',
+      });
     } catch (err) {
       console.error('[DBG][expert-edit] Error uploading promo video:', err);
       setError(err instanceof Error ? err.message : 'Failed to upload promo video');
@@ -789,6 +797,15 @@ export default function EditExpertPage() {
           </form>
         </div>
       </div>
+
+      {/* Notification Overlay */}
+      <NotificationOverlay
+        isOpen={notification !== null}
+        onClose={() => setNotification(null)}
+        message={notification?.message || ''}
+        type={notification?.type || 'success'}
+        duration={5000}
+      />
     </>
   );
 }

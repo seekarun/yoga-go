@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import DiscussionForm from './DiscussionForm';
 import DiscussionReply from './DiscussionReply';
+import NotificationOverlay from '@/components/NotificationOverlay';
 import { useAuth } from '@/contexts/AuthContext';
 import type { DiscussionThread, VoteType, ApiResponse, UserRole } from '@/types';
 
@@ -26,6 +27,10 @@ export default function DiscussionThread({
   const [discussions, setDiscussions] = useState<DiscussionThread[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notification, setNotification] = useState<{
+    message: string;
+    type: 'error';
+  } | null>(null);
 
   const isExpertForCourse = isExpert && user?.expertProfile === instructorId;
 
@@ -69,11 +74,11 @@ export default function DiscussionThread({
       if (data.success) {
         await fetchDiscussions(); // Refresh discussions
       } else {
-        alert(data.error || 'Failed to create discussion');
+        setNotification({ message: data.error || 'Failed to create discussion', type: 'error' });
       }
     } catch (err) {
       console.error('[DBG][DiscussionThread] Create error:', err);
-      alert('Failed to create discussion');
+      setNotification({ message: 'Failed to create discussion', type: 'error' });
     }
   };
 
@@ -92,11 +97,11 @@ export default function DiscussionThread({
       if (data.success) {
         await fetchDiscussions(); // Refresh discussions
       } else {
-        alert(data.error || 'Failed to post reply');
+        setNotification({ message: data.error || 'Failed to post reply', type: 'error' });
       }
     } catch (err) {
       console.error('[DBG][DiscussionThread] Reply error:', err);
-      alert('Failed to post reply');
+      setNotification({ message: 'Failed to post reply', type: 'error' });
     }
   };
 
@@ -110,7 +115,7 @@ export default function DiscussionThread({
 
       const data: ApiResponse<unknown> = await response.json();
       if (!data.success) {
-        alert(data.error || 'Failed to vote');
+        setNotification({ message: data.error || 'Failed to vote', type: 'error' });
       }
       // Vote updates are optimistic in VoteButtons component
     } catch (err) {
@@ -131,11 +136,11 @@ export default function DiscussionThread({
       if (data.success) {
         await fetchDiscussions(); // Refresh discussions
       } else {
-        alert(data.error || 'Failed to edit discussion');
+        setNotification({ message: data.error || 'Failed to edit discussion', type: 'error' });
       }
     } catch (err) {
       console.error('[DBG][DiscussionThread] Edit error:', err);
-      alert('Failed to edit discussion');
+      setNotification({ message: 'Failed to edit discussion', type: 'error' });
     }
   };
 
@@ -149,11 +154,11 @@ export default function DiscussionThread({
       if (data.success) {
         await fetchDiscussions(); // Refresh discussions
       } else {
-        alert(data.error || 'Failed to delete discussion');
+        setNotification({ message: data.error || 'Failed to delete discussion', type: 'error' });
       }
     } catch (err) {
       console.error('[DBG][DiscussionThread] Delete error:', err);
-      alert('Failed to delete discussion');
+      setNotification({ message: 'Failed to delete discussion', type: 'error' });
     }
   };
 
@@ -169,11 +174,11 @@ export default function DiscussionThread({
       if (data.success) {
         await fetchDiscussions(); // Refresh discussions
       } else {
-        alert(data.error || 'Failed to moderate discussion');
+        setNotification({ message: data.error || 'Failed to moderate discussion', type: 'error' });
       }
     } catch (err) {
       console.error('[DBG][DiscussionThread] Moderate error:', err);
-      alert('Failed to moderate discussion');
+      setNotification({ message: 'Failed to moderate discussion', type: 'error' });
     }
   };
 
@@ -265,6 +270,15 @@ export default function DiscussionThread({
           ))}
         </div>
       )}
+
+      {/* Notification Overlay */}
+      <NotificationOverlay
+        isOpen={notification !== null}
+        onClose={() => setNotification(null)}
+        message={notification?.message || ''}
+        type="error"
+        duration={4000}
+      />
     </div>
   );
 }

@@ -7,7 +7,15 @@ import AdminStatsCard from '@/components/AdminStatsCard';
 import AdminTabs from '@/components/AdminTabs';
 import UserTable from '@/components/UserTable';
 import ExpertTable from '@/components/ExpertTable';
+import NotificationOverlay from '@/components/NotificationOverlay';
 import type { AdminStats, UserListItem, ExpertListItem } from '@/types';
+
+type AdminAction =
+  | { type: 'deleteUser'; userId: string }
+  | { type: 'suspendUser'; userId: string; suspend: boolean }
+  | { type: 'deleteExpert'; expertId: string }
+  | { type: 'suspendExpert'; expertId: string; suspend: boolean }
+  | null;
 
 export default function AdminDashboard() {
   const { user, isLoading: authLoading, isAdmin } = useAuth();
@@ -21,6 +29,13 @@ export default function AdminDashboard() {
   const [expertsPage, setExpertsPage] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
   const [totalExperts, setTotalExperts] = useState(0);
+
+  // Confirmation and notification state
+  const [pendingAction, setPendingAction] = useState<AdminAction>(null);
+  const [notification, setNotification] = useState<{
+    message: string;
+    type: 'success' | 'error';
+  } | null>(null);
 
   // Redirect if not admin
   useEffect(() => {
@@ -99,10 +114,13 @@ export default function AdminDashboard() {
     router.push(`/admn/users/${userId}`);
   };
 
-  const handleDeleteUser = async (userId: string) => {
-    if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-      return;
-    }
+  const handleDeleteUser = (userId: string) => {
+    setPendingAction({ type: 'deleteUser', userId });
+  };
+
+  const handleDeleteUserConfirm = async () => {
+    if (!pendingAction || pendingAction.type !== 'deleteUser') return;
+    const { userId } = pendingAction;
 
     try {
       const response = await fetch(`/data/admn/users/${userId}`, {
@@ -110,23 +128,25 @@ export default function AdminDashboard() {
       });
       const data = await response.json();
       if (data.success) {
-        alert('User deleted successfully');
-        // Refresh users list
+        setNotification({ message: 'User deleted successfully', type: 'success' });
         setUsersPage(1);
       } else {
-        alert(`Error: ${data.error}`);
+        setNotification({ message: `Error: ${data.error}`, type: 'error' });
       }
     } catch (error) {
       console.error('[DBG][admn] Error deleting user:', error);
-      alert('Error deleting user');
+      setNotification({ message: 'Error deleting user', type: 'error' });
     }
   };
 
-  const handleSuspendUser = async (userId: string, suspend: boolean) => {
+  const handleSuspendUser = (userId: string, suspend: boolean) => {
+    setPendingAction({ type: 'suspendUser', userId, suspend });
+  };
+
+  const handleSuspendUserConfirm = async () => {
+    if (!pendingAction || pendingAction.type !== 'suspendUser') return;
+    const { userId, suspend } = pendingAction;
     const action = suspend ? 'suspend' : 'activate';
-    if (!confirm(`Are you sure you want to ${action} this user?`)) {
-      return;
-    }
 
     try {
       const response = await fetch(`/data/admn/users/${userId}`, {
@@ -138,15 +158,14 @@ export default function AdminDashboard() {
       });
       const data = await response.json();
       if (data.success) {
-        alert(`User ${action}d successfully`);
-        // Refresh users list
+        setNotification({ message: `User ${action}d successfully`, type: 'success' });
         setUsersPage(1);
       } else {
-        alert(`Error: ${data.error}`);
+        setNotification({ message: `Error: ${data.error}`, type: 'error' });
       }
     } catch (error) {
       console.error(`[DBG][admn] Error ${action}ing user:`, error);
-      alert(`Error ${action}ing user`);
+      setNotification({ message: `Error ${action}ing user`, type: 'error' });
     }
   };
 
@@ -154,10 +173,13 @@ export default function AdminDashboard() {
     router.push(`/admn/experts/${expertId}`);
   };
 
-  const handleDeleteExpert = async (expertId: string) => {
-    if (!confirm('Are you sure you want to delete this expert? This action cannot be undone.')) {
-      return;
-    }
+  const handleDeleteExpert = (expertId: string) => {
+    setPendingAction({ type: 'deleteExpert', expertId });
+  };
+
+  const handleDeleteExpertConfirm = async () => {
+    if (!pendingAction || pendingAction.type !== 'deleteExpert') return;
+    const { expertId } = pendingAction;
 
     try {
       const response = await fetch(`/data/admn/experts/${expertId}`, {
@@ -165,23 +187,25 @@ export default function AdminDashboard() {
       });
       const data = await response.json();
       if (data.success) {
-        alert('Expert deleted successfully');
-        // Refresh experts list
+        setNotification({ message: 'Expert deleted successfully', type: 'success' });
         setExpertsPage(1);
       } else {
-        alert(`Error: ${data.error}`);
+        setNotification({ message: `Error: ${data.error}`, type: 'error' });
       }
     } catch (error) {
       console.error('[DBG][admn] Error deleting expert:', error);
-      alert('Error deleting expert');
+      setNotification({ message: 'Error deleting expert', type: 'error' });
     }
   };
 
-  const handleSuspendExpert = async (expertId: string, suspend: boolean) => {
+  const handleSuspendExpert = (expertId: string, suspend: boolean) => {
+    setPendingAction({ type: 'suspendExpert', expertId, suspend });
+  };
+
+  const handleSuspendExpertConfirm = async () => {
+    if (!pendingAction || pendingAction.type !== 'suspendExpert') return;
+    const { expertId, suspend } = pendingAction;
     const action = suspend ? 'suspend' : 'activate';
-    if (!confirm(`Are you sure you want to ${action} this expert?`)) {
-      return;
-    }
 
     try {
       const response = await fetch(`/data/admn/experts/${expertId}`, {
@@ -193,15 +217,14 @@ export default function AdminDashboard() {
       });
       const data = await response.json();
       if (data.success) {
-        alert(`Expert ${action}d successfully`);
-        // Refresh experts list
+        setNotification({ message: `Expert ${action}d successfully`, type: 'success' });
         setExpertsPage(1);
       } else {
-        alert(`Error: ${data.error}`);
+        setNotification({ message: `Error: ${data.error}`, type: 'error' });
       }
     } catch (error) {
       console.error(`[DBG][admn] Error ${action}ing expert:`, error);
-      alert(`Error ${action}ing expert`);
+      setNotification({ message: `Error ${action}ing expert`, type: 'error' });
     }
   };
 
@@ -216,15 +239,73 @@ export default function AdminDashboard() {
       });
       const data = await response.json();
       if (data.success) {
-        alert(`Expert ${featured ? 'featured' : 'unfeatured'} successfully`);
-        // Refresh experts list
+        setNotification({
+          message: `Expert ${featured ? 'featured' : 'unfeatured'} successfully`,
+          type: 'success',
+        });
         setExpertsPage(1);
       } else {
-        alert(`Error: ${data.error}`);
+        setNotification({ message: `Error: ${data.error}`, type: 'error' });
       }
     } catch (error) {
       console.error('[DBG][admn] Error toggling featured:', error);
-      alert('Error updating featured status');
+      setNotification({ message: 'Error updating featured status', type: 'error' });
+    }
+  };
+
+  const handleConfirmAction = () => {
+    switch (pendingAction?.type) {
+      case 'deleteUser':
+        handleDeleteUserConfirm();
+        break;
+      case 'suspendUser':
+        handleSuspendUserConfirm();
+        break;
+      case 'deleteExpert':
+        handleDeleteExpertConfirm();
+        break;
+      case 'suspendExpert':
+        handleSuspendExpertConfirm();
+        break;
+    }
+  };
+
+  const getConfirmMessage = (): string => {
+    switch (pendingAction?.type) {
+      case 'deleteUser':
+        return 'Are you sure you want to delete this user? This action cannot be undone.';
+      case 'suspendUser':
+        return `Are you sure you want to ${pendingAction.suspend ? 'suspend' : 'activate'} this user?`;
+      case 'deleteExpert':
+        return 'Are you sure you want to delete this expert? This action cannot be undone.';
+      case 'suspendExpert':
+        return `Are you sure you want to ${pendingAction.suspend ? 'suspend' : 'activate'} this expert?`;
+      default:
+        return '';
+    }
+  };
+
+  const getConfirmType = (): 'info' | 'warning' | 'error' => {
+    switch (pendingAction?.type) {
+      case 'deleteUser':
+      case 'deleteExpert':
+        return 'error';
+      default:
+        return 'warning';
+    }
+  };
+
+  const getConfirmText = (): string => {
+    switch (pendingAction?.type) {
+      case 'deleteUser':
+      case 'deleteExpert':
+        return 'Delete';
+      case 'suspendUser':
+        return pendingAction.suspend ? 'Suspend' : 'Activate';
+      case 'suspendExpert':
+        return pendingAction.suspend ? 'Suspend' : 'Activate';
+      default:
+        return 'Confirm';
     }
   };
 
@@ -469,6 +550,26 @@ export default function AdminDashboard() {
           )}
         </div>
       </section>
+
+      {/* Confirmation Overlay */}
+      <NotificationOverlay
+        isOpen={!!pendingAction}
+        onClose={() => setPendingAction(null)}
+        message={getConfirmMessage()}
+        type={getConfirmType()}
+        onConfirm={handleConfirmAction}
+        confirmText={getConfirmText()}
+        cancelText="Cancel"
+      />
+
+      {/* Notification Overlay */}
+      <NotificationOverlay
+        isOpen={!!notification}
+        onClose={() => setNotification(null)}
+        message={notification?.message || ''}
+        type={notification?.type || 'success'}
+        duration={4000}
+      />
     </div>
   );
 }

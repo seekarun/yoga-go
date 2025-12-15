@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { CourseReview } from '@/types';
+import NotificationOverlay from '@/components/NotificationOverlay';
 
 interface ExpertReviewsTableProps {
   courseId: string;
@@ -29,6 +30,10 @@ export default function ExpertReviewsTable({
     averageRating: 0,
   });
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [notification, setNotification] = useState<{
+    message: string;
+    type: 'success' | 'error';
+  } | null>(null);
 
   const fetchReviews = async () => {
     console.log('[DBG][ExpertReviewsTable] Fetching reviews');
@@ -86,7 +91,7 @@ export default function ExpertReviewsTable({
       const data = await response.json();
 
       if (!data.success) {
-        alert(data.error || 'Failed to approve review');
+        setNotification({ message: data.error || 'Failed to approve review', type: 'error' });
         setApprovingId(null);
         return;
       }
@@ -96,7 +101,7 @@ export default function ExpertReviewsTable({
       setApprovingId(null);
     } catch (err) {
       console.error('[DBG][ExpertReviewsTable] Error approving review:', err);
-      alert('Failed to approve review');
+      setNotification({ message: 'Failed to approve review', type: 'error' });
       setApprovingId(null);
     }
   };
@@ -119,7 +124,7 @@ export default function ExpertReviewsTable({
       const data = await response.json();
 
       if (!data.success) {
-        alert(data.error || 'Failed to unpublish review');
+        setNotification({ message: data.error || 'Failed to unpublish review', type: 'error' });
         setApprovingId(null);
         return;
       }
@@ -129,7 +134,7 @@ export default function ExpertReviewsTable({
       setApprovingId(null);
     } catch (err) {
       console.error('[DBG][ExpertReviewsTable] Error unpublishing review:', err);
-      alert('Failed to unpublish review');
+      setNotification({ message: 'Failed to unpublish review', type: 'error' });
       setApprovingId(null);
     }
   };
@@ -413,6 +418,15 @@ export default function ExpertReviewsTable({
           ))}
         </div>
       )}
+
+      {/* Notification Overlay */}
+      <NotificationOverlay
+        isOpen={notification !== null}
+        onClose={() => setNotification(null)}
+        message={notification?.message || ''}
+        type={notification?.type || 'error'}
+        duration={4000}
+      />
     </div>
   );
 }

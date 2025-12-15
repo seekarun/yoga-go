@@ -13,7 +13,7 @@ import { posthog } from '@/providers/PostHogProvider';
 interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
-  type: 'course';
+  type: 'course' | 'webinar';
   item: {
     id: string;
     title: string;
@@ -84,9 +84,13 @@ export default function PaymentModal({ isOpen, onClose, type, item }: PaymentMod
     await refreshUser();
     console.log('[DBG][PaymentModal] User data refreshed');
 
-    // Redirect after success
+    // Redirect after success based on type
     setTimeout(() => {
-      router.push(`/app/courses/${item.id}`);
+      if (type === 'webinar') {
+        router.push(`/app/webinars/${item.id}`);
+      } else {
+        router.push(`/app/courses/${item.id}`);
+      }
       router.refresh(); // Force refresh the page data
       onClose();
     }, 2000);
@@ -170,7 +174,9 @@ export default function PaymentModal({ isOpen, onClose, type, item }: PaymentMod
               Payment Successful!
             </h2>
             <p style={{ color: '#666', marginBottom: '16px' }}>
-              You now have access to the course.
+              {type === 'webinar'
+                ? "You're registered for the webinar!"
+                : 'You now have access to the course.'}
             </p>
             <p style={{ fontSize: '14px', color: '#999' }}>Redirecting...</p>
           </div>
@@ -275,6 +281,7 @@ export default function PaymentModal({ isOpen, onClose, type, item }: PaymentMod
                   <StripeCheckout
                     amount={amount}
                     currency={currency}
+                    type={type}
                     itemId={item.id}
                     itemName={item.title}
                     onSuccess={handleSuccess}

@@ -10,6 +10,7 @@ import { PAYMENT_CONFIG } from '@/config/payment';
 interface StripeCheckoutProps {
   amount: number; // in cents
   currency: string;
+  type?: 'course' | 'webinar';
   itemId: string;
   itemName: string;
   onSuccess: (paymentId: string) => void;
@@ -54,6 +55,7 @@ const CARD_ELEMENT_OPTIONS = {
 function CheckoutForm({
   amount,
   currency,
+  type = 'course',
   itemId,
   itemName: _itemName,
   onSuccess,
@@ -92,7 +94,7 @@ function CheckoutForm({
         body: JSON.stringify({
           amount,
           currency,
-          type: 'course',
+          type,
           itemId,
           userId: user.id,
         }),
@@ -128,13 +130,13 @@ function CheckoutForm({
 
       console.log('[DBG][stripe] Payment succeeded:', paymentIntent.id);
 
-      // Step 3: Verify payment on backend and enroll user
+      // Step 3: Verify payment on backend and enroll/register user
       const confirmResponse = await fetch('/api/payment/stripe/confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           paymentIntentId,
-          type: 'course',
+          type,
           itemId,
           userId: user.id,
         }),

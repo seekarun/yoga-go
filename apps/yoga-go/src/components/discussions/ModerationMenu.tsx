@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { Discussion } from '@/types';
+import NotificationOverlay from '@/components/NotificationOverlay';
 
 interface ModerationMenuProps {
   discussion: Discussion;
@@ -12,20 +13,33 @@ interface ModerationMenuProps {
 export default function ModerationMenu({ discussion, onModerate, onDelete }: ModerationMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleAction = async (action: string) => {
     setIsProcessing(true);
     try {
       if (action === 'delete') {
-        if (window.confirm('Are you sure you want to delete this discussion?')) {
-          await onDelete();
-        }
-      } else {
-        await onModerate(action);
+        setShowDeleteConfirm(true);
+        setIsProcessing(false);
+        return;
       }
+      await onModerate(action);
       setIsOpen(false);
     } catch (error) {
       console.error('[DBG][ModerationMenu] Action failed:', error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    setShowDeleteConfirm(false);
+    setIsProcessing(true);
+    try {
+      await onDelete();
+      setIsOpen(false);
+    } catch (error) {
+      console.error('[DBG][ModerationMenu] Delete failed:', error);
     } finally {
       setIsProcessing(false);
     }
@@ -215,6 +229,17 @@ export default function ModerationMenu({ discussion, onModerate, onDelete }: Mod
           </div>
         </>
       )}
+
+      {/* Delete Confirmation */}
+      <NotificationOverlay
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        message="Are you sure you want to delete this discussion?"
+        type="warning"
+        onConfirm={handleDeleteConfirm}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
     </div>
   );
 }

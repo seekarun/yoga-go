@@ -116,6 +116,21 @@ export default function ExpertSidebar({ expertId }: ExpertSidebarProps) {
       ),
     },
     {
+      id: 'webinars',
+      label: 'Webinars',
+      href: `/srv/${expertId}/webinars`,
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+          />
+        </svg>
+      ),
+    },
+    {
       id: 'survey',
       label: 'Survey',
       href: `/srv/${expertId}/survey`,
@@ -126,6 +141,21 @@ export default function ExpertSidebar({ expertId }: ExpertSidebarProps) {
             strokeLinejoin="round"
             strokeWidth={2}
             d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+          />
+        </svg>
+      ),
+    },
+    {
+      id: 'domain-email',
+      label: 'Domain & Email',
+      href: `/srv/${expertId}/settings/domain`,
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"
           />
         </svg>
       ),
@@ -154,8 +184,20 @@ export default function ExpertSidebar({ expertId }: ExpertSidebarProps) {
   ];
 
   const isActive = (href: string) => {
+    // Exact match for dashboard
     if (href === `/srv/${expertId}`) {
       return pathname === href;
+    }
+    // Settings page should only be active on exact match (not domain/email subpages)
+    if (href === `/srv/${expertId}/settings`) {
+      return pathname === href || pathname === `${href}/google`;
+    }
+    // Domain & Email should be active for /settings/domain and /settings/email
+    if (href === `/srv/${expertId}/settings/domain`) {
+      return (
+        pathname.startsWith(`/srv/${expertId}/settings/domain`) ||
+        pathname.startsWith(`/srv/${expertId}/settings/email`)
+      );
     }
     return pathname.startsWith(href);
   };

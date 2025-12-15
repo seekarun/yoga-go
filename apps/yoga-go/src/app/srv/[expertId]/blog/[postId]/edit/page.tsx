@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { User, BlogPost, BlogPostStatus, BlogPostAttachment } from '@/types';
 import { BlogPostEditor } from '@/components/blog';
+import NotificationOverlay from '@/components/NotificationOverlay';
 
 export default function EditBlogPostPage() {
   const params = useParams();
@@ -17,6 +18,10 @@ export default function EditBlogPostPage() {
   const [authChecking, setAuthChecking] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
+  const [notification, setNotification] = useState<{
+    message: string;
+    type: 'error';
+  } | null>(null);
 
   // Check authorization
   useEffect(() => {
@@ -112,11 +117,11 @@ export default function EditBlogPostPage() {
         console.log('[DBG][edit-blog-post] Post updated');
         router.push(`/srv/${expertId}/blog`);
       } else {
-        alert(data.error || 'Failed to update post');
+        setNotification({ message: data.error || 'Failed to update post', type: 'error' });
       }
     } catch (err) {
       console.error('[DBG][edit-blog-post] Error:', err);
-      alert('Failed to update post');
+      setNotification({ message: 'Failed to update post', type: 'error' });
     } finally {
       setIsSaving(false);
     }
@@ -206,6 +211,15 @@ export default function EditBlogPostPage() {
           />
         </div>
       </div>
+
+      {/* Notification Overlay */}
+      <NotificationOverlay
+        isOpen={notification !== null}
+        onClose={() => setNotification(null)}
+        message={notification?.message || ''}
+        type="error"
+        duration={4000}
+      />
     </div>
   );
 }

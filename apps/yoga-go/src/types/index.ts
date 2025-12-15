@@ -64,6 +64,10 @@ export interface CustomLandingPageConfig {
     title?: string; // Section title (default: "Courses")
     description?: string; // Section description
   };
+  webinars?: {
+    title?: string; // Section title (default: "Live Sessions")
+    description?: string; // Section description
+  };
   footer?: {
     copyrightText?: string; // e.g., "© 2024 Yoga with Jane. All rights reserved."
     tagline?: string; // e.g., "Transform your practice, transform your life."
@@ -850,7 +854,7 @@ export type PaymentStatus =
 
 export type PaymentGateway = 'stripe' | 'razorpay';
 
-export type PaymentType = 'course_enrollment' | 'one_time';
+export type PaymentType = 'course_enrollment' | 'webinar_registration' | 'one_time';
 
 export interface PaymentMetadata {
   chargeId?: string;
@@ -926,3 +930,117 @@ export interface BlogLike {
   userId: string;
   createdAt: string;
 }
+
+// ============================================
+// Webinar Related Types
+// ============================================
+
+export type WebinarStatus = 'DRAFT' | 'SCHEDULED' | 'LIVE' | 'COMPLETED' | 'CANCELLED';
+
+// Video platform for webinar sessions
+export type VideoPlatform = 'google_meet' | 'zoom' | 'none';
+
+export type RecordingStatus = 'pending' | 'uploading' | 'processing' | 'ready' | 'error';
+
+export interface WebinarSession {
+  id: string;
+  title: string;
+  description?: string;
+  startTime: string; // ISO timestamp
+  endTime: string; // ISO timestamp
+  duration: number; // in minutes
+  // Google Meet fields
+  googleMeetLink?: string; // Generated Google Meet link
+  googleEventId?: string; // Google Calendar event ID
+  // Zoom fields
+  zoomMeetingId?: string; // Zoom meeting ID
+  zoomMeetingLink?: string; // Zoom meeting URL (for backward compatibility)
+  zoomJoinUrl?: string; // Zoom join URL for participants
+  zoomStartUrl?: string; // Zoom start URL for host
+  zoomPassword?: string; // Zoom meeting password
+  // Recording fields
+  recordingCloudflareId?: string; // Cloudflare Stream video ID for recording
+  recordingStatus?: RecordingStatus;
+}
+
+export interface WebinarFeedback {
+  id: string;
+  userId: string;
+  userName: string;
+  userAvatar?: string;
+  rating: number; // 1-5 stars
+  comment: string;
+  createdAt: string;
+  status: ReviewStatus;
+}
+
+export interface Webinar extends BaseEntity {
+  expertId: string;
+  title: string;
+  description: string;
+  thumbnail?: string;
+  coverImage?: string;
+  promoVideoCloudflareId?: string;
+  promoVideoStatus?: 'uploading' | 'processing' | 'ready' | 'error';
+  price: number;
+  currency?: string;
+  maxParticipants?: number; // Optional capacity limit
+  status: WebinarStatus;
+  videoPlatform?: VideoPlatform; // Video conferencing platform for sessions
+  sessions: WebinarSession[];
+  totalRegistrations: number;
+  rating?: number;
+  totalRatings?: number;
+  tags?: string[];
+  category?: CourseCategory;
+  level?: CourseLevel;
+  requirements?: string[];
+  whatYouWillLearn?: string[];
+  feedback?: WebinarFeedback[]; // Embedded for simplicity
+}
+
+export type WebinarRegistrationStatus = 'registered' | 'cancelled' | 'attended' | 'no_show';
+
+export interface WebinarRemindersSent {
+  dayBefore?: boolean;
+  hourBefore?: boolean;
+}
+
+export interface WebinarRegistration extends BaseEntity {
+  webinarId: string;
+  userId: string;
+  expertId: string;
+  userName?: string;
+  userEmail?: string;
+  registeredAt: string;
+  paymentId?: string;
+  status: WebinarRegistrationStatus;
+  remindersSent: WebinarRemindersSent;
+  attendedSessions?: string[]; // Session IDs attended
+  feedbackSubmitted?: boolean;
+}
+
+// Expert's Google OAuth tokens (secure storage)
+export interface ExpertGoogleAuth extends BaseEntity {
+  expertId: string;
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: string; // ISO timestamp when access token expires
+  email: string; // Google account email
+  scope: string;
+}
+
+// Expert's Zoom OAuth tokens (secure storage)
+export interface ExpertZoomAuth extends BaseEntity {
+  expertId: string;
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: string; // ISO timestamp when access token expires
+  email: string; // Zoom account email
+  accountId: string; // Zoom account ID
+  userId: string; // Zoom user ID
+  scope: string;
+}
+
+// Webinar payment type extension
+export type WebinarPaymentType = 'webinar_registration';

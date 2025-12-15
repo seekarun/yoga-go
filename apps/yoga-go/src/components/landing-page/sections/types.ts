@@ -7,6 +7,7 @@ export type SectionType =
   | 'valuePropositions'
   | 'about'
   | 'courses'
+  | 'webinars'
   | 'blog'
   | 'act'
   | 'footer';
@@ -17,6 +18,7 @@ export const DEFAULT_SECTION_ORDER: SectionType[] = [
   'valuePropositions',
   'about',
   'courses',
+  'webinars',
   'blog',
   'act',
   'footer',

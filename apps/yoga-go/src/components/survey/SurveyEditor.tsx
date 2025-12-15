@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { Survey, SurveyQuestion, SurveyContactInfo, QuestionOption } from '@/types';
+import NotificationOverlay from '@/components/NotificationOverlay';
 
 interface SurveyEditorProps {
   initialData?: Partial<Survey>;
@@ -55,6 +56,10 @@ export default function SurveyEditor({
     initialData?.questions?.length ? initialData.questions : [createNewQuestion(0)]
   );
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [notification, setNotification] = useState<{
+    message: string;
+    type: 'warning' | 'error';
+  } | null>(null);
 
   const handleAddQuestion = () => {
     setQuestions([...questions, createNewQuestion(questions.length)]);
@@ -62,7 +67,7 @@ export default function SurveyEditor({
 
   const handleRemoveQuestion = (questionId: string) => {
     if (questions.length === 1) {
-      alert('Survey must have at least one question');
+      setNotification({ message: 'Survey must have at least one question', type: 'warning' });
       return;
     }
     setQuestions(questions.filter(q => q.id !== questionId).map((q, i) => ({ ...q, order: i })));
@@ -111,7 +116,10 @@ export default function SurveyEditor({
         if (q.id !== questionId) return q;
         const newOptions = (q.options || []).filter(o => o.id !== optionId);
         if (newOptions.length < 2) {
-          alert('Multiple choice questions must have at least 2 options');
+          setNotification({
+            message: 'Multiple choice questions must have at least 2 options',
+            type: 'warning',
+          });
           return q;
         }
         return { ...q, options: newOptions };
@@ -500,6 +508,15 @@ export default function SurveyEditor({
           {isLoading ? 'Saving...' : mode === 'create' ? 'Create Survey' : 'Save Changes'}
         </button>
       </div>
+
+      {/* Notification Overlay */}
+      <NotificationOverlay
+        isOpen={notification !== null}
+        onClose={() => setNotification(null)}
+        message={notification?.message || ''}
+        type={notification?.type || 'warning'}
+        duration={4000}
+      />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { User, BlogPostStatus, BlogPostAttachment } from '@/types';
 import { BlogPostEditor } from '@/components/blog';
+import NotificationOverlay from '@/components/NotificationOverlay';
 
 export default function NewBlogPostPage() {
   const params = useParams();
@@ -13,6 +14,10 @@ export default function NewBlogPostPage() {
 
   const [authChecking, setAuthChecking] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [notification, setNotification] = useState<{
+    message: string;
+    type: 'error';
+  } | null>(null);
 
   // Check authorization
   useEffect(() => {
@@ -77,11 +82,11 @@ export default function NewBlogPostPage() {
         console.log('[DBG][new-blog-post] Post created:', data.data.id);
         router.push(`/srv/${expertId}/blog`);
       } else {
-        alert(data.error || 'Failed to create post');
+        setNotification({ message: data.error || 'Failed to create post', type: 'error' });
       }
     } catch (err) {
       console.error('[DBG][new-blog-post] Error:', err);
-      alert('Failed to create post');
+      setNotification({ message: 'Failed to create post', type: 'error' });
     } finally {
       setIsSaving(false);
     }
@@ -139,6 +144,15 @@ export default function NewBlogPostPage() {
           <BlogPostEditor onSave={handleSave} onCancel={handleCancel} isSaving={isSaving} />
         </div>
       </div>
+
+      {/* Notification Overlay */}
+      <NotificationOverlay
+        isOpen={notification !== null}
+        onClose={() => setNotification(null)}
+        message={notification?.message || ''}
+        type="error"
+        duration={4000}
+      />
     </div>
   );
 }

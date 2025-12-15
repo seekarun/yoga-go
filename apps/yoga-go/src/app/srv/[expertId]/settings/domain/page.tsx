@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Tenant, TenantDnsRecord, TenantEmailConfig, TenantBranding } from '@/types';
+import NotificationOverlay from '@/components/NotificationOverlay';
 
 // Extended tenant type with domain verification info
 interface TenantWithVerification extends Tenant {
@@ -51,6 +52,7 @@ export default function DomainSettingsPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [domainStatuses, setDomainStatuses] = useState<Record<string, DomainStatus>>({});
+  const [domainToRemove, setDomainToRemove] = useState<string | null>(null);
 
   // Email setup state
   const [emailDnsRecords, setEmailDnsRecords] = useState<TenantDnsRecord[]>([]);
@@ -337,10 +339,13 @@ export default function DomainSettingsPage() {
     }
   };
 
-  const handleRemoveDomain = async (domain: string) => {
-    if (!confirm(`Are you sure you want to remove ${domain}?`)) {
-      return;
-    }
+  const handleRemoveDomainClick = (domain: string) => {
+    setDomainToRemove(domain);
+  };
+
+  const handleRemoveDomainConfirm = async () => {
+    if (!domainToRemove) return;
+    const domain = domainToRemove;
 
     setSaving(true);
     setError('');
@@ -957,21 +962,24 @@ export default function DomainSettingsPage() {
                         {domainStatuses[domain]?.checking ? 'Checking...' : 'Verify'}
                       </button>
                     )}
-                    <button
-                      onClick={() => handleRemoveDomain(domain)}
-                      disabled={saving}
-                      style={{
-                        padding: '4px 12px',
-                        background: '#fee',
-                        color: '#c00',
-                        border: 'none',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Remove
-                    </button>
+                    {/* Don't allow removing the default myyoga.guru subdomain */}
+                    {!domain.endsWith('.myyoga.guru') && (
+                      <button
+                        onClick={() => handleRemoveDomainClick(domain)}
+                        disabled={saving}
+                        style={{
+                          padding: '4px 12px',
+                          background: '#fee',
+                          color: '#c00',
+                          border: 'none',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Remove
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -1755,6 +1763,17 @@ export default function DomainSettingsPage() {
           </>
         )}
       </div>
+
+      {/* Remove Domain Confirmation Overlay */}
+      <NotificationOverlay
+        isOpen={!!domainToRemove}
+        onClose={() => setDomainToRemove(null)}
+        message={`Are you sure you want to remove ${domainToRemove}?`}
+        type="warning"
+        onConfirm={handleRemoveDomainConfirm}
+        confirmText="Remove"
+        cancelText="Cancel"
+      />
     </div>
   );
 }

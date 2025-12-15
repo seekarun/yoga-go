@@ -3,7 +3,12 @@ import crypto from 'crypto';
 import { PAYMENT_CONFIG } from '@/config/payment';
 import * as userRepository from '@/lib/repositories/userRepository';
 import * as courseRepository from '@/lib/repositories/courseRepository';
-import { sendInvoiceEmail, getContextualFromEmail } from '@/lib/email';
+import * as webinarRepository from '@/lib/repositories/webinarRepository';
+import {
+  sendInvoiceEmail,
+  sendWebinarRegistrationEmail,
+  getContextualFromEmail,
+} from '@/lib/email';
 
 export async function POST(request: Request) {
   try {
@@ -52,13 +57,31 @@ export async function POST(request: Request) {
       }
 
       console.log(`[Razorpay] Enrolled user ${userId} in course ${itemId}`);
+    } else if (type === 'webinar') {
+      // Register user for webinar
+      const { registerUserForWebinar } = await import('@/lib/enrollment');
+      const registrationResult = await registerUserForWebinar(userId, itemId, paymentId);
+
+      if (!registrationResult.success) {
+        console.error('[Razorpay] Webinar registration failed:', registrationResult.error);
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Payment verified but registration failed: ${registrationResult.error}`,
+          },
+          { status: 500 }
+        );
+      }
+
+      console.log(`[Razorpay] Registered user ${userId} for webinar ${itemId}`);
     }
 
-    // Send invoice email
+    // Send invoice/confirmation email
     try {
-      const [user, course] = await Promise.all([
+      const [user, course, webinar] = await Promise.all([
         userRepository.getUserById(userId),
         type === 'course' ? courseRepository.getCourseById(itemId) : null,
+        type === 'webinar' ? webinarRepository.getWebinarById(itemId) : null,
       ]);
 
       if (user?.profile?.email) {
@@ -69,33 +92,56 @@ export async function POST(request: Request) {
 
         // Determine from address based on context (expert subdomain vs main domain)
         const referer = request.headers.get('referer');
-        const expertId = course?.instructor?.id || null;
+        const expertId = course?.instructor?.id || webinar?.expertId || null;
         const fromEmail = getContextualFromEmail(expertId, referer);
 
-        await sendInvoiceEmail({
-          to: user.profile.email,
-          from: fromEmail,
-          customerName: user.profile.name || 'Valued Customer',
-          orderId: orderId.slice(-8).toUpperCase(),
-          orderDate: new Date().toLocaleDateString('en-IN', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          }),
-          paymentMethod: 'Razorpay',
-          itemName: course?.title || 'Course Purchase',
-          itemDescription: course?.description?.slice(0, 100) || 'Online yoga course access',
-          currency: currencySymbol,
-          amount: amountValue.toFixed(2),
-          transactionId: paymentId,
-        });
-        console.log(`[Razorpay] Invoice email sent to ${user.profile.email} from ${fromEmail}`);
+        if (type === 'webinar' && webinar) {
+          // Send webinar registration confirmation email
+          await sendWebinarRegistrationEmail({
+            to: user.profile.email,
+            from: fromEmail,
+            customerName: user.profile.name || 'Valued Customer',
+            webinarTitle: webinar.title,
+            webinarDescription: webinar.description?.slice(0, 200) || '',
+            sessions: webinar.sessions.map(s => ({
+              title: s.title,
+              startTime: s.startTime,
+              duration: s.duration,
+            })),
+            currency: currencySymbol,
+            amount: amountValue.toFixed(2),
+            transactionId: paymentId,
+          });
+          console.log(
+            `[Razorpay] Webinar registration email sent to ${user.profile.email} from ${fromEmail}`
+          );
+        } else {
+          // Send course invoice email
+          await sendInvoiceEmail({
+            to: user.profile.email,
+            from: fromEmail,
+            customerName: user.profile.name || 'Valued Customer',
+            orderId: orderId.slice(-8).toUpperCase(),
+            orderDate: new Date().toLocaleDateString('en-IN', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            }),
+            paymentMethod: 'Razorpay',
+            itemName: course?.title || 'Course Purchase',
+            itemDescription: course?.description?.slice(0, 100) || 'Online yoga course access',
+            currency: currencySymbol,
+            amount: amountValue.toFixed(2),
+            transactionId: paymentId,
+          });
+          console.log(`[Razorpay] Invoice email sent to ${user.profile.email} from ${fromEmail}`);
+        }
       } else {
-        console.warn('[Razorpay] No user email found, skipping invoice email');
+        console.warn('[Razorpay] No user email found, skipping email');
       }
     } catch (emailError) {
       // Log but don't fail the payment if email fails
-      console.error('[Razorpay] Failed to send invoice email:', emailError);
+      console.error('[Razorpay] Failed to send email:', emailError);
     }
 
     return NextResponse.json({

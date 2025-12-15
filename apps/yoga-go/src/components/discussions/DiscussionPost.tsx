@@ -4,6 +4,7 @@ import { useState } from 'react';
 import VoteButtons from './VoteButtons';
 import DiscussionForm from './DiscussionForm';
 import ModerationMenu from './ModerationMenu';
+import NotificationOverlay from '@/components/NotificationOverlay';
 import type { DiscussionThread, VoteType, UserRole } from '@/types';
 
 interface DiscussionPostProps {
@@ -35,6 +36,7 @@ export default function DiscussionPost({
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(discussion.content);
   const [isSaving, setIsSaving] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const isOwnPost = discussion.userId === currentUserId;
   const isExpert = discussion.userRole === 'expert';
@@ -304,11 +306,7 @@ export default function DiscussionPost({
                   </button>
                   {!isExpertForCourse && (
                     <button
-                      onClick={() => {
-                        if (window.confirm('Are you sure you want to delete this post?')) {
-                          handleDelete();
-                        }
-                      }}
+                      onClick={() => setShowDeleteConfirm(true)}
                       style={{
                         background: 'none',
                         border: 'none',
@@ -340,6 +338,17 @@ export default function DiscussionPost({
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation */}
+      <NotificationOverlay
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        message="Are you sure you want to delete this post?"
+        type="warning"
+        onConfirm={handleDelete}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
     </div>
   );
 }

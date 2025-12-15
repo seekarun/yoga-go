@@ -172,22 +172,48 @@ export async function POST(request: Request): Promise<NextResponse<ApiResponse<T
 
     const body = await request.json();
 
+    // Always include the myyoga.guru subdomain so expertId.myyoga.guru works
+    const myYogaGuruSubdomain = `${user.expertProfile}.myyoga.guru`;
+    const additionalDomains = body.additionalDomains || [];
+
+    // If user provided a custom domain, use that as primary and add subdomain to additional
+    // Otherwise, use the subdomain as primary
+    const primaryDomain = body.primaryDomain || myYogaGuruSubdomain;
+    if (body.primaryDomain && !additionalDomains.includes(myYogaGuruSubdomain)) {
+      additionalDomains.push(myYogaGuruSubdomain);
+    }
+
     // Create tenant in DynamoDB
     const tenant = await createTenant({
       id: user.expertProfile,
       name: body.name || expert.name,
       slug: user.expertProfile,
       expertId: user.expertProfile,
-      primaryDomain: body.primaryDomain,
-      additionalDomains: body.additionalDomains || [],
+      primaryDomain,
+      additionalDomains,
       featuredOnPlatform: body.featuredOnPlatform ?? true,
       status: 'active',
     });
 
     console.log('[DBG][tenant-api] Created tenant:', tenant.id);
 
-    // Add domain to Vercel for SSL provisioning
+    // Add domains to Vercel for SSL provisioning
     let domainVerification: TenantWithVerification['domainVerification'];
+
+    // Add the myyoga.guru subdomain to Vercel (always)
+    try {
+      const subdomainResult = await addDomainToVercel(myYogaGuruSubdomain);
+      console.log(
+        '[DBG][tenant-api] Added subdomain to Vercel:',
+        myYogaGuruSubdomain,
+        'success:',
+        subdomainResult.success
+      );
+    } catch (err) {
+      console.warn('[DBG][tenant-api] Failed to add subdomain to Vercel:', err);
+    }
+
+    // Add custom domain to Vercel if provided
     if (body.primaryDomain) {
       const vercelResult = await addDomainToVercel(body.primaryDomain);
       if (vercelResult.success) {
@@ -684,6 +710,73 @@ export async function PUT(request: Request): Promise<NextResponse<ApiResponse<Te
   } catch (error) {
     console.error('[DBG][tenant-api] PUT error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Failed to update tenant';
+    return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
+  }
+}
+
+/**
+ * DELETE - Delete tenant configuration (remove all domains)
+ */
+export async function DELETE(): Promise<NextResponse<ApiResponse<null>>> {
+  try {
+    const session = await getSession();
+    if (!session?.user?.cognitoSub) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const user = await getUserById(session.user.cognitoSub);
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
+    }
+
+    if (!user.expertProfile) {
+      return NextResponse.json({ success: false, error: 'Not an expert' }, { status: 403 });
+    }
+
+    const tenant = await getTenantByExpertId(user.expertProfile);
+    if (!tenant) {
+      return NextResponse.json({ success: false, error: 'Tenant not found' }, { status: 404 });
+    }
+
+    console.log('[DBG][tenant-api] Deleting tenant for expert:', user.expertProfile);
+
+    // Remove all domains from Vercel
+    const allDomains = [tenant.primaryDomain, ...(tenant.additionalDomains || [])];
+    for (const domain of allDomains) {
+      try {
+        const result = await removeDomainFromVercel(domain);
+        console.log('[DBG][tenant-api] Removed domain from Vercel:', domain, result.success);
+      } catch (err) {
+        console.warn('[DBG][tenant-api] Failed to remove domain from Vercel:', domain, err);
+        // Continue anyway
+      }
+    }
+
+    // Delete SES identity if email was enabled
+    if (tenant.emailConfig?.domainEmail) {
+      const emailDomain = tenant.emailConfig.domainEmail.split('@')[1];
+      try {
+        await deleteDomainIdentity(emailDomain);
+        console.log('[DBG][tenant-api] Deleted SES identity:', emailDomain);
+      } catch (err) {
+        console.warn('[DBG][tenant-api] Failed to delete SES identity:', err);
+      }
+    }
+
+    // Delete tenant from DynamoDB
+    const { deleteTenant } = await import('@/lib/repositories/tenantRepository');
+    await deleteTenant(tenant.id);
+
+    console.log('[DBG][tenant-api] Tenant deleted:', tenant.id);
+
+    return NextResponse.json({
+      success: true,
+      data: null,
+      message: 'Domain configuration deleted successfully',
+    });
+  } catch (error) {
+    console.error('[DBG][tenant-api] DELETE error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to delete tenant';
     return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
   }
 }
