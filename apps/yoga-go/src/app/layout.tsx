@@ -1,16 +1,17 @@
-import type { Metadata } from 'next';
-import { headers } from 'next/headers';
-import { Geist, Geist_Mono } from 'next/font/google';
-import './globals.css';
-import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { SessionProvider } from 'next-auth/react';
-import { AuthProvider } from '@/contexts/AuthContext';
-import { PaymentProvider } from '@/contexts/PaymentContext';
-import { PostHogProvider } from '@/providers/PostHogProvider';
-import { getTenantByDomain } from '@/lib/repositories/tenantRepository';
+import Header from '@/components/Header';
 import { ToastProvider } from '@/components/Toast';
 import UploadNotifications from '@/components/UploadNotifications';
+import { AuthProvider } from '@/contexts/AuthContext';
+import { PaymentProvider } from '@/contexts/PaymentContext';
+import { getTenantByDomain } from '@/lib/repositories/tenantRepository';
+import { PostHogProvider } from '@/providers/PostHogProvider';
+import { Analytics } from '@vercel/analytics/react';
+import type { Metadata } from 'next';
+import { SessionProvider } from 'next-auth/react';
+import { Geist, Geist_Mono } from 'next/font/google';
+import { headers } from 'next/headers';
+import './globals.css';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -115,6 +116,7 @@ export default function RootLayout({
             </PostHogProvider>
           </AuthProvider>
         </SessionProvider>
+        <Analytics />
       </body>
     </html>
   );
