@@ -38,8 +38,9 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Exchange authorization code for tokens
-    const domain = `yoga-go-auth.auth.${cognitoConfig.region}.amazoncognito.com`;
+    // Exchange authorization code for tokens - use custom domain if configured
+    const domain =
+      process.env.COGNITO_DOMAIN || `yoga-go-auth.auth.${cognitoConfig.region}.amazoncognito.com`;
     const tokenUrl = `https://${domain}/oauth2/token`;
     const redirectUri = `${baseUrl}/api/auth/google/callback`;
 

@@ -18,8 +18,9 @@ export async function GET(request: NextRequest) {
   const protocol = hostname.includes('localhost') ? 'http' : 'https';
   const baseUrl = `${protocol}://${hostname}`;
 
-  // Cognito Hosted UI domain
-  const domain = `yoga-go-auth.auth.${cognitoConfig.region}.amazoncognito.com`;
+  // Cognito Hosted UI domain - use custom domain if configured
+  const domain =
+    process.env.COGNITO_DOMAIN || `yoga-go-auth.auth.${cognitoConfig.region}.amazoncognito.com`;
   const redirectUri = `${baseUrl}/api/auth/facebook/callback`;
 
   // Build the OAuth URL with Facebook as identity provider

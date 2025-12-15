@@ -29,8 +29,11 @@ export function getJwtVerifier() {
 }
 
 // Cognito Hosted UI URLs
+// Use COGNITO_DOMAIN env var if set (for custom domain like signin.myyoga.guru)
+// Otherwise fallback to default Cognito domain
 export function getCognitoUrls() {
-  const domain = `yoga-go-auth.auth.${cognitoConfig.region}.amazoncognito.com`;
+  const domain =
+    process.env.COGNITO_DOMAIN || `yoga-go-auth.auth.${cognitoConfig.region}.amazoncognito.com`;
   return {
     authorize: `https://${domain}/oauth2/authorize`,
     token: `https://${domain}/oauth2/token`,
