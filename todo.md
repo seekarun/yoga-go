@@ -1,8 +1,8 @@
 notes
 
 
-[ ] signin with google - myyoga.guru branding
-[ ] goes to app - fix this
+[x] signin with google - myyoga.guru branding
+[x] goes to app - fix this
 [ ] when coming from /srv set user as an expert
 [ ] unique name check for expert (subdomain)
 [x] upload video is confusing. 
@@ -45,12 +45,34 @@ notes
 [ ] colour scheme for landing page
 [ ] asset management
 [ ] via amazonses email going to spam. can expert just view email on platform?
-[ ] razor pay for live sessions
+[x] razor pay for live sessions
 [x] integrate zoom
-[ ] loading screen
+[x] loading screen
 [ ] custom colour scheme for expert landing page
 [ ] what if expert already has a domain email, and want to use that?
+[ ] move events to separate table.
+[ ] sort email hi@myyoga.guru ( also create privacy@myyoga.guru )
 
+  SMTP Settings for Gmail
+
+  | Setting     | Value                                        |
+  |-------------|----------------------------------------------|
+  | SMTP Server | email-smtp.us-west-2.amazonaws.com           |
+  | SMTP Port   | 587 (TLS)                                    |
+  | Username    | AKIA2K6ZI2PA5DWUZTXT                         |
+  | Password    | BGmArhxeN2ddQWdmSEso1LY9gw/33UPtK7VDs5pqFieQ |
+
+  Gmail Setup Steps
+
+  1. Go to Gmail → Settings → See all settings
+  2. Go to Accounts and Import tab
+  3. Under "Send mail as", click Add another email address
+  4. Enter: hi@myyoga.guru
+  5. Uncheck "Treat as an alias"
+  6. Click Next Step
+  7. Enter the SMTP settings above
+  8. Gmail will send a verification email to hi@myyoga.guru → forwards to your hi@arun.au inbox
+  9. Click the verification link and you're done!
 
 CALEL
 

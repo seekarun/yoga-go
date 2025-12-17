@@ -1,17 +1,33 @@
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
-import { SESClient, SendRawEmailCommand } from '@aws-sdk/client-ses';
-import { DynamoDBClient, QueryCommand, GetItemCommand } from '@aws-sdk/client-dynamodb';
-import type { SESEvent, SESEventRecord } from 'aws-lambda';
+import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { SESClient, SendRawEmailCommand } from "@aws-sdk/client-ses";
+import {
+  DynamoDBClient,
+  QueryCommand,
+  GetItemCommand,
+} from "@aws-sdk/client-dynamodb";
+import type { SESEvent, SESEventRecord } from "aws-lambda";
 
 const s3 = new S3Client({});
 const ses = new SESClient({});
 // DynamoDB is in ap-southeast-2
-const dynamodb = new DynamoDBClient({ region: 'ap-southeast-2' });
+const dynamodb = new DynamoDBClient({ region: "ap-southeast-2" });
 
-const TABLE_NAME = process.env.DYNAMODB_TABLE || 'yoga-go-core';
-const BUCKET_NAME = process.env.EMAIL_BUCKET || '';
-const DEFAULT_FROM = process.env.DEFAULT_FROM_EMAIL || 'hi@myyoga.guru';
-const PLATFORM_DOMAIN = 'myyoga.guru';
+const TABLE_NAME = process.env.DYNAMODB_TABLE || "yoga-go-core";
+const BUCKET_NAME = process.env.EMAIL_BUCKET || "";
+const DEFAULT_FROM = process.env.DEFAULT_FROM_EMAIL || "hi@myyoga.guru";
+const PLATFORM_DOMAIN = "myyoga.guru";
+
+// Platform admin emails (comma-separated list)
+// Emails to platform addresses (hi@, contact@, privacy@, etc.) will be forwarded to these addresses
+const PLATFORM_ADMIN_EMAILS = process.env.PLATFORM_ADMIN_EMAILS
+  ? process.env.PLATFORM_ADMIN_EMAILS.split(",").map((e) => e.trim())
+  : [];
+
+// Platform email addresses that should be forwarded to admin(s)
+const PLATFORM_FORWARDED_EMAILS = ["hi", "contact", "privacy"];
+
+// Platform email addresses that should NOT be forwarded (system emails)
+const PLATFORM_SYSTEM_EMAILS = ["support", "info", "admin", "noreply", "mail"];
 
 interface ExpertData {
   forwardingEmail?: string;
@@ -39,7 +55,9 @@ interface TenantData {
  */
 async function getTenantByDomain(domain: string): Promise<TenantData | null> {
   const normalizedDomain = domain.toLowerCase();
-  console.log(`[DBG][email-forwarder] Looking up tenant by domain: ${normalizedDomain}`);
+  console.log(
+    `[DBG][email-forwarder] Looking up tenant by domain: ${normalizedDomain}`,
+  );
 
   // First look up domain reference to get tenant ID
   const domainResult = await dynamodb.send(
@@ -49,7 +67,7 @@ async function getTenantByDomain(domain: string): Promise<TenantData | null> {
         PK: { S: `TENANT#DOMAIN#${normalizedDomain}` },
         SK: { S: normalizedDomain },
       },
-    })
+    }),
   );
 
   if (!domainResult.Item) {
@@ -59,7 +77,9 @@ async function getTenantByDomain(domain: string): Promise<TenantData | null> {
 
   const tenantId = domainResult.Item.tenantId?.S;
   if (!tenantId) {
-    console.log(`[DBG][email-forwarder] No tenantId for domain: ${normalizedDomain}`);
+    console.log(
+      `[DBG][email-forwarder] No tenantId for domain: ${normalizedDomain}`,
+    );
     return null;
   }
 
@@ -68,10 +88,10 @@ async function getTenantByDomain(domain: string): Promise<TenantData | null> {
     new GetItemCommand({
       TableName: TABLE_NAME,
       Key: {
-        PK: { S: 'TENANT' },
+        PK: { S: "TENANT" },
         SK: { S: tenantId },
       },
-    })
+    }),
   );
 
   if (!tenantResult.Item) {
@@ -82,12 +102,14 @@ async function getTenantByDomain(domain: string): Promise<TenantData | null> {
   const item = tenantResult.Item;
   const emailConfigMap = item.emailConfig?.M;
 
-  console.log(`[DBG][email-forwarder] Found tenant: ${tenantId}, hasEmailConfig: ${!!emailConfigMap}`);
+  console.log(
+    `[DBG][email-forwarder] Found tenant: ${tenantId}, hasEmailConfig: ${!!emailConfigMap}`,
+  );
 
   return {
     id: item.id?.S || tenantId,
-    expertId: item.expertId?.S || '',
-    primaryDomain: item.primaryDomain?.S || '',
+    expertId: item.expertId?.S || "",
+    primaryDomain: item.primaryDomain?.S || "",
     emailConfig: emailConfigMap
       ? {
           domainEmail: emailConfigMap.domainEmail?.S,
@@ -109,12 +131,12 @@ async function getExpert(expertId: string): Promise<ExpertData | null> {
   const result = await dynamodb.send(
     new QueryCommand({
       TableName: TABLE_NAME,
-      KeyConditionExpression: 'PK = :pk AND SK = :sk',
+      KeyConditionExpression: "PK = :pk AND SK = :sk",
       ExpressionAttributeValues: {
-        ':pk': { S: 'EXPERT' },
-        ':sk': { S: expertId },
+        ":pk": { S: "EXPERT" },
+        ":sk": { S: expertId },
       },
-    })
+    }),
   );
 
   if (!result.Items || result.Items.length === 0) {
@@ -125,11 +147,14 @@ async function getExpert(expertId: string): Promise<ExpertData | null> {
   const item = result.Items[0];
   const platformPreferences = item.platformPreferences?.M;
 
-  console.log(`[DBG][email-forwarder] Found expert: ${expertId}, forwarding: ${platformPreferences?.forwardingEmail?.S}`);
+  console.log(
+    `[DBG][email-forwarder] Found expert: ${expertId}, forwarding: ${platformPreferences?.forwardingEmail?.S}`,
+  );
 
   return {
     forwardingEmail: platformPreferences?.forwardingEmail?.S,
-    emailForwardingEnabled: platformPreferences?.emailForwardingEnabled?.BOOL ?? true,
+    emailForwardingEnabled:
+      platformPreferences?.emailForwardingEnabled?.BOOL ?? true,
   };
 }
 
@@ -137,18 +162,20 @@ async function getExpert(expertId: string): Promise<ExpertData | null> {
  * Get raw email content from S3
  */
 async function getEmailFromS3(messageId: string): Promise<string> {
-  console.log(`[DBG][email-forwarder] Fetching email from S3: incoming/${messageId}`);
+  console.log(
+    `[DBG][email-forwarder] Fetching email from S3: incoming/${messageId}`,
+  );
 
   const response = await s3.send(
     new GetObjectCommand({
       Bucket: BUCKET_NAME,
       Key: `incoming/${messageId}`,
-    })
+    }),
   );
 
   const body = await response.Body?.transformToString();
   if (!body) {
-    throw new Error('Empty email body');
+    throw new Error("Empty email body");
   }
 
   return body;
@@ -167,12 +194,14 @@ async function forwardEmail(
   forwardTo: string,
   originalRecipient: string,
   originalSender: string,
-  sourceDomain?: string
+  sourceDomain?: string,
 ): Promise<void> {
   // Determine the From address - use BYOD domain if provided
   const fromEmail = sourceDomain ? `noreply@${sourceDomain}` : DEFAULT_FROM;
 
-  console.log(`[DBG][email-forwarder] Forwarding email to: ${forwardTo} from: ${fromEmail}`);
+  console.log(
+    `[DBG][email-forwarder] Forwarding email to: ${forwardTo} from: ${fromEmail}`,
+  );
 
   // Parse and modify email headers for forwarding
   // We need to:
@@ -180,14 +209,14 @@ async function forwardEmail(
   // 2. Add X-Original-To: header with original recipient
   // 3. Set the From: to our verified domain (required by SES)
   // 4. Add Reply-To: with original sender
-  const lines = rawEmail.split('\r\n');
+  const lines = rawEmail.split("\r\n");
   const modifiedLines: string[] = [];
   let inHeaders = true;
   let addedHeaders = false;
 
   for (const line of lines) {
     if (inHeaders) {
-      if (line === '') {
+      if (line === "") {
         // End of headers - add our custom headers before the empty line
         if (!addedHeaders) {
           modifiedLines.push(`X-Original-To: ${originalRecipient}`);
@@ -196,19 +225,19 @@ async function forwardEmail(
         }
         inHeaders = false;
         modifiedLines.push(line);
-      } else if (line.toLowerCase().startsWith('to:')) {
+      } else if (line.toLowerCase().startsWith("to:")) {
         // Replace To: header
         modifiedLines.push(`To: ${forwardTo}`);
-      } else if (line.toLowerCase().startsWith('from:')) {
+      } else if (line.toLowerCase().startsWith("from:")) {
         // Keep original From but add Reply-To
         modifiedLines.push(line);
         modifiedLines.push(`Reply-To: ${originalSender}`);
-      } else if (line.toLowerCase().startsWith('return-path:')) {
+      } else if (line.toLowerCase().startsWith("return-path:")) {
         // Update Return-Path to our domain
         modifiedLines.push(`Return-Path: <${fromEmail}>`);
       } else if (
-        line.toLowerCase().startsWith('dkim-signature:') ||
-        line.toLowerCase().startsWith('domainkey-signature:')
+        line.toLowerCase().startsWith("dkim-signature:") ||
+        line.toLowerCase().startsWith("domainkey-signature:")
       ) {
         // Skip DKIM signatures as they won't be valid after modification
         continue;
@@ -220,30 +249,34 @@ async function forwardEmail(
     }
   }
 
-  const modifiedEmail = modifiedLines.join('\r\n');
+  const modifiedEmail = modifiedLines.join("\r\n");
 
   await ses.send(
     new SendRawEmailCommand({
       RawMessage: { Data: Buffer.from(modifiedEmail) },
       Source: fromEmail,
       Destinations: [forwardTo],
-    })
+    }),
   );
 
-  console.log(`[DBG][email-forwarder] Email forwarded successfully to ${forwardTo}`);
+  console.log(
+    `[DBG][email-forwarder] Email forwarded successfully to ${forwardTo}`,
+  );
 }
 
 /**
  * Lambda handler for SES incoming email events
  */
 export async function handler(event: SESEvent): Promise<void> {
-  console.log(`[DBG][email-forwarder] Processing ${event.Records.length} email(s)`);
+  console.log(
+    `[DBG][email-forwarder] Processing ${event.Records.length} email(s)`,
+  );
 
   for (const record of event.Records) {
     try {
       await processRecord(record);
     } catch (error) {
-      console.error('[DBG][email-forwarder] Error processing record:', error);
+      console.error("[DBG][email-forwarder] Error processing record:", error);
       // Continue processing other records even if one fails
     }
   }
@@ -255,12 +288,44 @@ export async function handler(event: SESEvent): Promise<void> {
 async function handlePlatformEmail(
   localPart: string,
   recipient: string,
-  mail: SESEventRecord['ses']['mail']
+  mail: SESEventRecord["ses"]["mail"],
 ): Promise<void> {
-  // Skip platform emails (hi@, support@, etc.)
-  const platformEmails = ['hi', 'support', 'info', 'contact', 'admin', 'noreply', 'mail'];
-  if (platformEmails.includes(localPart)) {
-    console.log(`[DBG][email-forwarder] Skipping platform email: ${recipient}`);
+  // Check if this is a platform email that should be forwarded to admin(s)
+  if (PLATFORM_FORWARDED_EMAILS.includes(localPart)) {
+    if (PLATFORM_ADMIN_EMAILS.length === 0) {
+      console.log(
+        `[DBG][email-forwarder] No admin emails configured, skipping platform email: ${recipient}`,
+      );
+      return;
+    }
+
+    console.log(
+      `[DBG][email-forwarder] Forwarding platform email ${recipient} to ${PLATFORM_ADMIN_EMAILS.length} admin(s)`,
+    );
+
+    // Get original email from S3
+    const emailContent = await getEmailFromS3(mail.messageId);
+
+    // Forward to each admin email
+    for (const adminEmail of PLATFORM_ADMIN_EMAILS) {
+      try {
+        await forwardEmail(emailContent, adminEmail, recipient, mail.source);
+        console.log(
+          `[DBG][email-forwarder] Forwarded platform email to admin: ${adminEmail}`,
+        );
+      } catch (error) {
+        console.error(
+          `[DBG][email-forwarder] Failed to forward to admin ${adminEmail}:`,
+          error,
+        );
+      }
+    }
+    return;
+  }
+
+  // Skip system emails (support@, info@, admin@, noreply@, mail@)
+  if (PLATFORM_SYSTEM_EMAILS.includes(localPart)) {
+    console.log(`[DBG][email-forwarder] Skipping system email: ${recipient}`);
     return;
   }
 
@@ -280,7 +345,9 @@ async function handlePlatformEmail(
   }
 
   if (!expert.forwardingEmail) {
-    console.log(`[DBG][email-forwarder] No forwarding email configured for: ${expertId}`);
+    console.log(
+      `[DBG][email-forwarder] No forwarding email configured for: ${expertId}`,
+    );
     return;
   }
 
@@ -288,10 +355,15 @@ async function handlePlatformEmail(
   const emailContent = await getEmailFromS3(mail.messageId);
 
   // Forward the email (using platform domain)
-  await forwardEmail(emailContent, expert.forwardingEmail, recipient, mail.source);
+  await forwardEmail(
+    emailContent,
+    expert.forwardingEmail,
+    recipient,
+    mail.source,
+  );
 
   console.log(
-    `[DBG][email-forwarder] Successfully forwarded platform email for ${expertId} to ${expert.forwardingEmail}`
+    `[DBG][email-forwarder] Successfully forwarded platform email for ${expertId} to ${expert.forwardingEmail}`,
   );
 }
 
@@ -301,7 +373,7 @@ async function handlePlatformEmail(
 async function handleByodEmail(
   domain: string,
   recipient: string,
-  mail: SESEventRecord['ses']['mail']
+  mail: SESEventRecord["ses"]["mail"],
 ): Promise<void> {
   // Look up tenant by domain
   const tenant = await getTenantByDomain(domain);
@@ -313,22 +385,30 @@ async function handleByodEmail(
 
   // Check if email is configured and verified
   if (!tenant.emailConfig) {
-    console.log(`[DBG][email-forwarder] Email not configured for tenant: ${tenant.id}`);
+    console.log(
+      `[DBG][email-forwarder] Email not configured for tenant: ${tenant.id}`,
+    );
     return;
   }
 
-  if (tenant.emailConfig.sesVerificationStatus !== 'verified') {
-    console.log(`[DBG][email-forwarder] Email not verified for tenant: ${tenant.id}`);
+  if (tenant.emailConfig.sesVerificationStatus !== "verified") {
+    console.log(
+      `[DBG][email-forwarder] Email not verified for tenant: ${tenant.id}`,
+    );
     return;
   }
 
   if (!tenant.emailConfig.forwardingEnabled) {
-    console.log(`[DBG][email-forwarder] Email forwarding disabled for tenant: ${tenant.id}`);
+    console.log(
+      `[DBG][email-forwarder] Email forwarding disabled for tenant: ${tenant.id}`,
+    );
     return;
   }
 
   if (!tenant.emailConfig.forwardToEmail) {
-    console.log(`[DBG][email-forwarder] No forwarding email for tenant: ${tenant.id}`);
+    console.log(
+      `[DBG][email-forwarder] No forwarding email for tenant: ${tenant.id}`,
+    );
     return;
   }
 
@@ -341,11 +421,11 @@ async function handleByodEmail(
     tenant.emailConfig.forwardToEmail,
     recipient,
     mail.source,
-    domain // Use BYOD domain as source
+    domain, // Use BYOD domain as source
   );
 
   console.log(
-    `[DBG][email-forwarder] Successfully forwarded BYOD email for ${domain} to ${tenant.emailConfig.forwardToEmail}`
+    `[DBG][email-forwarder] Successfully forwarded BYOD email for ${domain} to ${tenant.emailConfig.forwardToEmail}`,
   );
 }
 
@@ -363,7 +443,7 @@ async function processRecord(record: SESEventRecord): Promise<void> {
   for (const recipient of receipt.recipients) {
     try {
       // Extract local part and domain from email
-      const [localPart, domain] = recipient.toLowerCase().split('@');
+      const [localPart, domain] = recipient.toLowerCase().split("@");
 
       // Handle platform email (myyoga.guru)
       if (domain === PLATFORM_DOMAIN) {
@@ -373,10 +453,15 @@ async function processRecord(record: SESEventRecord): Promise<void> {
 
       // Handle BYOD custom domain email
       // Any non-myyoga.guru domain is treated as BYOD
-      console.log(`[DBG][email-forwarder] Processing BYOD domain email: ${recipient}`);
+      console.log(
+        `[DBG][email-forwarder] Processing BYOD domain email: ${recipient}`,
+      );
       await handleByodEmail(domain, recipient, mail);
     } catch (error) {
-      console.error(`[DBG][email-forwarder] Error processing recipient ${recipient}:`, error);
+      console.error(
+        `[DBG][email-forwarder] Error processing recipient ${recipient}:`,
+        error,
+      );
     }
   }
 }

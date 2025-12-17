@@ -4,6 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
+### IMPORTANT
+- this project uses AWS profile `myg`, any cli commands or cdk actions should use this profile
+
 ### Development
 
 - `npm run dev` - Start development server on port 3111 (http://localhost:3111)

@@ -1,15 +1,16 @@
-import * as cdk from 'aws-cdk-lib';
-import * as ses from 'aws-cdk-lib/aws-ses';
-import * as sesActions from 'aws-cdk-lib/aws-ses-actions';
-import * as s3 from 'aws-cdk-lib/aws-s3';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
-import * as nodejsLambda from 'aws-cdk-lib/aws-lambda-nodejs';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import * as path from 'path';
-import type { Construct } from 'constructs';
+import * as cdk from "aws-cdk-lib";
+import * as ses from "aws-cdk-lib/aws-ses";
+import * as sesActions from "aws-cdk-lib/aws-ses-actions";
+import * as s3 from "aws-cdk-lib/aws-s3";
+import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as nodejsLambda from "aws-cdk-lib/aws-lambda-nodejs";
+import * as iam from "aws-cdk-lib/aws-iam";
+import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
+import * as path from "path";
+import type { Construct } from "constructs";
 
 // Domain configuration (DNS managed by Vercel)
-const MYYOGA_GURU_DOMAIN = 'myyoga.guru';
+const MYYOGA_GURU_DOMAIN = "myyoga.guru";
 
 export interface SesStackProps extends cdk.StackProps {
   /** DynamoDB Core Table ARN (for Lambda to read expert data) */
@@ -45,7 +46,7 @@ export class SesStack extends cdk.Stack {
     // ========================================
     // Using ses.Identity.domain() since DNS is managed by Vercel, not Route53
     // DKIM and other DNS records are configured manually in Vercel DNS
-    const emailIdentity = new ses.EmailIdentity(this, 'EmailIdentity', {
+    const emailIdentity = new ses.EmailIdentity(this, "EmailIdentity", {
       identity: ses.Identity.domain(MYYOGA_GURU_DOMAIN),
     });
 
@@ -55,20 +56,20 @@ export class SesStack extends cdk.Stack {
     // ========================================
     // SES Configuration Set
     // ========================================
-    const sesConfigSet = new ses.ConfigurationSet(this, 'SesConfigSet', {
-      configurationSetName: 'yoga-go-emails-west',
+    const sesConfigSet = new ses.ConfigurationSet(this, "SesConfigSet", {
+      configurationSetName: "yoga-go-emails-west",
       sendingEnabled: true,
       reputationMetrics: true,
     });
 
     this.configSetName = sesConfigSet.configurationSetName;
 
-    sesConfigSet.addEventDestination('CloudWatchDestination', {
+    sesConfigSet.addEventDestination("CloudWatchDestination", {
       destination: ses.EventDestination.cloudWatchDimensions([
         {
-          name: 'EmailType',
+          name: "EmailType",
           source: ses.CloudWatchDimensionSource.MESSAGE_TAG,
-          defaultValue: 'transactional',
+          defaultValue: "transactional",
         },
       ]),
       events: [
@@ -85,10 +86,10 @@ export class SesStack extends cdk.Stack {
     // ========================================
     // SES Email Templates
     // ========================================
-    new ses.CfnTemplate(this, 'WelcomeEmailTemplate', {
+    new ses.CfnTemplate(this, "WelcomeEmailTemplate", {
       template: {
-        templateName: 'yoga-go-welcome',
-        subjectPart: 'Welcome to MyYoga.Guru! 🧘',
+        templateName: "yoga-go-welcome",
+        subjectPart: "Welcome to MyYoga.Guru! 🧘",
         textPart: `Hi {{name}},
 
 Welcome to MyYoga.Guru!
@@ -111,10 +112,10 @@ The MyYoga.Guru Team`,
       },
     });
 
-    new ses.CfnTemplate(this, 'InvoiceEmailTemplate', {
+    new ses.CfnTemplate(this, "InvoiceEmailTemplate", {
       template: {
-        templateName: 'yoga-go-invoice',
-        subjectPart: 'Payment Confirmation - Order #{{orderId}} 🧘',
+        templateName: "yoga-go-invoice",
+        subjectPart: "Payment Confirmation - Order #{{orderId}} 🧘",
         textPart: `Hi {{customerName}},
 
 Thank you for your purchase!
@@ -143,11 +144,11 @@ The MyYoga.Guru Team`,
     // ========================================
     // S3 Bucket for Incoming Emails
     // ========================================
-    const emailBucket = new s3.Bucket(this, 'EmailBucket', {
+    const emailBucket = new s3.Bucket(this, "EmailBucket", {
       bucketName: `yoga-go-incoming-emails-${this.account}`,
       lifecycleRules: [
         {
-          id: 'DeleteAfterOneDay',
+          id: "DeleteAfterOneDay",
           expiration: cdk.Duration.days(1),
           enabled: true,
         },
@@ -161,34 +162,43 @@ The MyYoga.Guru Team`,
     emailBucket.addToResourcePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        principals: [new iam.ServicePrincipal('ses.amazonaws.com')],
-        actions: ['s3:PutObject'],
+        principals: [new iam.ServicePrincipal("ses.amazonaws.com")],
+        actions: ["s3:PutObject"],
         resources: [`${emailBucket.bucketArn}/*`],
         conditions: {
           StringEquals: {
-            'AWS:SourceAccount': this.account,
+            "AWS:SourceAccount": this.account,
           },
         },
-      })
+      }),
     );
 
     // ========================================
     // Email Forwarder Lambda
     // ========================================
-    const emailForwarderLambda = new nodejsLambda.NodejsFunction(this, 'EmailForwarderLambda', {
-      functionName: 'yoga-go-email-forwarder',
-      runtime: lambda.Runtime.NODEJS_22_X,
-      handler: 'handler',
-      entry: path.join(__dirname, '../lambda/email-forwarder.ts'),
-      timeout: cdk.Duration.seconds(30),
-      memorySize: 256,
-      environment: {
-        DYNAMODB_TABLE: coreTableName,
-        EMAIL_BUCKET: emailBucket.bucketName,
-        DEFAULT_FROM_EMAIL: 'hi@myyoga.guru',
+    // Platform admin emails - emails to hi@, contact@, privacy@ will be forwarded to these addresses
+    // Comma-separated list of email addresses
+    const platformAdminEmails = "hi@arun.au";
+
+    const emailForwarderLambda = new nodejsLambda.NodejsFunction(
+      this,
+      "EmailForwarderLambda",
+      {
+        functionName: "yoga-go-email-forwarder",
+        runtime: lambda.Runtime.NODEJS_22_X,
+        handler: "handler",
+        entry: path.join(__dirname, "../lambda/email-forwarder.ts"),
+        timeout: cdk.Duration.seconds(30),
+        memorySize: 256,
+        environment: {
+          DYNAMODB_TABLE: coreTableName,
+          EMAIL_BUCKET: emailBucket.bucketName,
+          DEFAULT_FROM_EMAIL: "hi@myyoga.guru",
+          PLATFORM_ADMIN_EMAILS: platformAdminEmails,
+        },
+        bundling: { minify: true, sourceMap: false },
       },
-      bundling: { minify: true, sourceMap: false },
-    });
+    );
 
     // Grant Lambda permissions
     emailBucket.grantRead(emailForwarderLambda);
@@ -197,41 +207,41 @@ The MyYoga.Guru Team`,
     emailForwarderLambda.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        actions: ['dynamodb:GetItem', 'dynamodb:Query'],
+        actions: ["dynamodb:GetItem", "dynamodb:Query"],
         resources: [coreTableArn, `${coreTableArn}/index/*`],
-      })
+      }),
     );
 
     // SES send email permission
     emailForwarderLambda.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        actions: ['ses:SendRawEmail'],
-        resources: ['*'],
-      })
+        actions: ["ses:SendRawEmail"],
+        resources: ["*"],
+      }),
     );
 
     // Allow SES to invoke the Lambda
-    emailForwarderLambda.addPermission('AllowSES', {
-      principal: new iam.ServicePrincipal('ses.amazonaws.com'),
+    emailForwarderLambda.addPermission("AllowSES", {
+      principal: new iam.ServicePrincipal("ses.amazonaws.com"),
       sourceAccount: this.account,
     });
 
     // ========================================
     // SES Receipt Rule Set
     // ========================================
-    const receiptRuleSet = new ses.ReceiptRuleSet(this, 'EmailReceiptRuleSet', {
-      receiptRuleSetName: 'yoga-go-inbound',
+    const receiptRuleSet = new ses.ReceiptRuleSet(this, "EmailReceiptRuleSet", {
+      receiptRuleSetName: "yoga-go-inbound",
     });
 
     // Rule 1: Platform emails (@myyoga.guru)
     // This matches all @myyoga.guru emails
-    receiptRuleSet.addRule('ForwardPlatformEmails', {
-      recipients: ['myyoga.guru'],
+    receiptRuleSet.addRule("ForwardPlatformEmails", {
+      recipients: ["myyoga.guru"],
       actions: [
         new sesActions.S3({
           bucket: emailBucket,
-          objectKeyPrefix: 'incoming/',
+          objectKeyPrefix: "incoming/",
         }),
         new sesActions.Lambda({
           function: emailForwarderLambda,
@@ -246,12 +256,12 @@ The MyYoga.Guru Team`,
     // Lambda filters by domain to find the right tenant
     // Note: This rule is processed after the platform rule, so myyoga.guru
     // emails are handled by the first rule and don't fall through here
-    receiptRuleSet.addRule('ForwardByodEmails', {
+    receiptRuleSet.addRule("ForwardByodEmails", {
       recipients: [], // Catch-all for any SES-verified domain
       actions: [
         new sesActions.S3({
           bucket: emailBucket,
-          objectKeyPrefix: 'incoming/',
+          objectKeyPrefix: "incoming/",
         }),
         new sesActions.Lambda({
           function: emailForwarderLambda,
@@ -269,30 +279,87 @@ The MyYoga.Guru Team`,
     // Type: MX, Name: @, Value: 10 inbound-smtp.us-west-2.amazonaws.com
 
     // ========================================
+    // SMTP User for Sending Emails (Gmail Integration)
+    // ========================================
+    // This IAM user allows sending emails via SES SMTP
+    // Used for Gmail "Send mail as" feature
+    const smtpUser = new iam.User(this, "SmtpUser", {
+      userName: "yoga-go-smtp-user",
+    });
+
+    // Grant SES send permissions
+    smtpUser.addToPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["ses:SendRawEmail", "ses:SendEmail"],
+        resources: ["*"],
+      }),
+    );
+
+    // Create access key and store in Secrets Manager
+    const accessKey = new iam.AccessKey(this, "SmtpAccessKey", {
+      user: smtpUser,
+    });
+
+    // Store the credentials in Secrets Manager
+    const smtpSecret = new secretsmanager.Secret(
+      this,
+      "SmtpCredentialsSecret",
+      {
+        secretName: "yoga-go/smtp-credentials",
+        description: "SES SMTP credentials for Gmail integration",
+        secretObjectValue: {
+          accessKeyId: cdk.SecretValue.unsafePlainText(accessKey.accessKeyId),
+          secretAccessKey: accessKey.secretAccessKey,
+          smtpServer: cdk.SecretValue.unsafePlainText(
+            "email-smtp.us-west-2.amazonaws.com",
+          ),
+          smtpPort: cdk.SecretValue.unsafePlainText("587"),
+        },
+      },
+    );
+
+    // ========================================
     // Outputs
     // ========================================
-    new cdk.CfnOutput(this, 'SESConfigSetName', {
+    new cdk.CfnOutput(this, "SESConfigSetName", {
       value: sesConfigSet.configurationSetName,
-      description: 'SES Configuration Set Name (us-west-2)',
-      exportName: 'YogaGoSESConfigSetNameWest',
+      description: "SES Configuration Set Name (us-west-2)",
+      exportName: "YogaGoSESConfigSetNameWest",
     });
 
-    new cdk.CfnOutput(this, 'EmailBucketName', {
+    new cdk.CfnOutput(this, "EmailBucketName", {
       value: emailBucket.bucketName,
-      description: 'S3 Bucket for incoming emails',
-      exportName: 'YogaGoEmailBucketName',
+      description: "S3 Bucket for incoming emails",
+      exportName: "YogaGoEmailBucketName",
     });
 
-    new cdk.CfnOutput(this, 'EmailForwarderLambdaArn', {
+    new cdk.CfnOutput(this, "EmailForwarderLambdaArn", {
       value: emailForwarderLambda.functionArn,
-      description: 'Email Forwarder Lambda ARN',
-      exportName: 'YogaGoEmailForwarderLambdaArn',
+      description: "Email Forwarder Lambda ARN",
+      exportName: "YogaGoEmailForwarderLambdaArn",
     });
 
-    new cdk.CfnOutput(this, 'ReceiptRuleSetName', {
+    new cdk.CfnOutput(this, "ReceiptRuleSetName", {
       value: receiptRuleSet.receiptRuleSetName,
-      description: 'SES Receipt Rule Set Name',
-      exportName: 'YogaGoReceiptRuleSetName',
+      description: "SES Receipt Rule Set Name",
+      exportName: "YogaGoReceiptRuleSetName",
+    });
+
+    new cdk.CfnOutput(this, "SmtpCredentialsSecretArn", {
+      value: smtpSecret.secretArn,
+      description: "SMTP Credentials Secret ARN (retrieve with AWS CLI)",
+      exportName: "YogaGoSmtpCredentialsSecretArn",
+    });
+
+    new cdk.CfnOutput(this, "SmtpServer", {
+      value: "email-smtp.us-west-2.amazonaws.com",
+      description: "SES SMTP Server",
+    });
+
+    new cdk.CfnOutput(this, "SmtpPort", {
+      value: "587",
+      description: "SES SMTP Port (TLS)",
     });
   }
 }

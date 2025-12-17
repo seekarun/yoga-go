@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-import 'source-map-support/register';
-import * as cdk from 'aws-cdk-lib';
-import { YogaGoStack } from '../lib/yoga-go-stack';
-import { SesStack } from '../lib/ses-stack';
-import { CalelStack } from '../lib/calel-stack';
-import { CognitoCertStack } from '../lib/cognito-cert-stack';
+import "source-map-support/register";
+import * as cdk from "aws-cdk-lib";
+import { YogaGoStack } from "../lib/yoga-go-stack";
+import { SesStack } from "../lib/ses-stack";
+import { CalelStack } from "../lib/calel-stack";
+import { CognitoCertStack } from "../lib/cognito-cert-stack";
 
 const app = new cdk.App();
 
@@ -12,17 +12,17 @@ const account = process.env.CDK_DEFAULT_ACCOUNT;
 
 const envSydney = {
   account,
-  region: 'ap-southeast-2',
+  region: "ap-southeast-2",
 };
 
 const envOregon = {
   account,
-  region: 'us-west-2',
+  region: "us-west-2",
 };
 
 const envVirginia = {
   account,
-  region: 'us-east-1',
+  region: "us-east-1",
 };
 
 // ========================================
@@ -35,13 +35,13 @@ const envVirginia = {
 // - Route53 Hosted Zone (DNS is managed by Vercel)
 //
 // SES has been moved to SesStack in us-west-2 for email receiving support
-new YogaGoStack(app, 'YogaGoStack', {
-  description: 'Yoga Go - Cognito, DynamoDB (hosted on Vercel)',
+new YogaGoStack(app, "YogaGoStack", {
+  description: "Yoga Go - Cognito, DynamoDB (hosted on Vercel)",
   env: envSydney,
   tags: {
-    Application: 'YogaGo',
-    Environment: 'production',
-    ManagedBy: 'CDK',
+    Application: "YogaGo",
+    Environment: "production",
+    ManagedBy: "CDK",
   },
 });
 
@@ -53,17 +53,17 @@ new YogaGoStack(app, 'YogaGoStack', {
 // Note: SES email receiving is only available in us-east-1, us-west-2, eu-west-1
 // We use us-west-2 for both sending and receiving emails
 // DNS (DKIM, MX records) is managed in Vercel DNS
-new SesStack(app, 'YogaGoSesStack', {
-  description: 'Yoga Go SES - Email sending and receiving (us-west-2)',
+new SesStack(app, "YogaGoSesStack", {
+  description: "Yoga Go SES - Email sending and receiving (us-west-2)",
   env: envOregon,
   crossRegionReferences: true,
   tags: {
-    Application: 'YogaGo',
-    Environment: 'production',
-    ManagedBy: 'CDK',
+    Application: "YogaGo",
+    Environment: "production",
+    ManagedBy: "CDK",
   },
   coreTableArn: `arn:aws:dynamodb:ap-southeast-2:${account}:table/yoga-go-core`,
-  coreTableName: 'yoga-go-core',
+  coreTableName: "yoga-go-core",
 });
 
 // ========================================
@@ -73,13 +73,13 @@ new SesStack(app, 'YogaGoSesStack', {
 //
 // This is a standalone service that can be used by yoga-go
 // and other future apps for calendar/scheduling functionality.
-new CalelStack(app, 'CalelStack', {
-  description: 'Calel - Calendar & Scheduling Service',
+new CalelStack(app, "CalelStack", {
+  description: "Calel - Calendar & Scheduling Service",
   env: envSydney,
   tags: {
-    Application: 'Calel',
-    Environment: 'production',
-    ManagedBy: 'CDK',
+    Application: "Calel",
+    Environment: "production",
+    ManagedBy: "CDK",
   },
 });
 
@@ -96,14 +96,14 @@ new CalelStack(app, 'CalelStack', {
 // 4. Deploy YogaGoStack with: cdk deploy YogaGoStack -c cognitoCertificateArn=<ARN>
 // 5. Add CNAME for signin.myyoga.guru -> CloudFront domain (from YogaGoStack output)
 // 6. Update COGNITO_DOMAIN env var in Vercel to signin.myyoga.guru
-new CognitoCertStack(app, 'CognitoCertStack', {
-  description: 'Cognito Certificate for signin.myyoga.guru (us-east-1)',
+new CognitoCertStack(app, "CognitoCertStack", {
+  description: "Cognito Certificate for signin.myyoga.guru (us-east-1)",
   env: envVirginia,
   crossRegionReferences: true,
   tags: {
-    Application: 'YogaGo',
-    Environment: 'production',
-    ManagedBy: 'CDK',
+    Application: "YogaGo",
+    Environment: "production",
+    ManagedBy: "CDK",
   },
-  domainName: 'signin.myyoga.guru',
+  domainName: "signin.myyoga.guru",
 });

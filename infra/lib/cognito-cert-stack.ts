@@ -1,6 +1,6 @@
-import * as cdk from 'aws-cdk-lib';
-import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import type { Construct } from 'constructs';
+import * as cdk from "aws-cdk-lib";
+import * as acm from "aws-cdk-lib/aws-certificatemanager";
+import type { Construct } from "constructs";
 
 /**
  * Cognito Certificate Stack (us-east-1)
@@ -31,7 +31,7 @@ export class CognitoCertStack extends cdk.Stack {
 
     // Create certificate with DNS validation
     // The validation records must be added to Vercel DNS manually
-    const certificate = new acm.Certificate(this, 'CognitoCert', {
+    const certificate = new acm.Certificate(this, "CognitoCert", {
       domainName: props.domainName,
       validation: acm.CertificateValidation.fromDns(),
       certificateName: `cognito-${props.domainName}`,
@@ -40,14 +40,14 @@ export class CognitoCertStack extends cdk.Stack {
     this.certificateArn = certificate.certificateArn;
 
     // Output the certificate ARN for use in YogaGoStack
-    new cdk.CfnOutput(this, 'CertificateArn', {
+    new cdk.CfnOutput(this, "CertificateArn", {
       value: certificate.certificateArn,
-      description: 'Certificate ARN - use this when deploying YogaGoStack',
-      exportName: 'CognitoCertificateArn',
+      description: "Certificate ARN - use this when deploying YogaGoStack",
+      exportName: "CognitoCertificateArn",
     });
 
     // Output instructions
-    new cdk.CfnOutput(this, 'NextSteps', {
+    new cdk.CfnOutput(this, "NextSteps", {
       value: `
 1. Go to ACM Console in us-east-1
 2. Find certificate for ${props.domainName}
@@ -56,7 +56,7 @@ export class CognitoCertStack extends cdk.Stack {
 5. Wait for status to change to "Issued"
 6. Deploy YogaGoStack: cdk deploy YogaGoStack -c cognitoCertificateArn=${certificate.certificateArn}
       `.trim(),
-      description: 'Next steps after deployment',
+      description: "Next steps after deployment",
     });
   }
 }

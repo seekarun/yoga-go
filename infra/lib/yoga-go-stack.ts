@@ -1,17 +1,17 @@
-import * as cdk from 'aws-cdk-lib';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
-import * as cognito from 'aws-cdk-lib/aws-cognito';
-import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import * as ses from 'aws-cdk-lib/aws-ses';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
-import * as nodejsLambda from 'aws-cdk-lib/aws-lambda-nodejs';
-import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import * as path from 'path';
-import type { Construct } from 'constructs';
+import * as cdk from "aws-cdk-lib";
+import * as iam from "aws-cdk-lib/aws-iam";
+import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
+import * as cognito from "aws-cdk-lib/aws-cognito";
+import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import * as ses from "aws-cdk-lib/aws-ses";
+import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as nodejsLambda from "aws-cdk-lib/aws-lambda-nodejs";
+import * as acm from "aws-cdk-lib/aws-certificatemanager";
+import * as path from "path";
+import type { Construct } from "constructs";
 
 // Domain configuration (DNS managed by Vercel)
-const MYYOGA_GURU_DOMAIN = 'myyoga.guru';
+const MYYOGA_GURU_DOMAIN = "myyoga.guru";
 const COGNITO_CUSTOM_DOMAIN = `signin.${MYYOGA_GURU_DOMAIN}`;
 
 export type YogaGoStackProps = cdk.StackProps;
@@ -44,8 +44,8 @@ export class YogaGoStack extends cdk.Stack {
     // ========================================
     // Cognito User Pool
     // ========================================
-    const userPool = new cognito.UserPool(this, 'YogaGoUserPool', {
-      userPoolName: 'yoga-go-users',
+    const userPool = new cognito.UserPool(this, "YogaGoUserPool", {
+      userPoolName: "yoga-go-users",
       selfSignUpEnabled: true,
       signInAliases: { email: true },
       autoVerify: { email: true },
@@ -76,7 +76,9 @@ export class YogaGoStack extends cdk.Stack {
     // 3. Wait for certificate validation
     // 4. Deploy with: cdk deploy -c cognitoCertificateArn=arn:aws:acm:us-east-1:...
     // 5. Add CNAME record in Vercel: signin.myyoga.guru -> [CloudFront domain from output]
-    const cognitoCertificateArn = this.node.tryGetContext('cognitoCertificateArn');
+    const cognitoCertificateArn = this.node.tryGetContext(
+      "cognitoCertificateArn",
+    );
 
     let cognitoDomainName: string;
 
@@ -84,11 +86,11 @@ export class YogaGoStack extends cdk.Stack {
       // Use custom domain with provided certificate
       const certificate = acm.Certificate.fromCertificateArn(
         this,
-        'CognitoCertificate',
-        cognitoCertificateArn
+        "CognitoCertificate",
+        cognitoCertificateArn,
       );
 
-      const customDomain = userPool.addDomain('YogaGoCustomDomain', {
+      const customDomain = userPool.addDomain("YogaGoCustomDomain", {
         customDomain: {
           domainName: COGNITO_CUSTOM_DOMAIN,
           certificate,
@@ -98,15 +100,15 @@ export class YogaGoStack extends cdk.Stack {
       cognitoDomainName = customDomain.domainName;
 
       // Output the CloudFront domain for DNS CNAME record
-      new cdk.CfnOutput(this, 'CognitoCloudFrontDomain', {
+      new cdk.CfnOutput(this, "CognitoCloudFrontDomain", {
         value: customDomain.cloudFrontEndpoint,
         description: `Add CNAME record in Vercel: ${COGNITO_CUSTOM_DOMAIN} -> this value`,
-        exportName: 'YogaGoCognitoCloudFrontDomain',
+        exportName: "YogaGoCognitoCloudFrontDomain",
       });
     } else {
       // Use default Cognito domain (fallback)
-      const defaultDomain = userPool.addDomain('YogaGoDomain', {
-        cognitoDomain: { domainPrefix: 'yoga-go-auth' },
+      const defaultDomain = userPool.addDomain("YogaGoDomain", {
+        cognitoDomain: { domainPrefix: "yoga-go-auth" },
       });
 
       cognitoDomainName = `${defaultDomain.domainName}.auth.${this.region}.amazoncognito.com`;
@@ -117,8 +119,8 @@ export class YogaGoStack extends cdk.Stack {
     // ========================================
     const appSecret = secretsmanager.Secret.fromSecretNameV2(
       this,
-      'AppSecret',
-      'yoga-go/production'
+      "AppSecret",
+      "yoga-go/production",
     );
 
     // ========================================
@@ -126,40 +128,48 @@ export class YogaGoStack extends cdk.Stack {
     // ========================================
     const googleProvider = new cognito.UserPoolIdentityProviderGoogle(
       this,
-      'GoogleProvider',
+      "GoogleProvider",
       {
         userPool,
-        clientId: appSecret.secretValueFromJson('GOOGLE_CLIENT_ID').unsafeUnwrap(),
-        clientSecretValue: appSecret.secretValueFromJson('GOOGLE_CLIENT_SECRET'),
-        scopes: ['email', 'profile', 'openid'],
+        clientId: appSecret
+          .secretValueFromJson("GOOGLE_CLIENT_ID")
+          .unsafeUnwrap(),
+        clientSecretValue: appSecret.secretValueFromJson(
+          "GOOGLE_CLIENT_SECRET",
+        ),
+        scopes: ["email", "profile", "openid"],
         attributeMapping: {
           email: cognito.ProviderAttribute.GOOGLE_EMAIL,
           fullname: cognito.ProviderAttribute.GOOGLE_NAME,
           profilePicture: cognito.ProviderAttribute.GOOGLE_PICTURE,
         },
-      }
+      },
     );
 
     const facebookProvider = new cognito.UserPoolIdentityProviderFacebook(
       this,
-      'FacebookProvider',
+      "FacebookProvider",
       {
         userPool,
-        clientId: appSecret.secretValueFromJson('FACEBOOK_APP_ID').unsafeUnwrap(),
-        clientSecret: appSecret.secretValueFromJson('FACEBOOK_APP_SECRET').unsafeUnwrap(),
-        scopes: ['email', 'public_profile'],
+        clientId: appSecret
+          .secretValueFromJson("FACEBOOK_APP_ID")
+          .unsafeUnwrap(),
+        clientSecret: appSecret
+          .secretValueFromJson("FACEBOOK_APP_SECRET")
+          .unsafeUnwrap(),
+        scopes: ["email", "public_profile"],
         attributeMapping: {
           email: cognito.ProviderAttribute.FACEBOOK_EMAIL,
           fullname: cognito.ProviderAttribute.FACEBOOK_NAME,
         },
-      }
+      },
     );
 
     // ========================================
     // Cognito App Client
     // ========================================
-    const appClient = userPool.addClient('YogaGoWebClient', {
-      userPoolClientName: 'yoga-go-web',
+    const appClient = userPool.addClient("YogaGoWebClient", {
+      userPoolClientName: "yoga-go-web",
       generateSecret: true,
       authFlows: { userPassword: true, userSrp: true },
       oAuth: {
@@ -170,17 +180,21 @@ export class YogaGoStack extends cdk.Stack {
           cognito.OAuthScope.PROFILE,
         ],
         callbackUrls: [
-          'http://localhost:3111/api/auth/callback/cognito',
-          'https://myyoga.guru/api/auth/callback/cognito',
-          'https://www.myyoga.guru/api/auth/callback/cognito',
-          'http://localhost:3111/api/auth/google/callback',
-          'https://myyoga.guru/api/auth/google/callback',
-          'https://www.myyoga.guru/api/auth/google/callback',
-          'http://localhost:3111/api/auth/facebook/callback',
-          'https://myyoga.guru/api/auth/facebook/callback',
-          'https://www.myyoga.guru/api/auth/facebook/callback',
+          "http://localhost:3111/api/auth/callback/cognito",
+          "https://myyoga.guru/api/auth/callback/cognito",
+          "https://www.myyoga.guru/api/auth/callback/cognito",
+          "http://localhost:3111/api/auth/google/callback",
+          "https://myyoga.guru/api/auth/google/callback",
+          "https://www.myyoga.guru/api/auth/google/callback",
+          "http://localhost:3111/api/auth/facebook/callback",
+          "https://myyoga.guru/api/auth/facebook/callback",
+          "https://www.myyoga.guru/api/auth/facebook/callback",
         ],
-        logoutUrls: ['http://localhost:3111', 'https://myyoga.guru', 'https://www.myyoga.guru'],
+        logoutUrls: [
+          "http://localhost:3111",
+          "https://myyoga.guru",
+          "https://www.myyoga.guru",
+        ],
       },
       supportedIdentityProviders: [
         cognito.UserPoolClientIdentityProvider.COGNITO,
@@ -198,23 +212,23 @@ export class YogaGoStack extends cdk.Stack {
     // ========================================
     // Using ses.Identity.domain() since DNS is managed by Vercel, not Route53
     // DKIM and other DNS records are configured manually in Vercel DNS
-    new ses.EmailIdentity(this, 'EmailIdentity', {
+    new ses.EmailIdentity(this, "EmailIdentity", {
       identity: ses.Identity.domain(MYYOGA_GURU_DOMAIN),
       mailFromDomain: `mail.${MYYOGA_GURU_DOMAIN}`,
     });
 
-    const sesConfigSet = new ses.ConfigurationSet(this, 'SesConfigSet', {
-      configurationSetName: 'yoga-go-emails',
+    const sesConfigSet = new ses.ConfigurationSet(this, "SesConfigSet", {
+      configurationSetName: "yoga-go-emails",
       sendingEnabled: true,
       reputationMetrics: true,
     });
 
-    sesConfigSet.addEventDestination('CloudWatchDestination', {
+    sesConfigSet.addEventDestination("CloudWatchDestination", {
       destination: ses.EventDestination.cloudWatchDimensions([
         {
-          name: 'EmailType',
+          name: "EmailType",
           source: ses.CloudWatchDimensionSource.MESSAGE_TAG,
-          defaultValue: 'transactional',
+          defaultValue: "transactional",
         },
       ]),
       events: [
@@ -231,10 +245,10 @@ export class YogaGoStack extends cdk.Stack {
     // ========================================
     // SES Email Templates
     // ========================================
-    new ses.CfnTemplate(this, 'WelcomeEmailTemplate', {
+    new ses.CfnTemplate(this, "WelcomeEmailTemplate", {
       template: {
-        templateName: 'yoga-go-welcome',
-        subjectPart: 'Welcome to MyYoga.Guru! 🧘',
+        templateName: "yoga-go-welcome",
+        subjectPart: "Welcome to MyYoga.Guru! 🧘",
         textPart: `Hi {{name}},
 
 Welcome to MyYoga.Guru!
@@ -257,10 +271,10 @@ The MyYoga.Guru Team`,
       },
     });
 
-    new ses.CfnTemplate(this, 'InvoiceEmailTemplate', {
+    new ses.CfnTemplate(this, "InvoiceEmailTemplate", {
       template: {
-        templateName: 'yoga-go-invoice',
-        subjectPart: 'Payment Confirmation - Order #{{orderId}} 🧘',
+        templateName: "yoga-go-invoice",
+        subjectPart: "Payment Confirmation - Order #{{orderId}} 🧘",
         textPart: `Hi {{customerName}},
 
 Thank you for your purchase!
@@ -289,89 +303,100 @@ The MyYoga.Guru Team`,
     // ========================================
     // Welcome Email Lambda (Cognito Trigger)
     // ========================================
-    const welcomeEmailLambda = new nodejsLambda.NodejsFunction(this, 'WelcomeEmailLambda', {
-      functionName: 'yoga-go-welcome-email',
-      runtime: lambda.Runtime.NODEJS_22_X,
-      handler: 'handler',
-      entry: path.join(__dirname, '../lambda/welcome-email.ts'),
-      timeout: cdk.Duration.seconds(10),
-      memorySize: 128,
-      environment: {
-        SES_FROM_EMAIL: 'hi@myyoga.guru',
-        SES_CONFIG_SET: sesConfigSet.configurationSetName,
-        SES_WELCOME_TEMPLATE: 'yoga-go-welcome',
+    const welcomeEmailLambda = new nodejsLambda.NodejsFunction(
+      this,
+      "WelcomeEmailLambda",
+      {
+        functionName: "yoga-go-welcome-email",
+        runtime: lambda.Runtime.NODEJS_22_X,
+        handler: "handler",
+        entry: path.join(__dirname, "../lambda/welcome-email.ts"),
+        timeout: cdk.Duration.seconds(10),
+        memorySize: 128,
+        environment: {
+          SES_FROM_EMAIL: "hi@myyoga.guru",
+          SES_CONFIG_SET: sesConfigSet.configurationSetName,
+          SES_WELCOME_TEMPLATE: "yoga-go-welcome",
+        },
+        bundling: { minify: true, sourceMap: false },
       },
-      bundling: { minify: true, sourceMap: false },
-    });
+    );
 
     welcomeEmailLambda.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        actions: ['ses:SendEmail', 'ses:SendRawEmail', 'ses:SendTemplatedEmail'],
-        resources: ['*'],
-        conditions: { StringEquals: { 'ses:FromAddress': 'hi@myyoga.guru' } },
-      })
+        actions: [
+          "ses:SendEmail",
+          "ses:SendRawEmail",
+          "ses:SendTemplatedEmail",
+        ],
+        resources: ["*"],
+        conditions: { StringEquals: { "ses:FromAddress": "hi@myyoga.guru" } },
+      }),
     );
 
-    userPool.addTrigger(cognito.UserPoolOperation.POST_CONFIRMATION, welcomeEmailLambda);
+    userPool.addTrigger(
+      cognito.UserPoolOperation.POST_CONFIRMATION,
+      welcomeEmailLambda,
+    );
 
     // ========================================
     // DynamoDB Tables
     // ========================================
-    const coreTable = new dynamodb.Table(this, 'CoreTable', {
-      tableName: 'yoga-go-core',
-      partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
+    const coreTable = new dynamodb.Table(this, "CoreTable", {
+      tableName: "yoga-go-core",
+      partitionKey: { name: "PK", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "SK", type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
       pointInTimeRecovery: false,
     });
 
     coreTable.addGlobalSecondaryIndex({
-      indexName: 'GSI1',
-      partitionKey: { name: 'GSI1PK', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'GSI1SK', type: dynamodb.AttributeType.STRING },
+      indexName: "GSI1",
+      partitionKey: { name: "GSI1PK", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "GSI1SK", type: dynamodb.AttributeType.STRING },
       projectionType: dynamodb.ProjectionType.ALL,
     });
 
-    new dynamodb.Table(this, 'OrdersTable', {
-      tableName: 'yoga-go-orders',
-      partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
+    new dynamodb.Table(this, "OrdersTable", {
+      tableName: "yoga-go-orders",
+      partitionKey: { name: "PK", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "SK", type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
       pointInTimeRecovery: false,
     });
 
-    new dynamodb.Table(this, 'AnalyticsTable', {
-      tableName: 'yoga-go-analytics',
-      partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
+    new dynamodb.Table(this, "AnalyticsTable", {
+      tableName: "yoga-go-analytics",
+      partitionKey: { name: "PK", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "SK", type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
       pointInTimeRecovery: false,
     });
 
-    const discussionsTable = new dynamodb.Table(this, 'DiscussionsTable', {
-      tableName: 'yoga-go-discussions',
-      partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
+    const discussionsTable = new dynamodb.Table(this, "DiscussionsTable", {
+      tableName: "yoga-go-discussions",
+      partitionKey: { name: "PK", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "SK", type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
       pointInTimeRecovery: false,
     });
 
     discussionsTable.addGlobalSecondaryIndex({
-      indexName: 'GSI1',
-      partitionKey: { name: 'GSI1PK', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'GSI1SK', type: dynamodb.AttributeType.STRING },
+      indexName: "GSI1",
+      partitionKey: { name: "GSI1PK", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "GSI1SK", type: dynamodb.AttributeType.STRING },
       projectionType: dynamodb.ProjectionType.ALL,
     });
 
-    const blogTable = new dynamodb.Table(this, 'BlogTable', {
-      tableName: 'yoga-go-blog',
-      partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
+    const blogTable = new dynamodb.Table(this, "BlogTable", {
+      tableName: "yoga-go-blog",
+      partitionKey: { name: "PK", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "SK", type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
       pointInTimeRecovery: false,
@@ -382,22 +407,22 @@ The MyYoga.Guru Team`,
     // ========================================
     // Since we're hosting on Vercel (not ECS), we need an IAM user
     // with access keys for the app to access AWS services
-    const vercelUser = new iam.User(this, 'VercelUser', {
-      userName: 'yoga-go-vercel',
+    const vercelUser = new iam.User(this, "VercelUser", {
+      userName: "yoga-go-vercel",
     });
 
     // DynamoDB access policy
     const dynamoDbPolicy = new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       actions: [
-        'dynamodb:GetItem',
-        'dynamodb:PutItem',
-        'dynamodb:UpdateItem',
-        'dynamodb:DeleteItem',
-        'dynamodb:Query',
-        'dynamodb:Scan',
-        'dynamodb:BatchGetItem',
-        'dynamodb:BatchWriteItem',
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:BatchGetItem",
+        "dynamodb:BatchWriteItem",
       ],
       resources: [
         coreTable.tableArn,
@@ -416,11 +441,11 @@ The MyYoga.Guru Team`,
     // SES email sending policy
     const sesEmailPolicy = new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
-      actions: ['ses:SendEmail', 'ses:SendRawEmail', 'ses:SendTemplatedEmail'],
-      resources: ['*'],
+      actions: ["ses:SendEmail", "ses:SendRawEmail", "ses:SendTemplatedEmail"],
+      resources: ["*"],
       conditions: {
         StringLike: {
-          'ses:FromAddress': '*@myyoga.guru',
+          "ses:FromAddress": "*@myyoga.guru",
         },
       },
     });
@@ -428,25 +453,34 @@ The MyYoga.Guru Team`,
     // SES email verification policy (for expert custom emails)
     const sesVerificationPolicy = new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
-      actions: ['ses:CreateEmailIdentity', 'ses:DeleteEmailIdentity', 'ses:GetEmailIdentity'],
-      resources: ['*'],
+      actions: [
+        "ses:CreateEmailIdentity",
+        "ses:DeleteEmailIdentity",
+        "ses:GetEmailIdentity",
+      ],
+      resources: ["*"],
     });
 
     // Cognito read-only policy
     const cognitoPolicy = new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       actions: [
-        'cognito-idp:DescribeUserPool',
-        'cognito-idp:DescribeUserPoolClient',
-        'cognito-idp:GetUser',
+        "cognito-idp:DescribeUserPool",
+        "cognito-idp:DescribeUserPoolClient",
+        "cognito-idp:GetUser",
       ],
       resources: [userPool.userPoolArn],
     });
 
     // Create managed policy and attach to user
-    const vercelPolicy = new iam.ManagedPolicy(this, 'VercelPolicy', {
-      managedPolicyName: 'yoga-go-vercel-policy',
-      statements: [dynamoDbPolicy, sesEmailPolicy, sesVerificationPolicy, cognitoPolicy],
+    const vercelPolicy = new iam.ManagedPolicy(this, "VercelPolicy", {
+      managedPolicyName: "yoga-go-vercel-policy",
+      statements: [
+        dynamoDbPolicy,
+        sesEmailPolicy,
+        sesVerificationPolicy,
+        cognitoPolicy,
+      ],
     });
 
     vercelUser.addManagedPolicy(vercelPolicy);
@@ -454,40 +488,41 @@ The MyYoga.Guru Team`,
     // ========================================
     // Outputs
     // ========================================
-    new cdk.CfnOutput(this, 'VercelUserArn', {
+    new cdk.CfnOutput(this, "VercelUserArn", {
       value: vercelUser.userArn,
-      description: 'IAM User ARN for Vercel - create access keys in AWS Console',
-      exportName: 'YogaGoVercelUserArn',
+      description:
+        "IAM User ARN for Vercel - create access keys in AWS Console",
+      exportName: "YogaGoVercelUserArn",
     });
 
-    new cdk.CfnOutput(this, 'UserPoolId', {
+    new cdk.CfnOutput(this, "UserPoolId", {
       value: userPool.userPoolId,
-      description: 'Cognito User Pool ID',
-      exportName: 'YogaGoUserPoolId',
+      description: "Cognito User Pool ID",
+      exportName: "YogaGoUserPoolId",
     });
 
-    new cdk.CfnOutput(this, 'UserPoolClientId', {
+    new cdk.CfnOutput(this, "UserPoolClientId", {
       value: appClient.userPoolClientId,
-      description: 'Cognito App Client ID',
-      exportName: 'YogaGoUserPoolClientId',
+      description: "Cognito App Client ID",
+      exportName: "YogaGoUserPoolClientId",
     });
 
-    new cdk.CfnOutput(this, 'CognitoDomain', {
+    new cdk.CfnOutput(this, "CognitoDomain", {
       value: cognitoDomainName,
-      description: 'Cognito Hosted UI Domain',
-      exportName: 'YogaGoCognitoDomain',
+      description: "Cognito Hosted UI Domain",
+      exportName: "YogaGoCognitoDomain",
     });
 
-    new cdk.CfnOutput(this, 'DynamoDBCoreTableName', {
+    new cdk.CfnOutput(this, "DynamoDBCoreTableName", {
       value: coreTable.tableName,
-      description: 'DynamoDB Core Table Name',
-      exportName: 'YogaGoDynamoDBCoreTableName',
+      description: "DynamoDB Core Table Name",
+      exportName: "YogaGoDynamoDBCoreTableName",
     });
 
-    new cdk.CfnOutput(this, 'SESConfigSetName', {
+    new cdk.CfnOutput(this, "SESConfigSetName", {
       value: sesConfigSet.configurationSetName,
-      description: 'SES Configuration Set Name',
-      exportName: 'YogaGoSESConfigSetName',
+      description: "SES Configuration Set Name",
+      exportName: "YogaGoSESConfigSetName",
     });
   }
 }

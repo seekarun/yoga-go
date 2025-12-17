@@ -1,12 +1,12 @@
-import * as cdk from 'aws-cdk-lib';
-import * as iam from 'aws-cdk-lib/aws-iam';
-import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import * as sqs from 'aws-cdk-lib/aws-sqs';
-import * as cognito from 'aws-cdk-lib/aws-cognito';
-import * as lambda from 'aws-cdk-lib/aws-lambda';
-import * as lambdaNode from 'aws-cdk-lib/aws-lambda-nodejs';
-import type { Construct } from 'constructs';
-import * as path from 'path';
+import * as cdk from "aws-cdk-lib";
+import * as iam from "aws-cdk-lib/aws-iam";
+import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import * as sqs from "aws-cdk-lib/aws-sqs";
+import * as cognito from "aws-cdk-lib/aws-cognito";
+import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as lambdaNode from "aws-cdk-lib/aws-lambda-nodejs";
+import type { Construct } from "constructs";
+import * as path from "path";
 
 /**
  * Calel Application Stack
@@ -43,10 +43,10 @@ export class CalelStack extends cdk.Stack {
     // ========================================
     // DynamoDB Core Table (Single-Table Design)
     // ========================================
-    this.coreTable = new dynamodb.Table(this, 'CoreTable', {
-      tableName: 'calel-core',
-      partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
+    this.coreTable = new dynamodb.Table(this, "CoreTable", {
+      tableName: "calel-core",
+      partitionKey: { name: "PK", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "SK", type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
       pointInTimeRecovery: false,
@@ -59,9 +59,9 @@ export class CalelStack extends cdk.Stack {
     // - Slug → Tenant: GSI1PK=TENANT#SLUG#{slug}
     // - Slug → Host: GSI1PK=HOST#SLUG#{tenantSlug}#{hostSlug}
     this.coreTable.addGlobalSecondaryIndex({
-      indexName: 'GSI1',
-      partitionKey: { name: 'GSI1PK', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'GSI1SK', type: dynamodb.AttributeType.STRING },
+      indexName: "GSI1",
+      partitionKey: { name: "GSI1PK", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "GSI1SK", type: dynamodb.AttributeType.STRING },
       projectionType: dynamodb.ProjectionType.ALL,
     });
 
@@ -70,9 +70,9 @@ export class CalelStack extends cdk.Stack {
     // - Event type by slug: GSI2PK=EVENTTYPE#SLUG#{hostSlug}#{slug}
     // - Event types by tenant: GSI2PK=EVENTTYPE#TENANT#{tenantId}, GSI2SK={eventTypeId}
     this.coreTable.addGlobalSecondaryIndex({
-      indexName: 'GSI2',
-      partitionKey: { name: 'GSI2PK', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'GSI2SK', type: dynamodb.AttributeType.STRING },
+      indexName: "GSI2",
+      partitionKey: { name: "GSI2PK", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "GSI2SK", type: dynamodb.AttributeType.STRING },
       projectionType: dynamodb.ProjectionType.ALL,
     });
 
@@ -81,14 +81,14 @@ export class CalelStack extends cdk.Stack {
     // ========================================
 
     // Dead Letter Queue for failed notifications
-    const notificationDlq = new sqs.Queue(this, 'NotificationDLQ', {
-      queueName: 'calel-notification-dlq',
+    const notificationDlq = new sqs.Queue(this, "NotificationDLQ", {
+      queueName: "calel-notification-dlq",
       retentionPeriod: cdk.Duration.days(14),
     });
 
     // Main notification queue (confirmations, reminders, etc.)
-    this.notificationQueue = new sqs.Queue(this, 'NotificationQueue', {
-      queueName: 'calel-notifications',
+    this.notificationQueue = new sqs.Queue(this, "NotificationQueue", {
+      queueName: "calel-notifications",
       visibilityTimeout: cdk.Duration.seconds(60),
       retentionPeriod: cdk.Duration.days(4),
       deadLetterQueue: {
@@ -98,14 +98,14 @@ export class CalelStack extends cdk.Stack {
     });
 
     // Dead Letter Queue for failed webhooks
-    const webhookDlq = new sqs.Queue(this, 'WebhookDLQ', {
-      queueName: 'calel-webhook-dlq',
+    const webhookDlq = new sqs.Queue(this, "WebhookDLQ", {
+      queueName: "calel-webhook-dlq",
       retentionPeriod: cdk.Duration.days(14),
     });
 
     // Webhook dispatch queue
-    this.webhookQueue = new sqs.Queue(this, 'WebhookQueue', {
-      queueName: 'calel-webhooks',
+    this.webhookQueue = new sqs.Queue(this, "WebhookQueue", {
+      queueName: "calel-webhooks",
       visibilityTimeout: cdk.Duration.seconds(30),
       retentionPeriod: cdk.Duration.days(4),
       deadLetterQueue: {
@@ -121,11 +121,11 @@ export class CalelStack extends cdk.Stack {
     // Post-confirmation Lambda - creates tenant when user signs up
     const postConfirmationLambda = new lambdaNode.NodejsFunction(
       this,
-      'PostConfirmationLambda',
+      "PostConfirmationLambda",
       {
         runtime: lambda.Runtime.NODEJS_20_X,
-        handler: 'handler',
-        entry: path.join(__dirname, '../lambda/calel-post-confirmation.ts'),
+        handler: "handler",
+        entry: path.join(__dirname, "../lambda/calel-post-confirmation.ts"),
         environment: {
           TABLE_NAME: this.coreTable.tableName,
         },
@@ -138,8 +138,8 @@ export class CalelStack extends cdk.Stack {
     this.coreTable.grantReadData(postConfirmationLambda);
 
     // Cognito User Pool with email/password sign-up
-    this.userPool = new cognito.UserPool(this, 'CalelUserPool', {
-      userPoolName: 'calel-users',
+    this.userPool = new cognito.UserPool(this, "CalelUserPool", {
+      userPoolName: "calel-users",
       selfSignUpEnabled: true,
       signInAliases: {
         email: true,
@@ -181,9 +181,9 @@ export class CalelStack extends cdk.Stack {
     });
 
     // User Pool Client (for web app)
-    this.userPoolClient = new cognito.UserPoolClient(this, 'CalelWebClient', {
+    this.userPoolClient = new cognito.UserPoolClient(this, "CalelWebClient", {
       userPool: this.userPool,
-      userPoolClientName: 'calel-web',
+      userPoolClientName: "calel-web",
       authFlows: {
         userPassword: true,
         userSrp: true,
@@ -197,50 +197,57 @@ export class CalelStack extends cdk.Stack {
 
     // Grant Lambda permission to update user attributes
     // Note: Using a separate construct to avoid circular dependency
-    const cognitoPolicy = new iam.Policy(this, 'PostConfirmationCognitoPolicy', {
-      statements: [
-        new iam.PolicyStatement({
-          effect: iam.Effect.ALLOW,
-          actions: ['cognito-idp:AdminUpdateUserAttributes'],
-          resources: ['*'], // Will be updated after deployment with specific ARN
-        }),
-      ],
-    });
+    const cognitoPolicy = new iam.Policy(
+      this,
+      "PostConfirmationCognitoPolicy",
+      {
+        statements: [
+          new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ["cognito-idp:AdminUpdateUserAttributes"],
+            resources: ["*"], // Will be updated after deployment with specific ARN
+          }),
+        ],
+      },
+    );
     postConfirmationLambda.role?.attachInlinePolicy(cognitoPolicy);
 
     // ========================================
     // IAM User for Vercel Deployment
     // ========================================
-    const vercelUser = new iam.User(this, 'VercelUser', {
-      userName: 'calel-vercel',
+    const vercelUser = new iam.User(this, "VercelUser", {
+      userName: "calel-vercel",
     });
 
     // DynamoDB access policy
     const dynamoDbPolicy = new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       actions: [
-        'dynamodb:GetItem',
-        'dynamodb:PutItem',
-        'dynamodb:UpdateItem',
-        'dynamodb:DeleteItem',
-        'dynamodb:Query',
-        'dynamodb:Scan',
-        'dynamodb:BatchGetItem',
-        'dynamodb:BatchWriteItem',
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:BatchGetItem",
+        "dynamodb:BatchWriteItem",
       ],
-      resources: [this.coreTable.tableArn, `${this.coreTable.tableArn}/index/*`],
+      resources: [
+        this.coreTable.tableArn,
+        `${this.coreTable.tableArn}/index/*`,
+      ],
     });
 
     // SQS access policy
     const sqsPolicy = new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
-      actions: ['sqs:SendMessage', 'sqs:GetQueueAttributes'],
+      actions: ["sqs:SendMessage", "sqs:GetQueueAttributes"],
       resources: [this.notificationQueue.queueArn, this.webhookQueue.queueArn],
     });
 
     // Create managed policy and attach to user
-    const vercelPolicy = new iam.ManagedPolicy(this, 'VercelPolicy', {
-      managedPolicyName: 'calel-vercel-policy',
+    const vercelPolicy = new iam.ManagedPolicy(this, "VercelPolicy", {
+      managedPolicyName: "calel-vercel-policy",
       statements: [dynamoDbPolicy, sqsPolicy],
     });
 
@@ -249,52 +256,53 @@ export class CalelStack extends cdk.Stack {
     // ========================================
     // Outputs
     // ========================================
-    new cdk.CfnOutput(this, 'CoreTableName', {
+    new cdk.CfnOutput(this, "CoreTableName", {
       value: this.coreTable.tableName,
-      description: 'Calel Core DynamoDB Table Name',
-      exportName: 'CalelCoreTableName',
+      description: "Calel Core DynamoDB Table Name",
+      exportName: "CalelCoreTableName",
     });
 
-    new cdk.CfnOutput(this, 'CoreTableArn', {
+    new cdk.CfnOutput(this, "CoreTableArn", {
       value: this.coreTable.tableArn,
-      description: 'Calel Core DynamoDB Table ARN',
-      exportName: 'CalelCoreTableArn',
+      description: "Calel Core DynamoDB Table ARN",
+      exportName: "CalelCoreTableArn",
     });
 
-    new cdk.CfnOutput(this, 'NotificationQueueUrl', {
+    new cdk.CfnOutput(this, "NotificationQueueUrl", {
       value: this.notificationQueue.queueUrl,
-      description: 'Calel Notification Queue URL',
-      exportName: 'CalelNotificationQueueUrl',
+      description: "Calel Notification Queue URL",
+      exportName: "CalelNotificationQueueUrl",
     });
 
-    new cdk.CfnOutput(this, 'WebhookQueueUrl', {
+    new cdk.CfnOutput(this, "WebhookQueueUrl", {
       value: this.webhookQueue.queueUrl,
-      description: 'Calel Webhook Queue URL',
-      exportName: 'CalelWebhookQueueUrl',
+      description: "Calel Webhook Queue URL",
+      exportName: "CalelWebhookQueueUrl",
     });
 
-    new cdk.CfnOutput(this, 'VercelUserArn', {
+    new cdk.CfnOutput(this, "VercelUserArn", {
       value: vercelUser.userArn,
-      description: 'IAM User ARN for Vercel - create access keys in AWS Console',
-      exportName: 'CalelVercelUserArn',
+      description:
+        "IAM User ARN for Vercel - create access keys in AWS Console",
+      exportName: "CalelVercelUserArn",
     });
 
-    new cdk.CfnOutput(this, 'UserPoolId', {
+    new cdk.CfnOutput(this, "UserPoolId", {
       value: this.userPool.userPoolId,
-      description: 'Calel Cognito User Pool ID',
-      exportName: 'CalelUserPoolId',
+      description: "Calel Cognito User Pool ID",
+      exportName: "CalelUserPoolId",
     });
 
-    new cdk.CfnOutput(this, 'UserPoolClientId', {
+    new cdk.CfnOutput(this, "UserPoolClientId", {
       value: this.userPoolClient.userPoolClientId,
-      description: 'Calel Cognito User Pool Client ID',
-      exportName: 'CalelUserPoolClientId',
+      description: "Calel Cognito User Pool Client ID",
+      exportName: "CalelUserPoolClientId",
     });
 
-    new cdk.CfnOutput(this, 'CognitoRegion', {
+    new cdk.CfnOutput(this, "CognitoRegion", {
       value: this.region,
-      description: 'AWS Region for Cognito',
-      exportName: 'CalelCognitoRegion',
+      description: "AWS Region for Cognito",
+      exportName: "CalelCognitoRegion",
     });
   }
 }

@@ -74,7 +74,8 @@
       "Bash(aws ses list-identities:*)",
       "Bash(ls:*)",
       "Bash(wc:*)",
-      "Bash(head:*)"
+      "Bash(head:*)",
+      "Bash(aws route53domains list-domains:*)"
     ],
     "deny": [],
     "ask": []
