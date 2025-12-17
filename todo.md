@@ -51,16 +51,38 @@ notes
 [ ] custom colour scheme for expert landing page
 [ ] what if expert already has a domain email, and want to use that?
 [ ] move events to separate table.
-[ ] sort email hi@myyoga.guru ( also create privacy@myyoga.guru )
+[x] sort email hi@myyoga.guru ( also create privacy@myyoga.guru )
+[ ] redo myyoga.guru landing page, to match landing page principles
+[ ] remove professional title, bio. 
+[ ] expert ID validate.
+[ ] expert ID - hint subdomain and email patterns when saved
+[ ] profile picture optional. 
+[ ] upload image, start upload as soon as cropped
+[ ] remove screens for onbaording like "professional details"
+[ ] tell you they can set up their own domain after.  (glorify custom emails/subdomain)
+[ ] remove website from social links
+[ ] Default landing page
+[ ] when use lands on dashboard, show link to subdomain and maybe show edit landing page. to update landing page.
+[ ] how do we call hero section (etc.) to make this UI more understandable for newbies?
+[ ] consider setting up hero section as part of onboarding.
+[ ] in expert dashboard, on save, it should take user back to the same section.
+[ ] use formatting option for paragraphs when editing landing page.
+[ ] lock hero and footer sections.
+[ ] about text - AI generation
+[ ] link to create courses/surveys/live sessions
+[ ] do auto-save when editing landing page.
+[ ] allow expert to disable a section when in the section details UI
+[ ] webinar - did not understand (use live session)
+[ ] put the placehoder text in the edit screen fields as well
+[ ] link zoom setting from live session section
+[ ] fix google meet and zoom integration
+[ ] auto populate foooter with deatils from onboarding.
+[ ] hide footer when using subdomain.
+[ ] if setting up domain. have to set up privacy link etc. 
+[ ] http to https redirect
+[ ] image gallery
+[ ] dns records add copy button
 
-  SMTP Settings for Gmail
-
-  | Setting     | Value                                        |
-  |-------------|----------------------------------------------|
-  | SMTP Server | email-smtp.us-west-2.amazonaws.com           |
-  | SMTP Port   | 587 (TLS)                                    |
-  | Username    | AKIA2K6ZI2PA5DWUZTXT                         |
-  | Password    | BGmArhxeN2ddQWdmSEso1LY9gw/33UPtK7VDs5pqFieQ |
 
   Gmail Setup Steps
 
@@ -80,4 +102,6 @@ CALEL
 [ ] 
 
 yes
+
+2.5Cr
 
