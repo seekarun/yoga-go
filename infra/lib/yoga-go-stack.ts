@@ -402,6 +402,40 @@ The MyYoga.Guru Team`,
       pointInTimeRecovery: false,
     });
 
+    // Assets table - for Cloudflare uploaded images/videos
+    const assetsTable = new dynamodb.Table(this, "AssetsTable", {
+      tableName: "yoga-go-assets",
+      partitionKey: { name: "PK", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "SK", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      pointInTimeRecovery: false,
+    });
+
+    // GSI1: Query by Cloudflare Image ID
+    assetsTable.addGlobalSecondaryIndex({
+      indexName: "GSI1",
+      partitionKey: { name: "GSI1PK", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "GSI1SK", type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
+    // GSI2: Query by related entity (expert, course, lesson)
+    assetsTable.addGlobalSecondaryIndex({
+      indexName: "GSI2",
+      partitionKey: { name: "GSI2PK", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "GSI2SK", type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
+    // GSI3: Query by uploader (user)
+    assetsTable.addGlobalSecondaryIndex({
+      indexName: "GSI3",
+      partitionKey: { name: "GSI3PK", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "GSI3SK", type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
     // ========================================
     // IAM User for Vercel Deployment
     // ========================================
@@ -435,6 +469,8 @@ The MyYoga.Guru Team`,
         `${discussionsTable.tableArn}/index/*`,
         blogTable.tableArn,
         `${blogTable.tableArn}/index/*`,
+        assetsTable.tableArn,
+        `${assetsTable.tableArn}/index/*`,
       ],
     });
 

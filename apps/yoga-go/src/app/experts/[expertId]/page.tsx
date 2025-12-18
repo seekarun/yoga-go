@@ -982,6 +982,95 @@ export default function ExpertDetailPage() {
     </section>
   );
 
+  const renderPhotoGallerySection = () => {
+    const galleryImages = expert.customLandingPage?.photoGallery?.images || [];
+    if (galleryImages.length === 0) return null;
+
+    return (
+      <section style={{ padding: '80px 20px', background: '#fff' }}>
+        <div className="container" style={{ maxWidth: '1200px', margin: '0 auto' }}>
+          <h2
+            style={{
+              fontSize: '48px',
+              fontWeight: '700',
+              textAlign: 'center',
+              marginBottom: '16px',
+              color: '#1a202c',
+            }}
+          >
+            {expert.customLandingPage?.photoGallery?.title || 'Gallery'}
+          </h2>
+          {expert.customLandingPage?.photoGallery?.description && (
+            <p
+              style={{
+                fontSize: '18px',
+                textAlign: 'center',
+                marginBottom: '48px',
+                color: '#666',
+              }}
+            >
+              {expert.customLandingPage?.photoGallery?.description}
+            </p>
+          )}
+
+          {/* Photo Gallery Grid */}
+          <div
+            style={{
+              display: 'flex',
+              gap: '16px',
+              overflowX: 'auto',
+              scrollBehavior: 'smooth',
+              padding: '4px',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+            }}
+          >
+            {galleryImages.map(image => (
+              <div
+                key={image.id}
+                style={{
+                  flex: '0 0 320px',
+                  background: '#fff',
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                }}
+              >
+                <div
+                  style={{
+                    width: '100%',
+                    height: '240px',
+                    background: `url(${image.url}) center/cover`,
+                  }}
+                />
+                {image.caption && (
+                  <div style={{ padding: '16px' }}>
+                    <p
+                      style={{
+                        fontSize: '14px',
+                        color: '#666',
+                        lineHeight: '1.5',
+                      }}
+                    >
+                      {image.caption}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Photo count indicator */}
+          <div style={{ textAlign: 'center', marginTop: '24px' }}>
+            <span style={{ fontSize: '14px', color: '#9ca3af' }}>
+              {galleryImages.length} {galleryImages.length === 1 ? 'photo' : 'photos'}
+            </span>
+          </div>
+        </div>
+      </section>
+    );
+  };
+
   const renderBlogSection = () => (
     <section style={{ padding: '80px 20px', background: '#f8f9fa', textAlign: 'center' }}>
       <div style={{ maxWidth: '700px', margin: '0 auto' }}>
@@ -1353,6 +1442,7 @@ export default function ExpertDetailPage() {
     about: renderAboutSection,
     courses: renderCoursesSection,
     webinars: renderWebinarsSection,
+    photoGallery: renderPhotoGallerySection,
     blog: renderBlogSection,
     act: renderActSection,
     footer: renderFooterSection,

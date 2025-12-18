@@ -8,6 +8,7 @@ export type SectionType =
   | 'about'
   | 'courses'
   | 'webinars'
+  | 'photoGallery'
   | 'blog'
   | 'act'
   | 'footer';
@@ -19,6 +20,7 @@ export const DEFAULT_SECTION_ORDER: SectionType[] = [
   'about',
   'courses',
   'webinars',
+  'photoGallery',
   'blog',
   'act',
   'footer',

@@ -6,7 +6,7 @@
  * SK: {assetId}
  */
 
-import { docClient, Tables, EntityType } from '../dynamodb';
+import { docClient, Tables } from '../dynamodb';
 import { PutCommand, GetCommand, QueryCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
 import type { Asset } from '@/types';
 
@@ -24,12 +24,12 @@ export async function createAsset(input: Asset): Promise<Asset> {
   };
 
   const item = {
-    PK: EntityType.ASSET,
+    PK: 'ASSET',
     SK: input.id,
-    entityType: EntityType.ASSET,
+    entityType: 'ASSET',
     // GSI for querying by cloudflareImageId
     GSI1PK: `CLOUDFLARE#${input.cloudflareImageId}`,
-    GSI1SK: EntityType.ASSET,
+    GSI1SK: 'ASSET',
     // GSI for querying by relatedTo (e.g., expert, course)
     GSI2PK: input.relatedTo
       ? `${input.relatedTo.type.toUpperCase()}#${input.relatedTo.id}`
@@ -43,7 +43,7 @@ export async function createAsset(input: Asset): Promise<Asset> {
 
   await docClient.send(
     new PutCommand({
-      TableName: Tables.CORE,
+      TableName: Tables.ASSETS,
       Item: item,
     })
   );
@@ -60,9 +60,9 @@ export async function getAssetById(assetId: string): Promise<Asset | null> {
 
   const result = await docClient.send(
     new GetCommand({
-      TableName: Tables.CORE,
+      TableName: Tables.ASSETS,
       Key: {
-        PK: EntityType.ASSET,
+        PK: 'ASSET',
         SK: assetId,
       },
     })
@@ -84,7 +84,7 @@ export async function getAssetByCloudflareId(cloudflareImageId: string): Promise
 
   const result = await docClient.send(
     new QueryCommand({
-      TableName: Tables.CORE,
+      TableName: Tables.ASSETS,
       IndexName: 'GSI1',
       KeyConditionExpression: 'GSI1PK = :gsi1pk',
       ExpressionAttributeValues: {
@@ -113,7 +113,7 @@ export async function getAssetsByRelatedTo(
 
   const result = await docClient.send(
     new QueryCommand({
-      TableName: Tables.CORE,
+      TableName: Tables.ASSETS,
       IndexName: 'GSI2',
       KeyConditionExpression: 'GSI2PK = :gsi2pk AND begins_with(GSI2SK, :gsi2skPrefix)',
       ExpressionAttributeValues: {
@@ -136,7 +136,7 @@ export async function getAssetsByUploadedBy(userId: string): Promise<Asset[]> {
 
   const result = await docClient.send(
     new QueryCommand({
-      TableName: Tables.CORE,
+      TableName: Tables.ASSETS,
       IndexName: 'GSI3',
       KeyConditionExpression: 'GSI3PK = :gsi3pk AND begins_with(GSI3SK, :gsi3skPrefix)',
       ExpressionAttributeValues: {
@@ -160,9 +160,9 @@ export async function deleteAsset(assetId: string): Promise<boolean> {
 
   await docClient.send(
     new DeleteCommand({
-      TableName: Tables.CORE,
+      TableName: Tables.ASSETS,
       Key: {
-        PK: EntityType.ASSET,
+        PK: 'ASSET',
         SK: assetId,
       },
     })

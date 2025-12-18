@@ -68,6 +68,15 @@ export interface CustomLandingPageConfig {
     title?: string; // Section title (default: "Live Sessions")
     description?: string; // Section description
   };
+  photoGallery?: {
+    title?: string; // Section title (default: "Gallery")
+    description?: string; // Section description
+    images?: Array<{
+      id: string;
+      url: string; // Cloudflare Images URL
+      caption?: string; // Optional caption for the image
+    }>;
+  };
   footer?: {
     copyrightText?: string; // e.g., "© 2024 Yoga with Jane. All rights reserved."
     tagline?: string; // e.g., "Transform your practice, transform your life."

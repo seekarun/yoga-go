@@ -6,6 +6,7 @@ import ValuePropsPreview from './value-props/ValuePropsPreview';
 import AboutPreview from './about/AboutPreview';
 import CoursesPreview from './courses/CoursesPreview';
 import WebinarsPreview from './webinars/WebinarsPreview';
+import PhotoGalleryPreview from './photo-gallery/PhotoGalleryPreview';
 import BlogPreview from './blog/BlogPreview';
 import ActPreview from './act/ActPreview';
 import FooterPreview from './footer/FooterPreview';
@@ -16,6 +17,7 @@ import ValuePropsEditor from './value-props/ValuePropsEditor';
 import AboutEditor from './about/AboutEditor';
 import CoursesEditor from './courses/CoursesEditor';
 import WebinarsEditor from './webinars/WebinarsEditor';
+import PhotoGalleryEditor from './photo-gallery/PhotoGalleryEditor';
 import BlogEditor from './blog/BlogEditor';
 import ActEditor from './act/ActEditor';
 import FooterEditor from './footer/FooterEditor';
@@ -138,6 +140,23 @@ const WebinarsIcon = () => (
   </svg>
 );
 
+const PhotoGalleryIcon = () => (
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+    <circle cx="8.5" cy="8.5" r="1.5" />
+    <polyline points="21 15 16 10 5 21" />
+  </svg>
+);
+
 const FooterIcon = () => (
   <svg
     width="20"
@@ -196,6 +215,14 @@ export const sectionRegistry: Record<SectionType, SectionConfig> = {
     PreviewComponent: WebinarsPreview,
     EditorComponent: WebinarsEditor,
   },
+  photoGallery: {
+    id: 'photoGallery',
+    label: 'Photo Gallery',
+    description: 'Display photos in a horizontal carousel',
+    icon: <PhotoGalleryIcon />,
+    PreviewComponent: PhotoGalleryPreview,
+    EditorComponent: PhotoGalleryEditor,
+  },
   blog: {
     id: 'blog',
     label: 'Blog Section',
@@ -231,6 +258,7 @@ export { ValuePropsPreview, ValuePropsEditor };
 export { AboutPreview, AboutEditor };
 export { CoursesPreview, CoursesEditor };
 export { WebinarsPreview, WebinarsEditor };
+export { PhotoGalleryPreview, PhotoGalleryEditor };
 export { BlogPreview, BlogEditor };
 export { ActPreview, ActEditor };
 export { FooterPreview, FooterEditor };

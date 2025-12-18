@@ -46,6 +46,7 @@ export const Tables = {
   ANALYTICS: 'yoga-go-analytics',
   DISCUSSIONS: 'yoga-go-discussions',
   BLOG: 'yoga-go-blog',
+  ASSETS: 'yoga-go-assets',
 } as const;
 
 // Legacy export for backward compatibility during migration
