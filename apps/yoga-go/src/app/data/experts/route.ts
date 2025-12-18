@@ -117,8 +117,8 @@ export async function POST(request: Request) {
     const body = await request.json();
     console.log('[DBG][experts/route.ts] Received expert data:', body);
 
-    // Validate required fields
-    const requiredFields = ['id', 'name', 'title', 'bio', 'avatar'];
+    // Validate required fields (title, bio, avatar are now optional for simplified onboarding)
+    const requiredFields = ['id', 'name'];
     const missingFields = requiredFields.filter(field => !body[field]);
 
     if (missingFields.length > 0) {
@@ -167,9 +167,9 @@ export async function POST(request: Request) {
       id: expertId,
       userId: user.id, // Link to user account (cognitoSub)
       name: body.name,
-      title: body.title,
-      bio: body.bio,
-      avatar: body.avatar,
+      title: body.title || '',
+      bio: body.bio || '',
+      avatar: body.avatar || '',
       rating: body.rating || 0,
       totalCourses: body.totalCourses || 0,
       totalStudents: body.totalStudents || 0,
@@ -179,6 +179,7 @@ export async function POST(request: Request) {
       experience: body.experience || '',
       socialLinks: body.socialLinks || {},
       onboardingCompleted: true, // Mark as completed since they filled the form
+      customLandingPage: body.customLandingPage, // Landing page content from onboarding
       platformPreferences: {
         featuredOnPlatform: body.platformPreferences?.featuredOnPlatform ?? true,
         defaultEmail: `${expertId}@myyoga.guru`,

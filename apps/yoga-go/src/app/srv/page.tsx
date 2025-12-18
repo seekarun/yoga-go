@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import ExpertOnboarding from '@/components/ExpertOnboarding';
+import { useAuth } from '@/contexts/AuthContext';
+import type { Expert } from '@/types';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
-import ExpertOnboarding from '@/components/ExpertOnboarding';
-import type { Expert } from '@/types';
+import { useEffect, useState } from 'react';
 
 export default function ExpertPlatform() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
@@ -354,7 +354,7 @@ function ExpertLandingPage({ isAuthenticated = false }: { isAuthenticated?: bool
                   textShadow: '0 2px 10px rgba(0,0,0,0.3)',
                 }}
               >
-                Build Your Yoga Business Online
+                Looking to teach yoga online?
               </h1>
               <p
                 style={{
@@ -364,8 +364,7 @@ function ExpertLandingPage({ isAuthenticated = false }: { isAuthenticated?: bool
                   textShadow: '0 1px 5px rgba(0,0,0,0.3)',
                 }}
               >
-                Share your expertise, reach students worldwide, and earn income doing what you love.
-                Join hundreds of yoga instructors building thriving online practices.
+                Get online in 5 minutes, easy as that
               </p>
               <div
                 style={{
@@ -408,7 +407,7 @@ function ExpertLandingPage({ isAuthenticated = false }: { isAuthenticated?: bool
                         boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
                       }}
                     >
-                      {upgrading ? 'Upgrading...' : 'Start Teaching Today'}
+                      {upgrading ? 'Upgrading...' : 'Get started for free'}
                     </button>
                   ) : (
                     // Unauthenticated - show signup link
@@ -427,7 +426,7 @@ function ExpertLandingPage({ isAuthenticated = false }: { isAuthenticated?: bool
                         boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
                       }}
                     >
-                      Start Teaching Today
+                      Get started for free
                     </Link>
                   )}
                   <a

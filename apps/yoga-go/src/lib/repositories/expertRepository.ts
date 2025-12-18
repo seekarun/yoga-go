@@ -40,6 +40,7 @@ export interface CreateExpertInput {
   socialLinks?: Expert['socialLinks'];
   onboardingCompleted?: boolean;
   platformPreferences?: Expert['platformPreferences'];
+  customLandingPage?: Expert['customLandingPage'];
 }
 
 /**
@@ -155,6 +156,7 @@ export async function createExpert(input: CreateExpertInput): Promise<Expert> {
       featuredOnPlatform: true,
       defaultEmail: `${input.id}@myyoga.guru`,
     },
+    customLandingPage: input.customLandingPage,
     createdAt: now,
     updatedAt: now,
   };
