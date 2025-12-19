@@ -63,8 +63,8 @@ export default function WebinarsEditor({ data, onChange, expertId }: SectionEdit
           </svg>
           <div>
             <p className="text-sm text-blue-800">
-              This section displays your <strong>scheduled</strong> webinars. Create webinars and
-              set their status to &quot;Scheduled&quot; to show them here.
+              This section displays your <strong>scheduled</strong> live sessions. Create live
+              sessions and set their status to &quot;Scheduled&quot; to show them here.
             </p>
           </div>
         </div>
@@ -72,13 +72,13 @@ export default function WebinarsEditor({ data, onChange, expertId }: SectionEdit
 
       {/* Webinar Stats */}
       <div className="bg-gray-50 rounded-lg p-4">
-        <h4 className="text-sm font-medium text-gray-700 mb-3">Webinar Status</h4>
+        <h4 className="text-sm font-medium text-gray-700 mb-3">Live Session Status</h4>
         {loading ? (
           <p className="text-sm text-gray-500">Loading...</p>
         ) : (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Total Webinars</span>
+              <span className="text-sm text-gray-600">Total Live Sessions</span>
               <span className="text-sm font-medium text-gray-900">{webinarList.length}</span>
             </div>
             <div className="flex items-center justify-between">
@@ -120,7 +120,7 @@ export default function WebinarsEditor({ data, onChange, expertId }: SectionEdit
             {draftWebinars.length > 0 && (
               <div className="mt-3 pt-3 border-t border-gray-200">
                 <span className="text-xs text-gray-500 uppercase tracking-wide">
-                  Draft Webinars (not visible)
+                  Draft Live Sessions (not visible)
                 </span>
                 {draftWebinars.slice(0, 2).map(webinar => (
                   <div key={webinar.id} className="flex items-center justify-between py-1 text-sm">
@@ -152,7 +152,7 @@ export default function WebinarsEditor({ data, onChange, expertId }: SectionEdit
                 d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
               />
             </svg>
-            Manage Webinars
+            Manage Live Sessions
           </Link>
         </div>
       </div>
@@ -204,17 +204,19 @@ export default function WebinarsEditor({ data, onChange, expertId }: SectionEdit
               />
             </svg>
             <div>
-              <p className="text-sm text-amber-800 font-medium">No scheduled webinars</p>
+              <p className="text-sm text-amber-800 font-medium">No scheduled live sessions</p>
               <p className="text-sm text-amber-700 mt-1">
                 {webinarList.length === 0
-                  ? 'Create your first webinar to show this section on your landing page.'
-                  : 'Change a webinar status to "Scheduled" to make it visible.'}
+                  ? 'Create your first live session to show this section on your landing page.'
+                  : 'Change a live session status to "Scheduled" to make it visible.'}
               </p>
               <Link
                 href={`/srv/${expertId}/webinars${webinarList.length === 0 ? '/create' : ''}`}
                 className="inline-flex items-center gap-1 mt-2 text-sm text-amber-800 hover:text-amber-900 font-medium underline"
               >
-                {webinarList.length === 0 ? 'Create your first webinar' : 'Manage your webinars'}
+                {webinarList.length === 0
+                  ? 'Create your first live session'
+                  : 'Manage your live sessions'}
               </Link>
             </div>
           </div>
@@ -225,10 +227,10 @@ export default function WebinarsEditor({ data, onChange, expertId }: SectionEdit
       <div className="bg-gray-50 rounded-lg p-4">
         <h4 className="text-sm font-medium text-gray-700 mb-2">How it works</h4>
         <ol className="text-sm text-gray-600 space-y-1 list-decimal list-inside">
-          <li>Create a webinar in the Webinars section</li>
+          <li>Create a live session in the Live Sessions section</li>
           <li>Add sessions with dates and times</li>
           <li>Change status from &quot;Draft&quot; to &quot;Scheduled&quot;</li>
-          <li>The webinar appears on your landing page automatically</li>
+          <li>The live session appears on your landing page automatically</li>
           <li>Learners can click to view details and register</li>
         </ol>
       </div>

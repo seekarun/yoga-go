@@ -470,7 +470,7 @@ export default function WebinarAccessPage({ params }: PageProps) {
             }}
           >
             <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px' }}>
-              About This Webinar
+              About This Live Session
             </h2>
             <p style={{ color: '#444', lineHeight: '1.7', whiteSpace: 'pre-wrap' }}>
               {webinar.description}
@@ -505,7 +505,7 @@ export default function WebinarAccessPage({ params }: PageProps) {
             ) : (
               <div style={{ textAlign: 'center', padding: '20px' }}>
                 <p style={{ color: '#666', marginBottom: '16px' }}>
-                  How was your experience with this webinar? Your feedback helps the instructor
+                  How was your experience with this live session? Your feedback helps the instructor
                   improve.
                 </p>
                 <button

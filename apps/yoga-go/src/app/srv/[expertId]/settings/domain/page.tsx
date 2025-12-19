@@ -65,6 +65,54 @@ export default function DomainSettingsPage() {
   const [faviconUploading, setFaviconUploading] = useState(false);
   const [ogImageUploading, setOgImageUploading] = useState(false);
 
+  // Copy to clipboard state
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  const copyToClipboard = async (text: string, fieldId: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(fieldId);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch (err) {
+      console.error('[DBG][domain-settings] Failed to copy:', err);
+    }
+  };
+
+  // Copyable field component
+  const CopyableField = ({
+    label,
+    value,
+    fieldId,
+  }: {
+    label: string;
+    value: string;
+    fieldId: string;
+  }) => (
+    <span
+      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', wordBreak: 'break-all' }}
+    >
+      {value}
+      <button
+        onClick={() => copyToClipboard(value, fieldId)}
+        style={{
+          padding: '2px 6px',
+          background: copiedField === fieldId ? '#10b981' : '#e5e7eb',
+          color: copiedField === fieldId ? '#fff' : '#374151',
+          border: 'none',
+          borderRadius: '4px',
+          fontSize: '10px',
+          cursor: 'pointer',
+          flexShrink: 0,
+          transition: 'all 0.2s',
+          verticalAlign: 'middle',
+        }}
+        title={`Copy ${label}`}
+      >
+        {copiedField === fieldId ? '✓' : 'Copy'}
+      </button>
+    </span>
+  );
+
   // Check if user owns this expert profile
   useEffect(() => {
     if (user && user.expertProfile !== expertId) {
@@ -315,17 +363,15 @@ export default function DomainSettingsPage() {
         const addedDomain = newDomain.trim().toLowerCase();
         setNewDomain('');
 
-        // Store verification info for new domain
-        if (tenantData.domainVerification) {
-          setDomainStatuses(prev => ({
-            ...prev,
-            [addedDomain]: {
-              verified: tenantData.domainVerification?.verified || false,
-              checking: false,
-              records: tenantData.domainVerification?.records,
-            },
-          }));
-        }
+        // New domains always start as unverified - user must configure DNS and verify
+        setDomainStatuses(prev => ({
+          ...prev,
+          [addedDomain]: {
+            verified: false,
+            checking: false,
+            records: tenantData.domainVerification?.records,
+          },
+        }));
 
         setSuccess('Domain added! Configure DNS records to complete setup.');
       } else {
@@ -1035,28 +1081,40 @@ export default function DomainSettingsPage() {
                           }}
                         >
                           <div
-                            style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '4px' }}
+                            style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '8px' }}
                           >
                             <strong>Type:</strong>
                             <span>{record.type}</span>
                             <strong>Name:</strong>
-                            <span style={{ wordBreak: 'break-all' }}>{record.name}</span>
+                            <CopyableField
+                              label="name"
+                              value={record.name}
+                              fieldId={`verify-name-${index}`}
+                            />
                             <strong>Value:</strong>
-                            <span style={{ wordBreak: 'break-all' }}>{record.value}</span>
+                            <CopyableField
+                              label="value"
+                              value={record.value}
+                              fieldId={`verify-value-${index}`}
+                            />
                           </div>
                         </div>
                       ))
                     ) : (
                       <div>
                         <div
-                          style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '4px' }}
+                          style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '8px' }}
                         >
                           <strong>Type:</strong>
                           <span>A</span>
                           <strong>Name:</strong>
-                          <span>@ (or leave blank)</span>
+                          <CopyableField label="name" value="@" fieldId="default-a-name" />
                           <strong>Value:</strong>
-                          <span>216.150.1.1</span>
+                          <CopyableField
+                            label="value"
+                            value="216.150.1.1"
+                            fieldId="default-a-value"
+                          />
                         </div>
                         <div
                           style={{
@@ -1066,14 +1124,18 @@ export default function DomainSettingsPage() {
                           }}
                         >
                           <div
-                            style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '4px' }}
+                            style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '8px' }}
                           >
                             <strong>Type:</strong>
                             <span>CNAME</span>
                             <strong>Name:</strong>
-                            <span>www</span>
+                            <CopyableField label="name" value="www" fieldId="default-cname-name" />
                             <strong>Value:</strong>
-                            <span>cname.vercel-dns.com</span>
+                            <CopyableField
+                              label="value"
+                              value="cname.vercel-dns.com"
+                              fieldId="default-cname-value"
+                            />
                           </div>
                         </div>
                       </div>
@@ -1315,7 +1377,7 @@ export default function DomainSettingsPage() {
                                     style={{
                                       display: 'grid',
                                       gridTemplateColumns: '60px 1fr',
-                                      gap: '4px',
+                                      gap: '8px',
                                       fontFamily: 'monospace',
                                       fontSize: '12px',
                                     }}
@@ -1323,12 +1385,17 @@ export default function DomainSettingsPage() {
                                     <strong>Type:</strong>
                                     <span>{record.type}</span>
                                     <strong>Name:</strong>
-                                    <span style={{ wordBreak: 'break-all' }}>{record.name}</span>
+                                    <CopyableField
+                                      label="name"
+                                      value={record.name}
+                                      fieldId={`email-name-${index}`}
+                                    />
                                     <strong>Value:</strong>
-                                    <span style={{ wordBreak: 'break-all' }}>
-                                      {record.priority ? `${record.priority} ` : ''}
-                                      {record.value}
-                                    </span>
+                                    <CopyableField
+                                      label="value"
+                                      value={`${record.priority ? `${record.priority} ` : ''}${record.value}`}
+                                      fieldId={`email-value-${index}`}
+                                    />
                                   </div>
                                 </div>
                               ))}

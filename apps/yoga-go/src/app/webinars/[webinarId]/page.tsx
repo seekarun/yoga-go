@@ -225,7 +225,7 @@ export default function WebinarDetailPage() {
         }}
       >
         <div style={{ textAlign: 'center' }}>
-          <h2 style={{ fontSize: '24px', marginBottom: '16px' }}>Webinar not found</h2>
+          <h2 style={{ fontSize: '24px', marginBottom: '16px' }}>Live session not found</h2>
           <Link
             href="/webinars"
             style={{
@@ -233,7 +233,7 @@ export default function WebinarDetailPage() {
               textDecoration: 'underline',
             }}
           >
-            View all webinars
+            View all live sessions
           </Link>
         </div>
       </div>
@@ -265,7 +265,7 @@ export default function WebinarDetailPage() {
               href="/webinars"
               style={{ color: 'var(--color-primary)', textDecoration: 'none' }}
             >
-              Webinars
+              Live Sessions
             </Link>
             <span style={{ margin: '0 8px' }}>/</span>
             <span>{webinar.title}</span>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { CustomLandingPageConfig, Expert } from '@/types';
@@ -13,6 +13,9 @@ interface LandingPageEditorProps {
   expertId: string;
 }
 
+// Auto-save delay in milliseconds
+const AUTO_SAVE_DELAY = 1500;
+
 export default function LandingPageEditor({ expertId }: LandingPageEditorProps) {
   const router = useRouter();
 
@@ -20,6 +23,7 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
   // Expert data
   const [expert, setExpert] = useState<Expert | null>(null);
@@ -30,6 +34,10 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
   const [disabledSections, setDisabledSections] = useState<SectionType[]>([]);
   const [selectedSection, setSelectedSection] = useState<SectionType | null>(null);
   const [isDirty, setIsDirty] = useState(false);
+
+  // Auto-save refs
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isInitialLoadRef = useRef(true);
 
   // Fetch expert data on mount
   useEffect(() => {
@@ -84,6 +92,11 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
         if (landingPage.disabledSections) {
           setDisabledSections(landingPage.disabledSections as SectionType[]);
         }
+
+        // Mark initial load as complete after a short delay
+        setTimeout(() => {
+          isInitialLoadRef.current = false;
+        }, 100);
       } catch (err) {
         console.error('[DBG][LandingPageEditor] Error loading expert:', err);
         setError(err instanceof Error ? err.message : 'Failed to load expert');
@@ -94,6 +107,32 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
 
     fetchExpertData();
   }, [expertId]);
+
+  // Auto-save effect
+  useEffect(() => {
+    // Skip auto-save during initial load or if not dirty
+    if (isInitialLoadRef.current || !isDirty || saving) {
+      return;
+    }
+
+    // Clear any existing timeout
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+
+    // Set new timeout for auto-save
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      performAutoSave();
+    }, AUTO_SAVE_DELAY);
+
+    // Cleanup on unmount
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, sectionOrder, disabledSections, isDirty]);
 
   // Handle data changes
   const handleDataChange = useCallback((updates: Partial<CustomLandingPageConfig>) => {
@@ -148,11 +187,8 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
     return trimValue(obj) as CustomLandingPageConfig;
   };
 
-  // Save handler
-  const handleSave = async () => {
-    setSaving(true);
-    setError('');
-
+  // Core save function (used by both auto-save and manual save)
+  const saveData = async (): Promise<boolean> => {
     try {
       console.log('[DBG][LandingPageEditor] Saving landing page data');
 
@@ -168,8 +204,6 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
         },
       };
 
-      console.log('[DBG][LandingPageEditor] Sending data:', landingPageData);
-
       const response = await fetch(`/data/experts/${expertId}`, {
         method: 'PUT',
         headers: {
@@ -179,20 +213,42 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
       });
 
       const result = await response.json();
-      console.log('[DBG][LandingPageEditor] Response:', result);
 
       if (!response.ok || !result.success) {
         throw new Error(result.error || 'Failed to update landing page');
       }
 
-      console.log('[DBG][LandingPageEditor] Landing page updated successfully');
+      console.log('[DBG][LandingPageEditor] Landing page saved successfully');
       setIsDirty(false);
-
-      // Redirect to expert dashboard
-      router.push(`/srv/${expertId}`);
+      setLastSaved(new Date());
+      return true;
     } catch (err) {
       console.error('[DBG][LandingPageEditor] Error saving:', err);
       setError(err instanceof Error ? err.message : 'Failed to save landing page');
+      return false;
+    }
+  };
+
+  // Auto-save function (no redirect)
+  const performAutoSave = async () => {
+    if (saving) return;
+    setSaving(true);
+    setError('');
+    await saveData();
+    setSaving(false);
+  };
+
+  // Manual save handler (with redirect) - kept for potential future use
+  const _handleSave = async () => {
+    setSaving(true);
+    setError('');
+
+    const success = await saveData();
+
+    if (success) {
+      // Redirect to expert dashboard
+      router.push(`/srv/${expertId}`);
+    } else {
       setSaving(false);
     }
   };
@@ -227,26 +283,59 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
   return (
     <div className="h-[calc(100vh-64px)] flex flex-col bg-gray-100">
       {/* Header */}
-      <header className="flex-shrink-0 bg-white border-b border-gray-200 shadow px-6 py-4 relative z-50">
-        <div className="flex items-center justify-between">
-          <div>
+      <header className="flex-shrink-0 bg-white border-b border-gray-200 shadow px-6 py-4 relative z-40">
+        <div className="flex items-center gap-4">
+          {/* Title */}
+          <div className="flex-1 min-w-0">
             <h1 className="text-xl font-semibold text-gray-900">Landing Page</h1>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 flex items-center gap-2">
               {expert.name}
-              {isDirty && <span className="ml-2 text-amber-600">(unsaved changes)</span>}
+              {saving ? (
+                <span className="flex items-center gap-1 text-gray-400">
+                  <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      fill="none"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                  Saving...
+                </span>
+              ) : isDirty ? (
+                <span className="text-amber-600">• Unsaved</span>
+              ) : lastSaved ? (
+                <span className="text-green-600">✓ Saved</span>
+              ) : null}
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleSave}
-              disabled={saving || !isDirty}
-              className="px-4 py-2 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
-              style={{ background: saving || !isDirty ? undefined : 'var(--color-primary)' }}
-            >
-              {saving ? 'Saving...' : 'Save Changes'}
-            </button>
-          </div>
+          {/* View Page Button */}
+          <a
+            href={`https://${expertId}.myyoga.guru`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-shrink-0 flex items-center gap-2 px-4 py-2 text-white rounded-lg font-medium transition-colors hover:opacity-90"
+            style={{ backgroundColor: 'var(--color-primary)' }}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+              />
+            </svg>
+            View Page
+          </a>
         </div>
 
         {/* Error Banner */}

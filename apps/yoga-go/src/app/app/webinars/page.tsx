@@ -176,10 +176,10 @@ export default function MyWebinars() {
               &larr; Back to Dashboard
             </Link>
           </div>
-          <h1 style={{ fontSize: '32px', fontWeight: '600', marginBottom: '8px' }}>My Webinars</h1>
-          <p style={{ fontSize: '16px', color: '#666' }}>
-            Access your registered webinars and live sessions
-          </p>
+          <h1 style={{ fontSize: '32px', fontWeight: '600', marginBottom: '8px' }}>
+            My Live Sessions
+          </h1>
+          <p style={{ fontSize: '16px', color: '#666' }}>Access your registered live sessions</p>
         </div>
       </div>
 
@@ -209,7 +209,7 @@ export default function MyWebinars() {
                 textTransform: 'capitalize',
               }}
             >
-              {f === 'all' ? 'All Webinars' : f}
+              {f === 'all' ? 'All Live Sessions' : f}
             </button>
           ))}
         </div>
@@ -217,7 +217,7 @@ export default function MyWebinars() {
         {/* Webinars Grid */}
         {loading ? (
           <div style={{ textAlign: 'center', padding: '60px' }}>
-            <div style={{ fontSize: '16px', color: '#666' }}>Loading your webinars...</div>
+            <div style={{ fontSize: '16px', color: '#666' }}>Loading your live sessions...</div>
           </div>
         ) : filteredWebinars.length > 0 ? (
           <div
@@ -467,12 +467,12 @@ export default function MyWebinars() {
           >
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>🎥</div>
             <h3 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '8px' }}>
-              No webinars found
+              No live sessions found
             </h3>
             <p style={{ color: '#666', marginBottom: '24px' }}>
               {filter !== 'all'
                 ? 'Try changing your filter'
-                : "You haven't registered for any webinars yet"}
+                : "You haven't registered for any live sessions yet"}
             </p>
             <Link
               href="/webinars"
@@ -487,7 +487,7 @@ export default function MyWebinars() {
                 display: 'inline-block',
               }}
             >
-              Browse Webinars
+              Browse Live Sessions
             </Link>
           </div>
         )}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { PrimaryButton, SecondaryButton } from '@/components/Button';
 
 interface WebinarFeedbackFormProps {
   webinarId: string;
@@ -90,7 +91,7 @@ export default function WebinarFeedbackForm({
             marginBottom: '12px',
           }}
         >
-          How would you rate this webinar?
+          How would you rate this live session?
         </label>
         <div style={{ display: 'flex', gap: '8px' }}>
           {[1, 2, 3, 4, 5].map(star => (
@@ -137,7 +138,7 @@ export default function WebinarFeedbackForm({
         <textarea
           value={comment}
           onChange={e => setComment(e.target.value)}
-          placeholder="What did you like about this webinar? How could it be improved?"
+          placeholder="What did you like about this live session? How could it be improved?"
           rows={4}
           style={{
             width: '100%',
@@ -170,40 +171,13 @@ export default function WebinarFeedbackForm({
 
       <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
         {onCancel && (
-          <button
-            type="button"
-            onClick={onCancel}
-            style={{
-              padding: '12px 24px',
-              background: '#f3f4f6',
-              color: '#374151',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: '500',
-              cursor: 'pointer',
-            }}
-          >
+          <SecondaryButton type="button" onClick={onCancel}>
             Cancel
-          </button>
+          </SecondaryButton>
         )}
-        <button
-          type="submit"
-          disabled={submitting}
-          style={{
-            padding: '12px 24px',
-            background: 'var(--color-primary)',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: '600',
-            cursor: submitting ? 'not-allowed' : 'pointer',
-            opacity: submitting ? 0.7 : 1,
-          }}
-        >
+        <PrimaryButton type="submit" disabled={submitting} loading={submitting}>
           {submitting ? 'Submitting...' : 'Submit Feedback'}
-        </button>
+        </PrimaryButton>
       </div>
     </form>
   );

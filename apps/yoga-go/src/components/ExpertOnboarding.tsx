@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import ImageUploadCrop from '@/components/ImageUploadCrop';
+import { PrimaryButton, SecondaryButton } from '@/components/Button';
 import type { Asset } from '@/types';
 
 // URL-friendly validation: lowercase letters, numbers, and hyphens only
@@ -924,80 +925,22 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
 
       {/* Navigation Buttons */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '32px' }}>
-        <button
-          onClick={handleBack}
-          disabled={step === 1 || loading}
-          style={{
-            padding: '12px 24px',
-            background: step === 1 ? '#e2e8f0' : '#fff',
-            color: step === 1 ? '#999' : '#333',
-            border: '1px solid #e2e8f0',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: '500',
-            cursor: step === 1 ? 'not-allowed' : 'pointer',
-          }}
-        >
+        <SecondaryButton onClick={handleBack} disabled={step === 1 || loading}>
           Back
-        </button>
+        </SecondaryButton>
 
         {step < 2 ? (
-          <button
-            onClick={handleNext}
-            disabled={loading}
-            style={{
-              padding: '12px 32px',
-              background: 'var(--color-primary)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: '500',
-              cursor: 'pointer',
-            }}
-          >
+          <PrimaryButton onClick={handleNext} disabled={loading}>
             Next
-          </button>
+          </PrimaryButton>
         ) : (
-          <button
+          <PrimaryButton
             onClick={handleSubmit}
             disabled={loading || !showPreview}
-            style={{
-              padding: '12px 32px',
-              background: loading || !showPreview ? '#ccc' : 'var(--color-primary)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '14px',
-              fontWeight: '500',
-              cursor: loading || !showPreview ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-            }}
+            loading={loading}
           >
-            {loading ? (
-              <>
-                <span
-                  style={{
-                    display: 'inline-block',
-                    width: '16px',
-                    height: '16px',
-                    border: '2px solid #fff',
-                    borderTopColor: 'transparent',
-                    borderRadius: '50%',
-                    animation: 'spin 1s linear infinite',
-                  }}
-                />
-                Creating Your Page...
-              </>
-            ) : (
-              <>
-                <span>✨</span>
-                Create My Landing Page
-              </>
-            )}
-          </button>
+            {loading ? 'Creating Your Page...' : '✨ Create My Landing Page'}
+          </PrimaryButton>
         )}
       </div>
 
@@ -1007,15 +950,6 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
           Click &quot;Preview AI Extraction&quot; first to see how your landing page will look
         </p>
       )}
-
-      {/* CSS for spin animation */}
-      <style jsx>{`
-        @keyframes spin {
-          to {
-            transform: rotate(360deg);
-          }
-        }
-      `}</style>
     </div>
   );
 }

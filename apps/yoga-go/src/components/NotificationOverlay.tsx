@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useCallback } from 'react';
+import { PrimaryButton, SecondaryButton } from './Button';
 
 export interface NotificationOverlayProps {
   isOpen: boolean;
@@ -54,8 +55,8 @@ export default function NotificationOverlay({
 
   const typeStyles = {
     success: {
-      bg: 'bg-green-50',
-      border: 'border-green-200',
+      bg: 'bg-white',
+      border: 'border-gray-200',
       icon: (
         <svg
           className="w-6 h-6 text-green-600"
@@ -69,8 +70,8 @@ export default function NotificationOverlay({
       iconBg: 'bg-green-100',
     },
     warning: {
-      bg: 'bg-amber-50',
-      border: 'border-amber-200',
+      bg: 'bg-white',
+      border: 'border-gray-200',
       icon: (
         <svg
           className="w-6 h-6 text-amber-600"
@@ -89,8 +90,8 @@ export default function NotificationOverlay({
       iconBg: 'bg-amber-100',
     },
     error: {
-      bg: 'bg-red-50',
-      border: 'border-red-200',
+      bg: 'bg-white',
+      border: 'border-gray-200',
       icon: (
         <svg className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path
@@ -104,8 +105,8 @@ export default function NotificationOverlay({
       iconBg: 'bg-red-100',
     },
     info: {
-      bg: 'bg-blue-50',
-      border: 'border-blue-200',
+      bg: 'bg-white',
+      border: 'border-gray-200',
       icon: (
         <svg
           className="w-6 h-6 text-blue-600"
@@ -148,27 +149,18 @@ export default function NotificationOverlay({
             {/* Buttons for confirmation dialogs */}
             {isConfirmation && (
               <div className="flex gap-3 mt-4">
-                <button
-                  onClick={onClose}
-                  className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                >
+                <SecondaryButton onClick={onClose} className="flex-1">
                   {cancelText}
-                </button>
-                <button
+                </SecondaryButton>
+                <PrimaryButton
                   onClick={() => {
                     onConfirm();
                     onClose();
                   }}
-                  className={`flex-1 px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors ${
-                    type === 'warning'
-                      ? 'bg-amber-600 hover:bg-amber-700'
-                      : type === 'error'
-                        ? 'bg-red-600 hover:bg-red-700'
-                        : 'bg-indigo-600 hover:bg-indigo-700'
-                  }`}
+                  className="flex-1"
                 >
                   {confirmText}
-                </button>
+                </PrimaryButton>
               </div>
             )}
           </div>

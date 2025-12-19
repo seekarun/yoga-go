@@ -128,7 +128,7 @@ export default function ExpertWebinarsPage() {
         <div className="px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Webinars</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Live Sessions</h1>
               <p className="text-sm text-gray-500 mt-1">
                 Create and manage your live yoga sessions
               </p>
@@ -151,7 +151,7 @@ export default function ExpertWebinarsPage() {
                   d="M12 4v16m8-8H4"
                 />
               </svg>
-              Create Webinar
+              Create Live Session
             </Link>
           </div>
         </div>
@@ -199,7 +199,7 @@ export default function ExpertWebinarsPage() {
               </svg>
             </div>
             <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>
-              No webinars yet
+              No live sessions yet
             </h3>
             <p style={{ color: '#6b7280', marginBottom: '24px' }}>
               Create your first live yoga session and start engaging with your students
@@ -216,7 +216,7 @@ export default function ExpertWebinarsPage() {
                 textDecoration: 'none',
               }}
             >
-              Create Your First Webinar
+              Create Your First Live Session
             </Link>
           </div>
         ) : (

@@ -2,6 +2,7 @@
 
 import ExpertOnboarding from '@/components/ExpertOnboarding';
 import { useAuth } from '@/contexts/AuthContext';
+import { PrimaryButton, SecondaryButton } from '@/components/Button';
 import type { Expert } from '@/types';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -155,42 +156,22 @@ export default function ExpertPlatform() {
             </ul>
           </div>
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button
+            <PrimaryButton
               onClick={() => {
                 setError('');
                 fetchExpertProfile();
               }}
-              style={{
-                padding: '12px 24px',
-                background: 'var(--color-primary)',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '16px',
-                fontWeight: '600',
-                cursor: 'pointer',
-              }}
             >
               🔄 Retry
-            </button>
-            <button
+            </PrimaryButton>
+            <SecondaryButton
               onClick={() => {
                 setError('');
                 setExpertProfile(null);
               }}
-              style={{
-                padding: '12px 24px',
-                background: '#fff',
-                color: 'var(--color-primary)',
-                border: '2px solid var(--color-primary)',
-                borderRadius: '8px',
-                fontSize: '16px',
-                fontWeight: '600',
-                cursor: 'pointer',
-              }}
             >
               📝 Reset & Re-onboard
-            </button>
+            </SecondaryButton>
             <Link
               href="/app"
               style={{
@@ -296,12 +277,9 @@ function ExpertLandingPage({ isAuthenticated = false }: { isAuthenticated?: bool
     <div style={{ minHeight: '100vh' }}>
       {/* Hero Section */}
       <section
+        className="relative w-full overflow-hidden"
         style={{
-          position: 'relative',
-          width: '100%',
-          height: '50vh',
-          minHeight: '500px',
-          overflow: 'hidden',
+          minHeight: 'min(500px, 80vh)',
         }}
       >
         {/* Background Image */}
@@ -334,78 +312,29 @@ function ExpertLandingPage({ isAuthenticated = false }: { isAuthenticated?: bool
         />
 
         {/* Content Overlay */}
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            padding: '40px 20px 60px',
-          }}
-        >
-          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-            <div style={{ maxWidth: '800px', color: '#fff' }}>
-              <h1
-                style={{
-                  fontSize: '56px',
-                  fontWeight: '700',
-                  marginBottom: '20px',
-                  lineHeight: '1.2',
-                  textShadow: '0 2px 10px rgba(0,0,0,0.3)',
-                }}
-              >
+        <div className="absolute bottom-0 left-0 right-0 px-4 sm:px-6 py-8 sm:py-12">
+          <div className="max-w-6xl mx-auto">
+            <div className="max-w-2xl text-white">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-5 leading-tight drop-shadow-lg">
                 Looking to teach yoga online?
               </h1>
-              <p
-                style={{
-                  fontSize: '20px',
-                  marginBottom: '32px',
-                  lineHeight: '1.6',
-                  textShadow: '0 1px 5px rgba(0,0,0,0.3)',
-                }}
-              >
+              <p className="text-base sm:text-lg md:text-xl mb-6 sm:mb-8 leading-relaxed drop-shadow-md">
                 Get online in 5 minutes, easy as that
               </p>
-              <div
-                style={{
-                  display: 'flex',
-                  gap: '16px',
-                  flexWrap: 'wrap',
-                  flexDirection: 'column',
-                  alignItems: 'flex-start',
-                }}
-              >
+              <div className="flex flex-col items-start gap-4">
                 {upgradeError && (
-                  <div
-                    style={{
-                      padding: '12px 16px',
-                      background: 'rgba(255,0,0,0.2)',
-                      color: '#fff',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                    }}
-                  >
+                  <div className="px-4 py-3 bg-red-500/30 text-white rounded-lg text-sm">
                     {upgradeError}
                   </div>
                 )}
-                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto">
                   {isAuthenticated ? (
                     // Authenticated learner - show upgrade button
                     <button
                       onClick={handleUpgradeToExpert}
                       disabled={upgrading}
-                      style={{
-                        padding: '16px 40px',
-                        background: upgrading ? '#ccc' : '#fff',
-                        color: 'var(--color-primary)',
-                        borderRadius: '8px',
-                        fontSize: '18px',
-                        fontWeight: '600',
-                        border: 'none',
-                        cursor: upgrading ? 'not-allowed' : 'pointer',
-                        transition: 'transform 0.2s',
-                        boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
-                      }}
+                      className="w-full sm:w-auto px-6 sm:px-10 py-3 sm:py-4 bg-white rounded-lg text-base sm:text-lg font-semibold border-none transition-transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                      style={{ color: 'var(--color-primary)' }}
                     >
                       {upgrading ? 'Upgrading...' : 'Get started for free'}
                     </button>
@@ -413,37 +342,15 @@ function ExpertLandingPage({ isAuthenticated = false }: { isAuthenticated?: bool
                     // Unauthenticated - show signup link
                     <Link
                       href="/auth/signup"
-                      style={{
-                        padding: '16px 40px',
-                        background: '#fff',
-                        color: 'var(--color-primary)',
-                        borderRadius: '8px',
-                        fontSize: '18px',
-                        fontWeight: '600',
-                        textDecoration: 'none',
-                        display: 'inline-block',
-                        transition: 'transform 0.2s',
-                        boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
-                      }}
+                      className="w-full sm:w-auto text-center px-6 sm:px-10 py-3 sm:py-4 bg-white rounded-lg text-base sm:text-lg font-semibold transition-transform hover:scale-105 shadow-lg"
+                      style={{ color: 'var(--color-primary)' }}
                     >
                       Get started for free
                     </Link>
                   )}
                   <a
                     href="#features"
-                    style={{
-                      padding: '16px 40px',
-                      background: 'rgba(255, 255, 255, 0.1)',
-                      color: '#fff',
-                      border: '2px solid #fff',
-                      borderRadius: '8px',
-                      fontSize: '18px',
-                      fontWeight: '600',
-                      textDecoration: 'none',
-                      display: 'inline-block',
-                      transition: 'transform 0.2s',
-                      backdropFilter: 'blur(10px)',
-                    }}
+                    className="w-full sm:w-auto text-center px-6 sm:px-10 py-3 sm:py-4 bg-white/10 text-white border-2 border-white rounded-lg text-base sm:text-lg font-semibold transition-transform hover:scale-105 backdrop-blur-sm"
                   >
                     Learn More
                   </a>
@@ -455,58 +362,43 @@ function ExpertLandingPage({ isAuthenticated = false }: { isAuthenticated?: bool
       </section>
 
       {/* Features Section */}
-      <section id="features" style={{ padding: '100px 20px', background: '#fff' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <h2
-            style={{
-              fontSize: '42px',
-              fontWeight: '600',
-              textAlign: 'center',
-              marginBottom: '60px',
-            }}
-          >
+      <section id="features" className="py-16 sm:py-20 md:py-24 px-4 sm:px-6 bg-white">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-center mb-10 sm:mb-14 md:mb-16">
             Everything You Need to Succeed
           </h2>
 
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: '60px',
-              maxWidth: '1200px',
-              margin: '0 auto',
-            }}
-          >
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 sm:gap-10 md:gap-14">
             {/* Feature 1 */}
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '64px', marginBottom: '20px' }}>💰</div>
-              <h3 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '12px' }}>
+            <div className="text-center">
+              <div className="text-5xl sm:text-6xl mb-4 sm:mb-5">💰</div>
+              <h3 className="text-lg sm:text-xl md:text-2xl font-semibold mb-2 sm:mb-3">
                 Earn More Income
               </h3>
-              <p style={{ fontSize: '16px', color: '#666', lineHeight: '1.6' }}>
+              <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
                 Set your own prices and keep most of what you earn. Build a sustainable income from
                 your passion.
               </p>
             </div>
 
             {/* Feature 2 */}
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '64px', marginBottom: '20px' }}>🌍</div>
-              <h3 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '12px' }}>
+            <div className="text-center">
+              <div className="text-5xl sm:text-6xl mb-4 sm:mb-5">🌍</div>
+              <h3 className="text-lg sm:text-xl md:text-2xl font-semibold mb-2 sm:mb-3">
                 Global Reach
               </h3>
-              <p style={{ fontSize: '16px', color: '#666', lineHeight: '1.6' }}>
+              <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
                 Teach students from around the world. No geographic limitations on your impact.
               </p>
             </div>
 
             {/* Feature 3 */}
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '64px', marginBottom: '20px' }}>🤝</div>
-              <h3 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '12px' }}>
+            <div className="text-center">
+              <div className="text-5xl sm:text-6xl mb-4 sm:mb-5">🤝</div>
+              <h3 className="text-lg sm:text-xl md:text-2xl font-semibold mb-2 sm:mb-3">
                 Expert Support
               </h3>
-              <p style={{ fontSize: '16px', color: '#666', lineHeight: '1.6' }}>
+              <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
                 Get dedicated support to help you succeed and grow your online yoga business.
               </p>
             </div>
@@ -515,99 +407,62 @@ function ExpertLandingPage({ isAuthenticated = false }: { isAuthenticated?: bool
       </section>
 
       {/* How It Works Section */}
-      <section style={{ padding: '100px 20px', background: '#f8f8f8' }}>
-        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-          <h2
-            style={{
-              fontSize: '42px',
-              fontWeight: '600',
-              textAlign: 'center',
-              marginBottom: '60px',
-            }}
-          >
+      <section className="py-16 sm:py-20 md:py-24 px-4 sm:px-6 bg-gray-50">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-center mb-10 sm:mb-14 md:mb-16">
             Get Started in 3 Simple Steps
           </h2>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
+          <div className="flex flex-col gap-8 sm:gap-10">
             {/* Step 1 */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '40px' }}>
+            <div className="flex items-start sm:items-center gap-4 sm:gap-8">
               <div
-                style={{
-                  minWidth: '80px',
-                  height: '80px',
-                  borderRadius: '50%',
-                  background: 'var(--color-primary)',
-                  color: '#fff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '32px',
-                  fontWeight: '700',
-                }}
+                className="flex-shrink-0 w-14 h-14 sm:w-20 sm:h-20 rounded-full text-white flex items-center justify-center text-xl sm:text-3xl font-bold"
+                style={{ background: 'var(--color-primary)' }}
               >
                 1
               </div>
               <div>
-                <h3 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '8px' }}>
+                <h3 className="text-lg sm:text-xl md:text-2xl font-semibold mb-1 sm:mb-2">
                   Create Your Expert Profile
                 </h3>
-                <p style={{ fontSize: '16px', color: '#666', lineHeight: '1.6' }}>
+                <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
                   Sign up and tell us about your expertise, certifications, and teaching style.
                 </p>
               </div>
             </div>
 
             {/* Step 2 */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '40px' }}>
+            <div className="flex items-start sm:items-center gap-4 sm:gap-8">
               <div
-                style={{
-                  minWidth: '80px',
-                  height: '80px',
-                  borderRadius: '50%',
-                  background: 'var(--color-primary)',
-                  color: '#fff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '32px',
-                  fontWeight: '700',
-                }}
+                className="flex-shrink-0 w-14 h-14 sm:w-20 sm:h-20 rounded-full text-white flex items-center justify-center text-xl sm:text-3xl font-bold"
+                style={{ background: 'var(--color-primary)' }}
               >
                 2
               </div>
               <div>
-                <h3 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '8px' }}>
+                <h3 className="text-lg sm:text-xl md:text-2xl font-semibold mb-1 sm:mb-2">
                   Build Your First Course
                 </h3>
-                <p style={{ fontSize: '16px', color: '#666', lineHeight: '1.6' }}>
+                <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
                   Upload videos, organize lessons, and create a comprehensive learning experience.
                 </p>
               </div>
             </div>
 
             {/* Step 3 */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '40px' }}>
+            <div className="flex items-start sm:items-center gap-4 sm:gap-8">
               <div
-                style={{
-                  minWidth: '80px',
-                  height: '80px',
-                  borderRadius: '50%',
-                  background: 'var(--color-primary)',
-                  color: '#fff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '32px',
-                  fontWeight: '700',
-                }}
+                className="flex-shrink-0 w-14 h-14 sm:w-20 sm:h-20 rounded-full text-white flex items-center justify-center text-xl sm:text-3xl font-bold"
+                style={{ background: 'var(--color-primary)' }}
               >
                 3
               </div>
               <div>
-                <h3 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '8px' }}>
+                <h3 className="text-lg sm:text-xl md:text-2xl font-semibold mb-1 sm:mb-2">
                   Start Earning
                 </h3>
-                <p style={{ fontSize: '16px', color: '#666', lineHeight: '1.6' }}>
+                <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
                   Publish your course and watch as students enroll and your income grows.
                 </p>
               </div>
@@ -617,85 +472,54 @@ function ExpertLandingPage({ isAuthenticated = false }: { isAuthenticated?: bool
       </section>
 
       {/* Testimonials Section */}
-      <section style={{ padding: '100px 20px', background: '#fff' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <h2
-            style={{
-              fontSize: '42px',
-              fontWeight: '600',
-              textAlign: 'center',
-              marginBottom: '60px',
-            }}
-          >
+      <section className="py-16 sm:py-20 md:py-24 px-4 sm:px-6 bg-white">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-center mb-10 sm:mb-14 md:mb-16">
             Trusted by Expert Instructors
           </h2>
 
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-              gap: '32px',
-            }}
-          >
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             {/* Testimonial 1 */}
-            <div
-              style={{
-                background: '#f8f8f8',
-                borderRadius: '12px',
-                padding: '32px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-              }}
-            >
-              <div style={{ fontSize: '40px', marginBottom: '16px' }}>⭐⭐⭐⭐⭐</div>
-              <p
-                style={{ fontSize: '16px', color: '#333', marginBottom: '20px', lineHeight: '1.6' }}
-              >
+            <div className="bg-gray-50 rounded-xl p-6 sm:p-8 shadow-sm">
+              <div className="text-3xl sm:text-4xl mb-3 sm:mb-4">⭐⭐⭐⭐⭐</div>
+              <p className="text-sm sm:text-base text-gray-700 mb-4 sm:mb-5 leading-relaxed">
                 &quot;Yoga-GO has transformed my teaching practice. I now reach students worldwide
                 and earn more than I ever did with in-person classes.&quot;
               </p>
-              <p style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-primary)' }}>
+              <p
+                className="text-xs sm:text-sm font-semibold"
+                style={{ color: 'var(--color-primary)' }}
+              >
                 - Sarah M., Vinyasa Expert
               </p>
             </div>
 
             {/* Testimonial 2 */}
-            <div
-              style={{
-                background: '#f8f8f8',
-                borderRadius: '12px',
-                padding: '32px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-              }}
-            >
-              <div style={{ fontSize: '40px', marginBottom: '16px' }}>⭐⭐⭐⭐⭐</div>
-              <p
-                style={{ fontSize: '16px', color: '#333', marginBottom: '20px', lineHeight: '1.6' }}
-              >
+            <div className="bg-gray-50 rounded-xl p-6 sm:p-8 shadow-sm">
+              <div className="text-3xl sm:text-4xl mb-3 sm:mb-4">⭐⭐⭐⭐⭐</div>
+              <p className="text-sm sm:text-base text-gray-700 mb-4 sm:mb-5 leading-relaxed">
                 &quot;The platform is incredibly easy to use. I created my first course in just a
                 weekend and had my first students within days.&quot;
               </p>
-              <p style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-primary)' }}>
+              <p
+                className="text-xs sm:text-sm font-semibold"
+                style={{ color: 'var(--color-primary)' }}
+              >
                 - Michael Chen, Power Yoga Instructor
               </p>
             </div>
 
             {/* Testimonial 3 */}
-            <div
-              style={{
-                background: '#f8f8f8',
-                borderRadius: '12px',
-                padding: '32px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-              }}
-            >
-              <div style={{ fontSize: '40px', marginBottom: '16px' }}>⭐⭐⭐⭐⭐</div>
-              <p
-                style={{ fontSize: '16px', color: '#333', marginBottom: '20px', lineHeight: '1.6' }}
-              >
+            <div className="bg-gray-50 rounded-xl p-6 sm:p-8 shadow-sm">
+              <div className="text-3xl sm:text-4xl mb-3 sm:mb-4">⭐⭐⭐⭐⭐</div>
+              <p className="text-sm sm:text-base text-gray-700 mb-4 sm:mb-5 leading-relaxed">
                 &quot;I love the flexibility. I create content when it works for me and earn passive
                 income 24/7. Best decision for my career.&quot;
               </p>
-              <p style={{ fontSize: '14px', fontWeight: '600', color: 'var(--color-primary)' }}>
+              <p
+                className="text-xs sm:text-sm font-semibold"
+                style={{ color: 'var(--color-primary)' }}
+              >
                 - Priya Sharma, Meditation Teacher
               </p>
             </div>
@@ -705,34 +529,23 @@ function ExpertLandingPage({ isAuthenticated = false }: { isAuthenticated?: bool
 
       {/* CTA Section */}
       <section
+        className="py-16 sm:py-20 md:py-24 px-4 sm:px-6 text-center text-white"
         style={{
           background:
             'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%)',
-          color: '#fff',
-          padding: '100px 20px',
-          textAlign: 'center',
         }}
       >
-        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: '42px', fontWeight: '600', marginBottom: '24px' }}>
+        <div className="max-w-3xl mx-auto">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold mb-4 sm:mb-6">
             Ready to Share Your Expertise?
           </h2>
-          <p style={{ fontSize: '20px', marginBottom: '40px', opacity: 0.95 }}>
+          <p className="text-base sm:text-lg md:text-xl mb-8 sm:mb-10 opacity-95">
             Join the Yoga-GO expert community today and start building your online yoga business.
           </p>
           <Link
             href="/auth/signin?callbackUrl=/srv"
-            style={{
-              padding: '16px 48px',
-              background: '#fff',
-              color: 'var(--color-primary)',
-              borderRadius: '8px',
-              fontSize: '18px',
-              fontWeight: '600',
-              textDecoration: 'none',
-              display: 'inline-block',
-              transition: 'transform 0.2s',
-            }}
+            className="inline-block px-8 sm:px-12 py-3 sm:py-4 bg-white rounded-lg text-base sm:text-lg font-semibold transition-transform hover:scale-105"
+            style={{ color: 'var(--color-primary)' }}
           >
             Get Started Free
           </Link>

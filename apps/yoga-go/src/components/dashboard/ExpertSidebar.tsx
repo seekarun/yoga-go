@@ -116,8 +116,23 @@ export default function ExpertSidebar({ expertId }: ExpertSidebarProps) {
       ),
     },
     {
+      id: 'assets',
+      label: 'Assets',
+      href: `/srv/${expertId}/assets`,
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+          />
+        </svg>
+      ),
+    },
+    {
       id: 'webinars',
-      label: 'Webinars',
+      label: 'Live Sessions',
       href: `/srv/${expertId}/webinars`,
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -204,14 +219,14 @@ export default function ExpertSidebar({ expertId }: ExpertSidebarProps) {
 
   return (
     <aside
-      className={`fixed left-0 top-16 h-[calc(100vh-4rem)] bg-white border-r border-gray-200 transition-all duration-300 z-40 ${
+      className={`fixed left-0 top-16 h-[calc(100vh-4rem)] bg-white border-r border-gray-200 transition-all duration-300 z-50 ${
         isCollapsed ? 'w-16' : 'w-56'
       }`}
     >
       {/* Collapse Toggle Button */}
       <button
         onClick={toggleCollapse}
-        className="absolute -right-3 top-6 w-6 h-6 bg-white border border-gray-200 rounded-full shadow-sm flex items-center justify-center hover:bg-gray-50 transition-colors"
+        className="absolute -right-3 top-6 w-6 h-6 bg-white border border-gray-200 rounded-full shadow-sm flex items-center justify-center hover:bg-gray-50 transition-colors z-[60]"
         title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
       >
         <svg

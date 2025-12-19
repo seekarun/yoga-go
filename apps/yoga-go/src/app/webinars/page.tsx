@@ -88,7 +88,7 @@ export default function WebinarsPage() {
               marginBottom: '16px',
             }}
           >
-            Live Webinars
+            Live Sessions
           </h1>
           <p
             style={{
@@ -239,7 +239,7 @@ export default function WebinarsPage() {
               }}
             >
               <div style={{ fontSize: '48px', marginBottom: '16px' }}>&#128197;</div>
-              <h2 style={{ fontSize: '24px', marginBottom: '16px' }}>No webinars scheduled</h2>
+              <h2 style={{ fontSize: '24px', marginBottom: '16px' }}>No live sessions scheduled</h2>
               <p style={{ color: '#666', marginBottom: '24px' }}>
                 Check back soon for upcoming live sessions with our expert instructors.
               </p>

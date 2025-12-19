@@ -127,7 +127,7 @@ export default function EditWebinarPage() {
       if (data.success) {
         setWebinar(data.data);
         setStatus(data.data.status);
-        setSuccess('Webinar published successfully!');
+        setSuccess('Live session published successfully!');
         setTimeout(() => setSuccess(''), 3000);
       } else {
         setError(data.error || 'Failed to publish webinar');
@@ -163,7 +163,7 @@ export default function EditWebinarPage() {
       if (data.success) {
         setWebinar(data.data);
         setStatus(data.data.status);
-        setSuccess('Webinar cancelled. Cancellation emails will be sent to registered users.');
+        setSuccess('Live session cancelled. Cancellation emails will be sent to registered users.');
         setTimeout(() => setSuccess(''), 5000);
       } else {
         setError(data.error || 'Failed to cancel webinar');
@@ -258,9 +258,9 @@ export default function EditWebinarPage() {
   if (!webinar) {
     return (
       <div style={{ padding: '40px', textAlign: 'center' }}>
-        <h2 style={{ fontSize: '20px', marginBottom: '16px' }}>Webinar not found</h2>
+        <h2 style={{ fontSize: '20px', marginBottom: '16px' }}>Live session not found</h2>
         <Link href={`/srv/${expertId}/webinars`} style={{ color: 'var(--color-primary)' }}>
-          Back to webinars
+          Back to live sessions
         </Link>
       </div>
     );
@@ -295,10 +295,10 @@ export default function EditWebinarPage() {
               d="M15 19l-7-7 7-7"
             />
           </svg>
-          Back to Webinars
+          Back to Live Sessions
         </Link>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h1 style={{ fontSize: '28px', fontWeight: '600' }}>Edit Webinar</h1>
+          <h1 style={{ fontSize: '28px', fontWeight: '600' }}>Edit Live Session</h1>
           <span
             style={{
               padding: '6px 12px',
@@ -834,7 +834,7 @@ export default function EditWebinarPage() {
       <NotificationOverlay
         isOpen={showPublishConfirm}
         onClose={() => setShowPublishConfirm(false)}
-        message="Are you sure you want to publish this webinar? It will be visible to users and they can start registering."
+        message="Are you sure you want to publish this live session? It will be visible to users and they can start registering."
         type="info"
         onConfirm={handlePublishConfirm}
         confirmText="Publish"
@@ -845,11 +845,11 @@ export default function EditWebinarPage() {
       <NotificationOverlay
         isOpen={showCancelConfirm}
         onClose={() => setShowCancelConfirm(false)}
-        message={`Are you sure you want to cancel this webinar? ${webinar?.totalRegistrations ? `Cancellation emails will be sent to ${webinar.totalRegistrations} registered user${webinar.totalRegistrations > 1 ? 's' : ''}.` : 'This action cannot be undone.'}`}
+        message={`Are you sure you want to cancel this live session? ${webinar?.totalRegistrations ? `Cancellation emails will be sent to ${webinar.totalRegistrations} registered user${webinar.totalRegistrations > 1 ? 's' : ''}.` : 'This action cannot be undone.'}`}
         type="error"
         onConfirm={handleCancelConfirm}
-        confirmText="Cancel Webinar"
-        cancelText="Keep Webinar"
+        confirmText="Cancel Live Session"
+        cancelText="Keep Live Session"
       />
     </div>
   );

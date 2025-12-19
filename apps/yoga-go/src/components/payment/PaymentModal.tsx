@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePayment } from '@/contexts/PaymentContext';
+import { PrimaryButton } from '@/components/Button';
 import { formatPrice } from '@/lib/geolocation';
 import { trackPaymentModalOpen, trackEnrollmentComplete } from '@/lib/analytics';
 import RazorpayCheckout from './RazorpayCheckout';
@@ -190,24 +191,14 @@ export default function PaymentModal({ isOpen, onClose, type, item }: PaymentMod
               Payment Failed
             </h2>
             <p style={{ color: '#666', marginBottom: '24px' }}>{errorMessage}</p>
-            <button
+            <PrimaryButton
               onClick={() => {
                 setPaymentStatus('idle');
                 setErrorMessage('');
               }}
-              style={{
-                padding: '12px 24px',
-                background: 'var(--color-primary)',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-              }}
             >
               Try Again
-            </button>
+            </PrimaryButton>
           </div>
         )}
 

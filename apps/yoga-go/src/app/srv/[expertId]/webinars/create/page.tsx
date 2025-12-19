@@ -187,9 +187,9 @@ export default function CreateWebinarPage() {
               d="M15 19l-7-7 7-7"
             />
           </svg>
-          Back to Webinars
+          Back to Live Sessions
         </Link>
-        <h1 style={{ fontSize: '28px', fontWeight: '600' }}>Create Webinar</h1>
+        <h1 style={{ fontSize: '28px', fontWeight: '600' }}>Create Live Session</h1>
       </div>
 
       <form onSubmit={handleSubmit}>
