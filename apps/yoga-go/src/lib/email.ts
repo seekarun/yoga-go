@@ -89,6 +89,19 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
     console.log(`[DBG][email] Email sent successfully. MessageId: ${response.MessageId}`);
   } catch (error) {
     console.error('[DBG][email] Error sending email:', error);
+    // Log AWS-specific error details
+    if (error && typeof error === 'object') {
+      const awsError = error as {
+        name?: string;
+        message?: string;
+        Code?: string;
+        $metadata?: unknown;
+      };
+      console.error('[DBG][email] AWS Error name:', awsError.name);
+      console.error('[DBG][email] AWS Error message:', awsError.message);
+      console.error('[DBG][email] AWS Error code:', awsError.Code);
+      console.error('[DBG][email] AWS metadata:', JSON.stringify(awsError.$metadata));
+    }
     throw error;
   }
 };

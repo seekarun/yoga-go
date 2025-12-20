@@ -118,8 +118,21 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('[DBG][waitlist/signup] Error:', error);
+    // Log more details for debugging
+    if (error instanceof Error) {
+      console.error('[DBG][waitlist/signup] Error name:', error.name);
+      console.error('[DBG][waitlist/signup] Error message:', error.message);
+      console.error('[DBG][waitlist/signup] Error stack:', error.stack);
+    }
     return NextResponse.json(
-      { success: false, message: 'Failed to process signup. Please try again.' },
+      {
+        success: false,
+        message: 'Failed to process signup. Please try again.',
+        // Include error details in development
+        ...(process.env.NODE_ENV === 'development' && {
+          debug: error instanceof Error ? error.message : String(error),
+        }),
+      },
       { status: 500 }
     );
   }
