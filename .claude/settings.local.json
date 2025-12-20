@@ -77,7 +77,15 @@
       "Bash(head:*)",
       "Bash(aws route53domains list-domains:*)",
       "Bash(AWS_PROFILE=myg npx cdk diff:*)",
-      "Bash(AWS_PROFILE=myg aws acm list-certificates:*)"
+      "Bash(AWS_PROFILE=myg aws acm list-certificates:*)",
+      "Bash(AWS_PROFILE=myg aws ses:*)",
+      "Bash(AWS_PROFILE=myg aws logs describe-log-groups:*)",
+      "Bash(AWS_PROFILE=myg aws logs:*)",
+      "Bash(npm ls:*)",
+      "Bash(AWS_PROFILE=myg npx cdk list:*)",
+      "Bash(AWS_PROFILE=myg npx cdk deploy:*)",
+      "Bash(AWS_PROFILE=myg aws dynamodb scan:*)",
+      "Bash(AWS_PROFILE=myg aws dynamodb query:*)"
     ],
     "deny": [],
     "ask": []
