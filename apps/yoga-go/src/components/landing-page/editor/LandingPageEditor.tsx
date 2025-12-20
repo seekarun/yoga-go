@@ -370,6 +370,7 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
             expertBio={expert.bio}
             expertId={expertId}
             onSelectSection={handleSelectSection}
+            onChange={handleDataChange}
           />
         </div>
 

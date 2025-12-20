@@ -1,16 +1,17 @@
 import type { SectionPreviewProps } from '../types';
 
-export default function ActPreview({ data }: SectionPreviewProps) {
+export default function ActPreview({ data, template = 'classic' }: SectionPreviewProps) {
   const act = data.act;
   const heroCtaText = data.hero?.ctaText || 'Get Your Results';
+  const isModern = template === 'modern';
 
   // Don't render if no content
   if (!act || (!act.imageUrl && !act.title && !act.text)) {
     return (
       <section
         style={{
-          padding: '40px 20px',
-          background: '#374151',
+          padding: isModern ? '80px 40px' : '40px 20px',
+          background: isModern ? '#0a0a0a' : '#374151',
           textAlign: 'center',
         }}
       >
@@ -21,6 +22,219 @@ export default function ActPreview({ data }: SectionPreviewProps) {
     );
   }
 
+  // Modern template - Full-width gradient CTA
+  if (isModern) {
+    return (
+      <section
+        style={{
+          padding: '100px 40px',
+          background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%)',
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Animated gradient background */}
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '150%',
+            height: '150%',
+            background:
+              'radial-gradient(ellipse at center, rgba(99, 102, 241, 0.15) 0%, transparent 50%)',
+            pointerEvents: 'none',
+          }}
+        />
+
+        <div
+          style={{
+            maxWidth: '1000px',
+            margin: '0 auto',
+            position: 'relative',
+            zIndex: 1,
+          }}
+        >
+          {/* Glass card */}
+          <div
+            style={{
+              background: 'rgba(255,255,255,0.03)',
+              backdropFilter: 'blur(20px)',
+              borderRadius: '32px',
+              padding: '60px',
+              border: '1px solid rgba(255,255,255,0.1)',
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '60px',
+              alignItems: 'center',
+            }}
+          >
+            {/* Left - Content */}
+            <div>
+              {/* Badge */}
+              <div
+                style={{
+                  display: 'inline-block',
+                  padding: '8px 16px',
+                  background: 'rgba(99, 102, 241, 0.2)',
+                  borderRadius: '50px',
+                  marginBottom: '24px',
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    color: '#a855f7',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                  }}
+                >
+                  Limited Time Offer
+                </span>
+              </div>
+
+              <h2
+                style={{
+                  fontSize: '40px',
+                  fontWeight: '800',
+                  lineHeight: '1.15',
+                  marginBottom: '20px',
+                  color: '#fff',
+                  letterSpacing: '-0.02em',
+                }}
+              >
+                {act.title || 'Ready to Start Your Journey?'}
+              </h2>
+
+              <p
+                style={{
+                  fontSize: '18px',
+                  lineHeight: '1.7',
+                  color: 'rgba(255,255,255,0.6)',
+                  marginBottom: '32px',
+                }}
+              >
+                {act.text ||
+                  'Join thousands of students who have transformed their practice. Start your journey today.'}
+              </p>
+
+              {/* CTA Buttons */}
+              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                <span
+                  style={{
+                    display: 'inline-block',
+                    padding: '18px 36px',
+                    background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+                    color: '#fff',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    borderRadius: '12px',
+                    boxShadow: '0 8px 30px rgba(99, 102, 241, 0.4)',
+                  }}
+                >
+                  {heroCtaText}
+                </span>
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '18px 24px',
+                    color: 'rgba(255,255,255,0.7)',
+                    fontSize: '16px',
+                    fontWeight: '500',
+                  }}
+                >
+                  Learn More →
+                </span>
+              </div>
+
+              {/* Trust indicators */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '24px',
+                  marginTop: '40px',
+                  paddingTop: '32px',
+                  borderTop: '1px solid rgba(255,255,255,0.1)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ color: '#22c55e', fontSize: '18px' }}>✓</span>
+                  <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)' }}>
+                    30-day guarantee
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ color: '#22c55e', fontSize: '18px' }}>✓</span>
+                  <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)' }}>
+                    Lifetime access
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right - Image */}
+            <div style={{ position: 'relative' }}>
+              {act.imageUrl ? (
+                <img
+                  src={act.imageUrl}
+                  alt={act.title || 'CTA Image'}
+                  style={{
+                    width: '100%',
+                    height: '400px',
+                    objectFit: 'cover',
+                    borderRadius: '20px',
+                    boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: '100%',
+                    height: '400px',
+                    background: 'linear-gradient(135deg, #1f2937 0%, #111827 100%)',
+                    borderRadius: '20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <span style={{ color: '#6b7280', fontSize: '14px' }}>No image uploaded</span>
+                </div>
+              )}
+
+              {/* Floating discount badge */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '-20px',
+                  right: '-20px',
+                  width: '100px',
+                  height: '100px',
+                  background: 'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 10px 30px rgba(239, 68, 68, 0.4)',
+                }}
+              >
+                <span style={{ fontSize: '24px', fontWeight: '800', color: '#fff' }}>20%</span>
+                <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.9)' }}>OFF</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // Classic template - Original layout
   return (
     <section style={{ padding: '40px 20px', background: '#374151' }}>
       <div style={{ maxWidth: '900px', margin: '0 auto' }}>

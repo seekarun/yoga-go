@@ -248,7 +248,7 @@ export default function ExpertPlatform() {
   );
 }
 
-// SaaS Landing Page for unauthenticated users and learners
+// Modern SaaS Landing Page - Light theme with subtle gradients
 function ExpertLandingPage({ isAuthenticated = false }: { isAuthenticated?: boolean }) {
   const [upgrading, setUpgrading] = useState(false);
   const [upgradeError, setUpgradeError] = useState('');
@@ -264,7 +264,6 @@ function ExpertLandingPage({ isAuthenticated = false }: { isAuthenticated?: bool
       if (!response.ok || !result.success) {
         throw new Error(result.message || 'Failed to upgrade to expert');
       }
-      // Reload the page to show expert onboarding
       window.location.reload();
     } catch (err) {
       console.error('[DBG][srv/page] Upgrade error:', err);
@@ -274,31 +273,18 @@ function ExpertLandingPage({ isAuthenticated = false }: { isAuthenticated?: bool
   };
 
   return (
-    <div style={{ minHeight: '100vh' }}>
+    <div style={{ minHeight: '100vh', background: '#fff' }}>
       {/* Hero Section */}
       <section
-        className="relative w-full overflow-hidden"
         style={{
-          minHeight: 'min(500px, 80vh)',
+          minHeight: '60vh',
+          position: 'relative',
+          overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center',
         }}
       >
         {/* Background Image */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/yg_teach1.jpg"
-          alt="Yoga instructor teaching"
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            objectPosition: 'center',
-          }}
-        />
-
-        {/* Gradient Overlay with Primary Color */}
         <div
           style={{
             position: 'absolute',
@@ -306,251 +292,720 @@ function ExpertLandingPage({ isAuthenticated = false }: { isAuthenticated?: bool
             left: 0,
             right: 0,
             bottom: 0,
-            background:
-              'linear-gradient(to bottom, transparent 0%, color-mix(in srgb, var(--color-primary) 40%, transparent) 50%, color-mix(in srgb, var(--color-primary) 90%, transparent) 100%)',
+            backgroundImage: 'url(/landinghero1.jpg)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
           }}
         />
 
-        {/* Content Overlay */}
-        <div className="absolute bottom-0 left-0 right-0 px-4 sm:px-6 py-8 sm:py-12">
-          <div className="max-w-6xl mx-auto">
-            <div className="max-w-2xl text-white">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-5 leading-tight drop-shadow-lg">
-                Looking to teach yoga online?
-              </h1>
-              <p className="text-base sm:text-lg md:text-xl mb-6 sm:mb-8 leading-relaxed drop-shadow-md">
-                Get online in 5 minutes, easy as that
-              </p>
-              <div className="flex flex-col items-start gap-4">
-                {upgradeError && (
-                  <div className="px-4 py-3 bg-red-500/30 text-white rounded-lg text-sm">
-                    {upgradeError}
-                  </div>
-                )}
-                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto">
-                  {isAuthenticated ? (
-                    // Authenticated learner - show upgrade button
-                    <button
-                      onClick={handleUpgradeToExpert}
-                      disabled={upgrading}
-                      className="w-full sm:w-auto px-6 sm:px-10 py-3 sm:py-4 bg-white rounded-lg text-base sm:text-lg font-semibold border-none transition-transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-                      style={{ color: 'var(--color-primary)' }}
-                    >
-                      {upgrading ? 'Upgrading...' : 'Get started for free'}
-                    </button>
-                  ) : (
-                    // Unauthenticated - show signup link
-                    <Link
-                      href="/auth/signup"
-                      className="w-full sm:w-auto text-center px-6 sm:px-10 py-3 sm:py-4 bg-white rounded-lg text-base sm:text-lg font-semibold transition-transform hover:scale-105 shadow-lg"
-                      style={{ color: 'var(--color-primary)' }}
-                    >
-                      Get started for free
-                    </Link>
-                  )}
-                  <a
-                    href="#features"
-                    className="w-full sm:w-auto text-center px-6 sm:px-10 py-3 sm:py-4 bg-white/10 text-white border-2 border-white rounded-lg text-base sm:text-lg font-semibold transition-transform hover:scale-105 backdrop-blur-sm"
-                  >
-                    Learn More
-                  </a>
-                </div>
-              </div>
+        {/* Content */}
+        <div
+          style={{
+            position: 'relative',
+            zIndex: 10,
+            width: '100%',
+            maxWidth: '1200px',
+            margin: '0 auto',
+            padding: '80px 24px 60px',
+          }}
+        >
+          <div style={{ maxWidth: '800px' }}>
+            {/* Badge */}
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 16px',
+                background: 'rgba(255,255,255,0.15)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                borderRadius: '50px',
+                marginBottom: '32px',
+                backdropFilter: 'blur(8px)',
+              }}
+            >
+              <span
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: 'var(--color-primary-light)',
+                }}
+              />
+              <span style={{ fontSize: '14px', color: '#fff', fontWeight: '500' }}>
+                Now accepting new yoga instructors
+              </span>
             </div>
+
+            {/* Headline */}
+            <h1
+              style={{
+                fontSize: 'clamp(40px, 8vw, 72px)',
+                fontWeight: '800',
+                lineHeight: '1.1',
+                color: '#fff',
+                marginBottom: '24px',
+                letterSpacing: '-0.03em',
+              }}
+            >
+              Launch your yoga
+              <br />
+              <span
+                style={{
+                  background: 'linear-gradient(135deg, var(--color-primary-light) 0%, #fff 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}
+              >
+                business online
+              </span>
+            </h1>
+
+            {/* Subheadline */}
+            <p
+              style={{
+                fontSize: 'clamp(18px, 2.5vw, 24px)',
+                lineHeight: '1.6',
+                color: 'rgba(255,255,255,0.85)',
+                marginBottom: '48px',
+                maxWidth: '600px',
+              }}
+            >
+              Create your professional website, sell courses, and host live sessions. Everything you
+              need to build a thriving online yoga practice.
+            </p>
+
+            {/* CTA Buttons */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', marginBottom: '64px' }}>
+              {upgradeError && (
+                <div
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    background: 'rgba(239, 68, 68, 0.2)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    borderRadius: '8px',
+                    color: '#fca5a5',
+                    fontSize: '14px',
+                  }}
+                >
+                  {upgradeError}
+                </div>
+              )}
+              {isAuthenticated ? (
+                <PrimaryButton
+                  onClick={handleUpgradeToExpert}
+                  disabled={upgrading}
+                  loading={upgrading}
+                  size="large"
+                >
+                  {upgrading ? 'Setting up...' : 'Get Started Free'}
+                </PrimaryButton>
+              ) : (
+                <PrimaryButton href="/auth/signup" size="large">
+                  Get Started Free
+                </PrimaryButton>
+              )}
+              <SecondaryButton href="#how-it-works" size="large">
+                See How It Works
+              </SecondaryButton>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Video + Text Section */}
+      <section
+        style={{
+          padding: '60px 24px',
+          background: 'var(--color-primary-light)',
+        }}
+      >
+        <div
+          style={{
+            maxWidth: '1200px',
+            margin: '0 auto',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, 1fr)',
+            gap: '60px',
+            alignItems: 'center',
+          }}
+        >
+          {/* Video on Left */}
+          <div
+            style={{
+              position: 'relative',
+              borderRadius: '16px',
+              overflow: 'hidden',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
+              aspectRatio: '16/9',
+              background: '#000',
+            }}
+          >
+            <video
+              autoPlay
+              muted
+              loop
+              playsInline
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+              }}
+            >
+              <source src="/landing-video.mp4" type="video/mp4" />
+            </video>
+            {/* Play button overlay (decorative) */}
+            <div
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: '80px',
+                height: '80px',
+                borderRadius: '50%',
+                background: 'rgba(255,255,255,0.9)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+                cursor: 'pointer',
+              }}
+            >
+              <div
+                style={{
+                  width: 0,
+                  height: 0,
+                  borderTop: '12px solid transparent',
+                  borderBottom: '12px solid transparent',
+                  borderLeft: '20px solid var(--color-primary)',
+                  marginLeft: '4px',
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Text on Right */}
+          <div>
+            <h2
+              style={{
+                fontSize: 'clamp(32px, 5vw, 48px)',
+                fontWeight: '700',
+                color: 'var(--color-primary)',
+                marginBottom: '24px',
+                letterSpacing: '-0.02em',
+                lineHeight: '1.2',
+              }}
+            >
+              Everything you need to succeed
+            </h2>
+            <p
+              style={{
+                fontSize: '20px',
+                lineHeight: '1.7',
+                color: 'rgba(122, 41, 0, 0.8)',
+              }}
+            >
+              All the tools to build, grow, and manage your online yoga business in one place.
+            </p>
           </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-16 sm:py-20 md:py-24 px-4 sm:px-6 bg-white">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-center mb-10 sm:mb-14 md:mb-16">
-            Everything You Need to Succeed
-          </h2>
+      <section
+        id="features"
+        style={{
+          padding: '120px 24px',
+          background: '#fafafa',
+          position: 'relative',
+        }}
+      >
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+          {/* Section Header */}
+          <div style={{ textAlign: 'center', marginBottom: '80px' }}>
+            <span
+              style={{
+                display: 'inline-block',
+                padding: '8px 16px',
+                background: 'color-mix(in srgb, var(--color-highlight) 15%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--color-highlight) 30%, transparent)',
+                borderRadius: '50px',
+                fontSize: '14px',
+                color: 'var(--color-highlight)',
+                fontWeight: '500',
+                marginBottom: '24px',
+              }}
+            >
+              FEATURES
+            </span>
+            <h2
+              style={{
+                fontSize: 'clamp(32px, 5vw, 48px)',
+                fontWeight: '700',
+                color: '#1a1a1a',
+                marginBottom: '16px',
+                letterSpacing: '-0.02em',
+              }}
+            >
+              Everything you need to succeed
+            </h2>
+            <p
+              style={{
+                fontSize: '18px',
+                color: '#666',
+                maxWidth: '600px',
+                margin: '0 auto',
+              }}
+            >
+              All the tools to build, grow, and manage your online yoga business in one place.
+            </p>
+          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 sm:gap-10 md:gap-14">
-            {/* Feature 1 */}
-            <div className="text-center">
-              <div className="text-5xl sm:text-6xl mb-4 sm:mb-5">💰</div>
-              <h3 className="text-lg sm:text-xl md:text-2xl font-semibold mb-2 sm:mb-3">
-                Earn More Income
-              </h3>
-              <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
-                Set your own prices and keep most of what you earn. Build a sustainable income from
-                your passion.
-              </p>
-            </div>
-
-            {/* Feature 2 */}
-            <div className="text-center">
-              <div className="text-5xl sm:text-6xl mb-4 sm:mb-5">🌍</div>
-              <h3 className="text-lg sm:text-xl md:text-2xl font-semibold mb-2 sm:mb-3">
-                Global Reach
-              </h3>
-              <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
-                Teach students from around the world. No geographic limitations on your impact.
-              </p>
-            </div>
-
-            {/* Feature 3 */}
-            <div className="text-center">
-              <div className="text-5xl sm:text-6xl mb-4 sm:mb-5">🤝</div>
-              <h3 className="text-lg sm:text-xl md:text-2xl font-semibold mb-2 sm:mb-3">
-                Expert Support
-              </h3>
-              <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
-                Get dedicated support to help you succeed and grow your online yoga business.
-              </p>
-            </div>
+          {/* Feature Cards */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+              gap: '24px',
+            }}
+          >
+            {[
+              {
+                icon: '🌐',
+                title: 'Your Own Website',
+                description:
+                  'Get a beautiful, customizable website at yourname.myyoga.guru. No coding required.',
+              },
+              {
+                icon: '📹',
+                title: 'Course Builder',
+                description:
+                  'Create and sell video courses with our easy drag-and-drop builder. Upload unlimited content.',
+              },
+              {
+                icon: '📺',
+                title: 'Live Sessions',
+                description:
+                  'Host live classes and workshops with integrated Zoom. Automatic scheduling and reminders.',
+              },
+              {
+                icon: '💳',
+                title: 'Easy Payments',
+                description:
+                  'Accept payments worldwide with Stripe. Set your own prices, get paid instantly.',
+              },
+              {
+                icon: '📊',
+                title: 'Analytics',
+                description:
+                  'Track your growth with detailed analytics. Understand your students and optimize.',
+              },
+              {
+                icon: '🎨',
+                title: 'Beautiful Templates',
+                description:
+                  'Choose from professionally designed templates. Customize colors and layout to match your brand.',
+              },
+            ].map((feature, idx) => (
+              <div
+                key={idx}
+                style={{
+                  padding: '32px',
+                  background: '#fff',
+                  border: '1px solid #eee',
+                  borderRadius: '20px',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: '40px',
+                    marginBottom: '20px',
+                  }}
+                >
+                  {feature.icon}
+                </div>
+                <h3
+                  style={{
+                    fontSize: '20px',
+                    fontWeight: '600',
+                    color: '#1a1a1a',
+                    marginBottom: '12px',
+                  }}
+                >
+                  {feature.title}
+                </h3>
+                <p
+                  style={{
+                    fontSize: '15px',
+                    lineHeight: '1.6',
+                    color: '#666',
+                  }}
+                >
+                  {feature.description}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* How It Works Section */}
-      <section className="py-16 sm:py-20 md:py-24 px-4 sm:px-6 bg-gray-50">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-center mb-10 sm:mb-14 md:mb-16">
-            Get Started in 3 Simple Steps
-          </h2>
+      <section
+        id="how-it-works"
+        style={{
+          padding: '120px 24px',
+          background: '#fff',
+        }}
+      >
+        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+          {/* Section Header */}
+          <div style={{ textAlign: 'center', marginBottom: '80px' }}>
+            <span
+              style={{
+                display: 'inline-block',
+                padding: '8px 16px',
+                background: 'color-mix(in srgb, var(--color-primary-light) 30%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--color-primary) 20%, transparent)',
+                borderRadius: '50px',
+                fontSize: '14px',
+                color: 'var(--color-primary)',
+                fontWeight: '500',
+                marginBottom: '24px',
+              }}
+            >
+              HOW IT WORKS
+            </span>
+            <h2
+              style={{
+                fontSize: 'clamp(32px, 5vw, 48px)',
+                fontWeight: '700',
+                color: '#1a1a1a',
+                letterSpacing: '-0.02em',
+              }}
+            >
+              Go live in 3 simple steps
+            </h2>
+          </div>
 
-          <div className="flex flex-col gap-8 sm:gap-10">
-            {/* Step 1 */}
-            <div className="flex items-start sm:items-center gap-4 sm:gap-8">
+          {/* Steps */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '48px' }}>
+            {[
+              {
+                step: '01',
+                title: 'Create your profile',
+                description:
+                  'Sign up and tell us about yourself. Add your bio, credentials, and teaching style. Choose a template for your website.',
+              },
+              {
+                step: '02',
+                title: 'Add your content',
+                description:
+                  'Upload your courses, schedule live sessions, and customize your landing page. Our tools make it easy to showcase your expertise.',
+              },
+              {
+                step: '03',
+                title: 'Start teaching',
+                description:
+                  'Share your unique URL and start accepting students. We handle payments, hosting, and technical details so you can focus on teaching.',
+              },
+            ].map((item, idx) => (
               <div
-                className="flex-shrink-0 w-14 h-14 sm:w-20 sm:h-20 rounded-full text-white flex items-center justify-center text-xl sm:text-3xl font-bold"
-                style={{ background: 'var(--color-primary)' }}
+                key={idx}
+                style={{
+                  display: 'flex',
+                  gap: '32px',
+                  alignItems: 'flex-start',
+                }}
               >
-                1
+                <div
+                  style={{
+                    flexShrink: 0,
+                    width: '80px',
+                    height: '80px',
+                    borderRadius: '20px',
+                    background: 'var(--color-primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '28px',
+                    fontWeight: '700',
+                    color: '#fff',
+                    boxShadow:
+                      '0 8px 32px color-mix(in srgb, var(--color-primary) 30%, transparent)',
+                  }}
+                >
+                  {item.step}
+                </div>
+                <div style={{ flex: 1, paddingTop: '8px' }}>
+                  <h3
+                    style={{
+                      fontSize: '24px',
+                      fontWeight: '600',
+                      color: '#1a1a1a',
+                      marginBottom: '12px',
+                    }}
+                  >
+                    {item.title}
+                  </h3>
+                  <p
+                    style={{
+                      fontSize: '16px',
+                      lineHeight: '1.7',
+                      color: '#666',
+                    }}
+                  >
+                    {item.description}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-lg sm:text-xl md:text-2xl font-semibold mb-1 sm:mb-2">
-                  Create Your Expert Profile
-                </h3>
-                <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
-                  Sign up and tell us about your expertise, certifications, and teaching style.
-                </p>
-              </div>
-            </div>
-
-            {/* Step 2 */}
-            <div className="flex items-start sm:items-center gap-4 sm:gap-8">
-              <div
-                className="flex-shrink-0 w-14 h-14 sm:w-20 sm:h-20 rounded-full text-white flex items-center justify-center text-xl sm:text-3xl font-bold"
-                style={{ background: 'var(--color-primary)' }}
-              >
-                2
-              </div>
-              <div>
-                <h3 className="text-lg sm:text-xl md:text-2xl font-semibold mb-1 sm:mb-2">
-                  Build Your First Course
-                </h3>
-                <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
-                  Upload videos, organize lessons, and create a comprehensive learning experience.
-                </p>
-              </div>
-            </div>
-
-            {/* Step 3 */}
-            <div className="flex items-start sm:items-center gap-4 sm:gap-8">
-              <div
-                className="flex-shrink-0 w-14 h-14 sm:w-20 sm:h-20 rounded-full text-white flex items-center justify-center text-xl sm:text-3xl font-bold"
-                style={{ background: 'var(--color-primary)' }}
-              >
-                3
-              </div>
-              <div>
-                <h3 className="text-lg sm:text-xl md:text-2xl font-semibold mb-1 sm:mb-2">
-                  Start Earning
-                </h3>
-                <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
-                  Publish your course and watch as students enroll and your income grows.
-                </p>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* Testimonials Section */}
-      <section className="py-16 sm:py-20 md:py-24 px-4 sm:px-6 bg-white">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-center mb-10 sm:mb-14 md:mb-16">
-            Trusted by Expert Instructors
-          </h2>
+      <section
+        style={{
+          padding: '120px 24px',
+          background: '#fafafa',
+        }}
+      >
+        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+          {/* Section Header */}
+          <div style={{ textAlign: 'center', marginBottom: '64px' }}>
+            <h2
+              style={{
+                fontSize: 'clamp(32px, 5vw, 48px)',
+                fontWeight: '700',
+                color: '#1a1a1a',
+                letterSpacing: '-0.02em',
+              }}
+            >
+              Loved by instructors worldwide
+            </h2>
+          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-            {/* Testimonial 1 */}
-            <div className="bg-gray-50 rounded-xl p-6 sm:p-8 shadow-sm">
-              <div className="text-3xl sm:text-4xl mb-3 sm:mb-4">⭐⭐⭐⭐⭐</div>
-              <p className="text-sm sm:text-base text-gray-700 mb-4 sm:mb-5 leading-relaxed">
-                &quot;Yoga-GO has transformed my teaching practice. I now reach students worldwide
-                and earn more than I ever did with in-person classes.&quot;
-              </p>
-              <p
-                className="text-xs sm:text-sm font-semibold"
-                style={{ color: 'var(--color-primary)' }}
+          {/* Testimonial Cards */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+              gap: '24px',
+            }}
+          >
+            {[
+              {
+                quote:
+                  'MyYoga.Guru transformed my teaching practice. I now reach students worldwide and earn more than I ever did with in-person classes.',
+                author: 'Sarah M.',
+                role: 'Vinyasa Expert',
+              },
+              {
+                quote:
+                  'The platform is incredibly easy to use. I created my first course in just a weekend and had my first students within days.',
+                author: 'Michael Chen',
+                role: 'Power Yoga Instructor',
+              },
+              {
+                quote:
+                  'I love the flexibility. I create content when it works for me and earn passive income 24/7. Best decision for my career.',
+                author: 'Priya Sharma',
+                role: 'Meditation Teacher',
+              },
+            ].map((testimonial, idx) => (
+              <div
+                key={idx}
+                style={{
+                  padding: '32px',
+                  background: '#fff',
+                  border: '1px solid #eee',
+                  borderRadius: '20px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                }}
               >
-                - Sarah M., Vinyasa Expert
-              </p>
-            </div>
-
-            {/* Testimonial 2 */}
-            <div className="bg-gray-50 rounded-xl p-6 sm:p-8 shadow-sm">
-              <div className="text-3xl sm:text-4xl mb-3 sm:mb-4">⭐⭐⭐⭐⭐</div>
-              <p className="text-sm sm:text-base text-gray-700 mb-4 sm:mb-5 leading-relaxed">
-                &quot;The platform is incredibly easy to use. I created my first course in just a
-                weekend and had my first students within days.&quot;
-              </p>
-              <p
-                className="text-xs sm:text-sm font-semibold"
-                style={{ color: 'var(--color-primary)' }}
-              >
-                - Michael Chen, Power Yoga Instructor
-              </p>
-            </div>
-
-            {/* Testimonial 3 */}
-            <div className="bg-gray-50 rounded-xl p-6 sm:p-8 shadow-sm">
-              <div className="text-3xl sm:text-4xl mb-3 sm:mb-4">⭐⭐⭐⭐⭐</div>
-              <p className="text-sm sm:text-base text-gray-700 mb-4 sm:mb-5 leading-relaxed">
-                &quot;I love the flexibility. I create content when it works for me and earn passive
-                income 24/7. Best decision for my career.&quot;
-              </p>
-              <p
-                className="text-xs sm:text-sm font-semibold"
-                style={{ color: 'var(--color-primary)' }}
-              >
-                - Priya Sharma, Meditation Teacher
-              </p>
-            </div>
+                {/* Stars */}
+                <div
+                  style={{ marginBottom: '20px', color: 'var(--color-primary)', fontSize: '20px' }}
+                >
+                  ★★★★★
+                </div>
+                <p
+                  style={{
+                    fontSize: '16px',
+                    lineHeight: '1.7',
+                    color: '#444',
+                    marginBottom: '24px',
+                  }}
+                >
+                  &quot;{testimonial.quote}&quot;
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      background: 'var(--color-primary)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '18px',
+                      fontWeight: '600',
+                      color: '#fff',
+                    }}
+                  >
+                    {testimonial.author.charAt(0)}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '15px', fontWeight: '600', color: '#1a1a1a' }}>
+                      {testimonial.author}
+                    </div>
+                    <div style={{ fontSize: '14px', color: '#888' }}>{testimonial.role}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
+      {/* Final CTA Section */}
       <section
-        className="py-16 sm:py-20 md:py-24 px-4 sm:px-6 text-center text-white"
         style={{
-          background:
-            'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%)',
+          padding: '120px 24px',
+          background: 'color-mix(in srgb, var(--color-primary-light) 15%, #fff)',
+          position: 'relative',
+          overflow: 'hidden',
         }}
       >
-        <div className="max-w-3xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold mb-4 sm:mb-6">
-            Ready to Share Your Expertise?
+        {/* Background glow */}
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '100%',
+            height: '100%',
+            background:
+              'radial-gradient(ellipse at center, color-mix(in srgb, var(--color-primary-light) 30%, transparent) 0%, transparent 60%)',
+            pointerEvents: 'none',
+          }}
+        />
+
+        <div
+          style={{
+            position: 'relative',
+            maxWidth: '800px',
+            margin: '0 auto',
+            textAlign: 'center',
+          }}
+        >
+          <h2
+            style={{
+              fontSize: 'clamp(36px, 6vw, 56px)',
+              fontWeight: '700',
+              color: '#1a1a1a',
+              marginBottom: '24px',
+              letterSpacing: '-0.02em',
+            }}
+          >
+            Ready to share your
+            <br />
+            <span
+              style={{
+                background:
+                  'linear-gradient(135deg, var(--color-primary) 0%, var(--color-highlight) 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}
+            >
+              expertise with the world?
+            </span>
           </h2>
-          <p className="text-base sm:text-lg md:text-xl mb-8 sm:mb-10 opacity-95">
-            Join the Yoga-GO expert community today and start building your online yoga business.
+          <p
+            style={{
+              fontSize: '20px',
+              lineHeight: '1.6',
+              color: '#666',
+              marginBottom: '48px',
+            }}
+          >
+            Join hundreds of yoga instructors who are building thriving online businesses.
           </p>
           <Link
-            href="/auth/signin?callbackUrl=/srv"
-            className="inline-block px-8 sm:px-12 py-3 sm:py-4 bg-white rounded-lg text-base sm:text-lg font-semibold transition-transform hover:scale-105"
-            style={{ color: 'var(--color-primary)' }}
+            href="/auth/signup"
+            style={{
+              display: 'inline-block',
+              padding: '20px 48px',
+              background: 'var(--color-primary)',
+              color: '#fff',
+              fontSize: '18px',
+              fontWeight: '600',
+              borderRadius: '12px',
+              textDecoration: 'none',
+              boxShadow: '0 8px 32px color-mix(in srgb, var(--color-primary) 30%, transparent)',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+            }}
           >
-            Get Started Free
+            Get Started Free →
           </Link>
+          <p
+            style={{
+              marginTop: '24px',
+              fontSize: '14px',
+              color: '#888',
+            }}
+          >
+            No credit card required • Free to start • Cancel anytime
+          </p>
         </div>
       </section>
+
+      {/* Footer */}
+      <footer
+        style={{
+          padding: '48px 24px',
+          background: '#fff',
+          borderTop: '1px solid #eee',
+        }}
+      >
+        <div
+          style={{
+            maxWidth: '1200px',
+            margin: '0 auto',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '24px',
+          }}
+        >
+          <div style={{ color: '#888', fontSize: '14px' }}>
+            © {new Date().getFullYear()} MyYoga.Guru. All rights reserved.
+          </div>
+          <div style={{ display: 'flex', gap: '32px' }}>
+            {['Privacy', 'Terms', 'Contact'].map(link => (
+              <a
+                key={link}
+                href="#"
+                style={{
+                  color: '#888',
+                  fontSize: '14px',
+                  textDecoration: 'none',
+                  transition: 'color 0.2s',
+                }}
+              >
+                {link}
+              </a>
+            ))}
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

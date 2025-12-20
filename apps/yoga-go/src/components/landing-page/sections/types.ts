@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { CustomLandingPageConfig, Asset } from '@/types';
+import type { CustomLandingPageConfig, Asset, LandingPageTemplate } from '@/types';
 
 // Section type union
 export type SectionType =
@@ -32,6 +32,7 @@ export interface SectionPreviewProps {
   expertName?: string;
   expertBio?: string;
   expertId?: string;
+  template?: LandingPageTemplate;
 }
 
 // Props for editor components

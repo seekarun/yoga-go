@@ -64,6 +64,22 @@ export class YogaGoStack extends cdk.Stack {
       mfa: cognito.Mfa.OPTIONAL,
       mfaSecondFactor: { sms: false, otp: true },
       removalPolicy: cdk.RemovalPolicy.RETAIN,
+
+      // Use SES for branded verification emails (instead of default Cognito email)
+      // Note: SES is configured in us-west-2 (required for email receiving capability)
+      email: cognito.UserPoolEmail.withSES({
+        fromEmail: "no-reply@myyoga.guru",
+        fromName: "MyYoga.Guru",
+        sesRegion: "us-west-2",
+        sesVerifiedDomain: MYYOGA_GURU_DOMAIN,
+      }),
+
+      // Custom verification email template
+      userVerification: {
+        emailSubject: "Verify your MyYoga.Guru account",
+        emailBody: "Namaste! Please verify your email by entering this code: {####}",
+        emailStyle: cognito.VerificationEmailStyle.CODE,
+      },
     });
 
     // ========================================

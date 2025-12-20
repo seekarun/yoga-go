@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import type { CustomLandingPageConfig } from '@/types';
+import type { CustomLandingPageConfig, LandingPageTemplate } from '@/types';
 import { sectionRegistry, type SectionType } from '../sections';
 import SectionWrapper from '../shared/SectionWrapper';
+import { templates, DEFAULT_TEMPLATE } from '../templates';
 
 type ViewMode = 'desktop' | 'mobile';
 
@@ -16,6 +17,7 @@ interface PreviewPaneProps {
   expertBio?: string;
   expertId?: string;
   onSelectSection: (sectionId: SectionType | null) => void;
+  onChange: (updates: Partial<CustomLandingPageConfig>) => void;
 }
 
 export default function PreviewPane({
@@ -27,8 +29,14 @@ export default function PreviewPane({
   expertBio,
   expertId,
   onSelectSection,
+  onChange,
 }: PreviewPaneProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('desktop');
+  const currentTemplate = data.template || DEFAULT_TEMPLATE;
+
+  const handleTemplateChange = (template: LandingPageTemplate) => {
+    onChange({ template });
+  };
 
   // Filter out disabled sections for preview
   const visibleSections = sectionOrder.filter(id => !disabledSections.includes(id));
@@ -40,6 +48,18 @@ export default function PreviewPane({
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-medium text-gray-900">Preview</h3>
           <div className="flex items-center gap-3">
+            {/* Template Selector */}
+            <select
+              value={currentTemplate}
+              onChange={e => handleTemplateChange(e.target.value as LandingPageTemplate)}
+              className="text-xs border border-gray-200 rounded-md px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              {templates.map(t => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </select>
             {/* View Mode Toggle */}
             <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
               <button
@@ -154,6 +174,7 @@ export default function PreviewPane({
                       expertName={expertName}
                       expertBio={expertBio}
                       expertId={expertId}
+                      template={currentTemplate}
                     />
                   </SectionWrapper>
                 );

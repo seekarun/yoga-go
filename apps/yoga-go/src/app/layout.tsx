@@ -1,5 +1,4 @@
-import Footer from '@/components/Footer';
-import Header from '@/components/Header';
+import LayoutContent from '@/components/LayoutContent';
 import { ToastProvider } from '@/components/Toast';
 import UploadNotifications from '@/components/UploadNotifications';
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -108,9 +107,7 @@ export default function RootLayout({
               <PaymentProvider>
                 <ToastProvider>
                   <UploadNotifications />
-                  <Header />
-                  <main className="flex-1">{children}</main>
-                  <Footer />
+                  <LayoutContent>{children}</LayoutContent>
                 </ToastProvider>
               </PaymentProvider>
             </PostHogProvider>

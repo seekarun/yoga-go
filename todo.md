@@ -1,17 +1,15 @@
 notes
 
+[ ] Currency be localized
 
-[x] unique name check for expert (subdomain)
 [ ] error message does not go away.
-[x] Did not understand level, should all levels be the default?
 [ ] Duration is confusing
 
 [ ] no welcome email sent. 
-[ ] logout - clean log out should ()
-[ ] promo video on home page should show up on home page by default
-[ ] better preview (edit landing page)
-[ ] call to action button url should be selectable. (survey or courses)
-[ ] 1,2,3 section looks disjointed
+[x] logout - clean log out should ()
+[x] promo video on home page should show up on home page by default
+[x] better preview (edit landing page)
+[x] call to action button url should be selectable. (survey or courses)
 [ ] act section is not good.
 [ ] For learner - show enroll buttong in home page
 [ ] fix rating display. (don't show dummy data)
@@ -20,7 +18,6 @@ notes
 [ ] payments not showing up in expert dashboard.
 [ ] total students not showing the correct number
 [ ] email to new expert not working.    
-[ ] custom domain: prefix with https://
 [ ] add message in dashboard that dns changes takes time.
 [ ] setup custom domain email (Remove this section if domain set up already)
 [ ] copy buttons for dns record name/value
@@ -61,10 +58,14 @@ notes
 [ ] auto populate footer with details from onboarding.
 [ ] marketing budgets
 [ ] expert support - can we get a successful yoga teacher?
+[ ] if user does not verify account in 10 mins, delete from user pool
 
 [ ] http to https redirect - check if /etc/hosts still active
+[ ] custom domain: prefix with https://
 [ ] fix google meet and zoom integration (worked for me)
 
+[x] unique name check for expert (subdomain)
+[x] Did not understand level, should all levels be the default?
 [x] when coming from /srv set user as an expert
 [x] image gallery
 [x] dns records add copy button
@@ -85,7 +86,16 @@ notes
 [x] disable next button until upload complete.
 [x] test with all video formats
 [x] add blog. 
-[ ] Currency be localized
+
+
+Namaste! 
+Please verify your email by entering this code: 
+
+544702 
+
+This code expires in 24 hours
+
+thank you for joining MyYoga.Guru
 
 
   Gmail Setup Steps
@@ -107,18 +117,11 @@ CALEL
 
 yes
 
-2.5Cr
+
+AWS_PROFILE=myg npx cdk deploy YogaGoStack -c cognitoCertificateArn=arn:aws:acm:us-east-1:710735877057:certificate/1afb9910-fc69-4294-a8ba-70e1fb6155fb --require-approval never
 
 
 I support expecting mothers through gentle, mindful prenatal yoga designed to nurture both body and baby. My sessions focus on safe movement, breath awareness, and relaxation techniques that ease common pregnancy discomforts, build strength and confidence, and create a deeper connection with your growing baby. Each practice is adaptable, supportive, and centred around your changing needs throughout pregnancy.
-
-
-
-
-
-
-
-
 Learners can expect to gain greater comfort, strength, and calm throughout pregnancy. Through gentle movement and guided breathing, you’ll build confidence in your changing body, reduce stress and tension, and develop tools to support both pregnancy and birth.
 
 

@@ -3,7 +3,25 @@
 import { useState, useEffect, useCallback } from 'react';
 import ImageUploadCrop from '@/components/ImageUploadCrop';
 import { PrimaryButton, SecondaryButton } from '@/components/Button';
-import type { Asset } from '@/types';
+import type { Asset, LandingPageTemplate, CustomLandingPageConfig } from '@/types';
+import { templates, DEFAULT_TEMPLATE } from '@/components/landing-page/templates';
+import HeroPreview from '@/components/landing-page/sections/hero/HeroPreview';
+import ValuePropsPreview from '@/components/landing-page/sections/value-props/ValuePropsPreview';
+import AboutPreview from '@/components/landing-page/sections/about/AboutPreview';
+import PhotoGalleryPreview from '@/components/landing-page/sections/photo-gallery/PhotoGalleryPreview';
+import ActPreview from '@/components/landing-page/sections/act/ActPreview';
+import FooterPreview from '@/components/landing-page/sections/footer/FooterPreview';
+
+// Dummy image for preview (will be replaced with proper images later)
+const DUMMY_IMAGE = '/template/hero.jpg';
+
+// Lorem ipsum dummy content
+const LOREM = {
+  short: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
+  medium:
+    'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam.',
+  long: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore.',
+};
 
 // URL-friendly validation: lowercase letters, numbers, and hyphens only
 const isUrlFriendly = (value: string): boolean => {
@@ -33,8 +51,7 @@ interface ExpertOnboardingProps {
 }
 
 interface LandingPageContent {
-  howYouHelp: string;
-  valuesForLearners: string;
+  teachingPlan: string;
   aboutBio: string;
   aboutImage: string;
 }
@@ -92,11 +109,14 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
 
   // Landing page content for step 2
   const [landingContent, setLandingContent] = useState<LandingPageContent>({
-    howYouHelp: '',
-    valuesForLearners: '',
+    teachingPlan: '',
     aboutBio: '',
     aboutImage: '',
   });
+
+  // Template selection for step 3
+  const [selectedTemplate, setSelectedTemplate] = useState<LandingPageTemplate>(DEFAULT_TEMPLATE);
+  const [previewTemplateIndex, setPreviewTemplateIndex] = useState(0);
 
   // Debounced expert ID for validation
   const debouncedExpertId = useDebounce(formData.id, 500);
@@ -253,8 +273,7 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           expertName: formData.name,
-          howYouHelp: landingContent.howYouHelp,
-          valuesForLearners: landingContent.valuesForLearners,
+          teachingPlan: landingContent.teachingPlan,
           aboutBio: landingContent.aboutBio,
         }),
       });
@@ -286,14 +305,13 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
       // Use already extracted content or extract now
       let contentToUse = extractedContent;
 
-      if (!contentToUse && (landingContent.howYouHelp || landingContent.valuesForLearners)) {
+      if (!contentToUse && landingContent.teachingPlan) {
         const aiResponse = await fetch('/api/ai/extract-landing-content', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             expertName: formData.name,
-            howYouHelp: landingContent.howYouHelp,
-            valuesForLearners: landingContent.valuesForLearners,
+            teachingPlan: landingContent.teachingPlan,
             aboutBio: landingContent.aboutBio,
           }),
         });
@@ -326,6 +344,7 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
         socialLinks: {},
         // Initial landing page configuration
         customLandingPage: {
+          template: selectedTemplate,
           hero: contentToUse?.hero
             ? {
                 headline: contentToUse.hero.headline,
@@ -347,7 +366,19 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
             bio: landingContent.aboutBio || undefined,
             highlights: [],
           },
-          sectionOrder: ['hero', 'valuePropositions', 'about'],
+          sectionOrder: [
+            'hero',
+            'valuePropositions',
+            'about',
+            'courses',
+            'webinars',
+            'photoGallery',
+            'blog',
+            'act',
+            'footer',
+          ],
+          // Disable courses, webinars, and blog by default - expert can enable when ready
+          disabledSections: ['courses', 'webinars', 'blog'],
         },
         onboardingCompleted: true,
       };
@@ -382,12 +413,19 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
     <div style={{ maxWidth: '800px', margin: '0 auto', padding: '40px 20px' }}>
       {/* Progress Indicator */}
       <div style={{ marginBottom: '40px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-          {[1, 2].map(num => (
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            marginBottom: '16px',
+            gap: '8px',
+          }}
+        >
+          {[1, 2, 3].map(num => (
             <div
               key={num}
               style={{
-                width: '48%',
+                flex: 1,
                 height: '4px',
                 background: num <= step ? 'var(--color-primary)' : '#e2e8f0',
                 borderRadius: '2px',
@@ -395,18 +433,24 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
             />
           ))}
         </div>
-        <div style={{ textAlign: 'center', fontSize: '14px', color: '#666' }}>Step {step} of 2</div>
+        <div style={{ textAlign: 'center', fontSize: '14px', color: '#666' }}>Step {step} of 3</div>
       </div>
 
       {/* Welcome Header */}
       <div style={{ textAlign: 'center', marginBottom: '40px' }}>
         <h1 style={{ fontSize: '32px', fontWeight: '600', marginBottom: '12px' }}>
-          {step === 1 ? "Welcome! Let's get started" : 'Create Your Landing Page'}
+          {step === 1
+            ? "Welcome! Let's get started"
+            : step === 2
+              ? 'Create Your Landing Page'
+              : 'Choose Your Template'}
         </h1>
         <p style={{ fontSize: '16px', color: '#666' }}>
           {step === 1
             ? "First, let's set up your unique expert ID"
-            : "Tell us about yourself and we'll create a beautiful landing page for you"}
+            : step === 2
+              ? "Tell us about yourself and we'll create a beautiful landing page for you"
+              : 'Select a template style for your landing page'}
         </p>
       </div>
 
@@ -584,51 +628,22 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
             We&apos;ll use AI to create a professional landing page from your answers
           </p>
 
-          {/* Question 1: How you help students */}
+          {/* Question 1: What do you plan to teach */}
           <div style={{ marginBottom: '24px' }}>
             <label
               style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}
             >
-              How can you help your students? *
+              What do you plan to teach? *
             </label>
             <p style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>
-              Describe the problems you solve or the transformation you offer (used for Hero
-              Section)
+              Describe what you teach, who you help, and what outcomes students can expect
             </p>
             <textarea
-              name="howYouHelp"
-              value={landingContent.howYouHelp}
+              name="teachingPlan"
+              value={landingContent.teachingPlan}
               onChange={handleLandingContentChange}
-              placeholder="e.g., I help busy professionals find peace and balance through simple, effective yoga practices that can be done in just 15 minutes a day. Many of my students struggle with stress, back pain, and lack of energy..."
-              rows={4}
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: '1px solid #e2e8f0',
-                borderRadius: '8px',
-                fontSize: '14px',
-                resize: 'vertical',
-              }}
-            />
-          </div>
-
-          {/* Question 2: Values for learners */}
-          <div style={{ marginBottom: '24px' }}>
-            <label
-              style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}
-            >
-              What can learners expect to gain? *
-            </label>
-            <p style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>
-              List the benefits and outcomes (used for Value Propositions - we&apos;ll extract 2 key
-              benefits)
-            </p>
-            <textarea
-              name="valuesForLearners"
-              value={landingContent.valuesForLearners}
-              onChange={handleLandingContentChange}
-              placeholder="e.g., Reduced stress and anxiety, improved flexibility and strength, better sleep quality, increased energy levels, mindfulness skills they can use anywhere..."
-              rows={4}
+              placeholder="e.g., I teach yoga for busy professionals who struggle with stress, back pain, and low energy. Through simple 15-minute daily practices, my students achieve reduced anxiety, improved flexibility, better sleep, and lasting mindfulness skills..."
+              rows={5}
               style={{
                 width: '100%',
                 padding: '12px',
@@ -726,27 +741,16 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
             <button
               type="button"
               onClick={handlePreviewExtraction}
-              disabled={
-                extracting || (!landingContent.howYouHelp && !landingContent.valuesForLearners)
-              }
+              disabled={extracting || !landingContent.teachingPlan}
               style={{
                 padding: '12px 24px',
-                background:
-                  extracting || (!landingContent.howYouHelp && !landingContent.valuesForLearners)
-                    ? '#e2e8f0'
-                    : '#f0f9ff',
-                color:
-                  extracting || (!landingContent.howYouHelp && !landingContent.valuesForLearners)
-                    ? '#999'
-                    : '#0369a1',
+                background: extracting || !landingContent.teachingPlan ? '#e2e8f0' : '#f0f9ff',
+                color: extracting || !landingContent.teachingPlan ? '#999' : '#0369a1',
                 border: '1px solid #bae6fd',
                 borderRadius: '8px',
                 fontSize: '14px',
                 fontWeight: '500',
-                cursor:
-                  extracting || (!landingContent.howYouHelp && !landingContent.valuesForLearners)
-                    ? 'not-allowed'
-                    : 'pointer',
+                cursor: extracting || !landingContent.teachingPlan ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
@@ -923,31 +927,285 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
         </div>
       )}
 
+      {/* Step 3: Template Selection - Full Preview Carousel */}
+      {step === 3 &&
+        (() => {
+          const currentTemplate = templates[previewTemplateIndex];
+          const expertName = formData.name || 'Your Name';
+
+          // Build comprehensive preview data with dummy content where real data is missing
+          const previewData: CustomLandingPageConfig = {
+            template: currentTemplate.id,
+            // Hero section with dummy image
+            hero: {
+              headline:
+                extractedContent?.hero?.headline || `Transform Your Life with ${expertName}`,
+              description: extractedContent?.hero?.description || LOREM.medium,
+              ctaText: extractedContent?.hero?.ctaText || 'Start Your Journey',
+              alignment: 'center',
+              heroImage: DUMMY_IMAGE,
+            },
+            // Value propositions with dummy items
+            valuePropositions: extractedContent?.valuePropositions
+              ? {
+                  type: 'list',
+                  items: extractedContent.valuePropositions.items,
+                }
+              : {
+                  type: 'list',
+                  items: [
+                    'Lorem ipsum dolor sit amet consectetur',
+                    'Sed do eiusmod tempor incididunt',
+                    'Ut enim ad minim veniam quis nostrud',
+                  ],
+                },
+            // About section with dummy content
+            about: {
+              layoutType: 'image-text',
+              imageUrl: landingContent.aboutImage || DUMMY_IMAGE,
+              text: landingContent.aboutBio || LOREM.long,
+            },
+            // Courses section header
+            courses: {
+              title: 'Featured Courses',
+              description: `Start your learning journey with ${expertName}`,
+            },
+            // Photo gallery with dummy images
+            photoGallery: {
+              title: 'Gallery',
+              description: 'A glimpse into our practice',
+              images: [
+                {
+                  id: '1',
+                  url: '/template/gallery1.jpg',
+                  caption: 'Peaceful morning yoga session',
+                },
+                { id: '2', url: '/template/gallery2.jpg', caption: 'Group meditation practice' },
+                { id: '3', url: '/template/gallery1.jpg', caption: 'Advanced pose workshop' },
+                { id: '4', url: '/template/gallery2.jpg', caption: 'Sunset yoga by the beach' },
+              ],
+            },
+            // Blog section header
+            blog: {
+              title: 'From the Blog',
+              description: `Insights and articles from ${expertName}`,
+            },
+            // Act (CTA) section with dummy content
+            act: {
+              title: 'Ready to Transform Your Practice?',
+              text: LOREM.medium,
+              imageUrl: DUMMY_IMAGE,
+            },
+            // Footer with dummy links
+            footer: {
+              tagline: 'Namaste - The light in me honors the light in you',
+              showSocialLinks: true,
+              socialLinks: {
+                instagram: '#',
+                youtube: '#',
+                facebook: '#',
+              },
+              showLegalLinks: true,
+              legalLinks: {
+                privacyPolicy: '#',
+                termsOfService: '#',
+              },
+              showContactInfo: true,
+              contactEmail: `hello@${formData.id || 'example'}.myyoga.guru`,
+            },
+          };
+
+          return (
+            <div>
+              {/* Template Header with Navigation */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '16px',
+                  background: '#fff',
+                  padding: '16px 24px',
+                  borderRadius: '12px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                }}
+              >
+                {/* Prev Button */}
+                <button
+                  onClick={() =>
+                    setPreviewTemplateIndex(
+                      (previewTemplateIndex - 1 + templates.length) % templates.length
+                    )
+                  }
+                  style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '50%',
+                    border: '1px solid #e2e8f0',
+                    background: '#fff',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '18px',
+                    color: '#666',
+                  }}
+                >
+                  ←
+                </button>
+
+                {/* Template Info */}
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>
+                    Template {previewTemplateIndex + 1} of {templates.length}
+                  </div>
+                  <h3 style={{ fontSize: '20px', fontWeight: '600', margin: '0 0 4px 0' }}>
+                    {currentTemplate.name}
+                  </h3>
+                  <p style={{ fontSize: '13px', color: '#666', margin: 0 }}>
+                    {currentTemplate.description}
+                  </p>
+                </div>
+
+                {/* Next Button */}
+                <button
+                  onClick={() =>
+                    setPreviewTemplateIndex((previewTemplateIndex + 1) % templates.length)
+                  }
+                  style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '50%',
+                    border: '1px solid #e2e8f0',
+                    background: '#fff',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '18px',
+                    color: '#666',
+                  }}
+                >
+                  →
+                </button>
+              </div>
+
+              {/* Select Template Button */}
+              <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+                {selectedTemplate === currentTemplate.id ? (
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      padding: '10px 24px',
+                      background: 'var(--color-primary)',
+                      color: '#fff',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                    }}
+                  >
+                    ✓ Selected
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => setSelectedTemplate(currentTemplate.id)}
+                    style={{
+                      padding: '10px 24px',
+                      background: '#f0f9ff',
+                      color: '#0369a1',
+                      border: '1px solid #bae6fd',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Select This Template
+                  </button>
+                )}
+              </div>
+
+              {/* Full Preview - All Sections */}
+              <div
+                style={{
+                  border: '2px solid #e2e8f0',
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                }}
+              >
+                <HeroPreview
+                  data={previewData}
+                  expertName={expertName}
+                  expertBio={landingContent.aboutBio || LOREM.medium}
+                  template={currentTemplate.id}
+                />
+                <ValuePropsPreview data={previewData} template={currentTemplate.id} />
+                <AboutPreview data={previewData} template={currentTemplate.id} />
+                <PhotoGalleryPreview
+                  data={previewData}
+                  expertName={expertName}
+                  template={currentTemplate.id}
+                />
+                <ActPreview data={previewData} template={currentTemplate.id} />
+                <FooterPreview
+                  data={previewData}
+                  expertName={expertName}
+                  template={currentTemplate.id}
+                />
+              </div>
+
+              {/* Template Dots Indicator */}
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  marginTop: '16px',
+                }}
+              >
+                {templates.map((t, idx) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setPreviewTemplateIndex(idx)}
+                    style={{
+                      width: idx === previewTemplateIndex ? '24px' : '10px',
+                      height: '10px',
+                      borderRadius: '5px',
+                      border: 'none',
+                      background: idx === previewTemplateIndex ? 'var(--color-primary)' : '#e2e8f0',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                    }}
+                    title={t.name}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
       {/* Navigation Buttons */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '32px' }}>
         <SecondaryButton onClick={handleBack} disabled={step === 1 || loading}>
           Back
         </SecondaryButton>
 
-        {step < 2 ? (
-          <PrimaryButton onClick={handleNext} disabled={loading}>
+        {step < 3 ? (
+          <PrimaryButton onClick={handleNext} disabled={loading || (step === 2 && !showPreview)}>
             Next
           </PrimaryButton>
         ) : (
-          <PrimaryButton
-            onClick={handleSubmit}
-            disabled={loading || !showPreview}
-            loading={loading}
-          >
+          <PrimaryButton onClick={handleSubmit} disabled={loading} loading={loading}>
             {loading ? 'Creating Your Page...' : '✨ Create My Landing Page'}
           </PrimaryButton>
         )}
       </div>
 
-      {/* Hint for Create button */}
+      {/* Hint for Next button on step 2 */}
       {step === 2 && !showPreview && (
         <p style={{ textAlign: 'center', fontSize: '12px', color: '#999', marginTop: '12px' }}>
-          Click &quot;Preview AI Extraction&quot; first to see how your landing page will look
+          Click &quot;Preview AI Extraction&quot; first to continue
         </p>
       )}
     </div>

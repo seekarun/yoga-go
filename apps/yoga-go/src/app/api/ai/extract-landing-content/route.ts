@@ -15,8 +15,7 @@ function getOpenAIClient(): OpenAI {
 
 interface ExtractContentRequest {
   expertName: string;
-  howYouHelp: string; // How can you help your students?
-  valuesForLearners: string; // What values can learners expect to gain?
+  teachingPlan: string; // What do you plan to teach?
   aboutBio: string; // About/promo text
 }
 
@@ -37,53 +36,50 @@ export async function POST(request: Request) {
 
   try {
     const body: ExtractContentRequest = await request.json();
-    const { expertName, howYouHelp, valuesForLearners, aboutBio } = body;
+    const { expertName, teachingPlan, aboutBio } = body;
 
     console.log('[DBG][extract-landing-content] Processing for:', expertName);
 
-    if (!howYouHelp && !valuesForLearners && !aboutBio) {
+    if (!teachingPlan && !aboutBio) {
       return NextResponse.json(
         { success: false, error: 'At least one content field is required' },
         { status: 400 }
       );
     }
 
-    const prompt = `You are a landing page copywriter for yoga and wellness experts. Extract content from user inputs into structured landing page sections.
+    const prompt = `You are a landing page copywriter for yoga and wellness experts. Extract content from the user's teaching plan into structured landing page sections.
 
 Expert Name: ${expertName}
 
-INPUT 1 - How they help students (use this for HERO SECTION):
-${howYouHelp || 'Not provided'}
+TEACHING PLAN (what they plan to teach):
+${teachingPlan || 'Not provided'}
 
-INPUT 2 - Values learners can expect (use this for VALUE PROPOSITIONS):
-${valuesForLearners || 'Not provided'}
-
-Based on the above, generate a JSON response with the following structure:
+From this single input, extract BOTH the hero section AND value propositions. Generate a JSON response:
 
 {
   "hero": {
-    "headline": "Extract a problem-hook headline (max 8 words) from INPUT 1. This should address the student's pain point or struggle.",
-    "description": "Extract a results-hook (1-2 sentences) from INPUT 1. This should describe the transformation or outcome students will achieve.",
+    "headline": "A problem-hook headline (max 8 words) addressing the student's pain point or struggle",
+    "description": "A results-hook (1-2 sentences) describing the transformation or outcome students will achieve",
     "ctaText": "Start Your Journey"
   },
   "valuePropositions": {
     "type": "list",
-    "items": ["Value 1 from INPUT 2", "Value 2 from INPUT 2"]
+    "items": ["Benefit 1", "Benefit 2"]
   }
 }
 
-IMPORTANT RULES:
-1. For HERO - Extract ONLY from INPUT 1:
-   - headline: Identify the main problem/struggle mentioned and turn it into a question or statement (e.g., "Struggling with stress and back pain?")
-   - description: Identify the solution/transformation offered (e.g., "Find peace and balance through simple yoga practices")
+EXTRACTION RULES:
+1. For HERO:
+   - headline: Find the problem/struggle mentioned (e.g., "Struggling with stress and back pain?")
+   - description: Find the solution/transformation offered (e.g., "Find peace and balance through simple yoga practices")
 
-2. For VALUE PROPOSITIONS - Extract ONLY from INPUT 2:
-   - Extract exactly 2 clear, concise benefits
+2. For VALUE PROPOSITIONS:
+   - Extract exactly 2 clear, concise benefits or outcomes
    - Keep them short (5-10 words each)
-   - Focus on outcomes, not features
+   - Focus on results students will achieve
 
 3. Keep the expert's authentic voice - don't over-polish
-4. If input is not provided, use empty string ""
+4. If teaching plan is not provided, use empty strings
 
 Return ONLY the JSON object, no markdown formatting.`;
 

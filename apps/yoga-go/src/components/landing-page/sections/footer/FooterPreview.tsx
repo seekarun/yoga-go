@@ -2,9 +2,14 @@
 
 import type { SectionPreviewProps } from '../types';
 
-export default function FooterPreview({ data, expertName }: SectionPreviewProps) {
+export default function FooterPreview({
+  data,
+  expertName,
+  template = 'classic',
+}: SectionPreviewProps) {
   const footer = data.footer;
   const currentYear = new Date().getFullYear();
+  const isModern = template === 'modern';
 
   const defaultCopyright = `${currentYear} ${expertName || 'Your Name'}. All rights reserved.`;
   const copyrightText = footer?.copyrightText || defaultCopyright;
@@ -26,6 +31,238 @@ export default function FooterPreview({ data, expertName }: SectionPreviewProps)
   const hasLegalLinks =
     legalLinks.privacyPolicy || legalLinks.termsOfService || legalLinks.refundPolicy;
 
+  // Modern template - Expanded footer with gradient
+  if (isModern) {
+    return (
+      <footer
+        style={{
+          padding: '80px 40px 40px',
+          background: '#0a0a0a',
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Gradient line at top */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '1px',
+            background: 'linear-gradient(90deg, transparent, #6366f1, #a855f7, transparent)',
+          }}
+        />
+
+        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+          {/* Main footer content */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '2fr 1fr 1fr 1fr',
+              gap: '60px',
+              marginBottom: '60px',
+            }}
+          >
+            {/* Brand column */}
+            <div>
+              <div
+                style={{
+                  fontSize: '24px',
+                  fontWeight: '800',
+                  marginBottom: '16px',
+                  background: 'linear-gradient(135deg, #6366f1, #a855f7)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}
+              >
+                {expertName || 'Your Brand'}
+              </div>
+              {tagline && (
+                <p
+                  style={{
+                    fontSize: '15px',
+                    color: 'rgba(255,255,255,0.6)',
+                    lineHeight: '1.6',
+                    marginBottom: '24px',
+                    maxWidth: '280px',
+                  }}
+                >
+                  {tagline}
+                </p>
+              )}
+
+              {/* Social Links */}
+              {showSocialLinks && hasSocialLinks && (
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  {socialLinks.instagram && (
+                    <a
+                      href={socialLinks.instagram}
+                      style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '10px',
+                        background: 'rgba(255,255,255,0.05)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'rgba(255,255,255,0.6)',
+                        textDecoration: 'none',
+                      }}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073z" />
+                      </svg>
+                    </a>
+                  )}
+                  {socialLinks.youtube && (
+                    <a
+                      href={socialLinks.youtube}
+                      style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '10px',
+                        background: 'rgba(255,255,255,0.05)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'rgba(255,255,255,0.6)',
+                        textDecoration: 'none',
+                      }}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z" />
+                      </svg>
+                    </a>
+                  )}
+                  {socialLinks.facebook && (
+                    <a
+                      href={socialLinks.facebook}
+                      style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '10px',
+                        background: 'rgba(255,255,255,0.05)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'rgba(255,255,255,0.6)',
+                        textDecoration: 'none',
+                      }}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z" />
+                      </svg>
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Quick Links */}
+            <div>
+              <h4
+                style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#fff',
+                  marginBottom: '20px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                }}
+              >
+                Quick Links
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {['Courses', 'Live Sessions', 'Blog', 'About'].map(link => (
+                  <span key={link} style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>
+                    {link}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Legal */}
+            <div>
+              <h4
+                style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#fff',
+                  marginBottom: '20px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                }}
+              >
+                Legal
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {showLegalLinks && (
+                  <>
+                    {legalLinks.privacyPolicy && (
+                      <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>
+                        Privacy Policy
+                      </span>
+                    )}
+                    {legalLinks.termsOfService && (
+                      <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>
+                        Terms of Service
+                      </span>
+                    )}
+                    {legalLinks.refundPolicy && (
+                      <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>
+                        Refund Policy
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Contact */}
+            <div>
+              <h4
+                style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#fff',
+                  marginBottom: '20px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                }}
+              >
+                Contact
+              </h4>
+              {showContactInfo && contactEmail && (
+                <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)' }}>{contactEmail}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Bottom bar */}
+          <div
+            style={{
+              paddingTop: '30px',
+              borderTop: '1px solid rgba(255,255,255,0.1)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>© {copyrightText}</p>
+            <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>
+              Powered by <span style={{ color: '#a855f7' }}>MyYoga.Guru</span>
+            </p>
+          </div>
+        </div>
+      </footer>
+    );
+  }
+
+  // Classic template - Original compact footer
   return (
     <footer
       style={{
@@ -65,11 +302,11 @@ export default function FooterPreview({ data, expertName }: SectionPreviewProps)
                 href={socialLinks.instagram}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ color: '#a0a0a0', transition: 'color 0.2s' }}
+                style={{ color: '#a0a0a0' }}
                 title="Instagram"
               >
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
+                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073z" />
                 </svg>
               </a>
             )}
@@ -78,7 +315,7 @@ export default function FooterPreview({ data, expertName }: SectionPreviewProps)
                 href={socialLinks.youtube}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ color: '#a0a0a0', transition: 'color 0.2s' }}
+                style={{ color: '#a0a0a0' }}
                 title="YouTube"
               >
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
@@ -91,37 +328,11 @@ export default function FooterPreview({ data, expertName }: SectionPreviewProps)
                 href={socialLinks.facebook}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ color: '#a0a0a0', transition: 'color 0.2s' }}
+                style={{ color: '#a0a0a0' }}
                 title="Facebook"
               >
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z" />
-                </svg>
-              </a>
-            )}
-            {socialLinks.twitter && (
-              <a
-                href={socialLinks.twitter}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: '#a0a0a0', transition: 'color 0.2s' }}
-                title="X (Twitter)"
-              >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                </svg>
-              </a>
-            )}
-            {socialLinks.tiktok && (
-              <a
-                href={socialLinks.tiktok}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: '#a0a0a0', transition: 'color 0.2s' }}
-                title="TikTok"
-              >
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z" />
                 </svg>
               </a>
             )}
@@ -140,46 +351,13 @@ export default function FooterPreview({ data, expertName }: SectionPreviewProps)
             }}
           >
             {legalLinks.privacyPolicy && (
-              <a
-                href={legalLinks.privacyPolicy}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  color: '#a0a0a0',
-                  fontSize: '14px',
-                  textDecoration: 'none',
-                }}
-              >
-                Privacy Policy
-              </a>
+              <span style={{ color: '#a0a0a0', fontSize: '14px' }}>Privacy Policy</span>
             )}
             {legalLinks.termsOfService && (
-              <a
-                href={legalLinks.termsOfService}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  color: '#a0a0a0',
-                  fontSize: '14px',
-                  textDecoration: 'none',
-                }}
-              >
-                Terms of Service
-              </a>
+              <span style={{ color: '#a0a0a0', fontSize: '14px' }}>Terms of Service</span>
             )}
             {legalLinks.refundPolicy && (
-              <a
-                href={legalLinks.refundPolicy}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  color: '#a0a0a0',
-                  fontSize: '14px',
-                  textDecoration: 'none',
-                }}
-              >
-                Refund Policy
-              </a>
+              <span style={{ color: '#a0a0a0', fontSize: '14px' }}>Refund Policy</span>
             )}
           </div>
         )}
@@ -194,9 +372,7 @@ export default function FooterPreview({ data, expertName }: SectionPreviewProps)
               marginBottom: '16px',
             }}
           >
-            <a href={`mailto:${contactEmail}`} style={{ color: '#a0a0a0', textDecoration: 'none' }}>
-              {contactEmail}
-            </a>
+            {contactEmail}
           </p>
         )}
 
@@ -208,7 +384,7 @@ export default function FooterPreview({ data, expertName }: SectionPreviewProps)
             color: '#666',
           }}
         >
-          {copyrightText}
+          © {copyrightText}
         </p>
       </div>
     </footer>

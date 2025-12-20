@@ -6,7 +6,6 @@ import {
   getSubdomainFromMyYogaGuru,
   resolveDomainToTenant,
   isLearnerDomain,
-  isExpertPlatformDomain,
 } from './config/domains';
 
 /**
@@ -96,17 +95,9 @@ export default async function middleware(request: NextRequest) {
 
   // Check domain type for routing decisions
   const isLearner = isLearnerDomain(hostname);
-  const isExpertPlatform = isExpertPlatformDomain(hostname);
 
-  // Expert platform domain (myyoga.guru) - rewrite homepage to /srv
-  // This shows the expert-focused landing page / dashboard
-  // learn.myyoga.guru continues to show the learner-focused homepage
-  if (isExpertPlatform && pathname === '/') {
-    console.log('[DBG][middleware] Expert platform domain, rewriting / to /srv');
-    const url = request.nextUrl.clone();
-    url.pathname = '/srv';
-    return NextResponse.rewrite(url);
-  }
+  // Note: myyoga.guru now shows the waitlist/coming soon page at /
+  // Expert platform is accessible at /srv directly
 
   // Check if this is a dynamic myyoga.guru subdomain (e.g., deepak.myyoga.guru)
   const myYogaGuruSubdomain = getSubdomainFromMyYogaGuru(hostname);
@@ -153,8 +144,6 @@ export default async function middleware(request: NextRequest) {
     isPrimary,
     'Is learner:',
     isLearner,
-    'Is expert platform:',
-    isExpertPlatform,
     'MyYoga.Guru subdomain:',
     myYogaGuruSubdomain,
     'Has session cookie:',

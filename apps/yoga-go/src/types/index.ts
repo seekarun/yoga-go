@@ -8,6 +8,9 @@ export interface BaseEntity {
 // User Role Types
 export type UserRole = 'learner' | 'expert' | 'admin';
 
+// Landing Page Template Types
+export type LandingPageTemplate = 'classic' | 'modern';
+
 // Expert Related Types
 export interface SocialLinks {
   instagram?: string;
@@ -117,6 +120,8 @@ export interface CustomLandingPageConfig {
   // Section ordering and visibility for visual editor
   sectionOrder?: string[]; // e.g., ['hero', 'valuePropositions', 'about', 'act']
   disabledSections?: string[]; // Sections that are hidden but data preserved
+  // Template selection
+  template?: LandingPageTemplate; // Visual layout template (default: 'classic')
 }
 
 // Expert Platform Preferences

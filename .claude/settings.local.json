@@ -75,7 +75,9 @@
       "Bash(ls:*)",
       "Bash(wc:*)",
       "Bash(head:*)",
-      "Bash(aws route53domains list-domains:*)"
+      "Bash(aws route53domains list-domains:*)",
+      "Bash(AWS_PROFILE=myg npx cdk diff:*)",
+      "Bash(AWS_PROFILE=myg aws acm list-certificates:*)"
     ],
     "deny": [],
     "ask": []

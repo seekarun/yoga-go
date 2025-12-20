@@ -80,6 +80,9 @@ export const CorePK = {
   GOOGLE_AUTH: 'GOOGLE_AUTH',
   // Expert Zoom OAuth
   ZOOM_AUTH: 'ZOOM_AUTH',
+  // Waitlist signups
+  WAITLIST: 'WAITLIST',
+  WAITLIST_PENDING: (email: string) => `WAITLIST_PENDING#${email.toLowerCase()}`,
 } as const;
 
 // ============================================
@@ -150,6 +153,8 @@ export const EntityType = {
   WEBINAR_REGISTRATION: 'WEBINAR_REGISTRATION',
   GOOGLE_AUTH: 'GOOGLE_AUTH',
   ZOOM_AUTH: 'ZOOM_AUTH',
+  WAITLIST: 'WAITLIST',
+  WAITLIST_PENDING: 'WAITLIST_PENDING',
 } as const;
 
 export type EntityTypeValue = (typeof EntityType)[keyof typeof EntityType];
