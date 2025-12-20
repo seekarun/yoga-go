@@ -140,7 +140,7 @@ export default function ComingSoon() {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundImage: 'url(/landinghero1.jpg)',
+          backgroundImage: 'url(/landingHero1.jpg)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           zIndex: 0,
