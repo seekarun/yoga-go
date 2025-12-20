@@ -8,8 +8,10 @@ import AdminStatsCard from '@/components/AdminStatsCard';
 import AdminTabs from '@/components/AdminTabs';
 import UserTable from '@/components/UserTable';
 import ExpertTable from '@/components/ExpertTable';
+import WaitlistTable from '@/components/WaitlistTable';
 import NotificationOverlay from '@/components/NotificationOverlay';
 import type { AdminStats, UserListItem, ExpertListItem } from '@/types';
+import type { WaitlistSignup } from '@/lib/repositories/waitlistRepository';
 
 type AdminAction =
   | { type: 'deleteUser'; userId: string }
@@ -30,6 +32,10 @@ export default function AdminDashboard() {
   const [expertsPage, setExpertsPage] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
   const [totalExperts, setTotalExperts] = useState(0);
+
+  // Waitlist state
+  const [waitlistSignups, setWaitlistSignups] = useState<WaitlistSignup[]>([]);
+  const [totalWaitlist, setTotalWaitlist] = useState(0);
 
   // Inbox unread count
   const [inboxUnreadCount, setInboxUnreadCount] = useState(0);
@@ -132,6 +138,29 @@ export default function AdminDashboard() {
       fetchExperts();
     }
   }, [isAdmin, activeTab, expertsPage]);
+
+  // Fetch waitlist
+  useEffect(() => {
+    const fetchWaitlist = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/data/admn/waitlist');
+        const data = await response.json();
+        if (data.success) {
+          setWaitlistSignups(data.data.signups);
+          setTotalWaitlist(data.data.totalCount);
+        }
+      } catch (error) {
+        console.error('[DBG][admn] Error fetching waitlist:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (isAdmin && activeTab === 'waitlist') {
+      fetchWaitlist();
+    }
+  }, [isAdmin, activeTab]);
 
   const handleEditUser = (userId: string) => {
     router.push(`/admn/users/${userId}`);
@@ -501,6 +530,7 @@ export default function AdminDashboard() {
             tabs={[
               { id: 'learners', label: 'Learners', count: totalUsers },
               { id: 'experts', label: 'Experts', count: totalExperts },
+              { id: 'waitlist', label: 'Waitlist', count: totalWaitlist },
             ]}
             activeTab={activeTab}
             onTabChange={setActiveTab}
@@ -510,6 +540,8 @@ export default function AdminDashboard() {
             <div style={{ textAlign: 'center', padding: '40px' }}>
               <div style={{ fontSize: '16px', color: '#666' }}>Loading...</div>
             </div>
+          ) : activeTab === 'waitlist' ? (
+            <WaitlistTable signups={waitlistSignups} />
           ) : activeTab === 'learners' ? (
             <>
               <UserTable

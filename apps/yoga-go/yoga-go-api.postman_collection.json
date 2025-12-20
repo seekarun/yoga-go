@@ -1887,6 +1887,32 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Admin Waitlist",
+      "description": "Admin waitlist management - view users who joined the waitlist",
+      "item": [
+        {
+          "name": "Get Waitlist Signups",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/data/admn/waitlist",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "admn", "waitlist"]
+            },
+            "description": "Get all waitlist signups with their email, name, and interests/thoughts. Admin only."
+          },
+          "response": []
+        }
+      ]
     }
   ],
   "variable": [
