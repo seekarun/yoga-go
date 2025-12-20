@@ -83,6 +83,9 @@ export const CorePK = {
   // Waitlist signups
   WAITLIST: 'WAITLIST',
   WAITLIST_PENDING: (email: string) => `WAITLIST_PENDING#${email.toLowerCase()}`,
+  // Email inbox
+  EMAIL: (expertId: string) => `EMAIL#${expertId}`,
+  EMAIL_THREAD: (threadId: string) => `THREAD#${threadId}`,
 } as const;
 
 // ============================================

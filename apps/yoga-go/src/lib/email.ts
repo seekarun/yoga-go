@@ -831,3 +831,98 @@ We look forward to seeing you there!
     throw error;
   }
 };
+
+// ========================================
+// Reply Email Function (for Inbox feature)
+// ========================================
+
+export interface ReplyEmailOptions {
+  expertId: string;
+  to: string;
+  subject: string;
+  text: string;
+  html?: string;
+  inReplyTo?: string;
+  attachmentLinks?: string[]; // Cloudflare URLs to insert as links
+}
+
+/**
+ * Send a reply email from an expert
+ * Uses the expert's verified email (BYOD or platform email)
+ *
+ * @param options - Reply email options
+ * @returns Promise resolving to the SES message ID
+ */
+export async function sendReplyEmail(options: ReplyEmailOptions): Promise<string> {
+  // Note: _inReplyTo is extracted but not used yet - SendEmail API doesn't support custom headers
+  // To add In-Reply-To and References headers, would need to use SendRawEmail
+  const { expertId, to, subject, text, html, inReplyTo: _inReplyTo, attachmentLinks } = options;
+
+  console.log(`[DBG][email] Sending reply email for expert: ${expertId}`);
+  console.log(`[DBG][email] To: ${to}, Subject: ${subject}`);
+
+  // Get the from email for this expert
+  const from = await getFromEmailForExpert(expertId);
+
+  // Build HTML body with attachment links if provided
+  let htmlBody = html || text.replace(/\n/g, '<br>');
+
+  if (attachmentLinks && attachmentLinks.length > 0) {
+    htmlBody += '<br><br><strong>Attachments:</strong><ul>';
+    for (const link of attachmentLinks) {
+      // Extract filename from URL
+      const filename = link.split('/').pop() || 'Attachment';
+      htmlBody += `<li><a href="${link}" target="_blank">${filename}</a></li>`;
+    }
+    htmlBody += '</ul>';
+  }
+
+  // Build text body with attachment links
+  let textBody = text;
+  if (attachmentLinks && attachmentLinks.length > 0) {
+    textBody += '\n\nAttachments:\n';
+    for (const link of attachmentLinks) {
+      textBody += `- ${link}\n`;
+    }
+  }
+
+  const command = new SendEmailCommand({
+    Source: from,
+    Destination: {
+      ToAddresses: [to],
+    },
+    Message: {
+      Subject: {
+        Data: subject,
+        Charset: 'UTF-8',
+      },
+      Body: {
+        Text: {
+          Data: textBody,
+          Charset: 'UTF-8',
+        },
+        Html: {
+          Data: htmlBody,
+          Charset: 'UTF-8',
+        },
+      },
+    },
+    ReplyToAddresses: [from],
+    ConfigurationSetName: configSet,
+    Tags: [
+      {
+        Name: 'EmailType',
+        Value: 'inbox-reply',
+      },
+    ],
+  });
+
+  try {
+    const response = await sesClient.send(command);
+    console.log(`[DBG][email] Reply email sent successfully. MessageId: ${response.MessageId}`);
+    return response.MessageId || '';
+  } catch (error) {
+    console.error('[DBG][email] Error sending reply email:', error);
+    throw error;
+  }
+}

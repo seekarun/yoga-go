@@ -1058,3 +1058,61 @@ export interface ExpertZoomAuth extends BaseEntity {
 
 // Webinar payment type extension
 export type WebinarPaymentType = 'webinar_registration';
+
+// ========================================
+// Email Inbox Types
+// ========================================
+
+// Email address with optional display name
+export interface EmailAddress {
+  name?: string;
+  email: string;
+}
+
+// Email attachment stored in S3
+export interface EmailAttachment {
+  id: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  s3Key: string; // Path in S3 parsed/ prefix
+  contentId?: string; // For inline images (cid: references)
+}
+
+// Email message record
+export interface Email extends BaseEntity {
+  expertId: string;
+  messageId: string; // Original email Message-ID header
+  threadId?: string; // For grouping conversations
+  inReplyTo?: string; // Message-ID of parent email
+  from: EmailAddress;
+  to: EmailAddress[];
+  cc?: EmailAddress[];
+  subject: string;
+  bodyText: string;
+  bodyHtml?: string;
+  attachments: EmailAttachment[];
+  receivedAt: string; // ISO timestamp
+  isRead: boolean;
+  isStarred: boolean;
+  isOutgoing: boolean; // true for replies sent by expert
+  status: 'received' | 'sent' | 'failed';
+  errorMessage?: string; // If status is 'failed'
+}
+
+// Paginated email list result
+export interface EmailListResult {
+  emails: Email[];
+  totalCount: number;
+  unreadCount: number;
+  lastKey?: string; // For pagination
+}
+
+// Email filters for listing
+export interface EmailFilters {
+  unreadOnly?: boolean;
+  starredOnly?: boolean;
+  search?: string;
+  limit?: number;
+  lastKey?: string;
+}

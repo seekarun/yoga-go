@@ -1,11 +1,14 @@
-import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { SESClient, SendRawEmailCommand } from "@aws-sdk/client-ses";
 import {
   DynamoDBClient,
   QueryCommand,
   GetItemCommand,
+  PutItemCommand,
 } from "@aws-sdk/client-dynamodb";
+import { simpleParser } from "mailparser";
 import type { SESEvent, SESEventRecord } from "aws-lambda";
+import type { AddressObject, Attachment } from "mailparser";
 
 const s3 = new S3Client({});
 const ses = new SESClient({});
@@ -16,6 +19,35 @@ const TABLE_NAME = process.env.DYNAMODB_TABLE || "yoga-go-core";
 const BUCKET_NAME = process.env.EMAIL_BUCKET || "";
 const DEFAULT_FROM = process.env.DEFAULT_FROM_EMAIL || "hi@myyoga.guru";
 const PLATFORM_DOMAIN = "myyoga.guru";
+
+// Email address interface for inbox storage
+interface EmailAddress {
+  name?: string;
+  email: string;
+}
+
+// Attachment metadata for inbox storage
+interface EmailAttachmentMeta {
+  id: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  s3Key: string;
+  contentId?: string;
+}
+
+// Parsed email data for inbox storage
+interface ParsedEmailData {
+  from: EmailAddress;
+  to: EmailAddress[];
+  cc?: EmailAddress[];
+  subject: string;
+  bodyText: string;
+  bodyHtml?: string;
+  attachments: EmailAttachmentMeta[];
+  messageIdHeader?: string;
+  inReplyTo?: string;
+}
 
 // Platform admin emails (comma-separated list)
 // Emails to platform addresses (hi@, contact@, privacy@, etc.) will be forwarded to these addresses
@@ -182,6 +214,183 @@ async function getEmailFromS3(messageId: string): Promise<string> {
 }
 
 /**
+ * Convert mailparser AddressObject to our EmailAddress format
+ */
+function parseAddresses(addressObj?: AddressObject | AddressObject[]): EmailAddress[] {
+  if (!addressObj) return [];
+
+  const addresses = Array.isArray(addressObj) ? addressObj : [addressObj];
+  const result: EmailAddress[] = [];
+
+  for (const addr of addresses) {
+    if (addr.value) {
+      for (const v of addr.value) {
+        result.push({
+          name: v.name || undefined,
+          email: v.address || "",
+        });
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Generate a unique ID for emails and attachments
+ */
+function generateId(): string {
+  return `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+}
+
+/**
+ * Parse MIME email and extract content + attachments
+ */
+async function parseEmailMime(
+  rawEmail: string,
+  messageId: string,
+): Promise<ParsedEmailData> {
+  console.log(`[DBG][email-forwarder] Parsing MIME email: ${messageId}`);
+
+  const parsed = await simpleParser(Buffer.from(rawEmail));
+
+  // Extract addresses
+  const from = parseAddresses(parsed.from)[0] || { email: "unknown@unknown.com" };
+  const to = parseAddresses(parsed.to);
+  const cc = parseAddresses(parsed.cc);
+
+  // Store attachments to S3 parsed/ prefix
+  const attachments: EmailAttachmentMeta[] = [];
+
+  if (parsed.attachments && parsed.attachments.length > 0) {
+    console.log(`[DBG][email-forwarder] Processing ${parsed.attachments.length} attachment(s)`);
+
+    for (const attachment of parsed.attachments) {
+      try {
+        const attachmentId = generateId();
+        const s3Key = `parsed/${messageId}/${attachmentId}`;
+
+        await s3.send(
+          new PutObjectCommand({
+            Bucket: BUCKET_NAME,
+            Key: s3Key,
+            Body: attachment.content,
+            ContentType: attachment.contentType || "application/octet-stream",
+            Metadata: {
+              filename: attachment.filename || "attachment",
+              originalMessageId: messageId,
+            },
+          }),
+        );
+
+        attachments.push({
+          id: attachmentId,
+          filename: attachment.filename || "attachment",
+          mimeType: attachment.contentType || "application/octet-stream",
+          size: attachment.size || attachment.content.length,
+          s3Key,
+          contentId: attachment.contentId || undefined,
+        });
+
+        console.log(`[DBG][email-forwarder] Stored attachment: ${attachment.filename}`);
+      } catch (error) {
+        console.error(`[DBG][email-forwarder] Failed to store attachment:`, error);
+      }
+    }
+  }
+
+  return {
+    from,
+    to,
+    cc: cc.length > 0 ? cc : undefined,
+    subject: parsed.subject || "(No Subject)",
+    bodyText: parsed.text || "",
+    bodyHtml: parsed.html || undefined,
+    attachments,
+    messageIdHeader: parsed.messageId || undefined,
+    inReplyTo: parsed.inReplyTo || undefined,
+  };
+}
+
+/**
+ * Store email metadata in DynamoDB for inbox feature
+ */
+async function storeEmailToInbox(
+  emailId: string,
+  expertId: string,
+  parsedEmail: ParsedEmailData,
+  receivedAt: string,
+): Promise<void> {
+  console.log(`[DBG][email-forwarder] Storing email to inbox for expert: ${expertId}`);
+
+  const now = new Date().toISOString();
+  const pk = `EMAIL#${expertId}`;
+  const sk = `${receivedAt}#${emailId}`;
+
+  // Convert attachments to DynamoDB format
+  const attachmentsList = parsedEmail.attachments.map((att) => ({
+    M: {
+      id: { S: att.id },
+      filename: { S: att.filename },
+      mimeType: { S: att.mimeType },
+      size: { N: String(att.size) },
+      s3Key: { S: att.s3Key },
+      ...(att.contentId ? { contentId: { S: att.contentId } } : {}),
+    },
+  }));
+
+  // Convert to addresses to DynamoDB format
+  const toList = parsedEmail.to.map((addr) => ({
+    M: {
+      email: { S: addr.email },
+      ...(addr.name ? { name: { S: addr.name } } : {}),
+    },
+  }));
+
+  const ccList = parsedEmail.cc?.map((addr) => ({
+    M: {
+      email: { S: addr.email },
+      ...(addr.name ? { name: { S: addr.name } } : {}),
+    },
+  }));
+
+  await dynamodb.send(
+    new PutItemCommand({
+      TableName: TABLE_NAME,
+      Item: {
+        PK: { S: pk },
+        SK: { S: sk },
+        id: { S: emailId },
+        expertId: { S: expertId },
+        messageId: { S: parsedEmail.messageIdHeader || emailId },
+        from: {
+          M: {
+            email: { S: parsedEmail.from.email },
+            ...(parsedEmail.from.name ? { name: { S: parsedEmail.from.name } } : {}),
+          },
+        },
+        to: { L: toList },
+        ...(ccList && ccList.length > 0 ? { cc: { L: ccList } } : {}),
+        subject: { S: parsedEmail.subject },
+        bodyText: { S: parsedEmail.bodyText },
+        ...(parsedEmail.bodyHtml ? { bodyHtml: { S: parsedEmail.bodyHtml } } : {}),
+        attachments: { L: attachmentsList },
+        receivedAt: { S: receivedAt },
+        isRead: { BOOL: false },
+        isStarred: { BOOL: false },
+        isOutgoing: { BOOL: false },
+        status: { S: "received" },
+        createdAt: { S: now },
+        updatedAt: { S: now },
+        ...(parsedEmail.inReplyTo ? { inReplyTo: { S: parsedEmail.inReplyTo } } : {}),
+      },
+    }),
+  );
+
+  console.log(`[DBG][email-forwarder] Email stored to inbox: ${emailId}`);
+}
+
+/**
  * Forward email to the expert's personal email
  * @param rawEmail - Raw email content from S3
  * @param forwardTo - Email address to forward to
@@ -339,6 +548,21 @@ async function handlePlatformEmail(
     return;
   }
 
+  // Get original email from S3
+  const emailContent = await getEmailFromS3(mail.messageId);
+
+  // Parse MIME and store to inbox (always do this for valid experts)
+  try {
+    const emailId = generateId();
+    const parsedEmail = await parseEmailMime(emailContent, mail.messageId);
+    await storeEmailToInbox(emailId, expertId, parsedEmail, mail.timestamp);
+    console.log(`[DBG][email-forwarder] Stored email to inbox for expert: ${expertId}`);
+  } catch (error) {
+    console.error(`[DBG][email-forwarder] Failed to store email to inbox:`, error);
+    // Continue with forwarding even if inbox storage fails
+  }
+
+  // Forward if enabled and configured
   if (!expert.emailForwardingEnabled) {
     console.log(`[DBG][email-forwarder] Forwarding disabled for: ${expertId}`);
     return;
@@ -350,9 +574,6 @@ async function handlePlatformEmail(
     );
     return;
   }
-
-  // Get original email from S3
-  const emailContent = await getEmailFromS3(mail.messageId);
 
   // Forward the email (using platform domain)
   await forwardEmail(
@@ -398,6 +619,23 @@ async function handleByodEmail(
     return;
   }
 
+  // Get original email from S3
+  const emailContent = await getEmailFromS3(mail.messageId);
+
+  // Parse MIME and store to inbox (always do this for verified tenants)
+  if (tenant.expertId) {
+    try {
+      const emailId = generateId();
+      const parsedEmail = await parseEmailMime(emailContent, mail.messageId);
+      await storeEmailToInbox(emailId, tenant.expertId, parsedEmail, mail.timestamp);
+      console.log(`[DBG][email-forwarder] Stored BYOD email to inbox for expert: ${tenant.expertId}`);
+    } catch (error) {
+      console.error(`[DBG][email-forwarder] Failed to store BYOD email to inbox:`, error);
+      // Continue with forwarding even if inbox storage fails
+    }
+  }
+
+  // Check forwarding settings
   if (!tenant.emailConfig.forwardingEnabled) {
     console.log(
       `[DBG][email-forwarder] Email forwarding disabled for tenant: ${tenant.id}`,
@@ -411,9 +649,6 @@ async function handleByodEmail(
     );
     return;
   }
-
-  // Get original email from S3
-  const emailContent = await getEmailFromS3(mail.messageId);
 
   // Forward from the BYOD domain (must be SES verified)
   await forwardEmail(

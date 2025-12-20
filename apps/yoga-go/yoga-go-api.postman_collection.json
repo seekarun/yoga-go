@@ -1376,6 +1376,201 @@
       ]
     },
     {
+      "name": "Expert Inbox",
+      "description": "Expert email inbox management - view and reply to emails sent to expert@myyoga.guru addresses",
+      "item": [
+        {
+          "name": "List Emails",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/inbox?limit=20&unreadOnly=false&starredOnly=false",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "inbox"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Number of emails to return (default 20)"
+                },
+                {
+                  "key": "unreadOnly",
+                  "value": "false",
+                  "description": "Filter to only unread emails"
+                },
+                {
+                  "key": "starredOnly",
+                  "value": "false",
+                  "description": "Filter to only starred emails"
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Search in subject and body",
+                  "disabled": true
+                },
+                {
+                  "key": "lastKey",
+                  "value": "",
+                  "description": "Pagination key for next page",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Retrieve paginated list of emails for the authenticated expert"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Email",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/inbox/:emailId",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "inbox", ":emailId"],
+              "variable": [
+                {
+                  "key": "emailId",
+                  "value": "email-123",
+                  "description": "Email ID"
+                }
+              ]
+            },
+            "description": "Retrieve a single email by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Email Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isRead\": true,\n  \"isStarred\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/inbox/:emailId",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "inbox", ":emailId"],
+              "variable": [
+                {
+                  "key": "emailId",
+                  "value": "email-123",
+                  "description": "Email ID"
+                }
+              ]
+            },
+            "description": "Update read/starred status of an email"
+          },
+          "response": []
+        },
+        {
+          "name": "Reply to Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Thank you for your message. I'll get back to you soon.\",\n  \"html\": \"<p>Thank you for your message. I'll get back to you soon.</p>\",\n  \"attachmentLinks\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/inbox/:emailId/reply",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "inbox", ":emailId", "reply"],
+              "variable": [
+                {
+                  "key": "emailId",
+                  "value": "email-123",
+                  "description": "Email ID to reply to"
+                }
+              ]
+            },
+            "description": "Send a reply to an email. Reply is sent from expert@myyoga.guru address."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Attachment Download URL",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/inbox/:emailId/attachments/:attachmentId",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "data",
+                "app",
+                "expert",
+                "me",
+                "inbox",
+                ":emailId",
+                "attachments",
+                ":attachmentId"
+              ],
+              "variable": [
+                {
+                  "key": "emailId",
+                  "value": "email-123",
+                  "description": "Email ID"
+                },
+                {
+                  "key": "attachmentId",
+                  "value": "attachment-123",
+                  "description": "Attachment ID"
+                }
+              ]
+            },
+            "description": "Get a presigned S3 URL to download an attachment (5 minute expiry)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Google Calendar",
       "description": "Google Calendar OAuth and connection management",
       "item": [

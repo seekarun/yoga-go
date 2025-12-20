@@ -1,13 +1,13 @@
 import * as cdk from "aws-cdk-lib";
-import * as ses from "aws-cdk-lib/aws-ses";
-import * as sesActions from "aws-cdk-lib/aws-ses-actions";
-import * as s3 from "aws-cdk-lib/aws-s3";
+import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as nodejsLambda from "aws-cdk-lib/aws-lambda-nodejs";
-import * as iam from "aws-cdk-lib/aws-iam";
+import * as s3 from "aws-cdk-lib/aws-s3";
 import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
-import * as path from "path";
+import * as ses from "aws-cdk-lib/aws-ses";
+import * as sesActions from "aws-cdk-lib/aws-ses-actions";
 import type { Construct } from "constructs";
+import * as path from "path";
 
 // Domain configuration (DNS managed by Vercel)
 const MYYOGA_GURU_DOMAIN = "myyoga.guru";
@@ -148,8 +148,15 @@ The MyYoga.Guru Team`,
       bucketName: `yoga-go-incoming-emails-${this.account}`,
       lifecycleRules: [
         {
-          id: "DeleteAfterOneDay",
+          id: "DeleteIncomingAfterOneDay",
+          prefix: "incoming/",
           expiration: cdk.Duration.days(1),
+          enabled: true,
+        },
+        {
+          id: "DeleteParsedAfter90Days",
+          prefix: "parsed/",
+          expiration: cdk.Duration.days(90),
           enabled: true,
         },
       ],
@@ -170,7 +177,7 @@ The MyYoga.Guru Team`,
             "AWS:SourceAccount": this.account,
           },
         },
-      }),
+      })
     );
 
     // ========================================
@@ -178,7 +185,7 @@ The MyYoga.Guru Team`,
     // ========================================
     // Platform admin emails - emails to hi@, contact@, privacy@ will be forwarded to these addresses
     // Comma-separated list of email addresses
-    const platformAdminEmails = "hi@arun.au";
+    const platformAdminEmails = "hi@arun.au,srinathm097@gmail.com";
 
     const emailForwarderLambda = new nodejsLambda.NodejsFunction(
       this,
@@ -197,19 +204,21 @@ The MyYoga.Guru Team`,
           PLATFORM_ADMIN_EMAILS: platformAdminEmails,
         },
         bundling: { minify: true, sourceMap: false },
-      },
+      }
     );
 
-    // Grant Lambda permissions
-    emailBucket.grantRead(emailForwarderLambda);
+    // Grant Lambda permissions - read incoming emails, write parsed attachments
+    emailBucket.grantReadWrite(emailForwarderLambda);
 
-    // DynamoDB read access (cross-region)
+    // DynamoDB read/write access (cross-region)
+    // Read: lookup expert/tenant for forwarding
+    // Write: store parsed email metadata for inbox feature
     emailForwarderLambda.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        actions: ["dynamodb:GetItem", "dynamodb:Query"],
+        actions: ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:PutItem"],
         resources: [coreTableArn, `${coreTableArn}/index/*`],
-      }),
+      })
     );
 
     // SES send email permission
@@ -218,7 +227,7 @@ The MyYoga.Guru Team`,
         effect: iam.Effect.ALLOW,
         actions: ["ses:SendRawEmail"],
         resources: ["*"],
-      }),
+      })
     );
 
     // Allow SES to invoke the Lambda
@@ -236,6 +245,7 @@ The MyYoga.Guru Team`,
 
     // Rule 1: Platform emails (@myyoga.guru)
     // This matches all @myyoga.guru emails
+    // StopAction prevents fall-through to the catch-all BYOD rule
     receiptRuleSet.addRule("ForwardPlatformEmails", {
       recipients: ["myyoga.guru"],
       actions: [
@@ -247,6 +257,7 @@ The MyYoga.Guru Team`,
           function: emailForwarderLambda,
           invocationType: sesActions.LambdaInvocationType.EVENT,
         }),
+        new sesActions.Stop(),
       ],
       scanEnabled: true,
     });
@@ -254,8 +265,7 @@ The MyYoga.Guru Team`,
     // Rule 2: BYOD custom domain emails (catch-all for any verified domain)
     // Empty recipients array = catch all emails for any verified domain in SES
     // Lambda filters by domain to find the right tenant
-    // Note: This rule is processed after the platform rule, so myyoga.guru
-    // emails are handled by the first rule and don't fall through here
+    // Platform emails (myyoga.guru) won't reach here due to StopAction above
     receiptRuleSet.addRule("ForwardByodEmails", {
       recipients: [], // Catch-all for any SES-verified domain
       actions: [
@@ -293,7 +303,7 @@ The MyYoga.Guru Team`,
         effect: iam.Effect.ALLOW,
         actions: ["ses:SendRawEmail", "ses:SendEmail"],
         resources: ["*"],
-      }),
+      })
     );
 
     // Create access key and store in Secrets Manager
@@ -312,11 +322,11 @@ The MyYoga.Guru Team`,
           accessKeyId: cdk.SecretValue.unsafePlainText(accessKey.accessKeyId),
           secretAccessKey: accessKey.secretAccessKey,
           smtpServer: cdk.SecretValue.unsafePlainText(
-            "email-smtp.us-west-2.amazonaws.com",
+            "email-smtp.us-west-2.amazonaws.com"
           ),
           smtpPort: cdk.SecretValue.unsafePlainText("587"),
         },
-      },
+      }
     );
 
     // ========================================

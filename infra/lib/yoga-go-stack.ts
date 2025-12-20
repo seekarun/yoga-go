@@ -1,14 +1,14 @@
 import * as cdk from "aws-cdk-lib";
-import * as iam from "aws-cdk-lib/aws-iam";
-import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
+import * as acm from "aws-cdk-lib/aws-certificatemanager";
 import * as cognito from "aws-cdk-lib/aws-cognito";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
-import * as ses from "aws-cdk-lib/aws-ses";
+import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as nodejsLambda from "aws-cdk-lib/aws-lambda-nodejs";
-import * as acm from "aws-cdk-lib/aws-certificatemanager";
-import * as path from "path";
+import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
+import * as ses from "aws-cdk-lib/aws-ses";
 import type { Construct } from "constructs";
+import * as path from "path";
 
 // Domain configuration (DNS managed by Vercel)
 const MYYOGA_GURU_DOMAIN = "myyoga.guru";
@@ -68,7 +68,7 @@ export class YogaGoStack extends cdk.Stack {
       // Use SES for branded verification emails (instead of default Cognito email)
       // Note: SES is configured in us-west-2 (required for email receiving capability)
       email: cognito.UserPoolEmail.withSES({
-        fromEmail: "no-reply@myyoga.guru",
+        fromEmail: "noreply@myyoga.guru",
         fromName: "MyYoga.Guru",
         sesRegion: "us-west-2",
         sesVerifiedDomain: MYYOGA_GURU_DOMAIN,
@@ -77,7 +77,8 @@ export class YogaGoStack extends cdk.Stack {
       // Custom verification email template
       userVerification: {
         emailSubject: "Verify your MyYoga.Guru account",
-        emailBody: "Namaste! Please verify your email by entering this code: {####}",
+        emailBody:
+          "Namaste! Please verify your email by entering this code: {####}",
         emailStyle: cognito.VerificationEmailStyle.CODE,
       },
     });
@@ -93,7 +94,7 @@ export class YogaGoStack extends cdk.Stack {
     // 4. Deploy with: cdk deploy -c cognitoCertificateArn=arn:aws:acm:us-east-1:...
     // 5. Add CNAME record in Vercel: signin.myyoga.guru -> [CloudFront domain from output]
     const cognitoCertificateArn = this.node.tryGetContext(
-      "cognitoCertificateArn",
+      "cognitoCertificateArn"
     );
 
     let cognitoDomainName: string;
@@ -103,7 +104,7 @@ export class YogaGoStack extends cdk.Stack {
       const certificate = acm.Certificate.fromCertificateArn(
         this,
         "CognitoCertificate",
-        cognitoCertificateArn,
+        cognitoCertificateArn
       );
 
       const customDomain = userPool.addDomain("YogaGoCustomDomain", {
@@ -136,7 +137,7 @@ export class YogaGoStack extends cdk.Stack {
     const appSecret = secretsmanager.Secret.fromSecretNameV2(
       this,
       "AppSecret",
-      "yoga-go/production",
+      "yoga-go/production"
     );
 
     // ========================================
@@ -151,7 +152,7 @@ export class YogaGoStack extends cdk.Stack {
           .secretValueFromJson("GOOGLE_CLIENT_ID")
           .unsafeUnwrap(),
         clientSecretValue: appSecret.secretValueFromJson(
-          "GOOGLE_CLIENT_SECRET",
+          "GOOGLE_CLIENT_SECRET"
         ),
         scopes: ["email", "profile", "openid"],
         attributeMapping: {
@@ -159,7 +160,7 @@ export class YogaGoStack extends cdk.Stack {
           fullname: cognito.ProviderAttribute.GOOGLE_NAME,
           profilePicture: cognito.ProviderAttribute.GOOGLE_PICTURE,
         },
-      },
+      }
     );
 
     const facebookProvider = new cognito.UserPoolIdentityProviderFacebook(
@@ -178,7 +179,7 @@ export class YogaGoStack extends cdk.Stack {
           email: cognito.ProviderAttribute.FACEBOOK_EMAIL,
           fullname: cognito.ProviderAttribute.FACEBOOK_NAME,
         },
-      },
+      }
     );
 
     // ========================================
@@ -335,7 +336,7 @@ The MyYoga.Guru Team`,
           SES_WELCOME_TEMPLATE: "yoga-go-welcome",
         },
         bundling: { minify: true, sourceMap: false },
-      },
+      }
     );
 
     welcomeEmailLambda.addToRolePolicy(
@@ -348,12 +349,12 @@ The MyYoga.Guru Team`,
         ],
         resources: ["*"],
         conditions: { StringEquals: { "ses:FromAddress": "hi@myyoga.guru" } },
-      }),
+      })
     );
 
     userPool.addTrigger(
       cognito.UserPoolOperation.POST_CONFIRMATION,
-      welcomeEmailLambda,
+      welcomeEmailLambda
     );
 
     // ========================================

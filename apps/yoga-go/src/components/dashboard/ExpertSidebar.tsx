@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
@@ -14,6 +14,7 @@ interface MenuItem {
   href: string;
   icon: React.ReactNode;
   color?: string;
+  badge?: number;
 }
 
 const SIDEBAR_COLLAPSED_KEY = 'expert-sidebar-collapsed';
@@ -21,6 +22,29 @@ const SIDEBAR_COLLAPSED_KEY = 'expert-sidebar-collapsed';
 export default function ExpertSidebar({ expertId }: ExpertSidebarProps) {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Fetch unread email count
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const response = await fetch('/data/app/expert/me/inbox?limit=1');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          setUnreadCount(data.data.unreadCount || 0);
+        }
+      }
+    } catch (error) {
+      console.log('[DBG][ExpertSidebar] Failed to fetch unread count:', error);
+    }
+  }, []);
+
+  // Fetch unread count on mount and periodically
+  useEffect(() => {
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 60000); // Refresh every minute
+    return () => clearInterval(interval);
+  }, [fetchUnreadCount]);
 
   // Load collapsed state from localStorage on mount
   useEffect(() => {
@@ -114,6 +138,22 @@ export default function ExpertSidebar({ expertId }: ExpertSidebarProps) {
           />
         </svg>
       ),
+    },
+    {
+      id: 'inbox',
+      label: 'Inbox',
+      href: `/srv/${expertId}/inbox`,
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+          />
+        </svg>
+      ),
+      badge: unreadCount,
     },
     {
       id: 'assets',
@@ -249,7 +289,7 @@ export default function ExpertSidebar({ expertId }: ExpertSidebarProps) {
             <Link
               key={item.id}
               href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group ${
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group relative ${
                 active ? '' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
               }`}
               style={
@@ -263,12 +303,26 @@ export default function ExpertSidebar({ expertId }: ExpertSidebarProps) {
               title={isCollapsed ? item.label : undefined}
             >
               <span
-                className={`flex-shrink-0 ${active ? '' : 'text-gray-400 group-hover:text-gray-600'}`}
+                className={`flex-shrink-0 relative ${active ? '' : 'text-gray-400 group-hover:text-gray-600'}`}
                 style={active ? { color: 'var(--color-primary)' } : undefined}
               >
                 {item.icon}
+                {item.badge && item.badge > 0 && isCollapsed && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                    {item.badge > 99 ? '99+' : item.badge}
+                  </span>
+                )}
               </span>
-              {!isCollapsed && <span className="font-medium text-sm truncate">{item.label}</span>}
+              {!isCollapsed && (
+                <>
+                  <span className="font-medium text-sm truncate flex-1">{item.label}</span>
+                  {item.badge && item.badge > 0 && (
+                    <span className="min-w-[20px] h-5 px-1.5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                      {item.badge > 99 ? '99+' : item.badge}
+                    </span>
+                  )}
+                </>
+              )}
             </Link>
           );
         })}
