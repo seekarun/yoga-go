@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import AdminStatsCard from '@/components/AdminStatsCard';
 import AdminTabs from '@/components/AdminTabs';
@@ -29,6 +30,9 @@ export default function AdminDashboard() {
   const [expertsPage, setExpertsPage] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
   const [totalExperts, setTotalExperts] = useState(0);
+
+  // Inbox unread count
+  const [inboxUnreadCount, setInboxUnreadCount] = useState(0);
 
   // Confirmation and notification state
   const [pendingAction, setPendingAction] = useState<AdminAction>(null);
@@ -61,6 +65,25 @@ export default function AdminDashboard() {
 
     if (isAdmin) {
       fetchStats();
+    }
+  }, [isAdmin]);
+
+  // Fetch inbox unread count
+  useEffect(() => {
+    const fetchInboxCount = async () => {
+      try {
+        const response = await fetch('/data/admn/inbox?limit=1');
+        const data = await response.json();
+        if (data.success && data.data) {
+          setInboxUnreadCount(data.data.unreadCount || 0);
+        }
+      } catch (error) {
+        console.error('[DBG][admn] Error fetching inbox count:', error);
+      }
+    };
+
+    if (isAdmin) {
+      fetchInboxCount();
     }
   }, [isAdmin]);
 
@@ -337,12 +360,64 @@ export default function AdminDashboard() {
         }}
       >
         <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-          <h1 style={{ fontSize: '36px', fontWeight: '600', marginBottom: '8px' }}>
-            Admin Dashboard
-          </h1>
-          <p style={{ fontSize: '16px', opacity: 0.9 }}>
-            Manage users, experts, and platform settings
-          </p>
+          <div
+            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}
+          >
+            <div>
+              <h1 style={{ fontSize: '36px', fontWeight: '600', marginBottom: '8px' }}>
+                Admin Dashboard
+              </h1>
+              <p style={{ fontSize: '16px', opacity: 0.9 }}>
+                Manage users, experts, and platform settings
+              </p>
+            </div>
+            <Link
+              href="/admn/inbox"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 20px',
+                background: 'rgba(255, 255, 255, 0.2)',
+                borderRadius: '8px',
+                color: '#fff',
+                textDecoration: 'none',
+                fontSize: '14px',
+                fontWeight: '500',
+                transition: 'background 0.2s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)')}
+            >
+              <svg
+                style={{ width: '20px', height: '20px' }}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                />
+              </svg>
+              Inbox
+              {inboxUnreadCount > 0 && (
+                <span
+                  style={{
+                    padding: '2px 8px',
+                    background: '#ef4444',
+                    borderRadius: '999px',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                  }}
+                >
+                  {inboxUnreadCount}
+                </span>
+              )}
+            </Link>
+          </div>
         </div>
       </section>
 

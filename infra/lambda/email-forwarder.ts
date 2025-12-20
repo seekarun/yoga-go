@@ -515,6 +515,17 @@ async function handlePlatformEmail(
     // Get original email from S3
     const emailContent = await getEmailFromS3(mail.messageId);
 
+    // Parse MIME and store to admin inbox
+    try {
+      const emailId = generateId();
+      const parsedEmail = await parseEmailMime(emailContent, mail.messageId);
+      await storeEmailToInbox(emailId, "ADMIN", parsedEmail, mail.timestamp);
+      console.log(`[DBG][email-forwarder] Stored platform email to admin inbox`);
+    } catch (error) {
+      console.error(`[DBG][email-forwarder] Failed to store to admin inbox:`, error);
+      // Continue with forwarding even if inbox storage fails
+    }
+
     // Forward to each admin email
     for (const adminEmail of PLATFORM_ADMIN_EMAILS) {
       try {

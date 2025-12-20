@@ -926,3 +926,96 @@ export async function sendReplyEmail(options: ReplyEmailOptions): Promise<string
     throw error;
   }
 }
+
+// ========================================
+// Admin Reply Email Function (for Admin Inbox)
+// ========================================
+
+export interface AdminReplyEmailOptions {
+  to: string;
+  subject: string;
+  text: string;
+  html?: string;
+  inReplyTo?: string;
+  attachmentLinks?: string[];
+}
+
+/**
+ * Send a reply email from the admin inbox (hi@myyoga.guru)
+ * Used for replying to platform emails (hi@, contact@, privacy@)
+ *
+ * @param options - Reply email options
+ * @returns Promise resolving to the SES message ID
+ */
+export async function sendAdminReplyEmail(options: AdminReplyEmailOptions): Promise<string> {
+  const { to, subject, text, html, inReplyTo: _inReplyTo, attachmentLinks } = options;
+
+  console.log(`[DBG][email] Sending admin reply email`);
+  console.log(`[DBG][email] To: ${to}, Subject: ${subject}`);
+
+  // Admin replies always come from hi@myyoga.guru
+  const from = 'hi@myyoga.guru';
+
+  // Build HTML body with attachment links if provided
+  let htmlBody = html || text.replace(/\n/g, '<br>');
+
+  if (attachmentLinks && attachmentLinks.length > 0) {
+    htmlBody += '<br><br><strong>Attachments:</strong><ul>';
+    for (const link of attachmentLinks) {
+      const filename = link.split('/').pop() || 'Attachment';
+      htmlBody += `<li><a href="${link}" target="_blank">${filename}</a></li>`;
+    }
+    htmlBody += '</ul>';
+  }
+
+  // Build text body with attachment links
+  let textBody = text;
+  if (attachmentLinks && attachmentLinks.length > 0) {
+    textBody += '\n\nAttachments:\n';
+    for (const link of attachmentLinks) {
+      textBody += `- ${link}\n`;
+    }
+  }
+
+  const command = new SendEmailCommand({
+    Source: from,
+    Destination: {
+      ToAddresses: [to],
+    },
+    Message: {
+      Subject: {
+        Data: subject,
+        Charset: 'UTF-8',
+      },
+      Body: {
+        Text: {
+          Data: textBody,
+          Charset: 'UTF-8',
+        },
+        Html: {
+          Data: htmlBody,
+          Charset: 'UTF-8',
+        },
+      },
+    },
+    ReplyToAddresses: [from],
+    ConfigurationSetName: configSet,
+    Tags: [
+      {
+        Name: 'EmailType',
+        Value: 'admin-reply',
+      },
+    ],
+  });
+
+  try {
+    const response = await sesClient.send(command);
+    console.log(
+      `[DBG][email] Admin reply email sent successfully. MessageId: ${response.MessageId}`
+    );
+    return response.MessageId || '';
+  } catch (error) {
+    console.error('[DBG][email] Error sending admin reply email:', error);
+    throw error;
+  }
+}
