@@ -32,12 +32,20 @@ import {
   verifyAllDnsRecords,
   deleteDomainIdentity,
 } from '@/lib/ses';
+import {
+  createZone,
+  checkNameserverPropagation,
+  createAllDnsRecords,
+  deleteAllDnsRecords,
+  deleteZone,
+} from '@/lib/cloudflare-dns';
 import type {
   ApiResponse,
   Tenant,
   TenantEmailConfig,
   TenantDnsRecord,
   TenantBranding,
+  CloudflareDnsConfig,
 } from '@/types';
 
 // Domain verification status for a single domain
@@ -694,6 +702,322 @@ export async function PUT(request: Request): Promise<NextResponse<ApiResponse<Te
         });
       }
 
+      case 'setup_cloudflare_ns': {
+        // Initialize Cloudflare NS management for a domain
+        // User will change nameservers to Cloudflare, and we manage DNS automatically
+        const cfDomain = body.domain || tenant.primaryDomain;
+
+        if (!cfDomain) {
+          return NextResponse.json(
+            { success: false, error: 'Domain is required' },
+            { status: 400 }
+          );
+        }
+
+        // Don't allow for myyoga.guru subdomains
+        if (cfDomain.endsWith('.myyoga.guru') || cfDomain === 'myyoga.guru') {
+          return NextResponse.json(
+            { success: false, error: 'Cloudflare NS is only available for custom domains' },
+            { status: 400 }
+          );
+        }
+
+        console.log('[DBG][tenant-api] Setting up Cloudflare NS for:', cfDomain);
+
+        // Create Cloudflare zone
+        const zoneResult = await createZone(cfDomain);
+        if (!zoneResult.success) {
+          console.error('[DBG][tenant-api] Cloudflare zone creation failed:', zoneResult.error);
+          return NextResponse.json(
+            { success: false, error: zoneResult.error || 'Failed to create Cloudflare zone' },
+            { status: 400 }
+          );
+        }
+
+        // Store Cloudflare config in tenant (including the domain this zone is for)
+        const cloudflareDns: CloudflareDnsConfig = {
+          method: 'cloudflare',
+          domain: cfDomain, // Store the domain so we know which domain this zone is for
+          zoneId: zoneResult.zoneId,
+          zoneStatus: 'pending',
+          nameservers: zoneResult.nameservers,
+          zoneCreatedAt: new Date().toISOString(),
+        };
+
+        updatedTenant = await updateTenant(tenant.id, { cloudflareDns });
+
+        console.log('[DBG][tenant-api] Cloudflare zone created:', {
+          zoneId: zoneResult.zoneId,
+          nameservers: zoneResult.nameservers,
+        });
+
+        return NextResponse.json({
+          success: true,
+          data: {
+            ...updatedTenant,
+            cloudflareSetup: {
+              nameservers: zoneResult.nameservers,
+              status: 'pending',
+              instructions:
+                'Update your domain nameservers at your registrar to the values shown above.',
+            },
+          },
+        });
+      }
+
+      case 'check_cloudflare_ns': {
+        // Check if nameservers have propagated
+        if (!tenant.cloudflareDns?.zoneId) {
+          return NextResponse.json(
+            { success: false, error: 'Cloudflare DNS not configured' },
+            { status: 400 }
+          );
+        }
+
+        console.log('[DBG][tenant-api] Checking Cloudflare NS propagation');
+
+        const nsResult = await checkNameserverPropagation(tenant.cloudflareDns.zoneId);
+
+        if (!nsResult.success) {
+          return NextResponse.json(
+            { success: false, error: nsResult.error || 'Failed to check NS status' },
+            { status: 500 }
+          );
+        }
+
+        // If NS verified and records not yet created, create them now
+        if (nsResult.verified && tenant.cloudflareDns.zoneStatus !== 'active') {
+          console.log('[DBG][tenant-api] NS verified, creating DNS records');
+
+          // Use the domain stored in cloudflareDns config (the domain the zone was created for)
+          const customDomain = tenant.cloudflareDns.domain || tenant.primaryDomain;
+          if (!customDomain) {
+            return NextResponse.json(
+              { success: false, error: 'Domain not found in Cloudflare config' },
+              { status: 400 }
+            );
+          }
+          let dkimTokens: string[] = [];
+
+          // Create SES identity if not already done
+          if (!tenant.emailConfig?.sesDkimTokens) {
+            try {
+              const sesResult = await createDomainIdentity(customDomain);
+              dkimTokens = sesResult.dkimTokens;
+
+              // Get forwarding email
+              const expert = await getExpertById(user.expertProfile);
+              const forwardToEmail =
+                expert?.platformPreferences?.forwardingEmail || user.profile?.email || '';
+
+              // Store email config
+              const emailConfig: TenantEmailConfig = {
+                domainEmail: `contact@${customDomain}`,
+                sesVerificationStatus: 'pending',
+                sesDkimTokens: dkimTokens,
+                dkimVerified: false,
+                mxVerified: false,
+                forwardToEmail,
+                forwardingEnabled: true,
+                enabledAt: new Date().toISOString(),
+              };
+              await updateTenant(tenant.id, { emailConfig });
+              console.log('[DBG][tenant-api] SES identity created for:', customDomain);
+            } catch (sesError) {
+              console.error('[DBG][tenant-api] Failed to create SES identity:', sesError);
+              // Continue anyway - DNS records for hosting will still be created
+            }
+          } else {
+            dkimTokens = tenant.emailConfig.sesDkimTokens;
+          }
+
+          // Create all DNS records via Cloudflare
+          const recordsResult = await createAllDnsRecords(
+            tenant.cloudflareDns.zoneId,
+            customDomain,
+            dkimTokens
+          );
+
+          // Add domain to Vercel for SSL
+          try {
+            await addDomainToVercel(customDomain);
+            console.log('[DBG][tenant-api] Domain added to Vercel:', customDomain);
+          } catch (vercelError) {
+            console.warn('[DBG][tenant-api] Failed to add domain to Vercel:', vercelError);
+          }
+
+          // Update tenant with active status and record IDs
+          const updatedCloudflareDns: CloudflareDnsConfig = {
+            ...tenant.cloudflareDns,
+            zoneStatus: 'active',
+            nsVerifiedAt: new Date().toISOString(),
+            recordIds: recordsResult.recordIds,
+            recordsCreatedAt: new Date().toISOString(),
+          };
+
+          updatedTenant = await updateTenant(tenant.id, { cloudflareDns: updatedCloudflareDns });
+
+          console.log('[DBG][tenant-api] Cloudflare NS setup complete:', {
+            recordsCreated: recordsResult.success,
+            errors: recordsResult.errors,
+          });
+
+          return NextResponse.json({
+            success: true,
+            data: {
+              ...updatedTenant,
+              nsVerified: true,
+              recordsCreated: recordsResult.success,
+              recordErrors: recordsResult.errors,
+            },
+            message: recordsResult.success
+              ? 'Nameservers verified! All DNS records created automatically.'
+              : 'Nameservers verified but some records failed. Check errors.',
+          });
+        }
+
+        // NS not yet verified
+        return NextResponse.json({
+          success: true,
+          data: {
+            ...tenant,
+            nsVerified: nsResult.verified,
+            zoneStatus: nsResult.status,
+          },
+          message: nsResult.verified
+            ? 'Nameservers verified!'
+            : 'Nameservers not yet verified. This can take up to 48 hours.',
+        });
+      }
+
+      case 'switch_to_manual_dns': {
+        // Switch from Cloudflare NS to manual DNS management
+        if (!tenant.cloudflareDns?.zoneId) {
+          return NextResponse.json(
+            { success: false, error: 'Cloudflare DNS not configured' },
+            { status: 400 }
+          );
+        }
+
+        console.log('[DBG][tenant-api] Switching to manual DNS');
+
+        // Delete the Cloudflare zone
+        const deleteResult = await deleteZone(tenant.cloudflareDns.zoneId);
+        if (!deleteResult.success) {
+          console.warn('[DBG][tenant-api] Failed to delete Cloudflare zone:', deleteResult.error);
+          // Continue anyway
+        }
+
+        // Clear Cloudflare config
+        updatedTenant = await updateTenant(tenant.id, { cloudflareDns: undefined });
+
+        console.log('[DBG][tenant-api] Switched to manual DNS');
+
+        return NextResponse.json({
+          success: true,
+          data: updatedTenant,
+          message: 'Switched to manual DNS. Please add DNS records manually at your registrar.',
+        });
+      }
+
+      case 'recreate_cloudflare_dns': {
+        // Recreate DNS records for an existing Cloudflare zone
+        // Useful when records were created with wrong domain or need to be refreshed
+        if (!tenant.cloudflareDns?.zoneId) {
+          return NextResponse.json(
+            { success: false, error: 'Cloudflare DNS not configured' },
+            { status: 400 }
+          );
+        }
+
+        // Get the domain - prefer body.domain, then stored domain, then primaryDomain
+        const recreateDomain = body.domain || tenant.cloudflareDns.domain;
+        if (!recreateDomain) {
+          return NextResponse.json(
+            { success: false, error: 'Domain is required' },
+            { status: 400 }
+          );
+        }
+
+        console.log('[DBG][tenant-api] Recreating DNS records for domain:', recreateDomain);
+
+        // First, delete all existing DNS records in the zone
+        const deleteRecordsResult = await deleteAllDnsRecords(tenant.cloudflareDns.zoneId);
+        console.log('[DBG][tenant-api] Deleted existing records:', deleteRecordsResult);
+
+        // Get DKIM tokens from existing email config or create new SES identity
+        let dkimTokens: string[] = [];
+        if (tenant.emailConfig?.sesDkimTokens) {
+          dkimTokens = tenant.emailConfig.sesDkimTokens;
+        } else {
+          try {
+            const sesResult = await createDomainIdentity(recreateDomain);
+            dkimTokens = sesResult.dkimTokens;
+
+            // Get forwarding email
+            const expert = await getExpertById(user.expertProfile);
+            const forwardToEmail =
+              expert?.platformPreferences?.forwardingEmail || user.profile?.email || '';
+
+            // Store email config
+            const emailConfig: TenantEmailConfig = {
+              domainEmail: `contact@${recreateDomain}`,
+              sesVerificationStatus: 'pending',
+              sesDkimTokens: dkimTokens,
+              dkimVerified: false,
+              mxVerified: false,
+              forwardToEmail,
+              forwardingEnabled: true,
+              enabledAt: new Date().toISOString(),
+            };
+            await updateTenant(tenant.id, { emailConfig });
+            console.log('[DBG][tenant-api] SES identity created for:', recreateDomain);
+          } catch (sesError) {
+            console.error('[DBG][tenant-api] Failed to create SES identity:', sesError);
+            // Continue anyway
+          }
+        }
+
+        // Create all DNS records with the correct domain
+        const recordsResult = await createAllDnsRecords(
+          tenant.cloudflareDns.zoneId,
+          recreateDomain,
+          dkimTokens
+        );
+
+        if (!recordsResult.success) {
+          console.error('[DBG][tenant-api] Failed to recreate DNS records:', recordsResult.errors);
+        }
+
+        // Add domain to Vercel for SSL
+        try {
+          await addDomainToVercel(recreateDomain);
+          console.log('[DBG][tenant-api] Domain added to Vercel:', recreateDomain);
+        } catch (vercelError) {
+          console.warn('[DBG][tenant-api] Failed to add domain to Vercel:', vercelError);
+        }
+
+        // Update tenant with new record IDs and domain
+        const updatedCloudflareDns: CloudflareDnsConfig = {
+          ...tenant.cloudflareDns,
+          domain: recreateDomain,
+          recordIds: recordsResult.recordIds,
+          recordsCreatedAt: new Date().toISOString(),
+        };
+
+        updatedTenant = await updateTenant(tenant.id, { cloudflareDns: updatedCloudflareDns });
+
+        console.log('[DBG][tenant-api] DNS records recreated for:', recreateDomain);
+
+        return NextResponse.json({
+          success: recordsResult.success,
+          data: updatedTenant,
+          message: recordsResult.success
+            ? 'DNS records recreated successfully'
+            : `Some records failed: ${recordsResult.errors?.join(', ')}`,
+        });
+      }
+
       default:
         return NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 });
     }
@@ -760,6 +1084,16 @@ export async function DELETE(): Promise<NextResponse<ApiResponse<null>>> {
         console.log('[DBG][tenant-api] Deleted SES identity:', emailDomain);
       } catch (err) {
         console.warn('[DBG][tenant-api] Failed to delete SES identity:', err);
+      }
+    }
+
+    // Delete Cloudflare zone if configured
+    if (tenant.cloudflareDns?.zoneId) {
+      try {
+        await deleteZone(tenant.cloudflareDns.zoneId);
+        console.log('[DBG][tenant-api] Deleted Cloudflare zone:', tenant.cloudflareDns.zoneId);
+      } catch (err) {
+        console.warn('[DBG][tenant-api] Failed to delete Cloudflare zone:', err);
       }
     }
 

@@ -2,14 +2,9 @@ notes
 
 [ ] Currency be localized
 
-[ ] error message does not go away.
 [ ] Duration is confusing
 
 [ ] no welcome email sent. 
-[x] logout - clean log out should ()
-[x] promo video on home page should show up on home page by default
-[x] better preview (edit landing page)
-[x] call to action button url should be selectable. (survey or courses)
 [ ] act section is not good.
 [ ] For learner - show enroll buttong in home page
 [ ] fix rating display. (don't show dummy data)
@@ -63,6 +58,10 @@ notes
 [ ] http to https redirect - check if /etc/hosts still active
 [ ] custom domain: prefix with https://
 [ ] fix google meet and zoom integration (worked for me)
+[ ] cloudflare orange cloud impl
+[ ] consider cloudflare email?
+[ ] gifting option
+[ ] discounts - expert can create discount codes
 
 [x] unique name check for expert (subdomain)
 [x] Did not understand level, should all levels be the default?
@@ -86,6 +85,12 @@ notes
 [x] disable next button until upload complete.
 [x] test with all video formats
 [x] add blog. 
+[x] logout - clean log out should ()
+[x] promo video on home page should show up on home page by default
+[x] better preview (edit landing page)
+[x] call to action button url should be selectable. (survey or courses)
+[x] error message does not go away.
+[x] cloudflare NS flow - fix domain mismatch bug (was using primaryDomain instead of zone domain)
 
 
 Namaste! 

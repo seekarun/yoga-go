@@ -307,7 +307,7 @@ export default function ExpertSidebar({ expertId }: ExpertSidebarProps) {
                 style={active ? { color: 'var(--color-primary)' } : undefined}
               >
                 {item.icon}
-                {item.badge && item.badge > 0 && isCollapsed && (
+                {item.badge !== undefined && item.badge > 0 && isCollapsed && (
                   <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
                     {item.badge > 99 ? '99+' : item.badge}
                   </span>
@@ -316,7 +316,7 @@ export default function ExpertSidebar({ expertId }: ExpertSidebarProps) {
               {!isCollapsed && (
                 <>
                   <span className="font-medium text-sm truncate flex-1">{item.label}</span>
-                  {item.badge && item.badge > 0 && (
+                  {item.badge !== undefined && item.badge > 0 && (
                     <span className="min-w-[20px] h-5 px-1.5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
                       {item.badge > 99 ? '99+' : item.badge}
                     </span>

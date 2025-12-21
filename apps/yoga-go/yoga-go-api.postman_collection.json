@@ -1913,6 +1913,264 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Domain Management",
+      "description": "Expert domain management - custom domains, Cloudflare DNS, and email configuration",
+      "item": [
+        {
+          "name": "Get Tenant",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/data/app/tenant",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "tenant"]
+            },
+            "description": "Get the current expert's tenant (domain configuration)"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Tenant",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"primaryDomain\": \"myyogastudio.com\",\n  \"featuredOnPlatform\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/data/app/tenant",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "tenant"]
+            },
+            "description": "Create a new tenant with a custom domain"
+          },
+          "response": []
+        },
+        {
+          "name": "Setup Cloudflare NS",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"setup_cloudflare_ns\",\n  \"domain\": \"myyogastudio.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/data/app/tenant",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "tenant"]
+            },
+            "description": "Initialize Cloudflare NS management for a custom domain. Returns nameservers to set at registrar."
+          },
+          "response": []
+        },
+        {
+          "name": "Check Cloudflare NS Propagation",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"check_cloudflare_ns\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/data/app/tenant",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "tenant"]
+            },
+            "description": "Check if nameservers have propagated. When verified, automatically creates all DNS records."
+          },
+          "response": []
+        },
+        {
+          "name": "Switch to Manual DNS",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"switch_to_manual_dns\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/data/app/tenant",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "tenant"]
+            },
+            "description": "Switch from Cloudflare NS back to manual DNS management. Deletes Cloudflare zone."
+          },
+          "response": []
+        },
+        {
+          "name": "Recreate Cloudflare DNS Records",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"recreate_cloudflare_dns\",\n  \"domain\": \"reelzai.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/data/app/tenant",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "tenant"]
+            },
+            "description": "Recreate all DNS records in an existing Cloudflare zone. Useful when records were created with wrong domain or need refresh. Deletes existing records first, then creates new ones for the specified domain."
+          },
+          "response": []
+        },
+        {
+          "name": "Add Domain",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"add_domain\",\n  \"domain\": \"anotherdomain.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/data/app/tenant",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "tenant"]
+            },
+            "description": "Add an additional domain to the tenant"
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Domain DNS",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"verify_domain\",\n  \"domain\": \"myyogastudio.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/data/app/tenant",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "tenant"]
+            },
+            "description": "Verify that DNS records have propagated for a domain"
+          },
+          "response": []
+        },
+        {
+          "name": "Enable Domain Email",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"enable_domain_email\",\n  \"domain\": \"myyogastudio.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/data/app/tenant",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "tenant"]
+            },
+            "description": "Enable email for a custom domain via AWS SES. Returns DKIM, MX, and SPF records to add."
+          },
+          "response": []
+        }
+      ]
     }
   ],
   "variable": [

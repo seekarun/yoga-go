@@ -4,7 +4,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import type { Tenant, TenantDnsRecord, TenantEmailConfig, TenantBranding } from '@/types';
+import type {
+  Tenant,
+  TenantDnsRecord,
+  TenantEmailConfig,
+  TenantBranding,
+  DnsManagementMethod,
+  CloudflareDnsConfig,
+} from '@/types';
 import NotificationOverlay from '@/components/NotificationOverlay';
 
 // Extended tenant type with domain verification info
@@ -67,6 +74,11 @@ export default function DomainSettingsPage() {
 
   // Copy to clipboard state
   const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  // Cloudflare NS flow state
+  const [dnsMethod, setDnsMethod] = useState<DnsManagementMethod>('manual');
+  const [cfSetupLoading, setCfSetupLoading] = useState(false);
+  const [cfNsCheckLoading, setCfNsCheckLoading] = useState(false);
 
   const copyToClipboard = async (text: string, fieldId: string) => {
     try {
@@ -462,6 +474,118 @@ export default function DomainSettingsPage() {
     }
   };
 
+  // Cloudflare NS handlers
+  const handleSetupCloudflareNs = async (domain: string) => {
+    setCfSetupLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await fetch('/data/app/tenant', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'setup_cloudflare_ns',
+          domain,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setTenant(data.data);
+        setSuccess(
+          'Cloudflare zone created! Update your nameservers at your domain registrar to complete setup.'
+        );
+      } else {
+        setError(data.error || 'Failed to set up Cloudflare DNS');
+      }
+    } catch (err) {
+      console.error('[DBG][domain-settings] Error setting up Cloudflare NS:', err);
+      setError('Failed to set up Cloudflare DNS');
+    } finally {
+      setCfSetupLoading(false);
+    }
+  };
+
+  const handleCheckCloudflareNs = async () => {
+    setCfNsCheckLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await fetch('/data/app/tenant', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'check_cloudflare_ns',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setTenant(data.data);
+        if (data.data.nsVerified) {
+          if (data.data.recordsCreated) {
+            setSuccess(
+              'Nameservers verified! All DNS records have been created automatically. Your domain is ready!'
+            );
+          } else {
+            setSuccess('Nameservers verified! Some records may have failed - check below.');
+          }
+        } else {
+          setSuccess(
+            'Nameservers not yet verified. This can take up to 48 hours after updating at your registrar.'
+          );
+        }
+      } else {
+        setError(data.error || 'Failed to check nameserver status');
+      }
+    } catch (err) {
+      console.error('[DBG][domain-settings] Error checking Cloudflare NS:', err);
+      setError('Failed to check nameserver status');
+    } finally {
+      setCfNsCheckLoading(false);
+    }
+  };
+
+  const handleSwitchToManualDns = async () => {
+    if (
+      !confirm('Switch to manual DNS? You will need to add DNS records manually at your registrar.')
+    ) {
+      return;
+    }
+
+    setCfSetupLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await fetch('/data/app/tenant', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'switch_to_manual_dns',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setTenant(data.data);
+        setSuccess('Switched to manual DNS. Please add DNS records manually at your registrar.');
+      } else {
+        setError(data.error || 'Failed to switch to manual DNS');
+      }
+    } catch (err) {
+      console.error('[DBG][domain-settings] Error switching to manual DNS:', err);
+      setError('Failed to switch to manual DNS');
+    } finally {
+      setCfSetupLoading(false);
+    }
+  };
+
   const handleSaveBranding = async () => {
     if (!tenant) return;
 
@@ -839,6 +963,150 @@ export default function DomainSettingsPage() {
             </div>
           )}
 
+          {/* Cloudflare NS Setup - Show when tenant has Cloudflare DNS pending */}
+          {tenant?.cloudflareDns?.zoneStatus === 'pending' && (
+            <div
+              style={{
+                background: '#fff',
+                borderRadius: '12px',
+                padding: '24px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                marginBottom: '24px',
+                border: '2px solid #f59e0b',
+              }}
+            >
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}
+              >
+                <span style={{ fontSize: '24px' }}>⚡</span>
+                <h2 style={{ fontSize: '18px', fontWeight: '600' }}>Complete Cloudflare Setup</h2>
+              </div>
+
+              <p style={{ color: '#666', marginBottom: '16px' }}>
+                Update your domain&apos;s nameservers at your registrar to the values below:
+              </p>
+
+              <div
+                style={{
+                  background: '#fef3c7',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  marginBottom: '16px',
+                }}
+              >
+                {tenant.cloudflareDns.nameservers?.map((ns, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '8px 0',
+                      borderBottom:
+                        i < (tenant.cloudflareDns?.nameservers?.length || 0) - 1
+                          ? '1px solid #fcd34d'
+                          : 'none',
+                    }}
+                  >
+                    <span style={{ fontFamily: 'monospace', fontWeight: '500' }}>
+                      NS {i + 1}: {ns}
+                    </span>
+                    <CopyableField label={`NS ${i + 1}`} value={ns} fieldId={`cf-ns-${i}`} />
+                  </div>
+                ))}
+              </div>
+
+              <p style={{ fontSize: '13px', color: '#666', marginBottom: '16px' }}>
+                After updating nameservers at your registrar, click the button below to check
+                propagation. This can take a few minutes to 48 hours.
+              </p>
+
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  onClick={handleCheckCloudflareNs}
+                  disabled={cfNsCheckLoading}
+                  style={{
+                    padding: '12px 24px',
+                    background: 'var(--color-primary)',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: cfNsCheckLoading ? 'not-allowed' : 'pointer',
+                    opacity: cfNsCheckLoading ? 0.7 : 1,
+                  }}
+                >
+                  {cfNsCheckLoading ? 'Checking...' : 'Check Nameserver Propagation'}
+                </button>
+                <button
+                  onClick={handleSwitchToManualDns}
+                  disabled={cfSetupLoading}
+                  style={{
+                    padding: '12px 24px',
+                    background: '#f3f4f6',
+                    color: '#374151',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    cursor: cfSetupLoading ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  Switch to Manual DNS
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Cloudflare Active Badge - Show when Cloudflare DNS is active */}
+          {tenant?.cloudflareDns?.zoneStatus === 'active' && (
+            <div
+              style={{
+                background: '#ecfdf5',
+                borderRadius: '12px',
+                padding: '16px 24px',
+                marginBottom: '24px',
+                border: '1px solid #10b981',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span
+                  style={{
+                    background: '#10b981',
+                    color: '#fff',
+                    padding: '4px 12px',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                  }}
+                >
+                  Cloudflare Active
+                </span>
+                <span style={{ color: '#047857' }}>
+                  DNS is managed automatically via Cloudflare
+                </span>
+              </div>
+              <button
+                onClick={handleSwitchToManualDns}
+                disabled={cfSetupLoading}
+                style={{
+                  padding: '6px 12px',
+                  background: '#fff',
+                  color: '#374151',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  cursor: cfSetupLoading ? 'not-allowed' : 'pointer',
+                }}
+              >
+                Switch to Manual
+              </button>
+            </div>
+          )}
+
           {/* Existing Tenant */}
           {tenant && (
             <>
@@ -1045,117 +1313,175 @@ export default function DomainSettingsPage() {
                 </div>
               </div>
 
-              {/* DNS Instructions - Only show if there are unverified domains */}
-              {hasUnverifiedDomains() && (
-                <div
-                  style={{
-                    background: '#fff',
-                    borderRadius: '12px',
-                    padding: '24px',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                    marginBottom: '24px',
-                  }}
-                >
-                  <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
-                    DNS Configuration
-                  </h2>
-                  <p style={{ color: '#666', marginBottom: '16px' }}>
-                    Add the following DNS record with your domain provider to complete setup:
-                  </p>
-
+              {/* DNS Instructions - Only show if there are unverified domains and NOT using Cloudflare NS */}
+              {hasUnverifiedDomains() &&
+                tenant?.cloudflareDns?.zoneStatus !== 'active' &&
+                tenant?.cloudflareDns?.zoneStatus !== 'pending' && (
                   <div
                     style={{
-                      background: '#f8f8f8',
-                      borderRadius: '8px',
-                      padding: '16px',
-                      fontFamily: 'monospace',
-                      fontSize: '13px',
+                      background: '#fff',
+                      borderRadius: '12px',
+                      padding: '24px',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                      marginBottom: '24px',
                     }}
                   >
-                    {verificationRecords.length > 0 ? (
-                      verificationRecords.map((record, index) => (
-                        <div
-                          key={index}
-                          style={{
-                            marginBottom: index < verificationRecords.length - 1 ? '16px' : 0,
-                          }}
-                        >
+                    <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
+                      DNS Configuration
+                    </h2>
+                    <p style={{ color: '#666', marginBottom: '16px' }}>
+                      Add the following DNS record with your domain provider to complete setup:
+                    </p>
+
+                    <div
+                      style={{
+                        background: '#f8f8f8',
+                        borderRadius: '8px',
+                        padding: '16px',
+                        fontFamily: 'monospace',
+                        fontSize: '13px',
+                      }}
+                    >
+                      {verificationRecords.length > 0 ? (
+                        verificationRecords.map((record, index) => (
+                          <div
+                            key={index}
+                            style={{
+                              marginBottom: index < verificationRecords.length - 1 ? '16px' : 0,
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: 'grid',
+                                gridTemplateColumns: '80px 1fr',
+                                gap: '8px',
+                              }}
+                            >
+                              <strong>Type:</strong>
+                              <span>{record.type}</span>
+                              <strong>Name:</strong>
+                              <CopyableField
+                                label="name"
+                                value={record.name}
+                                fieldId={`verify-name-${index}`}
+                              />
+                              <strong>Value:</strong>
+                              <CopyableField
+                                label="value"
+                                value={record.value}
+                                fieldId={`verify-value-${index}`}
+                              />
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div>
                           <div
                             style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '8px' }}
                           >
                             <strong>Type:</strong>
-                            <span>{record.type}</span>
+                            <span>A</span>
                             <strong>Name:</strong>
-                            <CopyableField
-                              label="name"
-                              value={record.name}
-                              fieldId={`verify-name-${index}`}
-                            />
+                            <CopyableField label="name" value="@" fieldId="default-a-name" />
                             <strong>Value:</strong>
                             <CopyableField
                               label="value"
-                              value={record.value}
-                              fieldId={`verify-value-${index}`}
+                              value="216.150.1.1"
+                              fieldId="default-a-value"
                             />
                           </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div>
-                        <div
-                          style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '8px' }}
-                        >
-                          <strong>Type:</strong>
-                          <span>A</span>
-                          <strong>Name:</strong>
-                          <CopyableField label="name" value="@" fieldId="default-a-name" />
-                          <strong>Value:</strong>
-                          <CopyableField
-                            label="value"
-                            value="216.150.1.1"
-                            fieldId="default-a-value"
-                          />
-                        </div>
-                        <div
-                          style={{
-                            marginTop: '16px',
-                            paddingTop: '16px',
-                            borderTop: '1px solid #ddd',
-                          }}
-                        >
                           <div
-                            style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '8px' }}
+                            style={{
+                              marginTop: '16px',
+                              paddingTop: '16px',
+                              borderTop: '1px solid #ddd',
+                            }}
                           >
-                            <strong>Type:</strong>
-                            <span>CNAME</span>
-                            <strong>Name:</strong>
-                            <CopyableField label="name" value="www" fieldId="default-cname-name" />
-                            <strong>Value:</strong>
-                            <CopyableField
-                              label="value"
-                              value="cname.vercel-dns.com"
-                              fieldId="default-cname-value"
-                            />
+                            <div
+                              style={{
+                                display: 'grid',
+                                gridTemplateColumns: '80px 1fr',
+                                gap: '8px',
+                              }}
+                            >
+                              <strong>Type:</strong>
+                              <span>CNAME</span>
+                              <strong>Name:</strong>
+                              <CopyableField
+                                label="name"
+                                value="www"
+                                fieldId="default-cname-name"
+                              />
+                              <strong>Value:</strong>
+                              <CopyableField
+                                label="value"
+                                value="cname.vercel-dns.com"
+                                fieldId="default-cname-value"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div
+                        style={{
+                          color: '#666',
+                          fontSize: '12px',
+                          marginTop: '16px',
+                          paddingTop: '12px',
+                          borderTop: '1px solid #ddd',
+                        }}
+                      >
+                        DNS changes typically take 1-10 minutes to propagate (up to 48 hours in some
+                        cases). Click &quot;Verify DNS&quot; once you&apos;ve added the records.
+                      </div>
+                    </div>
+
+                    {/* Cloudflare NS Alternative */}
+                    {getCustomDomain() && !tenant?.cloudflareDns && (
+                      <div
+                        style={{
+                          marginTop: '20px',
+                          padding: '16px',
+                          background: '#f0f9ff',
+                          borderRadius: '8px',
+                          border: '1px solid #0ea5e9',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                          <span style={{ fontSize: '20px' }}>⚡</span>
+                          <div style={{ flex: 1 }}>
+                            <strong style={{ display: 'block', marginBottom: '4px' }}>
+                              Prefer a simpler setup?
+                            </strong>
+                            <p style={{ color: '#666', fontSize: '13px', marginBottom: '12px' }}>
+                              Use Cloudflare Nameservers instead. Just change 2 NS records at your
+                              registrar, and we&apos;ll manage all DNS records automatically -
+                              including email setup.
+                            </p>
+                            <button
+                              onClick={() => handleSetupCloudflareNs(getCustomDomain()!)}
+                              disabled={cfSetupLoading}
+                              style={{
+                                padding: '8px 16px',
+                                background: '#0ea5e9',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: '6px',
+                                fontSize: '13px',
+                                fontWeight: '500',
+                                cursor: cfSetupLoading ? 'not-allowed' : 'pointer',
+                                opacity: cfSetupLoading ? 0.7 : 1,
+                              }}
+                            >
+                              {cfSetupLoading ? 'Setting up...' : 'Use Cloudflare NS Instead'}
+                            </button>
                           </div>
                         </div>
                       </div>
                     )}
-
-                    <div
-                      style={{
-                        color: '#666',
-                        fontSize: '12px',
-                        marginTop: '16px',
-                        paddingTop: '12px',
-                        borderTop: '1px solid #ddd',
-                      }}
-                    >
-                      DNS changes typically take 1-10 minutes to propagate (up to 48 hours in some
-                      cases). Click &quot;Verify DNS&quot; once you&apos;ve added the records.
-                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
               {/* Email Setup Section - Only show if custom domain exists */}
               {getCustomDomain() && (

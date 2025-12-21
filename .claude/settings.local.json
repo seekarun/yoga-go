@@ -85,7 +85,9 @@
       "Bash(AWS_PROFILE=myg npx cdk list:*)",
       "Bash(AWS_PROFILE=myg npx cdk deploy:*)",
       "Bash(AWS_PROFILE=myg aws dynamodb scan:*)",
-      "Bash(AWS_PROFILE=myg aws dynamodb query:*)"
+      "Bash(AWS_PROFILE=myg aws dynamodb query:*)",
+      "Bash(AWS_PROFILE=myg aws dynamodb list-tables:*)",
+      "Bash(AWS_PROFILE=myg aws s3 ls:*)"
     ],
     "deny": [],
     "ask": []

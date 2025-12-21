@@ -172,6 +172,38 @@ export interface TenantBranding {
   ogImage?: string; // Custom Open Graph image for social sharing
 }
 
+// Cloudflare DNS Management (for custom domains using CF nameservers)
+export type DnsManagementMethod = 'manual' | 'cloudflare';
+export type CloudflareZoneStatus = 'pending' | 'active' | 'moved' | 'deleted';
+
+export interface CloudflareDnsConfig {
+  method: DnsManagementMethod;
+
+  // The domain this config is for (e.g., "reelzai.com")
+  domain?: string;
+
+  // Cloudflare zone details (only when method === 'cloudflare')
+  zoneId?: string;
+  zoneStatus?: CloudflareZoneStatus;
+  nameservers?: string[]; // e.g., ["ada.ns.cloudflare.com", "ben.ns.cloudflare.com"]
+
+  // Record IDs for cleanup (stored after creation)
+  recordIds?: {
+    aRecord?: string;
+    wwwCname?: string;
+    mxRecord?: string;
+    spfTxt?: string;
+    dkim1Cname?: string;
+    dkim2Cname?: string;
+    dkim3Cname?: string;
+  };
+
+  // Timestamps
+  zoneCreatedAt?: string;
+  nsVerifiedAt?: string;
+  recordsCreatedAt?: string;
+}
+
 // BYOD Email Configuration for custom domains
 export interface TenantEmailConfig {
   // Domain email (e.g., contact@kavithayoga.com)
@@ -226,6 +258,9 @@ export interface Tenant extends BaseEntity {
 
   // Custom branding (favicon, metadata for custom domains)
   branding?: TenantBranding;
+
+  // Cloudflare DNS configuration (for custom domains using CF nameservers)
+  cloudflareDns?: CloudflareDnsConfig;
 }
 
 // Course Related Types
