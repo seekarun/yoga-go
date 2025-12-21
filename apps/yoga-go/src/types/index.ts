@@ -1151,3 +1151,135 @@ export interface EmailFilters {
   limit?: number;
   lastKey?: string;
 }
+
+// ========================================
+// Discoverability Boost Types
+// ========================================
+
+// Wallet transaction types
+export type WalletTransactionType =
+  | 'deposit' // Expert adds funds
+  | 'boost_spend' // Funds used for boost
+  | 'refund' // Boost cancelled/refunded
+  | 'adjustment'; // Manual adjustment
+
+export type WalletTransactionStatus = 'pending' | 'completed' | 'failed';
+
+// Wallet transaction record
+export interface WalletTransaction extends BaseEntity {
+  expertId: string;
+  type: WalletTransactionType;
+  amount: number; // In cents (positive for deposits, negative for spends)
+  currency: string; // 'USD' or 'INR'
+  status: WalletTransactionStatus;
+  paymentIntentId?: string; // For deposits via Stripe/Razorpay
+  boostId?: string; // For boost_spend transactions
+  description?: string;
+  metadata?: Record<string, unknown>;
+}
+
+// Expert wallet balance
+export interface ExpertWallet extends BaseEntity {
+  expertId: string;
+  balance: number; // In cents
+  currency: string; // Primary currency ('USD' or 'INR')
+  totalDeposited: number; // Lifetime deposits
+  totalSpent: number; // Lifetime boost spend
+  lastTransactionAt?: string;
+}
+
+// Boost goal options
+export type BoostGoal =
+  | 'get_students' // Get more course enrollments
+  | 'promote_course' // Promote a specific course
+  | 'brand_awareness'; // Increase expert visibility
+
+// Boost status lifecycle
+export type BoostStatus =
+  | 'draft' // AI generated, not submitted
+  | 'pending_approval' // Submitted to Meta, awaiting review
+  | 'active' // Running on Meta
+  | 'paused' // Paused by expert or system
+  | 'completed' // Budget exhausted or ended
+  | 'rejected' // Rejected by Meta
+  | 'failed'; // Technical failure
+
+// Targeting configuration for ads
+export interface BoostTargeting {
+  ageMin?: number;
+  ageMax?: number;
+  genders?: ('male' | 'female' | 'all')[];
+  locations?: string[]; // Country codes or city names
+  interests?: string[]; // Meta interest targeting IDs
+  customAudiences?: string[];
+}
+
+// Ad creative content
+export interface BoostCreative {
+  headline: string; // Max 40 chars
+  primaryText: string; // Max 125 chars for feed
+  description?: string; // Max 30 chars
+  callToAction: string;
+  imageUrl?: string;
+  videoUrl?: string;
+}
+
+// Performance metrics from Meta
+export interface BoostMetrics {
+  impressions: number;
+  clicks: number;
+  ctr: number; // Click-through rate
+  spend: number; // Amount spent in cents
+  conversions: number; // Enrollments/registrations
+  costPerClick?: number;
+  costPerConversion?: number;
+  lastSyncedAt: string;
+}
+
+// Main Boost entity
+export interface Boost extends BaseEntity {
+  expertId: string;
+  goal: BoostGoal;
+  courseId?: string; // For 'promote_course' goal
+
+  // Budget
+  budget: number; // Total budget in cents
+  dailyBudget?: number; // Optional daily cap
+  spentAmount: number; // Amount spent so far
+  currency: string; // 'USD' or 'INR'
+
+  // Status
+  status: BoostStatus;
+  statusMessage?: string; // Error or rejection reason
+
+  // Scheduling
+  startDate?: string;
+  endDate?: string;
+
+  // AI Generated Content
+  targeting: BoostTargeting;
+  creative: BoostCreative;
+  alternativeCreatives?: BoostCreative[]; // AI alternatives
+
+  // Meta Ads API IDs (populated when submitted)
+  metaCampaignId?: string;
+  metaAdSetId?: string;
+  metaAdId?: string;
+
+  // Performance
+  metrics?: BoostMetrics;
+
+  // Timestamps
+  submittedAt?: string;
+  approvedAt?: string;
+  pausedAt?: string;
+  completedAt?: string;
+}
+
+// Boost list result for pagination
+export interface BoostListResult {
+  boosts: Boost[];
+  totalCount: number;
+  activeCount: number;
+  lastKey?: string;
+}

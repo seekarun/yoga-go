@@ -87,7 +87,9 @@
       "Bash(AWS_PROFILE=myg aws dynamodb scan:*)",
       "Bash(AWS_PROFILE=myg aws dynamodb query:*)",
       "Bash(AWS_PROFILE=myg aws dynamodb list-tables:*)",
-      "Bash(AWS_PROFILE=myg aws s3 ls:*)"
+      "Bash(AWS_PROFILE=myg aws s3 ls:*)",
+      "Bash(AWS_PROFILE=myg aws cloudfront list-distributions:*)",
+      "Bash(AWS_PROFILE=myg aws cloudformation list-stacks:*)"
     ],
     "deny": [],
     "ask": []

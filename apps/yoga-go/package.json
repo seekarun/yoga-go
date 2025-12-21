@@ -14,6 +14,7 @@
     "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,json,css,md}\""
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2",
     "@aws-sdk/client-cognito-identity-provider": "^3.939.0",
     "@aws-sdk/client-dynamodb": "^3.940.0",
     "@aws-sdk/client-s3": "^3.956.0",

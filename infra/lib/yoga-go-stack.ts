@@ -87,49 +87,45 @@ export class YogaGoStack extends cdk.Stack {
     // Cognito Domain Configuration
     // ========================================
     // Custom domain (signin.myyoga.guru) requires a certificate in us-east-1
-    // To enable custom domain:
+    //
+    // For new deployments:
     // 1. Create certificate in ACM us-east-1 for signin.myyoga.guru
     // 2. Add DNS validation CNAME records to Vercel
     // 3. Wait for certificate validation
-    // 4. Deploy with: cdk deploy -c cognitoCertificateArn=arn:aws:acm:us-east-1:...
+    // 4. Deploy with: cdk deploy YogaGoStack -c cognitoCertificateArn=arn:aws:acm:us-east-1:...
     // 5. Add CNAME record in Vercel: signin.myyoga.guru -> [CloudFront domain from output]
-    const cognitoCertificateArn = this.node.tryGetContext(
-      "cognitoCertificateArn"
+    //
+    // IMPORTANT: Always include the cognitoCertificateArn context parameter in deploys!
+
+    const cognitoCertificateArn = this.node.tryGetContext("cognitoCertificateArn");
+
+    if (!cognitoCertificateArn) {
+      throw new Error(
+        "cognitoCertificateArn context is required. Deploy with: cdk deploy -c cognitoCertificateArn=arn:aws:acm:us-east-1:..."
+      );
+    }
+
+    const certificate = acm.Certificate.fromCertificateArn(
+      this,
+      "CognitoCertificate",
+      cognitoCertificateArn
     );
 
-    let cognitoDomainName: string;
+    const customDomain = userPool.addDomain("CognitoCustomDomain", {
+      customDomain: {
+        domainName: COGNITO_CUSTOM_DOMAIN,
+        certificate,
+      },
+    });
 
-    if (cognitoCertificateArn) {
-      // Use custom domain with provided certificate
-      const certificate = acm.Certificate.fromCertificateArn(
-        this,
-        "CognitoCertificate",
-        cognitoCertificateArn
-      );
+    const cognitoDomainName = customDomain.domainName;
 
-      const customDomain = userPool.addDomain("YogaGoCustomDomain", {
-        customDomain: {
-          domainName: COGNITO_CUSTOM_DOMAIN,
-          certificate,
-        },
-      });
-
-      cognitoDomainName = customDomain.domainName;
-
-      // Output the CloudFront domain for DNS CNAME record
-      new cdk.CfnOutput(this, "CognitoCloudFrontDomain", {
-        value: customDomain.cloudFrontEndpoint,
-        description: `Add CNAME record in Vercel: ${COGNITO_CUSTOM_DOMAIN} -> this value`,
-        exportName: "YogaGoCognitoCloudFrontDomain",
-      });
-    } else {
-      // Use default Cognito domain (fallback)
-      const defaultDomain = userPool.addDomain("YogaGoDomain", {
-        cognitoDomain: { domainPrefix: "yoga-go-auth" },
-      });
-
-      cognitoDomainName = `${defaultDomain.domainName}.auth.${this.region}.amazoncognito.com`;
-    }
+    // Output the CloudFront domain for DNS CNAME record
+    new cdk.CfnOutput(this, "CognitoCloudFrontDomain", {
+      value: customDomain.cloudFrontEndpoint,
+      description: `Add CNAME record in Vercel: ${COGNITO_CUSTOM_DOMAIN} -> this value`,
+      exportName: "YogaGoCognitoCloudFrontDomain",
+    });
 
     // ========================================
     // Secrets Manager
@@ -453,6 +449,24 @@ The MyYoga.Guru Team`,
       projectionType: dynamodb.ProjectionType.ALL,
     });
 
+    // Boost table - for wallet and boost campaigns
+    const boostTable = new dynamodb.Table(this, "BoostTable", {
+      tableName: "yoga-go-boost",
+      partitionKey: { name: "PK", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "SK", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      pointInTimeRecovery: false,
+    });
+
+    // GSI1: Query active boosts by status (for cron sync jobs)
+    boostTable.addGlobalSecondaryIndex({
+      indexName: "GSI1",
+      partitionKey: { name: "GSI1PK", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "GSI1SK", type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
     // ========================================
     // IAM User for Vercel Deployment
     // ========================================
@@ -488,6 +502,8 @@ The MyYoga.Guru Team`,
         `${blogTable.tableArn}/index/*`,
         assetsTable.tableArn,
         `${assetsTable.tableArn}/index/*`,
+        boostTable.tableArn,
+        `${boostTable.tableArn}/index/*`,
       ],
     });
 

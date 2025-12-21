@@ -1,7 +1,7 @@
 /**
  * DynamoDB Client Configuration
  *
- * 5-table design:
+ * 6-table design:
  *
  * 1. CORE TABLE - Main business entities
  *    - User, Expert, Course, Lesson, CourseProgress
@@ -18,6 +18,9 @@
  *
  * 5. BLOG TABLE - Blog posts, comments, and likes
  *    - BlogPost, BlogComment, BlogLike
+ *
+ * 6. BOOST TABLE - Wallet and boost campaigns
+ *    - ExpertWallet, WalletTransaction, Boost
  */
 
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
@@ -47,6 +50,7 @@ export const Tables = {
   DISCUSSIONS: 'yoga-go-discussions',
   BLOG: 'yoga-go-blog',
   ASSETS: 'yoga-go-assets',
+  BOOST: 'yoga-go-boost', // Wallet and boost campaigns
 } as const;
 
 // Legacy export for backward compatibility during migration
@@ -133,6 +137,26 @@ export const BlogPK = {
   USER_LIKES: (userId: string) => `USERLIKES#${userId}`,
 } as const;
 
+// ============================================
+// BOOST TABLE - PK/SK Prefixes
+// Wallet and boost campaign management
+// ============================================
+export const BoostPK = {
+  // Wallet: PK=WALLET#{expertId}, SK=META
+  WALLET: (expertId: string) => `WALLET#${expertId}`,
+  // Wallet transactions by expert: PK=WALLET#{expertId}, SK=TXN#{createdAt}#{txnId}
+  // (stored in same partition as wallet for efficient querying)
+
+  // Transaction direct lookup: PK=TXN#{txnId}, SK=META
+  TRANSACTION: (txnId: string) => `TXN#${txnId}`,
+
+  // Boosts by expert: PK=EXPERT#{expertId}, SK=BOOST#{createdAt}#{boostId}
+  EXPERT: (expertId: string) => `EXPERT#${expertId}`,
+  // Boost direct lookup: PK=BOOST#{boostId}, SK=META
+  BOOST: (boostId: string) => `BOOST#${boostId}`,
+  // Active boosts (for cron sync): GSI1PK=STATUS#{status}, GSI1SK={createdAt}#{boostId}
+} as const;
+
 // Legacy EntityType export for backward compatibility
 export const EntityType = {
   USER: 'USER',
@@ -158,6 +182,10 @@ export const EntityType = {
   ZOOM_AUTH: 'ZOOM_AUTH',
   WAITLIST: 'WAITLIST',
   WAITLIST_PENDING: 'WAITLIST_PENDING',
+  // Boost entities
+  WALLET: 'WALLET',
+  WALLET_TRANSACTION: 'WALLET_TRANSACTION',
+  BOOST: 'BOOST',
 } as const;
 
 export type EntityTypeValue = (typeof EntityType)[keyof typeof EntityType];

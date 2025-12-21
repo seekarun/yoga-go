@@ -324,7 +324,87 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 
 ## AWS Deployment
 
-This application is deployed to AWS using ECS on EC2 with automated CI/CD via GitHub Actions.
+This application uses AWS CDK for infrastructure management. All resources are defined as code in the `infra/` directory.
+
+### Fresh AWS Account Setup
+
+To deploy to a new AWS account, follow these steps:
+
+**Prerequisites:**
+- AWS CLI configured with appropriate credentials
+- Node.js and npm installed
+- CDK CLI installed (`npm install -g aws-cdk`)
+
+**Step 1: Bootstrap CDK (one-time per account/region)**
+
+```bash
+# Bootstrap ap-southeast-2 (main region)
+AWS_PROFILE=myg npx cdk bootstrap aws://<ACCOUNT_ID>/ap-southeast-2
+
+# Bootstrap us-east-1 (required for Cognito certificate)
+AWS_PROFILE=myg npx cdk bootstrap aws://<ACCOUNT_ID>/us-east-1
+```
+
+**Step 2: Deploy Certificate Stack (us-east-1)**
+
+Cognito custom domains require ACM certificates in us-east-1.
+
+```bash
+cd infra
+AWS_PROFILE=myg npx cdk deploy CognitoCertStack
+```
+
+After deployment:
+1. Go to AWS ACM Console in us-east-1
+2. Find the certificate for `signin.myyoga.guru`
+3. Copy the DNS validation CNAME record
+4. Add the CNAME to Vercel DNS
+5. Wait for certificate status to change to "Issued" (can take 5-30 minutes)
+6. Note the Certificate ARN from the stack output
+
+**Step 3: Deploy Main Stack (ap-southeast-2)**
+
+```bash
+AWS_PROFILE=myg npx cdk deploy YogaGoStack -c cognitoCertificateArn=<CERTIFICATE_ARN>
+```
+
+Example:
+```bash
+AWS_PROFILE=myg npx cdk deploy YogaGoStack -c cognitoCertificateArn=arn:aws:acm:us-east-1:123456789:certificate/abc-123-def
+```
+
+After deployment:
+1. Note the `CognitoCloudFrontDomain` from the stack output
+2. Add CNAME to Vercel DNS: `signin` -> `<cloudfront-domain>.cloudfront.net`
+
+**Step 4: Deploy Other Stacks (if needed)**
+
+```bash
+# SES Stack for email
+AWS_PROFILE=myg npx cdk deploy YogaGoSesStack
+
+# Calel Stack (if applicable)
+AWS_PROFILE=myg npx cdk deploy CalelStack
+```
+
+### CDK Stacks Overview
+
+| Stack | Region | Purpose |
+|-------|--------|---------|
+| `CognitoCertStack` | us-east-1 | ACM certificate for Cognito custom domain |
+| `YogaGoStack` | ap-southeast-2 | Main infrastructure (Cognito, DynamoDB, S3, etc.) |
+| `YogaGoSesStack` | ap-southeast-2 | SES email configuration |
+| `CalelStack` | ap-southeast-2 | Additional services |
+
+### Important Notes
+
+- **Certificate ARN is required** when deploying `YogaGoStack` - always include the `-c cognitoCertificateArn=<ARN>` parameter
+- All AWS resources are managed via CDK - avoid creating resources manually via CLI or Console
+- The AWS profile `myg` is used for all commands (configured in `~/.aws/credentials`)
+
+---
+
+This application is also deployed to AWS using ECS on EC2 with automated CI/CD via GitHub Actions.
 
 ### Architecture
 

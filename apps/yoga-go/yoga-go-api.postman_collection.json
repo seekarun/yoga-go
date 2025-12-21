@@ -1571,6 +1571,345 @@
       ]
     },
     {
+      "name": "Wallet",
+      "description": "Expert wallet management for boost campaigns",
+      "item": [
+        {
+          "name": "Get Wallet",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/wallet",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "wallet"]
+            },
+            "description": "Get the current expert's wallet balance and details. Creates wallet if doesn't exist."
+          },
+          "response": []
+        },
+        {
+          "name": "Initialize Wallet",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currency\": \"USD\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/wallet",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "wallet"]
+            },
+            "description": "Initialize wallet with preferred currency (USD or INR)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Wallet Transactions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/wallet/transactions?limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "wallet", "transactions"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "description": "Max transactions to return (default 50, max 100)"
+                }
+              ]
+            },
+            "description": "Get wallet transaction history (deposits, spends, refunds)"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Add Funds Intent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 5000,\n  \"currency\": \"USD\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/wallet/add-funds",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "wallet", "add-funds"]
+            },
+            "description": "Create a Stripe payment intent to add funds. Amount in cents. Returns clientSecret for Stripe Elements."
+          },
+          "response": []
+        },
+        {
+          "name": "Confirm Add Funds",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"paymentIntentId\": \"pi_xxx\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/wallet/add-funds",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "wallet", "add-funds"]
+            },
+            "description": "Confirm a completed payment and add funds to wallet. Called after Stripe payment succeeds."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Boost Campaigns",
+      "description": "AI-powered boost campaign management for course promotion",
+      "item": [
+        {
+          "name": "Get Boosts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/boosts?limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "boosts"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Max boosts to return (default 20, max 50)"
+                }
+              ]
+            },
+            "description": "Get all boost campaigns for the current expert."
+          },
+          "response": []
+        },
+        {
+          "name": "Generate Campaign with AI",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"goal\": \"get_students\",\n  \"courseId\": \"course-123\",\n  \"budget\": 5000,\n  \"currency\": \"USD\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/boosts/generate",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "boosts", "generate"]
+            },
+            "description": "Generate AI-powered targeting and creatives for a boost campaign. Goals: get_students, promote_course, brand_awareness."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Boost",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"goal\": \"get_students\",\n  \"budget\": 5000,\n  \"currency\": \"USD\",\n  \"targeting\": {\n    \"ageMin\": 25,\n    \"ageMax\": 55,\n    \"genders\": [\"all\"],\n    \"locations\": [\"US\", \"IN\"],\n    \"interests\": [\"Yoga\", \"Meditation\"]\n  },\n  \"creative\": {\n    \"headline\": \"Start Your Yoga Journey\",\n    \"primaryText\": \"Expert-led yoga classes for all levels.\",\n    \"description\": \"Learn at your pace\",\n    \"callToAction\": \"Learn More\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/boosts",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "boosts"]
+            },
+            "description": "Create a new boost campaign from generated or custom data. Deducts budget from wallet."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Boost Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/boosts/:boostId",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "boosts", ":boostId"],
+              "variable": [
+                {
+                  "key": "boostId",
+                  "value": "boost_123",
+                  "description": "Boost campaign ID"
+                }
+              ]
+            },
+            "description": "Get details of a specific boost campaign."
+          },
+          "response": []
+        },
+        {
+          "name": "Submit Boost",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/boosts/:boostId/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "boosts", ":boostId", "submit"],
+              "variable": [
+                {
+                  "key": "boostId",
+                  "value": "boost_123",
+                  "description": "Boost campaign ID"
+                }
+              ]
+            },
+            "description": "Submit a draft boost for Meta Ads review and launch."
+          },
+          "response": []
+        },
+        {
+          "name": "Pause Boost",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/boosts/:boostId/pause",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "boosts", ":boostId", "pause"],
+              "variable": [
+                {
+                  "key": "boostId",
+                  "value": "boost_123",
+                  "description": "Boost campaign ID"
+                }
+              ]
+            },
+            "description": "Pause an active boost campaign."
+          },
+          "response": []
+        },
+        {
+          "name": "Resume Boost",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/boosts/:boostId/resume",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "boosts", ":boostId", "resume"],
+              "variable": [
+                {
+                  "key": "boostId",
+                  "value": "boost_123",
+                  "description": "Boost campaign ID"
+                }
+              ]
+            },
+            "description": "Resume a paused boost campaign."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Google Calendar",
       "description": "Google Calendar OAuth and connection management",
       "item": [

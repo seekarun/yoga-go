@@ -35,6 +35,10 @@
     {
       "path": "/api/cron/webinar-reminders",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/sync-boost-metrics",
+      "schedule": "*/15 * * * *"
     }
   ]
 }
