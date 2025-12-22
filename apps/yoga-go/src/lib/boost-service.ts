@@ -25,9 +25,15 @@ export async function submitBoost(boostId: string): Promise<Boost> {
     throw new Error('Boost not found');
   }
 
-  // Verify it's in draft status
-  if (boost.status !== 'draft') {
+  // Verify it's in a submittable status (draft or pending_approval after payment)
+  if (!['draft', 'pending_payment', 'pending_approval'].includes(boost.status)) {
     throw new Error(`Cannot submit boost in ${boost.status} status`);
+  }
+
+  // If already submitted (has Meta IDs), skip
+  if (boost.metaCampaignId) {
+    console.log('[DBG][boost-service] Boost already submitted to Meta');
+    return boost;
   }
 
   // Get expert profile for destination URL

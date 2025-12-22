@@ -9,7 +9,13 @@
  */
 
 import { docClient, Tables, BoostPK, EntityType } from '../dynamodb';
-import { GetCommand, QueryCommand, BatchWriteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import {
+  GetCommand,
+  QueryCommand,
+  BatchWriteCommand,
+  UpdateCommand,
+  DeleteCommand,
+} from '@aws-sdk/lib-dynamodb';
 import type { Boost, BoostStatus, BoostListResult } from '@/types';
 
 // Helper to generate unique boost ID
@@ -289,6 +295,49 @@ export async function getActiveBoosts(limit: number = 100): Promise<Boost[]> {
   console.log('[DBG][boostRepository] Found', boosts.length, 'active boosts');
 
   return boosts;
+}
+
+/**
+ * Delete a boost campaign
+ * Only allows deleting boosts that haven't been submitted to Meta
+ */
+export async function deleteBoost(boostId: string, expertId: string): Promise<void> {
+  console.log('[DBG][boostRepository] Deleting boost:', boostId);
+
+  // Get boost to find createdAt for the expert partition key
+  const boost = await getBoostById(boostId);
+  if (!boost) {
+    throw new Error('Boost not found');
+  }
+
+  if (boost.expertId !== expertId) {
+    throw new Error('Boost does not belong to this expert');
+  }
+
+  // Delete both records: expert partition and direct lookup
+  // 1. Delete from expert partition
+  await docClient.send(
+    new DeleteCommand({
+      TableName: Tables.BOOST,
+      Key: {
+        PK: BoostPK.EXPERT(expertId),
+        SK: `BOOST#${boost.createdAt}#${boostId}`,
+      },
+    })
+  );
+
+  // 2. Delete direct lookup
+  await docClient.send(
+    new DeleteCommand({
+      TableName: Tables.BOOST,
+      Key: {
+        PK: BoostPK.BOOST(boostId),
+        SK: 'META',
+      },
+    })
+  );
+
+  console.log('[DBG][boostRepository] Boost deleted:', boostId);
 }
 
 /**

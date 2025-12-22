@@ -247,7 +247,7 @@ function getDefaultCampaign(): GenerateCampaignResult {
       ageMin: 25,
       ageMax: 55,
       genders: ['all'],
-      locations: ['US', 'IN', 'UK', 'AU'],
+      locations: ['US', 'IN', 'GB', 'AU'],
       interests: ['Yoga', 'Meditation', 'Wellness', 'Fitness', 'Health'],
     },
     creative: {

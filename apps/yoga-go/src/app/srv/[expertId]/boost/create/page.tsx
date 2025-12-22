@@ -7,21 +7,14 @@ import GoalSelector from '@/components/boost/GoalSelector';
 import BudgetSelector from '@/components/boost/BudgetSelector';
 import CourseSelector from '@/components/boost/CourseSelector';
 import CreativePreview from '@/components/boost/CreativePreview';
-import type {
-  BoostGoal,
-  BoostCreative,
-  BoostTargeting,
-  ExpertWallet,
-  Course,
-  Expert,
-} from '@/types';
+import BoostPaymentModal from '@/components/boost/BoostPaymentModal';
+import type { Boost, BoostGoal, BoostCreative, BoostTargeting, Course, Expert } from '@/types';
 
-type Step = 'goal' | 'course' | 'budget' | 'preview' | 'confirm';
+type Step = 'goal' | 'course' | 'budget' | 'preview' | 'payment';
 
 interface GeneratedCampaign {
   targeting: BoostTargeting;
   creative: BoostCreative;
-  alternativeCreatives: BoostCreative[];
   reasoning: string;
 }
 
@@ -34,14 +27,20 @@ export default function CreateBoostPage() {
   const [step, setStep] = useState<Step>('goal');
   const [goal, setGoal] = useState<BoostGoal | null>(null);
   const [courseId, setCourseId] = useState<string | null>(null);
-  const [budget, setBudget] = useState(0);
-  const [selectedCreative, setSelectedCreative] = useState<BoostCreative | null>(null);
+  const [budget, setBudget] = useState(1000); // Default $10 / ₹1000
+  const [editedCreative, setEditedCreative] = useState<BoostCreative | null>(null);
+  const [editedTargeting, setEditedTargeting] = useState<BoostTargeting | null>(null);
 
   // Data state
-  const [wallet, setWallet] = useState<ExpertWallet | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
   const [expert, setExpert] = useState<Expert | null>(null);
   const [campaign, setCampaign] = useState<GeneratedCampaign | null>(null);
+  const [expertDomain, setExpertDomain] = useState<string>(`${expertId}.myyoga.guru`);
+  const [currency, setCurrency] = useState<string>('USD');
+
+  // Payment modal state
+  const [createdBoost, setCreatedBoost] = useState<Boost | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   // Loading states
   const [loading, setLoading] = useState(true);
@@ -49,24 +48,12 @@ export default function CreateBoostPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch initial data (with cache-busting to ensure fresh wallet data)
+  // Fetch initial data
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const timestamp = Date.now();
 
-      // Fetch wallet (required)
-      const walletRes = await fetch(`/data/app/expert/me/wallet?t=${timestamp}`, {
-        cache: 'no-store',
-      });
-      if (walletRes.ok) {
-        const walletData = await walletRes.json();
-        if (walletData.success) {
-          setWallet(walletData.data);
-        }
-      }
-
-      // Fetch courses (optional - might not exist yet)
+      // Fetch courses (optional)
       try {
         const coursesRes = await fetch('/data/app/expert/me/courses');
         if (coursesRes.ok) {
@@ -74,7 +61,7 @@ export default function CreateBoostPage() {
           if (coursesData.success) setCourses(coursesData.data.courses || []);
         }
       } catch {
-        // Courses endpoint might not exist, that's OK
+        // Courses endpoint might not exist
       }
 
       // Fetch expert (required for preview)
@@ -82,6 +69,26 @@ export default function CreateBoostPage() {
       if (expertRes.ok) {
         const expertData = await expertRes.json();
         if (expertData.success) setExpert(expertData.data);
+      }
+
+      // Fetch tenant for custom domain
+      try {
+        const tenantRes = await fetch(`/data/app/expert/me/tenant`);
+        if (tenantRes.ok) {
+          const tenantData = await tenantRes.json();
+          if (tenantData.success && tenantData.data?.primaryDomain) {
+            setExpertDomain(tenantData.data.primaryDomain);
+          }
+        }
+      } catch {
+        // Tenant might not exist
+      }
+
+      // Detect currency based on locale (simplified)
+      const userLocale = navigator.language || 'en-US';
+      if (userLocale.includes('IN') || userLocale === 'en-IN') {
+        setCurrency('INR');
+        setBudget(50000); // Default ₹500
       }
     } catch (err) {
       console.error('[DBG][CreateBoostPage] Error fetching data:', err);
@@ -110,7 +117,7 @@ export default function CreateBoostPage() {
           goal,
           courseId: goal === 'promote_course' ? courseId : undefined,
           budget,
-          currency: wallet?.currency || 'USD',
+          currency,
         }),
       });
 
@@ -121,7 +128,8 @@ export default function CreateBoostPage() {
       }
 
       setCampaign(data.data);
-      setSelectedCreative(data.data.creative);
+      setEditedCreative(data.data.creative);
+      setEditedTargeting(data.data.targeting);
       setStep('preview');
     } catch (err) {
       console.error('[DBG][CreateBoostPage] Error generating campaign:', err);
@@ -131,14 +139,15 @@ export default function CreateBoostPage() {
     }
   };
 
-  // Submit boost
-  const submitBoost = async () => {
-    if (!campaign || !goal || !selectedCreative) return;
+  // Create boost and show payment modal
+  const handlePayAndLaunch = async () => {
+    if (!campaign || !goal || !editedCreative || !editedTargeting) return;
 
     try {
       setSubmitting(true);
       setError(null);
 
+      // Create boost (will be in pending_payment status)
       const response = await fetch('/data/app/expert/me/boosts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -146,10 +155,9 @@ export default function CreateBoostPage() {
           goal,
           courseId: goal === 'promote_course' ? courseId : undefined,
           budget,
-          currency: wallet?.currency || 'USD',
-          creative: selectedCreative,
-          targeting: campaign.targeting,
-          alternativeCreatives: campaign.alternativeCreatives,
+          currency,
+          creative: editedCreative,
+          targeting: editedTargeting,
         }),
       });
 
@@ -159,13 +167,24 @@ export default function CreateBoostPage() {
         throw new Error(data.error || 'Failed to create boost');
       }
 
-      // Redirect to boost dashboard
-      router.push(`/srv/${expertId}/boost`);
+      // Store the created boost and show payment modal
+      setCreatedBoost(data.data);
+      setShowPaymentModal(true);
     } catch (err) {
       console.error('[DBG][CreateBoostPage] Error creating boost:', err);
       setError(err instanceof Error ? err.message : 'Failed to create boost');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Handle payment modal close
+  const handlePaymentModalClose = () => {
+    setShowPaymentModal(false);
+    // If boost was created but payment cancelled, redirect to boost dashboard
+    // The boost will be in pending_payment status
+    if (createdBoost) {
+      router.push(`/srv/${expertId}/boost`);
     }
   };
 
@@ -182,7 +201,7 @@ export default function CreateBoostPage() {
     } else if (step === 'budget' && budget >= 1000) {
       generateCampaign();
     } else if (step === 'preview') {
-      setStep('confirm');
+      setStep('payment');
     }
   };
 
@@ -197,7 +216,7 @@ export default function CreateBoostPage() {
       }
     } else if (step === 'preview') {
       setStep('budget');
-    } else if (step === 'confirm') {
+    } else if (step === 'payment') {
       setStep('preview');
     }
   };
@@ -205,14 +224,14 @@ export default function CreateBoostPage() {
   const canProceed = () => {
     if (step === 'goal') return goal !== null;
     if (step === 'course') return courseId !== null;
-    if (step === 'budget') return budget >= 1000 && budget <= (wallet?.balance || 0);
-    if (step === 'preview') return selectedCreative !== null;
+    if (step === 'budget') return budget >= 1000;
+    if (step === 'preview') return editedCreative !== null && editedTargeting !== null;
     return true;
   };
 
   const formatCurrency = (amount: number) => {
     const val = amount / 100;
-    if (wallet?.currency === 'INR') {
+    if (currency === 'INR') {
       return `₹${val.toLocaleString('en-IN')}`;
     }
     return `$${val.toLocaleString('en-US')}`;
@@ -225,42 +244,6 @@ export default function CreateBoostPage() {
           <div className="h-8 bg-gray-200 rounded w-1/3" />
           <div className="h-4 bg-gray-200 rounded w-2/3" />
           <div className="h-64 bg-gray-200 rounded mt-8" />
-        </div>
-      </div>
-    );
-  }
-
-  if (!wallet || wallet.balance < 1000) {
-    return (
-      <div className="max-w-2xl mx-auto py-12">
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-8 text-center">
-          <svg
-            className="w-12 h-12 text-yellow-500 mx-auto mb-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-          <h2 className="text-xl font-bold text-yellow-800 mb-2">Insufficient Balance</h2>
-          <p className="text-yellow-700 mb-6">
-            You need at least {wallet?.currency === 'INR' ? '₹10' : '$10'} in your wallet to create
-            a boost campaign.
-            {wallet
-              ? ` (Current balance: ${wallet.currency === 'INR' ? '₹' : '$'}${(wallet.balance / 100).toFixed(2)})`
-              : ''}
-          </p>
-          <Link
-            href={`/srv/${expertId}/boost`}
-            className="inline-flex items-center px-6 py-3 bg-yellow-600 text-white rounded-lg font-medium hover:bg-yellow-700 transition-colors"
-          >
-            Add Funds to Wallet
-          </Link>
         </div>
       </div>
     );
@@ -291,42 +274,52 @@ export default function CreateBoostPage() {
       {/* Progress Steps */}
       <div className="mb-8">
         <div className="flex items-center justify-between">
-          {['goal', 'course', 'budget', 'preview', 'confirm'].map((s, i) => {
-            const stepNum = i + 1;
+          {['goal', 'course', 'budget', 'preview', 'payment'].map((s, i) => {
             const isActive = step === s;
-            const isPast = ['goal', 'course', 'budget', 'preview', 'confirm'].indexOf(step) > i;
+            const isPast = ['goal', 'course', 'budget', 'preview', 'payment'].indexOf(step) > i;
             const isHidden = s === 'course' && goal !== 'promote_course';
 
             if (isHidden) return null;
 
+            const stepLabels: Record<string, string> = {
+              goal: 'Goal',
+              course: 'Course',
+              budget: 'Budget',
+              preview: 'Preview',
+              payment: 'Pay',
+            };
+
             return (
               <div key={s} className="flex items-center">
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                    isActive
-                      ? 'bg-indigo-600 text-white'
-                      : isPast
-                        ? 'bg-indigo-100 text-indigo-600'
-                        : 'bg-gray-100 text-gray-400'
-                  }`}
-                >
-                  {isPast ? (
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path
-                        fillRule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  ) : (
-                    stepNum
-                  )}
+                <div className="flex flex-col items-center">
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                      isActive
+                        ? 'bg-indigo-600 text-white'
+                        : isPast
+                          ? 'bg-indigo-100 text-indigo-600'
+                          : 'bg-gray-100 text-gray-400'
+                    }`}
+                  >
+                    {isPast ? (
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path
+                          fillRule="evenodd"
+                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    ) : (
+                      i + 1
+                    )}
+                  </div>
+                  <span className="text-xs text-gray-500 mt-1">{stepLabels[s]}</span>
                 </div>
                 {i <
-                  ['goal', 'course', 'budget', 'preview', 'confirm'].filter(
+                  ['goal', 'course', 'budget', 'preview', 'payment'].filter(
                     x => !(x === 'course' && goal !== 'promote_course')
                   ).length -
-                    1 && <div className="w-12 h-0.5 bg-gray-200 mx-2" />}
+                    1 && <div className="w-8 md:w-12 h-0.5 bg-gray-200 mx-1 md:mx-2 mb-4" />}
               </div>
             );
           })}
@@ -371,7 +364,7 @@ export default function CreateBoostPage() {
         {/* Step 1: Goal Selection */}
         {step === 'goal' && (
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">What's your goal?</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">What&apos;s your goal?</h2>
             <p className="text-gray-600 text-sm mb-6">
               Choose the primary objective for your campaign.
             </p>
@@ -403,37 +396,40 @@ export default function CreateBoostPage() {
             <BudgetSelector
               value={budget}
               onChange={setBudget}
-              currency={wallet.currency}
-              maxBudget={wallet.balance}
+              currency={currency}
+              minBudget={1000}
+              maxBudget={10000000} // $100,000 or ₹100,000
             />
           </div>
         )}
 
         {/* Step 4: Preview Generated Campaign */}
-        {step === 'preview' && campaign && expert && (
+        {step === 'preview' && campaign && expert && editedCreative && editedTargeting && (
           <div>
             <h2 className="text-lg font-semibold text-gray-900 mb-2">Review your campaign</h2>
             <p className="text-gray-600 text-sm mb-6">
-              Our AI has generated this campaign for you. Select your preferred creative.
+              Our AI has generated this campaign for you. Edit any field to customize.
             </p>
             <CreativePreview
-              creative={campaign.creative}
-              alternativeCreatives={campaign.alternativeCreatives}
-              targeting={campaign.targeting}
+              creative={editedCreative}
+              targeting={editedTargeting}
               reasoning={campaign.reasoning}
               expertName={expert.name}
               expertAvatar={expert.avatar}
-              onSelectCreative={setSelectedCreative}
+              expertDomain={expertDomain}
+              expertId={expertId}
+              onCreativeChange={setEditedCreative}
+              onTargetingChange={setEditedTargeting}
             />
           </div>
         )}
 
-        {/* Step 5: Confirmation */}
-        {step === 'confirm' && campaign && selectedCreative && (
+        {/* Step 5: Payment */}
+        {step === 'payment' && campaign && editedCreative && editedTargeting && (
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Confirm and launch</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Pay and launch</h2>
             <p className="text-gray-600 text-sm mb-6">
-              Review your campaign details before launching.
+              Review your campaign details and complete payment to launch.
             </p>
 
             <div className="space-y-4">
@@ -457,20 +453,30 @@ export default function CreateBoostPage() {
                     </div>
                   )}
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Budget</span>
-                    <span className="font-medium text-gray-900">{formatCurrency(budget)}</span>
-                  </div>
-                  <div className="flex justify-between">
                     <span className="text-gray-600">Headline</span>
-                    <span className="font-medium text-gray-900">{selectedCreative.headline}</span>
+                    <span className="font-medium text-gray-900 text-right max-w-[200px] truncate">
+                      {editedCreative.headline}
+                    </span>
                   </div>
                 </div>
               </div>
 
+              {/* Payment Amount */}
               <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-indigo-900 font-medium">Total Amount</p>
+                    <p className="text-sm text-indigo-700">One-time payment for ad campaign</p>
+                  </div>
+                  <div className="text-2xl font-bold text-indigo-900">{formatCurrency(budget)}</div>
+                </div>
+              </div>
+
+              {/* What happens next */}
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
                 <div className="flex items-start gap-3">
                   <svg
-                    className="w-5 h-5 text-indigo-500 flex-shrink-0 mt-0.5"
+                    className="w-5 h-5 text-gray-500 flex-shrink-0 mt-0.5"
                     fill="currentColor"
                     viewBox="0 0 20 20"
                   >
@@ -481,35 +487,13 @@ export default function CreateBoostPage() {
                     />
                   </svg>
                   <div>
-                    <p className="text-indigo-900 font-medium">What happens next?</p>
-                    <p className="text-sm text-indigo-700 mt-1">
-                      Your campaign will be submitted for review. Once approved, it will start
-                      running on Facebook and Instagram. You can pause or stop it anytime from your
-                      dashboard.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-                <div className="flex items-start gap-3">
-                  <svg
-                    className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  <div>
-                    <p className="text-yellow-800 font-medium">Budget deduction</p>
-                    <p className="text-sm text-yellow-700 mt-1">
-                      {formatCurrency(budget)} will be deducted from your wallet when you launch
-                      this campaign.
-                    </p>
+                    <p className="text-gray-900 font-medium">What happens next?</p>
+                    <ul className="text-sm text-gray-600 mt-1 space-y-1">
+                      <li>• Complete secure payment via Stripe/Razorpay</li>
+                      <li>• Your ad will be submitted for review</li>
+                      <li>• Once approved, it starts running on Facebook & Instagram</li>
+                      <li>• Track performance from your dashboard</li>
+                    </ul>
                   </div>
                 </div>
               </div>
@@ -529,12 +513,12 @@ export default function CreateBoostPage() {
           Back
         </button>
 
-        {step === 'confirm' ? (
+        {step === 'payment' ? (
           <button
             type="button"
-            onClick={submitBoost}
+            onClick={handlePayAndLaunch}
             disabled={submitting}
-            className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-8 py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {submitting ? (
               <>
@@ -553,7 +537,7 @@ export default function CreateBoostPage() {
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                   />
                 </svg>
-                Launching...
+                Processing...
               </>
             ) : (
               <>
@@ -562,10 +546,10 @@ export default function CreateBoostPage() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M13 10V3L4 14h7v7l9-11h-7z"
+                    d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
                   />
                 </svg>
-                Launch Campaign
+                Pay {formatCurrency(budget)}
               </>
             )}
           </button>
@@ -603,6 +587,16 @@ export default function CreateBoostPage() {
           </button>
         )}
       </div>
+
+      {/* Payment Modal */}
+      {createdBoost && (
+        <BoostPaymentModal
+          isOpen={showPaymentModal}
+          onClose={handlePaymentModalClose}
+          boost={createdBoost}
+          expertId={expertId}
+        />
+      )}
     </div>
   );
 }

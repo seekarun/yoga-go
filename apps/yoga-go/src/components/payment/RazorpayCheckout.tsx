@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 interface RazorpayCheckoutProps {
   amount: number; // in paise
   currency: string;
-  type: 'course' | 'webinar';
+  type: 'course' | 'webinar' | 'boost';
   itemId: string; // courseId or webinarId
   itemName: string;
   onSuccess: (paymentId: string) => void;

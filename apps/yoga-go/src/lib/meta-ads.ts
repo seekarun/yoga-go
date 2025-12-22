@@ -45,6 +45,8 @@ interface MetaApiError {
     type: string;
     code: number;
     error_subcode?: number;
+    error_user_title?: string;
+    error_user_msg?: string;
     fbtrace_id?: string;
   };
 }
@@ -63,6 +65,9 @@ async function metaApiRequest<T>(
   const url = `${META_API_BASE}${endpoint}`;
 
   console.log(`[DBG][meta-ads] ${method} ${endpoint}`);
+  if (body) {
+    console.log('[DBG][meta-ads] Request body:', JSON.stringify(body, null, 2));
+  }
 
   const options: RequestInit = {
     method,
@@ -85,26 +90,131 @@ async function metaApiRequest<T>(
   const data = (await response.json()) as MetaApiResponse<T>;
 
   if (data.error) {
-    console.error('[DBG][meta-ads] API Error:', data.error);
-    throw new Error(`Meta API Error: ${data.error.message}`);
+    console.error('[DBG][meta-ads] API Error:', JSON.stringify(data.error, null, 2));
+    const errorDetails = data.error.error_user_msg || data.error.message;
+    throw new Error(`Meta API Error: ${errorDetails}`);
   }
 
   return data as T;
 }
 
+// Common country code mappings (wrong code -> correct ISO code)
+const COUNTRY_CODE_MAP: Record<string, string> = {
+  UK: 'GB', // United Kingdom
+  EN: 'GB', // England
+  INDIA: 'IN',
+  USA: 'US',
+  AUSTRALIA: 'AU',
+  CANADA: 'CA',
+  GERMANY: 'DE',
+  FRANCE: 'FR',
+  SPAIN: 'ES',
+  ITALY: 'IT',
+  JAPAN: 'JP',
+  CHINA: 'CN',
+  BRAZIL: 'BR',
+  MEXICO: 'MX',
+};
+
+// Valid ISO 3166-1 alpha-2 country codes (subset of most common)
+const VALID_COUNTRY_CODES = new Set([
+  'US',
+  'GB',
+  'IN',
+  'AU',
+  'CA',
+  'DE',
+  'FR',
+  'ES',
+  'IT',
+  'JP',
+  'CN',
+  'BR',
+  'MX',
+  'NL',
+  'SE',
+  'NO',
+  'DK',
+  'FI',
+  'BE',
+  'AT',
+  'CH',
+  'PL',
+  'PT',
+  'IE',
+  'NZ',
+  'SG',
+  'HK',
+  'KR',
+  'TW',
+  'TH',
+  'MY',
+  'PH',
+  'ID',
+  'VN',
+  'ZA',
+  'AE',
+  'SA',
+  'EG',
+  'NG',
+  'KE',
+  'AR',
+  'CL',
+  'CO',
+  'PE',
+  'RU',
+  'UA',
+  'TR',
+  'IL',
+  'GR',
+  'CZ',
+  'RO',
+  'HU',
+]);
+
+function normalizeCountryCode(code: string): string | null {
+  const upper = code.toUpperCase().trim();
+
+  // Check if it's in our mapping
+  if (COUNTRY_CODE_MAP[upper]) {
+    return COUNTRY_CODE_MAP[upper];
+  }
+
+  // Check if it's already a valid code
+  if (upper.length === 2 && VALID_COUNTRY_CODES.has(upper)) {
+    return upper;
+  }
+
+  return null;
+}
+
 // Campaign Objective mapping
 type CampaignObjective = 'OUTCOME_TRAFFIC' | 'OUTCOME_AWARENESS' | 'OUTCOME_LEADS';
+type OptimizationGoal = 'LINK_CLICKS' | 'REACH' | 'LANDING_PAGE_VIEWS' | 'IMPRESSIONS';
 
 function getObjectiveForGoal(goal: string): CampaignObjective {
   switch (goal) {
     case 'get_students':
-      return 'OUTCOME_LEADS';
+      return 'OUTCOME_TRAFFIC'; // Use TRAFFIC for landing page views
     case 'promote_course':
       return 'OUTCOME_TRAFFIC';
     case 'brand_awareness':
       return 'OUTCOME_AWARENESS';
     default:
       return 'OUTCOME_TRAFFIC';
+  }
+}
+
+function getOptimizationGoalForObjective(objective: CampaignObjective): OptimizationGoal {
+  switch (objective) {
+    case 'OUTCOME_TRAFFIC':
+      return 'LINK_CLICKS';
+    case 'OUTCOME_AWARENESS':
+      return 'REACH';
+    case 'OUTCOME_LEADS':
+      return 'LANDING_PAGE_VIEWS';
+    default:
+      return 'LINK_CLICKS';
   }
 }
 
@@ -134,6 +244,8 @@ export async function createCampaign(input: CreateCampaignInput): Promise<Create
       objective,
       status: 'PAUSED', // Start paused, activate after ad is ready
       special_ad_categories: [], // No special categories for yoga
+      // Required field - we use ad set level budgets, not campaign budget optimization
+      is_adset_budget_sharing_enabled: false,
     }
   );
 
@@ -149,6 +261,7 @@ interface CreateAdSetInput {
   dailyBudget: number; // in cents
   currency: string;
   destinationUrl: string;
+  goal: string; // boost goal to determine optimization
 }
 
 interface CreateAdSetResult {
@@ -172,29 +285,51 @@ export async function createAdSet(input: CreateAdSetInput): Promise<CreateAdSetR
     targetingSpec.genders = input.targeting.genders.map(g => (g === 'male' ? 1 : 2));
   }
 
-  // Add geo targeting
+  // Add geo targeting - normalize and validate country codes
+  let validCountries: string[] = [];
   if (input.targeting.locations && input.targeting.locations.length > 0) {
-    targetingSpec.geo_locations = {
-      countries: input.targeting.locations.filter(l => l.length === 2), // Country codes
-    };
+    validCountries = input.targeting.locations
+      .map(normalizeCountryCode)
+      .filter((code): code is string => code !== null);
   }
 
-  // Add interest targeting
+  // Default to US if no valid countries
+  if (validCountries.length === 0) {
+    validCountries = ['US'];
+    console.log('[DBG][meta-ads] No valid countries, defaulting to US');
+  }
+
+  // Remove duplicates
+  const uniqueCountries = [...new Set(validCountries)];
+  console.log('[DBG][meta-ads] Normalized countries:', uniqueCountries);
+  targetingSpec.geo_locations = {
+    countries: uniqueCountries,
+  };
+
+  // Note: Interest targeting requires looking up interest IDs via Meta's Targeting Search API
+  // For MVP, we skip interest targeting and rely on geo + age + gender
+  // TODO: Implement interest lookup via /act_{ad_account_id}/targetingsearch
   if (input.targeting.interests && input.targeting.interests.length > 0) {
-    // Note: In production, you'd need to look up interest IDs via the Targeting Search API
-    // For now, we'll use a placeholder approach
-    targetingSpec.flexible_spec = [
-      {
-        interests: input.targeting.interests.map(interest => ({
-          name: interest,
-          // In production, use actual interest IDs from Targeting Search API
-        })),
-      },
-    ];
+    console.log(
+      '[DBG][meta-ads] Skipping interest targeting (requires ID lookup):',
+      input.targeting.interests
+    );
   }
 
-  // Publisher platforms (Facebook and Instagram)
-  targetingSpec.publisher_platforms = ['facebook', 'instagram'];
+  // Disable Advantage+ audience (use our manual targeting)
+  targetingSpec.targeting_automation = {
+    advantage_audience: 0,
+  };
+
+  // Get optimization goal based on campaign objective
+  const objective = getObjectiveForGoal(input.goal);
+  const optimizationGoal = getOptimizationGoalForObjective(objective);
+  console.log(
+    '[DBG][meta-ads] Using optimization goal:',
+    optimizationGoal,
+    'for objective:',
+    objective
+  );
 
   const response = await metaApiRequest<{ id: string }>(
     `/act_${config.adAccountId}/adsets`,
@@ -204,7 +339,7 @@ export async function createAdSet(input: CreateAdSetInput): Promise<CreateAdSetR
       campaign_id: input.campaignId,
       daily_budget: input.dailyBudget, // in cents
       billing_event: 'IMPRESSIONS',
-      optimization_goal: 'LINK_CLICKS',
+      optimization_goal: optimizationGoal,
       bid_strategy: 'LOWEST_COST_WITHOUT_CAP',
       targeting: targetingSpec,
       status: 'PAUSED',
@@ -233,9 +368,16 @@ interface CreateAdResult {
 export async function createAd(input: CreateAdInput): Promise<CreateAdResult> {
   const config = getConfig();
 
-  console.log('[DBG][meta-ads] Creating ad:', input.name);
+  if (!config.pageId) {
+    throw new Error('META_PAGE_ID is not configured. A Facebook Page is required to create ads.');
+  }
+
+  console.log('[DBG][meta-ads] Creating ad:', input.name, 'with page:', config.pageId);
 
   // First, create the ad creative
+  // Note: For images, Meta requires uploading first and using image_hash
+  // For MVP, we create link ads without images (Meta uses link preview)
+  // TODO: Add image upload support via /act_{ad_account_id}/adimages
   const creativeResponse = await metaApiRequest<{ id: string }>(
     `/act_${config.adAccountId}/adcreatives`,
     'POST',
@@ -254,8 +396,6 @@ export async function createAd(input: CreateAdInput): Promise<CreateAdResult> {
               link: input.destinationUrl,
             },
           },
-          // If we have an image URL, use it
-          ...(input.creative.imageUrl && { image_url: input.creative.imageUrl }),
         },
       },
     }
@@ -401,9 +541,38 @@ export async function createBoostCampaign(
 ): Promise<CreateBoostCampaignResult> {
   console.log('[DBG][meta-ads] Creating full boost campaign:', input.boostId);
 
-  // Calculate daily budget (assume 7-day campaign by default)
-  const daysToRun = 7;
-  const dailyBudget = Math.ceil(input.budget / daysToRun);
+  // Validate all requirements upfront
+  const config = getConfig();
+  const validationErrors: string[] = [];
+
+  if (!config.accessToken) validationErrors.push('META_ACCESS_TOKEN is not set');
+  if (!config.adAccountId) validationErrors.push('META_AD_ACCOUNT_ID is not set');
+  if (!config.pageId) validationErrors.push('META_PAGE_ID is not set');
+
+  if (validationErrors.length > 0) {
+    throw new Error(`Meta Ads configuration incomplete: ${validationErrors.join(', ')}`);
+  }
+
+  console.log('[DBG][meta-ads] Config validated:', {
+    adAccountId: config.adAccountId,
+    pageId: config.pageId,
+    hasAccessToken: !!config.accessToken,
+  });
+
+  // Calculate daily budget
+  // Meta requires minimum ~$1.50-2.00/day depending on country
+  // Set minimum to 200 cents ($2) to be safe across all currencies
+  const MIN_DAILY_BUDGET = 200; // cents
+  const maxDays = Math.floor(input.budget / MIN_DAILY_BUDGET);
+  const daysToRun = Math.max(1, Math.min(maxDays, 7)); // 1-7 days based on budget
+  const dailyBudget = Math.max(MIN_DAILY_BUDGET, Math.ceil(input.budget / daysToRun));
+
+  console.log('[DBG][meta-ads] Budget calculation:', {
+    totalBudget: input.budget,
+    daysToRun,
+    dailyBudget,
+    currency: input.currency,
+  });
 
   // 1. Create campaign
   const { campaignId } = await createCampaign({
@@ -421,6 +590,7 @@ export async function createBoostCampaign(
     dailyBudget,
     currency: input.currency,
     destinationUrl: input.destinationUrl,
+    goal: input.goal,
   });
 
   // 3. Create ad with creative

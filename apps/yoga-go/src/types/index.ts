@@ -903,7 +903,11 @@ export type PaymentStatus =
 
 export type PaymentGateway = 'stripe' | 'razorpay';
 
-export type PaymentType = 'course_enrollment' | 'webinar_registration' | 'one_time';
+export type PaymentType =
+  | 'course_enrollment'
+  | 'webinar_registration'
+  | 'one_time'
+  | 'boost_campaign';
 
 export interface PaymentMetadata {
   chargeId?: string;
@@ -1197,6 +1201,7 @@ export type BoostGoal =
 // Boost status lifecycle
 export type BoostStatus =
   | 'draft' // AI generated, not submitted
+  | 'pending_payment' // Awaiting payment from expert
   | 'pending_approval' // Submitted to Meta, awaiting review
   | 'active' // Running on Meta
   | 'paused' // Paused by expert or system

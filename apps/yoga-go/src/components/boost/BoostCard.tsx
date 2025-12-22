@@ -1,15 +1,24 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import type { Boost } from '@/types';
 
 interface BoostCardProps {
   boost: Boost;
   expertId: string;
+  onDelete?: (boostId: string) => void;
 }
+
+const DELETABLE_STATUSES: Boost['status'][] = ['draft', 'pending_payment', 'failed'];
 
 const statusConfig: Record<Boost['status'], { label: string; color: string; bgColor: string }> = {
   draft: { label: 'Draft', color: 'text-gray-600', bgColor: 'bg-gray-100' },
+  pending_payment: {
+    label: 'Pending Payment',
+    color: 'text-amber-700',
+    bgColor: 'bg-amber-100',
+  },
   pending_approval: {
     label: 'Pending Approval',
     color: 'text-yellow-700',
@@ -28,9 +37,50 @@ const goalLabels: Record<Boost['goal'], string> = {
   brand_awareness: 'Brand Awareness',
 };
 
-export default function BoostCard({ boost, expertId }: BoostCardProps) {
+export default function BoostCard({ boost, expertId, onDelete }: BoostCardProps) {
+  const [deleting, setDeleting] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
   const status = statusConfig[boost.status];
   const goalLabel = goalLabels[boost.goal];
+  const canDelete = DELETABLE_STATUSES.includes(boost.status);
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!showConfirm) {
+      setShowConfirm(true);
+      return;
+    }
+
+    try {
+      setDeleting(true);
+      const res = await fetch(`/data/app/expert/me/boosts/${boost.id}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        onDelete?.(boost.id);
+      } else {
+        console.error('[DBG][BoostCard] Delete failed:', data.error);
+        alert(data.error || 'Failed to delete boost');
+      }
+    } catch (error) {
+      console.error('[DBG][BoostCard] Delete error:', error);
+      alert('Failed to delete boost');
+    } finally {
+      setDeleting(false);
+      setShowConfirm(false);
+    }
+  };
+
+  const handleCancelDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowConfirm(false);
+  };
 
   const formatCurrency = (amount: number) => {
     const val = amount / 100;
@@ -63,11 +113,80 @@ export default function BoostCard({ boost, expertId }: BoostCardProps) {
             Created {formatDate(boost.createdAt || '')}
           </p>
         </div>
-        <span
-          className={`px-2.5 py-1 rounded-full text-xs font-medium ${status.bgColor} ${status.color}`}
-        >
-          {status.label}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={`px-2.5 py-1 rounded-full text-xs font-medium ${status.bgColor} ${status.color}`}
+          >
+            {status.label}
+          </span>
+          {canDelete &&
+            (showConfirm ? (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="p-1.5 text-white bg-red-500 rounded hover:bg-red-600 disabled:opacity-50"
+                  title="Confirm delete"
+                >
+                  {deleting ? (
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                      />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                  )}
+                </button>
+                <button
+                  onClick={handleCancelDelete}
+                  className="p-1.5 text-gray-600 bg-gray-100 rounded hover:bg-gray-200"
+                  title="Cancel"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleDelete}
+                className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                title="Delete boost"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+              </button>
+            ))}
+        </div>
       </div>
 
       {/* Creative Preview */}

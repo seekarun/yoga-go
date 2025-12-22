@@ -40,7 +40,11 @@ export async function POST(request: Request) {
     console.log('[Razorpay] Payment verified successfully:', paymentId);
 
     // Grant access based on type
-    if (type === 'course') {
+    if (type === 'boost') {
+      // Boost payment - no enrollment needed
+      // The boost status will be updated by the confirm-payment endpoint
+      console.log(`[Razorpay] Boost payment verified for boost ${itemId}`);
+    } else if (type === 'course') {
       // Enroll user in course
       const { enrollUserInCourse } = await import('@/lib/enrollment');
       const enrollResult = await enrollUserInCourse(userId, itemId, paymentId);

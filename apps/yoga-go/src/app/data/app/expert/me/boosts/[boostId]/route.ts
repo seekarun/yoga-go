@@ -131,21 +131,23 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       );
     }
 
-    // Can only delete draft boosts
-    if (boost.status !== 'draft') {
+    // Can only delete boosts that haven't been submitted to Meta
+    const deletableStatuses = ['draft', 'pending_payment', 'failed'];
+    if (!deletableStatuses.includes(boost.status)) {
       return NextResponse.json(
-        { success: false, error: 'Can only delete draft boosts' } as ApiResponse<null>,
+        {
+          success: false,
+          error: `Cannot delete boost with status: ${boost.status}. Only draft, pending_payment, and failed boosts can be deleted.`,
+        } as ApiResponse<null>,
         { status: 400 }
       );
     }
 
-    // TODO: Implement delete in boostRepository and refund wallet
-    console.log('[DBG][boosts/[boostId]/route.ts] Delete not yet implemented');
+    // Delete the boost
+    await boostRepository.deleteBoost(boostId, expertId);
+    console.log('[DBG][boosts/[boostId]/route.ts] Boost deleted:', boostId);
 
-    return NextResponse.json(
-      { success: false, error: 'Delete not yet implemented' } as ApiResponse<null>,
-      { status: 501 }
-    );
+    return NextResponse.json({ success: true, data: null } as ApiResponse<null>);
   } catch (error) {
     console.error('[DBG][boosts/[boostId]/route.ts] Error:', error);
     return NextResponse.json(

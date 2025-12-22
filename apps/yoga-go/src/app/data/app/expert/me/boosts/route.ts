@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import type { ApiResponse, Boost, BoostListResult } from '@/types';
 import { getSessionFromCookies, getUserByCognitoSub } from '@/lib/auth';
 import * as boostRepository from '@/lib/repositories/boostRepository';
-import * as walletRepository from '@/lib/repositories/walletRepository';
 
 /**
  * GET /data/app/expert/me/boosts
@@ -67,7 +66,9 @@ export async function GET(request: Request) {
 /**
  * POST /data/app/expert/me/boosts
  * Create a new boost campaign from generated data
- * Body: { goal, courseId?, budget, creative, targeting }
+ * Body: { goal, courseId?, budget, currency, creative, targeting, initiatePayment? }
+ *
+ * Returns boost in "pending_payment" status - frontend shows payment form
  */
 export async function POST(request: Request) {
   console.log('[DBG][boosts/route.ts] POST called');
@@ -104,7 +105,7 @@ export async function POST(request: Request) {
 
     // Parse request body
     const body = await request.json();
-    const { goal, courseId, budget, currency, creative, targeting, alternativeCreatives } = body;
+    const { goal, courseId, budget, currency = 'USD', creative, targeting } = body;
 
     // Validate required fields
     if (!goal || !budget || !creative || !targeting) {
@@ -125,48 +126,26 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check wallet balance
-    const wallet = await walletRepository.getWallet(expertId);
-    if (!wallet || wallet.balance < budget) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Insufficient wallet balance',
-        } as ApiResponse<Boost>,
-        { status: 400 }
-      );
-    }
-
-    // Debit funds from wallet
-    const debitResult = await walletRepository.debitFunds({
-      expertId,
-      amount: budget,
-      currency: currency || wallet.currency,
-      boostId: 'pending', // Will update after boost is created
-      description: 'Boost campaign budget',
-    });
-
-    if ('error' in debitResult) {
-      return NextResponse.json({ success: false, error: debitResult.error } as ApiResponse<Boost>, {
-        status: 400,
-      });
-    }
-
-    // Create boost campaign
+    // Create boost campaign in pending_payment status
+    // Payment will be processed separately via payment modal
     const boost = await boostRepository.createBoost({
       expertId,
       goal,
       courseId,
       budget,
-      currency: currency || wallet.currency,
-      status: 'draft',
+      currency,
+      status: 'pending_payment',
       targeting,
       creative,
-      alternativeCreatives,
     });
 
-    console.log('[DBG][boosts/route.ts] Boost created:', boost.id);
-    return NextResponse.json({ success: true, data: boost } as ApiResponse<Boost>);
+    console.log('[DBG][boosts/route.ts] Boost created with pending_payment status:', boost.id);
+
+    // Return boost data - frontend will show payment modal
+    return NextResponse.json({
+      success: true,
+      data: boost,
+    } as ApiResponse<Boost>);
   } catch (error) {
     console.error('[DBG][boosts/route.ts] Error creating boost:', error);
     return NextResponse.json(

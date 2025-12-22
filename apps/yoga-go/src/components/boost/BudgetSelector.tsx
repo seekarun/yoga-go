@@ -29,20 +29,21 @@ interface BudgetSelectorProps {
   value: number;
   onChange: (amount: number) => void;
   currency: string;
-  maxBudget: number; // Wallet balance in cents
+  minBudget?: number; // Minimum budget in cents (default $10 / ₹10)
+  maxBudget?: number; // Maximum budget in cents (default $100,000)
 }
 
 export default function BudgetSelector({
   value,
   onChange,
   currency,
-  maxBudget,
+  minBudget = 1000, // $10 or ₹10
+  maxBudget = 10000000, // $100,000
 }: BudgetSelectorProps) {
   const [isCustom, setIsCustom] = useState(false);
   const [customValue, setCustomValue] = useState('');
 
   const budgetOptions = getBudgetOptions(currency);
-  const minBudget = 1000; // $10 or Rs.10 minimum
 
   // Check if current value matches a preset
   useEffect(() => {
@@ -56,7 +57,7 @@ export default function BudgetSelector({
   const handlePresetClick = (amount: number) => {
     setIsCustom(false);
     setCustomValue('');
-    onChange(Math.min(amount, maxBudget));
+    onChange(amount);
   };
 
   const handleCustomChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -66,7 +67,7 @@ export default function BudgetSelector({
     const numValue = parseFloat(inputVal);
     if (!isNaN(numValue) && numValue > 0) {
       const cents = Math.round(numValue * 100);
-      onChange(Math.min(cents, maxBudget));
+      onChange(cents);
     } else {
       onChange(0);
     }
@@ -76,7 +77,7 @@ export default function BudgetSelector({
     setIsCustom(true);
   };
 
-  const formatBalance = (amount: number) => {
+  const formatCurrency = (amount: number) => {
     const val = amount / 100;
     if (currency === 'INR') {
       return `₹${val.toLocaleString('en-IN')}`;
@@ -84,28 +85,22 @@ export default function BudgetSelector({
     return `$${val.toLocaleString('en-US')}`;
   };
 
-  const isOptionDisabled = (amount: number) => amount > maxBudget;
-
   return (
     <div className="space-y-4">
       {/* Preset Options */}
       <div className="grid grid-cols-2 gap-3">
         {budgetOptions.map(option => {
-          const disabled = isOptionDisabled(option.amount);
           const selected = value === option.amount && !isCustom;
 
           return (
             <button
               key={option.amount}
               type="button"
-              disabled={disabled}
               onClick={() => handlePresetClick(option.amount)}
               className={`p-4 rounded-xl border-2 transition-all text-center ${
                 selected
                   ? 'border-indigo-500 bg-indigo-50'
-                  : disabled
-                    ? 'border-gray-100 bg-gray-50 cursor-not-allowed opacity-50'
-                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                  : 'border-gray-200 hover:border-gray-300 bg-white'
               }`}
             >
               <div
@@ -144,16 +139,15 @@ export default function BudgetSelector({
         </div>
       </div>
 
-      {/* Balance Info */}
+      {/* Validation Info */}
       <div className="flex items-center justify-between text-sm pt-2">
-        <span className="text-gray-500">
-          Available balance:{' '}
-          <span className="font-medium text-gray-900">{formatBalance(maxBudget)}</span>
-        </span>
+        <span className="text-gray-500">Min: {formatCurrency(minBudget)}</span>
         {value < minBudget && value > 0 && (
-          <span className="text-red-500">Minimum: {formatBalance(minBudget)}</span>
+          <span className="text-red-500">Below minimum budget</span>
         )}
-        {value > maxBudget && <span className="text-red-500">Exceeds balance</span>}
+        {value > maxBudget && (
+          <span className="text-red-500">Max: {formatCurrency(maxBudget)}</span>
+        )}
       </div>
 
       {/* Selected Amount Display */}
@@ -167,7 +161,7 @@ export default function BudgetSelector({
             />
           </svg>
           <span className="text-green-700 font-medium">
-            Campaign budget: {formatBalance(value)}
+            Campaign budget: {formatCurrency(value)}
           </span>
         </div>
       )}

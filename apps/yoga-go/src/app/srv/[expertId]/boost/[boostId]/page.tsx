@@ -7,6 +7,11 @@ import type { Boost } from '@/types';
 
 const statusConfig: Record<Boost['status'], { label: string; color: string; bgColor: string }> = {
   draft: { label: 'Draft', color: 'text-gray-700', bgColor: 'bg-gray-100' },
+  pending_payment: {
+    label: 'Pending Payment',
+    color: 'text-amber-700',
+    bgColor: 'bg-amber-100',
+  },
   pending_approval: {
     label: 'Pending Approval',
     color: 'text-yellow-700',

@@ -10,7 +10,7 @@ import { PAYMENT_CONFIG } from '@/config/payment';
 interface StripeCheckoutProps {
   amount: number; // in cents
   currency: string;
-  type?: 'course' | 'webinar';
+  type?: 'course' | 'webinar' | 'boost';
   itemId: string;
   itemName: string;
   onSuccess: (paymentId: string) => void;
