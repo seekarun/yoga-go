@@ -62,6 +62,8 @@ notes
 [ ] consider cloudflare email?
 [ ] gifting option
 [ ] discounts - expert can create discount codes
+[ ] localisation
+
 
 [x] unique name check for expert (subdomain)
 [x] Did not understand level, should all levels be the default?

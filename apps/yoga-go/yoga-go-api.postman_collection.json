@@ -2042,6 +2042,108 @@
       ]
     },
     {
+      "name": "Stripe Connect",
+      "description": "Stripe Connect for expert payouts - experts receive 95% of course sales instantly",
+      "item": [
+        {
+          "name": "Create Connect Account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"expert@example.com\",\n  \"country\": \"US\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/stripe/connect/create-account",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stripe", "connect", "create-account"]
+            },
+            "description": "Create a Stripe Express account for the expert and return onboarding URL. If account exists but onboarding incomplete, returns new onboarding link.\n\nBody:\n- email (optional): Expert's email for Stripe\n- country (optional): 2-letter country code (default: US)\n\nResponse:\n{\n  \"success\": true,\n  \"data\": {\n    \"onboardingUrl\": \"https://connect.stripe.com/...\",\n    \"accountId\": \"acct_xxx\"\n  }\n}"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Connect Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/stripe/connect/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stripe", "connect", "status"]
+            },
+            "description": "Get the current Stripe Connect status for the authenticated expert. Syncs status from Stripe if connected.\n\nResponse:\n{\n  \"success\": true,\n  \"data\": {\n    \"connected\": true,\n    \"status\": \"active\",\n    \"accountId\": \"acct_xxx\",\n    \"chargesEnabled\": true,\n    \"payoutsEnabled\": true,\n    \"email\": \"expert@example.com\",\n    \"country\": \"US\"\n  }\n}\n\nStatus values:\n- not_connected: No Stripe account\n- pending: Onboarding not complete\n- active: Ready to receive payments\n- restricted: Account needs attention\n- disabled: Account disabled"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Dashboard Link",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/stripe/connect/dashboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stripe", "connect", "dashboard"]
+            },
+            "description": "Generate a login link to the expert's Stripe Express dashboard. Requires connected account.\n\nResponse:\n{\n  \"success\": true,\n  \"data\": {\n    \"url\": \"https://connect.stripe.com/express/xxx\"\n  }\n}"
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Onboarding Link",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/stripe/connect/refresh?expertId=expert-123",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stripe", "connect", "refresh"],
+              "query": [
+                {
+                  "key": "expertId",
+                  "value": "expert-123",
+                  "description": "Optional expert ID (uses session if not provided)"
+                }
+              ]
+            },
+            "description": "Called when onboarding link expires. Generates a new link and redirects to Stripe. Typically called from Stripe's return_url when link expires."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Admin Inbox",
       "description": "Admin platform email inbox management - view and reply to emails sent to hi@, contact@, privacy@myyoga.guru addresses",
       "item": [

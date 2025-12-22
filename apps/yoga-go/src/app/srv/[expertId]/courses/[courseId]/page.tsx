@@ -477,10 +477,31 @@ export default function CourseManagement() {
     }
   };
 
-  const handlePublishCourse = () => {
+  const handlePublishCourse = async () => {
     if (lessons.length === 0) {
       setError('Please add at least one lesson before publishing the course');
       return;
+    }
+
+    // Check if this is a paid course
+    if (course && course.price > 0) {
+      try {
+        // Verify expert has Stripe Connect set up
+        const response = await fetch('/api/stripe/connect/status');
+        const data = await response.json();
+
+        if (!data.success || data.data.status !== 'active') {
+          setError(
+            'To publish a paid course, you must first connect your Stripe account to receive payments. ' +
+              'Go to Settings > Payments to connect Stripe.'
+          );
+          return;
+        }
+      } catch (err) {
+        console.error('[DBG][course-management] Error checking Stripe status:', err);
+        setError('Unable to verify payment setup. Please try again.');
+        return;
+      }
     }
 
     // Show confirmation overlay

@@ -14,7 +14,7 @@ import {
   QueryCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { docClient, Tables, EntityType } from '../dynamodb';
-import type { Expert } from '@/types';
+import type { Expert, StripeConnectDetails } from '@/types';
 
 // Type for DynamoDB Expert item (includes PK/SK)
 interface DynamoDBExpertItem extends Expert {
@@ -323,4 +323,40 @@ export async function getFeaturedExperts(): Promise<Expert[]> {
   const experts = (result.Items || []).map(item => toExpert(item as DynamoDBExpertItem));
   console.log('[DBG][expertRepository] Found', experts.length, 'featured experts');
   return experts;
+}
+
+/**
+ * Update expert's Stripe Connect details
+ */
+export async function updateStripeConnect(
+  expertId: string,
+  stripeConnect: Partial<StripeConnectDetails>
+): Promise<Expert> {
+  console.log('[DBG][expertRepository] Updating Stripe Connect for expert:', expertId);
+
+  const existing = await getExpertById(expertId);
+  if (!existing) {
+    throw new Error('Expert not found');
+  }
+
+  // Merge with existing stripeConnect data
+  const updatedConnect: StripeConnectDetails = {
+    ...(existing.stripeConnect as StripeConnectDetails),
+    ...stripeConnect,
+    lastUpdatedAt: new Date().toISOString(),
+  } as StripeConnectDetails;
+
+  return updateExpert(expertId, { stripeConnect: updatedConnect });
+}
+
+/**
+ * Check if expert has active Stripe Connect
+ */
+export async function hasActiveStripeConnect(expertId: string): Promise<boolean> {
+  const expert = await getExpertById(expertId);
+  return (
+    expert?.stripeConnect?.status === 'active' &&
+    expert?.stripeConnect?.chargesEnabled === true &&
+    expert?.stripeConnect?.payoutsEnabled === true
+  );
 }

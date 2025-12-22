@@ -22,7 +22,29 @@ export async function GET(request: NextRequest) {
   // Determine base URL
   const hostname = request.headers.get('host') || 'localhost:3111';
   const protocol = hostname.includes('localhost') ? 'http' : 'https';
-  const baseUrl = `${protocol}://${hostname}`;
+  const currentUrl = `${protocol}://${hostname}`;
+
+  // Parse state to extract callback URL and origin domain
+  // Format: "callbackUrl|originDomain" or just "callbackUrl"
+  let callbackPath = '/srv';
+  let originDomain = currentUrl;
+
+  if (state) {
+    if (state.includes('|')) {
+      const [path, origin] = state.split('|');
+      callbackPath = path || '/srv';
+      originDomain = origin || currentUrl;
+    } else {
+      callbackPath = state;
+    }
+  }
+
+  console.log('[DBG][auth/facebook/callback] Parsed state:', { callbackPath, originDomain });
+
+  // Use main domain for redirect_uri (must match what was sent in initial request)
+  const isLocalhost = hostname.includes('localhost');
+  const mainDomain = isLocalhost ? 'http://localhost:3111' : 'https://myyoga.guru';
+  const baseUrl = mainDomain;
 
   // Handle errors from Cognito
   if (error) {
@@ -110,13 +132,16 @@ export async function GET(request: NextRequest) {
       salt: 'authjs.session-token',
     });
 
-    // Determine redirect URL - default to /srv since all signups are expert signups
-    const callbackUrl = state || '/srv';
+    // Build final redirect URL using origin domain (could be subdomain) + callback path
+    const finalRedirectUrl = new URL(callbackPath, originDomain);
 
-    console.log('[DBG][auth/facebook/callback] Creating session and redirecting to:', callbackUrl);
+    console.log(
+      '[DBG][auth/facebook/callback] Creating session and redirecting to:',
+      finalRedirectUrl.toString()
+    );
 
     // Create response with redirect
-    const response = NextResponse.redirect(new URL(callbackUrl, baseUrl));
+    const response = NextResponse.redirect(finalRedirectUrl.toString());
 
     // Set session cookie with the name NextAuth expects
     // IMPORTANT: Cookie settings must match logout route exactly for proper session clearing

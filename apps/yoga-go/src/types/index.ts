@@ -134,6 +134,26 @@ export interface ExpertPlatformPreferences {
   emailForwardingEnabled?: boolean; // Whether to forward incoming emails
 }
 
+// Stripe Connect Status for Expert Payouts
+export type StripeConnectStatus =
+  | 'not_connected' // Expert hasn't started onboarding
+  | 'pending' // Onboarding started but not complete
+  | 'active' // Account ready for payouts
+  | 'restricted' // Account needs attention (e.g., verification)
+  | 'disabled'; // Account disabled by Stripe
+
+// Stripe Connect Account Details
+export interface StripeConnectDetails {
+  accountId: string; // Stripe connected account ID (acct_xxx)
+  status: StripeConnectStatus;
+  chargesEnabled: boolean; // Can receive payments
+  payoutsEnabled: boolean; // Can receive payouts
+  onboardingCompletedAt?: string; // ISO timestamp
+  lastUpdatedAt: string; // Last status check
+  email?: string; // Email on Stripe account
+  country?: string; // Account country
+}
+
 export interface Expert extends BaseEntity {
   name: string;
   title: string;
@@ -157,6 +177,9 @@ export interface Expert extends BaseEntity {
 
   // Platform preferences (subdomain, visibility, email)
   platformPreferences?: ExpertPlatformPreferences;
+
+  // Stripe Connect for receiving course payments
+  stripeConnect?: StripeConnectDetails;
 }
 
 // Tenant Related Types (Multi-tenancy)

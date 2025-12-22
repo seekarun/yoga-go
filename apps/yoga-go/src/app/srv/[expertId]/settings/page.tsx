@@ -1,16 +1,19 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import NotificationOverlay from '@/components/NotificationOverlay';
 
+import type { StripeConnectDetails } from '@/types';
+
 type DisconnectType = 'google' | 'zoom' | null;
 
-export default function SettingsPage() {
+function SettingsContent() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const expertId = params.expertId as string;
 
@@ -34,6 +37,13 @@ export default function SettingsPage() {
     connected: boolean;
     email?: string;
   } | null>(null);
+
+  // Stripe Connect state
+  const [stripeLoading, setStripeLoading] = useState(true);
+  const [stripeConnecting, setStripeConnecting] = useState(false);
+  const [stripeConnectionStatus, setStripeConnectionStatus] = useState<StripeConnectDetails | null>(
+    null
+  );
 
   // Check if user owns this expert profile
   useEffect(() => {
@@ -74,10 +84,49 @@ export default function SettingsPage() {
     }
   }, []);
 
+  const fetchStripeStatus = useCallback(async () => {
+    try {
+      setStripeLoading(true);
+      const response = await fetch('/api/stripe/connect/status');
+      const data = await response.json();
+
+      if (data.success) {
+        setStripeConnectionStatus(data.data);
+      }
+    } catch (err) {
+      console.error('[DBG][settings] Error fetching Stripe status:', err);
+    } finally {
+      setStripeLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchGoogleStatus();
     fetchZoomStatus();
-  }, [fetchGoogleStatus, fetchZoomStatus]);
+    fetchStripeStatus();
+  }, [fetchGoogleStatus, fetchZoomStatus, fetchStripeStatus]);
+
+  // Handle Stripe callback query params
+  useEffect(() => {
+    const stripeParam = searchParams.get('stripe');
+    if (stripeParam) {
+      console.log('[DBG][settings] Stripe callback param:', stripeParam);
+      // Refetch status after callback redirect
+      fetchStripeStatus();
+
+      if (stripeParam === 'connected') {
+        setSuccess('Stripe account connected successfully! You can now receive payments.');
+      } else if (stripeParam === 'pending') {
+        setSuccess('Stripe setup started. Complete the onboarding to receive payments.');
+      } else if (stripeParam === 'error') {
+        setError('There was an issue connecting your Stripe account. Please try again.');
+      }
+
+      // Clear the query param from URL
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [searchParams, fetchStripeStatus]);
 
   // Google handlers
   const handleGoogleConnect = () => {
@@ -154,6 +203,53 @@ export default function SettingsPage() {
       handleGoogleDisconnectConfirm();
     } else if (confirmDisconnect === 'zoom') {
       handleZoomDisconnectConfirm();
+    }
+  };
+
+  // Stripe handlers
+  const handleStripeConnect = async () => {
+    setStripeConnecting(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/stripe/connect/create-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ country: 'US' }),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.data.onboardingUrl) {
+        // Redirect to Stripe onboarding
+        window.location.href = data.data.onboardingUrl;
+      } else {
+        setError(data.error || 'Failed to create Stripe account');
+        setStripeConnecting(false);
+      }
+    } catch (err) {
+      console.error('[DBG][settings] Error connecting Stripe:', err);
+      setError('Failed to connect Stripe account');
+      setStripeConnecting(false);
+    }
+  };
+
+  const handleOpenStripeDashboard = async () => {
+    try {
+      const response = await fetch('/api/stripe/connect/dashboard', {
+        method: 'POST',
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.data.url) {
+        window.open(data.data.url, '_blank');
+      } else {
+        setError(data.error || 'Failed to open Stripe dashboard');
+      }
+    } catch (err) {
+      console.error('[DBG][settings] Error opening Stripe dashboard:', err);
+      setError('Failed to open Stripe dashboard');
     }
   };
 
@@ -557,6 +653,276 @@ export default function SettingsPage() {
               </>
             )}
           </div>
+
+          {/* Stripe Connect Section - Payments */}
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: '12px',
+              padding: '24px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              marginTop: '24px',
+              border:
+                stripeConnectionStatus?.status === 'active'
+                  ? '2px solid #635bff'
+                  : '1px solid #ddd',
+            }}
+          >
+            {stripeLoading ? (
+              <div style={{ textAlign: 'center', padding: '20px' }}>
+                <div style={{ color: '#666' }}>Loading payment settings...</div>
+              </div>
+            ) : (
+              <>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    marginBottom: '16px',
+                  }}
+                >
+                  {/* Stripe Icon */}
+                  <div
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '12px',
+                      background:
+                        stripeConnectionStatus?.status === 'active' ? '#f0f0ff' : '#f8f8f8',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" width="28" height="28" fill="#635bff">
+                      <path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.591-7.305z" />
+                    </svg>
+                  </div>
+
+                  <div style={{ flex: 1 }}>
+                    <h2 style={{ fontSize: '18px', fontWeight: '600', margin: 0 }}>
+                      Payments (Stripe)
+                    </h2>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        marginTop: '4px',
+                      }}
+                    >
+                      <span
+                        style={{
+                          padding: '2px 8px',
+                          background:
+                            stripeConnectionStatus?.status === 'active'
+                              ? '#f0f0ff'
+                              : stripeConnectionStatus?.status === 'pending' ||
+                                  stripeConnectionStatus?.status === 'disabled'
+                                ? '#fff7e6'
+                                : stripeConnectionStatus?.status === 'restricted'
+                                  ? '#fee'
+                                  : '#f5f5f5',
+                          color:
+                            stripeConnectionStatus?.status === 'active'
+                              ? '#635bff'
+                              : stripeConnectionStatus?.status === 'pending' ||
+                                  stripeConnectionStatus?.status === 'disabled'
+                                ? '#d46b08'
+                                : stripeConnectionStatus?.status === 'restricted'
+                                  ? '#c00'
+                                  : '#666',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                        }}
+                      >
+                        {stripeConnectionStatus?.status === 'active'
+                          ? 'Connected'
+                          : stripeConnectionStatus?.status === 'pending'
+                            ? 'Pending Setup'
+                            : stripeConnectionStatus?.status === 'restricted'
+                              ? 'Action Required'
+                              : stripeConnectionStatus?.status === 'disabled'
+                                ? 'Setup Incomplete'
+                                : 'Not Connected'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {stripeConnectionStatus?.status === 'active' ? (
+                  <>
+                    {/* Connected State */}
+                    <div
+                      style={{
+                        padding: '16px',
+                        background: '#f0f0ff',
+                        borderRadius: '8px',
+                        marginBottom: '16px',
+                      }}
+                    >
+                      <div style={{ fontSize: '13px', color: '#635bff', marginBottom: '4px' }}>
+                        Connected Account
+                      </div>
+                      <div
+                        style={{
+                          fontFamily: 'monospace',
+                          fontSize: '16px',
+                          fontWeight: '500',
+                          color: '#635bff',
+                        }}
+                      >
+                        {stripeConnectionStatus.email || stripeConnectionStatus.accountId}
+                      </div>
+                    </div>
+
+                    <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>
+                      Your Stripe account is connected. When learners purchase your courses, you
+                      will receive 95% of the payment instantly. The platform retains 5% as a
+                      service fee.
+                    </p>
+
+                    <button
+                      onClick={handleOpenStripeDashboard}
+                      style={{
+                        padding: '10px 20px',
+                        background: '#635bff',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Open Stripe Dashboard
+                    </button>
+                  </>
+                ) : stripeConnectionStatus?.status === 'pending' ||
+                  stripeConnectionStatus?.status === 'restricted' ||
+                  stripeConnectionStatus?.status === 'disabled' ? (
+                  <>
+                    {/* Pending/Incomplete State */}
+                    <div
+                      style={{
+                        padding: '16px',
+                        background: '#fff7e6',
+                        borderRadius: '8px',
+                        marginBottom: '16px',
+                      }}
+                    >
+                      <div style={{ fontSize: '14px', color: '#d46b08' }}>
+                        Your Stripe account setup is incomplete. Please complete the onboarding to
+                        receive payments.
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleStripeConnect}
+                      disabled={stripeConnecting}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '12px 24px',
+                        background: '#635bff',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '15px',
+                        fontWeight: '500',
+                        cursor: stripeConnecting ? 'not-allowed' : 'pointer',
+                        opacity: stripeConnecting ? 0.7 : 1,
+                      }}
+                    >
+                      {stripeConnecting ? 'Redirecting...' : 'Complete Stripe Setup'}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {/* Not Connected State */}
+                    <p style={{ color: '#666', fontSize: '14px', marginBottom: '20px' }}>
+                      Connect your Stripe account to receive payments for your courses. This is
+                      required to publish paid courses.
+                    </p>
+
+                    <ul
+                      style={{
+                        margin: '0 0 20px 0',
+                        padding: '0 0 0 20px',
+                        color: '#666',
+                        fontSize: '14px',
+                      }}
+                    >
+                      <li style={{ marginBottom: '8px' }}>
+                        Receive 95% of course payments instantly
+                      </li>
+                      <li style={{ marginBottom: '8px' }}>
+                        Automatic payouts to your bank account
+                      </li>
+                      <li style={{ marginBottom: '8px' }}>
+                        View earnings and manage payouts in Stripe Dashboard
+                      </li>
+                    </ul>
+
+                    <button
+                      onClick={handleStripeConnect}
+                      disabled={stripeConnecting}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '12px 24px',
+                        background: '#635bff',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '15px',
+                        fontWeight: '500',
+                        cursor: stripeConnecting ? 'not-allowed' : 'pointer',
+                        opacity: stripeConnecting ? 0.7 : 1,
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                      }}
+                    >
+                      <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                        <path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.591-7.305z" />
+                      </svg>
+                      {stripeConnecting ? 'Connecting...' : 'Connect with Stripe'}
+                    </button>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Other Settings Link */}
+          <div
+            style={{
+              marginTop: '24px',
+              padding: '16px',
+              background: '#f8f8f8',
+              borderRadius: '8px',
+            }}
+          >
+            <p style={{ fontSize: '14px', color: '#666', margin: 0 }}>
+              Looking for other settings?{' '}
+              <Link
+                href={`/srv/${expertId}/settings/domain`}
+                style={{ color: 'var(--color-primary)', textDecoration: 'none' }}
+              >
+                Domain Settings
+              </Link>{' '}
+              |{' '}
+              <Link
+                href={`/srv/${expertId}/settings/email`}
+                style={{ color: 'var(--color-primary)', textDecoration: 'none' }}
+              >
+                Email Settings
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
 
@@ -571,5 +937,15 @@ export default function SettingsPage() {
         cancelText="Cancel"
       />
     </>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense
+      fallback={<div style={{ padding: '40px', textAlign: 'center' }}>Loading settings...</div>}
+    >
+      <SettingsContent />
+    </Suspense>
   );
 }

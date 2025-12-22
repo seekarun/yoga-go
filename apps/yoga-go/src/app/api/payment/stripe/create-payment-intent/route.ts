@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { PAYMENT_CONFIG } from '@/config/payment';
 import * as paymentRepository from '@/lib/repositories/paymentRepository';
+import * as courseRepository from '@/lib/repositories/courseRepository';
+import * as expertRepository from '@/lib/repositories/expertRepository';
+import { calculatePlatformFee } from '@/lib/stripe-connect';
 
 function getStripeInstance() {
   if (!PAYMENT_CONFIG.stripe.secretKey) {
@@ -25,9 +28,40 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create Stripe PaymentIntent
+    // For course purchases, look up expert's Stripe Connect account
+    let transferData: { destination: string } | undefined;
+    let applicationFeeAmount: number | undefined;
+    let expertStripeAccountId: string | undefined;
+
+    if (type === 'course') {
+      const course = await courseRepository.getCourseById(itemId);
+      if (!course) {
+        return NextResponse.json({ success: false, error: 'Course not found' }, { status: 404 });
+      }
+
+      const expertId = course.instructor.id;
+      const expert = await expertRepository.getExpertById(expertId);
+
+      // Check if expert has active Stripe Connect
+      if (expert?.stripeConnect?.status === 'active' && expert?.stripeConnect?.chargesEnabled) {
+        expertStripeAccountId = expert.stripeConnect.accountId;
+        transferData = { destination: expertStripeAccountId };
+        applicationFeeAmount = calculatePlatformFee(amount); // 5% platform fee
+
+        console.log('[DBG][stripe] Using Connect transfer:', {
+          destination: expertStripeAccountId,
+          fee: applicationFeeAmount,
+          expertGets: amount - applicationFeeAmount,
+        });
+      } else {
+        // Expert doesn't have Connect - all funds go to platform
+        console.log('[DBG][stripe] Expert not on Connect, platform keeps all funds');
+      }
+    }
+
+    // Build PaymentIntent params
     const stripe = getStripeInstance();
-    const paymentIntent = await stripe.paymentIntents.create({
+    const paymentIntentParams: Stripe.PaymentIntentCreateParams = {
       amount: amount, // amount in smallest currency unit (cents)
       currency: currency.toLowerCase(),
       metadata: {
@@ -38,11 +72,19 @@ export async function POST(request: Request) {
       automatic_payment_methods: {
         enabled: true,
       },
-    });
+    };
+
+    // Add Connect parameters if expert has connected account
+    if (transferData && applicationFeeAmount !== undefined) {
+      paymentIntentParams.transfer_data = transferData;
+      paymentIntentParams.application_fee_amount = applicationFeeAmount;
+    }
+
+    const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
 
     console.log('[DBG][stripe] PaymentIntent created:', paymentIntent.id);
 
-    // Store payment record in DynamoDB
+    // Store payment record in DynamoDB (include Connect info in metadata)
     const payment = await paymentRepository.createPayment({
       userId,
       courseId: type === 'course' ? itemId : undefined,
@@ -56,6 +98,8 @@ export async function POST(request: Request) {
       initiatedAt: new Date().toISOString(),
       metadata: {
         userAgent: request.headers.get('user-agent') || undefined,
+        connectAccountId: expertStripeAccountId,
+        platformFee: applicationFeeAmount,
       },
     });
 

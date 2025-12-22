@@ -11,6 +11,10 @@ export const PAYMENT_CONFIG = {
     currency: 'USD',
     webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
   },
+  // Stripe Connect for expert payouts
+  stripeConnect: {
+    platformFeePercent: 5, // 5% platform commission
+  },
   plans: {
     curious: {
       name: 'Curious Plan',

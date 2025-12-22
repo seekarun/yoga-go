@@ -17,24 +17,30 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const returnTo = searchParams.get('returnTo') || '/';
 
-  // Determine the base URL
+  // Determine the current hostname
   const hostname = request.headers.get('host') || 'localhost:3111';
   const protocol = hostname.includes('localhost') ? 'http' : 'https';
-  const baseUrl = `${protocol}://${hostname}`;
+  const currentUrl = `${protocol}://${hostname}`;
 
   // Cognito requires logout_uri to EXACTLY match one of the configured allowed logout URLs
-  // We only have base URLs configured (http://localhost:3111, https://myyoga.guru, etc.)
-  // So we use the base URL as logout_uri and pass the final destination via a cookie
+  // Expert subdomains (e.g., myyoga.myyoga.guru) are NOT in the allowed list
+  // So we ALWAYS use the main domain for Cognito logout, then redirect back
+  const isLocalhost = hostname.includes('localhost');
+  const mainDomain = isLocalhost ? `http://localhost:3111` : `https://myyoga.guru`;
+
+  // Store the full return URL (including subdomain) to redirect back after logout
   const finalPath = returnTo.startsWith('/') ? returnTo : `/${returnTo}`;
+  const fullReturnUrl = `${currentUrl}${finalPath}`;
 
-  console.log('[DBG][logout] Base URL for Cognito:', baseUrl);
-  console.log('[DBG][logout] Final path after logout:', finalPath);
+  console.log('[DBG][logout] Current URL:', currentUrl);
+  console.log('[DBG][logout] Main domain for Cognito:', mainDomain);
+  console.log('[DBG][logout] Full return URL:', fullReturnUrl);
 
-  // Build Cognito logout URL - use base URL as logout_uri (which is allowed in Cognito config)
+  // Build Cognito logout URL - use MAIN DOMAIN as logout_uri (which is allowed in Cognito config)
   const cognitoUrls = getCognitoUrls();
   const cognitoLogoutUrl = new URL(cognitoUrls.logout);
   cognitoLogoutUrl.searchParams.set('client_id', cognitoConfig.clientId);
-  cognitoLogoutUrl.searchParams.set('logout_uri', baseUrl);
+  cognitoLogoutUrl.searchParams.set('logout_uri', mainDomain);
 
   console.log('[DBG][logout] Cognito logout URL:', cognitoLogoutUrl.toString());
 
@@ -55,11 +61,10 @@ export async function GET(request: NextRequest) {
     ...(isProduction && { domain: '.myyoga.guru' }),
   });
 
-  // Store the final destination in a cookie so the landing page can redirect
-  // This allows us to use just the base URL as logout_uri (required by Cognito)
-  // while still redirecting to the intended destination
-  if (finalPath !== '/') {
-    response.cookies.set('post-logout-redirect', finalPath, {
+  // Store the full return URL (including subdomain) in a cookie
+  // After Cognito redirects to main domain, we'll redirect to the original subdomain
+  if (fullReturnUrl !== mainDomain && fullReturnUrl !== `${mainDomain}/`) {
+    response.cookies.set('post-logout-redirect', fullReturnUrl, {
       httpOnly: false, // Needs to be readable by client JS
       secure: isProduction,
       sameSite: 'lax',
