@@ -1,15 +1,22 @@
 'use client';
 
 import type { FormEvent } from 'react';
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { getClientExpertContext } from '@/lib/domainContext';
 
 function SigninForm() {
   const searchParams = useSearchParams();
   // Default to /srv since all users on this domain are experts
   const callbackUrl = searchParams.get('callbackUrl') || '/srv';
   const errorParam = searchParams.get('error');
+  const [isExpertDomain, setIsExpertDomain] = useState(false);
+
+  useEffect(() => {
+    const { isExpertMode } = getClientExpertContext();
+    setIsExpertDomain(isExpertMode);
+  }, []);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -67,7 +74,7 @@ function SigninForm() {
   };
 
   return (
-    <div style={{ paddingTop: '64px', minHeight: '100vh', background: '#f8f8f8' }}>
+    <div style={{ minHeight: '100vh', background: '#f8f8f8' }}>
       {/* Form Section */}
       <section style={{ padding: '60px 20px' }}>
         <div style={{ maxWidth: '450px', margin: '0 auto' }}>
@@ -79,19 +86,21 @@ function SigninForm() {
               boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
             }}
           >
-            {/* Header Image */}
-            <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/yg_girl_signup.png"
-                alt="Welcome"
-                style={{
-                  width: '120px',
-                  height: 'auto',
-                  margin: '0 auto',
-                }}
-              />
-            </div>
+            {/* Header Image - only show on main domain */}
+            {!isExpertDomain && (
+              <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/yg_girl_signup.png"
+                  alt="Welcome"
+                  style={{
+                    width: '120px',
+                    height: 'auto',
+                    margin: '0 auto',
+                  }}
+                />
+              </div>
+            )}
 
             {error && (
               <div
@@ -362,23 +371,6 @@ function SigninForm() {
               </p>
             </div>
 
-            <div style={{ marginTop: '16px', textAlign: 'center' }}>
-              <p style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>
-                Are you a yoga instructor?
-              </p>
-              <Link
-                href="/auth/expert-signup"
-                style={{
-                  color: 'var(--color-primary)',
-                  textDecoration: 'none',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                }}
-              >
-                Expert signup →
-              </Link>
-            </div>
-
             <div style={{ marginTop: '24px', textAlign: 'center' }}>
               <Link
                 href="/"
@@ -402,7 +394,7 @@ export default function SigninPage() {
   return (
     <Suspense
       fallback={
-        <div style={{ paddingTop: '64px', minHeight: '100vh', background: '#f8f8f8' }}>
+        <div style={{ minHeight: '100vh', background: '#f8f8f8' }}>
           <div style={{ textAlign: 'center', padding: '100px 20px' }}>Loading...</div>
         </div>
       }

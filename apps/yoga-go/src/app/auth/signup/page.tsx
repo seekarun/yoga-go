@@ -4,6 +4,7 @@ import type { FormEvent } from 'react';
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { getClientExpertContext } from '@/lib/domainContext';
 
 interface FormData {
   name: string;
@@ -63,10 +64,16 @@ function SignupForm() {
     hasNumber: false,
     hasSpecial: false,
   });
+  const [isExpertDomain, setIsExpertDomain] = useState(false);
 
   useEffect(() => {
     setPasswordStrength(checkPasswordStrength(formData.password));
   }, [formData.password]);
+
+  useEffect(() => {
+    const { isExpertMode } = getClientExpertContext();
+    setIsExpertDomain(isExpertMode);
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -149,7 +156,7 @@ function SignupForm() {
   };
 
   return (
-    <div style={{ paddingTop: '64px', minHeight: '100vh', background: '#f8f8f8' }}>
+    <div style={{ minHeight: '100vh', background: '#f8f8f8' }}>
       {/* Form Section */}
       <section style={{ padding: '60px 20px' }}>
         <div style={{ maxWidth: '500px', margin: '0 auto' }}>
@@ -161,19 +168,21 @@ function SignupForm() {
               boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
             }}
           >
-            {/* Header Image */}
-            <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/yg_girl_signup.png"
-                alt="Welcome"
-                style={{
-                  width: '120px',
-                  height: 'auto',
-                  margin: '0 auto',
-                }}
-              />
-            </div>
+            {/* Header Image - only show on main domain */}
+            {!isExpertDomain && (
+              <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/yg_girl_signup.png"
+                  alt="Welcome"
+                  style={{
+                    width: '120px',
+                    height: 'auto',
+                    margin: '0 auto',
+                  }}
+                />
+              </div>
+            )}
 
             {error && (
               <div
@@ -615,7 +624,7 @@ export default function SignupPage() {
   return (
     <Suspense
       fallback={
-        <div style={{ paddingTop: '64px', minHeight: '100vh', background: '#f8f8f8' }}>
+        <div style={{ minHeight: '100vh', background: '#f8f8f8' }}>
           <div style={{ textAlign: 'center', padding: '100px 20px' }}>Loading...</div>
         </div>
       }
