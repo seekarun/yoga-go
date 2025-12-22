@@ -29,9 +29,8 @@ export async function POST(request: Request) {
     }
 
     // For course purchases, look up expert's Stripe Connect account
-    let transferData: { destination: string } | undefined;
-    let applicationFeeAmount: number | undefined;
     let expertStripeAccountId: string | undefined;
+    let applicationFeeAmount: number | undefined;
 
     if (type === 'course') {
       const course = await courseRepository.getCourseById(itemId);
@@ -45,12 +44,11 @@ export async function POST(request: Request) {
       // Check if expert has active Stripe Connect
       if (expert?.stripeConnect?.status === 'active' && expert?.stripeConnect?.chargesEnabled) {
         expertStripeAccountId = expert.stripeConnect.accountId;
-        transferData = { destination: expertStripeAccountId };
         applicationFeeAmount = calculatePlatformFee(amount); // 5% platform fee
 
-        console.log('[DBG][stripe] Using Connect transfer:', {
-          destination: expertStripeAccountId,
-          fee: applicationFeeAmount,
+        console.log('[DBG][stripe] Using Connect with on_behalf_of:', {
+          connectedAccount: expertStripeAccountId,
+          platformFee: applicationFeeAmount,
           expertGets: amount - applicationFeeAmount,
         });
       } else {
@@ -75,8 +73,11 @@ export async function POST(request: Request) {
     };
 
     // Add Connect parameters if expert has connected account
-    if (transferData && applicationFeeAmount !== undefined) {
-      paymentIntentParams.transfer_data = transferData;
+    // Using on_behalf_of for cross-region support (platform in AU, expert in US)
+    // This processes the charge in the connected account's country
+    if (expertStripeAccountId && applicationFeeAmount !== undefined) {
+      paymentIntentParams.on_behalf_of = expertStripeAccountId;
+      paymentIntentParams.transfer_data = { destination: expertStripeAccountId };
       paymentIntentParams.application_fee_amount = applicationFeeAmount;
     }
 

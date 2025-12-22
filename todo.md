@@ -63,6 +63,7 @@ notes
 [ ] gifting option
 [ ] discounts - expert can create discount codes
 [ ] localisation
+[ ] lock out certain subdomains, like admin, suppport, etc.
 
 
 [x] unique name check for expert (subdomain)
