@@ -64,7 +64,7 @@ notes
 [ ] discounts - expert can create discount codes
 [ ] localisation
 [ ] lock out certain subdomains, like admin, suppport, etc.
-
+[ ] onboarding - user location, currency, time zone, brand colours
 
 [x] unique name check for expert (subdomain)
 [x] Did not understand level, should all levels be the default?
