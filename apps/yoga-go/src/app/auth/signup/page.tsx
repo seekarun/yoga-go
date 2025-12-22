@@ -43,8 +43,6 @@ function checkPasswordStrength(password: string): PasswordStrength {
 function SignupForm() {
   const searchParams = useSearchParams();
   const authToken = searchParams.get('auth_token');
-  // All signups are expert signups on this domain
-  const roles = ['learner', 'expert'];
 
   const [formData, setFormData] = useState<FormData>({
     name: '',
@@ -122,7 +120,8 @@ function SignupForm() {
           email: formData.email.trim().toLowerCase(),
           password: formData.password,
           phone: formData.phone.trim() || undefined,
-          roles: roles, // Send roles array
+          // On expert subdomain, users are learners only; on main domain, they're experts
+          roles: isExpertDomain ? ['learner'] : ['learner', 'expert'],
           authToken: authToken || undefined,
         }),
       });
