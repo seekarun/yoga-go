@@ -3,13 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { usePayment } from '@/contexts/PaymentContext';
 import { PrimaryButton } from '@/components/Button';
 import { formatPriceWithCurrency } from '@/lib/geolocation';
 import { trackPaymentModalOpen, trackEnrollmentComplete } from '@/lib/analytics';
 import RazorpayCheckout from './RazorpayCheckout';
 import StripeCheckout from './StripeCheckout';
 import { posthog } from '@/providers/PostHogProvider';
+import type { PaymentGateway } from '@/config/payment';
+import type { SupportedCurrency } from '@/types';
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -19,15 +20,57 @@ interface PaymentModalProps {
     id: string;
     title: string;
     price: number;
+    currency?: SupportedCurrency;
   };
+  /** Expert ID - used to determine payment gateway based on expert's connected accounts */
+  expertId: string;
 }
 
-export default function PaymentModal({ isOpen, onClose, type, item }: PaymentModalProps) {
+export default function PaymentModal({ isOpen, onClose, type, item, expertId }: PaymentModalProps) {
   const router = useRouter();
   const { refreshUser } = useAuth();
-  const { gateway, currency, loading: locationLoading } = usePayment();
+  const [gateway, setGateway] = useState<PaymentGateway>('razorpay');
+  const [currency, setCurrency] = useState<SupportedCurrency>(item.currency || 'INR');
+  const [loading, setLoading] = useState(true);
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+
+  // Fetch expert's payment provider status when modal opens
+  useEffect(() => {
+    const fetchExpertPaymentProvider = async () => {
+      if (!isOpen || !expertId) return;
+
+      try {
+        setLoading(true);
+        console.log('[DBG][PaymentModal] Fetching expert payment provider:', expertId);
+
+        const response = await fetch(`/api/stripe/connect/status?expertId=${expertId}`);
+        const data = await response.json();
+
+        if (data.success && data.data?.status === 'active' && data.data?.chargesEnabled) {
+          // Expert has active Stripe connected account - use Stripe
+          console.log('[DBG][PaymentModal] Expert has Stripe connected, using Stripe');
+          setGateway('stripe');
+          // Use the item's currency (expert's preferred currency) or default to USD for Stripe
+          setCurrency(item.currency || 'USD');
+        } else {
+          // No Stripe connected - use Razorpay (default for platform)
+          console.log('[DBG][PaymentModal] No Stripe connected, using Razorpay');
+          setGateway('razorpay');
+          setCurrency('INR');
+        }
+      } catch (error) {
+        console.error('[DBG][PaymentModal] Error fetching expert payment provider:', error);
+        // Default to Razorpay on error
+        setGateway('razorpay');
+        setCurrency('INR');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchExpertPaymentProvider();
+  }, [isOpen, expertId, item.currency]);
 
   // Track payment modal open
   useEffect(() => {
@@ -250,13 +293,11 @@ export default function PaymentModal({ isOpen, onClose, type, item }: PaymentMod
               <span style={{ fontSize: '14px', color: '#666' }}>
                 Payment via: <strong>{gateway === 'razorpay' ? 'Razorpay' : 'Stripe'}</strong>
               </span>
-              {locationLoading && (
-                <span style={{ fontSize: '12px', color: '#999' }}>(Detecting location...)</span>
-              )}
+              {loading && <span style={{ fontSize: '12px', color: '#999' }}>(Loading...)</span>}
             </div>
 
             {/* Payment Component */}
-            {!locationLoading && (
+            {!loading && (
               <>
                 {gateway === 'razorpay' ? (
                   <RazorpayCheckout

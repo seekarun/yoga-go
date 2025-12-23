@@ -886,7 +886,9 @@ export default function ExpertCourseDetailPage() {
             id: course.id,
             title: course.title,
             price: course.price,
+            currency: course.currency,
           }}
+          expertId={course.instructor.id}
         />
       )}
     </div>

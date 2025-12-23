@@ -14,8 +14,10 @@ import PaymentModal from './PaymentModal';
 // ============================================
 export function CourseCardWithPayment({
   course,
+  expertId,
 }: {
   course: { id: string; title: string; price: number };
+  expertId: string;
 }) {
   const [showPayment, setShowPayment] = useState(false);
 
@@ -35,6 +37,7 @@ export function CourseCardWithPayment({
           title: course.title,
           price: course.price,
         }}
+        expertId={expertId}
       />
     </div>
   );

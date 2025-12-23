@@ -942,7 +942,9 @@ export default function WebinarDetailPage() {
             id: webinar.id,
             title: webinar.title,
             price: webinar.price,
+            currency: webinar.currency,
           }}
+          expertId={webinar.expertId}
         />
       )}
 
