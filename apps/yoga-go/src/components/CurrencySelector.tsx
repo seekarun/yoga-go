@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect, useRef } from 'react';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import type { SupportedCurrency } from '@/types';
 import { SUPPORTED_CURRENCIES, getSupportedCurrencyList } from '@/config/currencies';
@@ -46,10 +47,38 @@ export default function CurrencySelector({
   showFlag = true,
 }: CurrencySelectorProps) {
   const { displayCurrency, setDisplayCurrency } = useCurrency();
+  const [showSaved, setShowSaved] = useState(false);
+  const savedTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Use controlled value if provided, otherwise use context
   const currentCurrency = value ?? displayCurrency;
-  const handleChange = onChange ?? setDisplayCurrency;
+
+  // Wrap the change handler to show "Saved" indicator
+  const handleChange = (currency: SupportedCurrency) => {
+    if (onChange) {
+      onChange(currency);
+    } else {
+      setDisplayCurrency(currency);
+    }
+
+    // Show "Saved" indicator
+    setShowSaved(true);
+    if (savedTimeoutRef.current) {
+      clearTimeout(savedTimeoutRef.current);
+    }
+    savedTimeoutRef.current = setTimeout(() => {
+      setShowSaved(false);
+    }, 3000);
+  };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (savedTimeoutRef.current) {
+        clearTimeout(savedTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const currencies = getSupportedCurrencyList();
 
@@ -140,8 +169,29 @@ export default function CurrencySelector({
           </option>
         ))}
       </select>
-      <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-        Prices will be displayed in your selected currency
+      <div
+        style={{
+          fontSize: '12px',
+          marginTop: '4px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+        }}
+      >
+        <span style={{ color: '#666' }}>Prices will be displayed in your selected currency</span>
+        {showSaved && (
+          <span
+            style={{
+              color: '#16a34a',
+              fontWeight: 500,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+            }}
+          >
+            ✓ Saved
+          </span>
+        )}
       </div>
     </div>
   );

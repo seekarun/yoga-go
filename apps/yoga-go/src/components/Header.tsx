@@ -326,7 +326,7 @@ export default function Header() {
                         My Profile
                       </Link>
                       <Link
-                        href="/app"
+                        href="/app/purchases"
                         onClick={() => setIsUserMenuOpen(false)}
                         style={{
                           display: 'block',
@@ -336,7 +336,7 @@ export default function Header() {
                           fontSize: '14px',
                         }}
                       >
-                        My Courses
+                        My Purchases
                       </Link>
                     </>
                   )}

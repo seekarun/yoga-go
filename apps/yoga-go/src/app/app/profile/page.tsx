@@ -7,7 +7,7 @@ import CurrencySelector from '@/components/CurrencySelector';
 
 export default function Profile() {
   const { user } = useAuth();
-  const { displayCurrency, userCountry, loading: currencyLoading } = useCurrency();
+  const { displayCurrency, loading: currencyLoading } = useCurrency();
 
   if (!user) {
     return (
@@ -42,7 +42,7 @@ export default function Profile() {
                 fontWeight: '500',
               }}
             >
-              ← Back to Dashboard
+              ← Back
             </Link>
           </div>
           <h1
@@ -265,50 +265,20 @@ export default function Profile() {
               </div>
             )}
 
-            {userCountry && (
-              <div style={{ marginTop: '16px' }}>
-                <label
-                  style={{
-                    display: 'block',
-                    marginBottom: '6px',
-                    fontSize: '12px',
-                    fontWeight: '600',
-                    color: '#888',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                  }}
-                >
-                  Detected Location
-                </label>
-                <div
-                  style={{
-                    padding: '14px 16px',
-                    background: '#f8f9fa',
-                    borderRadius: '8px',
-                    fontSize: '15px',
-                    color: '#333',
-                    border: '1px solid #e9ecef',
-                  }}
-                >
-                  {userCountry}
-                </div>
-              </div>
-            )}
-
             <div
               style={{
                 marginTop: '20px',
                 padding: '16px',
-                background: '#EBF5FF',
+                background: '#f8f9fa',
                 borderRadius: '8px',
+                border: '1px solid #e9ecef',
               }}
             >
-              <p style={{ fontSize: '14px', color: '#1D4ED8' }}>
-                <strong>Current:</strong> Prices are displayed in {displayCurrency}
-              </p>
-              <p style={{ fontSize: '12px', color: '#3B82F6', marginTop: '8px' }}>
-                Note: Actual payment currency depends on the expert&apos;s settings. Your bank may
-                apply conversion fees if currencies differ.
+              <p style={{ fontSize: '13px', color: '#666', lineHeight: '1.6' }}>
+                When prices are set in a different currency, approximate value in your preferred
+                currency ({displayCurrency}) is shown. Actual conversion rates at the time of
+                payment might be slightly different. Your bank may apply conversion fees if
+                currencies differ.
               </p>
             </div>
           </div>
