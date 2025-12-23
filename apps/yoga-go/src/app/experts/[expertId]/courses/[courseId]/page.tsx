@@ -385,7 +385,7 @@ export default function ExpertCourseDetailPage() {
                           : (() => {
                               const priceInfo = convertPrice(course.price, course.currency);
                               return priceInfo.isApproximate && priceInfo.formattedConverted
-                                ? `~${priceInfo.formattedConverted}`
+                                ? `${priceInfo.formattedOriginal} (approx ${priceInfo.formattedConverted})`
                                 : priceInfo.formattedOriginal;
                             })()
                       }`}

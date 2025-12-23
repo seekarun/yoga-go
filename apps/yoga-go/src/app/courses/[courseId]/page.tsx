@@ -364,7 +364,7 @@ export default function CourseDetailPage() {
                           : (() => {
                               const priceInfo = convertPrice(course.price, course.currency);
                               return priceInfo.isApproximate && priceInfo.formattedConverted
-                                ? `~${priceInfo.formattedConverted}`
+                                ? `${priceInfo.formattedOriginal} (approx ${priceInfo.formattedConverted})`
                                 : priceInfo.formattedOriginal;
                             })()
                       }`}
