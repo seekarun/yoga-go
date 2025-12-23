@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCurrency } from '@/contexts/CurrencyContext';
 import PaymentModal from '@/components/payment/PaymentModal';
 import { trackCourseView, trackEnrollClick } from '@/lib/analytics';
 import type { Course, Lesson } from '@/types';
@@ -12,6 +13,7 @@ export default function ExpertCourseDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
+  const { convertPrice } = useCurrency();
   const expertId = params.expertId as string;
   const courseId = params.courseId as string;
   const [course, setCourse] = useState<Course | null>(null);
@@ -375,7 +377,18 @@ export default function ExpertCourseDetailPage() {
                     }
                   }}
                 >
-                  {isEnrolled ? 'Start Learning' : `Enroll Now - $${course.price}`}
+                  {isEnrolled
+                    ? 'Start Learning'
+                    : `Enroll Now - ${
+                        course.price === 0
+                          ? 'Free'
+                          : (() => {
+                              const priceInfo = convertPrice(course.price, course.currency);
+                              return priceInfo.isApproximate && priceInfo.formattedConverted
+                                ? `~${priceInfo.formattedConverted}`
+                                : priceInfo.formattedOriginal;
+                            })()
+                      }`}
                 </button>
               </div>
             </div>

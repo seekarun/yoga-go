@@ -3,6 +3,7 @@
 import PaymentModal from '@/components/payment/PaymentModal';
 import ReviewsList from '@/components/ReviewsList';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCurrency } from '@/contexts/CurrencyContext';
 import { trackCourseView, trackEnrollClick } from '@/lib/analytics';
 import type { Course, Lesson } from '@/types';
 import Link from 'next/link';
@@ -13,6 +14,7 @@ export default function CourseDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
+  const { convertPrice } = useCurrency();
   const courseId = params.courseId as string;
   const [course, setCourse] = useState<Course | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -354,7 +356,18 @@ export default function CourseDetailPage() {
                     }
                   }}
                 >
-                  {isEnrolled ? 'Start Learning' : `Enroll Now - $${course.price}`}
+                  {isEnrolled
+                    ? 'Start Learning'
+                    : `Enroll Now - ${
+                        course.price === 0
+                          ? 'Free'
+                          : (() => {
+                              const priceInfo = convertPrice(course.price, course.currency);
+                              return priceInfo.isApproximate && priceInfo.formattedConverted
+                                ? `~${priceInfo.formattedConverted}`
+                                : priceInfo.formattedOriginal;
+                            })()
+                      }`}
                 </button>
               </div>
             </div>

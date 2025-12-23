@@ -278,27 +278,57 @@ export default function PaymentModal({ isOpen, onClose, type, item, expertId }: 
               </div>
             </div>
 
-            {/* Gateway Info */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                marginBottom: '16px',
-                padding: '12px',
-                background: '#f0f4ff',
-                borderRadius: '8px',
-              }}
-            >
-              <span style={{ fontSize: '14px', color: '#666' }}>
-                Payment via: <strong>{gateway === 'razorpay' ? 'Razorpay' : 'Stripe'}</strong>
-              </span>
-              {loading && <span style={{ fontSize: '12px', color: '#999' }}>(Loading...)</span>}
-            </div>
-
-            {/* Payment Component */}
-            {!loading && (
+            {/* Loading State - show while determining payment gateway */}
+            {loading ? (
+              <div
+                style={{
+                  padding: '40px 20px',
+                  textAlign: 'center',
+                }}
+              >
+                <div
+                  style={{
+                    width: '40px',
+                    height: '40px',
+                    border: '3px solid #e0e0e0',
+                    borderTop: '3px solid var(--color-primary)',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite',
+                    margin: '0 auto 16px',
+                  }}
+                />
+                <p style={{ fontSize: '14px', color: '#666' }}>Setting up payment...</p>
+                <style jsx>{`
+                  @keyframes spin {
+                    0% {
+                      transform: rotate(0deg);
+                    }
+                    100% {
+                      transform: rotate(360deg);
+                    }
+                  }
+                `}</style>
+              </div>
+            ) : (
               <>
+                {/* Gateway Info */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    marginBottom: '16px',
+                    padding: '12px',
+                    background: '#f0f4ff',
+                    borderRadius: '8px',
+                  }}
+                >
+                  <span style={{ fontSize: '14px', color: '#666' }}>
+                    Payment via: <strong>{gateway === 'razorpay' ? 'Razorpay' : 'Stripe'}</strong>
+                  </span>
+                </div>
+
+                {/* Payment Component */}
                 {gateway === 'razorpay' ? (
                   <RazorpayCheckout
                     amount={amount}
@@ -320,23 +350,23 @@ export default function PaymentModal({ isOpen, onClose, type, item, expertId }: 
                     onFailure={handleFailure}
                   />
                 )}
+
+                {/* Security Note */}
+                <div
+                  style={{
+                    marginTop: '16px',
+                    padding: '12px',
+                    background: '#f8f8f8',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                    color: '#666',
+                    textAlign: 'center',
+                  }}
+                >
+                  🔒 Secure payment powered by {gateway === 'razorpay' ? 'Razorpay' : 'Stripe'}
+                </div>
               </>
             )}
-
-            {/* Security Note */}
-            <div
-              style={{
-                marginTop: '16px',
-                padding: '12px',
-                background: '#f8f8f8',
-                borderRadius: '8px',
-                fontSize: '12px',
-                color: '#666',
-                textAlign: 'center',
-              }}
-            >
-              🔒 Secure payment powered by {gateway === 'razorpay' ? 'Razorpay' : 'Stripe'}
-            </div>
           </>
         )}
       </div>
