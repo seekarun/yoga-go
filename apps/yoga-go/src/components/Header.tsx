@@ -292,6 +292,57 @@ export default function Header() {
                       {user?.profile?.email || 'user@example.com'}
                     </div>
                   </div>
+
+                  {/* Role-specific menu items */}
+                  {isExpert ? (
+                    /* Expert menu items */
+                    <Link
+                      href="/srv"
+                      onClick={() => setIsUserMenuOpen(false)}
+                      style={{
+                        display: 'block',
+                        padding: '12px 20px',
+                        textDecoration: 'none',
+                        color: '#333',
+                        fontSize: '14px',
+                      }}
+                    >
+                      Dashboard
+                    </Link>
+                  ) : (
+                    /* Learner menu items */
+                    <>
+                      <Link
+                        href="/app/profile"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        style={{
+                          display: 'block',
+                          padding: '12px 20px',
+                          textDecoration: 'none',
+                          color: '#333',
+                          fontSize: '14px',
+                        }}
+                      >
+                        My Profile
+                      </Link>
+                      <Link
+                        href="/app"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        style={{
+                          display: 'block',
+                          padding: '12px 20px',
+                          textDecoration: 'none',
+                          color: '#333',
+                          fontSize: '14px',
+                        }}
+                      >
+                        My Courses
+                      </Link>
+                    </>
+                  )}
+
+                  <div style={{ borderTop: '1px solid #e0e0e0', margin: '4px 0' }} />
+
                   <button
                     onClick={() => {
                       handleLogout();

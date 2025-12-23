@@ -258,9 +258,9 @@ function SettingsContent() {
       {/* Header */}
       <div className="bg-white shadow">
         <div className="px-6 lg:px-8 py-6">
-          <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Integrations</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Manage your integrations and account settings
+            Connect third-party services to enhance your platform
           </p>
         </div>
       </div>

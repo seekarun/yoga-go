@@ -46,7 +46,7 @@ export default function ValuePropsPreview({ data, template = 'classic' }: Sectio
             height: '100%',
             transform: 'translateY(-50%)',
             background:
-              'radial-gradient(ellipse at center, rgba(168, 85, 247, 0.1) 0%, transparent 70%)',
+              'radial-gradient(ellipse at center, color-mix(in srgb, var(--brand-600) 10%, transparent) 0%, transparent 70%)',
             pointerEvents: 'none',
           }}
         />
@@ -73,7 +73,7 @@ export default function ValuePropsPreview({ data, template = 'classic' }: Sectio
                 left: '20px',
                 width: '100%',
                 height: '100%',
-                background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+                background: 'linear-gradient(135deg, var(--brand-500) 0%, var(--brand-600) 100%)',
                 borderRadius: '24px',
                 opacity: 0.2,
               }}
@@ -98,14 +98,20 @@ export default function ValuePropsPreview({ data, template = 'classic' }: Sectio
                 position: 'absolute',
                 bottom: '-20px',
                 right: '40px',
-                background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+                background: 'linear-gradient(135deg, var(--brand-500) 0%, var(--brand-600) 100%)',
                 borderRadius: '16px',
                 padding: '20px 28px',
-                boxShadow: '0 10px 40px rgba(99, 102, 241, 0.4)',
+                boxShadow: '0 10px 40px color-mix(in srgb, var(--brand-500) 40%, transparent)',
               }}
             >
-              <div style={{ fontSize: '28px', fontWeight: '800', color: '#fff' }}>100%</div>
-              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.8)' }}>Satisfaction</div>
+              <div
+                style={{ fontSize: '28px', fontWeight: '800', color: 'var(--brand-500-contrast)' }}
+              >
+                100%
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--brand-500-contrast)', opacity: 0.8 }}>
+                Satisfaction
+              </div>
             </div>
           </div>
 
@@ -124,7 +130,7 @@ export default function ValuePropsPreview({ data, template = 'classic' }: Sectio
                 style={{
                   width: '40px',
                   height: '2px',
-                  background: 'linear-gradient(90deg, #6366f1, #a855f7)',
+                  background: 'linear-gradient(90deg, var(--brand-500), var(--brand-600))',
                 }}
               />
               <span
@@ -133,7 +139,7 @@ export default function ValuePropsPreview({ data, template = 'classic' }: Sectio
                   fontWeight: '600',
                   letterSpacing: '0.1em',
                   textTransform: 'uppercase',
-                  color: '#a855f7',
+                  color: 'var(--brand-400)',
                 }}
               >
                 Why Choose Us
@@ -152,7 +158,7 @@ export default function ValuePropsPreview({ data, template = 'classic' }: Sectio
             >
               Transform Your Practice,
               <br />
-              <span style={{ color: '#a855f7' }}>Transform Your Life</span>
+              <span style={{ color: 'var(--brand-400)' }}>Transform Your Life</span>
             </h2>
 
             <p
@@ -186,8 +192,8 @@ export default function ValuePropsPreview({ data, template = 'classic' }: Sectio
                         width: '48px',
                         height: '48px',
                         borderRadius: '12px',
-                        background: 'rgba(99, 102, 241, 0.15)',
-                        border: '1px solid rgba(99, 102, 241, 0.3)',
+                        background: 'color-mix(in srgb, var(--brand-500) 15%, transparent)',
+                        border: '1px solid color-mix(in srgb, var(--brand-500) 30%, transparent)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -197,7 +203,7 @@ export default function ValuePropsPreview({ data, template = 'classic' }: Sectio
                       <span
                         style={{
                           fontSize: '20px',
-                          background: 'linear-gradient(135deg, #6366f1, #a855f7)',
+                          background: 'linear-gradient(135deg, var(--brand-500), var(--brand-600))',
                           WebkitBackgroundClip: 'text',
                           WebkitTextFillColor: 'transparent',
                         }}
@@ -242,7 +248,7 @@ export default function ValuePropsPreview({ data, template = 'classic' }: Sectio
     <section
       style={{
         padding: '40px 20px',
-        background: '#fff',
+        background: 'var(--brand-50)',
       }}
     >
       <div style={{ maxWidth: '700px', margin: '0 auto' }}>
@@ -275,10 +281,10 @@ export default function ValuePropsPreview({ data, template = 'classic' }: Sectio
                 key={idx}
                 style={{
                   padding: '20px 16px',
-                  background: '#f7fafc',
+                  background: '#fff',
                   borderRadius: '8px',
                   textAlign: 'center',
-                  border: '1px solid #e2e8f0',
+                  border: '1px solid var(--brand-100)',
                 }}
               >
                 {/* Numbered circle */}
@@ -288,12 +294,12 @@ export default function ValuePropsPreview({ data, template = 'classic' }: Sectio
                     height: '36px',
                     borderRadius: '50%',
                     background:
-                      'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%)',
+                      'linear-gradient(135deg, var(--brand-400) 0%, var(--brand-500) 100%)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     margin: '0 auto 12px',
-                    color: '#fff',
+                    color: 'var(--brand-500-contrast)',
                     fontSize: '16px',
                     fontWeight: '600',
                   }}

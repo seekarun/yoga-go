@@ -11,7 +11,7 @@ export default function ActPreview({ data, template = 'classic' }: SectionPrevie
       <section
         style={{
           padding: isModern ? '80px 40px' : '40px 20px',
-          background: isModern ? '#0a0a0a' : '#374151',
+          background: isModern ? '#0a0a0a' : '#333',
           textAlign: 'center',
         }}
       >
@@ -28,12 +28,12 @@ export default function ActPreview({ data, template = 'classic' }: SectionPrevie
       <section
         style={{
           padding: '100px 40px',
-          background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%)',
+          background: 'linear-gradient(135deg, #0a0a0a 0%, #111 50%, #0a0a0a 100%)',
           position: 'relative',
           overflow: 'hidden',
         }}
       >
-        {/* Animated gradient background */}
+        {/* Animated gradient background - uses brand color */}
         <div
           style={{
             position: 'absolute',
@@ -43,7 +43,7 @@ export default function ActPreview({ data, template = 'classic' }: SectionPrevie
             width: '150%',
             height: '150%',
             background:
-              'radial-gradient(ellipse at center, rgba(99, 102, 241, 0.15) 0%, transparent 50%)',
+              'radial-gradient(ellipse at center, color-mix(in srgb, var(--brand-500) 15%, transparent) 0%, transparent 50%)',
             pointerEvents: 'none',
           }}
         />
@@ -72,12 +72,12 @@ export default function ActPreview({ data, template = 'classic' }: SectionPrevie
           >
             {/* Left - Content */}
             <div>
-              {/* Badge */}
+              {/* Badge - uses brand color */}
               <div
                 style={{
                   display: 'inline-block',
                   padding: '8px 16px',
-                  background: 'rgba(99, 102, 241, 0.2)',
+                  background: 'var(--brand-100)',
                   borderRadius: '50px',
                   marginBottom: '24px',
                 }}
@@ -86,7 +86,7 @@ export default function ActPreview({ data, template = 'classic' }: SectionPrevie
                   style={{
                     fontSize: '12px',
                     fontWeight: '600',
-                    color: '#a855f7',
+                    color: 'var(--brand-700)',
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em',
                   }}
@@ -120,18 +120,19 @@ export default function ActPreview({ data, template = 'classic' }: SectionPrevie
                   'Join thousands of students who have transformed their practice. Start your journey today.'}
               </p>
 
-              {/* CTA Buttons */}
+              {/* CTA Buttons - uses brand gradient */}
               <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
                 <span
                   style={{
                     display: 'inline-block',
                     padding: '18px 36px',
-                    background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
-                    color: '#fff',
+                    background:
+                      'linear-gradient(135deg, var(--brand-500) 0%, var(--brand-600) 100%)',
+                    color: 'var(--brand-500-contrast)',
                     fontSize: '16px',
                     fontWeight: '600',
                     borderRadius: '12px',
-                    boxShadow: '0 8px 30px rgba(99, 102, 241, 0.4)',
+                    boxShadow: '0 8px 30px color-mix(in srgb, var(--brand-500) 40%, transparent)',
                   }}
                 >
                   {heroCtaText}
@@ -207,7 +208,7 @@ export default function ActPreview({ data, template = 'classic' }: SectionPrevie
                 </div>
               )}
 
-              {/* Floating discount badge */}
+              {/* Floating discount badge - uses brand color gradient */}
               <div
                 style={{
                   position: 'absolute',
@@ -215,17 +216,29 @@ export default function ActPreview({ data, template = 'classic' }: SectionPrevie
                   right: '-20px',
                   width: '100px',
                   height: '100px',
-                  background: 'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)',
+                  background: 'linear-gradient(135deg, var(--brand-400) 0%, var(--brand-600) 100%)',
                   borderRadius: '50%',
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: '0 10px 30px rgba(239, 68, 68, 0.4)',
+                  boxShadow: '0 10px 30px color-mix(in srgb, var(--brand-600) 40%, transparent)',
                 }}
               >
-                <span style={{ fontSize: '24px', fontWeight: '800', color: '#fff' }}>20%</span>
-                <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.9)' }}>OFF</span>
+                <span
+                  style={{
+                    fontSize: '24px',
+                    fontWeight: '800',
+                    color: 'var(--brand-500-contrast)',
+                  }}
+                >
+                  20%
+                </span>
+                <span
+                  style={{ fontSize: '12px', color: 'var(--brand-500-contrast)', opacity: 0.9 }}
+                >
+                  OFF
+                </span>
               </div>
             </div>
           </div>
@@ -236,7 +249,7 @@ export default function ActPreview({ data, template = 'classic' }: SectionPrevie
 
   // Classic template - Original layout
   return (
-    <section style={{ padding: '40px 20px', background: '#374151' }}>
+    <section style={{ padding: '40px 20px', background: '#333' }}>
       <div style={{ maxWidth: '900px', margin: '0 auto' }}>
         <div
           style={{
@@ -305,11 +318,12 @@ export default function ActPreview({ data, template = 'classic' }: SectionPrevie
               {act.text ||
                 'Take the guesswork out of your branding and marketing today with this rapid questionnaire.'}
             </p>
+            {/* CTA button - uses brand color */}
             <span
               style={{
                 padding: '10px 24px',
-                background: '#fcd34d',
-                color: '#1f2937',
+                background: 'var(--brand-500)',
+                color: 'var(--brand-500-contrast)',
                 borderRadius: '6px',
                 fontSize: '12px',
                 fontWeight: '600',

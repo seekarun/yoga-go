@@ -1,17 +1,41 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ImageUploadCrop from '@/components/ImageUploadCrop';
 import VideoUpload from '@/components/VideoUpload';
 import type { VideoUploadResult } from '@/components/VideoUpload';
-import type { Asset } from '@/types';
+import type { Asset, SupportedCurrency, Expert } from '@/types';
+import { SUPPORTED_CURRENCIES, DEFAULT_CURRENCY } from '@/config/currencies';
 
 export default function CreateCoursePage() {
   const params = useParams();
   const router = useRouter();
   const expertId = params.expertId as string;
+
+  const [expertCurrency, setExpertCurrency] = useState<SupportedCurrency>(DEFAULT_CURRENCY);
+  const [currencySymbol, setCurrencySymbol] = useState('$');
+
+  // Fetch expert's preferred currency
+  const fetchExpertCurrency = useCallback(async () => {
+    try {
+      const response = await fetch('/data/app/expert/me');
+      const data = await response.json();
+      if (data.success && data.data) {
+        const expert: Expert = data.data;
+        const currency = expert.platformPreferences?.currency || DEFAULT_CURRENCY;
+        setExpertCurrency(currency);
+        setCurrencySymbol(SUPPORTED_CURRENCIES[currency].symbol);
+      }
+    } catch (err) {
+      console.error('[DBG][create-course] Error fetching expert currency:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchExpertCurrency();
+  }, [fetchExpertCurrency]);
 
   const [formData, setFormData] = useState({
     title: '',
@@ -294,7 +318,7 @@ export default function CreateCoursePage() {
 
                 <div>
                   <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-2">
-                    Price (USD) *
+                    Price ({currencySymbol} {expertCurrency}) *
                   </label>
                   <input
                     type="number"

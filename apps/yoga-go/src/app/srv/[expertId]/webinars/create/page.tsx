@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import type { WebinarSession, VideoPlatform } from '@/types';
+import type { WebinarSession, VideoPlatform, SupportedCurrency, Expert } from '@/types';
+import { SUPPORTED_CURRENCIES, DEFAULT_CURRENCY } from '@/config/currencies';
 
 interface SessionInput {
   id: string;
@@ -19,6 +20,29 @@ export default function CreateWebinarPage() {
   const params = useParams();
   const router = useRouter();
   const expertId = params.expertId as string;
+
+  const [expertCurrency, setExpertCurrency] = useState<SupportedCurrency>(DEFAULT_CURRENCY);
+  const [currencySymbol, setCurrencySymbol] = useState('$');
+
+  // Fetch expert's preferred currency
+  const fetchExpertCurrency = useCallback(async () => {
+    try {
+      const response = await fetch('/data/app/expert/me');
+      const data = await response.json();
+      if (data.success && data.data) {
+        const expert: Expert = data.data;
+        const currency = expert.platformPreferences?.currency || DEFAULT_CURRENCY;
+        setExpertCurrency(currency);
+        setCurrencySymbol(SUPPORTED_CURRENCIES[currency].symbol);
+      }
+    } catch (err) {
+      console.error('[DBG][create-webinar] Error fetching expert currency:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchExpertCurrency();
+  }, [fetchExpertCurrency]);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -133,6 +157,7 @@ export default function CreateWebinarPage() {
           title: title.trim(),
           description: description.trim(),
           price: parseFloat(price) || 0,
+          currency: expertCurrency,
           maxParticipants: maxParticipants ? parseInt(maxParticipants) : undefined,
           category: category || undefined,
           level,
@@ -260,7 +285,7 @@ export default function CreateWebinarPage() {
                   marginBottom: '8px',
                 }}
               >
-                Price ($)
+                Price ({currencySymbol} {expertCurrency})
               </label>
               <input
                 type="number"

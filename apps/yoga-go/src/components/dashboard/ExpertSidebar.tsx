@@ -231,9 +231,24 @@ export default function ExpertSidebar({ expertId }: ExpertSidebarProps) {
       ),
     },
     {
+      id: 'integrations',
+      label: 'Integrations',
+      href: `/srv/${expertId}/settings`,
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"
+          />
+        </svg>
+      ),
+    },
+    {
       id: 'settings',
       label: 'Settings',
-      href: `/srv/${expertId}/settings`,
+      href: `/srv/${expertId}/preferences`,
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -258,9 +273,13 @@ export default function ExpertSidebar({ expertId }: ExpertSidebarProps) {
     if (href === `/srv/${expertId}`) {
       return pathname === href;
     }
-    // Settings page should only be active on exact match (not domain/email subpages)
+    // Integrations page should only be active on /settings and /settings/google
     if (href === `/srv/${expertId}/settings`) {
-      return pathname === href || pathname === `${href}/google`;
+      return pathname === href || pathname === `${href}/google` || pathname === `${href}/zoom`;
+    }
+    // Settings (preferences) page
+    if (href === `/srv/${expertId}/preferences`) {
+      return pathname.startsWith(href);
     }
     // Domain & Email should be active for /settings/domain and /settings/email
     if (href === `/srv/${expertId}/settings/domain`) {

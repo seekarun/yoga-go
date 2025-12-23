@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Webinar, WebinarSession } from '@/types';
+import PriceDisplay from '@/components/PriceDisplay';
 
 interface WebinarExpert {
   id: string;
@@ -284,8 +285,8 @@ export default function WebinarCard({ webinar, variant = 'full' }: WebinarCardPr
                   </span>
                 )}
               </div>
-              <div style={{ fontSize: '18px', fontWeight: '600', color: 'var(--color-primary)' }}>
-                {webinar.price === 0 ? 'Free' : `$${webinar.price}`}
+              <div style={{ color: 'var(--color-primary)' }}>
+                <PriceDisplay amount={webinar.price} currency={webinar.currency} size="md" />
               </div>
             </div>
           </div>
@@ -565,8 +566,8 @@ export default function WebinarCard({ webinar, variant = 'full' }: WebinarCardPr
               justifyContent: 'space-between',
             }}
           >
-            <div style={{ fontSize: '24px', fontWeight: '600', color: 'var(--color-primary)' }}>
-              {webinar.price === 0 ? 'Free' : `$${webinar.price}`}
+            <div style={{ color: 'var(--color-primary)' }}>
+              <PriceDisplay amount={webinar.price} currency={webinar.currency} size="lg" />
             </div>
             <div
               style={{

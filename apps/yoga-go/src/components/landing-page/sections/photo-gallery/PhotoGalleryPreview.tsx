@@ -65,7 +65,7 @@ export default function PhotoGalleryPreview({
             width: '80%',
             height: '80%',
             background:
-              'radial-gradient(ellipse at center, rgba(168, 85, 247, 0.08) 0%, transparent 60%)',
+              'radial-gradient(ellipse at center, color-mix(in srgb, var(--brand-500) 8%, transparent) 0%, transparent 60%)',
             pointerEvents: 'none',
           }}
         />
@@ -85,7 +85,7 @@ export default function PhotoGalleryPreview({
                 style={{
                   width: '40px',
                   height: '2px',
-                  background: 'linear-gradient(90deg, transparent, #6366f1)',
+                  background: 'linear-gradient(90deg, transparent, var(--brand-500))',
                 }}
               />
               <span
@@ -94,7 +94,7 @@ export default function PhotoGalleryPreview({
                   fontWeight: '600',
                   letterSpacing: '0.1em',
                   textTransform: 'uppercase',
-                  color: '#a855f7',
+                  color: 'var(--brand-400)',
                 }}
               >
                 Gallery
@@ -103,7 +103,7 @@ export default function PhotoGalleryPreview({
                 style={{
                   width: '40px',
                   height: '2px',
-                  background: 'linear-gradient(90deg, #6366f1, transparent)',
+                  background: 'linear-gradient(90deg, var(--brand-500), transparent)',
                 }}
               />
             </div>
@@ -204,11 +204,18 @@ export default function PhotoGalleryPreview({
                       top: '16px',
                       left: '16px',
                       padding: '8px 16px',
-                      background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+                      background:
+                        'linear-gradient(135deg, var(--brand-500) 0%, var(--brand-600) 100%)',
                       borderRadius: '50px',
                     }}
                   >
-                    <span style={{ fontSize: '12px', fontWeight: '600', color: '#fff' }}>
+                    <span
+                      style={{
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        color: 'var(--brand-500-contrast)',
+                      }}
+                    >
                       Featured
                     </span>
                   </div>

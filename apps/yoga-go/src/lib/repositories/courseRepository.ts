@@ -14,7 +14,14 @@ import {
   QueryCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { docClient, Tables, EntityType } from '../dynamodb';
-import type { Course, Instructor, Curriculum, CourseReview, CourseStatus } from '@/types';
+import type {
+  Course,
+  Instructor,
+  Curriculum,
+  CourseReview,
+  CourseStatus,
+  SupportedCurrency,
+} from '@/types';
 
 // Type for DynamoDB Course item (includes PK/SK)
 interface DynamoDBCourseItem extends Course {
@@ -38,6 +45,7 @@ export interface CreateCourseInput {
   totalLessons: number;
   freeLessons: number;
   price: number;
+  currency: SupportedCurrency; // Currency for the course price (expert's preferred currency)
   rating?: number;
   totalRatings?: number;
   totalStudents?: number;
@@ -269,6 +277,7 @@ export async function createCourse(input: CreateCourseInput): Promise<Course> {
     totalLessons: input.totalLessons,
     freeLessons: input.freeLessons,
     price: input.price,
+    currency: input.currency,
     rating: input.rating ?? 0,
     totalRatings: input.totalRatings ?? 0,
     totalStudents: input.totalStudents ?? 0,

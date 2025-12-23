@@ -50,7 +50,8 @@ export default function FooterPreview({
             left: 0,
             right: 0,
             height: '1px',
-            background: 'linear-gradient(90deg, transparent, #6366f1, #a855f7, transparent)',
+            background:
+              'linear-gradient(90deg, transparent, var(--brand-500), var(--brand-600), transparent)',
           }}
         />
 
@@ -71,7 +72,7 @@ export default function FooterPreview({
                   fontSize: '24px',
                   fontWeight: '800',
                   marginBottom: '16px',
-                  background: 'linear-gradient(135deg, #6366f1, #a855f7)',
+                  background: 'linear-gradient(135deg, var(--brand-500), var(--brand-600))',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                 }}
@@ -254,7 +255,7 @@ export default function FooterPreview({
           >
             <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>© {copyrightText}</p>
             <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>
-              Powered by <span style={{ color: '#a855f7' }}>MyYoga.Guru</span>
+              Powered by <span style={{ color: 'var(--brand-400)' }}>MyYoga.Guru</span>
             </p>
           </div>
         </div>

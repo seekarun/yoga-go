@@ -6,13 +6,15 @@
 
 import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import type { ApiResponse, Webinar, WebinarStatus } from '@/types';
+import type { ApiResponse, Webinar, WebinarStatus, SupportedCurrency } from '@/types';
 import { getSessionFromCookies, getUserByCognitoSub } from '@/lib/auth';
 import * as webinarRepository from '@/lib/repositories/webinarRepository';
+import * as expertRepository from '@/lib/repositories/expertRepository';
 import { isGoogleConnected } from '@/lib/google-auth';
 import { createMeetEventsForWebinar } from '@/lib/google-meet';
 import { isZoomConnected } from '@/lib/zoom-auth';
 import { createZoomMeetingsForWebinar } from '@/lib/zoom-meeting';
+import { normalizeCurrency, DEFAULT_CURRENCY } from '@/config/currencies';
 
 /**
  * GET /data/app/expert/me/webinars
@@ -111,6 +113,20 @@ export async function POST(request: Request) {
 
     const webinarId = uuidv4();
 
+    // Get expert's currency preference
+    let webinarCurrency: SupportedCurrency = DEFAULT_CURRENCY;
+    if (body.currency) {
+      // Use currency from request if provided
+      webinarCurrency = normalizeCurrency(body.currency);
+    } else {
+      // Fetch expert to get their preferred currency
+      const expert = await expertRepository.getExpertById(user.expertProfile);
+      if (expert?.platformPreferences?.currency) {
+        webinarCurrency = normalizeCurrency(expert.platformPreferences.currency);
+      }
+    }
+    console.log('[DBG][expert/me/webinars] Webinar currency:', webinarCurrency);
+
     let webinar = await webinarRepository.createWebinar({
       id: webinarId,
       expertId: user.expertProfile,
@@ -121,7 +137,7 @@ export async function POST(request: Request) {
       promoVideoCloudflareId: body.promoVideoCloudflareId,
       promoVideoStatus: body.promoVideoStatus,
       price: body.price || 0,
-      currency: body.currency || 'INR',
+      currency: webinarCurrency,
       maxParticipants: body.maxParticipants,
       status: requestedStatus,
       videoPlatform,

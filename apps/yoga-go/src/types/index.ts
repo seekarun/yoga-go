@@ -11,6 +11,52 @@ export type UserRole = 'learner' | 'expert' | 'admin';
 // Landing Page Template Types
 export type LandingPageTemplate = 'classic' | 'modern';
 
+// Brand Color Palette (11 shades from light to dark)
+export interface ColorPalette {
+  50: string; // Lightest - subtle backgrounds
+  100: string; // Light backgrounds, badges
+  200: string; // Light accents
+  300: string; // Hover borders
+  400: string; // Secondary elements
+  500: string; // Base/Primary - buttons, main CTA
+  600: string; // Hover state
+  700: string; // Active state
+  800: string; // Dark accents
+  900: string; // Dark text
+  950: string; // Darkest
+}
+
+// Currency Types
+export type SupportedCurrency = 'USD' | 'INR' | 'EUR' | 'GBP' | 'AUD' | 'CAD' | 'SGD' | 'AED';
+
+export interface CurrencyConfig {
+  code: SupportedCurrency;
+  symbol: string;
+  name: string;
+  decimalPlaces: number;
+  locale: string;
+}
+
+// Exchange rate cache for DynamoDB storage
+export interface ExchangeRateCache extends BaseEntity {
+  baseCurrency: string;
+  rates: Record<string, number>; // currency code -> rate relative to base
+  fetchedAt: string; // ISO timestamp
+  expiresAt: string; // ISO timestamp (24 hours from fetchedAt)
+}
+
+// Price display information for UI components
+export interface PriceDisplayInfo {
+  originalAmount: number;
+  originalCurrency: SupportedCurrency;
+  convertedAmount?: number;
+  convertedCurrency?: SupportedCurrency;
+  exchangeRate?: number;
+  isApproximate: boolean;
+  formattedOriginal: string;
+  formattedConverted?: string;
+}
+
 // Expert Related Types
 export interface SocialLinks {
   instagram?: string;
@@ -34,6 +80,13 @@ export interface CustomLandingPageConfig {
   };
   hero?: {
     heroImage?: string; // Hero background image URL
+    heroImageAttribution?: {
+      // Unsplash attribution (required when using Unsplash images)
+      photographerName: string;
+      photographerUsername: string;
+      photographerUrl: string;
+      unsplashUrl: string;
+    };
     headline?: string; // Custom headline (problem hook)
     description?: string; // Custom description (results hook)
     ctaText?: string; // Call to action button text
@@ -76,8 +129,16 @@ export interface CustomLandingPageConfig {
     description?: string; // Section description
     images?: Array<{
       id: string;
-      url: string; // Cloudflare Images URL
+      url: string; // Image URL (Cloudflare or Unsplash)
+      thumbUrl?: string; // Thumbnail URL for faster loading
       caption?: string; // Optional caption for the image
+      attribution?: {
+        // Unsplash attribution (required when using Unsplash images)
+        photographerName: string;
+        photographerUsername: string;
+        photographerUrl: string;
+        unsplashUrl: string;
+      };
     }>;
   };
   footer?: {
@@ -111,6 +172,7 @@ export interface CustomLandingPageConfig {
   theme?: {
     primaryColor?: string;
     secondaryColor?: string;
+    palette?: ColorPalette; // Generated color palette from primaryColor
   };
   contact?: {
     email?: string;
@@ -132,6 +194,8 @@ export interface ExpertPlatformPreferences {
   emailVerified?: boolean; // Whether custom email is SES-verified
   forwardingEmail?: string; // Expert's personal email for receiving/forwarding
   emailForwardingEnabled?: boolean; // Whether to forward incoming emails
+  location?: string; // Expert's country/location (ISO country code)
+  currency?: SupportedCurrency; // Preferred currency for pricing
 }
 
 // Stripe Connect Status for Expert Payouts
@@ -367,6 +431,7 @@ export interface Course extends BaseEntity {
   totalLessons: number;
   freeLessons: number;
   price: number;
+  currency: SupportedCurrency; // Currency for the price (expert's preferred currency)
   rating: number;
   totalRatings?: number;
   totalStudents: number;
@@ -456,6 +521,7 @@ export interface UserPreferences {
   language?: string;
   videoQuality?: 'sd' | 'hd' | '4k';
   autoPlayEnabled?: boolean;
+  preferredCurrency?: SupportedCurrency; // Learner's preferred display currency
 }
 
 export interface Payment {
@@ -1059,7 +1125,7 @@ export interface Webinar extends BaseEntity {
   promoVideoCloudflareId?: string;
   promoVideoStatus?: 'uploading' | 'processing' | 'ready' | 'error';
   price: number;
-  currency?: string;
+  currency: SupportedCurrency; // Currency for the price (expert's preferred currency)
   maxParticipants?: number; // Optional capacity limit
   status: WebinarStatus;
   videoPlatform?: VideoPlatform; // Video conferencing platform for sessions

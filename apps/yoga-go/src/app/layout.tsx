@@ -2,6 +2,7 @@ import LayoutContent from '@/components/LayoutContent';
 import { ToastProvider } from '@/components/Toast';
 import UploadNotifications from '@/components/UploadNotifications';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { CurrencyProvider } from '@/contexts/CurrencyContext';
 import { PaymentProvider } from '@/contexts/PaymentContext';
 import { getTenantByDomain } from '@/lib/repositories/tenantRepository';
 import { PostHogProvider } from '@/providers/PostHogProvider';
@@ -103,14 +104,16 @@ export default function RootLayout({
       >
         <SessionProvider>
           <AuthProvider>
-            <PostHogProvider>
-              <PaymentProvider>
-                <ToastProvider>
-                  <UploadNotifications />
-                  <LayoutContent>{children}</LayoutContent>
-                </ToastProvider>
-              </PaymentProvider>
-            </PostHogProvider>
+            <CurrencyProvider>
+              <PostHogProvider>
+                <PaymentProvider>
+                  <ToastProvider>
+                    <UploadNotifications />
+                    <LayoutContent>{children}</LayoutContent>
+                  </ToastProvider>
+                </PaymentProvider>
+              </PostHogProvider>
+            </CurrencyProvider>
           </AuthProvider>
         </SessionProvider>
         <Analytics />

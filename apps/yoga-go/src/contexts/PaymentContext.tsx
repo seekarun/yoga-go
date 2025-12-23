@@ -3,11 +3,13 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { detectUserCountry, getPaymentGateway, getCurrency } from '@/lib/geolocation';
 import type { PaymentGateway } from '@/config/payment';
+import type { SupportedCurrency } from '@/types';
+import { DEFAULT_CURRENCY } from '@/config/currencies';
 
 interface PaymentContextType {
   gateway: PaymentGateway;
   country: string;
-  currency: 'INR' | 'USD';
+  currency: SupportedCurrency;
   loading: boolean;
   refreshLocation: () => Promise<void>;
 }
@@ -17,7 +19,7 @@ const PaymentContext = createContext<PaymentContextType | undefined>(undefined);
 export function PaymentProvider({ children }: { children: ReactNode }) {
   const [gateway, setGateway] = useState<PaymentGateway>('stripe');
   const [country, setCountry] = useState<string>('US');
-  const [currency, setCurrency] = useState<'INR' | 'USD'>('USD');
+  const [currency, setCurrency] = useState<SupportedCurrency>(DEFAULT_CURRENCY);
   const [loading, setLoading] = useState(true);
 
   const detectLocation = async () => {

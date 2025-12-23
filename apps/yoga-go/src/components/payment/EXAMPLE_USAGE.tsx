@@ -44,9 +44,9 @@ export function CourseCardWithPayment({
 // EXAMPLE 2: Using Payment Context
 // ============================================
 import { usePayment } from '@/contexts/PaymentContext';
-import { formatPrice } from '@/lib/geolocation';
+import { formatPriceWithCurrency } from '@/lib/geolocation';
 
-export function PriceDisplay({ amount }: { amount: number }) {
+export function PaymentPriceDisplay({ amount }: { amount: number }) {
   const { currency, gateway, loading } = usePayment();
 
   if (loading) {
@@ -55,7 +55,7 @@ export function PriceDisplay({ amount }: { amount: number }) {
 
   return (
     <div>
-      <span>{formatPrice(amount, currency)}</span>
+      <span>{formatPriceWithCurrency(amount, currency)}</span>
       <small>via {gateway === 'razorpay' ? 'Razorpay' : 'Stripe'}</small>
     </div>
   );

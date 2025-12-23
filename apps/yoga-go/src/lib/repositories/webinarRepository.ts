@@ -21,6 +21,7 @@ import type {
   WebinarStatus,
   CourseCategory,
   CourseLevel,
+  SupportedCurrency,
 } from '@/types';
 
 // Type for DynamoDB Webinar item (includes PK/SK)
@@ -40,7 +41,7 @@ export interface CreateWebinarInput {
   promoVideoCloudflareId?: string;
   promoVideoStatus?: 'uploading' | 'processing' | 'ready' | 'error';
   price: number;
-  currency?: string;
+  currency: SupportedCurrency; // Currency for the webinar price (expert's preferred currency)
   maxParticipants?: number;
   status?: WebinarStatus;
   videoPlatform?: 'google_meet' | 'zoom' | 'none';
@@ -244,7 +245,7 @@ export async function createWebinar(input: CreateWebinarInput): Promise<Webinar>
     promoVideoCloudflareId: input.promoVideoCloudflareId,
     promoVideoStatus: input.promoVideoStatus,
     price: input.price,
-    currency: input.currency || 'INR',
+    currency: input.currency,
     maxParticipants: input.maxParticipants,
     status: input.status || 'DRAFT',
     videoPlatform: input.videoPlatform || 'none',

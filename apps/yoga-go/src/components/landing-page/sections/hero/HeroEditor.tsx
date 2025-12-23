@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import ImageUploadCrop from '@/components/ImageUploadCrop';
-import type { Asset, Survey } from '@/types';
+import UnsplashImagePicker from '@/components/UnsplashImagePicker';
+import type { UnsplashAttribution } from '@/components/UnsplashImagePicker';
+import type { Survey } from '@/types';
 import type { SectionEditorProps, HeroFormData } from '../types';
 
 interface CtaLinkOption {
@@ -92,9 +93,12 @@ export default function HeroEditor({ data, onChange, expertId, onError }: Sectio
     });
   };
 
-  const handleHeroImageUpload = (asset: Asset) => {
-    console.log('[DBG][HeroEditor] Hero image uploaded:', asset);
-    const imageUrl = asset.croppedUrl || asset.originalUrl;
+  const handleImageSelect = (imageUrl: string, attribution?: UnsplashAttribution) => {
+    console.log('[DBG][HeroEditor] Image selected:', imageUrl);
+    if (attribution) {
+      console.log('[DBG][HeroEditor] Attribution:', attribution.photographerName);
+    }
+
     const updated = { ...formData, heroImage: imageUrl };
     setFormData(updated);
     setShowImageUpload(false);
@@ -103,6 +107,14 @@ export default function HeroEditor({ data, onChange, expertId, onError }: Sectio
       hero: {
         ...data.hero,
         heroImage: imageUrl,
+        heroImageAttribution: attribution
+          ? {
+              photographerName: attribution.photographerName,
+              photographerUsername: attribution.photographerUsername,
+              photographerUrl: attribution.photographerUrl,
+              unsplashUrl: attribution.unsplashUrl,
+            }
+          : undefined,
         headline: updated.headline || undefined,
         description: updated.description || undefined,
         ctaText: updated.ctaText || 'Explore Courses',
@@ -186,19 +198,20 @@ export default function HeroEditor({ data, onChange, expertId, onError }: Sectio
             <span className="text-sm font-medium">Add hero image</span>
           </button>
         ) : (
-          /* Show upload component when editing */
+          /* Show image picker when editing */
           <div className="space-y-3">
-            <ImageUploadCrop
+            <UnsplashImagePicker
               width={1920}
               height={600}
               category="banner"
-              label="Select new image (1920x600px)"
-              onUploadComplete={handleHeroImageUpload}
+              defaultSearchQuery="yoga meditation"
+              onImageSelect={handleImageSelect}
               onError={handleUploadError}
               relatedTo={{
                 type: 'expert',
                 id: expertId,
               }}
+              currentImageUrl={formData.heroImage}
             />
             <button
               type="button"

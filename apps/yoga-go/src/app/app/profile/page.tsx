@@ -2,9 +2,12 @@
 
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCurrency } from '@/contexts/CurrencyContext';
+import CurrencySelector from '@/components/CurrencySelector';
 
 export default function Profile() {
   const { user } = useAuth();
+  const { displayCurrency, userCountry, loading: currencyLoading } = useCurrency();
 
   if (!user) {
     return (
@@ -212,6 +215,101 @@ export default function Profile() {
               >
                 {formatDate(user.profile.joinedAt)}
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Currency Preferences Card */}
+        <div
+          style={{
+            background: '#fff',
+            borderRadius: '12px',
+            overflow: 'hidden',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+            marginTop: '24px',
+          }}
+        >
+          <div style={{ padding: '24px' }}>
+            <h2
+              style={{
+                fontSize: '18px',
+                fontWeight: '600',
+                marginBottom: '16px',
+              }}
+            >
+              Currency Preferences
+            </h2>
+
+            <p style={{ fontSize: '14px', color: '#666', marginBottom: '20px' }}>
+              Choose your preferred currency for viewing prices. Prices will be converted to your
+              selected currency using current exchange rates.
+            </p>
+
+            {currencyLoading ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#666' }}>
+                <div
+                  style={{
+                    width: '16px',
+                    height: '16px',
+                    border: '2px solid #e0e0e0',
+                    borderTopColor: '#666',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite',
+                  }}
+                />
+                <span>Loading currency settings...</span>
+              </div>
+            ) : (
+              <div style={{ maxWidth: '280px' }}>
+                <CurrencySelector variant="dropdown" label="Display Currency" showFlag={true} />
+              </div>
+            )}
+
+            {userCountry && (
+              <div style={{ marginTop: '16px' }}>
+                <label
+                  style={{
+                    display: 'block',
+                    marginBottom: '6px',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    color: '#888',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                  }}
+                >
+                  Detected Location
+                </label>
+                <div
+                  style={{
+                    padding: '14px 16px',
+                    background: '#f8f9fa',
+                    borderRadius: '8px',
+                    fontSize: '15px',
+                    color: '#333',
+                    border: '1px solid #e9ecef',
+                  }}
+                >
+                  {userCountry}
+                </div>
+              </div>
+            )}
+
+            <div
+              style={{
+                marginTop: '20px',
+                padding: '16px',
+                background: '#EBF5FF',
+                borderRadius: '8px',
+              }}
+            >
+              <p style={{ fontSize: '14px', color: '#1D4ED8' }}>
+                <strong>Current:</strong> Prices are displayed in {displayCurrency}
+              </p>
+              <p style={{ fontSize: '12px', color: '#3B82F6', marginTop: '8px' }}>
+                Note: Actual payment currency depends on the expert&apos;s settings. Your bank may
+                apply conversion fees if currencies differ.
+              </p>
             </div>
           </div>
         </div>

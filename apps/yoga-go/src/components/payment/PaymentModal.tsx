@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePayment } from '@/contexts/PaymentContext';
 import { PrimaryButton } from '@/components/Button';
-import { formatPrice } from '@/lib/geolocation';
+import { formatPriceWithCurrency } from '@/lib/geolocation';
 import { trackPaymentModalOpen, trackEnrollmentComplete } from '@/lib/analytics';
 import RazorpayCheckout from './RazorpayCheckout';
 import StripeCheckout from './StripeCheckout';
@@ -230,7 +230,7 @@ export default function PaymentModal({ isOpen, onClose, type, item }: PaymentMod
                 <span
                   style={{ fontSize: '24px', fontWeight: '700', color: 'var(--color-primary)' }}
                 >
-                  {formatPrice(amount, currency)}
+                  {formatPriceWithCurrency(amount, currency)}
                 </span>
               </div>
             </div>

@@ -1,12 +1,13 @@
 notes
 
 [ ] Currency be localized
+[ ] colour scheme for landing page
 
 [ ] Duration is confusing
 
-[ ] no welcome email sent. 
+[ ] no welcome email sent.
 [ ] act section is not good.
-[ ] For learner - show enroll buttong in home page
+[ ] For learner - show enroll button in home page
 [ ] fix rating display. (don't show dummy data)
 [ ] expert commenting on other expert videos shows as EXPERT!!! fix.
 [ ] expert should be able to see discussion in admin page.
@@ -22,34 +23,22 @@ notes
 [ ] expert email forward 
 [ ] mail going to spam folder, as it is forwarded. Fix this.
 [ ] add calendar.
-[ ] assets manager
-[ ] fix profile icon drop down menu
 [ ] privacy and other footer links handled for platform 
 [ ] privacy and other footer links handled for individuals
-[ ] colour scheme for landing page
-[ ] asset management
 [ ] via amazonses email going to spam. can expert just view email on platform?
-[ ] custom colour scheme for expert landing page
+[ ] tell you they can set up their own domain after - all settings - you can change your preference anytime in settings.
 [ ] what if expert already has a domain email, and want to use that?
 [ ] move events to separate table.
-[ ] redo myyoga.guru landing page, to match landing page principles
-[ ] tell you they can set up their own domain after.  (glorify custom emails/subdomain)
+[ ] redo myyoga.guru landing page, to match landing page principles - what if it's a subdomain, set up page like an expert. dog food.
 [ ] remove website from social links
-[ ] Default landing page
-[ ] when use lands on dashboard, show link to subdomain and maybe show edit landing page. to update landing page.
 [ ] how do we call hero section (etc.) to make this UI more understandable for newbies?
 [ ] consider setting up hero section as part of onboarding.
 [ ] in expert dashboard, on save, it should take user back to the same section.
 [ ] use formatting option for paragraphs when editing landing page.
 [ ] lock hero and footer sections.
-[ ] about text - AI generation
 [ ] link to create courses/surveys/live sessions
-[ ] do auto-save when editing landing page.
-[ ] allow expert to disable a section when in the section details UI
-[ ] webinar - did not understand (use live session)
 [ ] link zoom setting from live session section
 [ ] if setting up domain. have to set up privacy link etc. 
-[ ] hide footer when using subdomain.
 [ ] auto populate footer with details from onboarding.
 [ ] marketing budgets
 [ ] expert support - can we get a successful yoga teacher?
@@ -63,9 +52,11 @@ notes
 [ ] gifting option
 [ ] discounts - expert can create discount codes
 [ ] localisation
-[ ] lock out certain subdomains, like admin, suppport, etc.
-[ ] onboarding - user location, currency, time zone, brand colours
+[ ] lock out certain subdomains, like admin, support, etc.
+[ ] review code for all fallbacks.
+[ ] ability to sell digital assets.
 
+[x] onboarding - user location, currency, time zone, brand colours
 [x] unique name check for expert (subdomain)
 [x] Did not understand level, should all levels be the default?
 [x] when coming from /srv set user as an expert
@@ -94,6 +85,14 @@ notes
 [x] call to action button url should be selectable. (survey or courses)
 [x] error message does not go away.
 [x] cloudflare NS flow - fix domain mismatch bug (was using primaryDomain instead of zone domain)
+[x] assets manager
+[x] fix profile icon drop down menu
+[x] when use lands on dashboard, show link to subdomain and maybe show edit landing page. to update landing page.
+[x] do auto-save when editing landing page.
+[x] allow expert to disable a section when in the section details UI
+[x] about text - AI generation
+[x] webinar - did not understand (use live session)
+[x] hide footer when using subdomain.
 
 
 Namaste! 

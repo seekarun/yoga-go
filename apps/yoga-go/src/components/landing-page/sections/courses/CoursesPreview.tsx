@@ -234,7 +234,7 @@ export default function CoursesPreview({ data, expertId, expertName }: SectionPr
                       height: '120px',
                       background: course.thumbnail
                         ? `url(${course.thumbnail}) center/cover`
-                        : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        : 'linear-gradient(135deg, var(--brand-500) 0%, var(--brand-600) 100%)',
                     }}
                   />
 
@@ -294,7 +294,7 @@ export default function CoursesPreview({ data, expertId, expertName }: SectionPr
             <span
               style={{
                 fontSize: '14px',
-                color: '#2563eb',
+                color: 'var(--brand-600)',
                 fontWeight: '500',
               }}
             >

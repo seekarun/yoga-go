@@ -1,5 +1,46 @@
 import type { SectionPreviewProps } from '../types';
 
+// Unsplash attribution component (required when using Unsplash images)
+function UnsplashAttribution({
+  attribution,
+}: {
+  attribution: NonNullable<SectionPreviewProps['data']['hero']>['heroImageAttribution'];
+}) {
+  if (!attribution) return null;
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        bottom: '8px',
+        right: '12px',
+        zIndex: 20,
+        fontSize: '10px',
+        color: 'rgba(255,255,255,0.6)',
+      }}
+    >
+      Photo by{' '}
+      <a
+        href={attribution.photographerUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'underline' }}
+      >
+        {attribution.photographerName}
+      </a>{' '}
+      on{' '}
+      <a
+        href={attribution.unsplashUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'underline' }}
+      >
+        Unsplash
+      </a>
+    </div>
+  );
+}
+
 export default function HeroPreview({
   data,
   expertName,
@@ -14,6 +55,7 @@ export default function HeroPreview({
   const heroCtaText = customHero?.ctaText || 'Explore Courses';
   const heroImage = customHero?.heroImage;
   const heroAlignment = customHero?.alignment || 'center';
+  const heroAttribution = customHero?.heroImageAttribution;
 
   const isModern = template === 'modern';
 
@@ -28,7 +70,7 @@ export default function HeroPreview({
           overflow: 'hidden',
         }}
       >
-        {/* Decorative gradient blob */}
+        {/* Decorative gradient blob - uses brand color */}
         <div
           style={{
             position: 'absolute',
@@ -37,7 +79,7 @@ export default function HeroPreview({
             width: '50%',
             height: '140%',
             background:
-              'radial-gradient(ellipse at center, rgba(99, 102, 241, 0.15) 0%, transparent 70%)',
+              'radial-gradient(ellipse at center, color-mix(in srgb, var(--brand-500) 15%, transparent) 0%, transparent 70%)',
             pointerEvents: 'none',
           }}
         />
@@ -62,7 +104,7 @@ export default function HeroPreview({
               padding: '60px 40px 60px 60px',
             }}
           >
-            {/* Small label */}
+            {/* Small label - uses brand gradient */}
             <div
               style={{
                 display: 'inline-flex',
@@ -75,7 +117,7 @@ export default function HeroPreview({
                 style={{
                   width: '40px',
                   height: '2px',
-                  background: 'linear-gradient(90deg, #6366f1, #a855f7)',
+                  background: 'linear-gradient(90deg, var(--brand-500), var(--brand-600))',
                 }}
               />
               <span
@@ -84,7 +126,7 @@ export default function HeroPreview({
                   fontWeight: '600',
                   letterSpacing: '0.1em',
                   textTransform: 'uppercase',
-                  color: '#a855f7',
+                  color: 'var(--brand-400)',
                 }}
               >
                 Welcome
@@ -116,18 +158,18 @@ export default function HeroPreview({
               {heroDescription}
             </p>
 
-            {/* CTA Buttons */}
+            {/* CTA Buttons - uses brand gradient */}
             <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
               <span
                 style={{
                   display: 'inline-block',
                   padding: '16px 32px',
-                  background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
-                  color: '#fff',
+                  background: 'linear-gradient(135deg, var(--brand-500) 0%, var(--brand-600) 100%)',
+                  color: 'var(--brand-500-contrast)',
                   fontSize: '14px',
                   fontWeight: '600',
                   borderRadius: '8px',
-                  boxShadow: '0 4px 20px rgba(99, 102, 241, 0.4)',
+                  boxShadow: '0 4px 20px color-mix(in srgb, var(--brand-500) 40%, transparent)',
                 }}
               >
                 {heroCtaText}
@@ -204,13 +246,13 @@ export default function HeroPreview({
               padding: '40px',
             }}
           >
-            {/* Decorative ring */}
+            {/* Decorative rings - use brand color */}
             <div
               style={{
                 position: 'absolute',
                 width: '400px',
                 height: '400px',
-                border: '1px solid rgba(99, 102, 241, 0.2)',
+                border: '1px solid color-mix(in srgb, var(--brand-500) 20%, transparent)',
                 borderRadius: '50%',
               }}
             />
@@ -219,7 +261,7 @@ export default function HeroPreview({
                 position: 'absolute',
                 width: '340px',
                 height: '340px',
-                border: '1px solid rgba(168, 85, 247, 0.15)',
+                border: '1px solid color-mix(in srgb, var(--brand-600) 15%, transparent)',
                 borderRadius: '50%',
               }}
             />
@@ -258,6 +300,9 @@ export default function HeroPreview({
             </div>
           </div>
         </div>
+
+        {/* Unsplash Attribution */}
+        <UnsplashAttribution attribution={heroAttribution} />
       </section>
     );
   }
@@ -268,11 +313,12 @@ export default function HeroPreview({
       style={{
         minHeight: '400px',
         position: 'relative',
-        background: heroImage
+        backgroundImage: heroImage
           ? `url(${heroImage})`
-          : 'linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%)',
+          : 'linear-gradient(135deg, #111 0%, #222 50%, #333 100%)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
         overflow: 'hidden',
       }}
     >
@@ -286,7 +332,7 @@ export default function HeroPreview({
           height: '100%',
           background: heroImage
             ? 'rgba(0, 0, 0, 0.5)'
-            : 'radial-gradient(circle at 20% 50%, rgba(118, 75, 162, 0.2) 0%, transparent 50%)',
+            : 'radial-gradient(circle at 20% 50%, color-mix(in srgb, var(--brand-500) 20%, transparent) 0%, transparent 50%)',
           pointerEvents: 'none',
         }}
       />
@@ -343,7 +389,7 @@ export default function HeroPreview({
             {heroDescription}
           </p>
 
-          {/* CTA Button */}
+          {/* CTA Button - uses brand color */}
           <div
             style={{
               display: 'flex',
@@ -356,8 +402,8 @@ export default function HeroPreview({
               style={{
                 display: 'inline-block',
                 padding: '10px 24px',
-                background: '#fcd34d',
-                color: '#1f2937',
+                background: 'var(--brand-500)',
+                color: 'var(--brand-500-contrast)',
                 fontSize: '12px',
                 fontWeight: '600',
                 borderRadius: '6px',
@@ -381,6 +427,9 @@ export default function HeroPreview({
           pointerEvents: 'none',
         }}
       />
+
+      {/* Unsplash Attribution */}
+      <UnsplashAttribution attribution={heroAttribution} />
     </section>
   );
 }

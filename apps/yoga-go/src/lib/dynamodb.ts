@@ -90,6 +90,8 @@ export const CorePK = {
   // Email inbox
   EMAIL: (expertId: string) => `EMAIL#${expertId}`,
   EMAIL_THREAD: (threadId: string) => `THREAD#${threadId}`,
+  // Exchange rate cache
+  EXCHANGE_RATE: 'EXCHANGE_RATE',
 } as const;
 
 // ============================================
@@ -186,6 +188,8 @@ export const EntityType = {
   WALLET: 'WALLET',
   WALLET_TRANSACTION: 'WALLET_TRANSACTION',
   BOOST: 'BOOST',
+  // Currency entities
+  EXCHANGE_RATE: 'EXCHANGE_RATE',
 } as const;
 
 export type EntityTypeValue = (typeof EntityType)[keyof typeof EntityType];

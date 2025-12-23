@@ -175,7 +175,7 @@ export default function BlogPreview({ data, expertId, expertName }: SectionPrevi
                 <span
                   style={{
                     fontSize: '13px',
-                    color: '#2563eb',
+                    color: 'var(--brand-600)',
                     fontWeight: '500',
                   }}
                 >
@@ -192,7 +192,7 @@ export default function BlogPreview({ data, expertId, expertName }: SectionPrevi
             <span
               style={{
                 fontSize: '14px',
-                color: '#2563eb',
+                color: 'var(--brand-600)',
                 fontWeight: '500',
               }}
             >

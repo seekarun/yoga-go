@@ -40,7 +40,7 @@ export default function AboutPreview({ data, template = 'classic' }: SectionPrev
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundImage: `radial-gradient(circle at 1px 1px, rgba(99, 102, 241, 0.15) 1px, transparent 0)`,
+            backgroundImage: `radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--brand-500) 15%, transparent) 1px, transparent 0)`,
             backgroundSize: '40px 40px',
             pointerEvents: 'none',
           }}
@@ -68,7 +68,7 @@ export default function AboutPreview({ data, template = 'classic' }: SectionPrev
                 style={{
                   width: '40px',
                   height: '2px',
-                  background: 'linear-gradient(90deg, transparent, #6366f1)',
+                  background: 'linear-gradient(90deg, transparent, var(--brand-500))',
                 }}
               />
               <span
@@ -77,7 +77,7 @@ export default function AboutPreview({ data, template = 'classic' }: SectionPrev
                   fontWeight: '600',
                   letterSpacing: '0.1em',
                   textTransform: 'uppercase',
-                  color: '#a855f7',
+                  color: 'var(--brand-400)',
                 }}
               >
                 About Me
@@ -86,7 +86,7 @@ export default function AboutPreview({ data, template = 'classic' }: SectionPrev
                 style={{
                   width: '40px',
                   height: '2px',
-                  background: 'linear-gradient(90deg, #6366f1, transparent)',
+                  background: 'linear-gradient(90deg, var(--brand-500), transparent)',
                 }}
               />
             </div>
@@ -98,7 +98,7 @@ export default function AboutPreview({ data, template = 'classic' }: SectionPrev
                 letterSpacing: '-0.02em',
               }}
             >
-              My <span style={{ color: '#a855f7' }}>Journey</span>
+              My <span style={{ color: 'var(--brand-400)' }}>Journey</span>
             </h2>
           </div>
 
@@ -112,8 +112,8 @@ export default function AboutPreview({ data, template = 'classic' }: SectionPrev
                 margin: '0 auto',
                 borderRadius: '24px',
                 overflow: 'hidden',
-                boxShadow: '0 20px 80px rgba(99, 102, 241, 0.2)',
-                border: '1px solid rgba(99, 102, 241, 0.2)',
+                boxShadow: '0 20px 80px color-mix(in srgb, var(--brand-500) 20%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--brand-500) 20%, transparent)',
               }}
             >
               <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0 }}>
@@ -140,10 +140,10 @@ export default function AboutPreview({ data, template = 'classic' }: SectionPrev
                 maxWidth: '900px',
                 margin: '0 auto',
                 padding: '100px 20px',
-                background: 'rgba(99, 102, 241, 0.1)',
+                background: 'color-mix(in srgb, var(--brand-500) 10%, transparent)',
                 borderRadius: '24px',
                 textAlign: 'center',
-                border: '1px solid rgba(99, 102, 241, 0.2)',
+                border: '1px solid color-mix(in srgb, var(--brand-500) 20%, transparent)',
               }}
             >
               <div
@@ -151,7 +151,7 @@ export default function AboutPreview({ data, template = 'classic' }: SectionPrev
                   width: '80px',
                   height: '80px',
                   borderRadius: '50%',
-                  background: 'rgba(99, 102, 241, 0.2)',
+                  background: 'color-mix(in srgb, var(--brand-500) 20%, transparent)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -188,8 +188,8 @@ export default function AboutPreview({ data, template = 'classic' }: SectionPrev
                     left: '-20px',
                     width: '100px',
                     height: '100px',
-                    borderTop: '3px solid #6366f1',
-                    borderLeft: '3px solid #6366f1',
+                    borderTop: '3px solid var(--brand-500)',
+                    borderLeft: '3px solid var(--brand-500)',
                     borderRadius: '20px 0 0 0',
                   }}
                 />
@@ -200,8 +200,8 @@ export default function AboutPreview({ data, template = 'classic' }: SectionPrev
                     right: '-20px',
                     width: '100px',
                     height: '100px',
-                    borderBottom: '3px solid #a855f7',
-                    borderRight: '3px solid #a855f7',
+                    borderBottom: '3px solid var(--brand-600)',
+                    borderRight: '3px solid var(--brand-600)',
                     borderRadius: '0 0 20px 0',
                   }}
                 />
@@ -246,7 +246,9 @@ export default function AboutPreview({ data, template = 'classic' }: SectionPrev
                     boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
                   }}
                 >
-                  <div style={{ fontSize: '32px', fontWeight: '800', color: '#6366f1' }}>10+</div>
+                  <div style={{ fontSize: '32px', fontWeight: '800', color: 'var(--brand-500)' }}>
+                    10+
+                  </div>
                   <div style={{ fontSize: '12px', color: '#666', fontWeight: '500' }}>
                     Years Experience
                   </div>
@@ -260,7 +262,7 @@ export default function AboutPreview({ data, template = 'classic' }: SectionPrev
                   style={{
                     fontSize: '120px',
                     lineHeight: '0.8',
-                    color: 'rgba(99, 102, 241, 0.2)',
+                    color: 'color-mix(in srgb, var(--brand-500) 20%, transparent)',
                     fontFamily: 'Georgia, serif',
                     marginBottom: '-30px',
                   }}
@@ -296,7 +298,7 @@ export default function AboutPreview({ data, template = 'classic' }: SectionPrev
                       height: '60px',
                       borderRadius: '50%',
                       overflow: 'hidden',
-                      border: '2px solid #6366f1',
+                      border: '2px solid var(--brand-500)',
                     }}
                   >
                     {about.imageUrl ? (
@@ -310,7 +312,7 @@ export default function AboutPreview({ data, template = 'classic' }: SectionPrev
                         style={{
                           width: '100%',
                           height: '100%',
-                          background: 'linear-gradient(135deg, #6366f1, #a855f7)',
+                          background: 'linear-gradient(135deg, var(--brand-500), var(--brand-600))',
                         }}
                       />
                     )}
@@ -319,7 +321,9 @@ export default function AboutPreview({ data, template = 'classic' }: SectionPrev
                     <div style={{ fontSize: '16px', fontWeight: '600', color: '#fff' }}>
                       Your Name
                     </div>
-                    <div style={{ fontSize: '14px', color: '#a855f7' }}>Yoga Instructor</div>
+                    <div style={{ fontSize: '14px', color: 'var(--brand-400)' }}>
+                      Yoga Instructor
+                    </div>
                   </div>
                 </div>
               </div>

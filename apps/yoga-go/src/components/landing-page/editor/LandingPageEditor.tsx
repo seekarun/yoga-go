@@ -34,6 +34,7 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
   const [disabledSections, setDisabledSections] = useState<SectionType[]>([]);
   const [selectedSection, setSelectedSection] = useState<SectionType | null>(null);
   const [isDirty, setIsDirty] = useState(false);
+  const [isEditPaneVisible, setIsEditPaneVisible] = useState(true);
 
   // Auto-save refs
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -158,9 +159,17 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
     setIsDirty(true);
   }, []);
 
-  // Handle section selection
+  // Handle section selection (also shows edit pane if hidden)
   const handleSelectSection = useCallback((sectionId: SectionType | null) => {
     setSelectedSection(sectionId);
+    if (sectionId !== null) {
+      setIsEditPaneVisible(true);
+    }
+  }, []);
+
+  // Toggle edit pane visibility
+  const toggleEditPane = useCallback(() => {
+    setIsEditPaneVisible(prev => !prev);
   }, []);
 
   // Handle error from child components
@@ -358,9 +367,12 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
       </header>
 
       {/* Main Content - Side by Side */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Pane - Preview (40% width) */}
-        <div className="w-2/5 border-r border-gray-200">
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Left Pane - Preview (70% when edit visible, 100% when hidden) */}
+        <div
+          className="border-r border-gray-200 transition-all duration-300"
+          style={{ width: isEditPaneVisible ? '70%' : '100%' }}
+        >
           <PreviewPane
             data={data}
             sectionOrder={sectionOrder}
@@ -374,20 +386,45 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
           />
         </div>
 
-        {/* Right Pane - Edit (60% width) */}
-        <div className="w-3/5">
-          <EditPane
-            data={data}
-            sectionOrder={sectionOrder}
-            disabledSections={disabledSections}
-            selectedSection={selectedSection}
-            expertId={expertId}
-            onDataChange={handleDataChange}
-            onReorder={handleReorder}
-            onToggleSection={handleToggleSection}
-            onSelectSection={handleSelectSection}
-            onError={handleError}
-          />
+        {/* Toggle Button - positioned at the edge */}
+        <button
+          onClick={toggleEditPane}
+          className="absolute top-4 z-20 flex items-center justify-center w-6 h-12 bg-white border border-gray-300 rounded-l-lg shadow-md hover:bg-gray-50 transition-all duration-300"
+          style={{ right: isEditPaneVisible ? '30%' : '0' }}
+          title={isEditPaneVisible ? 'Hide editor' : 'Show editor'}
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            className={`text-gray-600 transition-transform duration-300 ${isEditPaneVisible ? '' : 'rotate-180'}`}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+
+        {/* Right Pane - Edit (30% width, hideable) */}
+        <div
+          className="bg-white transition-all duration-300 overflow-hidden"
+          style={{ width: isEditPaneVisible ? '30%' : '0' }}
+        >
+          {isEditPaneVisible && (
+            <EditPane
+              data={data}
+              sectionOrder={sectionOrder}
+              disabledSections={disabledSections}
+              selectedSection={selectedSection}
+              expertId={expertId}
+              onDataChange={handleDataChange}
+              onReorder={handleReorder}
+              onToggleSection={handleToggleSection}
+              onSelectSection={handleSelectSection}
+              onError={handleError}
+            />
+          )}
         </div>
       </div>
     </div>

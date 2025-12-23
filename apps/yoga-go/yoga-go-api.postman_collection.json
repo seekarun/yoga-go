@@ -2612,6 +2612,90 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Unsplash",
+      "item": [
+        {
+          "name": "Search Images",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/unsplash/search?query=yoga&page=1&per_page=12",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "unsplash", "search"],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "yoga",
+                  "description": "Search query"
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number"
+                },
+                {
+                  "key": "per_page",
+                  "value": "12",
+                  "description": "Results per page (max 30)"
+                }
+              ]
+            },
+            "description": "Search Unsplash for images. Returns optimized URLs for hero backgrounds (1920px) with attribution data."
+          },
+          "response": []
+        },
+        {
+          "name": "Track Download",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"downloadLocation\": \"https://api.unsplash.com/photos/abc123/download\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/unsplash/download",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "unsplash", "download"]
+            },
+            "description": "Track image download per Unsplash API guidelines. Must be called when a user selects an image for use. The downloadLocation comes from the search results."
+          },
+          "response": []
+        },
+        {
+          "name": "Suggest Images from Text",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Transform your life with gentle, therapeutic yoga designed for back pain relief and flexibility.\",\n  \"count\": 5\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/unsplash/suggest",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "unsplash", "suggest"]
+            },
+            "description": "Extract keywords from text and return suggested Unsplash images. Used to auto-populate gallery from hero description. Returns images optimized for gallery display (800x600px)."
+          },
+          "response": []
+        }
+      ]
     }
   ],
   "variable": [

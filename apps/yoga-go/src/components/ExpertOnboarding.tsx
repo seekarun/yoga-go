@@ -15,6 +15,43 @@ import FooterPreview from '@/components/landing-page/sections/footer/FooterPrevi
 // Dummy image for preview (will be replaced with proper images later)
 const DUMMY_IMAGE = '/template/hero.jpg';
 
+// Country options for location dropdown
+const COUNTRIES = [
+  { code: 'AU', name: 'Australia' },
+  { code: 'CA', name: 'Canada' },
+  { code: 'DE', name: 'Germany' },
+  { code: 'FR', name: 'France' },
+  { code: 'IN', name: 'India' },
+  { code: 'SG', name: 'Singapore' },
+  { code: 'AE', name: 'United Arab Emirates' },
+  { code: 'GB', name: 'United Kingdom' },
+  { code: 'US', name: 'United States' },
+];
+
+// Currency options with symbols
+const CURRENCIES = [
+  { code: 'AUD', name: 'Australian Dollar', symbol: 'A$' },
+  { code: 'CAD', name: 'Canadian Dollar', symbol: 'C$' },
+  { code: 'EUR', name: 'Euro', symbol: '€' },
+  { code: 'GBP', name: 'British Pound', symbol: '£' },
+  { code: 'INR', name: 'Indian Rupee', symbol: '₹' },
+  { code: 'SGD', name: 'Singapore Dollar', symbol: 'S$' },
+  { code: 'AED', name: 'UAE Dirham', symbol: 'د.إ' },
+  { code: 'USD', name: 'US Dollar', symbol: '$' },
+];
+
+// Preset brand colors
+const BRAND_COLORS = [
+  { name: 'Coral', value: '#E07A5F' },
+  { name: 'Sage', value: '#81B29A' },
+  { name: 'Ocean', value: '#3D5A80' },
+  { name: 'Sunset', value: '#F2994A' },
+  { name: 'Lavender', value: '#9B8AB8' },
+  { name: 'Teal', value: '#2A9D8F' },
+  { name: 'Rose', value: '#C97B84' },
+  { name: 'Midnight', value: '#264653' },
+];
+
 // Lorem ipsum dummy content
 const LOREM = {
   short: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
@@ -105,7 +142,12 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
   const [formData, setFormData] = useState({
     id: initialExpertId,
     name: userName || '',
+    location: '',
+    currency: 'USD',
   });
+
+  // Brand color for theme
+  const [brandColor, setBrandColor] = useState('#2A9D8F');
 
   // Landing page content for step 2
   const [landingContent, setLandingContent] = useState<LandingPageContent>({
@@ -177,7 +219,9 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
     checkExpertIdAvailability(debouncedExpertId);
   }, [debouncedExpertId, checkExpertIdAvailability]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
 
     if (name === 'name') {
@@ -193,6 +237,12 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
       setFormData(prev => ({
         ...prev,
         id: value,
+      }));
+    } else {
+      // Handle other fields like location and currency
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
       }));
     }
   };
@@ -229,7 +279,7 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
     setError('');
 
     if (step === 1) {
-      if (!formData.id || !formData.name) {
+      if (!formData.id || !formData.name || !formData.location) {
         setError('Please fill in all required fields');
         return;
       }
@@ -340,11 +390,16 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
         platformPreferences: {
           featuredOnPlatform: true,
           defaultEmail: `${expertId}@myyoga.guru`,
+          location: formData.location,
+          currency: formData.currency,
         },
         socialLinks: {},
         // Initial landing page configuration
         customLandingPage: {
           template: selectedTemplate,
+          theme: {
+            primaryColor: brandColor,
+          },
           hero: contentToUse?.hero
             ? {
                 headline: contentToUse.hero.headline,
@@ -608,6 +663,90 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
               </div>
             )}
           </div>
+
+          {/* Location and Currency Section */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '20px',
+              marginTop: '24px',
+              paddingTop: '24px',
+              borderTop: '1px solid #e2e8f0',
+            }}
+          >
+            {/* Location */}
+            <div>
+              <label
+                style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  marginBottom: '8px',
+                }}
+              >
+                Location *
+              </label>
+              <select
+                name="location"
+                value={formData.location}
+                onChange={handleChange}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  background: '#fff',
+                  cursor: 'pointer',
+                }}
+              >
+                <option value="">Select your country</option>
+                {COUNTRIES.map(country => (
+                  <option key={country.code} value={country.code}>
+                    {country.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Currency */}
+            <div>
+              <label
+                style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  marginBottom: '8px',
+                }}
+              >
+                Currency
+              </label>
+              <select
+                name="currency"
+                value={formData.currency}
+                onChange={handleChange}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  background: '#fff',
+                  cursor: 'pointer',
+                }}
+              >
+                {CURRENCIES.map(currency => (
+                  <option key={currency.code} value={currency.code}>
+                    {currency.symbol} {currency.name}
+                  </option>
+                ))}
+              </select>
+              <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                Used for pricing your courses and services
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -734,6 +873,77 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
                 }}
               />
             )}
+          </div>
+
+          {/* Brand Colour Picker */}
+          <div style={{ marginBottom: '24px' }}>
+            <label
+              style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}
+            >
+              Brand Colour
+            </label>
+            <p style={{ fontSize: '12px', color: '#666', marginBottom: '12px' }}>
+              Choose a colour that represents your brand (used for buttons, links, and accents)
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+              {BRAND_COLORS.map(color => (
+                <button
+                  key={color.value}
+                  type="button"
+                  onClick={() => setBrandColor(color.value)}
+                  title={color.name}
+                  style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '8px',
+                    background: color.value,
+                    border: brandColor === color.value ? '3px solid #111' : '2px solid transparent',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    boxShadow:
+                      brandColor === color.value
+                        ? '0 2px 8px rgba(0,0,0,0.2)'
+                        : '0 1px 3px rgba(0,0,0,0.1)',
+                  }}
+                />
+              ))}
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                marginTop: '16px',
+              }}
+            >
+              <span style={{ fontSize: '13px', color: '#666' }}>Selected:</span>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '6px 12px',
+                  background: '#f8fafc',
+                  borderRadius: '6px',
+                  border: '1px solid #e2e8f0',
+                }}
+              >
+                <div
+                  style={{
+                    width: '20px',
+                    height: '20px',
+                    borderRadius: '4px',
+                    background: brandColor,
+                  }}
+                />
+                <span style={{ fontSize: '13px', fontFamily: 'monospace', color: '#333' }}>
+                  {brandColor}
+                </span>
+              </div>
+              <span style={{ fontSize: '12px', color: '#888' }}>
+                {BRAND_COLORS.find(c => c.value === brandColor)?.name || 'Custom'}
+              </span>
+            </div>
           </div>
 
           {/* Preview Button */}

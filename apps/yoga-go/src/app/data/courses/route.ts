@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { headers } from 'next/headers';
-import type { ApiResponse, Course } from '@/types';
+import type { ApiResponse, Course, SupportedCurrency } from '@/types';
 import * as courseRepository from '@/lib/repositories/courseRepository';
 import * as expertRepository from '@/lib/repositories/expertRepository';
 import * as tenantRepository from '@/lib/repositories/tenantRepository';
+import { normalizeCurrency, DEFAULT_CURRENCY } from '@/config/currencies';
 
 // Generate a unique course ID
 function generateCourseId(instructorId: string): string {
@@ -173,6 +174,20 @@ export async function POST(request: Request) {
     // Generate course ID
     const courseId = generateCourseId(body.instructor.id);
 
+    // Get expert's currency preference
+    let courseCurrency: SupportedCurrency = DEFAULT_CURRENCY;
+    if (body.currency) {
+      // Use currency from request if provided
+      courseCurrency = normalizeCurrency(body.currency);
+    } else {
+      // Fetch expert to get their preferred currency
+      const expert = await expertRepository.getExpertById(body.instructor.id);
+      if (expert?.platformPreferences?.currency) {
+        courseCurrency = normalizeCurrency(expert.platformPreferences.currency);
+      }
+    }
+    console.log('[DBG][courses/route.ts] Course currency:', courseCurrency);
+
     // Transform curriculum to use lessons array format
     const curriculum = body.curriculum
       ? (body.curriculum as { week: number; title: string; lessonIds?: string[] }[]).map(week => ({
@@ -198,6 +213,7 @@ export async function POST(request: Request) {
       totalLessons: body.totalLessons !== undefined ? body.totalLessons : 0,
       freeLessons: body.freeLessons !== undefined ? body.freeLessons : 0,
       price: body.price,
+      currency: courseCurrency,
       rating: body.rating !== undefined ? body.rating : 5.0,
       totalRatings: body.totalRatings || 0,
       totalStudents: body.totalStudents !== undefined ? body.totalStudents : 0,

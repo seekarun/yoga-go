@@ -273,7 +273,7 @@ export default function WebinarsPreview({ data, expertId, expertName }: SectionP
                         height: '100px',
                         background: webinar.thumbnail
                           ? `url(${webinar.thumbnail}) center/cover`
-                          : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          : 'linear-gradient(135deg, var(--brand-500) 0%, var(--brand-600) 100%)',
                         position: 'relative',
                       }}
                     >
@@ -375,7 +375,7 @@ export default function WebinarsPreview({ data, expertId, expertName }: SectionP
               href="/webinars"
               style={{
                 fontSize: '14px',
-                color: '#2563eb',
+                color: 'var(--brand-600)',
                 fontWeight: '500',
                 textDecoration: 'none',
               }}

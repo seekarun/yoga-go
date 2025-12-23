@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Course, UserCourseData } from '@/types';
+import PriceDisplay from '@/components/PriceDisplay';
 
 interface CourseCardProps {
   course: Course | UserCourseData;
@@ -319,8 +320,8 @@ export default function CourseCard({ course, variant = 'full' }: CourseCardProps
                 <span style={{ color: '#FFB800' }}>★</span>
                 <span style={{ fontSize: '14px', fontWeight: '600' }}>{course.rating}</span>
               </div>
-              <div style={{ fontSize: '18px', fontWeight: '600', color: 'var(--color-primary)' }}>
-                ${course.price}
+              <div style={{ color: 'var(--color-primary)' }}>
+                <PriceDisplay amount={course.price} currency={course.currency} size="md" />
               </div>
             </div>
           </div>
@@ -543,8 +544,8 @@ export default function CourseCard({ course, variant = 'full' }: CourseCardProps
               </div>
             ) : (
               <>
-                <div style={{ fontSize: '24px', fontWeight: '600', color: 'var(--color-primary)' }}>
-                  ${course.price}
+                <div style={{ color: 'var(--color-primary)' }}>
+                  <PriceDisplay amount={course.price} currency={course.currency} size="lg" />
                 </div>
                 <div
                   style={{
