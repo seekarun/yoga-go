@@ -1,8 +1,59 @@
 import type { SectionPreviewProps } from '../types';
 
+// Unsplash attribution component (required per Unsplash API guidelines)
+function UnsplashAttribution({
+  attribution,
+  style,
+}: {
+  attribution: {
+    photographerName: string;
+    photographerUrl: string;
+    unsplashUrl: string;
+  };
+  style?: React.CSSProperties;
+}) {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        bottom: '8px',
+        left: '8px',
+        padding: '4px 8px',
+        background: 'rgba(0,0,0,0.6)',
+        borderRadius: '4px',
+        fontSize: '10px',
+        color: 'rgba(255,255,255,0.9)',
+        zIndex: 10,
+        ...style,
+      }}
+    >
+      Photo by{' '}
+      <a
+        href={attribution.photographerUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ color: 'rgba(255,255,255,0.9)', textDecoration: 'underline' }}
+      >
+        {attribution.photographerName}
+      </a>{' '}
+      on{' '}
+      <a
+        href={attribution.unsplashUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ color: 'rgba(255,255,255,0.9)', textDecoration: 'underline' }}
+      >
+        Unsplash
+      </a>
+    </div>
+  );
+}
+
 export default function ActPreview({ data, template = 'classic' }: SectionPreviewProps) {
   const act = data.act;
-  const heroCtaText = data.hero?.ctaText || 'Get Your Results';
+  // Use act section's CTA text/link if set, otherwise fall back to hero section's values
+  const ctaText = act?.ctaText || data.hero?.ctaText || 'Get Your Results';
+  const ctaLink = act?.ctaLink || data.hero?.ctaLink || '#';
   const isModern = template === 'modern';
 
   // Don't render if no content
@@ -135,7 +186,7 @@ export default function ActPreview({ data, template = 'classic' }: SectionPrevie
                     boxShadow: '0 8px 30px color-mix(in srgb, var(--brand-500) 40%, transparent)',
                   }}
                 >
-                  {heroCtaText}
+                  {ctaText}
                 </span>
                 <span
                   style={{
@@ -181,17 +232,22 @@ export default function ActPreview({ data, template = 'classic' }: SectionPrevie
             {/* Right - Image */}
             <div style={{ position: 'relative' }}>
               {act.imageUrl ? (
-                <img
-                  src={act.imageUrl}
-                  alt={act.title || 'CTA Image'}
-                  style={{
-                    width: '100%',
-                    height: '400px',
-                    objectFit: 'cover',
-                    borderRadius: '20px',
-                    boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
-                  }}
-                />
+                <div style={{ position: 'relative' }}>
+                  <img
+                    src={act.imageUrl}
+                    alt={act.title || 'CTA Image'}
+                    style={{
+                      width: '100%',
+                      height: '400px',
+                      objectFit: 'cover',
+                      borderRadius: '20px',
+                      boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+                    }}
+                  />
+                  {act.imageAttribution && (
+                    <UnsplashAttribution attribution={act.imageAttribution} />
+                  )}
+                </div>
               ) : (
                 <div
                   style={{
@@ -266,18 +322,22 @@ export default function ActPreview({ data, template = 'classic' }: SectionPrevie
               height: '200px',
               borderRadius: '8px',
               overflow: 'hidden',
+              position: 'relative',
             }}
           >
             {act.imageUrl ? (
-              <img
-                src={act.imageUrl}
-                alt={act.title || 'Act section'}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                }}
-              />
+              <>
+                <img
+                  src={act.imageUrl}
+                  alt={act.title || 'Act section'}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                  }}
+                />
+                {act.imageAttribution && <UnsplashAttribution attribution={act.imageAttribution} />}
+              </>
             ) : (
               <div
                 style={{
@@ -330,7 +390,7 @@ export default function ActPreview({ data, template = 'classic' }: SectionPrevie
                 display: 'inline-block',
               }}
             >
-              {heroCtaText}
+              {ctaText}
             </span>
           </div>
         </div>

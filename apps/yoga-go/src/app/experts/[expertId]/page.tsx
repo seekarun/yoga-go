@@ -133,11 +133,15 @@ export default function ExpertDetailPage() {
     );
   }
 
-  // Helper to resolve CTA links - transforms /survey/{id} to full path
+  // Helper to resolve CTA links - transforms relative paths to full paths
   const resolveCtaLink = (link: string | undefined): string => {
     if (!link) return '#courses';
     // If link starts with /survey/, prepend the expert path
     if (link.startsWith('/survey/')) {
+      return `/experts/${expertId}${link}`;
+    }
+    // If link starts with /courses/, prepend the expert path
+    if (link.startsWith('/courses/')) {
       return `/experts/${expertId}${link}`;
     }
     return link;
@@ -544,7 +548,7 @@ export default function ExpertDetailPage() {
     }
 
     return (
-      <section style={{ padding: '60px 20px', background: '#f8f8f8' }}>
+      <section id="about" style={{ padding: '60px 20px', background: '#f8f8f8' }}>
         <div className="container" style={{ maxWidth: '1200px', margin: '0 auto' }}>
           {expert.customLandingPage.about.layoutType === 'video' &&
           expert.customLandingPage.about.videoCloudflareId &&
@@ -610,7 +614,7 @@ export default function ExpertDetailPage() {
     if (courses.length === 0) return null;
 
     return (
-      <section style={{ padding: '80px 20px', background: '#fff' }}>
+      <section id="courses" style={{ padding: '80px 20px', background: '#fff' }}>
         <div className="container" style={{ maxWidth: '1400px', margin: '0 auto' }}>
           <h2
             className="courses-section-title"
@@ -785,7 +789,7 @@ export default function ExpertDetailPage() {
   };
 
   const renderWebinarsSection = () => (
-    <section style={{ padding: '80px 20px', background: '#f8f9fa' }}>
+    <section id="webinars" style={{ padding: '80px 20px', background: '#f8f9fa' }}>
       <div className="container" style={{ maxWidth: '1200px', margin: '0 auto' }}>
         <h2
           style={{
@@ -988,11 +992,13 @@ export default function ExpertDetailPage() {
     if (galleryImages.length === 0) return null;
 
     return (
-      <PhotoGalleryLightbox
-        images={galleryImages}
-        title={expert.customLandingPage?.photoGallery?.title || 'Gallery'}
-        description={expert.customLandingPage?.photoGallery?.description}
-      />
+      <div id="photoGallery">
+        <PhotoGalleryLightbox
+          images={galleryImages}
+          title={expert.customLandingPage?.photoGallery?.title || 'Gallery'}
+          description={expert.customLandingPage?.photoGallery?.description}
+        />
+      </div>
     );
   };
 
@@ -1152,7 +1158,7 @@ export default function ExpertDetailPage() {
               </p>
               {!expertMode.isExpertMode && (
                 <Link
-                  href={`/experts/${expertId}/survey`}
+                  href={resolveCtaLink(expert.customLandingPage.act.ctaLink || customHero?.ctaLink)}
                   style={{
                     padding: '16px 48px',
                     background: '#fcd34d',
@@ -1173,7 +1179,9 @@ export default function ExpertDetailPage() {
                     e.currentTarget.style.background = '#fcd34d';
                   }}
                 >
-                  {customHero?.ctaText || 'Get Your Results'}
+                  {expert.customLandingPage.act.ctaText ||
+                    customHero?.ctaText ||
+                    'Get Your Results'}
                 </Link>
               )}
             </div>

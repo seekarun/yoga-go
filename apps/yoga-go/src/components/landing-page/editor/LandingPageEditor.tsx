@@ -24,6 +24,7 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [showSavedIndicator, setShowSavedIndicator] = useState(false);
 
   // Expert data
   const [expert, setExpert] = useState<Expert | null>(null);
@@ -38,6 +39,7 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
 
   // Auto-save refs
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const savedIndicatorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialLoadRef = useRef(true);
 
   // Fetch expert data on mount
@@ -134,6 +136,30 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, sectionOrder, disabledSections, isDirty]);
+
+  // Saved indicator fade-away effect
+  useEffect(() => {
+    if (lastSaved) {
+      // Show the indicator
+      setShowSavedIndicator(true);
+
+      // Clear any existing timeout
+      if (savedIndicatorTimeoutRef.current) {
+        clearTimeout(savedIndicatorTimeoutRef.current);
+      }
+
+      // Set timeout to hide after 10 seconds
+      savedIndicatorTimeoutRef.current = setTimeout(() => {
+        setShowSavedIndicator(false);
+      }, 10000);
+    }
+
+    return () => {
+      if (savedIndicatorTimeoutRef.current) {
+        clearTimeout(savedIndicatorTimeoutRef.current);
+      }
+    };
+  }, [lastSaved]);
 
   // Handle data changes
   const handleDataChange = useCallback((updates: Partial<CustomLandingPageConfig>) => {
@@ -321,9 +347,14 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
                 </span>
               ) : isDirty ? (
                 <span className="text-amber-600">• Unsaved</span>
-              ) : lastSaved ? (
-                <span className="text-green-600">✓ Saved</span>
-              ) : null}
+              ) : (
+                <span
+                  className="text-green-600 transition-opacity duration-500"
+                  style={{ opacity: showSavedIndicator ? 1 : 0 }}
+                >
+                  ✓ Saved
+                </span>
+              )}
             </p>
           </div>
 

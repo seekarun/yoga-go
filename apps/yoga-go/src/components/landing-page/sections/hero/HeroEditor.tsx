@@ -3,13 +3,8 @@
 import { useState, useEffect } from 'react';
 import UnsplashImagePicker from '@/components/UnsplashImagePicker';
 import type { UnsplashAttribution } from '@/components/UnsplashImagePicker';
-import type { Survey } from '@/types';
+import CTAButtonConfig, { type CTAConfig } from '../../CTAButtonConfig';
 import type { SectionEditorProps, HeroFormData } from '../types';
-
-interface CtaLinkOption {
-  value: string;
-  label: string;
-}
 
 export default function HeroEditor({ data, onChange, expertId, onError }: SectionEditorProps) {
   const [formData, setFormData] = useState<HeroFormData>({
@@ -21,44 +16,6 @@ export default function HeroEditor({ data, onChange, expertId, onError }: Sectio
     alignment: data.hero?.alignment || 'center',
   });
   const [showImageUpload, setShowImageUpload] = useState(false);
-  const [ctaOptions, setCtaOptions] = useState<CtaLinkOption[]>([
-    { value: '#courses', label: 'Courses Section' },
-  ]);
-  const [loadingSurveys, setLoadingSurveys] = useState(true);
-
-  // Fetch published surveys for CTA dropdown
-  useEffect(() => {
-    const fetchSurveys = async () => {
-      try {
-        console.log('[DBG][HeroEditor] Fetching surveys for expert:', expertId);
-        const response = await fetch(`/api/srv/experts/${expertId}/survey`);
-        const result = await response.json();
-
-        if (result.success && result.data) {
-          const surveys: Survey[] = result.data;
-          const activeSurveys = surveys.filter(s => s.status === 'active');
-
-          const surveyOptions: CtaLinkOption[] = activeSurveys.map(survey => ({
-            value: `/survey/${survey.id}`,
-            label: `Survey: ${survey.title}`,
-          }));
-          // Note: The actual URL will be relative to the expert's page
-          // e.g., on arun.myyoga.guru, /survey/123 becomes /experts/arun/survey/123
-
-          setCtaOptions([{ value: '#courses', label: 'Courses Section' }, ...surveyOptions]);
-          console.log('[DBG][HeroEditor] Loaded', activeSurveys.length, 'active surveys');
-        }
-      } catch (err) {
-        console.error('[DBG][HeroEditor] Error fetching surveys:', err);
-      } finally {
-        setLoadingSurveys(false);
-      }
-    };
-
-    if (expertId) {
-      fetchSurveys();
-    }
-  }, [expertId]);
 
   // Sync with parent data when it changes externally
   useEffect(() => {
@@ -127,6 +84,27 @@ export default function HeroEditor({ data, onChange, expertId, onError }: Sectio
   const handleUploadError = (error: string) => {
     console.error('[DBG][HeroEditor] Upload error:', error);
     onError?.(error);
+  };
+
+  const handleCTAChange = (config: CTAConfig) => {
+    const updated = {
+      ...formData,
+      ctaText: config.ctaText,
+      ctaLink: config.ctaLink,
+    };
+    setFormData(updated);
+
+    onChange({
+      hero: {
+        ...data.hero,
+        heroImage: updated.heroImage || undefined,
+        headline: updated.headline || undefined,
+        description: updated.description || undefined,
+        ctaText: config.ctaText || 'Explore Courses',
+        ctaLink: config.ctaLink || '#courses',
+        alignment: updated.alignment,
+      },
+    });
   };
 
   return (
@@ -262,52 +240,15 @@ export default function HeroEditor({ data, onChange, expertId, onError }: Sectio
         </p>
       </div>
 
-      {/* CTA Button Text */}
-      <div>
-        <label htmlFor="ctaText" className="block text-sm font-medium text-gray-700 mb-2">
-          Call-to-Action Button Text
-        </label>
-        <input
-          type="text"
-          id="ctaText"
-          name="ctaText"
-          value={formData.ctaText}
-          onChange={handleChange}
-          placeholder="e.g., Start Your Journey Today"
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+      {/* CTA Button Configuration */}
+      <div className="border-t border-gray-200 pt-6">
+        <h4 className="text-sm font-semibold text-gray-900 mb-4">Call-to-Action Button</h4>
+        <CTAButtonConfig
+          ctaText={formData.ctaText}
+          ctaLink={formData.ctaLink}
+          onChange={handleCTAChange}
+          expertId={expertId}
         />
-        <p className="mt-1 text-xs text-gray-500">
-          The text shown on the main action button (defaults to &quot;Explore Courses&quot;)
-        </p>
-      </div>
-
-      {/* CTA Button Link */}
-      <div>
-        <label htmlFor="ctaLink" className="block text-sm font-medium text-gray-700 mb-2">
-          Call-to-Action Button Link
-        </label>
-        <select
-          id="ctaLink"
-          name="ctaLink"
-          value={formData.ctaLink}
-          onChange={handleChange}
-          disabled={loadingSurveys}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
-        >
-          {ctaOptions.map(option => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-        <p className="mt-1 text-xs text-gray-500">
-          Where the CTA button should link to (used in both Hero and Act sections)
-        </p>
-        {ctaOptions.length === 1 && !loadingSurveys && (
-          <p className="mt-2 text-xs text-amber-600">
-            No active surveys available. Publish a survey to add it as a CTA option.
-          </p>
-        )}
       </div>
 
       {/* Text Alignment */}

@@ -100,6 +100,14 @@ export interface AboutFormData {
 // Act section form data
 export interface ActFormData {
   imageUrl: string;
+  imageAttribution?: {
+    photographerName: string;
+    photographerUsername: string;
+    photographerUrl: string;
+    unsplashUrl: string;
+  };
   title: string;
   text: string;
+  ctaText: string;
+  ctaLink: string;
 }

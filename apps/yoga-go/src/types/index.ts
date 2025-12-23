@@ -109,8 +109,17 @@ export interface CustomLandingPageConfig {
   };
   act?: {
     imageUrl?: string; // Act section image URL
+    imageAttribution?: {
+      // Unsplash attribution for the image (if from Unsplash)
+      photographerName: string;
+      photographerUsername: string;
+      photographerUrl: string;
+      unsplashUrl: string;
+    };
     title?: string; // Act section title
     text?: string; // Act section description text
+    ctaText?: string; // CTA button text (defaults to hero CTA if not set)
+    ctaLink?: string; // CTA button link (defaults to hero CTA link if not set)
   };
   blog?: {
     title?: string; // Section title (default: "From the Blog")
