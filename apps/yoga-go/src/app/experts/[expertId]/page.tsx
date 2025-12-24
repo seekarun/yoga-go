@@ -9,6 +9,7 @@ import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Header from '@/components/Header';
 import PhotoGalleryLightbox from '@/components/PhotoGalleryLightbox';
+import { LandingPageThemeProvider } from '@/components/landing-page/ThemeProvider';
 
 export default function ExpertDetailPage() {
   const params = useParams();
@@ -495,11 +496,12 @@ export default function ExpertDetailPage() {
               >
                 <a
                   href={resolveCtaLink(customHero?.ctaLink)}
+                  className="hero-cta-button"
                   style={{
                     display: 'inline-block',
                     padding: '16px 48px',
-                    background: '#fcd34d',
-                    color: '#1f2937',
+                    background: 'var(--brand-500, #fcd34d)',
+                    color: 'var(--brand-500-contrast, #1f2937)',
                     fontSize: '18px',
                     fontWeight: '600',
                     borderRadius: '8px',
@@ -508,11 +510,11 @@ export default function ExpertDetailPage() {
                   }}
                   onMouseEnter={e => {
                     e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.background = '#fbbf24';
+                    e.currentTarget.style.background = 'var(--brand-600, #fbbf24)';
                   }}
                   onMouseLeave={e => {
                     e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.background = '#fcd34d';
+                    e.currentTarget.style.background = 'var(--brand-500, #fcd34d)';
                   }}
                 >
                   {heroCtaText}
@@ -606,11 +608,12 @@ export default function ExpertDetailPage() {
             >
               <a
                 href={resolveCtaLink(customHero?.ctaLink)}
+                className="hero-cta-button"
                 style={{
                   display: 'inline-block',
                   padding: '14px 32px',
-                  background: '#fcd34d',
-                  color: '#1f2937',
+                  background: 'var(--brand-500, #fcd34d)',
+                  color: 'var(--brand-500-contrast, #1f2937)',
                   fontSize: '16px',
                   fontWeight: '600',
                   borderRadius: '8px',
@@ -619,11 +622,11 @@ export default function ExpertDetailPage() {
                 }}
                 onMouseEnter={e => {
                   e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.background = '#fbbf24';
+                  e.currentTarget.style.background = 'var(--brand-600, #fbbf24)';
                 }}
                 onMouseLeave={e => {
                   e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.background = '#fcd34d';
+                  e.currentTarget.style.background = 'var(--brand-500, #fcd34d)';
                 }}
               >
                 {heroCtaText}
@@ -1342,10 +1345,11 @@ export default function ExpertDetailPage() {
               {!expertMode.isExpertMode && (
                 <Link
                   href={resolveCtaLink(expert.customLandingPage.act.ctaLink || customHero?.ctaLink)}
+                  className="act-cta-button"
                   style={{
                     padding: '16px 48px',
-                    background: '#fcd34d',
-                    color: '#1f2937',
+                    background: 'var(--brand-500, #fcd34d)',
+                    color: 'var(--brand-500-contrast, #1f2937)',
                     borderRadius: '8px',
                     fontSize: '18px',
                     fontWeight: '600',
@@ -1355,11 +1359,11 @@ export default function ExpertDetailPage() {
                   }}
                   onMouseEnter={e => {
                     e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.background = '#fbbf24';
+                    e.currentTarget.style.background = 'var(--brand-600, #fbbf24)';
                   }}
                   onMouseLeave={e => {
                     e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.background = '#fcd34d';
+                    e.currentTarget.style.background = 'var(--brand-500, #fcd34d)';
                   }}
                 >
                   {expert.customLandingPage.act.ctaText ||
@@ -1565,15 +1569,16 @@ export default function ExpertDetailPage() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        paddingTop: (isPreviewMode || isDraftPreview) && isOwner ? '48px' : 0,
-      }}
-    >
-      <PreviewBanner />
-      <Header />
-      <style>{`
+    <LandingPageThemeProvider palette={expert.customLandingPage?.theme?.palette}>
+      <div
+        style={{
+          minHeight: '100vh',
+          paddingTop: (isPreviewMode || isDraftPreview) && isOwner ? '48px' : 0,
+        }}
+      >
+        <PreviewBanner />
+        <Header />
+        <style>{`
         @media (max-width: 768px) {
           .hero-section-desktop {
             display: none !important;
@@ -1626,11 +1631,12 @@ export default function ExpertDetailPage() {
         }
       `}</style>
 
-      {/* Render sections dynamically based on enabledSections order */}
-      {enabledSections.map(sectionType => {
-        const renderer = sectionRenderers[sectionType];
-        return <div key={sectionType}>{renderer()}</div>;
-      })}
-    </div>
+        {/* Render sections dynamically based on enabledSections order */}
+        {enabledSections.map(sectionType => {
+          const renderer = sectionRenderers[sectionType];
+          return <div key={sectionType}>{renderer()}</div>;
+        })}
+      </div>
+    </LandingPageThemeProvider>
   );
 }
