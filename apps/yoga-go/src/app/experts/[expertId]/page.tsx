@@ -50,17 +50,19 @@ export default function ExpertDetailPage() {
     const checkOwnership = async () => {
       try {
         // Try to get the current user's expert profile
-        const res = await fetch('/data/app/expert/me');
+        const res = await fetch('/data/app/expert/me', { credentials: 'include' });
+        console.log('[DBG][expert-detail] /data/app/expert/me response status:', res.status);
         if (res.ok) {
           const data = await res.json();
+          console.log('[DBG][expert-detail] /data/app/expert/me data:', data);
           if (data.success && data.data?.id === expertId) {
             setIsOwner(true);
             console.log('[DBG][expert-detail] User is the owner of this page');
           }
         }
-      } catch {
+      } catch (err) {
         // User is not logged in or not an expert
-        console.log('[DBG][expert-detail] User is not logged in or not an expert');
+        console.log('[DBG][expert-detail] User is not logged in or not an expert:', err);
       }
     };
     checkOwnership();
@@ -83,8 +85,13 @@ export default function ExpertDetailPage() {
         console.log('[DBG][expert-detail] On preview domain:', isOnPreviewDomain);
 
         // Fetch expert details
-        const expertRes = await fetch(`/data/experts/${expertId}`, { headers: fetchHeaders });
+        const expertRes = await fetch(`/data/experts/${expertId}`, {
+          headers: fetchHeaders,
+          credentials: 'include',
+        });
+        console.log('[DBG][expert-detail] /data/experts response status:', expertRes.status);
         const expertData = await expertRes.json();
+        console.log('[DBG][expert-detail] /data/experts response:', expertData);
 
         if (expertData.success) {
           setExpert(expertData.data);
@@ -94,6 +101,8 @@ export default function ExpertDetailPage() {
             setIsPreviewMode(true);
             console.log('[DBG][expert-detail] Page is in preview mode (unpublished)');
           }
+        } else {
+          console.error('[DBG][expert-detail] Expert fetch failed:', expertData.error);
         }
 
         // Fetch courses for this expert (only PUBLISHED)
