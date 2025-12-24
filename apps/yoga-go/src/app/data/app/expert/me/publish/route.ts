@@ -43,6 +43,16 @@ export async function POST(request: Request) {
       );
     }
 
+    // Get expert to check if flagged for review
+    const expert = await expertRepository.getExpertById(user.expertProfile);
+    if (!expert) {
+      console.log('[DBG][expert/me/publish] Expert not found');
+      return NextResponse.json(
+        { success: false, error: 'Expert profile not found' } as ApiResponse<Expert>,
+        { status: 404 }
+      );
+    }
+
     // Parse request body
     const body = await request.json();
     const { publish } = body;
@@ -51,6 +61,24 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { success: false, error: 'publish must be a boolean' } as ApiResponse<Expert>,
         { status: 400 }
+      );
+    }
+
+    // Block publishing if flagged for review (pending or rejected)
+    if (publish && expert.flaggedForReview && expert.reviewStatus !== 'approved') {
+      console.log(
+        '[DBG][expert/me/publish] Cannot publish - flagged for review:',
+        expert.reviewStatus
+      );
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            expert.reviewStatus === 'rejected'
+              ? 'Your expert ID was rejected during review. Please contact support.'
+              : 'Your expert ID is pending review. You will be able to publish once the review is complete.',
+        } as ApiResponse<Expert>,
+        { status: 403 }
       );
     }
 

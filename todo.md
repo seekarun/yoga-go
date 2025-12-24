@@ -1,15 +1,13 @@
 notes
 
-
 [ ] Duration is confusing
-[ ] no welcome email sent.
+[ ] no learner welcome email sent.
 [ ] For learner - show enroll button in home page
 [ ] fix rating display. (don't show dummy data)
 [ ] expert commenting on other expert videos shows as EXPERT!!! fix.
 [ ] expert should be able to see discussion in admin page.
 [ ] payments not showing up in expert dashboard.
 [ ] total students not showing the correct number
-[ ] email to new expert not working.    
 [ ] add message in dashboard that dns changes takes time.
 [ ] setup custom domain email (Remove this section if domain set up already)
 [ ] options to raise ticket to add custom domain.
@@ -34,6 +32,8 @@ notes
 [ ] if user does not verify account in 10 mins, delete from user pool
 [ ] user testimonials section
 [ ] country specific incremental launches
+[ ] disable the next button until the expertID is validated.
+[ ] buy domain
 
 [ ] http to https redirect - check if /etc/hosts still active
 [ ] custom domain: prefix with https://
@@ -47,6 +47,7 @@ notes
 [ ] review code for all fallbacks.
 [ ] ability to sell digital assets.
 
+[x] email to new expert not working.    
 [x] copy buttons for dns record name/value
 [x] consider setting up hero section as part of onboarding.
 [x] Currency be localized

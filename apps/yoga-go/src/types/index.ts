@@ -339,6 +339,14 @@ export interface Tenant extends BaseEntity {
   draftLandingPage?: CustomLandingPageConfig; // Draft landing page (WIP, viewable on preview subdomain)
   isLandingPagePublished?: boolean; // When false, subdomain visitors are redirected
 
+  // ===== Expert ID Review =====
+  flaggedForReview?: boolean; // When true, expert cannot publish until admin approves
+  flagReason?: string; // Reason for flagging (from AI validation)
+  flaggedAt?: string; // ISO timestamp when flagged
+  reviewedAt?: string; // ISO timestamp when admin reviewed
+  reviewedBy?: string; // Admin user ID who reviewed
+  reviewStatus?: 'pending' | 'approved' | 'rejected'; // Review status
+
   // ===== Platform Preferences =====
   platformPreferences?: ExpertPlatformPreferences;
 

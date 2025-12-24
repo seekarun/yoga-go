@@ -2411,6 +2411,68 @@
       ]
     },
     {
+      "name": "Admin Reviews",
+      "description": "Admin review management for flagged expert IDs. AI-flagged expert IDs need admin approval before they can publish their landing page.",
+      "item": [
+        {
+          "name": "List Flagged Experts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/data/admn/reviews?status=pending",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "admn", "reviews"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "pending",
+                  "description": "Filter by status: pending, approved, rejected, or all"
+                }
+              ]
+            },
+            "description": "Get list of expert IDs that have been flagged for review. Admin only."
+          },
+          "response": []
+        },
+        {
+          "name": "Approve/Reject Expert",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/data/admn/reviews",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "admn", "reviews"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expertId\": \"expert-123\",\n  \"action\": \"approve\"\n}"
+            },
+            "description": "Approve or reject a flagged expert ID. Action can be 'approve' (allows publishing) or 'reject' (blocks publishing). Admin only."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Domain Management",
       "description": "Expert domain management - custom domains, Cloudflare DNS, and email configuration",
       "item": [

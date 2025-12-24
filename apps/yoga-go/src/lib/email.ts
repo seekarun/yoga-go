@@ -1032,3 +1032,254 @@ export async function sendAdminReplyEmail(options: AdminReplyEmailOptions): Prom
     throw error;
   }
 }
+
+// ========================================
+// Expert Welcome Email
+// ========================================
+
+export interface ExpertWelcomeEmailOptions {
+  to: string;
+  expertName: string;
+  expertId: string;
+}
+
+/**
+ * Send a welcome email to a new expert after onboarding
+ * @param options - Expert welcome email options
+ * @returns Promise that resolves when email is sent
+ */
+export const sendExpertWelcomeEmail = async (options: ExpertWelcomeEmailOptions): Promise<void> => {
+  const { to, expertName, expertId } = options;
+
+  const subdomain = `${expertId}.myyoga.guru`;
+  const dashboardUrl = `https://${subdomain}/srv/${expertId}`;
+  const expertEmail = `${expertId}@myyoga.guru`;
+
+  console.log(`[DBG][email] Sending expert welcome email to ${to}`);
+  console.log(`[DBG][email] Expert: ${expertName} (${expertId})`);
+
+  // Brand colors from globals.css
+  const brandPrimary = '#7a2900';
+  const brandPrimaryLight = '#fed094';
+  const logoUrl = 'https://myyoga.guru/myg_light.png';
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif; background-color: #faf8f6;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #faf8f6; padding: 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(122, 41, 0, 0.1);">
+          <!-- Header with Logo -->
+          <tr>
+            <td style="background: ${brandPrimary}; padding: 35px 30px; text-align: center;">
+              <img src="${logoUrl}" alt="MyYoga.guru" width="180" style="display: block; margin: 0 auto 15px auto;" />
+              <p style="color: ${brandPrimaryLight}; margin: 0; font-size: 16px; font-weight: 500;">
+                Your journey as an expert begins here
+              </p>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              <p style="font-size: 18px; color: #333; margin: 0 0 20px 0;">
+                Hi ${expertName},
+              </p>
+
+              <p style="font-size: 16px; color: #555; line-height: 1.6; margin: 0 0 25px 0;">
+                Congratulations on joining MyYoga.guru as an expert! We're thrilled to have you on board. Your expertise will help transform lives through yoga.
+              </p>
+
+              <!-- What's Ready Box -->
+              <div style="background: ${brandPrimaryLight}; padding: 25px; border-radius: 10px; margin-bottom: 25px; border-left: 4px solid ${brandPrimary};">
+                <h2 style="margin: 0 0 15px 0; font-size: 18px; color: ${brandPrimary};">
+                  What's ready for you:
+                </h2>
+                <table width="100%" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="padding: 10px 0;">
+                      <strong style="color: #333;">Your subdomain:</strong><br/>
+                      <a href="https://${subdomain}" style="color: ${brandPrimary}; text-decoration: none; font-weight: 500;">${subdomain}</a>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 10px 0;">
+                      <strong style="color: #333;">Your email address:</strong><br/>
+                      <span style="color: #555;">${expertEmail}</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 10px 0;">
+                      <strong style="color: #333;">Expert dashboard:</strong><br/>
+                      <a href="${dashboardUrl}" style="color: ${brandPrimary}; text-decoration: none; font-weight: 500;">Access your dashboard</a>
+                    </td>
+                  </tr>
+                </table>
+              </div>
+
+              <!-- Next Steps -->
+              <h2 style="margin: 0 0 15px 0; font-size: 18px; color: #333;">
+                Next steps to get started:
+              </h2>
+
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 25px;">
+                <tr>
+                  <td style="padding: 12px 0; border-bottom: 1px solid #eee;">
+                    <table cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="width: 36px; vertical-align: top;">
+                          <div style="width: 28px; height: 28px; background: ${brandPrimary}; color: #fff; border-radius: 50%; text-align: center; line-height: 28px; font-weight: bold; font-size: 14px;">1</div>
+                        </td>
+                        <td style="padding-left: 12px;">
+                          <strong style="color: #333;">Customize your landing page</strong><br/>
+                          <span style="color: #666; font-size: 14px;">Add your bio, photos, and showcase your expertise</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 0; border-bottom: 1px solid #eee;">
+                    <table cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="width: 36px; vertical-align: top;">
+                          <div style="width: 28px; height: 28px; background: ${brandPrimary}; color: #fff; border-radius: 50%; text-align: center; line-height: 28px; font-weight: bold; font-size: 14px;">2</div>
+                        </td>
+                        <td style="padding-left: 12px;">
+                          <strong style="color: #333;">Create your first course</strong><br/>
+                          <span style="color: #666; font-size: 14px;">Share your knowledge through video courses</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 0;">
+                    <table cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="width: 36px; vertical-align: top;">
+                          <div style="width: 28px; height: 28px; background: ${brandPrimary}; color: #fff; border-radius: 50%; text-align: center; line-height: 28px; font-weight: bold; font-size: 14px;">3</div>
+                        </td>
+                        <td style="padding-left: 12px;">
+                          <strong style="color: #333;">Connect payment</strong><br/>
+                          <span style="color: #666; font-size: 14px;">Set up Stripe to receive payments for your courses</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- CTA Button -->
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${dashboardUrl}" style="display: inline-block; background: ${brandPrimary}; color: #ffffff; padding: 16px 40px; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                  Go to Your Dashboard
+                </a>
+              </div>
+
+              <p style="font-size: 14px; color: #888; margin: 25px 0 0 0; text-align: center;">
+                Questions? Just reply to this email - we're here to help!
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: ${brandPrimary}; padding: 25px; text-align: center;">
+              <p style="margin: 0; font-size: 13px; color: ${brandPrimaryLight};">
+                Empowering yoga experts to share their knowledge
+              </p>
+              <p style="margin: 15px 0 0 0; font-size: 12px; color: rgba(254, 208, 148, 0.7);">
+                &copy; ${new Date().getFullYear()} MyYoga.guru. All rights reserved.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`;
+
+  const text = `
+Welcome to MyYoga.guru!
+
+Hi ${expertName},
+
+Congratulations on joining MyYoga.guru as an expert! We're thrilled to have you on board. Your expertise will help transform lives through yoga.
+
+WHAT'S READY FOR YOU:
+- Your subdomain: ${subdomain}
+- Your email address: ${expertEmail}
+- Expert dashboard: ${dashboardUrl}
+
+NEXT STEPS TO GET STARTED:
+
+1. Customize your landing page
+   Add your bio, photos, and showcase your expertise
+
+2. Create your first course
+   Share your knowledge through video courses
+
+3. Connect payment
+   Set up Stripe to receive payments for your courses
+
+Go to your dashboard: ${dashboardUrl}
+
+Questions? Just reply to this email - we're here to help!
+
+---
+MyYoga.guru
+Empowering yoga experts to share their knowledge
+
+(c) ${new Date().getFullYear()} MyYoga.guru. All rights reserved.
+`;
+
+  const command = new SendEmailCommand({
+    Source: fromEmail,
+    Destination: {
+      ToAddresses: [to],
+    },
+    Message: {
+      Subject: {
+        Data: `Welcome to MyYoga.guru, ${expertName}!`,
+        Charset: 'UTF-8',
+      },
+      Body: {
+        Text: {
+          Data: text,
+          Charset: 'UTF-8',
+        },
+        Html: {
+          Data: html,
+          Charset: 'UTF-8',
+        },
+      },
+    },
+    ReplyToAddresses: ['hi@myyoga.guru'],
+    ConfigurationSetName: configSet,
+    Tags: [
+      {
+        Name: 'EmailType',
+        Value: 'expert-welcome',
+      },
+    ],
+  });
+
+  try {
+    const response = await sesClient.send(command);
+    console.log(
+      `[DBG][email] Expert welcome email sent successfully. MessageId: ${response.MessageId}`
+    );
+  } catch (error) {
+    console.error('[DBG][email] Error sending expert welcome email:', error);
+    throw error;
+  }
+};

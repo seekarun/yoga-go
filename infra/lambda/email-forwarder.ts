@@ -59,7 +59,8 @@ const PLATFORM_ADMIN_EMAILS = process.env.PLATFORM_ADMIN_EMAILS
 const PLATFORM_FORWARDED_EMAILS = ["hi", "contact", "privacy"];
 
 // Platform email addresses that should NOT be forwarded (system emails)
-const PLATFORM_SYSTEM_EMAILS = ["support", "info", "admin", "noreply", "mail"];
+// Note: "admin" was removed because it's now used as an expert ID
+const PLATFORM_SYSTEM_EMAILS = ["support", "info", "noreply", "mail"];
 
 interface ExpertData {
   forwardingEmail?: string;

@@ -8,6 +8,8 @@ import * as courseRepository from '@/lib/repositories/courseRepository';
 import * as paymentRepository from '@/lib/repositories/paymentRepository';
 import * as tenantRepository from '@/lib/repositories/tenantRepository';
 import { addDomainToVercel } from '@/lib/vercel';
+import { validateExpertIdWithAI } from '@/lib/reservedIds';
+import { sendExpertWelcomeEmail } from '@/lib/email';
 
 export async function GET() {
   console.log('[DBG][experts/route.ts] GET /data/experts called');
@@ -129,6 +131,29 @@ export async function POST(request: Request) {
       return NextResponse.json(response, { status: 400 });
     }
 
+    // Validate expert ID (check for reserved/blocked IDs + AI validation)
+    const idValidation = await validateExpertIdWithAI(body.id);
+
+    // Hard rejection - ID is blocked, cannot create account
+    if (!idValidation.isValid && idValidation.hardRejection) {
+      console.log('[DBG][experts/route.ts] Hard rejected expert ID:', body.id, idValidation.error);
+      const response: ApiResponse<Expert> = {
+        success: false,
+        error: idValidation.error || 'This ID is not allowed. Please choose a different one.',
+      };
+      return NextResponse.json(response, { status: 400 });
+    }
+
+    // Track if flagged for review (will be set on expert record)
+    const isFlaggedForReview = idValidation.flaggedForReview === true;
+    if (isFlaggedForReview) {
+      console.log(
+        '[DBG][experts/route.ts] Expert ID flagged for review:',
+        body.id,
+        idValidation.flagReason
+      );
+    }
+
     // Get user from DynamoDB
     const user = await getUserByCognitoSub(session.user.cognitoSub);
 
@@ -185,6 +210,11 @@ export async function POST(request: Request) {
       // Save landing page to draft (not published) - expert must explicitly publish
       draftLandingPage: body.draftLandingPage || body.customLandingPage,
       isLandingPagePublished: body.isLandingPagePublished ?? false,
+      // Expert ID review fields (set if AI flagged for review)
+      flaggedForReview: isFlaggedForReview,
+      flagReason: isFlaggedForReview ? idValidation.flagReason : undefined,
+      flaggedAt: isFlaggedForReview ? new Date().toISOString() : undefined,
+      reviewStatus: isFlaggedForReview ? 'pending' : undefined,
       platformPreferences: {
         featuredOnPlatform: featuredOnPlatform,
         defaultEmail: `${expertId}@myyoga.guru`,
@@ -228,11 +258,33 @@ export async function POST(request: Request) {
 
     console.log('[DBG][experts/route.ts] User updated with expert profile');
 
-    const response: ApiResponse<Expert> = {
+    // Send welcome email (non-blocking - don't fail if email fails)
+    const userEmail = user.profile?.email || session.user.email;
+    if (userEmail) {
+      sendExpertWelcomeEmail({
+        to: userEmail,
+        expertName: newExpert.name,
+        expertId: newExpert.id,
+      }).catch(emailError => {
+        console.error('[DBG][experts/route.ts] Failed to send welcome email:', emailError);
+        // Don't throw - expert is created, email failure shouldn't break onboarding
+      });
+    }
+
+    // Build response with warning if flagged
+    const response: ApiResponse<Expert> & { warning?: string } = {
       success: true,
       data: newExpert,
-      message: 'Expert created successfully',
+      message: isFlaggedForReview
+        ? 'Expert profile created. Your expert ID has been flagged for review.'
+        : 'Expert created successfully',
     };
+
+    // Add warning for flagged accounts
+    if (isFlaggedForReview) {
+      response.warning =
+        'Your expert ID has been flagged for review. You can set up your profile, but you will not be able to publish your landing page until the review is complete.';
+    }
 
     return NextResponse.json(response, { status: 201 });
   } catch (error) {

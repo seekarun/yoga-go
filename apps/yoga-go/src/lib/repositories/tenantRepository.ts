@@ -62,6 +62,11 @@ export interface CreateTenantInput {
   additionalDomains?: string[];
   featuredOnPlatform?: boolean;
   status?: TenantStatus;
+  // Expert ID review fields (set if AI flagged for review)
+  flaggedForReview?: boolean;
+  flagReason?: string;
+  flaggedAt?: string;
+  reviewStatus?: 'pending' | 'approved' | 'rejected';
 }
 
 /**

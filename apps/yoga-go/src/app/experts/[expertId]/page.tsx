@@ -181,7 +181,7 @@ export default function ExpertDetailPage() {
             <Link
               href="/experts"
               style={{
-                color: 'var(--color-primary)',
+                color: 'var(--brand-500, #6b7280)',
                 textDecoration: 'underline',
               }}
             >
@@ -460,7 +460,7 @@ export default function ExpertDetailPage() {
                   <span
                     style={{
                       background:
-                        'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%)',
+                        'linear-gradient(135deg, var(--brand-400, #9ca3af) 0%, var(--brand-500, #6b7280) 100%)',
                       WebkitBackgroundClip: 'text',
                       WebkitTextFillColor: 'transparent',
                       backgroundClip: 'text',
@@ -693,12 +693,12 @@ export default function ExpertDetailPage() {
                       height: '56px',
                       borderRadius: '50%',
                       background:
-                        'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%)',
+                        'linear-gradient(135deg, var(--brand-400, #9ca3af) 0%, var(--brand-500, #6b7280) 100%)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       margin: '0 auto 20px',
-                      color: '#fff',
+                      color: 'var(--brand-500-contrast, #fff)',
                       fontSize: '24px',
                       fontWeight: '600',
                     }}
@@ -893,7 +893,7 @@ export default function ExpertDetailPage() {
                         style={{
                           fontSize: '14px',
                           fontWeight: '600',
-                          color: 'var(--color-primary)',
+                          color: 'var(--brand-500, #6b7280)',
                         }}
                       >
                         Level:
@@ -905,7 +905,7 @@ export default function ExpertDetailPage() {
                         style={{
                           fontSize: '14px',
                           fontWeight: '600',
-                          color: 'var(--color-primary)',
+                          color: 'var(--brand-500, #6b7280)',
                         }}
                       >
                         Duration:
@@ -917,7 +917,7 @@ export default function ExpertDetailPage() {
                         style={{
                           fontSize: '14px',
                           fontWeight: '600',
-                          color: 'var(--color-primary)',
+                          color: 'var(--brand-500, #6b7280)',
                         }}
                       >
                         Lessons:
@@ -931,7 +931,7 @@ export default function ExpertDetailPage() {
                         style={{
                           fontSize: '14px',
                           fontWeight: '600',
-                          color: 'var(--color-primary)',
+                          color: 'var(--brand-500, #6b7280)',
                         }}
                       >
                         Category:
@@ -942,12 +942,13 @@ export default function ExpertDetailPage() {
 
                   <Link
                     href={`/courses/${course.id}`}
+                    className="course-details-button"
                     style={{
                       display: 'inline-block',
                       padding: '14px 32px',
                       background:
-                        'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%)',
-                      color: '#fff',
+                        'linear-gradient(135deg, var(--brand-400, #9ca3af) 0%, var(--brand-500, #6b7280) 100%)',
+                      color: 'var(--brand-500-contrast, #fff)',
                       fontSize: '16px',
                       fontWeight: '600',
                       borderRadius: '8px',
@@ -956,7 +957,7 @@ export default function ExpertDetailPage() {
                     }}
                     onMouseEnter={e => {
                       e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.boxShadow = '0 6px 20px rgba(118, 75, 162, 0.4)';
+                      e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.2)';
                     }}
                     onMouseLeave={e => {
                       e.currentTarget.style.transform = 'translateY(0)';
@@ -1047,7 +1048,7 @@ export default function ExpertDetailPage() {
                         height: '160px',
                         background: webinar.thumbnail
                           ? `url(${webinar.thumbnail}) center/cover`
-                          : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          : 'linear-gradient(135deg, var(--brand-400, #667eea) 0%, var(--brand-600, #764ba2) 100%)',
                         position: 'relative',
                       }}
                     >

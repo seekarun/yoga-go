@@ -1,16 +1,16 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import ImageUploadCrop from '@/components/ImageUploadCrop';
 import { PrimaryButton, SecondaryButton } from '@/components/Button';
-import type { Asset, LandingPageTemplate, CustomLandingPageConfig } from '@/types';
-import { templates, DEFAULT_TEMPLATE } from '@/components/landing-page/templates';
-import HeroPreview from '@/components/landing-page/sections/hero/HeroPreview';
-import ValuePropsPreview from '@/components/landing-page/sections/value-props/ValuePropsPreview';
+import ImageUploadCrop from '@/components/ImageUploadCrop';
 import AboutPreview from '@/components/landing-page/sections/about/AboutPreview';
-import PhotoGalleryPreview from '@/components/landing-page/sections/photo-gallery/PhotoGalleryPreview';
 import ActPreview from '@/components/landing-page/sections/act/ActPreview';
 import FooterPreview from '@/components/landing-page/sections/footer/FooterPreview';
+import HeroPreview from '@/components/landing-page/sections/hero/HeroPreview';
+import PhotoGalleryPreview from '@/components/landing-page/sections/photo-gallery/PhotoGalleryPreview';
+import ValuePropsPreview from '@/components/landing-page/sections/value-props/ValuePropsPreview';
+import { DEFAULT_TEMPLATE, templates } from '@/components/landing-page/templates';
+import type { Asset, CustomLandingPageConfig, LandingPageTemplate } from '@/types';
+import { useCallback, useEffect, useState } from 'react';
 
 // Dummy image for preview (will be replaced with proper images later)
 const DUMMY_IMAGE = '/template/hero.jpg';
@@ -120,7 +120,7 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
 
   // Expert ID validation state
   const [idValidation, setIdValidation] = useState<{
-    status: 'idle' | 'checking' | 'available' | 'taken' | 'invalid';
+    status: 'idle' | 'checking' | 'available' | 'taken' | 'invalid' | 'reserved';
     message: string;
   }>({ status: 'idle', message: '' });
 
@@ -240,13 +240,22 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
     setIdValidation({ status: 'checking', message: 'Checking availability...' });
 
     try {
-      const response = await fetch(`/data/experts/${expertId}`);
-      if (response.status === 404) {
-        setIdValidation({ status: 'available', message: 'This ID is available!' });
-      } else if (response.ok) {
-        setIdValidation({ status: 'taken', message: 'This ID is already taken' });
+      const response = await fetch(`/data/experts/validate-id?id=${encodeURIComponent(expertId)}`);
+      const data = await response.json();
+
+      if (data.isValid) {
+        setIdValidation({ status: 'available', message: data.message || 'This ID is available!' });
+      } else if (data.isReserved) {
+        setIdValidation({ status: 'reserved', message: data.error || 'This ID is not allowed' });
+      } else if (data.isFlagged) {
+        setIdValidation({
+          status: 'reserved',
+          message: data.error || 'This ID contains inappropriate content',
+        });
+      } else if (data.isTaken) {
+        setIdValidation({ status: 'taken', message: data.error || 'This ID is already taken' });
       } else {
-        setIdValidation({ status: 'idle', message: '' });
+        setIdValidation({ status: 'invalid', message: data.error || 'Invalid ID' });
       }
     } catch (err) {
       console.error('[DBG][ExpertOnboarding] Error checking expert ID:', err);
@@ -323,6 +332,10 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
       // Check if expert ID is valid and available
       if (idValidation.status === 'invalid') {
         setError('Please fix the Expert ID: ' + idValidation.message);
+        return;
+      }
+      if (idValidation.status === 'reserved') {
+        setError(idValidation.message || 'This ID is not allowed. Please choose a different one.');
         return;
       }
       if (idValidation.status === 'taken') {
@@ -640,7 +653,9 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
                 width: '100%',
                 padding: '12px',
                 border: `1px solid ${
-                  idValidation.status === 'invalid' || idValidation.status === 'taken'
+                  idValidation.status === 'invalid' ||
+                  idValidation.status === 'taken' ||
+                  idValidation.status === 'reserved'
                     ? '#ef4444'
                     : idValidation.status === 'available'
                       ? '#22c55e'
@@ -662,7 +677,9 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
                   color:
                     idValidation.status === 'available'
                       ? '#22c55e'
-                      : idValidation.status === 'invalid' || idValidation.status === 'taken'
+                      : idValidation.status === 'invalid' ||
+                          idValidation.status === 'taken' ||
+                          idValidation.status === 'reserved'
                         ? '#ef4444'
                         : '#666',
                 }}
@@ -673,7 +690,10 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
                   </span>
                 )}
                 {idValidation.status === 'available' && '✓'}
-                {(idValidation.status === 'invalid' || idValidation.status === 'taken') && '✗'}
+                {(idValidation.status === 'invalid' ||
+                  idValidation.status === 'taken' ||
+                  idValidation.status === 'reserved') &&
+                  '✗'}
                 {idValidation.message}
               </div>
             )}
