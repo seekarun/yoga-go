@@ -40,17 +40,18 @@ const CURRENCIES = [
   { code: 'USD', name: 'US Dollar', symbol: '$' },
 ];
 
-// Preset brand colors
-const BRAND_COLORS = [
-  { name: 'Coral', value: '#E07A5F' },
-  { name: 'Sage', value: '#81B29A' },
-  { name: 'Ocean', value: '#3D5A80' },
-  { name: 'Sunset', value: '#F2994A' },
-  { name: 'Lavender', value: '#9B8AB8' },
-  { name: 'Teal', value: '#2A9D8F' },
-  { name: 'Rose', value: '#C97B84' },
-  { name: 'Midnight', value: '#264653' },
-];
+// Map country codes to default currencies
+const COUNTRY_TO_CURRENCY: Record<string, string> = {
+  AU: 'AUD',
+  CA: 'CAD',
+  DE: 'EUR',
+  FR: 'EUR',
+  IN: 'INR',
+  SG: 'SGD',
+  AE: 'AED',
+  GB: 'GBP',
+  US: 'USD',
+};
 
 // Lorem ipsum dummy content
 const LOREM = {
@@ -114,9 +115,8 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
   const [error, setError] = useState('');
   const [uploadError, setUploadError] = useState('');
 
-  // Extracted content preview
+  // Extracted content from AI
   const [extractedContent, setExtractedContent] = useState<ExtractedContent | null>(null);
-  const [showPreview, setShowPreview] = useState(false);
 
   // Expert ID validation state
   const [idValidation, setIdValidation] = useState<{
@@ -146,8 +146,48 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
     currency: 'USD',
   });
 
-  // Brand color for theme
-  const [brandColor, setBrandColor] = useState('#2A9D8F');
+  // Geo-detection state
+  const [geoDetected, setGeoDetected] = useState(false);
+
+  // Auto-detect location and currency from IP on mount
+  useEffect(() => {
+    const detectLocation = async () => {
+      try {
+        console.log('[DBG][ExpertOnboarding] Detecting location from IP...');
+        // Using ip-api.com (free, no API key required, 45 requests/minute limit)
+        const response = await fetch('http://ip-api.com/json/?fields=countryCode');
+        const data = await response.json();
+
+        if (data.countryCode) {
+          const countryCode = data.countryCode;
+          console.log('[DBG][ExpertOnboarding] Detected country:', countryCode);
+
+          // Check if we support this country
+          const supportedCountry = COUNTRIES.find(c => c.code === countryCode);
+          if (supportedCountry) {
+            const currency = COUNTRY_TO_CURRENCY[countryCode] || 'USD';
+            setFormData(prev => ({
+              ...prev,
+              location: countryCode,
+              currency: currency,
+            }));
+            setGeoDetected(true);
+            console.log(
+              '[DBG][ExpertOnboarding] Pre-populated location:',
+              countryCode,
+              'currency:',
+              currency
+            );
+          }
+        }
+      } catch (err) {
+        console.log('[DBG][ExpertOnboarding] Could not detect location:', err);
+        // Silently fail - user can still select manually
+      }
+    };
+
+    detectLocation();
+  }, []);
 
   // Landing page content for step 2
   const [landingContent, setLandingContent] = useState<LandingPageContent>({
@@ -255,9 +295,6 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
       ...prev,
       [name]: value,
     }));
-    // Reset preview when content changes
-    setShowPreview(false);
-    setExtractedContent(null);
   };
 
   const handleImageUpload = (asset: Asset) => {
@@ -275,7 +312,7 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
     setUploadError(errorMsg);
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     setError('');
 
     if (step === 1) {
@@ -302,47 +339,51 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
       }
     }
 
+    // When moving from step 2 to step 3, run AI extraction
+    if (step === 2) {
+      if (!landingContent.teachingPlan) {
+        setError('Please describe what you plan to teach');
+        return;
+      }
+
+      setExtracting(true);
+      console.log('[DBG][ExpertOnboarding] Running AI extraction...');
+
+      try {
+        const aiResponse = await fetch('/api/ai/extract-landing-content', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            expertName: formData.name,
+            teachingPlan: landingContent.teachingPlan,
+            aboutBio: landingContent.aboutBio,
+          }),
+        });
+
+        const aiResult = await aiResponse.json();
+        console.log('[DBG][ExpertOnboarding] AI extraction result:', aiResult);
+
+        if (aiResult.success && aiResult.data) {
+          setExtractedContent(aiResult.data);
+        } else {
+          console.log(
+            '[DBG][ExpertOnboarding] AI extraction failed, continuing without extracted content'
+          );
+        }
+      } catch (err) {
+        console.error('[DBG][ExpertOnboarding] Error extracting content:', err);
+        // Continue anyway - we can still create the landing page without AI extraction
+      } finally {
+        setExtracting(false);
+      }
+    }
+
     setStep(step + 1);
   };
 
   const handleBack = () => {
     setError('');
     setStep(step - 1);
-  };
-
-  // Preview extraction - calls AI API and shows results
-  const handlePreviewExtraction = async () => {
-    setExtracting(true);
-    setError('');
-
-    console.log('[DBG][ExpertOnboarding] Previewing extraction...');
-
-    try {
-      const aiResponse = await fetch('/api/ai/extract-landing-content', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          expertName: formData.name,
-          teachingPlan: landingContent.teachingPlan,
-          aboutBio: landingContent.aboutBio,
-        }),
-      });
-
-      const aiResult = await aiResponse.json();
-      console.log('[DBG][ExpertOnboarding] AI extraction result:', aiResult);
-
-      if (aiResult.success && aiResult.data) {
-        setExtractedContent(aiResult.data);
-        setShowPreview(true);
-      } else {
-        setError(aiResult.error || 'Failed to extract content');
-      }
-    } catch (err) {
-      console.error('[DBG][ExpertOnboarding] Error extracting content:', err);
-      setError(err instanceof Error ? err.message : 'Failed to extract content');
-    } finally {
-      setExtracting(false);
-    }
   };
 
   const handleSubmit = async () => {
@@ -394,11 +435,13 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
           currency: formData.currency,
         },
         socialLinks: {},
-        // Initial landing page configuration
-        customLandingPage: {
+        // Landing page starts as DRAFT (not published) - expert must explicitly publish
+        isLandingPagePublished: false,
+        // Save to draftLandingPage, NOT customLandingPage (published)
+        draftLandingPage: {
           template: selectedTemplate,
           theme: {
-            primaryColor: brandColor,
+            primaryColor: '#2A9D8F', // Default teal - user can customize in landing page editor
           },
           hero: contentToUse?.hero
             ? {
@@ -747,6 +790,29 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
               </div>
             </div>
           </div>
+
+          {/* Auto-detected hint */}
+          {geoDetected && (
+            <div
+              style={{
+                marginTop: '16px',
+                padding: '12px',
+                background: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+                borderRadius: '8px',
+                fontSize: '13px',
+                color: '#166534',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}
+            >
+              <span>📍</span>
+              <span>
+                Location and currency auto-detected based on your IP. Feel free to change if needed.
+              </span>
+            </div>
+          )}
         </div>
       )}
 
@@ -874,266 +940,6 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
               />
             )}
           </div>
-
-          {/* Brand Colour Picker */}
-          <div style={{ marginBottom: '24px' }}>
-            <label
-              style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}
-            >
-              Brand Colour
-            </label>
-            <p style={{ fontSize: '12px', color: '#666', marginBottom: '12px' }}>
-              Choose a colour that represents your brand (used for buttons, links, and accents)
-            </p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-              {BRAND_COLORS.map(color => (
-                <button
-                  key={color.value}
-                  type="button"
-                  onClick={() => setBrandColor(color.value)}
-                  title={color.name}
-                  style={{
-                    width: '48px',
-                    height: '48px',
-                    borderRadius: '8px',
-                    background: color.value,
-                    border: brandColor === color.value ? '3px solid #111' : '2px solid transparent',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    boxShadow:
-                      brandColor === color.value
-                        ? '0 2px 8px rgba(0,0,0,0.2)'
-                        : '0 1px 3px rgba(0,0,0,0.1)',
-                  }}
-                />
-              ))}
-            </div>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                marginTop: '16px',
-              }}
-            >
-              <span style={{ fontSize: '13px', color: '#666' }}>Selected:</span>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '6px 12px',
-                  background: '#f8fafc',
-                  borderRadius: '6px',
-                  border: '1px solid #e2e8f0',
-                }}
-              >
-                <div
-                  style={{
-                    width: '20px',
-                    height: '20px',
-                    borderRadius: '4px',
-                    background: brandColor,
-                  }}
-                />
-                <span style={{ fontSize: '13px', fontFamily: 'monospace', color: '#333' }}>
-                  {brandColor}
-                </span>
-              </div>
-              <span style={{ fontSize: '12px', color: '#888' }}>
-                {BRAND_COLORS.find(c => c.value === brandColor)?.name || 'Custom'}
-              </span>
-            </div>
-          </div>
-
-          {/* Preview Button */}
-          <div style={{ marginBottom: '24px' }}>
-            <button
-              type="button"
-              onClick={handlePreviewExtraction}
-              disabled={extracting || !landingContent.teachingPlan}
-              style={{
-                padding: '12px 24px',
-                background: extracting || !landingContent.teachingPlan ? '#e2e8f0' : '#f0f9ff',
-                color: extracting || !landingContent.teachingPlan ? '#999' : '#0369a1',
-                border: '1px solid #bae6fd',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '500',
-                cursor: extracting || !landingContent.teachingPlan ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-              }}
-            >
-              {extracting ? (
-                <>
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      width: '16px',
-                      height: '16px',
-                      border: '2px solid #0369a1',
-                      borderTopColor: 'transparent',
-                      borderRadius: '50%',
-                      animation: 'spin 1s linear infinite',
-                    }}
-                  />
-                  Extracting...
-                </>
-              ) : (
-                <>
-                  <span>✨</span>
-                  Preview AI Extraction
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* Extraction Preview */}
-          {showPreview && extractedContent && (
-            <div
-              style={{
-                background: '#f8fafc',
-                borderRadius: '12px',
-                padding: '24px',
-                border: '2px solid #22c55e',
-              }}
-            >
-              <h3
-                style={{
-                  fontSize: '18px',
-                  fontWeight: '600',
-                  marginBottom: '16px',
-                  color: '#22c55e',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                }}
-              >
-                ✓ Extraction Preview
-              </h3>
-
-              {/* Hero Section Preview */}
-              <div
-                style={{
-                  background: '#fff',
-                  borderRadius: '8px',
-                  padding: '16px',
-                  marginBottom: '16px',
-                  border: '1px solid #e2e8f0',
-                }}
-              >
-                <h4
-                  style={{
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#0369a1',
-                    marginBottom: '12px',
-                  }}
-                >
-                  HERO SECTION
-                </h4>
-                <div style={{ marginBottom: '8px' }}>
-                  <span style={{ fontSize: '12px', color: '#666' }}>Headline (Problem Hook):</span>
-                  <p
-                    style={{ fontSize: '16px', fontWeight: '600', color: '#111', margin: '4px 0' }}
-                  >
-                    {extractedContent.hero.headline || '(empty)'}
-                  </p>
-                </div>
-                <div style={{ marginBottom: '8px' }}>
-                  <span style={{ fontSize: '12px', color: '#666' }}>
-                    Description (Result Hook):
-                  </span>
-                  <p style={{ fontSize: '14px', color: '#333', margin: '4px 0' }}>
-                    {extractedContent.hero.description || '(empty)'}
-                  </p>
-                </div>
-                <div>
-                  <span style={{ fontSize: '12px', color: '#666' }}>CTA Button:</span>
-                  <p style={{ fontSize: '14px', color: '#333', margin: '4px 0' }}>
-                    {extractedContent.hero.ctaText || 'Start Your Journey'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Value Propositions Preview */}
-              <div
-                style={{
-                  background: '#fff',
-                  borderRadius: '8px',
-                  padding: '16px',
-                  marginBottom: '16px',
-                  border: '1px solid #e2e8f0',
-                }}
-              >
-                <h4
-                  style={{
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#0369a1',
-                    marginBottom: '12px',
-                  }}
-                >
-                  VALUE PROPOSITIONS
-                </h4>
-                {extractedContent.valuePropositions.items.length > 0 ? (
-                  <ul style={{ margin: 0, paddingLeft: '20px' }}>
-                    {extractedContent.valuePropositions.items.map((item, index) => (
-                      <li
-                        key={index}
-                        style={{ fontSize: '14px', color: '#333', marginBottom: '4px' }}
-                      >
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p style={{ fontSize: '14px', color: '#999', fontStyle: 'italic' }}>(empty)</p>
-                )}
-              </div>
-
-              {/* About Section Preview */}
-              <div
-                style={{
-                  background: '#fff',
-                  borderRadius: '8px',
-                  padding: '16px',
-                  border: '1px solid #e2e8f0',
-                }}
-              >
-                <h4
-                  style={{
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#0369a1',
-                    marginBottom: '12px',
-                  }}
-                >
-                  ABOUT SECTION (Image + Text Layout)
-                </h4>
-                <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-                  {landingContent.aboutImage && (
-                    <img
-                      src={landingContent.aboutImage}
-                      alt="About"
-                      style={{
-                        width: '80px',
-                        height: '80px',
-                        objectFit: 'cover',
-                        borderRadius: '8px',
-                        flexShrink: 0,
-                      }}
-                    />
-                  )}
-                  <p style={{ fontSize: '14px', color: '#333', margin: 0 }}>
-                    {landingContent.aboutBio || '(no bio provided)'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -1143,9 +949,16 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
           const currentTemplate = templates[previewTemplateIndex];
           const expertName = formData.name || 'Your Name';
 
+          // Default brand color (same as used when creating expert profile)
+          const defaultBrandColor = '#2A9D8F';
+
           // Build comprehensive preview data with dummy content where real data is missing
           const previewData: CustomLandingPageConfig = {
             template: currentTemplate.id,
+            // Theme with default brand color
+            theme: {
+              primaryColor: defaultBrandColor,
+            },
             // Hero section with dummy image
             hero: {
               headline:
@@ -1397,13 +1210,17 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
 
       {/* Navigation Buttons */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '32px' }}>
-        <SecondaryButton onClick={handleBack} disabled={step === 1 || loading}>
+        <SecondaryButton onClick={handleBack} disabled={step === 1 || loading || extracting}>
           Back
         </SecondaryButton>
 
         {step < 3 ? (
-          <PrimaryButton onClick={handleNext} disabled={loading || (step === 2 && !showPreview)}>
-            Next
+          <PrimaryButton
+            onClick={handleNext}
+            disabled={loading || extracting || (step === 2 && !landingContent.teachingPlan)}
+            loading={extracting}
+          >
+            {extracting ? 'Generating...' : 'Next'}
           </PrimaryButton>
         ) : (
           <PrimaryButton onClick={handleSubmit} disabled={loading} loading={loading}>
@@ -1411,13 +1228,6 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
           </PrimaryButton>
         )}
       </div>
-
-      {/* Hint for Next button on step 2 */}
-      {step === 2 && !showPreview && (
-        <p style={{ textAlign: 'center', fontSize: '12px', color: '#999', marginTop: '12px' }}>
-          Click &quot;Preview AI Extraction&quot; first to continue
-        </p>
-      )}
     </div>
   );
 }

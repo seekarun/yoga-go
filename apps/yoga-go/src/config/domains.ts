@@ -53,6 +53,17 @@ export const ADMIN_DOMAINS = [
 export const LEARNER_DOMAINS = ['learn.myyoga.guru', 'www.learn.myyoga.guru'];
 
 /**
+ * Preview domains - allow logged-in experts to preview their draft landing page
+ * URL format: preview.myyoga.guru/<expertId>
+ */
+export const PREVIEW_DOMAINS = [
+  'preview.myyoga.guru',
+  'www.preview.myyoga.guru',
+  'preview.localhost',
+  'preview.localhost:3111',
+];
+
+/**
  * Primary app domains (non-expert domains that show full platform)
  */
 export const PRIMARY_DOMAINS = [
@@ -103,6 +114,15 @@ export function isLearnerDomain(hostname: string): boolean {
 }
 
 /**
+ * Check if hostname is a preview domain (preview.myyoga.guru)
+ * Preview domains allow logged-in experts to preview their draft landing page
+ */
+export function isPreviewDomain(hostname: string): boolean {
+  const cleanHostname = hostname.split(':')[0].toLowerCase();
+  return PREVIEW_DOMAINS.some(domain => cleanHostname === domain.split(':')[0]);
+}
+
+/**
  * Check if hostname is the main expert platform domain (myyoga.guru without subdomains)
  * This is where experts manage their business
  */
@@ -135,6 +155,8 @@ export function isPrimaryDomain(hostname: string): boolean {
  * - deepak.myyoga.guru -> 'deepak'
  * - www.myyoga.guru -> null (www is excluded)
  * - admin.myyoga.guru -> null (admin is excluded)
+ * - preview.myyoga.guru -> null (preview is excluded - handled separately)
+ * - learn.myyoga.guru -> null (learn is excluded)
  * - myyoga.guru -> null (no subdomain)
  */
 export function getSubdomainFromMyYogaGuru(hostname: string): string | null {
@@ -148,8 +170,9 @@ export function getSubdomainFromMyYogaGuru(hostname: string): string | null {
   // Extract subdomain part (everything before .myyoga.guru)
   const subdomain = cleanHostname.replace('.myyoga.guru', '');
 
-  // Exclude www and admin subdomains
-  if (subdomain === 'www' || subdomain === 'admin' || !subdomain) {
+  // Exclude reserved subdomains (www, admin, preview, learn)
+  const reservedSubdomains = ['www', 'admin', 'preview', 'learn'];
+  if (reservedSubdomains.includes(subdomain) || !subdomain) {
     return null;
   }
 
@@ -182,20 +205,31 @@ export function getAllExpertIds(): string[] {
  * Note: This function uses an internal API route for DynamoDB lookups
  * because Edge Middleware cannot reliably use the AWS SDK directly.
  */
+/**
+ * Result of domain resolution including publish status
+ */
+export interface DomainResolutionResult {
+  tenantId: string;
+  expertId: string;
+  isLandingPagePublished: boolean;
+}
+
 export async function resolveDomainToTenant(
   hostname: string
-): Promise<{ tenantId: string; expertId: string } | null> {
+): Promise<DomainResolutionResult | null> {
   // 1. Primary domains don't have tenants
   if (isPrimaryDomain(hostname)) {
     return null;
   }
 
   // 2. Check static config first (backwards compatibility)
+  // Note: Static config experts are considered published by default
   const staticExpertId = getExpertIdFromHostname(hostname);
   if (staticExpertId) {
     return {
       tenantId: staticExpertId,
       expertId: staticExpertId,
+      isLandingPagePublished: true, // Static config = always published
     };
   }
 
@@ -235,11 +269,14 @@ export async function resolveDomainToTenant(
           '[DBG][domains] Found tenant via API:',
           data.tenantId,
           'expert:',
-          data.expertId
+          data.expertId,
+          'published:',
+          data.isLandingPagePublished
         );
         return {
           tenantId: data.tenantId,
           expertId: data.expertId,
+          isLandingPagePublished: data.isLandingPagePublished ?? false,
         };
       }
 
@@ -260,6 +297,7 @@ export async function resolveDomainToTenant(
       return {
         tenantId: subdomain,
         expertId: subdomain,
+        isLandingPagePublished: false, // Unknown = unpublished (safe default)
       };
     }
   }

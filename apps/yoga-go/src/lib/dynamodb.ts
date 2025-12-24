@@ -61,7 +61,7 @@ export const TABLE_NAME = Tables.CORE;
 // ============================================
 export const CorePK = {
   USER: 'USER',
-  EXPERT: 'EXPERT',
+  EXPERT: 'TENANT', // Consolidated into TENANT
   COURSE: 'COURSE',
   LESSON: (courseId: string) => `LESSON#${courseId}`,
   PROGRESS: (userId: string) => `PROGRESS#${userId}`,
@@ -160,9 +160,10 @@ export const BoostPK = {
 } as const;
 
 // Legacy EntityType export for backward compatibility
+// NOTE: EXPERT is now an alias for TENANT (consolidated entity)
 export const EntityType = {
   USER: 'USER',
-  EXPERT: 'EXPERT',
+  EXPERT: 'TENANT', // Consolidated into TENANT
   COURSE: 'COURSE',
   LESSON: 'LESSON',
   PROGRESS: 'PROGRESS',

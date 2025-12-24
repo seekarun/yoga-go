@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { headers } from 'next/headers';
 import type { ApiResponse, Expert } from '@/types';
 import * as expertRepository from '@/lib/repositories/expertRepository';
 import * as courseRepository from '@/lib/repositories/courseRepository';
@@ -6,7 +7,14 @@ import * as paymentRepository from '@/lib/repositories/paymentRepository';
 
 export async function GET(request: Request, { params }: { params: Promise<{ expertId: string }> }) {
   const { expertId } = await params;
-  console.log(`[DBG][experts/[expertId]/route.ts] GET /data/experts/${expertId} called`);
+  const headersList = await headers();
+  const previewMode = headersList.get('x-preview-mode');
+  const isDraftPreview = previewMode === 'draft';
+
+  console.log(
+    `[DBG][experts/[expertId]/route.ts] GET /data/experts/${expertId} called`,
+    isDraftPreview ? '(draft preview)' : ''
+  );
 
   try {
     // Fetch expert from DynamoDB
@@ -42,11 +50,21 @@ export async function GET(request: Request, { params }: { params: Promise<{ expe
     );
 
     // Transform to Expert type with dynamic stats
-    const expert: Expert = {
+    let expert: Expert = {
       ...expertDoc,
       totalCourses,
       totalStudents,
     };
+
+    // In draft preview mode, serve draftLandingPage as customLandingPage
+    // This allows the preview page to render the draft content
+    if (isDraftPreview && expertDoc.draftLandingPage) {
+      console.log('[DBG][experts/[expertId]/route.ts] Serving draft landing page for preview');
+      expert = {
+        ...expert,
+        customLandingPage: expertDoc.draftLandingPage,
+      };
+    }
 
     const response: ApiResponse<Expert> = {
       success: true,
@@ -105,12 +123,14 @@ export async function PUT(request: Request, { params }: { params: Promise<{ expe
     if (body.promoVideoCloudflareId !== undefined)
       updateData.promoVideoCloudflareId = body.promoVideoCloudflareId;
     if (body.promoVideoStatus !== undefined) updateData.promoVideoStatus = body.promoVideoStatus;
-    if (body.customLandingPage !== undefined) updateData.customLandingPage = body.customLandingPage;
+    // Save landing page changes to DRAFT, not published
+    // Use draftLandingPage for work-in-progress changes visible on preview.myyoga.guru
+    if (body.customLandingPage !== undefined) updateData.draftLandingPage = body.customLandingPage;
 
     console.log(`[DBG][experts/[expertId]/route.ts] Update data:`, updateData);
     console.log(
-      `[DBG][experts/[expertId]/route.ts] customLandingPage to save:`,
-      updateData.customLandingPage
+      `[DBG][experts/[expertId]/route.ts] draftLandingPage to save:`,
+      updateData.draftLandingPage
     );
 
     // Update expert in DynamoDB
@@ -118,8 +138,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ expe
 
     console.log(`[DBG][experts/[expertId]/route.ts] ✓ Updated expert: ${expertId}`);
     console.log(
-      `[DBG][experts/[expertId]/route.ts] Saved customLandingPage:`,
-      updatedExpert.customLandingPage
+      `[DBG][experts/[expertId]/route.ts] Saved draftLandingPage:`,
+      updatedExpert.draftLandingPage
     );
 
     const response: ApiResponse<Expert> = {

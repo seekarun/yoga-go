@@ -29,6 +29,15 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
   // Expert data
   const [expert, setExpert] = useState<Expert | null>(null);
 
+  // Publish state
+  const [isPublished, setIsPublished] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [hasUnpublishedChanges, setHasUnpublishedChanges] = useState(false);
+
+  // Discard state
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const [isDiscarding, setIsDiscarding] = useState(false);
+
   // Editor state
   const [data, setData] = useState<CustomLandingPageConfig>({});
   const [sectionOrder, setSectionOrder] = useState<SectionType[]>(DEFAULT_SECTION_ORDER);
@@ -60,9 +69,26 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
         console.log('[DBG][LandingPageEditor] Expert loaded:', expertData);
 
         setExpert(expertData);
+        setIsPublished(expertData.isLandingPagePublished ?? false);
 
-        // Initialize editor state from expert data
-        const landingPage = expertData.customLandingPage || {};
+        // Check if there are unpublished changes (draft differs from published)
+        const hasDraft = !!expertData.draftLandingPage;
+        const hasPublished = !!expertData.customLandingPage;
+        if (hasDraft && hasPublished) {
+          // Compare draft and published - if different, mark as having unpublished changes
+          const draftStr = JSON.stringify(expertData.draftLandingPage);
+          const publishedStr = JSON.stringify(expertData.customLandingPage);
+          setHasUnpublishedChanges(draftStr !== publishedStr);
+        } else if (hasDraft && !hasPublished) {
+          // Has draft but never published
+          setHasUnpublishedChanges(true);
+        } else {
+          setHasUnpublishedChanges(false);
+        }
+
+        // Initialize editor state from draft (if exists) or published
+        // Draft takes precedence as it represents work-in-progress
+        const landingPage = expertData.draftLandingPage || expertData.customLandingPage || {};
         setData(landingPage);
 
         // Load section order or use default
@@ -253,9 +279,11 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
         throw new Error(result.error || 'Failed to update landing page');
       }
 
-      console.log('[DBG][LandingPageEditor] Landing page saved successfully');
+      console.log('[DBG][LandingPageEditor] Landing page saved successfully (to draft)');
       setIsDirty(false);
       setLastSaved(new Date());
+      // Saving always goes to draft, so we have unpublished changes
+      setHasUnpublishedChanges(true);
       return true;
     } catch (err) {
       console.error('[DBG][LandingPageEditor] Error saving:', err);
@@ -285,6 +313,102 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
       router.push(`/srv/${expertId}`);
     } else {
       setSaving(false);
+    }
+  };
+
+  // Publish/unpublish handler
+  const handlePublish = async (publish: boolean) => {
+    setIsPublishing(true);
+    setError('');
+
+    try {
+      // First, ensure any unsaved changes are saved
+      if (isDirty) {
+        const saved = await saveData();
+        if (!saved) {
+          setError('Failed to save changes before publishing');
+          setIsPublishing(false);
+          return;
+        }
+      }
+
+      console.log('[DBG][LandingPageEditor] Publishing landing page:', publish);
+
+      const response = await fetch('/data/app/expert/me/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ publish }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to update publish status');
+      }
+
+      setIsPublished(publish);
+      // On publish, draft becomes published, so no more unpublished changes
+      if (publish) {
+        setHasUnpublishedChanges(false);
+      }
+      console.log('[DBG][LandingPageEditor] Publish status updated:', publish);
+    } catch (err) {
+      console.error('[DBG][LandingPageEditor] Publish error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to update publish status');
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  // Discard draft changes handler
+  const handleDiscard = async () => {
+    setIsDiscarding(true);
+    setError('');
+
+    try {
+      console.log('[DBG][LandingPageEditor] Discarding draft changes');
+
+      const response = await fetch('/data/app/expert/me/landing-page/discard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to discard changes');
+      }
+
+      // Reload expert data to get the reset state
+      const expertData: Expert = result.data;
+      console.log('[DBG][LandingPageEditor] Draft discarded, reloading data');
+
+      // Update editor with published version (which draft was reset to)
+      const landingPage = expertData.customLandingPage || {};
+      setData(landingPage);
+
+      // Update section order
+      if (landingPage.sectionOrder && landingPage.sectionOrder.length > 0) {
+        setSectionOrder(landingPage.sectionOrder as SectionType[]);
+      } else {
+        setSectionOrder(DEFAULT_SECTION_ORDER);
+      }
+
+      // Update disabled sections
+      if (landingPage.disabledSections) {
+        setDisabledSections(landingPage.disabledSections as SectionType[]);
+      } else {
+        setDisabledSections([]);
+      }
+
+      setHasUnpublishedChanges(false);
+      setIsDirty(false);
+      setShowDiscardConfirm(false);
+    } catch (err) {
+      console.error('[DBG][LandingPageEditor] Discard error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to discard changes');
+    } finally {
+      setIsDiscarding(false);
     }
   };
 
@@ -358,24 +482,133 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
             </p>
           </div>
 
-          {/* View Page Button */}
+          {/* Unpublished Changes Indicator */}
+          {hasUnpublishedChanges && !isDirty && (
+            <span className="flex-shrink-0 text-sm text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
+              Draft has unpublished changes
+            </span>
+          )}
+
+          {/* Discard Changes Button - only show if there are unpublished changes and page has been published before */}
+          {hasUnpublishedChanges && isPublished && (
+            <button
+              onClick={() => setShowDiscardConfirm(true)}
+              disabled={isDiscarding || saving}
+              className="flex-shrink-0 flex items-center gap-2 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors border border-gray-300"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+              Discard
+            </button>
+          )}
+
+          {/* Preview Draft Button */}
           <a
-            href={`https://${expertId}.myyoga.guru`}
+            href={`https://preview.myyoga.guru/${expertId}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-shrink-0 flex items-center gap-2 px-4 py-2 text-white rounded-lg font-medium transition-colors hover:opacity-90"
-            style={{ backgroundColor: 'var(--color-primary)' }}
+            className="flex-shrink-0 flex items-center gap-2 px-4 py-2 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg font-medium transition-colors border border-blue-200"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
               />
             </svg>
-            View Page
+            Preview Draft
           </a>
+
+          {/* View Published Button - only show if page is published */}
+          {isPublished && (
+            <a
+              href={`https://${expertId}.myyoga.guru`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-shrink-0 flex items-center gap-2 px-4 py-2 text-white rounded-lg font-medium transition-colors hover:opacity-90"
+              style={{ backgroundColor: 'var(--color-primary)' }}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                />
+              </svg>
+              View Published
+            </a>
+          )}
+
+          {/* Publish/Unpublish Button */}
+          <button
+            onClick={() => handlePublish(!isPublished)}
+            disabled={isPublishing || saving}
+            className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+              isPublished
+                ? 'bg-amber-100 text-amber-800 hover:bg-amber-200 border border-amber-300'
+                : 'bg-green-600 text-white hover:bg-green-700'
+            } ${isPublishing || saving ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            {isPublishing ? (
+              <>
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    fill="none"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+                {isPublished ? 'Unpublishing...' : 'Publishing...'}
+              </>
+            ) : isPublished ? (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                  />
+                </svg>
+                Unpublish
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+                Publish
+              </>
+            )}
+          </button>
         </div>
 
         {/* Error Banner */}
@@ -458,6 +691,57 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
           )}
         </div>
       </div>
+
+      {/* Discard Changes Confirmation Modal */}
+      {showDiscardConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Discard Changes?</h3>
+            <p className="text-gray-600 mb-6">
+              This will reset your draft to match the currently published version. All unpublished
+              changes will be lost.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowDiscardConfirm(false)}
+                disabled={isDiscarding}
+                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDiscard}
+                disabled={isDiscarding}
+                className="px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg font-medium transition-colors flex items-center gap-2"
+              >
+                {isDiscarding ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                        fill="none"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    Discarding...
+                  </>
+                ) : (
+                  'Discard Changes'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

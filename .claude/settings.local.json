@@ -90,7 +90,8 @@
       "Bash(AWS_PROFILE=myg aws s3 ls:*)",
       "Bash(AWS_PROFILE=myg aws cloudfront list-distributions:*)",
       "Bash(AWS_PROFILE=myg aws cloudformation list-stacks:*)",
-      "WebFetch(domain:help.unsplash.com)"
+      "WebFetch(domain:help.unsplash.com)",
+      "Bash(AWS_PROFILE=myg aws dynamodb get-item:*)"
     ],
     "deny": [],
     "ask": []

@@ -6,6 +6,7 @@ import {
   getSubdomainFromMyYogaGuru,
   resolveDomainToTenant,
   isLearnerDomain,
+  isPreviewDomain,
 } from './config/domains';
 
 /**
@@ -95,6 +96,58 @@ export default async function middleware(request: NextRequest) {
 
   // Check domain type for routing decisions
   const isLearner = isLearnerDomain(hostname);
+  const isPreview = isPreviewDomain(hostname);
+
+  // Handle preview domain (preview.myyoga.guru/<expertId>)
+  // This allows logged-in experts to preview their draft landing page
+  if (isPreview) {
+    console.log('[DBG][middleware] Preview domain detected');
+
+    // Allow Next.js internals
+    if (pathname.startsWith('/_next') || pathname.startsWith('/api')) {
+      return NextResponse.next();
+    }
+
+    // Allow static assets
+    if (pathname.match(/\.(ico|png|jpg|jpeg|svg|css|js|woff|woff2)$/)) {
+      return NextResponse.next();
+    }
+
+    // Extract expertId from path: /<expertId> or /experts/<expertId>
+    const pathMatch = pathname.match(/^\/?(?:experts\/)?([a-zA-Z0-9_-]+)/);
+    const previewExpertId = pathMatch?.[1];
+
+    // If no expertId or it's a reserved path, redirect to main site
+    if (
+      !previewExpertId ||
+      ['experts', 'auth', 'app', 'srv', 'data', 'api'].includes(previewExpertId)
+    ) {
+      console.log('[DBG][middleware] Preview: No valid expertId, redirecting to main site');
+      const mainUrl = new URL('/', 'https://myyoga.guru');
+      return NextResponse.redirect(mainUrl);
+    }
+
+    // Require authentication
+    if (!hasSession) {
+      console.log('[DBG][middleware] Preview: Not authenticated, redirecting to login');
+      const loginUrl = new URL('/auth/signin', 'https://myyoga.guru');
+      loginUrl.searchParams.set('callbackUrl', `https://preview.myyoga.guru/${previewExpertId}`);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    console.log(
+      '[DBG][middleware] Preview: Rewriting to expert page with draft mode',
+      previewExpertId
+    );
+
+    // Rewrite to expert page with preview headers
+    const url = request.nextUrl.clone();
+    url.pathname = `/experts/${previewExpertId}`;
+    const response = NextResponse.rewrite(url);
+    response.headers.set('x-preview-mode', 'draft');
+    response.headers.set('x-expert-id', previewExpertId);
+    return response;
+  }
 
   // Note: myyoga.guru now shows the waitlist/coming soon page at /
   // Expert platform is accessible at /srv directly
@@ -107,6 +160,9 @@ export default async function middleware(request: NextRequest) {
 
   const isPrimary = isPrimaryDomain(hostname) || isLearner;
 
+  // Track landing page publish status
+  let isLandingPagePublished = true; // Default to published for backward compat
+
   // Resolve tenant context for all non-primary domains
   // This now validates myyoga.guru subdomains against the database
   if (!isPrimary) {
@@ -115,6 +171,7 @@ export default async function middleware(request: NextRequest) {
       tenantId = tenantResult.tenantId;
       expertId = tenantResult.expertId;
       isExpertDomain = true;
+      isLandingPagePublished = tenantResult.isLandingPagePublished;
     } else if (myYogaGuruSubdomain) {
       // This is a myyoga.guru subdomain that doesn't exist in the database
       // Redirect to the main site
@@ -130,6 +187,8 @@ export default async function middleware(request: NextRequest) {
       expertId = getExpertIdFromHostname(hostname);
       isExpertDomain = expertId !== null;
       tenantId = expertId;
+      // Static config domains are always published
+      isLandingPagePublished = true;
     }
   }
 
@@ -147,16 +206,23 @@ export default async function middleware(request: NextRequest) {
     'MyYoga.Guru subdomain:',
     myYogaGuruSubdomain,
     'Has session cookie:',
-    hasSession
+    hasSession,
+    'Landing page published:',
+    isLandingPagePublished
   );
 
   // Helper to add tenant headers to response
-  const addTenantHeaders = (response: NextResponse): NextResponse => {
+  const addTenantHeaders = (response: NextResponse, isPreviewMode = false): NextResponse => {
     if (tenantId) {
       response.headers.set('x-tenant-id', tenantId);
     }
     if (expertId) {
       response.headers.set('x-expert-id', expertId);
+    }
+    // Set preview mode header for unpublished pages viewed by logged-in users
+    // The page will verify if the user is the expert owner
+    if (isPreviewMode) {
+      response.headers.set('x-preview-mode', 'true');
     }
     return response;
   };
@@ -191,6 +257,39 @@ export default async function middleware(request: NextRequest) {
     }
 
     const expertPath = `/experts/${expertId}`;
+
+    // Handle unpublished landing pages
+    // If page is NOT published:
+    // - Visitors (not logged in) → redirect to myyoga.guru
+    // - Logged in users → allow access in preview mode (page verifies ownership)
+    if (!isLandingPagePublished) {
+      console.log(
+        '[DBG][middleware] Landing page NOT published for expert:',
+        expertId,
+        'hasSession:',
+        hasSession
+      );
+
+      // For public landing page routes (/ or /experts/{expertId}), check publish status
+      if (pathname === '/' || pathname === expertPath || pathname.startsWith(`${expertPath}/`)) {
+        if (!hasSession) {
+          // Visitor trying to access unpublished page → redirect to main site
+          console.log('[DBG][middleware] Redirecting visitor from unpublished page to myyoga.guru');
+          const mainUrl = new URL('/', 'https://myyoga.guru');
+          return NextResponse.redirect(mainUrl);
+        }
+        // User is logged in - allow access in preview mode
+        // The page will verify if the user is the expert owner
+        console.log('[DBG][middleware] Allowing logged-in user preview access');
+
+        if (pathname === '/') {
+          const url = request.nextUrl.clone();
+          url.pathname = expertPath;
+          return addTenantHeaders(NextResponse.rewrite(url), true);
+        }
+        return addTenantHeaders(NextResponse.next(), true);
+      }
+    }
 
     // Root path: Rewrite to expert page (URL stays as /)
     if (pathname === '/') {

@@ -161,8 +161,11 @@ export async function POST(request: Request) {
       return NextResponse.json(response, { status: 409 });
     }
 
-    // Create new expert in DynamoDB
+    // Create new expert/tenant in DynamoDB (merged entity)
     const expertId = body.id;
+    const subdomain = `${expertId}.myyoga.guru`;
+    const featuredOnPlatform = body.platformPreferences?.featuredOnPlatform ?? true;
+
     const newExpert = await expertRepository.createExpert({
       id: expertId,
       userId: user.id, // Link to user account (cognitoSub)
@@ -179,39 +182,26 @@ export async function POST(request: Request) {
       experience: body.experience || '',
       socialLinks: body.socialLinks || {},
       onboardingCompleted: true, // Mark as completed since they filled the form
-      customLandingPage: body.customLandingPage, // Landing page content from onboarding
+      // Save landing page to draft (not published) - expert must explicitly publish
+      draftLandingPage: body.draftLandingPage || body.customLandingPage,
+      isLandingPagePublished: body.isLandingPagePublished ?? false,
       platformPreferences: {
-        featuredOnPlatform: body.platformPreferences?.featuredOnPlatform ?? true,
+        featuredOnPlatform: featuredOnPlatform,
         defaultEmail: `${expertId}@myyoga.guru`,
         forwardingEmail: user.profile?.email, // Forward incoming emails to user's login email
         emailForwardingEnabled: true, // Enable forwarding by default
         ...body.platformPreferences, // Allow overrides from request body
       },
+      // Domain fields (Expert and Tenant are now merged)
+      primaryDomain: subdomain,
+      additionalDomains: [],
+      status: 'active',
     });
 
-    console.log('[DBG][experts/route.ts] Expert created successfully:', newExpert.id);
+    console.log('[DBG][experts/route.ts] Expert/tenant created successfully:', newExpert.id);
 
-    // Auto-create tenant with subdomain
-    const subdomain = `${expertId}.myyoga.guru`;
-    const featuredOnPlatform = body.platformPreferences?.featuredOnPlatform ?? true;
-
+    // Add subdomain to Vercel (non-blocking - don't fail if this fails)
     try {
-      console.log('[DBG][experts/route.ts] Creating tenant for expert:', expertId);
-
-      await tenantRepository.createTenant({
-        id: expertId,
-        name: body.name,
-        slug: expertId,
-        expertId: expertId,
-        primaryDomain: subdomain,
-        additionalDomains: [],
-        featuredOnPlatform: featuredOnPlatform,
-        status: 'active',
-      });
-
-      console.log('[DBG][experts/route.ts] Tenant created with subdomain:', subdomain);
-
-      // Add subdomain to Vercel (non-blocking - don't fail if this fails)
       const vercelResult = await addDomainToVercel(subdomain);
       if (vercelResult.success) {
         console.log('[DBG][experts/route.ts] Subdomain added to Vercel:', subdomain);
@@ -220,12 +210,10 @@ export async function POST(request: Request) {
           '[DBG][experts/route.ts] Failed to add subdomain to Vercel:',
           vercelResult.error
         );
-        // Don't throw - tenant is created, Vercel can be fixed manually
       }
-    } catch (tenantError) {
-      console.error('[DBG][experts/route.ts] Error creating tenant:', tenantError);
-      // Don't throw - expert is created, tenant can be created manually
-      // This ensures expert creation doesn't fail due to tenant issues
+    } catch (vercelError) {
+      console.error('[DBG][experts/route.ts] Error adding subdomain to Vercel:', vercelError);
+      // Don't throw - expert is created, Vercel can be fixed manually
     }
 
     // Update user to set role to expert and link expert profile using userRepository

@@ -1910,6 +1910,61 @@
       ]
     },
     {
+      "name": "Landing Page",
+      "description": "Expert landing page publish/unpublish management",
+      "item": [
+        {
+          "name": "Get Publish Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/publish",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "publish"]
+            },
+            "description": "Get current landing page publish status for the expert"
+          },
+          "response": []
+        },
+        {
+          "name": "Publish Landing Page",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"publish\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/publish",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "publish"]
+            },
+            "description": "Publish the expert's landing page to make it publicly accessible. Set publish: true to publish, false to unpublish."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
       "name": "Google Calendar",
       "description": "Google Calendar OAuth and connection management",
       "item": [

@@ -3,6 +3,14 @@
  *
  * Called by Edge Middleware to resolve custom domains to tenants.
  * Runs in Node.js runtime so it can access DynamoDB reliably.
+ *
+ * Note: Expert and Tenant are now consolidated into a single TENANT entity.
+ * The tenant.id serves as both tenantId and expertId.
+ *
+ * Returns:
+ * - tenantId: The tenant ID (also the expert ID)
+ * - expertId: Same as tenantId (for backward compatibility)
+ * - isLandingPagePublished: Whether the landing page is published
  */
 
 import { NextResponse } from 'next/server';
@@ -24,15 +32,25 @@ export async function GET(request: Request) {
     const tenant = await getTenantByDomain(domain);
 
     if (tenant) {
-      console.log('[DBG][resolve-domain] Found tenant:', tenant.id, 'expert:', tenant.expertId);
+      // Tenant and Expert are now merged - tenant.id is both tenantId and expertId
+      const isLandingPagePublished = tenant.isLandingPagePublished ?? false;
+
+      console.log(
+        '[DBG][resolve-domain] Found tenant:',
+        tenant.id,
+        'published:',
+        isLandingPagePublished
+      );
+
       return NextResponse.json({
         tenantId: tenant.id,
-        expertId: tenant.expertId,
+        expertId: tenant.id, // Same as tenantId now
+        isLandingPagePublished,
       });
     }
 
     console.log('[DBG][resolve-domain] No tenant found for domain:', domain);
-    return NextResponse.json({ tenantId: null, expertId: null });
+    return NextResponse.json({ tenantId: null, expertId: null, isLandingPagePublished: false });
   } catch (error) {
     console.error('[DBG][resolve-domain] Error resolving domain:', error);
     return NextResponse.json({ error: 'Failed to resolve domain' }, { status: 500 });

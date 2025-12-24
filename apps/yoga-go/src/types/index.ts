@@ -227,33 +227,9 @@ export interface StripeConnectDetails {
   country?: string; // Account country
 }
 
-export interface Expert extends BaseEntity {
-  name: string;
-  title: string;
-  bio: string;
-  avatar: string;
-  rating: number;
-  totalCourses: number;
-  totalStudents: number;
-  specializations: string[];
-  featured: boolean;
-  certifications?: string[];
-  experience?: string;
-  courses?: ExpertCourse[];
-  socialLinks?: SocialLinks;
-  userId?: string; // Link to User account
-  customLandingPage?: CustomLandingPageConfig;
-  onboardingCompleted?: boolean;
-  promoVideo?: string; // Deprecated: use promoVideoCloudflareId instead
-  promoVideoCloudflareId?: string; // Cloudflare Stream video UID for expert promo
-  promoVideoStatus?: 'uploading' | 'processing' | 'ready' | 'error';
-
-  // Platform preferences (subdomain, visibility, email)
-  platformPreferences?: ExpertPlatformPreferences;
-
-  // Stripe Connect for receiving course payments
-  stripeConnect?: StripeConnectDetails;
-}
+// Expert is now an alias for Tenant (consolidated entity)
+// All expert data is stored in the TENANT entity
+export type Expert = Tenant;
 
 // Tenant Related Types (Multi-tenancy)
 export type TenantStatus = 'active' | 'pending' | 'suspended';
@@ -335,28 +311,50 @@ export interface TenantDnsRecord {
 }
 
 export interface Tenant extends BaseEntity {
+  // ===== Core Identity =====
   name: string; // Display name (e.g., "Kavitha Yoga")
-  slug: string; // URL-safe identifier (e.g., "kavitha")
-  expertId: string; // Link to Expert entity
+  slug?: string; // URL-safe identifier (optional, defaults to id)
+  userId?: string; // Link to User account (Cognito sub)
 
-  // Domains
-  primaryDomain: string; // e.g., "kavithayoga.com"
+  // ===== Profile Data (formerly Expert) =====
+  title: string;
+  bio: string;
+  avatar: string;
+  rating: number;
+  totalCourses: number;
+  totalStudents: number;
+  specializations: string[];
+  featured: boolean;
+  certifications?: string[];
+  experience?: string;
+  courses?: ExpertCourse[];
+  socialLinks?: SocialLinks;
+  onboardingCompleted?: boolean;
+  promoVideo?: string; // Deprecated: use promoVideoCloudflareId instead
+  promoVideoCloudflareId?: string; // Cloudflare Stream video UID for expert promo
+  promoVideoStatus?: 'uploading' | 'processing' | 'ready' | 'error';
+
+  // ===== Landing Page =====
+  customLandingPage?: CustomLandingPageConfig; // Published landing page (live on subdomain)
+  draftLandingPage?: CustomLandingPageConfig; // Draft landing page (WIP, viewable on preview subdomain)
+  isLandingPagePublished?: boolean; // When false, subdomain visitors are redirected
+
+  // ===== Platform Preferences =====
+  platformPreferences?: ExpertPlatformPreferences;
+
+  // ===== Payments =====
+  stripeConnect?: StripeConnectDetails; // Stripe Connect for receiving course payments
+
+  // ===== Domain & Multi-tenancy =====
+  primaryDomain?: string; // e.g., "kavithayoga.com" (custom domain)
   additionalDomains?: string[]; // e.g., ["kavitha.myyoga.guru"]
+  featuredOnPlatform?: boolean; // Show on myyoga.guru browse
+  status?: TenantStatus;
 
-  // Platform visibility
-  featuredOnPlatform: boolean; // Show on myyoga.guru browse
-
-  // Status
-  status: TenantStatus;
-
-  // BYOD Email Configuration (for custom domain email)
-  emailConfig?: TenantEmailConfig;
-
-  // Custom branding (favicon, metadata for custom domains)
-  branding?: TenantBranding;
-
-  // Cloudflare DNS configuration (for custom domains using CF nameservers)
-  cloudflareDns?: CloudflareDnsConfig;
+  // ===== Custom Domain Configuration =====
+  emailConfig?: TenantEmailConfig; // BYOD Email Configuration
+  branding?: TenantBranding; // Custom branding (favicon, metadata)
+  cloudflareDns?: CloudflareDnsConfig; // Cloudflare DNS for custom domains
 }
 
 // Course Related Types

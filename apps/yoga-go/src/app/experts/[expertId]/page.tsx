@@ -22,28 +22,78 @@ export default function ExpertDetailPage() {
     isExpertMode: false,
     expertId: null,
   });
+  // Preview mode state - for viewing unpublished pages
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [isDraftPreview, setIsDraftPreview] = useState(false); // Viewing draft on preview.myyoga.guru
+  const [isOwner, setIsOwner] = useState(false);
 
-  // Detect expert mode on mount
+  // Detect expert mode and preview domain on mount
   useEffect(() => {
     const context = getClientExpertContext();
     setExpertMode({
       isExpertMode: context.isExpertMode,
       expertId: context.expertId,
     });
+
+    // Check if we're on the preview domain (preview.myyoga.guru)
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname.toLowerCase();
+      if (hostname === 'preview.myyoga.guru' || hostname.startsWith('preview.localhost')) {
+        setIsDraftPreview(true);
+        console.log('[DBG][expert-detail] On preview domain - showing draft');
+      }
+    }
   }, []);
+
+  // Check if current user is the owner of this expert page
+  useEffect(() => {
+    const checkOwnership = async () => {
+      try {
+        // Try to get the current user's expert profile
+        const res = await fetch('/data/app/expert/me');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.data?.id === expertId) {
+            setIsOwner(true);
+            console.log('[DBG][expert-detail] User is the owner of this page');
+          }
+        }
+      } catch {
+        // User is not logged in or not an expert
+        console.log('[DBG][expert-detail] User is not logged in or not an expert');
+      }
+    };
+    checkOwnership();
+  }, [expertId]);
 
   useEffect(() => {
     const fetchExpertData = async () => {
       try {
         console.log('[DBG][expert-detail] Fetching expert:', expertId);
 
+        // Check if we're on the preview domain (preview.myyoga.guru)
+        const hostname =
+          typeof window !== 'undefined' ? window.location.hostname.toLowerCase() : '';
+        const isOnPreviewDomain =
+          hostname === 'preview.myyoga.guru' || hostname.startsWith('preview.localhost');
+
+        // Build fetch headers - include preview mode if on preview domain
+        const fetchHeaders: HeadersInit = isOnPreviewDomain ? { 'x-preview-mode': 'draft' } : {};
+
+        console.log('[DBG][expert-detail] On preview domain:', isOnPreviewDomain);
+
         // Fetch expert details
-        const expertRes = await fetch(`/data/experts/${expertId}`);
+        const expertRes = await fetch(`/data/experts/${expertId}`, { headers: fetchHeaders });
         const expertData = await expertRes.json();
 
         if (expertData.success) {
           setExpert(expertData.data);
           console.log('[DBG][expert-detail] Expert loaded:', expertData.data);
+          // Check if this is an unpublished page (preview mode)
+          if (expertData.data?.isLandingPagePublished === false) {
+            setIsPreviewMode(true);
+            console.log('[DBG][expert-detail] Page is in preview mode (unpublished)');
+          }
         }
 
         // Fetch courses for this expert (only PUBLISHED)
@@ -132,6 +182,130 @@ export default function ExpertDetailPage() {
       </div>
     );
   }
+
+  // If on draft preview and user is not the owner, redirect to myyoga.guru
+  // This is a fallback in case the middleware check was bypassed
+  if (isDraftPreview && !isOwner && !loading) {
+    if (typeof window !== 'undefined') {
+      console.log('[DBG][expert-detail] Non-owner on draft preview, redirecting');
+      window.location.href = 'https://myyoga.guru';
+      return null;
+    }
+  }
+
+  // If page is unpublished (not on draft preview) and user is not the owner, redirect
+  if (isPreviewMode && !isDraftPreview && !isOwner && !loading) {
+    if (typeof window !== 'undefined') {
+      window.location.href = 'https://myyoga.guru';
+      return null;
+    }
+  }
+
+  // Preview banner component - shows different content for draft vs unpublished preview
+  const PreviewBanner = () => {
+    // Draft preview on preview.myyoga.guru
+    if (isDraftPreview && isOwner) {
+      return (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 9999,
+            background: 'linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%)',
+            color: 'white',
+            padding: '12px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '16px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+          }}
+        >
+          <span style={{ fontSize: '14px', fontWeight: 500 }}>
+            Draft Preview — You are viewing unpublished changes. Publish to make them live.
+          </span>
+          <a
+            href={`https://myyoga.guru/srv/${expertId}/landing-page`}
+            style={{
+              background: 'white',
+              color: '#1d4ed8',
+              padding: '6px 16px',
+              borderRadius: '6px',
+              fontSize: '14px',
+              fontWeight: 600,
+              textDecoration: 'none',
+            }}
+          >
+            Edit
+          </a>
+          {expert?.isLandingPagePublished && (
+            <a
+              href={`https://${expertId}.myyoga.guru`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                background: 'rgba(255,255,255,0.2)',
+                color: 'white',
+                padding: '6px 16px',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: 500,
+                textDecoration: 'none',
+                border: '1px solid rgba(255,255,255,0.3)',
+              }}
+            >
+              View Published
+            </a>
+          )}
+        </div>
+      );
+    }
+
+    // Unpublished page preview (old behavior)
+    if (isPreviewMode && isOwner) {
+      return (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 9999,
+            background: 'linear-gradient(90deg, #f59e0b 0%, #d97706 100%)',
+            color: 'white',
+            padding: '12px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '16px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+          }}
+        >
+          <span style={{ fontSize: '14px', fontWeight: 500 }}>
+            Preview Mode — This page is not published yet. Only you can see it.
+          </span>
+          <Link
+            href={`/srv/${expertId}/landing-page`}
+            style={{
+              background: 'white',
+              color: '#d97706',
+              padding: '6px 16px',
+              borderRadius: '6px',
+              fontSize: '14px',
+              fontWeight: 600,
+              textDecoration: 'none',
+            }}
+          >
+            Edit & Publish
+          </Link>
+        </div>
+      );
+    }
+
+    return null;
+  };
 
   // Helper to resolve CTA links - transforms relative paths to full paths
   const resolveCtaLink = (link: string | undefined): string => {
@@ -1382,7 +1556,13 @@ export default function ExpertDetailPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh' }}>
+    <div
+      style={{
+        minHeight: '100vh',
+        paddingTop: (isPreviewMode || isDraftPreview) && isOwner ? '48px' : 0,
+      }}
+    >
+      <PreviewBanner />
       <Header />
       <style>{`
         @media (max-width: 768px) {

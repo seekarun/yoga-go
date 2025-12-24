@@ -32,6 +32,8 @@ notes
 [ ] marketing budgets
 [ ] expert support - can we get a successful yoga teacher?
 [ ] if user does not verify account in 10 mins, delete from user pool
+[ ] user testimonials section
+[ ] country specific incremental launches
 
 [ ] http to https redirect - check if /etc/hosts still active
 [ ] custom domain: prefix with https://

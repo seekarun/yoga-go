@@ -110,7 +110,9 @@ export async function GET(): Promise<NextResponse<ApiResponse<TenantWithVerifica
     }
 
     // Fetch domain verification status for all domains from Vercel
-    const allDomains = [tenant.primaryDomain, ...(tenant.additionalDomains || [])];
+    const allDomains = [tenant.primaryDomain, ...(tenant.additionalDomains || [])].filter(
+      (d): d is string => !!d
+    );
     const domainsVerification: Record<string, DomainVerificationStatus> = {};
 
     // Check verification status for each domain in parallel
@@ -166,16 +168,10 @@ export async function POST(request: Request): Promise<NextResponse<ApiResponse<T
       return NextResponse.json({ success: false, error: 'Not an expert' }, { status: 403 });
     }
 
-    // Check if tenant already exists
+    // Check if tenant/expert already exists (merged entity)
     const existingTenant = await getTenantByExpertId(user.expertProfile);
     if (existingTenant) {
       return NextResponse.json({ success: false, error: 'Tenant already exists' }, { status: 409 });
-    }
-
-    // Get expert data for defaults
-    const expert = await getExpertById(user.expertProfile);
-    if (!expert) {
-      return NextResponse.json({ success: false, error: 'Expert not found' }, { status: 404 });
     }
 
     const body = await request.json();
@@ -191,12 +187,11 @@ export async function POST(request: Request): Promise<NextResponse<ApiResponse<T
       additionalDomains.push(myYogaGuruSubdomain);
     }
 
-    // Create tenant in DynamoDB
+    // Create tenant in DynamoDB (Expert and Tenant are now merged)
     const tenant = await createTenant({
       id: user.expertProfile,
-      name: body.name || expert.name,
-      slug: user.expertProfile,
-      expertId: user.expertProfile,
+      userId: session.user.cognitoSub,
+      name: body.name || user.profile?.name || 'Expert',
       primaryDomain,
       additionalDomains,
       featuredOnPlatform: body.featuredOnPlatform ?? true,
@@ -340,7 +335,7 @@ export async function PUT(request: Request): Promise<NextResponse<ApiResponse<Te
         }
 
         // Protect primary domain (it's the auto-generated subdomain)
-        if (normalizedDomain === tenant.primaryDomain.toLowerCase()) {
+        if (tenant.primaryDomain && normalizedDomain === tenant.primaryDomain.toLowerCase()) {
           return NextResponse.json(
             { success: false, error: 'Cannot remove your primary domain' },
             { status: 400 }
@@ -1065,7 +1060,9 @@ export async function DELETE(): Promise<NextResponse<ApiResponse<null>>> {
     console.log('[DBG][tenant-api] Deleting tenant for expert:', user.expertProfile);
 
     // Remove all domains from Vercel
-    const allDomains = [tenant.primaryDomain, ...(tenant.additionalDomains || [])];
+    const allDomains = [tenant.primaryDomain, ...(tenant.additionalDomains || [])].filter(
+      (d): d is string => !!d
+    );
     for (const domain of allDomains) {
       try {
         const result = await removeDomainFromVercel(domain);

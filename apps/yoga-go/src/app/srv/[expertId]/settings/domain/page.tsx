@@ -320,7 +320,7 @@ export default function DomainSettingsPage() {
         setNewDomain('');
 
         // Store verification info
-        if (tenantData.domainVerification) {
+        if (tenantData.domainVerification && tenantData.primaryDomain) {
           setDomainStatuses({
             [tenantData.primaryDomain]: {
               verified: tenantData.domainVerification.verified,
@@ -830,7 +830,9 @@ export default function DomainSettingsPage() {
   // Get the first custom domain (not myyoga.guru)
   const getCustomDomain = (): string | null => {
     if (!tenant) return null;
-    const allDomains = [tenant.primaryDomain, ...(tenant.additionalDomains || [])];
+    const allDomains = [tenant.primaryDomain, ...(tenant.additionalDomains || [])].filter(
+      (d): d is string => !!d
+    );
     return allDomains.find(d => !d.endsWith('.myyoga.guru') && d !== 'myyoga.guru') || null;
   };
 
@@ -852,7 +854,9 @@ export default function DomainSettingsPage() {
   // Get all domains for display
   const getAllDomains = (): string[] => {
     if (!tenant) return [];
-    return [tenant.primaryDomain, ...(tenant.additionalDomains || [])];
+    return [tenant.primaryDomain, ...(tenant.additionalDomains || [])].filter(
+      (d): d is string => !!d
+    );
   };
 
   // Get verification records for display
@@ -1108,7 +1112,7 @@ export default function DomainSettingsPage() {
           )}
 
           {/* Existing Tenant */}
-          {tenant && (
+          {tenant && tenant.primaryDomain && (
             <>
               {/* Current Domains */}
               <div
@@ -1177,7 +1181,7 @@ export default function DomainSettingsPage() {
                   </div>
                   {!domainStatuses[tenant.primaryDomain]?.verified && (
                     <button
-                      onClick={() => verifyDomain(tenant.primaryDomain)}
+                      onClick={() => verifyDomain(tenant.primaryDomain!)}
                       disabled={domainStatuses[tenant.primaryDomain]?.checking}
                       style={{
                         padding: '4px 12px',

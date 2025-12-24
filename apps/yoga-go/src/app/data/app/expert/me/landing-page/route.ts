@@ -38,13 +38,14 @@ export async function PUT(request: Request) {
     const body = await request.json();
     console.log('[DBG][landing-page/route.ts] Received data:', body);
 
-    // Update landing page configuration in DynamoDB
-    const updatedExpert = await expertRepository.updateLandingPage(
+    // Update DRAFT landing page configuration in DynamoDB
+    // Draft changes are only visible on preview.myyoga.guru until published
+    const updatedExpert = await expertRepository.updateDraftLandingPage(
       expert.id,
       body.customLandingPage
     );
 
-    console.log('[DBG][landing-page/route.ts] ✓ Landing page updated successfully');
+    console.log('[DBG][landing-page/route.ts] ✓ Draft landing page updated successfully');
 
     const response: ApiResponse<Expert> = {
       success: true,

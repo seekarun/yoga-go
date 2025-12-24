@@ -1,11 +1,12 @@
 /**
  * Tenant Repository - DynamoDB Operations
  *
- * Multi-tenancy support with domain-based routing.
+ * Consolidated entity for Expert/Tenant data (merged).
+ * All expert profile data and tenant/domain configuration is stored in TENANT entity.
  *
  * Storage pattern:
  * - Primary: PK="TENANT", SK={tenantId}
- * - Domain lookup: PK="TENANT#DOMAIN#{domain}", SK={tenantId}
+ * - Domain lookup: PK="TENANT#DOMAIN#{domain}", SK={domain}
  *
  * Domain lookup uses dual-write pattern for O(1) domain resolution.
  */
@@ -19,7 +20,7 @@ import {
   BatchWriteCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { docClient, Tables, EntityType, CorePK } from '../dynamodb';
-import type { Tenant, TenantStatus } from '@/types';
+import type { Tenant, TenantStatus, StripeConnectDetails } from '@/types';
 
 // Type for DynamoDB Tenant item (includes PK/SK)
 interface DynamoDBTenantItem extends Tenant {
@@ -35,13 +36,29 @@ interface DynamoDBDomainItem {
   domain: string;
 }
 
-// Type for creating a new tenant
+// Type for creating a new tenant/expert
 export interface CreateTenantInput {
   id: string;
+  userId: string;
   name: string;
-  slug: string;
-  expertId: string;
-  primaryDomain: string;
+  title?: string;
+  bio?: string;
+  avatar?: string;
+  rating?: number;
+  totalCourses?: number;
+  totalStudents?: number;
+  specializations?: string[];
+  featured?: boolean;
+  certifications?: string[];
+  experience?: string;
+  socialLinks?: Tenant['socialLinks'];
+  onboardingCompleted?: boolean;
+  platformPreferences?: Tenant['platformPreferences'];
+  customLandingPage?: Tenant['customLandingPage'];
+  draftLandingPage?: Tenant['draftLandingPage'];
+  isLandingPagePublished?: boolean;
+  // Domain fields (optional - set later for custom domains)
+  primaryDomain?: string;
   additionalDomains?: string[];
   featuredOnPlatform?: boolean;
   status?: TenantStatus;
@@ -55,6 +72,10 @@ function toTenant(item: DynamoDBTenantItem): Tenant {
   const { PK, SK, ...tenant } = item;
   return tenant as Tenant;
 }
+
+// ===================================================================
+// CORE CRUD OPERATIONS
+// ===================================================================
 
 /**
  * Get tenant by ID
@@ -79,6 +100,55 @@ export async function getTenantById(tenantId: string): Promise<Tenant | null> {
 
   console.log('[DBG][tenantRepository] Found tenant:', tenantId);
   return toTenant(result.Item as DynamoDBTenantItem);
+}
+
+/**
+ * Get all tenants
+ */
+export async function getAllTenants(): Promise<Tenant[]> {
+  console.log('[DBG][tenantRepository] Getting all tenants');
+
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: Tables.CORE,
+      KeyConditionExpression: 'PK = :pk',
+      ExpressionAttributeValues: {
+        ':pk': EntityType.TENANT,
+      },
+    })
+  );
+
+  const tenants = (result.Items || []).map(item => toTenant(item as DynamoDBTenantItem));
+  console.log('[DBG][tenantRepository] Found', tenants.length, 'tenants');
+  return tenants;
+}
+
+/**
+ * Get tenant by user ID (cognitoSub)
+ */
+export async function getTenantByUserId(userId: string): Promise<Tenant | null> {
+  console.log('[DBG][tenantRepository] Getting tenant by userId:', userId);
+
+  // Query all tenants and filter by userId (no GSI)
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: Tables.CORE,
+      KeyConditionExpression: 'PK = :pk',
+      FilterExpression: 'userId = :userId',
+      ExpressionAttributeValues: {
+        ':pk': EntityType.TENANT,
+        ':userId': userId,
+      },
+    })
+  );
+
+  if (!result.Items || result.Items.length === 0) {
+    console.log('[DBG][tenantRepository] Tenant not found for userId');
+    return null;
+  }
+
+  console.log('[DBG][tenantRepository] Found tenant for userId:', userId);
+  return toTenant(result.Items[0] as DynamoDBTenantItem);
 }
 
 /**
@@ -114,70 +184,43 @@ export async function getTenantByDomain(domain: string): Promise<Tenant | null> 
 }
 
 /**
- * Get tenant by expert ID
- */
-export async function getTenantByExpertId(expertId: string): Promise<Tenant | null> {
-  console.log('[DBG][tenantRepository] Getting tenant by expertId:', expertId);
-
-  // Query all tenants and filter by expertId
-  const result = await docClient.send(
-    new QueryCommand({
-      TableName: Tables.CORE,
-      KeyConditionExpression: 'PK = :pk',
-      FilterExpression: 'expertId = :expertId',
-      ExpressionAttributeValues: {
-        ':pk': EntityType.TENANT,
-        ':expertId': expertId,
-      },
-    })
-  );
-
-  if (!result.Items || result.Items.length === 0) {
-    console.log('[DBG][tenantRepository] Tenant not found for expertId');
-    return null;
-  }
-
-  console.log('[DBG][tenantRepository] Found tenant for expertId:', expertId);
-  return toTenant(result.Items[0] as DynamoDBTenantItem);
-}
-
-/**
- * Get all tenants
- */
-export async function getAllTenants(): Promise<Tenant[]> {
-  console.log('[DBG][tenantRepository] Getting all tenants');
-
-  const result = await docClient.send(
-    new QueryCommand({
-      TableName: Tables.CORE,
-      KeyConditionExpression: 'PK = :pk',
-      ExpressionAttributeValues: {
-        ':pk': EntityType.TENANT,
-      },
-    })
-  );
-
-  const tenants = (result.Items || []).map(item => toTenant(item as DynamoDBTenantItem));
-  console.log('[DBG][tenantRepository] Found', tenants.length, 'tenants');
-  return tenants;
-}
-
-/**
- * Create a new tenant with domain references
+ * Create a new tenant/expert
  */
 export async function createTenant(input: CreateTenantInput): Promise<Tenant> {
   const now = new Date().toISOString();
 
   console.log('[DBG][tenantRepository] Creating tenant:', input.id, 'name:', input.name);
 
+  // Default primary domain is {id}.myyoga.guru
+  const primaryDomain = input.primaryDomain || `${input.id}.myyoga.guru`;
+
   const tenant: DynamoDBTenantItem = {
     PK: EntityType.TENANT,
     SK: input.id,
     id: input.id,
+    userId: input.userId,
     name: input.name,
-    slug: input.slug,
-    expertId: input.expertId,
-    primaryDomain: input.primaryDomain.toLowerCase(),
+    slug: input.id,
+    title: input.title ?? '',
+    bio: input.bio ?? '',
+    avatar: input.avatar ?? '',
+    rating: input.rating ?? 0,
+    totalCourses: input.totalCourses ?? 0,
+    totalStudents: input.totalStudents ?? 0,
+    specializations: input.specializations ?? [],
+    featured: input.featured ?? false,
+    certifications: input.certifications ?? [],
+    experience: input.experience ?? '',
+    socialLinks: input.socialLinks ?? {},
+    onboardingCompleted: input.onboardingCompleted ?? false,
+    platformPreferences: input.platformPreferences ?? {
+      featuredOnPlatform: true,
+      defaultEmail: `${input.id}@myyoga.guru`,
+    },
+    customLandingPage: input.customLandingPage,
+    draftLandingPage: input.draftLandingPage,
+    isLandingPagePublished: input.isLandingPagePublished ?? false,
+    primaryDomain: primaryDomain.toLowerCase(),
     additionalDomains: (input.additionalDomains || []).map(d => d.toLowerCase()),
     featuredOnPlatform: input.featuredOnPlatform ?? true,
     status: input.status ?? 'active',
@@ -186,13 +229,13 @@ export async function createTenant(input: CreateTenantInput): Promise<Tenant> {
   };
 
   // Collect all domains for reference items
-  const allDomains = [tenant.primaryDomain, ...(tenant.additionalDomains || [])];
+  const allDomains = [tenant.primaryDomain, ...(tenant.additionalDomains || [])].filter(Boolean);
 
   // Create domain reference items
   const domainItems = allDomains.map(domain => ({
     PutRequest: {
       Item: {
-        PK: CorePK.TENANT_DOMAIN(domain),
+        PK: CorePK.TENANT_DOMAIN(domain as string),
         SK: domain,
         tenantId: input.id,
         domain,
@@ -233,6 +276,106 @@ export async function createTenant(input: CreateTenantInput): Promise<Tenant> {
 }
 
 /**
+ * Update tenant - partial update using UpdateCommand
+ */
+export async function updateTenant(tenantId: string, updates: Partial<Tenant>): Promise<Tenant> {
+  console.log('[DBG][tenantRepository] Updating tenant:', tenantId);
+
+  // Build update expression dynamically
+  const updateParts: string[] = [];
+  const exprAttrNames: Record<string, string> = {};
+  const exprAttrValues: Record<string, unknown> = {};
+
+  let index = 0;
+  for (const [key, value] of Object.entries(updates)) {
+    // Skip immutable fields
+    if (value !== undefined && !['id', 'PK', 'SK'].includes(key)) {
+      updateParts.push(`#k${index} = :v${index}`);
+      exprAttrNames[`#k${index}`] = key;
+      exprAttrValues[`:v${index}`] = value;
+      index++;
+    }
+  }
+
+  // Always update updatedAt
+  updateParts.push('#updatedAt = :updatedAt');
+  exprAttrNames['#updatedAt'] = 'updatedAt';
+  exprAttrValues[':updatedAt'] = new Date().toISOString();
+
+  const result = await docClient.send(
+    new UpdateCommand({
+      TableName: Tables.CORE,
+      Key: {
+        PK: EntityType.TENANT,
+        SK: tenantId,
+      },
+      UpdateExpression: `SET ${updateParts.join(', ')}`,
+      ExpressionAttributeNames: exprAttrNames,
+      ExpressionAttributeValues: exprAttrValues,
+      ReturnValues: 'ALL_NEW',
+    })
+  );
+
+  console.log('[DBG][tenantRepository] Updated tenant:', tenantId);
+  return toTenant(result.Attributes as DynamoDBTenantItem);
+}
+
+/**
+ * Delete tenant and all domain references
+ */
+export async function deleteTenant(tenantId: string): Promise<void> {
+  console.log('[DBG][tenantRepository] Deleting tenant:', tenantId);
+
+  // Get tenant first to find all domains
+  const tenant = await getTenantById(tenantId);
+  if (!tenant) {
+    console.log('[DBG][tenantRepository] Tenant not found, nothing to delete');
+    return;
+  }
+
+  // Collect all domains
+  const allDomains = [tenant.primaryDomain, ...(tenant.additionalDomains || [])].filter(Boolean);
+
+  // Create delete requests for all domain references
+  const deleteRequests = allDomains.map(domain => ({
+    DeleteRequest: {
+      Key: {
+        PK: CorePK.TENANT_DOMAIN(domain as string),
+        SK: domain,
+      },
+    },
+  }));
+
+  // Add tenant delete request
+  deleteRequests.push({
+    DeleteRequest: {
+      Key: {
+        PK: EntityType.TENANT,
+        SK: tenantId,
+      },
+    },
+  });
+
+  // Batch delete
+  for (let i = 0; i < deleteRequests.length; i += 25) {
+    const batch = deleteRequests.slice(i, i + 25);
+    await docClient.send(
+      new BatchWriteCommand({
+        RequestItems: {
+          [Tables.CORE]: batch,
+        },
+      })
+    );
+  }
+
+  console.log('[DBG][tenantRepository] Deleted tenant and', allDomains.length, 'domain references');
+}
+
+// ===================================================================
+// DOMAIN OPERATIONS
+// ===================================================================
+
+/**
  * Add a domain to a tenant
  */
 export async function addDomainToTenant(tenantId: string, domain: string): Promise<Tenant> {
@@ -247,7 +390,9 @@ export async function addDomainToTenant(tenantId: string, domain: string): Promi
   }
 
   // Check if domain already exists
-  const existingDomains = [tenant.primaryDomain, ...(tenant.additionalDomains || [])];
+  const existingDomains = [tenant.primaryDomain, ...(tenant.additionalDomains || [])].filter(
+    Boolean
+  );
   if (existingDomains.includes(normalizedDomain)) {
     console.log('[DBG][tenantRepository] Domain already exists');
     return tenant;
@@ -348,107 +493,144 @@ export async function removeDomainFromTenant(tenantId: string, domain: string): 
   return toTenant(result.Attributes as DynamoDBTenantItem);
 }
 
+// ===================================================================
+// LANDING PAGE OPERATIONS
+// ===================================================================
+
 /**
- * Update tenant
+ * Update landing page config (published version)
  */
-export async function updateTenant(tenantId: string, updates: Partial<Tenant>): Promise<Tenant> {
-  console.log('[DBG][tenantRepository] Updating tenant:', tenantId);
-
-  // Build update expression dynamically
-  const updateParts: string[] = [];
-  const exprAttrNames: Record<string, string> = {};
-  const exprAttrValues: Record<string, unknown> = {};
-
-  let index = 0;
-  for (const [key, value] of Object.entries(updates)) {
-    // Skip immutable fields and domain-related fields (use addDomain/removeDomain)
-    if (
-      value !== undefined &&
-      !['id', 'PK', 'SK', 'primaryDomain', 'additionalDomains', 'expertId'].includes(key)
-    ) {
-      updateParts.push(`#k${index} = :v${index}`);
-      exprAttrNames[`#k${index}`] = key;
-      exprAttrValues[`:v${index}`] = value;
-      index++;
-    }
-  }
-
-  // Always update updatedAt
-  updateParts.push('#updatedAt = :updatedAt');
-  exprAttrNames['#updatedAt'] = 'updatedAt';
-  exprAttrValues[':updatedAt'] = new Date().toISOString();
-
-  const result = await docClient.send(
-    new UpdateCommand({
-      TableName: Tables.CORE,
-      Key: {
-        PK: EntityType.TENANT,
-        SK: tenantId,
-      },
-      UpdateExpression: `SET ${updateParts.join(', ')}`,
-      ExpressionAttributeNames: exprAttrNames,
-      ExpressionAttributeValues: exprAttrValues,
-      ReturnValues: 'ALL_NEW',
-    })
-  );
-
-  console.log('[DBG][tenantRepository] Updated tenant:', tenantId);
-  return toTenant(result.Attributes as DynamoDBTenantItem);
+export async function updateLandingPage(
+  tenantId: string,
+  landingPage: Tenant['customLandingPage']
+): Promise<Tenant> {
+  console.log('[DBG][tenantRepository] Updating landing page:', tenantId);
+  return updateTenant(tenantId, { customLandingPage: landingPage });
 }
 
 /**
- * Delete tenant and all domain references
+ * Update draft landing page config
+ * Draft changes are visible only on preview.myyoga.guru until published
  */
-export async function deleteTenant(tenantId: string): Promise<void> {
-  console.log('[DBG][tenantRepository] Deleting tenant:', tenantId);
+export async function updateDraftLandingPage(
+  tenantId: string,
+  draftLandingPage: Tenant['draftLandingPage']
+): Promise<Tenant> {
+  console.log('[DBG][tenantRepository] Updating draft landing page:', tenantId);
+  return updateTenant(tenantId, { draftLandingPage });
+}
 
-  // Get tenant first to find all domains
+/**
+ * Publish landing page
+ * Copies draftLandingPage to customLandingPage and sets isLandingPagePublished to true
+ */
+export async function publishLandingPage(tenantId: string): Promise<Tenant> {
+  console.log('[DBG][tenantRepository] Publishing landing page:', tenantId);
+
+  // Get current tenant to access draft
   const tenant = await getTenantById(tenantId);
   if (!tenant) {
-    console.log('[DBG][tenantRepository] Tenant not found, nothing to delete');
-    return;
+    throw new Error('Tenant not found');
   }
 
-  // Collect all domains
-  const allDomains = [tenant.primaryDomain, ...(tenant.additionalDomains || [])];
+  // If no draft exists, use the current customLandingPage (or empty)
+  const landingPageToPublish = tenant.draftLandingPage || tenant.customLandingPage || {};
 
-  // Create delete requests for all domain references
-  const deleteRequests = allDomains.map(domain => ({
-    DeleteRequest: {
-      Key: {
-        PK: CorePK.TENANT_DOMAIN(domain),
-        SK: domain,
-      },
-    },
-  }));
-
-  // Add tenant delete request
-  deleteRequests.push({
-    DeleteRequest: {
-      Key: {
-        PK: EntityType.TENANT,
-        SK: tenantId,
-      },
-    },
+  return updateTenant(tenantId, {
+    customLandingPage: landingPageToPublish,
+    isLandingPagePublished: true,
   });
-
-  // Batch delete
-  for (let i = 0; i < deleteRequests.length; i += 25) {
-    const batch = deleteRequests.slice(i, i + 25);
-    await docClient.send(
-      new BatchWriteCommand({
-        RequestItems: {
-          [Tables.CORE]: batch,
-        },
-      })
-    );
-  }
-
-  console.log('[DBG][tenantRepository] Deleted tenant and', allDomains.length, 'domain references');
 }
 
 /**
- * Get tenants featured on platform
+ * Discard draft landing page changes
+ * Copies customLandingPage (published) to draftLandingPage (draft)
+ */
+export async function discardDraftLandingPage(tenantId: string): Promise<Tenant> {
+  console.log('[DBG][tenantRepository] Discarding draft landing page:', tenantId);
+
+  // Get current tenant to access published version
+  const tenant = await getTenantById(tenantId);
+  if (!tenant) {
+    throw new Error('Tenant not found');
+  }
+
+  // Copy published version to draft
+  return updateTenant(tenantId, {
+    draftLandingPage: tenant.customLandingPage || {},
+  });
+}
+
+// ===================================================================
+// STRIPE CONNECT OPERATIONS
+// ===================================================================
+
+/**
+ * Update Stripe Connect details
+ */
+export async function updateStripeConnect(
+  tenantId: string,
+  stripeConnect: Partial<StripeConnectDetails>
+): Promise<Tenant> {
+  console.log('[DBG][tenantRepository] Updating Stripe Connect for tenant:', tenantId);
+
+  const existing = await getTenantById(tenantId);
+  if (!existing) {
+    throw new Error('Tenant not found');
+  }
+
+  // Merge with existing stripeConnect data
+  const updatedConnect: StripeConnectDetails = {
+    ...(existing.stripeConnect as StripeConnectDetails),
+    ...stripeConnect,
+    lastUpdatedAt: new Date().toISOString(),
+  } as StripeConnectDetails;
+
+  return updateTenant(tenantId, { stripeConnect: updatedConnect });
+}
+
+/**
+ * Check if tenant has active Stripe Connect
+ */
+export async function hasActiveStripeConnect(tenantId: string): Promise<boolean> {
+  const tenant = await getTenantById(tenantId);
+  return (
+    tenant?.stripeConnect?.status === 'active' &&
+    tenant?.stripeConnect?.chargesEnabled === true &&
+    tenant?.stripeConnect?.payoutsEnabled === true
+  );
+}
+
+// ===================================================================
+// STATS & FEATURED OPERATIONS
+// ===================================================================
+
+/**
+ * Update tenant statistics (totalCourses, totalStudents)
+ */
+export async function updateTenantStats(
+  tenantId: string,
+  stats: { totalCourses?: number; totalStudents?: number }
+): Promise<Tenant> {
+  console.log('[DBG][tenantRepository] Updating tenant stats:', tenantId, stats);
+
+  const updates: Partial<Tenant> = {};
+  if (stats.totalCourses !== undefined) updates.totalCourses = stats.totalCourses;
+  if (stats.totalStudents !== undefined) updates.totalStudents = stats.totalStudents;
+
+  return updateTenant(tenantId, updates);
+}
+
+/**
+ * Set tenant as featured
+ */
+export async function setFeatured(tenantId: string, featured: boolean): Promise<Tenant> {
+  console.log('[DBG][tenantRepository] Setting tenant featured:', tenantId, featured);
+  return updateTenant(tenantId, { featured });
+}
+
+/**
+ * Get featured tenants
  */
 export async function getFeaturedTenants(): Promise<Tenant[]> {
   console.log('[DBG][tenantRepository] Getting featured tenants');
@@ -457,14 +639,10 @@ export async function getFeaturedTenants(): Promise<Tenant[]> {
     new QueryCommand({
       TableName: Tables.CORE,
       KeyConditionExpression: 'PK = :pk',
-      FilterExpression: 'featuredOnPlatform = :featured AND #status = :status',
-      ExpressionAttributeNames: {
-        '#status': 'status',
-      },
+      FilterExpression: 'featured = :featured',
       ExpressionAttributeValues: {
         ':pk': EntityType.TENANT,
         ':featured': true,
-        ':status': 'active',
       },
     })
   );
@@ -473,3 +651,25 @@ export async function getFeaturedTenants(): Promise<Tenant[]> {
   console.log('[DBG][tenantRepository] Found', tenants.length, 'featured tenants');
   return tenants;
 }
+
+// ===================================================================
+// BACKWARD COMPATIBILITY ALIASES (Expert → Tenant)
+// These allow existing code using "Expert" terminology to work
+// ===================================================================
+
+// Alias types for backward compatibility
+export type { Tenant as Expert };
+export type CreateExpertInput = CreateTenantInput;
+
+// Function aliases
+export const getExpertById = getTenantById;
+export const getAllExperts = getAllTenants;
+export const getExpertByUserId = getTenantByUserId;
+export const createExpert = createTenant;
+export const updateExpert = updateTenant;
+export const deleteExpert = deleteTenant;
+export const updateExpertStats = updateTenantStats;
+export const getFeaturedExperts = getFeaturedTenants;
+
+// Legacy alias: getTenantByExpertId is now just getTenantById (since tenant ID = expert ID)
+export const getTenantByExpertId = getTenantById;
