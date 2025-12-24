@@ -372,6 +372,8 @@ export const config = {
   matcher: [
     // Root path (for domain redirects)
     '/',
+    // Single-segment paths for preview domain (e.g., /admin, /kavitha)
+    '/:path',
     // Auth routes
     '/auth/:path*',
     // Protected app routes
@@ -379,8 +381,8 @@ export const config = {
     '/srv/:path*',
     // API routes (need session for authentication)
     '/api/:path*',
-    // Protected API routes
-    '/data/app/:path*',
+    // All data API routes (including /data/experts for preview domain)
+    '/data/:path*',
     // Expert routes (for domain isolation)
     '/experts/:path*',
     '/courses/:path*',
