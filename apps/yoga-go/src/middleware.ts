@@ -103,8 +103,12 @@ export default async function middleware(request: NextRequest) {
   if (isPreview) {
     console.log('[DBG][middleware] Preview domain detected');
 
-    // Allow Next.js internals
-    if (pathname.startsWith('/_next') || pathname.startsWith('/api')) {
+    // Allow Next.js internals and API routes
+    if (
+      pathname.startsWith('/_next') ||
+      pathname.startsWith('/api') ||
+      pathname.startsWith('/data')
+    ) {
       return NextResponse.next();
     }
 
