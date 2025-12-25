@@ -399,21 +399,31 @@ async function processRecord(record: DynamoDBRecord): Promise<void> {
     return;
   }
 
+  // Extract email and name from profile (they're nested, not top-level)
+  const profile = item.profile as Record<string, unknown> | undefined;
+  const email = profile?.email as string | undefined;
+  const name = profile?.name as string | undefined;
+
+  // signupExperts is an array, get first element
+  const signupExperts = item.signupExperts as string[] | undefined;
+  const signupExpertId = signupExperts?.[0];
+
   console.log(`[user-welcome-stream] Processing new USER record:`, {
     id: item.id,
-    email: item.email,
+    email,
+    name,
     role: item.role,
     expertProfile: item.expertProfile,
-    signupExpertId: item.signupExpertId,
+    signupExpertId,
   });
 
   const user: UserRecord = {
     id: item.id || item.SK,
-    email: item.email,
-    name: item.name,
+    email: email || "",
+    name,
     role: item.role,
     expertProfile: item.expertProfile,
-    signupExpertId: item.signupExpertId,
+    signupExpertId,
     createdAt: item.createdAt,
   };
 

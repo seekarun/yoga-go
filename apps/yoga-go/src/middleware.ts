@@ -60,10 +60,12 @@ export default async function middleware(request: NextRequest) {
 
     const response = NextResponse.redirect(redirectUrl.toString());
 
-    // Clear the cookie
+    // Clear the cookie - must match domain used when setting
+    const isProduction = !hostname.includes('localhost');
     response.cookies.set('post-logout-redirect', '', {
       path: '/',
       maxAge: 0,
+      ...(isProduction && { domain: '.myyoga.guru' }),
     });
 
     return response;
@@ -325,7 +327,9 @@ export default async function middleware(request: NextRequest) {
 
     // Protected routes: Check authentication
     if (
+      pathname === '/app' ||
       pathname.startsWith('/app/') ||
+      pathname === '/srv' ||
       pathname.startsWith('/srv/') ||
       pathname.startsWith('/data/app/')
     ) {
@@ -361,7 +365,12 @@ export default async function middleware(request: NextRequest) {
   if (pathname.startsWith('/data/app/')) {
     console.log('[DBG][middleware] API route - letting through for route handler auth');
     return addTenantHeaders(NextResponse.next());
-  } else if (pathname.startsWith('/app/') || pathname.startsWith('/srv/')) {
+  } else if (
+    pathname === '/app' ||
+    pathname.startsWith('/app/') ||
+    pathname === '/srv' ||
+    pathname.startsWith('/srv/')
+  ) {
     // Page routes: Redirect to login
     if (!hasSession) {
       console.log('[DBG][middleware] No session cookie, redirecting to signin');

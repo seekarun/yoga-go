@@ -124,9 +124,8 @@ export default function Header() {
   }, [isUserMenuOpen]);
 
   const handleLogout = () => {
-    // Redirect experts to /srv after logout, others to landing page
-    const returnTo = isExpert ? '/srv' : '/';
-    logout(returnTo);
+    // After logout, redirect to landing page (not /srv since that requires auth)
+    logout('/');
     setIsUserMenuOpen(false);
   };
 
@@ -230,7 +229,14 @@ export default function Header() {
         )}
 
         {/* Auth Button */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', paddingRight: '20px' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            paddingRight: expertMode.isExpertMode ? '12px' : '20px',
+          }}
+        >
           {isAuthenticated ? (
             <div ref={userMenuRef} style={{ position: 'relative' }}>
               <button
