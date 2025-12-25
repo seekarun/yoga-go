@@ -1,21 +1,24 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useExpert } from '@/contexts/ExpertContext';
+import { SurveyListPage as ModernSurveyListPage } from '@/templates/modern/pages';
+import { SurveyListPage as ClassicSurveyListPage } from '@/templates/classic/pages';
 import type { Survey } from '@/types';
 
 export default function SurveysListPage() {
-  const params = useParams();
   const router = useRouter();
-  const expertId = params.expertId as string;
+  const { expert, expertId, template, loading: expertLoading, error: expertError } = useExpert();
 
   const [surveys, setSurveys] = useState<Survey[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchSurveys = async () => {
+      if (!expertId) return;
+
       try {
         console.log('[DBG][surveys-list-page] Fetching surveys for expert:', expertId);
         const response = await fetch(`/data/experts/${expertId}/survey`);
@@ -29,92 +32,55 @@ export default function SurveysListPage() {
           if (data.data?.length === 1) {
             router.replace(`/survey/${data.data[0].id}`);
           }
-        } else {
-          setError(data.error || 'Failed to load surveys');
-          console.error('[DBG][surveys-list-page] Error loading surveys:', data.error);
         }
-      } catch (err) {
-        console.error('[DBG][surveys-list-page] Error fetching surveys:', err);
-        setError('Failed to load surveys');
+      } catch (error) {
+        console.error('[DBG][surveys-list-page] Error fetching surveys:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    if (expertId) {
-      fetchSurveys();
-    }
+    fetchSurveys();
   }, [expertId, router]);
 
-  if (loading) {
+  const handleSurveyClick = (surveyId: string) => {
+    if (surveyId) {
+      router.push(`/survey/${surveyId}`);
+    } else {
+      router.push('/');
+    }
+  };
+
+  // Show loading while expert or surveys are loading
+  if (expertLoading || loading) {
+    return null; // Layout shows loading state
+  }
+
+  // Expert not found
+  if (expertError || !expert) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-gray-600">Loading surveys...</div>
+      <div
+        style={{
+          paddingTop: '64px',
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: '#f5f5f5',
+        }}
+      >
+        <div style={{ textAlign: 'center' }}>
+          <h2 style={{ fontSize: '24px', marginBottom: '16px' }}>Expert not found</h2>
+          <Link href="/" style={{ color: 'var(--brand-500)', textDecoration: 'underline' }}>
+            Back to home
+          </Link>
+        </div>
       </div>
     );
   }
 
-  if (error || surveys.length === 0) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <h2 className="text-2xl mb-4 text-gray-700">
-            {error || 'No surveys available at this time'}
-          </h2>
-          <button
-            onClick={() => router.push('/')}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"
-          >
-            Go Back
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // Select the appropriate template component
+  const SurveyListPage = template === 'modern' ? ModernSurveyListPage : ClassicSurveyListPage;
 
-  return (
-    <div className="min-h-screen bg-gray-50 py-10 px-5">
-      <div className="max-w-3xl mx-auto">
-        <div className="mb-8">
-          <button
-            onClick={() => router.push('/')}
-            className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-            Back
-          </button>
-        </div>
-
-        <h1 className="text-3xl font-bold mb-6 text-gray-900">Available Surveys</h1>
-        <p className="text-gray-600 mb-8">
-          Help us improve by completing one of our surveys below.
-        </p>
-
-        <div className="space-y-4">
-          {surveys.map(survey => (
-            <Link
-              key={survey.id}
-              href={`/survey/${survey.id}`}
-              className="block bg-white rounded-xl p-6 shadow hover:shadow-md transition-shadow border border-gray-200"
-            >
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">{survey.title}</h2>
-              {survey.description && (
-                <p className="text-gray-600 mb-3 line-clamp-2">{survey.description}</p>
-              )}
-              <div className="flex items-center text-sm text-gray-500">
-                <span>{survey.questions?.length || 0} questions</span>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+  return <SurveyListPage surveys={surveys} expert={expert} onSurveyClick={handleSurveyClick} />;
 }

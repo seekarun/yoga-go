@@ -32,13 +32,6 @@ export default function EditExpertPage() {
     title: '',
     bio: '',
     avatar: '',
-    rating: '0',
-    totalCourses: '0',
-    totalStudents: '0',
-    specializations: '',
-    featured: false,
-    certifications: '',
-    experience: '',
     promoVideo: '',
     promoVideoCloudflareId: '',
     promoVideoStatus: '' as 'uploading' | 'processing' | 'ready' | 'error' | '',
@@ -116,13 +109,6 @@ export default function EditExpertPage() {
         title: expert.title || '',
         bio: expert.bio || '',
         avatar: expert.avatar || '',
-        rating: expert.rating?.toString() || '0',
-        totalCourses: expert.totalCourses?.toString() || '0',
-        totalStudents: expert.totalStudents?.toString() || '0',
-        specializations: expert.specializations?.join(', ') || '',
-        featured: expert.featured || false,
-        certifications: expert.certifications?.join(', ') || '',
-        experience: expert.experience || '',
         promoVideo: expert.promoVideo || '',
         promoVideoCloudflareId: expert.promoVideoCloudflareId || '',
         promoVideoStatus: expert.promoVideoStatus || '',
@@ -287,19 +273,6 @@ export default function EditExpertPage() {
         title: formData.title.trim(),
         bio: formData.bio.trim(),
         avatar: formData.avatar,
-        rating: parseFloat(formData.rating) || 0,
-        totalCourses: parseInt(formData.totalCourses) || 0,
-        totalStudents: parseInt(formData.totalStudents) || 0,
-        specializations: formData.specializations
-          .split(',')
-          .map(s => s.trim())
-          .filter(Boolean),
-        featured: formData.featured,
-        certifications: formData.certifications
-          .split(',')
-          .map(c => c.trim())
-          .filter(Boolean),
-        experience: formData.experience.trim(),
         promoVideo: formData.promoVideo.trim() || undefined,
         promoVideoCloudflareId: formData.promoVideoCloudflareId || undefined,
         promoVideoStatus: formData.promoVideoStatus || undefined,
@@ -447,134 +420,6 @@ export default function EditExpertPage() {
                       <p className="text-sm text-green-800">✓ Avatar updated successfully</p>
                     </div>
                   )}
-                </div>
-              </div>
-            </div>
-
-            {/* Professional Details */}
-            <div className="border-b border-gray-200 pb-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Professional Details</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                  <label htmlFor="rating" className="block text-sm font-medium text-gray-700 mb-2">
-                    Rating (0-5)
-                  </label>
-                  <input
-                    type="number"
-                    id="rating"
-                    name="rating"
-                    min="0"
-                    max="5"
-                    step="0.1"
-                    value={formData.rating}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="totalCourses"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    Total Courses
-                  </label>
-                  <input
-                    type="number"
-                    id="totalCourses"
-                    name="totalCourses"
-                    min="0"
-                    value={formData.totalCourses}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="totalStudents"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    Total Students
-                  </label>
-                  <input
-                    type="number"
-                    id="totalStudents"
-                    name="totalStudents"
-                    min="0"
-                    value={formData.totalStudents}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div className="md:col-span-3">
-                  <label
-                    htmlFor="specializations"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    Specializations
-                  </label>
-                  <input
-                    type="text"
-                    id="specializations"
-                    name="specializations"
-                    value={formData.specializations}
-                    onChange={handleChange}
-                    placeholder="Vinyasa Flow, Power Yoga, Meditation (comma-separated)"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">Separate multiple items with commas</p>
-                </div>
-
-                <div className="md:col-span-3">
-                  <label
-                    htmlFor="certifications"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    Certifications
-                  </label>
-                  <input
-                    type="text"
-                    id="certifications"
-                    name="certifications"
-                    value={formData.certifications}
-                    onChange={handleChange}
-                    placeholder="RYT-500, E-RYT 200 (comma-separated)"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">Separate multiple items with commas</p>
-                </div>
-
-                <div className="md:col-span-3">
-                  <label
-                    htmlFor="experience"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    Years of Experience
-                  </label>
-                  <input
-                    type="text"
-                    id="experience"
-                    name="experience"
-                    value={formData.experience}
-                    onChange={handleChange}
-                    placeholder="e.g., 15+ years"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div className="md:col-span-3">
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      name="featured"
-                      checked={formData.featured}
-                      onChange={handleChange}
-                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                    />
-                    <span className="ml-2 text-sm font-medium text-gray-700">Featured Expert</span>
-                  </label>
                 </div>
               </div>
             </div>

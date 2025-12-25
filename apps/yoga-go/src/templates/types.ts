@@ -1,4 +1,4 @@
-import type { Course, Webinar, BlogPost, Expert, ColorPalette, Lesson } from '@/types';
+import type { Course, Webinar, BlogPost, Expert, ColorPalette, Lesson, Survey } from '@/types';
 
 // ===== Section Types =====
 export type SectionType =
@@ -216,4 +216,32 @@ export interface BlogListPageProps {
 export interface BlogPostPageProps {
   post: BlogPost;
   expert: Expert;
+}
+
+// Survey List Page Props
+export interface SurveyListPageProps {
+  surveys: Survey[];
+  expert: Expert;
+  onSurveyClick: (surveyId: string) => void;
+}
+
+// Survey Page Props
+export interface SurveyPageProps {
+  survey: Survey;
+  expert: Expert;
+  onSubmit: (contactInfo: Record<string, string>, answers: Record<string, string>) => Promise<void>;
+  onCancel: () => void;
+  submitting: boolean;
+  submitted: boolean;
+  error: string | null;
+}
+
+// Webinar List Page Props
+export interface WebinarListPageProps {
+  webinars: Webinar[];
+  expert: Expert;
+  registeredWebinarIds: string[];
+  isAuthenticated: boolean;
+  filter: 'upcoming' | 'all';
+  onFilterChange: (filter: 'upcoming' | 'all') => void;
 }

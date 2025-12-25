@@ -1,68 +1,69 @@
 NOTES
 
 Misc
-[ ] FEAT: add an about me page. should it be a blog post?
 [ ] SUBDOMAIN: on expert page the logo flickers in header
 [ ] SUBDOMAIN: on expert page login yoga girl flickers in card
-[ ] UI: Profile icon is always black. no profile pic.
+[ ] MAYBE: use formatting option for paragraphs when editing landing page.
+[ ] FIX: fix rating display. (don't show dummy data)
+[ ] FIX: expert commenting on other expert videos shows as EXPERT!!! fix.
+[ ] FIX: in expert dashboard, on save, it should take user back to the same section.
+[ ] FIX: total students not showing the correct number
+[ ] FIX: fix google meet and zoom integration (worked for me)
+[ ] FIX: formatting in blog post editor
+[ ] ONBOARDING: change currency based on location
+[ ] LP: switching templates should work
 [ ] LP: redo the value proposition section in landing classic template
 [ ] LP: what about photo credit in actual website
-[ ] UX: ability to position image (Eg. in hero image)
+[ ] LP: make sure only shown sections in draft make it to published version
+[ ] LP: lock hero and footer sections.
+[ ] UI: For learner - show enroll button in home page
+[ ] UI: Profile icon is always black. no profile pic.
+[ ] UI: change unsplash text to be generic. earch for beautiful, free photos to use as your hero background.
+[ ] UI: add message in dashboard that dns changes takes time.
+[ ] UI: tell you they can set up their own domain after - all settings - change your preference anytime in settings.
+[ ] UI: disable the next button until the expertID is validated.
+[ ] TECH:handle 404 elegantly
 [ ] TECH: remove excess fields in the user data (like membership)
+[ ] TECH: welcome email sent from DB trigger
+[ ] TECH: if user does not verify account in 10 mins, delete from user pool
+[ ] TECH: use the lambda email trigger to collect signup stats. consider triggers for other tables.
+[ ] TECH: review currency conversion
+[ ] TECH: review all delete endpoints that admin has access to, security, remove any unnecessary
+[ ] TECH: review code for all fallbacks.
+[ ] TECH: security review - all urls, all edits etc..
+[ ] GTM: set up launch.myyoga.guru
+[ ] GTM: expert support - can we get a successful yoga teacher?
+[ ] GTM: country specific incremental launches
+[ ] FEAT: add an about me page. should it be a blog post?
+[x] FEAT: better landing page templates set up, expandable
+[ ] FEAT: privacy and other footer links handled for platform 
+[ ] FEAT: privacy and other footer links handled for individuals
+[ ] FEAT: add calendar.
+[ ] FEAT: what if expert already has a domain email, and want to use that?
+[ ] FEAT: user testimonials section
+[ ] FEAT: add payment gateway when setting up course (or some other time after sign up), confirm subscription before next 
+[ ] FEAT: gifting option
+[ ] FEAT: discounts - expert can create discount codes
+[ ] UX: expert should be able to see discussion in admin page.
+[ ] UX: ability to position image (Eg. in hero image)
 [ ] UX: set up stipe account alert - check if course is free
 [ ] UX: what if you click "create course" when video is uploading 
 [ ] UX: does it work on safari? /srv on login does not take you to dashboard
-[ ] TECH: welcome email sent from DB trigger
-[ ] UI: change unsplash text to be generic. earch for beautiful, free photos to use as your hero background.
 [ ] UX: enable/disable when editing a section in landing page edit
-[ ] LP: make sure only shown sections in draft make it to published version
-[ ] FEAT: privacy and other footer links handled for platform 
-[ ] FEAT: privacy and other footer links handled for individuals
-[ ] UI: For learner - show enroll button in home page
-[ ] FIX: fix rating display. (don't show dummy data)
-[ ] FIX: expert commenting on other expert videos shows as EXPERT!!! fix.
-[ ] UX: expert should be able to see discussion in admin page.
-[ ] FIX: total students not showing the correct number
-[ ] UI: add message in dashboard that dns changes takes time.
 [ ] UX: setup custom domain email (Remove this section if domain set up already)
 [ ] UX: options to raise ticket to add custom domain.
-[ ] FEAT: add calendar.
-[ ] UI: tell you they can set up their own domain after - all settings - you can change your preference anytime in settings.
-[ ] FEAT: what if expert already has a domain email, and want to use that?
-[ ] GTM: set up launch.myyoga.guru
 [ ] UX: how do we call hero section (etc.) to make this UI more understandable for newbies?
-[ ] FIX: in expert dashboard, on save, it should take user back to the same section.
-[ ] MAYBE: use formatting option for paragraphs when editing landing page.
-[ ] LP: lock hero and footer sections.
 [ ] UX: link zoom setting from live session section
+
+
+[ ] TECH: cloudflare orange cloud impl
+[ ] TECH: consider cloudflare email?
 [ ] FEAT: marketing/ads
-[ ] GTM: expert support - can we get a successful yoga teacher?
-[ ] TECH: if user does not verify account in 10 mins, delete from user pool
-[ ] TECH: use the lambda email trigger to collect signup stats. consider triggers for other tables.
-[ ] FEAT: user testimonials section
-[ ] GTM: country specific incremental launches
-[ ] UI: disable the next button until the expertID is validated.
 [ ] FEAT: buy domain
 [ ] FEAT: add language attribute for course
-[ ] LP: switching templates should work
-[ ] FEAT: better landing page templates set up, expandable
-[ ] TECH:handle 404 elegantly
-[ ] ONBOARDING: change currency based on location
-[ ] FEAT: add payment gateway when setting up course (or some other time after sign up) - confirm subscription before proceeding
-[ ] TECH: review currency conversion
-[ ] TECH: review all delete endpoints that admin has access to, security, remove any unnecessary
+[ ] FEAT: localisation
+[ ] FEAT: ability to sell digital assets.
 
-[ ] http to https redirect - check if /etc/hosts still active
-[ ] custom domain: prefix with https://
-[ ] fix google meet and zoom integration (worked for me)
-[ ] cloudflare orange cloud impl
-[ ] consider cloudflare email?
-[ ] gifting option
-[ ] discounts - expert can create discount codes
-[ ] localisation
-[ ] lock out certain subdomains, like admin, support, etc.
-[ ] review code for all fallbacks.
-[ ] ability to sell digital assets.
 
 
 I support expecting mothers through gentle, mindful prenatal yoga designed to nurture both body and baby. My sessions focus on safe movement, breath awareness, and relaxation techniques that ease common pregnancy discomforts, build strength and confidence, and create a deeper connection with your growing baby. Each practice is adaptable, supportive, and centred around your changing needs throughout pregnancy.
@@ -78,6 +79,7 @@ Today, I bring together years of dedicated practice, ongoing education, and live
 DONE
 ====================================================================================================================================================================================================
 
+[x] lock out certain subdomains, like admin, support, etc.
 [x] remove logo in expert landing page
 [x] payments not showing up in expert dashboard.
 [x] move emails to separate table.

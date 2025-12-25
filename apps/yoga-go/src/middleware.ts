@@ -346,6 +346,15 @@ export default async function middleware(request: NextRequest) {
       return addTenantHeaders(NextResponse.rewrite(url));
     }
 
+    // Webinars paths: Rewrite to /experts/{expertId}/webinars/* for this expert
+    if (pathname.startsWith('/webinars') || pathname === '/webinars') {
+      const rewritePath = `/experts/${expertId}${pathname}`;
+      console.log(`[DBG][middleware] Rewriting webinars path to ${rewritePath}`);
+      const url = request.nextUrl.clone();
+      url.pathname = rewritePath;
+      return addTenantHeaders(NextResponse.rewrite(url));
+    }
+
     // Protected routes: Check authentication
     if (
       pathname === '/app' ||
@@ -422,9 +431,10 @@ export const config = {
     // Expert routes (for domain isolation)
     '/experts/:path*',
     '/courses/:path*',
-    // Blog and survey routes (for subdomain rewriting)
+    // Blog, survey, and webinars routes (for subdomain rewriting)
     '/blog/:path*',
     '/survey/:path*',
+    '/webinars/:path*',
     /*
      * Match all request paths except:
      * - _next/static (static files)

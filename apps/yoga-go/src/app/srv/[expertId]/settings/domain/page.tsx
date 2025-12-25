@@ -1778,39 +1778,6 @@ export default function DomainSettingsPage() {
                 </div>
               )}
 
-              {/* Platform Visibility */}
-              <div
-                style={{
-                  background: '#fff',
-                  borderRadius: '12px',
-                  padding: '24px',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                  marginBottom: '24px',
-                }}
-              >
-                <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
-                  Platform Visibility
-                </h2>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <label
-                    style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={tenant.featuredOnPlatform}
-                      onChange={handleToggleFeatured}
-                      disabled={saving}
-                      style={{ width: '18px', height: '18px' }}
-                    />
-                    <span>Show my profile on myyoga.guru platform</span>
-                  </label>
-                </div>
-                <p style={{ color: '#666', fontSize: '13px', marginTop: '8px' }}>
-                  When enabled, your profile and courses will be visible to all platform users.
-                  Disable this if you want to operate independently with only your custom domain.
-                </p>
-              </div>
-
               {/* Custom Branding - Only show for custom domains */}
               {getCustomDomain() && (
                 <div
