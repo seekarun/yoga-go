@@ -7,7 +7,6 @@ Misc
 [ ] UI: Profile icon is always black. no profile pic.
 [ ] LP: redo the value proposition section in landing classic template
 [ ] LP: what about photo credit in actual website
-[x] remove logo in expert landing page
 [ ] UX: ability to position image (Eg. in hero image)
 [ ] TECH: remove excess fields in the user data (like membership)
 [ ] UX: set up stipe account alert - check if course is free
@@ -50,6 +49,8 @@ Misc
 [ ] TECH:handle 404 elegantly
 [ ] ONBOARDING: change currency based on location
 [ ] FEAT: add payment gateway when setting up course (or some other time after sign up) - confirm subscription before proceeding
+[ ] TECH: review currency conversion
+[ ] TECH: review all delete endpoints that admin has access to, security, remove any unnecessary
 
 [ ] http to https redirect - check if /etc/hosts still active
 [ ] custom domain: prefix with https://
@@ -77,6 +78,7 @@ Today, I bring together years of dedicated practice, ongoing education, and live
 DONE
 ====================================================================================================================================================================================================
 
+[x] remove logo in expert landing page
 [x] payments not showing up in expert dashboard.
 [x] move emails to separate table.
 [x] link to create courses/surveys/live sessions

@@ -156,12 +156,13 @@ export default function Header() {
       }}
     >
       <div
-        className="container"
+        className={expertMode.isExpertMode ? '' : 'container'}
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           height: '64px',
+          width: '100%',
         }}
       >
         {/* Logo - show expert's logo/name on subdomains, MYG logo otherwise */}

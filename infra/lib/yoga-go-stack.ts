@@ -421,19 +421,31 @@ The MyYoga.Guru Team`,
     );
 
     // Add DynamoDB Stream as event source
-    // Filter to only process USER records (PK starts with "USER")
+    // Filter to process USER and TENANT INSERT events
+    // - USER: send learner welcome (skip if expert role)
+    // - TENANT: send expert welcome with subdomain info
     userWelcomeStreamLambda.addEventSource(
       new lambdaEventSources.DynamoEventSource(coreTable, {
         startingPosition: lambda.StartingPosition.LATEST,
         batchSize: 10,
         retryAttempts: 2,
-        // Only trigger on INSERT events
+        // Multiple filters are OR'd together
         filters: [
+          // USER records
           lambda.FilterCriteria.filter({
             eventName: lambda.FilterRule.isEqual("INSERT"),
             dynamodb: {
               Keys: {
-                PK: { S: lambda.FilterRule.beginsWith("USER") },
+                PK: { S: lambda.FilterRule.isEqual("USER") },
+              },
+            },
+          }),
+          // TENANT records
+          lambda.FilterCriteria.filter({
+            eventName: lambda.FilterRule.isEqual("INSERT"),
+            dynamodb: {
+              Keys: {
+                PK: { S: lambda.FilterRule.isEqual("TENANT") },
               },
             },
           }),

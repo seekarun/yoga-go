@@ -350,6 +350,8 @@ export default function ExpertDetailPage() {
   const heroCtaText = customHero?.ctaText || 'Explore Courses';
   const heroImage = customHero?.heroImage;
   const heroAlignment = customHero?.alignment || 'center';
+  const heroAttribution = customHero?.heroImageAttribution;
+  const template = expert.customLandingPage?.template || 'classic';
 
   console.log('[DBG][expert-detail] Hero display values:', {
     heroHeadline,
@@ -357,6 +359,7 @@ export default function ExpertDetailPage() {
     heroCtaText,
     heroImage,
     heroAlignment,
+    template,
   });
 
   // Get section order and disabled sections from config
@@ -381,116 +384,576 @@ export default function ExpertDetailPage() {
     enabledSections,
   });
 
-  // Section render functions - each returns JSX for that section type
-  const renderHeroSection = () => (
-    <>
-      {/* Desktop Hero Section */}
-      <section
-        className="hero-section-desktop"
+  // Unsplash attribution component
+  const UnsplashAttribution = ({
+    attribution,
+  }: {
+    attribution: NonNullable<typeof heroAttribution>;
+  }) => {
+    if (!attribution) return null;
+    return (
+      <div
         style={{
-          minHeight: '600px',
-          paddingTop: '64px',
-          position: 'relative',
-          background: heroImage
-            ? `url(${heroImage})`
-            : 'linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%)',
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          overflow: 'hidden',
+          position: 'absolute',
+          bottom: '8px',
+          right: '12px',
+          zIndex: 20,
+          fontSize: '10px',
+          color: 'rgba(255,255,255,0.6)',
         }}
       >
-        {/* Gradient Overlay */}
-        <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            background: heroImage
-              ? 'rgba(0, 0, 0, 0.5)'
-              : 'radial-gradient(circle at 20% 50%, rgba(118, 75, 162, 0.2) 0%, transparent 50%)',
-            pointerEvents: 'none',
-          }}
-        />
+        Photo by{' '}
+        <a
+          href={attribution.photographerUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'underline' }}
+        >
+          {attribution.photographerName}
+        </a>{' '}
+        on{' '}
+        <a
+          href={attribution.unsplashUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'underline' }}
+        >
+          Unsplash
+        </a>
+      </div>
+    );
+  };
 
-        <div
-          className="container"
+  // Section render functions - each returns JSX for that section type
+  const renderHeroSection = () => {
+    // Modern template - Split layout with dark background
+    if (template === 'modern') {
+      return (
+        <>
+          {/* Desktop Modern Hero */}
+          <section
+            className="hero-section-desktop"
+            style={{
+              minHeight: '600px',
+              paddingTop: '64px',
+              background: '#0a0a0a',
+              position: 'relative',
+              overflow: 'hidden',
+            }}
+          >
+            {/* Decorative gradient blob */}
+            <div
+              style={{
+                position: 'absolute',
+                top: '-20%',
+                left: '-10%',
+                width: '50%',
+                height: '140%',
+                background:
+                  'radial-gradient(ellipse at center, color-mix(in srgb, var(--brand-500) 15%, transparent) 0%, transparent 70%)',
+                pointerEvents: 'none',
+              }}
+            />
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                minHeight: '600px',
+                maxWidth: '1200px',
+                margin: '0 auto',
+                position: 'relative',
+                zIndex: 1,
+              }}
+            >
+              {/* Left - Content */}
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                  padding: '60px 40px 60px 60px',
+                }}
+              >
+                {/* Small label */}
+                <div
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    marginBottom: '24px',
+                  }}
+                >
+                  <span
+                    style={{
+                      width: '40px',
+                      height: '2px',
+                      background: 'linear-gradient(90deg, var(--brand-500), var(--brand-600))',
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      letterSpacing: '0.1em',
+                      textTransform: 'uppercase',
+                      color: 'var(--brand-400)',
+                    }}
+                  >
+                    Welcome
+                  </span>
+                </div>
+
+                <h1
+                  style={{
+                    fontSize: '48px',
+                    fontWeight: '800',
+                    lineHeight: '1.1',
+                    marginBottom: '24px',
+                    color: '#fff',
+                    letterSpacing: '-0.03em',
+                    whiteSpace: 'pre-line',
+                  }}
+                >
+                  {heroHeadline}
+                </h1>
+
+                <p
+                  style={{
+                    fontSize: '18px',
+                    lineHeight: '1.7',
+                    color: 'rgba(255, 255, 255, 0.7)',
+                    marginBottom: '40px',
+                    maxWidth: '480px',
+                  }}
+                >
+                  {heroDescription}
+                </p>
+
+                {/* CTA Buttons */}
+                <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                  <a
+                    href={resolveCtaLink(customHero?.ctaLink)}
+                    style={{
+                      display: 'inline-block',
+                      padding: '16px 32px',
+                      background:
+                        'linear-gradient(135deg, var(--brand-500) 0%, var(--brand-600) 100%)',
+                      color: 'var(--brand-500-contrast)',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 20px color-mix(in srgb, var(--brand-500) 40%, transparent)',
+                      textDecoration: 'none',
+                    }}
+                  >
+                    {heroCtaText}
+                  </a>
+                </div>
+
+                {/* Stats */}
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: '40px',
+                    marginTop: '60px',
+                    paddingTop: '40px',
+                    borderTop: '1px solid rgba(255,255,255,0.1)',
+                  }}
+                >
+                  {[
+                    { value: `${expert.totalStudents || 0}+`, label: 'Students' },
+                    { value: `${expert.totalCourses || 0}+`, label: 'Courses' },
+                    { value: expert.rating?.toFixed(1) || '5.0', label: 'Rating' },
+                  ].map((stat, i) => (
+                    <div key={i}>
+                      <div
+                        style={{
+                          fontSize: '32px',
+                          fontWeight: '700',
+                          color: '#fff',
+                          marginBottom: '4px',
+                        }}
+                      >
+                        {stat.value}
+                      </div>
+                      <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>
+                        {stat.label}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Right - Image */}
+              <div
+                style={{
+                  position: 'relative',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '40px',
+                }}
+              >
+                {/* Decorative rings */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    width: '400px',
+                    height: '400px',
+                    border: '1px solid color-mix(in srgb, var(--brand-500) 20%, transparent)',
+                    borderRadius: '50%',
+                  }}
+                />
+                <div
+                  style={{
+                    position: 'absolute',
+                    width: '340px',
+                    height: '340px',
+                    border: '1px solid color-mix(in srgb, var(--brand-600) 15%, transparent)',
+                    borderRadius: '50%',
+                  }}
+                />
+
+                {/* Main image */}
+                <div
+                  style={{
+                    width: '320px',
+                    height: '400px',
+                    borderRadius: '200px',
+                    overflow: 'hidden',
+                    boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+                    background: heroImage
+                      ? `url(${heroImage}) center/cover`
+                      : 'linear-gradient(135deg, #374151 0%, #1f2937 100%)',
+                  }}
+                />
+              </div>
+            </div>
+
+            {heroAttribution && <UnsplashAttribution attribution={heroAttribution} />}
+          </section>
+
+          {/* Mobile Modern Hero */}
+          <section
+            className="hero-section-mobile"
+            style={{ display: 'none', paddingTop: '64px', background: '#0a0a0a' }}
+          >
+            {/* Hero Image */}
+            <div
+              style={{
+                width: '200px',
+                height: '250px',
+                margin: '40px auto 0',
+                borderRadius: '100px',
+                overflow: 'hidden',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+                background: heroImage
+                  ? `url(${heroImage}) center/cover`
+                  : 'linear-gradient(135deg, #374151 0%, #1f2937 100%)',
+              }}
+            />
+
+            {/* Content */}
+            <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+              <h1
+                style={{
+                  fontSize: '32px',
+                  fontWeight: '800',
+                  lineHeight: '1.2',
+                  marginBottom: '20px',
+                  color: '#fff',
+                  letterSpacing: '-0.02em',
+                  whiteSpace: 'pre-line',
+                }}
+              >
+                {heroHeadline}
+              </h1>
+
+              <p
+                style={{
+                  fontSize: '16px',
+                  lineHeight: '1.6',
+                  marginBottom: '32px',
+                  color: 'rgba(255, 255, 255, 0.7)',
+                }}
+              >
+                {heroDescription}
+              </p>
+
+              <a
+                href={resolveCtaLink(customHero?.ctaLink)}
+                style={{
+                  display: 'inline-block',
+                  padding: '14px 32px',
+                  background: 'linear-gradient(135deg, var(--brand-500) 0%, var(--brand-600) 100%)',
+                  color: 'var(--brand-500-contrast)',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  borderRadius: '8px',
+                  textDecoration: 'none',
+                }}
+              >
+                {heroCtaText}
+              </a>
+
+              {/* Stats */}
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  gap: '32px',
+                  marginTop: '40px',
+                  paddingTop: '24px',
+                  borderTop: '1px solid rgba(255,255,255,0.1)',
+                }}
+              >
+                {[
+                  { value: `${expert.totalStudents || 0}+`, label: 'Students' },
+                  { value: `${expert.totalCourses || 0}+`, label: 'Courses' },
+                ].map((stat, i) => (
+                  <div key={i}>
+                    <div style={{ fontSize: '24px', fontWeight: '700', color: '#fff' }}>
+                      {stat.value}
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>
+                      {stat.label}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        </>
+      );
+    }
+
+    // Classic template - Original centered layout (default)
+    return (
+      <>
+        {/* Desktop Hero Section */}
+        <section
+          className="hero-section-desktop"
           style={{
-            position: 'relative',
-            height: '100%',
             minHeight: '600px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems:
-              heroAlignment === 'left'
-                ? 'flex-start'
-                : heroAlignment === 'right'
-                  ? 'flex-end'
-                  : 'center',
-            justifyContent: 'center',
-            padding: '0 20px 80px 20px',
-            textAlign: heroAlignment === 'center' ? 'center' : heroAlignment,
+            paddingTop: '64px',
+            position: 'relative',
+            background: heroImage
+              ? `url(${heroImage})`
+              : 'linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            overflow: 'hidden',
           }}
         >
+          {/* Gradient Overlay */}
           <div
             style={{
-              zIndex: 10,
-              maxWidth: heroAlignment === 'center' ? '900px' : '600px',
-              width: heroAlignment === 'center' ? '100%' : '50%',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              background: heroImage
+                ? 'rgba(0, 0, 0, 0.5)'
+                : 'radial-gradient(circle at 20% 50%, color-mix(in srgb, var(--brand-500) 20%, transparent) 0%, transparent 50%)',
+              pointerEvents: 'none',
+            }}
+          />
+
+          <div
+            className="container"
+            style={{
+              position: 'relative',
+              height: '100%',
+              minHeight: '600px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems:
+                heroAlignment === 'left'
+                  ? 'flex-start'
+                  : heroAlignment === 'right'
+                    ? 'flex-end'
+                    : 'center',
+              justifyContent: 'center',
+              padding: '0 20px 80px 20px',
+              textAlign: heroAlignment === 'center' ? 'center' : heroAlignment,
+            }}
+          >
+            <div
+              style={{
+                zIndex: 10,
+                maxWidth: heroAlignment === 'center' ? '900px' : '600px',
+                width: heroAlignment === 'center' ? '100%' : '50%',
+              }}
+            >
+              <h1
+                style={{
+                  fontSize: '64px',
+                  fontWeight: '700',
+                  lineHeight: '1.1',
+                  marginBottom: '24px',
+                  color: '#fff',
+                  letterSpacing: '-0.02em',
+                  whiteSpace: 'pre-line',
+                }}
+              >
+                {customHero?.headline ? (
+                  heroHeadline
+                ) : (
+                  <>
+                    Transform Your
+                    <br />
+                    <span
+                      style={{
+                        background:
+                          'linear-gradient(135deg, var(--brand-400, #9ca3af) 0%, var(--brand-500, #6b7280) 100%)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        backgroundClip: 'text',
+                      }}
+                    >
+                      Practice
+                    </span>{' '}
+                    with {expert.name}
+                  </>
+                )}
+              </h1>
+
+              <p
+                style={{
+                  fontSize: '20px',
+                  lineHeight: '1.6',
+                  marginBottom: '40px',
+                  color: 'rgba(255, 255, 255, 0.85)',
+                }}
+              >
+                {heroDescription}
+              </p>
+
+              {/* CTA Button */}
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '16px',
+                  flexWrap: 'wrap',
+                  justifyContent: heroAlignment,
+                }}
+              >
+                <a
+                  href={resolveCtaLink(customHero?.ctaLink)}
+                  className="hero-cta-button"
+                  style={{
+                    display: 'inline-block',
+                    padding: '16px 48px',
+                    background: 'var(--brand-500, #fcd34d)',
+                    color: 'var(--brand-500-contrast, #1f2937)',
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    borderRadius: '8px',
+                    textDecoration: 'none',
+                    transition: 'transform 0.2s, background 0.2s',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.background = 'var(--brand-600, #fbbf24)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.background = 'var(--brand-500, #fcd34d)';
+                  }}
+                >
+                  {heroCtaText}
+                </a>
+              </div>
+            </div>
+          </div>
+
+          {/* Decorative Elements */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              width: '100%',
+              height: '100px',
+              background: 'linear-gradient(to top, rgba(0,0,0,0.3), transparent)',
+              pointerEvents: 'none',
+            }}
+          />
+
+          {heroAttribution && <UnsplashAttribution attribution={heroAttribution} />}
+        </section>
+
+        {/* Mobile Hero Section */}
+        <section className="hero-section-mobile" style={{ display: 'none', paddingTop: '64px' }}>
+          {/* Hero Image */}
+          {heroImage ? (
+            <div style={{ width: '100%', height: '300px', overflow: 'hidden' }}>
+              <img
+                src={heroImage}
+                alt={expert.name}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  objectPosition: 'center',
+                }}
+              />
+            </div>
+          ) : (
+            <div
+              style={{
+                width: '100%',
+                height: '300px',
+                background: 'linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%)',
+              }}
+            />
+          )}
+
+          {/* Content Below Image */}
+          <div
+            style={{
+              padding: '40px 20px',
+              background: '#fff',
+              textAlign: 'center',
             }}
           >
             <h1
               style={{
-                fontSize: '64px',
+                fontSize: '32px',
                 fontWeight: '700',
-                lineHeight: '1.1',
-                marginBottom: '24px',
-                color: '#fff',
+                lineHeight: '1.2',
+                marginBottom: '20px',
+                color: '#1a202c',
                 letterSpacing: '-0.02em',
-                whiteSpace: 'pre-line',
               }}
             >
               {customHero?.headline ? (
                 heroHeadline
               ) : (
-                <>
-                  Transform Your
-                  <br />
-                  <span
-                    style={{
-                      background:
-                        'linear-gradient(135deg, var(--brand-400, #9ca3af) 0%, var(--brand-500, #6b7280) 100%)',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                      backgroundClip: 'text',
-                    }}
-                  >
-                    Practice
-                  </span>{' '}
-                  with {expert.name}
-                </>
+                <>Transform Your Practice with {expert.name}</>
               )}
             </h1>
 
             <p
               style={{
-                fontSize: '20px',
+                fontSize: '16px',
                 lineHeight: '1.6',
-                marginBottom: '40px',
-                color: 'rgba(255, 255, 255, 0.85)',
+                marginBottom: '32px',
+                color: '#4a5568',
               }}
             >
               {heroDescription}
             </p>
 
-            {/* CTA Button */}
+            {/* CTA Buttons */}
             <div
               style={{
                 display: 'flex',
-                gap: '16px',
-                flexWrap: 'wrap',
-                justifyContent: heroAlignment,
+                flexDirection: 'column',
+                gap: '12px',
+                alignItems: 'center',
               }}
             >
               <a
@@ -498,10 +961,10 @@ export default function ExpertDetailPage() {
                 className="hero-cta-button"
                 style={{
                   display: 'inline-block',
-                  padding: '16px 48px',
+                  padding: '14px 32px',
                   background: 'var(--brand-500, #fcd34d)',
                   color: 'var(--brand-500-contrast, #1f2937)',
-                  fontSize: '18px',
+                  fontSize: '16px',
                   fontWeight: '600',
                   borderRadius: '8px',
                   textDecoration: 'none',
@@ -520,119 +983,10 @@ export default function ExpertDetailPage() {
               </a>
             </div>
           </div>
-        </div>
-
-        {/* Decorative Elements */}
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            width: '100%',
-            height: '100px',
-            background: 'linear-gradient(to top, rgba(0,0,0,0.3), transparent)',
-            pointerEvents: 'none',
-          }}
-        />
-      </section>
-
-      {/* Mobile Hero Section */}
-      <section className="hero-section-mobile" style={{ display: 'none', paddingTop: '64px' }}>
-        {/* Hero Image */}
-        {heroImage ? (
-          <div style={{ width: '100%', height: '300px', overflow: 'hidden' }}>
-            <img
-              src={heroImage}
-              alt={expert.name}
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                objectPosition: 'center',
-              }}
-            />
-          </div>
-        ) : (
-          <div
-            style={{
-              width: '100%',
-              height: '300px',
-              background: 'linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%)',
-            }}
-          />
-        )}
-
-        {/* Content Below Image */}
-        <div
-          style={{
-            padding: '40px 20px',
-            background: '#fff',
-            textAlign: 'center',
-          }}
-        >
-          <h1
-            style={{
-              fontSize: '32px',
-              fontWeight: '700',
-              lineHeight: '1.2',
-              marginBottom: '20px',
-              color: '#1a202c',
-              letterSpacing: '-0.02em',
-            }}
-          >
-            {customHero?.headline ? heroHeadline : <>Transform Your Practice with {expert.name}</>}
-          </h1>
-
-          <p
-            style={{
-              fontSize: '16px',
-              lineHeight: '1.6',
-              marginBottom: '32px',
-              color: '#4a5568',
-            }}
-          >
-            {heroDescription}
-          </p>
-
-          {/* CTA Buttons */}
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px',
-              alignItems: 'center',
-            }}
-          >
-            <a
-              href={resolveCtaLink(customHero?.ctaLink)}
-              className="hero-cta-button"
-              style={{
-                display: 'inline-block',
-                padding: '14px 32px',
-                background: 'var(--brand-500, #fcd34d)',
-                color: 'var(--brand-500-contrast, #1f2937)',
-                fontSize: '16px',
-                fontWeight: '600',
-                borderRadius: '8px',
-                textDecoration: 'none',
-                transition: 'transform 0.2s, background 0.2s',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.background = 'var(--brand-600, #fbbf24)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.background = 'var(--brand-500, #fcd34d)';
-              }}
-            >
-              {heroCtaText}
-            </a>
-          </div>
-        </div>
-      </section>
-    </>
-  );
+        </section>
+      </>
+    );
+  };
 
   const renderValuePropositionsSection = () => {
     if (

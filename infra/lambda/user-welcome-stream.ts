@@ -105,7 +105,7 @@ async function getExpert(expertId: string): Promise<ExpertRecord | null> {
           PK: { S: "TENANT" },
           SK: { S: expertId },
         },
-      })
+      }),
     );
 
     if (!result.Item) {
@@ -129,43 +129,23 @@ async function getExpert(expertId: string): Promise<ExpertRecord | null> {
 
 /**
  * Send expert welcome email
+ * Called when TENANT is created, so we have the actual subdomain
  */
 async function sendExpertWelcomeEmail(
   user: UserRecord,
-  expertId: string
+  tenantId: string,
 ): Promise<void> {
-  // For new experts without a subdomain yet, guide them to complete setup
-  const isNewExpert = expertId === "new-expert";
-  const subdomain = isNewExpert ? "your-subdomain.myyoga.guru" : `${expertId}.myyoga.guru`;
-  const dashboardUrl = isNewExpert ? "https://www.myyoga.guru/srv" : `https://${subdomain}/srv/${expertId}`;
-  const expertEmail = isNewExpert ? "your-subdomain@myyoga.guru" : `${expertId}@myyoga.guru`;
+  const subdomain = `${tenantId}.myyoga.guru`;
+  const dashboardUrl = `https://${subdomain}/srv/${tenantId}`;
+  const expertEmail = `${tenantId}@myyoga.guru`;
 
-  console.log(`[user-welcome-stream] Sending expert welcome to ${user.email} (isNewExpert: ${isNewExpert})`);
+  console.log(
+    `[user-welcome-stream] Sending expert welcome to ${user.email} for tenant: ${tenantId}`,
+  );
 
   const brandPrimary = "#7a2900";
   const brandPrimaryLight = "#fed094";
   const logoUrl = "https://myyoga.guru/myg_light.png";
-
-  // Content varies based on whether expert has subdomain yet
-  const infoSection = isNewExpert
-    ? `<div style="background: ${brandPrimaryLight}; padding: 25px; border-radius: 10px; margin-bottom: 25px; border-left: 4px solid ${brandPrimary};">
-                <h2 style="margin: 0 0 15px 0; font-size: 18px; color: ${brandPrimary};">Complete Your Setup</h2>
-                <p style="margin: 10px 0; color: #555;">As an expert, you'll get:</p>
-                <ul style="margin: 10px 0; padding-left: 20px; color: #555;">
-                  <li>Your own subdomain (yourname.myyoga.guru)</li>
-                  <li>A professional email address (yourname@myyoga.guru)</li>
-                  <li>Your expert dashboard to manage courses and students</li>
-                </ul>
-                <p style="margin: 10px 0; color: #555;">Complete your onboarding to set up your profile and choose your subdomain.</p>
-              </div>`
-    : `<div style="background: ${brandPrimaryLight}; padding: 25px; border-radius: 10px; margin-bottom: 25px; border-left: 4px solid ${brandPrimary};">
-                <h2 style="margin: 0 0 15px 0; font-size: 18px; color: ${brandPrimary};">What's ready for you:</h2>
-                <p style="margin: 10px 0;"><strong>Your subdomain:</strong> <a href="https://${subdomain}" style="color: ${brandPrimary};">${subdomain}</a></p>
-                <p style="margin: 10px 0;"><strong>Your email:</strong> ${expertEmail}</p>
-                <p style="margin: 10px 0;"><strong>Dashboard:</strong> <a href="${dashboardUrl}" style="color: ${brandPrimary};">Access your dashboard</a></p>
-              </div>`;
-
-  const buttonText = isNewExpert ? "Complete Your Setup" : "Go to Your Dashboard";
 
   const html = `
 <!DOCTYPE html>
@@ -195,10 +175,15 @@ async function sendExpertWelcomeEmail(
               <p style="font-size: 16px; color: #555; line-height: 1.6; margin: 0 0 25px 0;">
                 Congratulations on joining MyYoga.guru as an expert! We're thrilled to have you on board.
               </p>
-              ${infoSection}
+              <div style="background: ${brandPrimaryLight}; padding: 25px; border-radius: 10px; margin-bottom: 25px; border-left: 4px solid ${brandPrimary};">
+                <h2 style="margin: 0 0 15px 0; font-size: 18px; color: ${brandPrimary};">What's ready for you:</h2>
+                <p style="margin: 10px 0;"><strong>Your subdomain:</strong> <a href="https://${subdomain}" style="color: ${brandPrimary};">${subdomain}</a></p>
+                <p style="margin: 10px 0;"><strong>Your email:</strong> ${expertEmail}</p>
+                <p style="margin: 10px 0;"><strong>Dashboard:</strong> <a href="${dashboardUrl}" style="color: ${brandPrimary};">Access your dashboard</a></p>
+              </div>
               <div style="text-align: center; margin: 30px 0;">
                 <a href="${dashboardUrl}" style="display: inline-block; background: ${brandPrimary}; color: #ffffff; padding: 16px 40px; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
-                  ${buttonText}
+                  Go to Your Dashboard
                 </a>
               </div>
             </td>
@@ -217,23 +202,7 @@ async function sendExpertWelcomeEmail(
 </body>
 </html>`;
 
-  const textContent = isNewExpert
-    ? `Welcome to MyYoga.guru!
-
-Hi ${user.name || "there"},
-
-Congratulations on joining MyYoga.guru as an expert!
-
-As an expert, you'll get:
-- Your own subdomain (yourname.myyoga.guru)
-- A professional email address (yourname@myyoga.guru)
-- Your expert dashboard to manage courses and students
-
-Complete your setup: ${dashboardUrl}
-
----
-MyYoga.guru`
-    : `Welcome to MyYoga.guru!
+  const text = `Welcome to MyYoga.guru!
 
 Hi ${user.name || "there"},
 
@@ -249,8 +218,6 @@ Go to your dashboard: ${dashboardUrl}
 ---
 MyYoga.guru`;
 
-  const text = textContent;
-
   await ses.send(
     new SendEmailCommand({
       Source: FROM_EMAIL,
@@ -265,12 +232,14 @@ MyYoga.guru`;
       ConfigurationSetName: CONFIG_SET,
       Tags: [
         { Name: "EmailType", Value: "expert-welcome-stream" },
-        { Name: "ExpertId", Value: expertId },
+        { Name: "TenantId", Value: tenantId },
       ],
-    })
+    }),
   );
 
-  console.log(`[user-welcome-stream] Expert welcome email sent to ${user.email}`);
+  console.log(
+    `[user-welcome-stream] Expert welcome email sent to ${user.email}`,
+  );
 }
 
 /**
@@ -278,13 +247,13 @@ MyYoga.guru`;
  */
 async function sendBrandedLearnerWelcomeEmail(
   user: UserRecord,
-  expert: ExpertRecord
+  expert: ExpertRecord,
 ): Promise<void> {
   const expertUrl = `https://${expert.id}.myyoga.guru`;
   const coursesUrl = `${expertUrl}/courses`;
 
   console.log(
-    `[user-welcome-stream] Sending branded learner welcome to ${user.email} (expert: ${expert.id})`
+    `[user-welcome-stream] Sending branded learner welcome to ${user.email} (expert: ${expert.id})`,
   );
 
   const primaryColor = expert.primaryColor || "#2A9D8F";
@@ -374,11 +343,11 @@ Powered by MyYoga.guru`;
         { Name: "EmailType", Value: "learner-welcome-stream" },
         { Name: "ExpertId", Value: expert.id },
       ],
-    })
+    }),
   );
 
   console.log(
-    `[user-welcome-stream] Branded learner welcome sent to ${user.email}`
+    `[user-welcome-stream] Branded learner welcome sent to ${user.email}`,
   );
 }
 
@@ -387,7 +356,7 @@ Powered by MyYoga.guru`;
  */
 async function sendGenericLearnerWelcomeEmail(user: UserRecord): Promise<void> {
   console.log(
-    `[user-welcome-stream] Sending generic learner welcome to ${user.email}`
+    `[user-welcome-stream] Sending generic learner welcome to ${user.email}`,
   );
 
   try {
@@ -399,18 +368,184 @@ async function sendGenericLearnerWelcomeEmail(user: UserRecord): Promise<void> {
         TemplateData: JSON.stringify({ name: user.name || "there" }),
         ConfigurationSetName: CONFIG_SET,
         Tags: [{ Name: "EmailType", Value: "learner-welcome-generic-stream" }],
-      })
+      }),
     );
 
     console.log(
-      `[user-welcome-stream] Generic learner welcome sent to ${user.email}`
+      `[user-welcome-stream] Generic learner welcome sent to ${user.email}`,
     );
   } catch (error) {
     console.error(
       `[user-welcome-stream] Error sending generic welcome:`,
-      error
+      error,
     );
     // Don't throw - email is nice to have, not critical
+  }
+}
+
+/**
+ * Process a USER record - send learner welcome emails only
+ * Experts are handled by TENANT creation trigger instead
+ */
+async function processUserRecord(item: Record<string, unknown>): Promise<void> {
+  // Extract email and name from profile (they're nested, not top-level)
+  const profile = item.profile as Record<string, unknown> | undefined;
+  const email = profile?.email as string | undefined;
+  const name = profile?.name as string | undefined;
+
+  // signupExperts is an array, get first element
+  const signupExperts = item.signupExperts as string[] | undefined;
+  const signupExpertId = signupExperts?.[0];
+
+  // Check if user has expert role
+  const roles = Array.isArray(item.role) ? item.role : [item.role];
+  const isExpert = roles.includes("expert");
+
+  console.log(`[user-welcome-stream] Processing new USER record:`, {
+    id: item.id,
+    email,
+    name,
+    role: item.role,
+    isExpert,
+    signupExpertId,
+  });
+
+  // Skip experts - they'll get welcome email when TENANT is created
+  if (isExpert) {
+    console.log(
+      `[user-welcome-stream] User is expert, skipping (will send on TENANT create)`,
+    );
+    return;
+  }
+
+  if (!email) {
+    console.log(`[user-welcome-stream] No email found, skipping`);
+    return;
+  }
+
+  const user: UserRecord = {
+    id: (item.id as string) || (item.SK as string),
+    email,
+    name,
+    role: item.role as string | string[],
+    signupExpertId,
+    createdAt: item.createdAt as string,
+  };
+
+  try {
+    // Case 1: Learner signed up on expert subdomain
+    if (user.signupExpertId) {
+      const expert = await getExpert(user.signupExpertId);
+      if (expert) {
+        await sendBrandedLearnerWelcomeEmail(user, expert);
+        return;
+      }
+      // Fall through to generic if expert not found
+    }
+
+    // Case 2: Generic learner (main site signup)
+    await sendGenericLearnerWelcomeEmail(user);
+  } catch (error) {
+    console.error(
+      `[user-welcome-stream] Error sending learner welcome:`,
+      error,
+    );
+  }
+}
+
+/**
+ * Get USER record by userId (cognitoSub) to retrieve email for welcome email
+ * The userId is stored directly on the TENANT record, so no scanning is needed.
+ */
+async function getUserById(
+  userId: string,
+): Promise<{ email: string; name?: string } | null> {
+  console.log(`[user-welcome-stream] Looking up user by id: ${userId}`);
+
+  try {
+    const result = await dynamodb.send(
+      new GetItemCommand({
+        TableName: TABLE_NAME,
+        Key: {
+          PK: { S: "USER" },
+          SK: { S: userId },
+        },
+        ProjectionExpression: "id, #p",
+        ExpressionAttributeNames: {
+          "#p": "profile",
+        },
+      }),
+    );
+
+    if (!result.Item) {
+      console.log(`[user-welcome-stream] User not found: ${userId}`);
+      return null;
+    }
+
+    const userItem = unmarshall(result.Item as Record<string, AttributeValue>);
+    const profile = userItem.profile as Record<string, unknown> | undefined;
+    console.log(
+      `[user-welcome-stream] Found user: ${userId}, email: ${profile?.email}`,
+    );
+
+    return {
+      email: profile?.email as string,
+      name: profile?.name as string | undefined,
+    };
+  } catch (error) {
+    console.error(`[user-welcome-stream] Error fetching user:`, error);
+    return null;
+  }
+}
+
+/**
+ * Process a TENANT record - send expert welcome email
+ * The TENANT record contains userId (cognitoSub) which links to the USER record.
+ */
+async function processTenantRecord(
+  item: Record<string, unknown>,
+): Promise<void> {
+  const tenantId = item.SK as string;
+  const userId = item.userId as string | undefined;
+  const displayName = item.name as string | undefined;
+
+  console.log(`[user-welcome-stream] Processing new TENANT record:`, {
+    tenantId,
+    userId,
+    displayName,
+  });
+
+  // TENANT record must have userId to look up the owner
+  if (!userId) {
+    console.log(
+      `[user-welcome-stream] No userId on TENANT record: ${tenantId}, skipping`,
+    );
+    return;
+  }
+
+  // Fetch the USER record directly using the userId from TENANT
+  const owner = await getUserById(userId);
+
+  if (!owner?.email) {
+    console.log(
+      `[user-welcome-stream] No email found for user: ${userId}, skipping`,
+    );
+    return;
+  }
+
+  const user: UserRecord = {
+    id: tenantId,
+    email: owner.email,
+    name: owner.name || displayName,
+  };
+
+  try {
+    await sendExpertWelcomeEmail(user, tenantId);
+    console.log(
+      `[user-welcome-stream] Expert welcome sent for tenant: ${tenantId}`,
+    );
+  } catch (error) {
+    console.error(`[user-welcome-stream] Error sending expert welcome:`, error);
   }
 }
 
@@ -430,72 +565,12 @@ async function processRecord(record: DynamoDBRecord): Promise<void> {
 
   // Unmarshall the DynamoDB record
   const item = unmarshall(newImage as Record<string, AttributeValue>);
+  const pk = item.PK as string;
 
-  // Check if this is a USER record (PK = "USER")
-  if (item.PK !== "USER") {
-    return;
-  }
-
-  // Extract email and name from profile (they're nested, not top-level)
-  const profile = item.profile as Record<string, unknown> | undefined;
-  const email = profile?.email as string | undefined;
-  const name = profile?.name as string | undefined;
-
-  // signupExperts is an array, get first element
-  const signupExperts = item.signupExperts as string[] | undefined;
-  const signupExpertId = signupExperts?.[0];
-
-  console.log(`[user-welcome-stream] Processing new USER record:`, {
-    id: item.id,
-    email,
-    name,
-    role: item.role,
-    expertProfile: item.expertProfile,
-    signupExpertId,
-  });
-
-  const user: UserRecord = {
-    id: item.id || item.SK,
-    email: email || "",
-    name,
-    role: item.role,
-    expertProfile: item.expertProfile,
-    signupExpertId,
-    createdAt: item.createdAt,
-  };
-
-  if (!user.email) {
-    console.log(`[user-welcome-stream] No email found, skipping`);
-    return;
-  }
-
-  try {
-    // Check if user is an expert (role includes 'expert')
-    const roles = Array.isArray(user.role) ? user.role : [user.role];
-    const isExpert = roles.includes("expert");
-
-    // Case 1: User is an expert
-    if (isExpert) {
-      // Send expert welcome - they'll complete onboarding at /srv to get their subdomain
-      await sendExpertWelcomeEmail(user, "new-expert");
-      return;
-    }
-
-    // Case 2: Learner signed up on expert subdomain
-    if (user.signupExpertId) {
-      const expert = await getExpert(user.signupExpertId);
-      if (expert) {
-        await sendBrandedLearnerWelcomeEmail(user, expert);
-        return;
-      }
-      // Fall through to generic if expert not found
-    }
-
-    // Case 3: Generic learner (main site signup)
-    await sendGenericLearnerWelcomeEmail(user);
-  } catch (error) {
-    console.error(`[user-welcome-stream] Error sending welcome email:`, error);
-    // Don't throw - we don't want to retry failed emails
+  if (pk === "USER") {
+    await processUserRecord(item);
+  } else if (pk === "TENANT") {
+    await processTenantRecord(item);
   }
 }
 
@@ -504,7 +579,7 @@ async function processRecord(record: DynamoDBRecord): Promise<void> {
  */
 export async function handler(event: DynamoDBStreamEvent): Promise<void> {
   console.log(
-    `[user-welcome-stream] Processing ${event.Records.length} record(s)`
+    `[user-welcome-stream] Processing ${event.Records.length} record(s)`,
   );
 
   for (const record of event.Records) {
