@@ -4,45 +4,53 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCurrency } from '@/contexts/CurrencyContext';
 import PaymentModal from '@/components/payment/PaymentModal';
 import { trackCourseView, trackEnrollClick } from '@/lib/analytics';
-import type { Course, Lesson } from '@/types';
+import { LandingPageThemeProvider } from '@/components/landing-page/ThemeProvider';
+import { CourseDetailPage as ModernCourseDetailPage } from '@/templates/modern/pages';
+import { CourseDetailPage as ClassicCourseDetailPage } from '@/templates/classic/pages';
+import type { Course, Lesson, Expert } from '@/types';
+import type { TemplateId } from '@/templates/types';
 
-export default function ExpertCourseDetailPage() {
+export default function ExpertCourseDetailPageWrapper() {
   const params = useParams();
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
-  const { convertPrice } = useCurrency();
-  const _expertId = params.expertId as string; // Extracted for URL params, not used directly (links use /)
+  const expertId = params.expertId as string;
   const courseId = params.courseId as string;
+
   const [course, setCourse] = useState<Course | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [expert, setExpert] = useState<Expert | null>(null);
   const [loading, setLoading] = useState(true);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isEnrolled, setIsEnrolled] = useState(false);
 
+  // Fetch course and expert data
   useEffect(() => {
-    const fetchCourseData = async () => {
+    const fetchData = async () => {
       try {
-        console.log('[DBG][expert-course-detail] Fetching course:', courseId);
+        console.log('[DBG][expert-course-detail] Fetching course and expert data');
 
-        // Fetch course details
-        const courseRes = await fetch(`/data/courses/${courseId}`);
+        // Fetch course, lessons, and expert in parallel
+        const [courseRes, lessonsRes, expertRes] = await Promise.all([
+          fetch(`/data/courses/${courseId}`),
+          fetch(`/data/courses/${courseId}/items`).catch(() => null),
+          fetch(`/data/experts/${expertId}`),
+        ]);
+
+        // Process course data
         const courseData = await courseRes.json();
-
         if (courseData.success) {
           setCourse(courseData.data);
-          console.log('[DBG][expert-course-detail] Course loaded:', courseData.data);
+          console.log('[DBG][expert-course-detail] Course loaded:', courseData.data?.title);
         } else {
           console.error('[DBG][expert-course-detail] Failed to load course:', courseData.error);
         }
 
-        // Fetch lessons
-        try {
-          const lessonsRes = await fetch(`/data/courses/${courseId}/items`);
+        // Process lessons data
+        if (lessonsRes) {
           const lessonsData = await lessonsRes.json();
-
           if (lessonsData.success) {
             setLessons(lessonsData.data || []);
             console.log(
@@ -50,26 +58,29 @@ export default function ExpertCourseDetailPage() {
               lessonsData.data?.length || 0
             );
           }
-        } catch (err) {
-          console.error('[DBG][expert-course-detail] Error fetching lessons:', err);
-          // Don't fail if lessons can't be loaded
+        }
+
+        // Process expert data
+        const expertData = await expertRes.json();
+        if (expertData.success) {
+          setExpert(expertData.data);
+          console.log('[DBG][expert-course-detail] Expert loaded:', expertData.data?.name);
         }
       } catch (error) {
-        console.error('[DBG][expert-course-detail] Error fetching course:', error);
+        console.error('[DBG][expert-course-detail] Error fetching data:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    if (courseId) {
-      fetchCourseData();
-
+    if (courseId && expertId) {
+      fetchData();
       // Track course view
       trackCourseView(courseId).catch(err => {
         console.error('[DBG][expert-course-detail] Failed to track course view:', err);
       });
     }
-  }, [courseId]);
+  }, [courseId, expertId]);
 
   // Check enrollment status
   useEffect(() => {
@@ -86,21 +97,19 @@ export default function ExpertCourseDetailPage() {
     });
 
     if (!isAuthenticated) {
-      // Redirect to login
       router.push('/auth/signin');
       return;
     }
 
     if (isEnrolled) {
-      // Already enrolled, go to course player
       router.push(`/app/courses/${courseId}`);
       return;
     }
 
-    // Show payment modal
     setShowPaymentModal(true);
   };
 
+  // Loading state
   if (loading) {
     return (
       <div
@@ -119,7 +128,7 @@ export default function ExpertCourseDetailPage() {
               width: '48px',
               height: '48px',
               border: '4px solid #e2e8f0',
-              borderTop: '4px solid var(--color-primary)',
+              borderTop: '4px solid var(--color-primary, #6b7280)',
               borderRadius: '50%',
               animation: 'spin 1s linear infinite',
               margin: '0 auto 16px',
@@ -127,11 +136,18 @@ export default function ExpertCourseDetailPage() {
           />
           <div style={{ fontSize: '16px', color: '#666' }}>Loading course...</div>
         </div>
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
       </div>
     );
   }
 
-  if (!course) {
+  // Course not found
+  if (!course || !expert) {
     return (
       <div
         style={{
@@ -148,7 +164,7 @@ export default function ExpertCourseDetailPage() {
           <Link
             href="/"
             style={{
-              color: 'var(--color-primary)',
+              color: 'var(--color-primary, #6b7280)',
               textDecoration: 'underline',
             }}
           >
@@ -159,732 +175,23 @@ export default function ExpertCourseDetailPage() {
     );
   }
 
+  // Get template preference from expert
+  const template: TemplateId = expert.customLandingPage?.template || 'classic';
+  const palette = expert.customLandingPage?.theme?.palette;
+
+  // Select the appropriate template component
+  const CourseDetailPage = template === 'modern' ? ModernCourseDetailPage : ClassicCourseDetailPage;
+
   return (
-    <div style={{ paddingTop: '64px', minHeight: '100vh', background: '#f8f8f8' }}>
-      {/* Cover Image Banner */}
-      {course.coverImage && (
-        <section
-          style={{
-            height: '400px',
-            backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url(${course.coverImage})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            position: 'relative',
-          }}
-        >
-          <div
-            style={{
-              textAlign: 'center',
-              color: '#fff',
-              maxWidth: '800px',
-              padding: '0 20px',
-            }}
-          >
-            <h1
-              style={{
-                fontSize: '56px',
-                fontWeight: '700',
-                marginBottom: '16px',
-                textShadow: '2px 2px 4px rgba(0,0,0,0.5)',
-                lineHeight: '1.2',
-              }}
-            >
-              {course.title}
-            </h1>
-            <p
-              style={{
-                fontSize: '20px',
-                textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
-              }}
-            >
-              {course.description}
-            </p>
-          </div>
-        </section>
-      )}
-
-      {/* Hero Section */}
-      <section
-        style={{
-          background: '#fff',
-          borderBottom: '1px solid #e2e8f0',
-        }}
-      >
-        <div
-          className="container"
-          style={{ maxWidth: '1200px', margin: '0 auto', padding: '60px 20px' }}
-        >
-          {/* Breadcrumb */}
-          <div style={{ marginBottom: '24px', fontSize: '14px', color: '#666' }}>
-            <Link href="/" style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>
-              {course.instructor.name}
-            </Link>
-            <span style={{ margin: '0 8px' }}>/</span>
-            <span>{course.title}</span>
-          </div>
-
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr',
-              gap: '40px',
-              alignItems: 'start',
-            }}
-          >
-            <div>
-              {/* Badges */}
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                {course.isNew && (
-                  <span
-                    style={{
-                      padding: '6px 12px',
-                      background: 'var(--color-highlight)',
-                      color: '#fff',
-                      borderRadius: '6px',
-                      fontSize: '12px',
-                      fontWeight: '600',
-                    }}
-                  >
-                    NEW
-                  </span>
-                )}
-                {course.featured && (
-                  <span
-                    style={{
-                      padding: '6px 12px',
-                      background: 'var(--color-primary)',
-                      color: '#fff',
-                      borderRadius: '6px',
-                      fontSize: '12px',
-                      fontWeight: '600',
-                    }}
-                  >
-                    FEATURED
-                  </span>
-                )}
-                <span
-                  style={{
-                    padding: '6px 12px',
-                    background: '#f7fafc',
-                    borderRadius: '6px',
-                    fontSize: '12px',
-                    color: 'var(--color-primary)',
-                    fontWeight: '600',
-                  }}
-                >
-                  {course.category}
-                </span>
-                <span
-                  style={{
-                    padding: '6px 12px',
-                    background: '#f7fafc',
-                    borderRadius: '6px',
-                    fontSize: '12px',
-                    color: '#4a5568',
-                  }}
-                >
-                  {course.level}
-                </span>
-              </div>
-
-              <h1
-                style={{
-                  fontSize: '48px',
-                  fontWeight: '600',
-                  marginBottom: '24px',
-                  lineHeight: '1.2',
-                }}
-              >
-                {course.title}
-              </h1>
-
-              {/* Instructor */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  marginBottom: '24px',
-                }}
-              >
-                <div
-                  style={{
-                    width: '48px',
-                    height: '48px',
-                    borderRadius: '50%',
-                    backgroundImage: `url(${course.instructor.avatar || '/images/default-avatar.jpg'})`,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                  }}
-                />
-                <div>
-                  <div style={{ fontSize: '16px', fontWeight: '600' }}>
-                    {course.instructor.name}
-                  </div>
-                  <div style={{ fontSize: '14px', color: '#666' }}>{course.instructor.title}</div>
-                </div>
-              </div>
-
-              {/* Stats with Enroll Button */}
-              <div
-                style={{
-                  display: 'flex',
-                  gap: '24px',
-                  flexWrap: 'wrap',
-                  alignItems: 'center',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ color: '#FFB800', fontSize: '20px' }}>★</span>
-                  <span style={{ fontSize: '16px', fontWeight: '600' }}>{course.rating}</span>
-                  <span style={{ fontSize: '14px', color: '#666' }}>
-                    ({course.totalRatings || 0} ratings)
-                  </span>
-                </div>
-                <div style={{ fontSize: '16px', color: '#666' }}>
-                  {course.totalStudents.toLocaleString()} students
-                </div>
-                <div style={{ fontSize: '16px', color: '#666' }}>{course.totalLessons} lessons</div>
-                <div style={{ fontSize: '16px', color: '#666' }}>{course.duration}</div>
-                <button
-                  onClick={handleEnrollClick}
-                  style={{
-                    padding: '12px 24px',
-                    background: isEnrolled ? 'var(--color-highlight)' : 'var(--color-primary)',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    marginLeft: 'auto',
-                  }}
-                  onMouseEnter={e => {
-                    if (!isEnrolled) {
-                      e.currentTarget.style.background = '#5a3a82';
-                    }
-                  }}
-                  onMouseLeave={e => {
-                    if (!isEnrolled) {
-                      e.currentTarget.style.background = 'var(--color-primary)';
-                    }
-                  }}
-                >
-                  {isEnrolled
-                    ? 'Start Learning'
-                    : `Enroll Now - ${
-                        course.price === 0
-                          ? 'Free'
-                          : (() => {
-                              const priceInfo = convertPrice(course.price, course.currency);
-                              return priceInfo.isApproximate && priceInfo.formattedConverted
-                                ? `${priceInfo.formattedOriginal} (approx ${priceInfo.formattedConverted})`
-                                : priceInfo.formattedOriginal;
-                            })()
-                      }`}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Promo Video Section */}
-      {(course.promoVideoCloudflareId || course.promoVideo || course.thumbnail) && (
-        <section
-          style={{
-            background: '#1a202c',
-            borderBottom: '1px solid #e2e8f0',
-            padding: '40px 0',
-          }}
-        >
-          <div
-            className="container"
-            style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}
-          >
-            {/* Video Player */}
-            {course.promoVideoCloudflareId ? (
-              <div style={{ position: 'relative', width: '100%', paddingBottom: '56.25%' }}>
-                <iframe
-                  src={`https://customer-iq7mgkvtb3bwxqf5.cloudflarestream.com/${course.promoVideoCloudflareId}/iframe?preload=true&poster=https%3A%2F%2Fcustomer-iq7mgkvtb3bwxqf5.cloudflarestream.com%2F${course.promoVideoCloudflareId}%2Fthumbnails%2Fthumbnail.jpg%3Ftime%3D0s%26height%3D600`}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    borderRadius: '12px',
-                    border: 'none',
-                  }}
-                  allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
-                  allowFullScreen
-                  title={`${course.title} - Promo Video`}
-                />
-              </div>
-            ) : course.promoVideo ? (
-              <div style={{ position: 'relative', width: '100%', paddingBottom: '56.25%' }}>
-                {/* YouTube/Vimeo embed */}
-                {course.promoVideo.includes('youtube.com') ||
-                course.promoVideo.includes('youtu.be') ? (
-                  <iframe
-                    src={course.promoVideo
-                      .replace('watch?v=', 'embed/')
-                      .replace('youtu.be/', 'youtube.com/embed/')}
-                    style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      width: '100%',
-                      height: '100%',
-                      borderRadius: '12px',
-                      border: 'none',
-                    }}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    title={`${course.title} - Promo Video`}
-                  />
-                ) : course.promoVideo.includes('vimeo.com') ? (
-                  <iframe
-                    src={course.promoVideo.replace('vimeo.com/', 'player.vimeo.com/video/')}
-                    style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      width: '100%',
-                      height: '100%',
-                      borderRadius: '12px',
-                      border: 'none',
-                    }}
-                    allow="autoplay; fullscreen; picture-in-picture"
-                    allowFullScreen
-                    title={`${course.title} - Promo Video`}
-                  />
-                ) : (
-                  <video
-                    src={course.promoVideo}
-                    controls
-                    style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      width: '100%',
-                      height: '100%',
-                      borderRadius: '12px',
-                      objectFit: 'contain',
-                      background: '#000',
-                    }}
-                  />
-                )}
-              </div>
-            ) : course.thumbnail ? (
-              <div
-                style={{
-                  height: '500px',
-                  backgroundImage: `url(${course.thumbnail})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                  borderRadius: '12px',
-                  position: 'relative',
-                }}
-              >
-                {/* Play button overlay for thumbnail */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    background: 'rgba(118, 75, 162, 0.9)',
-                    borderRadius: '50%',
-                    width: '80px',
-                    height: '80px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                  }}
-                >
-                  <svg
-                    style={{ width: '40px', height: '40px', fill: '#fff', marginLeft: '4px' }}
-                    viewBox="0 0 20 20"
-                  >
-                    <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-                  </svg>
-                </div>
-              </div>
-            ) : null}
-
-            {/* Video Label */}
-            {(course.promoVideoCloudflareId || course.promoVideo) && (
-              <div
-                style={{
-                  marginTop: '16px',
-                  textAlign: 'center',
-                  color: '#fff',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                }}
-              >
-                🎥 Course Preview
-              </div>
-            )}
-          </div>
-        </section>
-      )}
-
-      {/* Description Section - Right after video */}
-      <section
-        style={{
-          background: '#fff',
-          borderBottom: '1px solid #e2e8f0',
-          padding: '40px 0',
-        }}
-      >
-        <div
-          className="container"
-          style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}
-        >
-          <p
-            style={{
-              fontSize: '20px',
-              color: '#4a5568',
-              lineHeight: '1.8',
-              textAlign: 'center',
-              maxWidth: '900px',
-              margin: '0 auto',
-            }}
-          >
-            {course.description}
-          </p>
-        </div>
-      </section>
-
-      <div
-        className="container"
-        style={{ maxWidth: '1200px', margin: '0 auto', padding: '60px 20px' }}
-      >
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '40px' }}>
-          {/* Main Content */}
-          <div>
-            {/* Lessons List */}
-            {lessons.length > 0 && (
-              <section
-                style={{
-                  background: '#fff',
-                  padding: '32px',
-                  borderRadius: '12px',
-                  marginBottom: '32px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                }}
-              >
-                <h2
-                  style={{
-                    fontSize: '24px',
-                    fontWeight: '600',
-                    marginBottom: '20px',
-                  }}
-                >
-                  Course Lessons ({lessons.length})
-                </h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                  {lessons.map((lesson, idx) => (
-                    <div
-                      key={lesson.id}
-                      style={{
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '12px',
-                        overflow: 'hidden',
-                        transition: 'all 0.2s',
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns: lesson.cloudflareVideoId ? '200px 1fr' : '1fr',
-                          gap: '20px',
-                        }}
-                      >
-                        {/* Video Thumbnail */}
-                        {lesson.cloudflareVideoId && (
-                          <div style={{ position: 'relative' }}>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={`https://customer-iq7mgkvtb3bwxqf5.cloudflarestream.com/${lesson.cloudflareVideoId}/thumbnails/thumbnail.jpg?time=0s&height=300`}
-                              alt={lesson.title}
-                              style={{
-                                width: '100%',
-                                height: '150px',
-                                objectFit: 'cover',
-                                borderRadius: '12px 0 0 12px',
-                              }}
-                            />
-                            {/* Play button overlay */}
-                            <div
-                              style={{
-                                position: 'absolute',
-                                top: '50%',
-                                left: '50%',
-                                transform: 'translate(-50%, -50%)',
-                                background: 'rgba(0,0,0,0.6)',
-                                borderRadius: '50%',
-                                width: '48px',
-                                height: '48px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                              }}
-                            >
-                              <svg
-                                style={{ width: '24px', height: '24px', fill: '#fff' }}
-                                viewBox="0 0 20 20"
-                              >
-                                <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
-                              </svg>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Lesson Info */}
-                        <div style={{ padding: '20px' }}>
-                          <div
-                            style={{
-                              display: 'flex',
-                              alignItems: 'start',
-                              justifyContent: 'space-between',
-                              marginBottom: '12px',
-                            }}
-                          >
-                            <div style={{ flex: 1 }}>
-                              <div
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '12px',
-                                  marginBottom: '8px',
-                                }}
-                              >
-                                <span
-                                  style={{
-                                    fontSize: '14px',
-                                    color: '#666',
-                                    fontWeight: '600',
-                                  }}
-                                >
-                                  Lesson {idx + 1}
-                                </span>
-                                {lesson.isFree && (
-                                  <span
-                                    style={{
-                                      padding: '4px 8px',
-                                      background: 'var(--color-highlight)',
-                                      color: '#fff',
-                                      borderRadius: '4px',
-                                      fontSize: '11px',
-                                      fontWeight: '600',
-                                    }}
-                                  >
-                                    FREE PREVIEW
-                                  </span>
-                                )}
-                              </div>
-                              <h3
-                                style={{
-                                  fontSize: '18px',
-                                  fontWeight: '600',
-                                  marginBottom: '8px',
-                                  color: '#2d3748',
-                                }}
-                              >
-                                {lesson.title}
-                              </h3>
-                              {lesson.description && (
-                                <p
-                                  style={{
-                                    fontSize: '14px',
-                                    color: '#4a5568',
-                                    lineHeight: '1.6',
-                                    marginBottom: '12px',
-                                  }}
-                                >
-                                  {lesson.description}
-                                </p>
-                              )}
-                            </div>
-                            <div
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                fontSize: '14px',
-                                color: '#666',
-                                marginLeft: '16px',
-                              }}
-                            >
-                              <span>⏱️</span>
-                              <span>{lesson.duration}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Curriculum - Show only if no lessons loaded from API */}
-            {!lessons.length && course.curriculum && course.curriculum.length > 0 && (
-              <section
-                style={{
-                  background: '#fff',
-                  padding: '32px',
-                  borderRadius: '12px',
-                  marginBottom: '32px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                }}
-              >
-                <h2
-                  style={{
-                    fontSize: '24px',
-                    fontWeight: '600',
-                    marginBottom: '20px',
-                  }}
-                >
-                  Course Curriculum
-                </h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {course.curriculum.map((week, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '8px',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      <div
-                        style={{
-                          padding: '16px 20px',
-                          background: '#f7fafc',
-                          borderBottom: '1px solid #e2e8f0',
-                        }}
-                      >
-                        <div style={{ fontWeight: '600', fontSize: '16px' }}>
-                          Week {week.week}: {week.title}
-                        </div>
-                        <div style={{ fontSize: '14px', color: '#666', marginTop: '4px' }}>
-                          {week.lessons?.length || 0} lessons
-                        </div>
-                      </div>
-                      {week.lessons && week.lessons.length > 0 && (
-                        <div>
-                          {week.lessons.map((lesson: Lesson, lessonIdx: number) => (
-                            <div
-                              key={lessonIdx}
-                              style={{
-                                padding: '16px 20px',
-                                borderBottom:
-                                  lessonIdx < week.lessons!.length - 1
-                                    ? '1px solid #e2e8f0'
-                                    : 'none',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                              }}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <span style={{ fontSize: '20px' }}>
-                                  {lesson.isFree ? '▶️' : '🔒'}
-                                </span>
-                                <div>
-                                  <div style={{ fontSize: '15px', fontWeight: '500' }}>
-                                    {lesson.title}
-                                  </div>
-                                  {lesson.isFree && (
-                                    <span
-                                      style={{
-                                        fontSize: '12px',
-                                        color: 'var(--color-highlight)',
-                                        fontWeight: '600',
-                                      }}
-                                    >
-                                      FREE PREVIEW
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              <div style={{ fontSize: '14px', color: '#666' }}>
-                                {lesson.duration}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-          </div>
-
-          {/* Sidebar */}
-          <div>
-            {/* Tags */}
-            {course.tags && course.tags.length > 0 && (
-              <section
-                style={{
-                  background: '#fff',
-                  padding: '24px',
-                  borderRadius: '12px',
-                  marginBottom: '24px',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                }}
-              >
-                <h3
-                  style={{
-                    fontSize: '18px',
-                    fontWeight: '600',
-                    marginBottom: '16px',
-                  }}
-                >
-                  Tags
-                </h3>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  {course.tags.map((tag, idx) => (
-                    <span
-                      key={idx}
-                      style={{
-                        padding: '6px 12px',
-                        background: '#f7fafc',
-                        borderRadius: '6px',
-                        fontSize: '12px',
-                        color: '#4a5568',
-                      }}
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </section>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <style jsx>{`
-        @keyframes spin {
-          0% {
-            transform: rotate(0deg);
-          }
-          100% {
-            transform: rotate(360deg);
-          }
-        }
-      `}</style>
+    <LandingPageThemeProvider palette={palette}>
+      <CourseDetailPage
+        course={course}
+        lessons={lessons}
+        expert={expert}
+        isEnrolled={isEnrolled}
+        isAuthenticated={isAuthenticated}
+        onEnrollClick={handleEnrollClick}
+      />
 
       {/* Payment Modal */}
       {course && (
@@ -898,9 +205,9 @@ export default function ExpertCourseDetailPage() {
             price: course.price,
             currency: course.currency,
           }}
-          expertId={course.instructor.id}
+          expertId={expert.id}
         />
       )}
-    </div>
+    </LandingPageThemeProvider>
   );
 }

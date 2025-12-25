@@ -1,4 +1,4 @@
-import type { Course, Webinar, BlogPost, Expert, ColorPalette } from '@/types';
+import type { Course, Webinar, BlogPost, Expert, ColorPalette, Lesson } from '@/types';
 
 // ===== Section Types =====
 export type SectionType =
@@ -185,4 +185,22 @@ export interface TemplateRegistration {
   name: string;
   description: string;
   Component: React.ComponentType<TemplateProps>;
+}
+
+// ===== Page Section Types =====
+
+// Course List Page Props
+export interface CourseListPageProps {
+  courses: Course[];
+  expert: Expert;
+}
+
+// Course Detail Page Props
+export interface CourseDetailPageProps {
+  course: Course;
+  lessons: Lesson[];
+  expert: Expert;
+  isEnrolled: boolean;
+  isAuthenticated: boolean;
+  onEnrollClick: () => void;
 }

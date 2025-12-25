@@ -494,7 +494,7 @@ function SignupForm() {
             </div>
 
             {/* Google Sign Up - uses <a> intentionally for full page redirect to API route */}
-            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+            {}
             <a
               href={`/api/auth/google?callbackUrl=${isExpertDomain ? '/' : '/srv'}`}
               style={{
@@ -545,7 +545,7 @@ function SignupForm() {
             </a>
 
             {/* Facebook Sign Up - uses <a> intentionally for full page redirect to API route */}
-            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+            {}
             <a
               href={`/api/auth/facebook?callbackUrl=${isExpertDomain ? '/' : '/srv'}`}
               style={{
