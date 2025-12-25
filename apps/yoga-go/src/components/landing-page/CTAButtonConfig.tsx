@@ -54,17 +54,17 @@ export default function CTAButtonConfig({
 
         // Fetch courses and surveys in parallel
         const [coursesRes, surveysRes] = await Promise.all([
-          fetch(`/data/experts/${expertId}`),
+          fetch(`/data/courses?instructorId=${expertId}&includeAll=true`),
           fetch(`/api/srv/experts/${expertId}/survey`),
         ]);
 
         // Process courses
         const coursesResult = await coursesRes.json();
-        if (coursesResult.success && coursesResult.data?.courses) {
-          const courses: Course[] = coursesResult.data.courses;
+        if (coursesResult.success && coursesResult.data) {
+          const courses: Course[] = coursesResult.data;
           const courseOpts: CTALinkOption[] = courses.map(course => ({
             value: `/courses/${course.id}`,
-            label: `course: ${course.title}`,
+            label: `course page: ${course.title}`,
           }));
           setCourseOptions(courseOpts);
           console.log('[DBG][CTAButtonConfig] Loaded', courses.length, 'courses');

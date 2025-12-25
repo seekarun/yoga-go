@@ -193,19 +193,7 @@ export default function Header() {
                   objectFit: 'contain',
                 }}
               />
-            ) : (
-              // Show expert name as text logo if no custom logo
-              <span
-                style={{
-                  fontSize: '20px',
-                  fontWeight: '700',
-                  color: scrollOpacity < 0.5 ? '#fff' : '#000',
-                  textShadow: scrollOpacity < 0.5 ? '0 2px 4px rgba(0,0,0,0.3)' : 'none',
-                }}
-              >
-                {expertData.name}
-              </span>
-            )
+            ) : null
           ) : (
             // Show MYG logo on primary domain
             // eslint-disable-next-line @next/next/no-img-element
@@ -368,19 +356,26 @@ export default function Header() {
           ) : (
             <a
               href="/auth/signin"
-              className="btn btn-primary"
-              style={{
-                padding: '10px 24px',
-                fontSize: '14px',
-                textDecoration: 'none',
-                display: 'inline-block',
-                boxShadow:
-                  expertMode.isExpertMode && scrollOpacity < 0.5
-                    ? '0 2px 8px rgba(0,0,0,0.2)'
-                    : 'none',
-              }}
+              className={expertMode.isExpertMode ? '' : 'btn btn-primary'}
+              style={
+                expertMode.isExpertMode
+                  ? {
+                      padding: '10px 16px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      textDecoration: 'none',
+                      color: scrollOpacity < 0.5 ? '#fff' : '#333',
+                      textShadow: scrollOpacity < 0.5 ? '0 1px 4px rgba(0,0,0,0.6)' : 'none',
+                    }
+                  : {
+                      padding: '10px 24px',
+                      fontSize: '14px',
+                      textDecoration: 'none',
+                      display: 'inline-block',
+                    }
+              }
             >
-              Sign In / Sign Up
+              Sign In
             </a>
           )}
 

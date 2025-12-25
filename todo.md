@@ -1,6 +1,17 @@
 NOTES
 
 Misc
+[ ] what about photo credit in actual website
+[ ] remove logo in expert landing page
+[ ] ability to position image (Eg. in hero image)
+[ ] remove excess fields in the user data (like membership)
+[ ] set up stipe account alert - check if course is free
+[ ] what if you click "create course" when video is uploading 
+[ ] does it work on safari? /srv on login does not take you to dashboard
+[ ] welcome email sent from DB trigger
+[ ] change unsplash text to be generic. earch for beautiful, free photos to use as your hero background.
+[ ] enable/disable when editing a section in landing page edit
+[ ] make sure only shown sections in draft make it to published version
 [ ] privacy and other footer links handled for platform 
 [ ] privacy and other footer links handled for individuals
 [ ] For learner - show enroll button in home page
@@ -37,6 +48,7 @@ Misc
 [ ] switching templates should work
 [ ] handle 404 elegantly
 [ ] ONBOARDING: change currency based on location
+[ ] add payment gateway when setting up course (or some other time after sign up) - confirm subscription before proceeding
 
 [ ] http to https redirect - check if /etc/hosts still active
 [ ] custom domain: prefix with https://

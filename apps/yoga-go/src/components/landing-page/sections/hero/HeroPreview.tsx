@@ -53,6 +53,7 @@ export default function HeroPreview({
   const heroDescription =
     customHero?.description || expertBio || 'Your expert bio will appear here';
   const heroCtaText = customHero?.ctaText || 'Explore Courses';
+  const heroCtaLink = customHero?.ctaLink || '#courses';
   const heroImage = customHero?.heroImage;
   const heroAlignment = customHero?.alignment || 'center';
   const heroAttribution = customHero?.heroImageAttribution;
@@ -160,7 +161,8 @@ export default function HeroPreview({
 
             {/* CTA Buttons - uses brand gradient */}
             <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-              <span
+              <a
+                href={heroCtaLink}
                 style={{
                   display: 'inline-block',
                   padding: '16px 32px',
@@ -170,10 +172,11 @@ export default function HeroPreview({
                   fontWeight: '600',
                   borderRadius: '8px',
                   boxShadow: '0 4px 20px color-mix(in srgb, var(--brand-500) 40%, transparent)',
+                  textDecoration: 'none',
                 }}
               >
                 {heroCtaText}
-              </span>
+              </a>
               <span
                 style={{
                   display: 'inline-flex',
@@ -398,7 +401,8 @@ export default function HeroPreview({
               justifyContent: heroAlignment,
             }}
           >
-            <span
+            <a
+              href={heroCtaLink}
               style={{
                 display: 'inline-block',
                 padding: '10px 24px',
@@ -407,10 +411,11 @@ export default function HeroPreview({
                 fontSize: '12px',
                 fontWeight: '600',
                 borderRadius: '6px',
+                textDecoration: 'none',
               }}
             >
               {heroCtaText}
-            </span>
+            </a>
           </div>
         </div>
       </div>
