@@ -76,10 +76,22 @@ export async function POST(request: NextRequest) {
           let signupExpertId: string | undefined;
           const pendingSignupCookie = request.cookies.get(PENDING_SIGNUP_COOKIE);
 
+          console.log(
+            '[DBG][verify] Looking for pending-signup cookie, found:',
+            pendingSignupCookie ? 'yes' : 'no'
+          );
+
           if (pendingSignupCookie?.value) {
             try {
               const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET);
               const { payload } = await jwtVerify(pendingSignupCookie.value, secret);
+
+              console.log('[DBG][verify] Cookie payload:', {
+                sub: payload.sub,
+                roles: payload.roles,
+                signupExpertId: payload.signupExpertId,
+                email: payload.email,
+              });
 
               // Verify this cookie is for the same user
               if (payload.sub === userInfo.sub) {
@@ -91,6 +103,13 @@ export async function POST(request: NextRequest) {
                   signupExpertId = payload.signupExpertId as string;
                   console.log('[DBG][verify] Got signupExpertId from cookie:', signupExpertId);
                 }
+              } else {
+                console.log(
+                  '[DBG][verify] Cookie sub mismatch - cookie:',
+                  payload.sub,
+                  'user:',
+                  userInfo.sub
+                );
               }
             } catch (cookieError) {
               console.error('[DBG][verify] Error reading pending-signup cookie:', cookieError);

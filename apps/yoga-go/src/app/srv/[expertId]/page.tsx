@@ -1,10 +1,52 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import type { Course } from '@/types';
 import LoadingSpinner from '@/components/LoadingSpinner';
+
+interface StripeBalanceData {
+  connected: boolean;
+  active?: boolean;
+  status?: string;
+  balance?: {
+    available: { amount: number; currency: string }[];
+    pending: { amount: number; currency: string }[];
+  };
+}
+
+interface AnalyticsData {
+  expertId: string;
+  period: string;
+  overview: {
+    totalCourses: number;
+    publishedCourses: number;
+    totalViews: number;
+    uniqueViewers: number;
+    enrollClicks: number;
+    totalEnrollments: number;
+    totalRevenue: number;
+    currency: string;
+  };
+  conversion: {
+    avgConversionRate: number;
+    avgClickToPaymentRate: number;
+    avgPaymentSuccessRate: number;
+  };
+  engagement: {
+    totalWatchTimeMinutes: number;
+    avgCompletionRate: number;
+  };
+  topPerformingCourses: Array<{
+    courseId: string;
+    title: string;
+    views: number;
+    enrollClicks: number;
+    enrollments: number;
+    revenue: number;
+  }>;
+}
 
 export default function ExpertDashboard() {
   const params = useParams();
@@ -12,13 +54,13 @@ export default function ExpertDashboard() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [stripeBalance, setStripeBalance] = useState<StripeBalanceData | null>(null);
+  const [loadingBalance, setLoadingBalance] = useState(true);
+  const [period, setPeriod] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(true);
 
-  useEffect(() => {
-    fetchExpertCourses();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [expertId]);
-
-  const fetchExpertCourses = async () => {
+  const fetchExpertCourses = useCallback(async () => {
     try {
       setLoading(true);
       console.log('[DBG][expert-dashboard] Fetching courses for expert:', expertId);
@@ -39,6 +81,89 @@ export default function ExpertDashboard() {
     } finally {
       setLoading(false);
     }
+  }, [expertId]);
+
+  const fetchStripeBalance = useCallback(async () => {
+    try {
+      setLoadingBalance(true);
+      console.log('[DBG][expert-dashboard] Fetching Stripe balance');
+
+      const response = await fetch('/api/stripe/connect/balance');
+      const data = await response.json();
+
+      if (data.success) {
+        setStripeBalance(data.data);
+        console.log('[DBG][expert-dashboard] Stripe balance loaded:', data.data);
+      }
+    } catch (err) {
+      console.error('[DBG][expert-dashboard] Error fetching Stripe balance:', err);
+    } finally {
+      setLoadingBalance(false);
+    }
+  }, []);
+
+  const fetchAnalytics = useCallback(async () => {
+    try {
+      setLoadingAnalytics(true);
+      console.log('[DBG][expert-dashboard] Fetching analytics:', expertId, period);
+
+      const response = await fetch(`/api/srv/experts/${expertId}/analytics?period=${period}`);
+      const data = await response.json();
+
+      if (data.success) {
+        setAnalytics(data.data);
+        console.log('[DBG][expert-dashboard] Analytics loaded:', data.data);
+      }
+    } catch (err) {
+      console.error('[DBG][expert-dashboard] Error fetching analytics:', err);
+    } finally {
+      setLoadingAnalytics(false);
+    }
+  }, [expertId, period]);
+
+  useEffect(() => {
+    fetchExpertCourses();
+    fetchStripeBalance();
+  }, [fetchExpertCourses, fetchStripeBalance]);
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]);
+
+  // Format currency amount (from cents to dollars)
+  const formatAmount = (amount: number, currency: string) => {
+    const currencySymbols: Record<string, string> = {
+      USD: '$',
+      AUD: 'A$',
+      EUR: '€',
+      GBP: '£',
+      INR: '₹',
+    };
+    const symbol = currencySymbols[currency] || currency + ' ';
+    return `${symbol}${(amount / 100).toFixed(2)}`;
+  };
+
+  const formatCurrency = (amount: number, currency: string) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount / 100);
+  };
+
+  // Get total available and pending amounts
+  const getEarningsSummary = () => {
+    if (!stripeBalance?.balance) return null;
+
+    const available = stripeBalance.balance.available[0] || { amount: 0, currency: 'USD' };
+    const pending = stripeBalance.balance.pending[0] || { amount: 0, currency: 'USD' };
+
+    return {
+      available: formatAmount(available.amount, available.currency),
+      pending: formatAmount(pending.amount, pending.currency),
+      currency: available.currency,
+    };
   };
 
   if (loading) {
@@ -51,10 +176,8 @@ export default function ExpertDashboard() {
 
   // Calculate statistics from courses
   const publishedCourses = courses.filter(c => c.status === 'PUBLISHED');
-  const inProgressCourses = courses.filter(c => c.status === 'IN_PROGRESS');
   const totalStudents = courses.reduce((sum, c) => sum + (c.totalStudents || 0), 0);
-  const averageRating =
-    courses.length > 0 ? courses.reduce((sum, c) => sum + (c.rating || 0), 0) / courses.length : 0;
+  const earnings = getEarningsSummary();
 
   return (
     <>
@@ -98,7 +221,57 @@ export default function ExpertDashboard() {
         )}
 
         {/* Overview Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {/* Earnings Card */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-sm text-gray-600">Earnings</p>
+              <span className="text-2xl">💰</span>
+            </div>
+            {loadingBalance ? (
+              <div className="animate-pulse">
+                <div className="h-9 bg-gray-200 rounded w-24 mb-1" />
+                <div className="h-4 bg-gray-100 rounded w-32" />
+              </div>
+            ) : stripeBalance?.connected && stripeBalance?.active && earnings ? (
+              <>
+                <p className="text-3xl font-bold text-gray-900">{earnings.available}</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  {earnings.pending !== '$0.00' && `${earnings.pending} pending`}
+                  {earnings.pending === '$0.00' && 'Available balance'}
+                </p>
+                <a
+                  href="/api/stripe/connect/dashboard"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-blue-600 hover:underline mt-2 inline-block"
+                >
+                  View Stripe Dashboard →
+                </a>
+              </>
+            ) : stripeBalance?.connected && !stripeBalance?.active ? (
+              <>
+                <p className="text-lg font-medium text-amber-600">Setup incomplete</p>
+                <Link
+                  href={`/srv/${expertId}/settings`}
+                  className="text-xs text-blue-600 hover:underline mt-1 inline-block"
+                >
+                  Complete Stripe setup →
+                </Link>
+              </>
+            ) : (
+              <>
+                <p className="text-lg font-medium text-gray-400">Not connected</p>
+                <Link
+                  href={`/srv/${expertId}/settings`}
+                  className="text-xs text-blue-600 hover:underline mt-1 inline-block"
+                >
+                  Connect Stripe →
+                </Link>
+              </>
+            )}
+          </div>
+
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between mb-2">
               <p className="text-sm text-gray-600">Total Students</p>
@@ -110,160 +283,276 @@ export default function ExpertDashboard() {
 
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-gray-600">Total Courses</p>
+              <p className="text-sm text-gray-600">Published Courses</p>
               <span className="text-2xl">📚</span>
-            </div>
-            <p className="text-3xl font-bold text-gray-900">{courses.length}</p>
-            <p className="text-sm text-gray-500 mt-1">
-              {publishedCourses.length} published, {inProgressCourses.length} in progress
-            </p>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-gray-600">Published</p>
-              <span className="text-2xl">✅</span>
             </div>
             <p className="text-3xl font-bold text-gray-900">{publishedCourses.length}</p>
             <p className="text-sm text-gray-500 mt-1">Live courses</p>
           </div>
+        </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-gray-600">Average Rating</p>
-              <span className="text-2xl">⭐</span>
-            </div>
-            <p className="text-3xl font-bold text-gray-900">
-              {courses.length > 0 ? averageRating.toFixed(1) : '—'}
-            </p>
-            <p className="text-sm text-gray-500 mt-1">Across all courses</p>
+        {/* Analytics Section Header with Period Selector */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <h2 className="text-xl font-bold text-gray-900">Analytics</h2>
+          <div className="flex gap-2">
+            {(['7d', '30d', '90d', 'all'] as const).map(p => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  period === p
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {p === 'all'
+                  ? 'All Time'
+                  : p === '7d'
+                    ? '7 Days'
+                    : p === '30d'
+                      ? '30 Days'
+                      : '90 Days'}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* My Courses */}
-        <div className="bg-white rounded-lg shadow mb-8">
-          <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-            <h2 className="text-xl font-bold text-gray-900">My Courses</h2>
-            <span className="text-sm text-gray-500">{courses.length} courses</span>
+        {loadingAnalytics ? (
+          <div className="flex items-center justify-center py-12">
+            <LoadingSpinner size="md" message="Loading analytics..." />
           </div>
-          <div className="p-6">
-            {courses.length > 0 ? (
-              <div className="space-y-6">
-                {courses.map(course => (
-                  <div
-                    key={course.id}
-                    className="border border-gray-200 rounded-lg p-6 hover:border-gray-400 transition-colors"
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-lg font-semibold text-gray-900">{course.title}</h3>
-                          <span
-                            className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                              course.status === 'PUBLISHED'
-                                ? 'bg-green-100 text-green-800'
-                                : course.status === 'IN_PROGRESS'
-                                  ? 'bg-yellow-100 text-yellow-800'
-                                  : 'bg-gray-100 text-gray-800'
-                            }`}
-                          >
-                            {course.status || 'DRAFT'}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-600 mb-3">{course.description}</p>
-                        <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
-                          <span>⭐ {course.rating.toFixed(1)}</span>
-                          <span>•</span>
-                          <span>👥 {course.totalStudents.toLocaleString()} students</span>
-                          <span>•</span>
-                          <span>📚 {course.totalLessons} lessons</span>
-                          <span>•</span>
-                          <span>💰 ${course.price}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-3">
-                      {course.status === 'IN_PROGRESS' ? (
-                        <Link
-                          href={`/srv/${expertId}/courses/${course.id}`}
-                          className="px-4 py-2 bg-yellow-600 text-white text-sm rounded-lg hover:bg-yellow-700 transition-colors font-medium"
-                        >
-                          Continue Setup
-                        </Link>
-                      ) : (
-                        <Link
-                          href={`/srv/${expertId}/courses/${course.id}`}
-                          className="px-4 py-2 text-white text-sm rounded-lg transition-colors font-medium"
-                          style={{ background: 'var(--color-primary)' }}
-                        >
-                          Manage Course
-                        </Link>
-                      )}
-                      <Link
-                        href={`/srv/${expertId}/courses/${course.id}/edit`}
-                        className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors font-medium"
-                      >
-                        Edit
-                      </Link>
-                      <Link
-                        href={`/courses/${course.id}`}
-                        className="px-4 py-2 border border-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors font-medium"
-                      >
-                        View as Student
-                      </Link>
-                    </div>
-                  </div>
-                ))}
+        ) : analytics ? (
+          <>
+            {/* Analytics Overview Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-gray-600">Total Views</p>
+                  <span className="text-2xl">👁️</span>
+                </div>
+                <p className="text-3xl font-bold text-gray-900">
+                  {analytics.overview.totalViews.toLocaleString()}
+                </p>
+                <p className="text-sm text-gray-500 mt-1">
+                  {analytics.overview.uniqueViewers.toLocaleString()} unique viewers
+                </p>
               </div>
-            ) : (
-              <div className="text-center py-12">
-                <div className="text-4xl mb-4">📚</div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No courses yet</h3>
+
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-gray-600">Enrollments</p>
+                  <span className="text-2xl">✅</span>
+                </div>
+                <p className="text-3xl font-bold text-gray-900">
+                  {analytics.overview.totalEnrollments.toLocaleString()}
+                </p>
+                <p className="text-sm text-gray-500 mt-1">
+                  From {analytics.overview.enrollClicks} clicks
+                </p>
+              </div>
+
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-gray-600">Total Revenue</p>
+                  <span className="text-2xl">💵</span>
+                </div>
+                <p className="text-3xl font-bold text-gray-900">
+                  {formatCurrency(analytics.overview.totalRevenue, analytics.overview.currency)}
+                </p>
+                <p className="text-sm text-gray-500 mt-1">
+                  Across {analytics.overview.totalCourses} courses
+                </p>
+              </div>
+
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-gray-600">Conversion Rate</p>
+                  <span className="text-2xl">📈</span>
+                </div>
+                <p className="text-3xl font-bold text-gray-900">
+                  {analytics.conversion.avgConversionRate}%
+                </p>
+                <p className="text-sm text-gray-500 mt-1">Click to enrollment</p>
+              </div>
+            </div>
+
+            {/* Conversion Metrics */}
+            <div className="bg-white rounded-lg shadow mb-8">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-bold text-gray-900">Conversion Funnel</h3>
+              </div>
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm font-medium text-gray-700">Click → Payment</p>
+                      <span className="text-lg font-bold text-blue-600">
+                        {analytics.conversion.avgClickToPaymentRate}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <div
+                        className="bg-blue-600 h-2.5 rounded-full"
+                        style={{
+                          width: `${Math.min(analytics.conversion.avgClickToPaymentRate, 100)}%`,
+                        }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Users who initiated payment</p>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm font-medium text-gray-700">Payment Success</p>
+                      <span className="text-lg font-bold text-green-600">
+                        {analytics.conversion.avgPaymentSuccessRate}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <div
+                        className="bg-green-600 h-2.5 rounded-full"
+                        style={{
+                          width: `${Math.min(analytics.conversion.avgPaymentSuccessRate, 100)}%`,
+                        }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Payments that succeeded</p>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm font-medium text-gray-700">Overall Conversion</p>
+                      <span className="text-lg font-bold text-purple-600">
+                        {analytics.conversion.avgConversionRate}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <div
+                        className="bg-purple-600 h-2.5 rounded-full"
+                        style={{
+                          width: `${Math.min(analytics.conversion.avgConversionRate, 100)}%`,
+                        }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Click to enrollment rate</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Engagement Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              <div className="bg-white rounded-lg shadow p-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-4">Watch Time</h3>
+                <div className="flex items-center gap-4">
+                  <span className="text-5xl">⏱️</span>
+                  <div>
+                    <p className="text-3xl font-bold text-gray-900">
+                      {Math.floor(analytics.engagement.totalWatchTimeMinutes / 60)}h{' '}
+                      {analytics.engagement.totalWatchTimeMinutes % 60}m
+                    </p>
+                    <p className="text-sm text-gray-500">Total watch time</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow p-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-4">Course Completion</h3>
+                <div className="flex items-center gap-4">
+                  <span className="text-5xl">🎓</span>
+                  <div>
+                    <p className="text-3xl font-bold text-gray-900">
+                      {analytics.engagement.avgCompletionRate}%
+                    </p>
+                    <p className="text-sm text-gray-500">Average completion rate</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Top Performing Courses */}
+            {analytics.topPerformingCourses.length > 0 && (
+              <div className="bg-white rounded-lg shadow">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h3 className="text-lg font-bold text-gray-900">Top Performing Courses</h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Course
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Views
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Clicks
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Enrollments
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Revenue
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {analytics.topPerformingCourses.map(course => (
+                        <tr key={course.courseId} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <Link
+                              href={`/srv/${expertId}/courses/${course.courseId}`}
+                              className="text-sm font-medium text-blue-600 hover:text-blue-700"
+                            >
+                              {course.title}
+                            </Link>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {course.views.toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {course.enrollClicks.toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {course.enrollments.toLocaleString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
+                            {formatCurrency(course.revenue, analytics.overview.currency)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {analytics.topPerformingCourses.length === 0 && (
+              <div className="bg-white rounded-lg shadow p-12 text-center">
+                <div className="text-6xl mb-4">📊</div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No Analytics Data Yet</h3>
                 <p className="text-gray-600 mb-4">
-                  Create your first course to start sharing your expertise
+                  Analytics data will appear here once your courses start receiving views and
+                  enrollments.
                 </p>
                 <Link
-                  href={`/srv/${expertId}/courses/create`}
+                  href={`/srv/${expertId}/courses`}
                   className="inline-flex items-center px-6 py-3 text-white font-semibold rounded-lg transition-colors"
                   style={{ background: 'var(--color-primary)' }}
                 >
-                  <span className="text-xl mr-2">+</span>
-                  Create First Course
+                  View My Courses
                 </Link>
               </div>
             )}
+          </>
+        ) : (
+          <div className="bg-white rounded-lg shadow p-12 text-center">
+            <div className="text-6xl mb-4">📊</div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Analytics Unavailable</h3>
+            <p className="text-gray-600">Unable to load analytics data at this time.</p>
           </div>
-        </div>
-
-        {/* Add New Course Section */}
-        <div
-          className="rounded-lg shadow mb-8"
-          style={{
-            background:
-              'linear-gradient(to right, color-mix(in srgb, var(--color-primary) 10%, white), color-mix(in srgb, var(--color-primary) 15%, white))',
-            border: '1px solid color-mix(in srgb, var(--color-primary) 30%, white)',
-          }}
-        >
-          <div className="p-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900 mb-2">Create New Course</h2>
-                <p className="text-gray-600">
-                  Share your expertise by creating a new course for your students
-                </p>
-              </div>
-              <Link
-                href={`/srv/${expertId}/courses/create`}
-                className="inline-flex items-center px-6 py-3 text-white font-semibold rounded-lg transition-colors shadow-md hover:shadow-lg"
-                style={{ background: 'var(--color-primary)' }}
-              >
-                <span className="text-xl mr-2">+</span>
-                Add New Course
-              </Link>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
     </>
   );

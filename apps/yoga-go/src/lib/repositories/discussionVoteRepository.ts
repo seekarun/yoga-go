@@ -255,3 +255,26 @@ function mapToVote(item: Record<string, unknown>): DiscussionVote {
     updatedAt: item.updatedAt as string,
   };
 }
+
+/**
+ * Delete all votes for a user
+ * Returns the count of deleted votes
+ */
+export async function deleteAllByUser(userId: string): Promise<number> {
+  console.log('[DBG][discussionVoteRepository] Deleting all votes for user:', userId);
+
+  const votes = await getVotesByUser(userId);
+
+  if (votes.length === 0) {
+    console.log('[DBG][discussionVoteRepository] No votes to delete');
+    return 0;
+  }
+
+  // Delete each vote (handles dual-write cleanup)
+  for (const vote of votes) {
+    await deleteVote(vote.discussionId, userId);
+  }
+
+  console.log('[DBG][discussionVoteRepository] Deleted', votes.length, 'votes');
+  return votes.length;
+}

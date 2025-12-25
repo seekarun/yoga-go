@@ -145,7 +145,19 @@ export async function PUT(
 
 /**
  * DELETE /data/admn/users/[userId]
- * Delete user account (admin only)
+ * Delete user account and ALL related data (admin only)
+ *
+ * This performs a comprehensive deletion:
+ * - Course progress records
+ * - Webinar registrations
+ * - Survey responses
+ * - Blog likes and comments
+ * - Discussion votes and discussions
+ * - Analytics events
+ * - Payment records (anonymized, not deleted)
+ * - User record
+ *
+ * Returns counts of deleted records for verification.
  */
 export async function DELETE(
   request: NextRequest,
@@ -156,7 +168,7 @@ export async function DELETE(
     await requireAdminAuth();
 
     const { userId } = await params;
-    console.log('[DBG][admn/users/userId] Deleting user:', userId);
+    console.log('[DBG][admn/users/userId] Starting complete deletion for user:', userId);
 
     const user = await userRepository.getUserById(userId);
 
@@ -182,22 +194,41 @@ export async function DELETE(
       );
     }
 
-    await userRepository.deleteUser(userId);
+    // Perform comprehensive deletion
+    const result = await userRepository.deleteUserCompletely(userId);
 
-    console.log('[DBG][admn/users/userId] User deleted successfully');
+    console.log(
+      '[DBG][admn/users/userId] User and all data deleted successfully:',
+      result.deletedCounts
+    );
 
     return NextResponse.json({
       success: true,
-      message: 'User deleted successfully',
+      message: 'User and all related data deleted successfully',
+      deletedCounts: result.deletedCounts,
     });
   } catch (error) {
     console.error('[DBG][admn/users/userId] Error deleting user:', error);
+
+    // Check for specific error messages
+    const errorMessage = error instanceof Error ? error.message : 'Failed to delete user';
+
+    // Determine status code based on error type
+    let statusCode = 500;
+    if (errorMessage.includes('Forbidden')) {
+      statusCode = 403;
+    } else if (errorMessage.includes('expert profiles')) {
+      statusCode = 400; // Bad request - user has expert profile
+    } else if (errorMessage.includes('not found')) {
+      statusCode = 404;
+    }
+
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to delete user',
+        error: errorMessage,
       },
-      { status: error instanceof Error && error.message.includes('Forbidden') ? 403 : 500 }
+      { status: statusCode }
     );
   }
 }

@@ -1,7 +1,7 @@
 /**
  * DynamoDB Client Configuration
  *
- * 6-table design:
+ * 8-table design:
  *
  * 1. CORE TABLE - Main business entities
  *    - User, Expert, Course, Lesson, CourseProgress
@@ -21,6 +21,12 @@
  *
  * 6. BOOST TABLE - Wallet and boost campaigns
  *    - ExpertWallet, WalletTransaction, Boost
+ *
+ * 7. ASSETS TABLE - Cloudflare uploaded images/videos
+ *    - Asset metadata
+ *
+ * 8. EMAILS TABLE - Expert/Admin inboxes
+ *    - Email, EmailThread (high-volume, separate table)
  */
 
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
@@ -51,6 +57,7 @@ export const Tables = {
   BLOG: 'yoga-go-blog',
   ASSETS: 'yoga-go-assets',
   BOOST: 'yoga-go-boost', // Wallet and boost campaigns
+  EMAILS: 'yoga-go-emails', // Expert/Admin inboxes
 } as const;
 
 // Legacy export for backward compatibility during migration
@@ -87,11 +94,22 @@ export const CorePK = {
   // Waitlist signups
   WAITLIST: 'WAITLIST',
   WAITLIST_PENDING: (email: string) => `WAITLIST_PENDING#${email.toLowerCase()}`,
-  // Email inbox
-  EMAIL: (expertId: string) => `EMAIL#${expertId}`,
-  EMAIL_THREAD: (threadId: string) => `THREAD#${threadId}`,
   // Exchange rate cache
   EXCHANGE_RATE: 'EXCHANGE_RATE',
+} as const;
+
+// ============================================
+// EMAILS TABLE - PK/SK Prefixes
+// Separate table for high-volume email storage
+// ============================================
+export const EmailsPK = {
+  // Inbox by owner: PK=INBOX#{ownerId}, SK={receivedAt}#{emailId}
+  // ownerId is either expertId or 'ADMIN' for admin inbox
+  INBOX: (ownerId: string) => `INBOX#${ownerId}`,
+  // Thread grouping: PK=THREAD#{threadId}, SK={emailId}
+  THREAD: (threadId: string) => `THREAD#${threadId}`,
+  // GSI1 for unread filtering (optional optimization)
+  // GSI1PK: INBOX#{ownerId}#UNREAD, GSI1SK: {receivedAt}
 } as const;
 
 // ============================================

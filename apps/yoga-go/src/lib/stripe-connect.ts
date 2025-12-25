@@ -184,3 +184,32 @@ export async function getConnectStatus(expertId: string): Promise<StripeConnectD
   const expert = await expertRepository.getExpertById(expertId);
   return expert?.stripeConnect ?? null;
 }
+
+/**
+ * Get account balance for a connected account
+ */
+export interface StripeBalance {
+  available: { amount: number; currency: string }[];
+  pending: { amount: number; currency: string }[];
+}
+
+export async function getAccountBalance(stripeAccountId: string): Promise<StripeBalance> {
+  console.log('[DBG][stripe-connect] Fetching balance for account:', stripeAccountId);
+
+  const stripe = getStripeInstance();
+
+  const balance = await stripe.balance.retrieve({
+    stripeAccount: stripeAccountId,
+  });
+
+  return {
+    available: balance.available.map(b => ({
+      amount: b.amount,
+      currency: b.currency.toUpperCase(),
+    })),
+    pending: balance.pending.map(b => ({
+      amount: b.amount,
+      currency: b.currency.toUpperCase(),
+    })),
+  };
+}

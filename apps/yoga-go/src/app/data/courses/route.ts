@@ -4,6 +4,7 @@ import type { ApiResponse, Course, SupportedCurrency } from '@/types';
 import * as courseRepository from '@/lib/repositories/courseRepository';
 import * as expertRepository from '@/lib/repositories/expertRepository';
 import * as tenantRepository from '@/lib/repositories/tenantRepository';
+import * as courseProgressRepository from '@/lib/repositories/courseProgressRepository';
 import { normalizeCurrency, DEFAULT_CURRENCY } from '@/config/currencies';
 
 // Generate a unique course ID
@@ -96,26 +97,49 @@ export async function GET(request: Request) {
     const experts = await Promise.all(expertPromises);
     const expertMap = new Map(experts.filter(e => e !== null).map(expert => [expert!.id, expert]));
 
-    // Populate instructor avatar from expert data
-    const courses: Course[] = courseDocs.map(doc => {
-      const course = { ...doc };
+    // Calculate actual student counts from course progress for each course
+    const coursesWithStudentCounts = await Promise.all(
+      courseDocs.map(async doc => {
+        const course = { ...doc };
 
-      // Populate instructor avatar from expert data
-      if (doc.instructor?.id && expertMap.has(doc.instructor.id)) {
-        const expert = expertMap.get(doc.instructor.id);
-        course.instructor = {
-          ...doc.instructor,
-          avatar: expert?.avatar || doc.instructor.avatar,
-        };
-      }
+        // Populate instructor avatar from expert data
+        if (doc.instructor?.id && expertMap.has(doc.instructor.id)) {
+          const expert = expertMap.get(doc.instructor.id);
+          course.instructor = {
+            ...doc.instructor,
+            avatar: expert?.avatar || doc.instructor.avatar,
+          };
+        }
 
-      return course;
-    });
+        // Calculate actual student count from course progress (enrolled users)
+        try {
+          const progressRecords = await courseProgressRepository.getCourseProgressByCourseId(
+            doc.id
+          );
+          course.totalStudents = progressRecords.length;
+          console.log(
+            '[DBG][courses/route.ts] Student count for course:',
+            doc.id,
+            '=',
+            progressRecords.length
+          );
+        } catch (err) {
+          console.error(
+            '[DBG][courses/route.ts] Error getting student count for course:',
+            doc.id,
+            err
+          );
+          // Keep the existing totalStudents value if we can't fetch progress
+        }
+
+        return course;
+      })
+    );
 
     const response: ApiResponse<Course[]> = {
       success: true,
-      data: courses,
-      total: courses.length,
+      data: coursesWithStudentCounts,
+      total: coursesWithStudentCounts.length,
     };
 
     return NextResponse.json(response);

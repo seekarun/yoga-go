@@ -1,8 +1,8 @@
 /**
  * Email Repository - DynamoDB Operations
  *
- * Single-table design:
- * - PK: "EMAIL#{expertId}"
+ * Dedicated emails table (yoga-go-emails) for high-volume storage:
+ * - PK: "INBOX#{ownerId}" (ownerId is expertId or 'ADMIN')
  * - SK: "{receivedAt}#{emailId}" (sorted by date, most recent first with reverse scan)
  *
  * Thread grouping:
@@ -11,7 +11,7 @@
  */
 
 import { GetCommand, PutCommand, UpdateCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
-import { docClient, Tables, CorePK } from '../dynamodb';
+import { docClient, Tables, EmailsPK } from '../dynamodb';
 import type { Email, EmailAttachment, EmailAddress, EmailListResult, EmailFilters } from '@/types';
 
 // Type for DynamoDB Email item (includes PK/SK)
@@ -63,8 +63,8 @@ export async function createEmail(input: CreateEmailInput): Promise<Email> {
 
   const now = new Date().toISOString();
   const email: DynamoDBEmailItem = {
-    // Primary key
-    PK: CorePK.EMAIL(input.expertId),
+    // Primary key - use INBOX#{expertId} pattern in emails table
+    PK: EmailsPK.INBOX(input.expertId),
     SK: `${input.receivedAt}#${input.id}`,
     // Entity fields
     id: input.id,
@@ -91,7 +91,7 @@ export async function createEmail(input: CreateEmailInput): Promise<Email> {
 
   await docClient.send(
     new PutCommand({
-      TableName: Tables.CORE,
+      TableName: Tables.EMAILS,
       Item: email,
     })
   );
@@ -100,9 +100,9 @@ export async function createEmail(input: CreateEmailInput): Promise<Email> {
   if (input.threadId) {
     await docClient.send(
       new PutCommand({
-        TableName: Tables.CORE,
+        TableName: Tables.EMAILS,
         Item: {
-          PK: CorePK.EMAIL_THREAD(input.threadId),
+          PK: EmailsPK.THREAD(input.threadId),
           SK: input.id,
           emailId: input.id,
           expertId: input.expertId,
@@ -129,10 +129,10 @@ export async function getEmailsByExpert(
 
   const result = await docClient.send(
     new QueryCommand({
-      TableName: Tables.CORE,
+      TableName: Tables.EMAILS,
       KeyConditionExpression: 'PK = :pk',
       ExpressionAttributeValues: {
-        ':pk': CorePK.EMAIL(expertId),
+        ':pk': EmailsPK.INBOX(expertId),
       },
       ScanIndexForward: false, // Most recent first
       Limit: limit,
@@ -190,9 +190,9 @@ export async function getEmailById(
 
   const result = await docClient.send(
     new GetCommand({
-      TableName: Tables.CORE,
+      TableName: Tables.EMAILS,
       Key: {
-        PK: CorePK.EMAIL(expertId),
+        PK: EmailsPK.INBOX(expertId),
         SK: `${receivedAt}#${emailId}`,
       },
     })
@@ -215,11 +215,11 @@ export async function findEmailById(emailId: string, expertId: string): Promise<
 
   const result = await docClient.send(
     new QueryCommand({
-      TableName: Tables.CORE,
+      TableName: Tables.EMAILS,
       KeyConditionExpression: 'PK = :pk',
       FilterExpression: 'id = :emailId',
       ExpressionAttributeValues: {
-        ':pk': CorePK.EMAIL(expertId),
+        ':pk': EmailsPK.INBOX(expertId),
         ':emailId': emailId,
       },
     })
@@ -265,9 +265,9 @@ export async function updateEmailStatus(
 
   const result = await docClient.send(
     new UpdateCommand({
-      TableName: Tables.CORE,
+      TableName: Tables.EMAILS,
       Key: {
-        PK: CorePK.EMAIL(expertId),
+        PK: EmailsPK.INBOX(expertId),
         SK: `${receivedAt}#${emailId}`,
       },
       UpdateExpression: 'SET ' + updateExpressions.join(', '),
@@ -295,10 +295,10 @@ export async function getEmailThread(threadId: string): Promise<Email[]> {
   // First get email IDs from thread grouping
   const threadResult = await docClient.send(
     new QueryCommand({
-      TableName: Tables.CORE,
+      TableName: Tables.EMAILS,
       KeyConditionExpression: 'PK = :pk',
       ExpressionAttributeValues: {
-        ':pk': CorePK.EMAIL_THREAD(threadId),
+        ':pk': EmailsPK.THREAD(threadId),
       },
     })
   );
@@ -332,11 +332,11 @@ export async function getUnreadCount(expertId: string): Promise<number> {
 
   const result = await docClient.send(
     new QueryCommand({
-      TableName: Tables.CORE,
+      TableName: Tables.EMAILS,
       KeyConditionExpression: 'PK = :pk',
       FilterExpression: 'isRead = :isRead',
       ExpressionAttributeValues: {
-        ':pk': CorePK.EMAIL(expertId),
+        ':pk': EmailsPK.INBOX(expertId),
         ':isRead': false,
       },
       Select: 'COUNT',

@@ -496,3 +496,26 @@ export async function getRegistrationsNeedingReminder(
   );
   return needingReminder;
 }
+
+/**
+ * Delete all registrations for a user
+ * Returns the count of deleted registrations
+ */
+export async function deleteAllByUser(userId: string): Promise<number> {
+  console.log('[DBG][webinarRegistrationRepo] Deleting all registrations for user:', userId);
+
+  const registrations = await getRegistrationsByUserId(userId);
+
+  if (registrations.length === 0) {
+    console.log('[DBG][webinarRegistrationRepo] No registrations to delete');
+    return 0;
+  }
+
+  // Delete each registration (handles dual-write cleanup)
+  for (const registration of registrations) {
+    await deleteRegistration(registration.webinarId, userId, registration.id);
+  }
+
+  console.log('[DBG][webinarRegistrationRepo] Deleted', registrations.length, 'registrations');
+  return registrations.length;
+}

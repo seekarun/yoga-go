@@ -267,3 +267,71 @@ function mapToPayment(item: Record<string, unknown>): Payment {
     updatedAt: item.updatedAt as string,
   };
 }
+
+/**
+ * Anonymize all payments for a user (for GDPR compliance)
+ * Changes userId to 'DELETED_USER' instead of deleting records (for audit trail)
+ * Returns the count of anonymized payments
+ */
+export async function anonymizeUserPayments(userId: string): Promise<number> {
+  console.log('[DBG][paymentRepository] Anonymizing payments for user:', userId);
+
+  const payments = await getPaymentsByUser(userId);
+
+  if (payments.length === 0) {
+    console.log('[DBG][paymentRepository] No payments to anonymize');
+    return 0;
+  }
+
+  const now = new Date().toISOString();
+  const anonymizedUserId = 'DELETED_USER';
+
+  // For each payment, we need to:
+  // 1. Delete the USER#{userId} entry
+  // 2. Update the INTENT#{intentId} entry with anonymized userId
+  for (const payment of payments) {
+    const anonymizedPayment: Payment = {
+      ...payment,
+      userId: anonymizedUserId,
+      updatedAt: now,
+      metadata: {
+        ...payment.metadata,
+        originalUserId: userId,
+        anonymizedAt: now,
+      },
+    };
+
+    // Batch write: Delete old user key, update intent key with anonymized data
+    await docClient.send(
+      new BatchWriteCommand({
+        RequestItems: {
+          [Tables.ORDERS]: [
+            // Delete the user lookup entry
+            {
+              DeleteRequest: {
+                Key: {
+                  PK: OrdersPK.USER_PAYMENTS(userId),
+                  SK: payment.id,
+                },
+              },
+            },
+            // Update intent lookup with anonymized userId
+            {
+              PutRequest: {
+                Item: {
+                  PK: OrdersPK.INTENT(payment.paymentIntentId),
+                  SK: payment.id,
+                  entityType: EntityType.PAYMENT,
+                  ...anonymizedPayment,
+                },
+              },
+            },
+          ],
+        },
+      })
+    );
+  }
+
+  console.log('[DBG][paymentRepository] Anonymized', payments.length, 'payments');
+  return payments.length;
+}

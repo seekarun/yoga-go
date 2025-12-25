@@ -243,3 +243,26 @@ function mapToSurveyResponse(item: Record<string, unknown>): SurveyResponse {
     updatedAt: item.updatedAt as string,
   };
 }
+
+/**
+ * Delete all survey responses for a user
+ * Returns the count of deleted responses
+ */
+export async function deleteAllByUser(userId: string): Promise<number> {
+  console.log('[DBG][surveyResponseRepository] Deleting all responses for user:', userId);
+
+  const responses = await getResponsesByUser(userId);
+
+  if (responses.length === 0) {
+    console.log('[DBG][surveyResponseRepository] No responses to delete');
+    return 0;
+  }
+
+  // Delete each response
+  for (const response of responses) {
+    await deleteSurveyResponse(response.surveyId, response.id);
+  }
+
+  console.log('[DBG][surveyResponseRepository] Deleted', responses.length, 'responses');
+  return responses.length;
+}

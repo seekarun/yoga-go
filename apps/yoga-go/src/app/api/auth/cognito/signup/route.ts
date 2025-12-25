@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('[DBG][signup] Attempting signup for:', email);
+    console.log('[DBG][signup] Attempting signup for:', email, 'signupExpertId:', signupExpertId);
 
     // Sign up with Cognito
     const result = await signUp({

@@ -7,7 +7,7 @@
  */
 
 import { docClient, Tables, AnalyticsPK, EntityType } from '../dynamodb';
-import { PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { PutCommand, QueryCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
 
 // Event types
 export type EventType =
@@ -363,4 +363,40 @@ function mapToEvent(item: Record<string, unknown>): CourseAnalyticsEvent {
     createdAt: item.createdAt as string | undefined,
     updatedAt: item.updatedAt as string | undefined,
   };
+}
+
+/**
+ * Delete all analytics events for a user across specified courses
+ * Note: Without a user GSI, this requires querying by course and filtering by userId
+ * This is expensive but necessary for user deletion
+ * Returns the count of deleted events
+ */
+export async function deleteAllByUser(userId: string, courseIds: string[]): Promise<number> {
+  console.log('[DBG][courseAnalyticsEventRepository] Deleting all events for user:', userId);
+
+  let totalDeleted = 0;
+
+  for (const courseId of courseIds) {
+    const events = await getEventsByCourse(courseId);
+
+    // Filter events by this user
+    const userEvents = events.filter(e => e.userId === userId);
+
+    // Delete each event
+    for (const event of userEvents) {
+      await docClient.send(
+        new DeleteCommand({
+          TableName: Tables.ANALYTICS,
+          Key: {
+            PK: AnalyticsPK.COURSE(courseId),
+            SK: `${event.timestamp}#${event.id}`,
+          },
+        })
+      );
+      totalDeleted++;
+    }
+  }
+
+  console.log('[DBG][courseAnalyticsEventRepository] Deleted', totalDeleted, 'events');
+  return totalDeleted;
 }

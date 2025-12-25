@@ -210,3 +210,48 @@ function mapToBlogComment(item: Record<string, unknown>): BlogComment {
     updatedAt: item.updatedAt as string,
   };
 }
+
+/**
+ * Delete all comments for a user across all posts
+ * Note: Without a user GSI, this requires scanning all comments by expertId
+ * This is expensive but necessary for user deletion
+ * Returns the count of deleted comments
+ */
+export async function deleteAllByUser(userId: string, expertIds: string[]): Promise<number> {
+  console.log('[DBG][blogCommentRepository] Deleting all comments for user:', userId);
+
+  let totalDeleted = 0;
+
+  // For each expert the user interacted with, get all their blog posts and check comments
+  // This is expensive but necessary without a user GSI on comments
+  for (const expertId of expertIds) {
+    // Get all posts for this expert to find comments
+    const postsResult = await docClient.send(
+      new QueryCommand({
+        TableName: Tables.BLOG,
+        KeyConditionExpression: 'PK = :pk',
+        ExpressionAttributeValues: {
+          ':pk': `POSTS#${expertId}`,
+        },
+      })
+    );
+
+    const posts = postsResult.Items || [];
+
+    for (const post of posts) {
+      const postId = post.id as string;
+      const comments = await getCommentsByPost(postId);
+
+      // Filter comments by this user
+      const userComments = comments.filter(c => c.userId === userId);
+
+      for (const comment of userComments) {
+        await deleteBlogComment(postId, comment.id);
+        totalDeleted++;
+      }
+    }
+  }
+
+  console.log('[DBG][blogCommentRepository] Deleted', totalDeleted, 'comments');
+  return totalDeleted;
+}

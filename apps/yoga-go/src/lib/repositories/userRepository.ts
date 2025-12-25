@@ -93,6 +93,30 @@ export async function getAllUsers(): Promise<User[]> {
 }
 
 /**
+ * Get users who signed up via an expert's space
+ * Filters users whose signupExperts array contains the expertId
+ */
+export async function getUsersByExpertId(expertId: string): Promise<User[]> {
+  console.log('[DBG][userRepository] Getting users for expert:', expertId);
+
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: Tables.CORE,
+      KeyConditionExpression: 'PK = :pk',
+      FilterExpression: 'contains(signupExperts, :expertId)',
+      ExpressionAttributeValues: {
+        ':pk': EntityType.USER,
+        ':expertId': expertId,
+      },
+    })
+  );
+
+  const users = (result.Items || []).map(item => toUser(item as DynamoDBUserItem));
+  console.log('[DBG][userRepository] Found', users.length, 'users for expert');
+  return users;
+}
+
+/**
  * Create a new user in DynamoDB
  * Returns the created user
  */
@@ -436,4 +460,167 @@ export async function setExpertProfile(cognitoSub: string, expertId: string): Pr
     expertProfile: expertId,
     role: updatedRoles,
   });
+}
+
+/**
+ * Result of comprehensive user deletion
+ */
+export interface DeleteUserResult {
+  success: boolean;
+  deletedCounts: {
+    courseProgress: number;
+    webinarRegistrations: number;
+    surveyResponses: number;
+    blogLikes: number;
+    blogComments: number;
+    discussionVotes: number;
+    discussions: number;
+    analyticsEvents: number;
+    paymentsAnonymized: number;
+  };
+}
+
+/**
+ * Completely delete a user and all related data
+ * This is a comprehensive deletion that removes data from all tables
+ *
+ * IMPORTANT: This only works for learners. Users with expertProfile are blocked.
+ */
+export async function deleteUserCompletely(cognitoSub: string): Promise<DeleteUserResult> {
+  console.log('[DBG][userRepository] Starting complete deletion for user:', cognitoSub);
+
+  // 1. Get user and validate
+  const user = await getUserById(cognitoSub);
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  // Block deletion if user has expert profile
+  if (user.expertProfile) {
+    throw new Error(
+      'Cannot delete users with expert profiles. Please delete the expert profile first.'
+    );
+  }
+
+  // Get data needed for cleanup queries
+  const courseIds = (user.enrolledCourses || []).map(c => c.courseId);
+  const expertIds = user.signupExperts || [];
+
+  console.log(
+    '[DBG][userRepository] User has',
+    courseIds.length,
+    'courses,',
+    expertIds.length,
+    'signup experts'
+  );
+
+  // Import all repositories dynamically to avoid circular dependencies
+  const { deleteAllByUser: deleteProgress } = await import('./courseProgressRepository');
+  const { deleteAllByUser: deleteWebinarRegs } = await import('./webinarRegistrationRepository');
+  const { deleteAllByUser: deleteSurveyResponses } = await import('./surveyResponseRepository');
+  const { deleteAllByUser: deleteBlogLikes } = await import('./blogLikeRepository');
+  const { deleteAllByUser: deleteBlogComments } = await import('./blogCommentRepository');
+  const { deleteAllByUser: deleteDiscussionVotes } = await import('./discussionVoteRepository');
+  const { deleteAllByUser: deleteDiscussions } = await import('./discussionRepository');
+  const { anonymizeUserPayments } = await import('./paymentRepository');
+  const { deleteAllByUser: deleteAnalyticsEvents } =
+    await import('./courseAnalyticsEventRepository');
+
+  const deletedCounts = {
+    courseProgress: 0,
+    webinarRegistrations: 0,
+    surveyResponses: 0,
+    blogLikes: 0,
+    blogComments: 0,
+    discussionVotes: 0,
+    discussions: 0,
+    analyticsEvents: 0,
+    paymentsAnonymized: 0,
+  };
+
+  // 2. Delete analytics events (lowest impact first)
+  try {
+    deletedCounts.analyticsEvents = await deleteAnalyticsEvents(cognitoSub, courseIds);
+    console.log('[DBG][userRepository] Deleted analytics events:', deletedCounts.analyticsEvents);
+  } catch (error) {
+    console.error('[DBG][userRepository] Error deleting analytics events:', error);
+  }
+
+  // 3. Delete blog likes
+  try {
+    deletedCounts.blogLikes = await deleteBlogLikes(cognitoSub);
+    console.log('[DBG][userRepository] Deleted blog likes:', deletedCounts.blogLikes);
+  } catch (error) {
+    console.error('[DBG][userRepository] Error deleting blog likes:', error);
+  }
+
+  // 4. Delete blog comments
+  try {
+    deletedCounts.blogComments = await deleteBlogComments(cognitoSub, expertIds);
+    console.log('[DBG][userRepository] Deleted blog comments:', deletedCounts.blogComments);
+  } catch (error) {
+    console.error('[DBG][userRepository] Error deleting blog comments:', error);
+  }
+
+  // 5. Delete discussion votes
+  try {
+    deletedCounts.discussionVotes = await deleteDiscussionVotes(cognitoSub);
+    console.log('[DBG][userRepository] Deleted discussion votes:', deletedCounts.discussionVotes);
+  } catch (error) {
+    console.error('[DBG][userRepository] Error deleting discussion votes:', error);
+  }
+
+  // 6. Delete discussions
+  try {
+    deletedCounts.discussions = await deleteDiscussions(cognitoSub, courseIds);
+    console.log('[DBG][userRepository] Deleted discussions:', deletedCounts.discussions);
+  } catch (error) {
+    console.error('[DBG][userRepository] Error deleting discussions:', error);
+  }
+
+  // 7. Delete survey responses
+  try {
+    deletedCounts.surveyResponses = await deleteSurveyResponses(cognitoSub);
+    console.log('[DBG][userRepository] Deleted survey responses:', deletedCounts.surveyResponses);
+  } catch (error) {
+    console.error('[DBG][userRepository] Error deleting survey responses:', error);
+  }
+
+  // 8. Delete webinar registrations
+  try {
+    deletedCounts.webinarRegistrations = await deleteWebinarRegs(cognitoSub);
+    console.log(
+      '[DBG][userRepository] Deleted webinar registrations:',
+      deletedCounts.webinarRegistrations
+    );
+  } catch (error) {
+    console.error('[DBG][userRepository] Error deleting webinar registrations:', error);
+  }
+
+  // 9. Delete course progress
+  try {
+    deletedCounts.courseProgress = await deleteProgress(cognitoSub);
+    console.log('[DBG][userRepository] Deleted course progress:', deletedCounts.courseProgress);
+  } catch (error) {
+    console.error('[DBG][userRepository] Error deleting course progress:', error);
+  }
+
+  // 10. Anonymize payments (don't delete, keep for audit trail)
+  try {
+    deletedCounts.paymentsAnonymized = await anonymizeUserPayments(cognitoSub);
+    console.log('[DBG][userRepository] Anonymized payments:', deletedCounts.paymentsAnonymized);
+  } catch (error) {
+    console.error('[DBG][userRepository] Error anonymizing payments:', error);
+  }
+
+  // 11. Delete user record (last)
+  await deleteUser(cognitoSub);
+  console.log('[DBG][userRepository] Deleted user record');
+
+  console.log('[DBG][userRepository] Complete deletion finished:', deletedCounts);
+
+  return {
+    success: true,
+    deletedCounts,
+  };
 }

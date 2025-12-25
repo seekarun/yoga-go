@@ -8,7 +8,10 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { encode } from 'next-auth/jwt';
 import { cognitoConfig } from '@/lib/cognito';
-import { getOrCreateUser } from '@/lib/auth';
+import { getOrCreateUser, getUserByCognitoSub } from '@/lib/auth';
+import { getSubdomainFromMyYogaGuru, isPrimaryDomain } from '@/config/domains';
+import { sendLearnerWelcomeEmail } from '@/lib/email';
+import { getTenantById } from '@/lib/repositories/tenantRepository';
 
 export async function GET(request: NextRequest) {
   console.log('[DBG][auth/facebook/callback] Processing Facebook OAuth callback');
@@ -40,6 +43,23 @@ export async function GET(request: NextRequest) {
   }
 
   console.log('[DBG][auth/facebook/callback] Parsed state:', { callbackPath, originDomain });
+
+  // Extract expertId from origin domain if it's an expert subdomain
+  let signupExpertId: string | null = null;
+  try {
+    const originUrl = new URL(originDomain);
+    const originHost = originUrl.host;
+    // Check if origin is an expert subdomain (not primary domain)
+    if (!isPrimaryDomain(originHost)) {
+      signupExpertId = getSubdomainFromMyYogaGuru(originHost);
+      console.log(
+        '[DBG][auth/facebook/callback] Detected expert subdomain signup:',
+        signupExpertId
+      );
+    }
+  } catch {
+    console.log('[DBG][auth/facebook/callback] Could not parse origin domain:', originDomain);
+  }
 
   // Use main domain for redirect_uri (must match what was sent in initial request)
   const isLocalhost = hostname.includes('localhost');
@@ -101,12 +121,23 @@ export async function GET(request: NextRequest) {
       name: payload.name,
     });
 
-    // All signups on this domain are expert signups
-    const roles: ('learner' | 'expert' | 'admin')[] = ['learner', 'expert'];
+    // Check if this is a new user (for welcome email)
+    const existingUser = await getUserByCognitoSub(payload.sub);
+    const isNewUser = !existingUser;
+
+    console.log('[DBG][auth/facebook/callback] Is new user:', isNewUser);
+
+    // Determine roles based on signup origin:
+    // - Expert subdomain: learner only (they're signing up as a learner)
+    // - Main domain: learner + expert (they're signing up as an expert)
+    const roles: ('learner' | 'expert' | 'admin')[] = signupExpertId
+      ? ['learner']
+      : ['learner', 'expert'];
 
     console.log('[DBG][auth/facebook/callback] Creating user with roles:', roles);
 
-    // Create or update user in MongoDB
+    // Create or update user in DynamoDB
+    const signupExperts = signupExpertId ? [signupExpertId] : undefined;
     const user = await getOrCreateUser(
       {
         sub: payload.sub,
@@ -114,10 +145,54 @@ export async function GET(request: NextRequest) {
         name: payload.name || payload.email?.split('@')[0],
         picture: payload.picture,
       },
-      roles // Use roles array
+      roles,
+      signupExperts
     );
 
-    console.log('[DBG][auth/facebook/callback] User created/updated:', user.id, 'roles:', roles);
+    console.log(
+      '[DBG][auth/facebook/callback] User created/updated:',
+      user.id,
+      'roles:',
+      roles,
+      'signupExpertId:',
+      signupExpertId || 'none'
+    );
+
+    // Send learner welcome email for NEW users signing up on expert subdomain
+    if (isNewUser && signupExpertId) {
+      try {
+        const tenant = await getTenantById(signupExpertId);
+        if (tenant) {
+          // Send email asynchronously - don't block auth flow
+          sendLearnerWelcomeEmail({
+            to: payload.email,
+            learnerName: payload.name || payload.email?.split('@')[0],
+            expert: {
+              id: tenant.id,
+              name: tenant.name,
+              logo: tenant.customLandingPage?.branding?.logo,
+              avatar: tenant.avatar,
+              primaryColor: tenant.customLandingPage?.theme?.primaryColor,
+              palette: tenant.customLandingPage?.theme?.palette,
+            },
+          }).catch(emailError => {
+            console.error(
+              '[DBG][auth/facebook/callback] Failed to send learner welcome email:',
+              emailError
+            );
+          });
+          console.log(
+            '[DBG][auth/facebook/callback] Triggered learner welcome email for expert:',
+            signupExpertId
+          );
+        }
+      } catch (tenantError) {
+        console.error(
+          '[DBG][auth/facebook/callback] Failed to fetch tenant for welcome email:',
+          tenantError
+        );
+      }
+    }
 
     // Create session token using NextAuth's encode function
     // This ensures compatibility with /api/auth/me which uses decode

@@ -3,7 +3,7 @@ import { headers } from 'next/headers';
 import type { ApiResponse, Expert } from '@/types';
 import * as expertRepository from '@/lib/repositories/expertRepository';
 import * as courseRepository from '@/lib/repositories/courseRepository';
-import * as paymentRepository from '@/lib/repositories/paymentRepository';
+import * as courseProgressRepository from '@/lib/repositories/courseProgressRepository';
 
 export async function GET(request: Request, { params }: { params: Promise<{ expertId: string }> }) {
   const { expertId } = await params;
@@ -34,13 +34,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ expe
     const totalCourses = expertCourses.length;
     const courseIds = expertCourses.map(c => c.id);
 
-    // Get actual number of unique students (from successful payments in DynamoDB)
+    // Get actual number of unique students from course progress
     let totalStudents = 0;
     if (courseIds.length > 0) {
       const uniqueUserIds = new Set<string>();
       for (const courseId of courseIds) {
-        const payments = await paymentRepository.getSuccessfulPaymentsByCourse(courseId);
-        payments.forEach(p => uniqueUserIds.add(p.userId));
+        const progressRecords =
+          await courseProgressRepository.getCourseProgressByCourseId(courseId);
+        progressRecords.forEach(p => uniqueUserIds.add(p.userId));
       }
       totalStudents = uniqueUserIds.size;
     }

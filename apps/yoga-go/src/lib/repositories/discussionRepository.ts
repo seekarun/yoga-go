@@ -445,3 +445,29 @@ function mapToDiscussion(item: Record<string, unknown>): Discussion {
     updatedAt: item.updatedAt as string,
   };
 }
+
+/**
+ * Delete all discussions for a user across specified courses
+ * Note: Without a user GSI, this requires querying by course and filtering by userId
+ * Returns the count of deleted discussions
+ */
+export async function deleteAllByUser(userId: string, courseIds: string[]): Promise<number> {
+  console.log('[DBG][discussionRepository] Deleting all discussions for user:', userId);
+
+  let totalDeleted = 0;
+
+  for (const courseId of courseIds) {
+    const discussions = await getDiscussionsByCourse(courseId);
+
+    // Filter discussions by this user
+    const userDiscussions = discussions.filter(d => d.userId === userId);
+
+    for (const discussion of userDiscussions) {
+      await deleteDiscussion(courseId, discussion.lessonId, discussion.id);
+      totalDeleted++;
+    }
+  }
+
+  console.log('[DBG][discussionRepository] Deleted', totalDeleted, 'discussions');
+  return totalDeleted;
+}

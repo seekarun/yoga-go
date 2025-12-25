@@ -486,3 +486,30 @@ export async function getCompletedCourseCount(userId: string): Promise<number> {
   const allProgress = await getCourseProgressByUserId(userId);
   return allProgress.filter(p => p.percentComplete === 100).length;
 }
+
+/**
+ * Delete all course progress for a user
+ * Returns the count of deleted records
+ */
+export async function deleteAllByUser(userId: string): Promise<number> {
+  console.log('[DBG][courseProgressRepository] Deleting all progress for user:', userId);
+
+  const progressRecords = await getCourseProgressByUserId(userId);
+
+  if (progressRecords.length === 0) {
+    console.log('[DBG][courseProgressRepository] No progress records to delete');
+    return 0;
+  }
+
+  // Delete each progress record
+  for (const progress of progressRecords) {
+    await deleteCourseProgress(userId, progress.courseId);
+  }
+
+  console.log(
+    '[DBG][courseProgressRepository] Deleted',
+    progressRecords.length,
+    'progress records'
+  );
+  return progressRecords.length;
+}

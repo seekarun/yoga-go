@@ -9,7 +9,7 @@
  * - Get user's liked posts: PK=USERLIKES#{userId}, SK={postId}
  */
 
-import { GetCommand, BatchWriteCommand } from '@aws-sdk/lib-dynamodb';
+import { GetCommand, BatchWriteCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { docClient, Tables, BlogPK, EntityType } from '../dynamodb';
 import type { BlogLike } from '@/types';
 import { incrementLikeCount } from './blogPostRepository';
@@ -148,4 +148,39 @@ async function removeLike(postId: string, userId: string): Promise<void> {
   await incrementLikeCount(postId, -1);
 
   console.log('[DBG][blogLikeRepository] Like removed');
+}
+
+/**
+ * Delete all likes for a user
+ * Returns the count of deleted likes
+ */
+export async function deleteAllByUser(userId: string): Promise<number> {
+  console.log('[DBG][blogLikeRepository] Deleting all likes for user:', userId);
+
+  // Query user's likes using the USERLIKES PK
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: Tables.BLOG,
+      KeyConditionExpression: 'PK = :pk',
+      ExpressionAttributeValues: {
+        ':pk': BlogPK.USER_LIKES(userId),
+      },
+    })
+  );
+
+  const likes = result.Items || [];
+
+  if (likes.length === 0) {
+    console.log('[DBG][blogLikeRepository] No likes to delete');
+    return 0;
+  }
+
+  // Delete each like (handles dual-write and count decrement)
+  for (const like of likes) {
+    const postId = like.postId as string;
+    await removeLike(postId, userId);
+  }
+
+  console.log('[DBG][blogLikeRepository] Deleted', likes.length, 'likes');
+  return likes.length;
 }

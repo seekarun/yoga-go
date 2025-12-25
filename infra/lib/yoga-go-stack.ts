@@ -467,6 +467,25 @@ The MyYoga.Guru Team`,
       projectionType: dynamodb.ProjectionType.ALL,
     });
 
+    // Emails table - for expert/admin inboxes
+    // Separate table for high-volume email storage
+    const emailsTable = new dynamodb.Table(this, "EmailsTable", {
+      tableName: "yoga-go-emails",
+      partitionKey: { name: "PK", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "SK", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      pointInTimeRecovery: false,
+    });
+
+    // GSI1: Query unread emails efficiently
+    emailsTable.addGlobalSecondaryIndex({
+      indexName: "GSI1",
+      partitionKey: { name: "GSI1PK", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "GSI1SK", type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
     // ========================================
     // IAM User for Vercel Deployment
     // ========================================
@@ -504,6 +523,8 @@ The MyYoga.Guru Team`,
         `${assetsTable.tableArn}/index/*`,
         boostTable.tableArn,
         `${boostTable.tableArn}/index/*`,
+        emailsTable.tableArn,
+        `${emailsTable.tableArn}/index/*`,
       ],
     });
 
