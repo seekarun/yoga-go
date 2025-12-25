@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, type ReactNode } from 'react';
 import { PrimaryButton, SecondaryButton } from './Button';
 
 export interface NotificationOverlayProps {
   isOpen: boolean;
   onClose: () => void;
-  message: string;
+  message: ReactNode;
   type?: 'success' | 'warning' | 'error' | 'info';
   duration?: number;
   onConfirm?: () => void;
@@ -132,7 +132,7 @@ export default function NotificationOverlay({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-white/20 backdrop-blur-sm" onClick={onClose} />
 
       {/* Notification Card */}
       <div

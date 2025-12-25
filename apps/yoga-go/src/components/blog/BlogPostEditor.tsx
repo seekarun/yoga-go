@@ -258,7 +258,7 @@ export default function BlogPostEditor({
 
       {/* Cover Image Upload Modal */}
       {showCoverUpload && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-white/20 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
             <h3 className="text-lg font-semibold mb-4">Upload Cover Image</h3>
             <ImageUploadCrop
@@ -285,7 +285,7 @@ export default function BlogPostEditor({
 
       {/* Inline Image Upload Modal */}
       {showImageUpload && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-white/20 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
             <h3 className="text-lg font-semibold mb-4">Insert Image</h3>
             <ImageUploadCrop

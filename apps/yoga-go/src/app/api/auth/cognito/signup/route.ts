@@ -15,6 +15,7 @@ interface SignupRequestBody {
   phone?: string;
   roles?: UserRole[]; // New: roles array
   role?: UserRole; // Legacy: single role
+  signupExpertId?: string; // Expert ID from subdomain signup
 }
 
 // Cookie name for pending signup data
@@ -23,7 +24,7 @@ const PENDING_SIGNUP_COOKIE = 'pending-signup';
 export async function POST(request: NextRequest) {
   try {
     const body: SignupRequestBody = await request.json();
-    const { email, password, name, phone, roles, role } = body;
+    const { email, password, name, phone, roles, role, signupExpertId } = body;
 
     // Validate required fields
     if (!email || !password || !name) {
@@ -98,6 +99,7 @@ export async function POST(request: NextRequest) {
         sub: result.userSub,
         roles: userRoles,
         email: email.toLowerCase().trim(),
+        signupExpertId: signupExpertId || undefined,
       })
         .setProtectedHeader({ alg: 'HS256' })
         .setExpirationTime('30m') // 30 minutes expiry
@@ -131,7 +133,9 @@ export async function POST(request: NextRequest) {
         '[DBG][signup] Set pending-signup cookie for:',
         result.userSub,
         'roles:',
-        userRoles
+        userRoles,
+        'signupExpertId:',
+        signupExpertId || 'none'
       );
     }
 

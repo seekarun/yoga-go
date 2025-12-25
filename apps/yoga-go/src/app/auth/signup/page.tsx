@@ -63,14 +63,16 @@ function SignupForm() {
     hasSpecial: false,
   });
   const [isExpertDomain, setIsExpertDomain] = useState(false);
+  const [signupExpertId, setSignupExpertId] = useState<string | null>(null);
 
   useEffect(() => {
     setPasswordStrength(checkPasswordStrength(formData.password));
   }, [formData.password]);
 
   useEffect(() => {
-    const { isExpertMode } = getClientExpertContext();
+    const { isExpertMode, expertId } = getClientExpertContext();
     setIsExpertDomain(isExpertMode);
+    setSignupExpertId(isExpertMode ? expertId : null);
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -123,6 +125,8 @@ function SignupForm() {
           // On expert subdomain, users are learners only; on main domain, they're experts
           roles: isExpertDomain ? ['learner'] : ['learner', 'expert'],
           authToken: authToken || undefined,
+          // Track which expert subdomain the user signed up from
+          signupExpertId: signupExpertId || undefined,
         }),
       });
 

@@ -15,6 +15,8 @@ import { getOrCreateUser } from '@/lib/auth';
 import { encode } from 'next-auth/jwt';
 import { jwtVerify } from 'jose';
 import type { UserRole } from '@/types';
+import { sendLearnerWelcomeEmail } from '@/lib/email';
+import { getTenantById } from '@/lib/repositories/tenantRepository';
 
 interface VerifyRequestBody {
   email: string;
@@ -69,8 +71,9 @@ export async function POST(request: NextRequest) {
             name: userInfo.name,
           });
 
-          // Get roles from the signed cookie (instead of MongoDB PendingAuth)
+          // Get roles and signupExpertId from the signed cookie (instead of MongoDB PendingAuth)
           let roles: UserRole[] = ['learner']; // Default
+          let signupExpertId: string | undefined;
           const pendingSignupCookie = request.cookies.get(PENDING_SIGNUP_COOKIE);
 
           if (pendingSignupCookie?.value) {
@@ -79,9 +82,15 @@ export async function POST(request: NextRequest) {
               const { payload } = await jwtVerify(pendingSignupCookie.value, secret);
 
               // Verify this cookie is for the same user
-              if (payload.sub === userInfo.sub && payload.roles) {
-                roles = payload.roles as UserRole[];
-                console.log('[DBG][verify] Got roles from cookie:', roles);
+              if (payload.sub === userInfo.sub) {
+                if (payload.roles) {
+                  roles = payload.roles as UserRole[];
+                  console.log('[DBG][verify] Got roles from cookie:', roles);
+                }
+                if (payload.signupExpertId) {
+                  signupExpertId = payload.signupExpertId as string;
+                  console.log('[DBG][verify] Got signupExpertId from cookie:', signupExpertId);
+                }
               }
             } catch (cookieError) {
               console.error('[DBG][verify] Error reading pending-signup cookie:', cookieError);
@@ -89,17 +98,58 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // Create or update DynamoDB user with roles array
+          // Create or update DynamoDB user with roles array and signup expert
+          const signupExperts = signupExpertId ? [signupExpertId] : undefined;
           const user = await getOrCreateUser(
             {
               sub: userInfo.sub,
               email: userInfo.email,
               name: userInfo.name || '',
             },
-            roles
+            roles,
+            signupExperts
           );
 
-          console.log('[DBG][verify] Created/updated user:', user.id, 'roles:', roles);
+          console.log(
+            '[DBG][verify] Created/updated user:',
+            user.id,
+            'roles:',
+            roles,
+            'signupExpertId:',
+            signupExpertId || 'none'
+          );
+
+          // Send learner welcome email if signed up on expert subdomain
+          if (signupExpertId) {
+            try {
+              const tenant = await getTenantById(signupExpertId);
+              if (tenant) {
+                // Send email asynchronously - don't block verification
+                sendLearnerWelcomeEmail({
+                  to: userInfo.email,
+                  learnerName: userInfo.name || userInfo.email.split('@')[0],
+                  expert: {
+                    id: tenant.id,
+                    name: tenant.name,
+                    logo: tenant.customLandingPage?.branding?.logo,
+                    avatar: tenant.avatar,
+                    primaryColor: tenant.customLandingPage?.theme?.primaryColor,
+                    palette: tenant.customLandingPage?.theme?.palette,
+                  },
+                }).catch(emailError => {
+                  // Log but don't fail verification if email fails
+                  console.error('[DBG][verify] Failed to send learner welcome email:', emailError);
+                });
+                console.log(
+                  '[DBG][verify] Triggered learner welcome email for expert:',
+                  signupExpertId
+                );
+              }
+            } catch (tenantError) {
+              console.error('[DBG][verify] Failed to fetch tenant for welcome email:', tenantError);
+              // Don't fail verification
+            }
+          }
 
           // Create NextAuth JWT token
           const token = await encode({

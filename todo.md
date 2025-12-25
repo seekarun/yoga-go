@@ -34,6 +34,7 @@ notes
 [ ] country specific incremental launches
 [ ] disable the next button until the expertID is validated.
 [ ] buy domain
+[ ] remove back button from first screen of on boarding
 
 [ ] http to https redirect - check if /etc/hosts still active
 [ ] custom domain: prefix with https://

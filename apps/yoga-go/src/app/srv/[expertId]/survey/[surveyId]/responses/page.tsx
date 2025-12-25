@@ -428,7 +428,7 @@ export default function SurveyResponsesPage() {
 
       {/* Email Modal */}
       {showEmailModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-white/20 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-2xl w-full p-6">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">
               Email {selectedResponses.size} Selected User(s)

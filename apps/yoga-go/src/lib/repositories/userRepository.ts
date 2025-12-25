@@ -23,6 +23,7 @@ export interface CreateUserInput {
   name?: string;
   picture?: string;
   roles?: UserRole[];
+  signupExperts?: string[]; // Expert IDs where user signed up (from subdomains)
 }
 
 // Type for DynamoDB User item (includes PK/SK)
@@ -96,18 +97,26 @@ export async function getAllUsers(): Promise<User[]> {
  * Returns the created user
  */
 export async function createUser(input: CreateUserInput): Promise<User> {
-  const { cognitoSub, email, name, picture, roles } = input;
+  const { cognitoSub, email, name, picture, roles, signupExperts } = input;
   const now = new Date().toISOString();
   const userRoles = roles || ['learner'];
   const userName = name || email;
 
-  console.log('[DBG][userRepository] Creating user:', cognitoSub, 'roles:', userRoles);
+  console.log(
+    '[DBG][userRepository] Creating user:',
+    cognitoSub,
+    'roles:',
+    userRoles,
+    'signupExperts:',
+    signupExperts || []
+  );
 
   const user: DynamoDBUserItem = {
     PK: EntityType.USER,
     SK: cognitoSub,
     id: cognitoSub, // cognitoSub is now the user id
     role: userRoles,
+    signupExperts: signupExperts || [],
     profile: {
       name: userName,
       email: email,
@@ -187,13 +196,16 @@ export async function getOrCreateUser(
     name?: string;
     picture?: string;
   },
-  roles?: UserRole[]
+  roles?: UserRole[],
+  signupExperts?: string[]
 ): Promise<User> {
   console.log(
     '[DBG][userRepository] Getting or creating user for cognitoSub:',
     cognitoUser.sub,
     'roles:',
-    roles
+    roles,
+    'signupExperts:',
+    signupExperts || []
   );
 
   // Try to get existing user
@@ -217,6 +229,16 @@ export async function getOrCreateUser(
       user = await updateUser(cognitoUser.sub, updates);
     }
 
+    // Add new signup experts if not already present
+    if (signupExperts && signupExperts.length > 0) {
+      const existingExperts = user.signupExperts || [];
+      const newExperts = signupExperts.filter(e => !existingExperts.includes(e));
+      if (newExperts.length > 0) {
+        console.log('[DBG][userRepository] Adding new signup experts:', newExperts);
+        user = await addSignupExperts(cognitoUser.sub, newExperts);
+      }
+    }
+
     return user;
   }
 
@@ -228,7 +250,37 @@ export async function getOrCreateUser(
     name: cognitoUser.name,
     picture: cognitoUser.picture,
     roles: roles,
+    signupExperts: signupExperts,
   });
+}
+
+/**
+ * Add signup experts to an existing user
+ * Appends new expert IDs to the signupExperts array
+ */
+export async function addSignupExperts(cognitoSub: string, expertIds: string[]): Promise<User> {
+  console.log('[DBG][userRepository] Adding signup experts:', cognitoSub, expertIds);
+
+  const result = await docClient.send(
+    new UpdateCommand({
+      TableName: Tables.CORE,
+      Key: {
+        PK: EntityType.USER,
+        SK: cognitoSub,
+      },
+      UpdateExpression:
+        'SET signupExperts = list_append(if_not_exists(signupExperts, :empty), :experts), updatedAt = :updatedAt',
+      ExpressionAttributeValues: {
+        ':experts': expertIds,
+        ':empty': [],
+        ':updatedAt': new Date().toISOString(),
+      },
+      ReturnValues: 'ALL_NEW',
+    })
+  );
+
+  console.log('[DBG][userRepository] Added signup experts');
+  return toUser(result.Attributes as DynamoDBUserItem);
 }
 
 /**

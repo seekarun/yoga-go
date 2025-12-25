@@ -549,7 +549,18 @@ export default function VideoUpload({
       <NotificationOverlay
         isOpen={showUploadConfirmation}
         onClose={handleCancelUpload}
-        message={`Ready to upload "${pendingFile?.name}"? You can continue using the app while we upload and process your video in the background.`}
+        message={
+          <div className="space-y-3">
+            <p className="font-medium">Ready to upload?</p>
+            <p className="text-sm text-gray-600 bg-gray-100 px-3 py-2 rounded-lg break-all">
+              {pendingFile?.name}
+            </p>
+            <p className="text-sm text-gray-500">
+              You can continue using the app while we upload and process your video in the
+              background.
+            </p>
+          </div>
+        }
         type="info"
         onConfirm={handleConfirmUpload}
         confirmText="Start Upload"

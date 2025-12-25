@@ -1,5 +1,6 @@
 import { SESClient, SendEmailCommand, SendTemplatedEmailCommand } from '@aws-sdk/client-ses';
 import { getTenantByExpertId } from '@/lib/repositories/tenantRepository';
+import { generatePalette, type ColorPalette } from '@/lib/colorPalette';
 
 // ========================================
 // AWS SES Email Service
@@ -1280,6 +1281,185 @@ Empowering yoga experts to share their knowledge
     );
   } catch (error) {
     console.error('[DBG][email] Error sending expert welcome email:', error);
+    throw error;
+  }
+};
+
+// ========================================
+// Learner Welcome Email (Expert Branded)
+// ========================================
+
+export interface LearnerWelcomeEmailOptions {
+  to: string;
+  learnerName: string;
+  expert: {
+    id: string;
+    name: string;
+    logo?: string;
+    avatar?: string;
+    primaryColor?: string;
+    palette?: ColorPalette;
+  };
+}
+
+/**
+ * Send a welcome email to a new learner who signed up on an expert's subdomain
+ * Uses the expert's branding (logo, colors)
+ *
+ * @param options - Learner welcome email options
+ * @returns Promise that resolves when email is sent
+ */
+export const sendLearnerWelcomeEmail = async (
+  options: LearnerWelcomeEmailOptions
+): Promise<void> => {
+  const { to, learnerName, expert } = options;
+
+  const expertUrl = `https://${expert.id}.myyoga.guru`;
+  const coursesUrl = `${expertUrl}/courses`;
+
+  console.log(`[DBG][email] Sending learner welcome email to ${to}`);
+  console.log(`[DBG][email] Expert: ${expert.name} (${expert.id})`);
+
+  // Use expert's colors or fall back to defaults
+  const primaryColor = expert.primaryColor || '#2A9D8F';
+  const palette = expert.palette || generatePalette(primaryColor);
+  const lightBg = palette[50] || '#f0fdf9';
+  const darkText = palette[900] || '#134e4a';
+
+  // Use expert logo if available, otherwise use avatar or MyYoga.guru logo
+  const logoUrl = expert.logo || expert.avatar || 'https://myyoga.guru/myg_light.png';
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif; background-color: ${lightBg};">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: ${lightBg}; padding: 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
+          <!-- Header with Logo -->
+          <tr>
+            <td style="background: ${primaryColor}; padding: 35px 30px; text-align: center;">
+              <img src="${logoUrl}" alt="${expert.name}" width="120" style="display: block; margin: 0 auto; max-height: 80px; object-fit: contain;" />
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              <h1 style="font-size: 28px; color: ${darkText}; margin: 0 0 20px 0; text-align: center;">
+                Welcome, ${learnerName}!
+              </h1>
+
+              <p style="font-size: 16px; color: #555; line-height: 1.6; margin: 0 0 25px 0; text-align: center;">
+                You've successfully joined <strong>${expert.name}</strong>'s yoga community.
+                We're excited to have you on this journey to wellness and transformation.
+              </p>
+
+              <!-- Get Started Box -->
+              <div style="background: ${lightBg}; padding: 25px; border-radius: 10px; margin-bottom: 25px; text-align: center;">
+                <h2 style="margin: 0 0 15px 0; font-size: 18px; color: ${darkText};">
+                  Ready to begin?
+                </h2>
+                <p style="font-size: 14px; color: #666; margin: 0 0 20px 0;">
+                  Explore courses, join live sessions, and start your practice today.
+                </p>
+
+                <!-- CTA Button -->
+                <a href="${coursesUrl}" style="display: inline-block; background: ${primaryColor}; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                  Browse Courses
+                </a>
+              </div>
+
+              <p style="font-size: 14px; color: #888; margin: 25px 0 0 0; text-align: center;">
+                Questions? Just reply to this email or visit <a href="${expertUrl}" style="color: ${primaryColor}; text-decoration: none;">${expert.id}.myyoga.guru</a>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: ${primaryColor}; padding: 20px; text-align: center;">
+              <p style="margin: 0; font-size: 13px; color: rgba(255,255,255,0.9);">
+                ${expert.name}
+              </p>
+              <p style="margin: 10px 0 0 0; font-size: 11px; color: rgba(255,255,255,0.7);">
+                Powered by <a href="https://myyoga.guru" style="color: rgba(255,255,255,0.9); text-decoration: none;">MyYoga.guru</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`;
+
+  const text = `
+Welcome to ${expert.name}!
+
+Hi ${learnerName},
+
+You've successfully joined ${expert.name}'s yoga community. We're excited to have you on this journey to wellness and transformation.
+
+Ready to begin? Explore courses, join live sessions, and start your practice today.
+
+Browse Courses: ${coursesUrl}
+
+Questions? Visit ${expertUrl}
+
+---
+${expert.name}
+Powered by MyYoga.guru
+`;
+
+  const command = new SendEmailCommand({
+    Source: fromEmail,
+    Destination: {
+      ToAddresses: [to],
+    },
+    Message: {
+      Subject: {
+        Data: `Welcome to ${expert.name}!`,
+        Charset: 'UTF-8',
+      },
+      Body: {
+        Text: {
+          Data: text,
+          Charset: 'UTF-8',
+        },
+        Html: {
+          Data: html,
+          Charset: 'UTF-8',
+        },
+      },
+    },
+    ReplyToAddresses: ['hi@myyoga.guru'],
+    ConfigurationSetName: configSet,
+    Tags: [
+      {
+        Name: 'EmailType',
+        Value: 'learner-welcome',
+      },
+      {
+        Name: 'ExpertId',
+        Value: expert.id,
+      },
+    ],
+  });
+
+  try {
+    const response = await sesClient.send(command);
+    console.log(
+      `[DBG][email] Learner welcome email sent successfully. MessageId: ${response.MessageId}`
+    );
+  } catch (error) {
+    console.error('[DBG][email] Error sending learner welcome email:', error);
     throw error;
   }
 };

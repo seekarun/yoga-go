@@ -43,8 +43,7 @@ export default function CreateCoursePage() {
     coverImage: '',
     promoVideoCloudflareId: '',
     promoVideoStatus: '' as 'uploading' | 'processing' | 'ready' | 'error' | '',
-    level: 'Beginner',
-    duration: '',
+    level: 'All Levels',
     price: '',
     category: 'Yoga',
     requirements: '',
@@ -130,7 +129,7 @@ export default function CreateCoursePage() {
         promoVideoCloudflareId: formData.promoVideoCloudflareId || undefined,
         promoVideoStatus: formData.promoVideoStatus || undefined,
         level: formData.level,
-        duration: formData.duration,
+        duration: 'Self-paced',
         totalLessons: 0,
         freeLessons: 0,
         price: parseFloat(formData.price),
@@ -245,95 +244,30 @@ export default function CreateCoursePage() {
                   placeholder="Describe what students will learn in this course"
                 />
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="level" className="block text-sm font-medium text-gray-700 mb-2">
-                    Level *
-                  </label>
-                  <select
-                    id="level"
-                    name="level"
-                    required
-                    value={formData.level}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="Beginner">Beginner</option>
-                    <option value="Intermediate">Intermediate</option>
-                    <option value="Advanced">Advanced</option>
-                    <option value="All Levels">All Levels</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="category"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    Category *
-                  </label>
-                  <select
-                    id="category"
-                    name="category"
-                    required
-                    value={formData.category}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="Yoga">Yoga</option>
-                    <option value="Meditation">Meditation</option>
-                    <option value="Pranayama">Pranayama</option>
-                    <option value="Philosophy">Philosophy</option>
-                  </select>
-                </div>
-              </div>
             </div>
           </div>
 
-          {/* Course Details */}
+          {/* Pricing */}
           <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Course Details</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-6">Pricing</h2>
 
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label
-                    htmlFor="duration"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    Duration *
-                  </label>
-                  <input
-                    type="text"
-                    id="duration"
-                    name="duration"
-                    required
-                    value={formData.duration}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="e.g., 8 weeks, 3 months"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-2">
-                    Price ({currencySymbol} {expertCurrency}) *
-                  </label>
-                  <input
-                    type="number"
-                    id="price"
-                    name="price"
-                    required
-                    min="0"
-                    step="0.01"
-                    value={formData.price}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="99.99"
-                  />
-                </div>
-              </div>
+            <div>
+              <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-2">
+                Course Price ({currencySymbol} {expertCurrency}) *
+              </label>
+              <input
+                type="number"
+                id="price"
+                name="price"
+                required
+                min="0"
+                step="0.01"
+                value={formData.price}
+                onChange={handleChange}
+                className="w-full max-w-xs px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="0.00"
+              />
+              <p className="text-sm text-gray-500 mt-2">Set to 0 for a free course</p>
             </div>
           </div>
 
