@@ -282,6 +282,7 @@ export default function CreateCoursePage() {
                   width={1200}
                   height={600}
                   category="course"
+                  tenantId={expertId}
                   label="Cover Image (1200x600px)"
                   onUploadComplete={handleCoverImageUpload}
                   onError={handleImageUploadError}

@@ -141,7 +141,12 @@ export default function NewBlogPostPage() {
         style={{ maxWidth: '800px', margin: '0 auto', padding: '40px 20px' }}
       >
         <div style={{ background: '#fff', borderRadius: '12px', padding: '32px' }}>
-          <BlogPostEditor onSave={handleSave} onCancel={handleCancel} isSaving={isSaving} />
+          <BlogPostEditor
+            expertId={expertId}
+            onSave={handleSave}
+            onCancel={handleCancel}
+            isSaving={isSaving}
+          />
         </div>
       </div>
 

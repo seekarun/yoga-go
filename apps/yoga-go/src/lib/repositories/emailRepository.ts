@@ -10,7 +10,13 @@
  * - SK: emailId
  */
 
-import { GetCommand, PutCommand, UpdateCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import {
+  GetCommand,
+  PutCommand,
+  UpdateCommand,
+  QueryCommand,
+  DeleteCommand,
+} from '@aws-sdk/lib-dynamodb';
 import { docClient, Tables, EmailsPK } from '../dynamodb';
 import type { Email, EmailAttachment, EmailAddress, EmailListResult, EmailFilters } from '@/types';
 
@@ -346,4 +352,45 @@ export async function getUnreadCount(expertId: string): Promise<number> {
   const count = result.Count ?? 0;
   console.log('[DBG][emailRepository] Unread count:', count);
   return count;
+}
+
+/**
+ * Delete an email by ID
+ * Also removes from thread grouping if applicable
+ */
+export async function deleteEmail(
+  emailId: string,
+  expertId: string,
+  receivedAt: string,
+  threadId?: string
+): Promise<boolean> {
+  console.log('[DBG][emailRepository] Deleting email:', emailId);
+
+  // Delete from inbox
+  await docClient.send(
+    new DeleteCommand({
+      TableName: Tables.EMAILS,
+      Key: {
+        PK: EmailsPK.INBOX(expertId),
+        SK: `${receivedAt}#${emailId}`,
+      },
+    })
+  );
+
+  // If part of a thread, also delete from thread grouping
+  if (threadId) {
+    await docClient.send(
+      new DeleteCommand({
+        TableName: Tables.EMAILS,
+        Key: {
+          PK: EmailsPK.THREAD(threadId),
+          SK: emailId,
+        },
+      })
+    );
+    console.log('[DBG][emailRepository] Deleted from thread:', threadId);
+  }
+
+  console.log('[DBG][emailRepository] Deleted email:', emailId);
+  return true;
 }

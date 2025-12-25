@@ -477,6 +477,9 @@ export interface DeleteUserResult {
     discussions: number;
     analyticsEvents: number;
     paymentsAnonymized: number;
+    assets: number;
+    cloudflareImages: number;
+    cloudflareVideos: number;
   };
 }
 
@@ -525,6 +528,7 @@ export async function deleteUserCompletely(cognitoSub: string): Promise<DeleteUs
   const { anonymizeUserPayments } = await import('./paymentRepository');
   const { deleteAllByUser: deleteAnalyticsEvents } =
     await import('./courseAnalyticsEventRepository');
+  const { deleteAllAssetsWithCloudflare } = await import('./assetRepository');
 
   const deletedCounts = {
     courseProgress: 0,
@@ -536,9 +540,23 @@ export async function deleteUserCompletely(cognitoSub: string): Promise<DeleteUs
     discussions: 0,
     analyticsEvents: 0,
     paymentsAnonymized: 0,
+    assets: 0,
+    cloudflareImages: 0,
+    cloudflareVideos: 0,
   };
 
-  // 2. Delete analytics events (lowest impact first)
+  // 2. Delete assets (including Cloudflare media) - using userId as tenantId
+  try {
+    const assetResult = await deleteAllAssetsWithCloudflare(cognitoSub);
+    deletedCounts.assets = assetResult.assetsDeleted;
+    deletedCounts.cloudflareImages = assetResult.cloudflareImagesDeleted;
+    deletedCounts.cloudflareVideos = assetResult.cloudflareVideosDeleted;
+    console.log('[DBG][userRepository] Deleted assets:', assetResult);
+  } catch (error) {
+    console.error('[DBG][userRepository] Error deleting assets:', error);
+  }
+
+  // 3. Delete analytics events (lowest impact)
   try {
     deletedCounts.analyticsEvents = await deleteAnalyticsEvents(cognitoSub, courseIds);
     console.log('[DBG][userRepository] Deleted analytics events:', deletedCounts.analyticsEvents);
@@ -546,7 +564,7 @@ export async function deleteUserCompletely(cognitoSub: string): Promise<DeleteUs
     console.error('[DBG][userRepository] Error deleting analytics events:', error);
   }
 
-  // 3. Delete blog likes
+  // 5. Delete blog likes
   try {
     deletedCounts.blogLikes = await deleteBlogLikes(cognitoSub);
     console.log('[DBG][userRepository] Deleted blog likes:', deletedCounts.blogLikes);
@@ -554,7 +572,7 @@ export async function deleteUserCompletely(cognitoSub: string): Promise<DeleteUs
     console.error('[DBG][userRepository] Error deleting blog likes:', error);
   }
 
-  // 4. Delete blog comments
+  // 6. Delete blog comments
   try {
     deletedCounts.blogComments = await deleteBlogComments(cognitoSub, expertIds);
     console.log('[DBG][userRepository] Deleted blog comments:', deletedCounts.blogComments);
@@ -562,7 +580,7 @@ export async function deleteUserCompletely(cognitoSub: string): Promise<DeleteUs
     console.error('[DBG][userRepository] Error deleting blog comments:', error);
   }
 
-  // 5. Delete discussion votes
+  // 7. Delete discussion votes
   try {
     deletedCounts.discussionVotes = await deleteDiscussionVotes(cognitoSub);
     console.log('[DBG][userRepository] Deleted discussion votes:', deletedCounts.discussionVotes);
@@ -570,7 +588,7 @@ export async function deleteUserCompletely(cognitoSub: string): Promise<DeleteUs
     console.error('[DBG][userRepository] Error deleting discussion votes:', error);
   }
 
-  // 6. Delete discussions
+  // 8. Delete discussions
   try {
     deletedCounts.discussions = await deleteDiscussions(cognitoSub, courseIds);
     console.log('[DBG][userRepository] Deleted discussions:', deletedCounts.discussions);
@@ -578,7 +596,7 @@ export async function deleteUserCompletely(cognitoSub: string): Promise<DeleteUs
     console.error('[DBG][userRepository] Error deleting discussions:', error);
   }
 
-  // 7. Delete survey responses
+  // 9. Delete survey responses
   try {
     deletedCounts.surveyResponses = await deleteSurveyResponses(cognitoSub);
     console.log('[DBG][userRepository] Deleted survey responses:', deletedCounts.surveyResponses);
@@ -586,7 +604,7 @@ export async function deleteUserCompletely(cognitoSub: string): Promise<DeleteUs
     console.error('[DBG][userRepository] Error deleting survey responses:', error);
   }
 
-  // 8. Delete webinar registrations
+  // 10. Delete webinar registrations
   try {
     deletedCounts.webinarRegistrations = await deleteWebinarRegs(cognitoSub);
     console.log(
@@ -597,7 +615,7 @@ export async function deleteUserCompletely(cognitoSub: string): Promise<DeleteUs
     console.error('[DBG][userRepository] Error deleting webinar registrations:', error);
   }
 
-  // 9. Delete course progress
+  // 11. Delete course progress
   try {
     deletedCounts.courseProgress = await deleteProgress(cognitoSub);
     console.log('[DBG][userRepository] Deleted course progress:', deletedCounts.courseProgress);
@@ -605,7 +623,7 @@ export async function deleteUserCompletely(cognitoSub: string): Promise<DeleteUs
     console.error('[DBG][userRepository] Error deleting course progress:', error);
   }
 
-  // 10. Anonymize payments (don't delete, keep for audit trail)
+  // 12. Anonymize payments (don't delete, keep for audit trail)
   try {
     deletedCounts.paymentsAnonymized = await anonymizeUserPayments(cognitoSub);
     console.log('[DBG][userRepository] Anonymized payments:', deletedCounts.paymentsAnonymized);
@@ -613,7 +631,7 @@ export async function deleteUserCompletely(cognitoSub: string): Promise<DeleteUs
     console.error('[DBG][userRepository] Error anonymizing payments:', error);
   }
 
-  // 11. Delete user record (last)
+  // 13. Delete user record (last)
   await deleteUser(cognitoSub);
   console.log('[DBG][userRepository] Deleted user record');
 

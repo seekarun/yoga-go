@@ -823,6 +823,7 @@ export interface CropData {
 }
 
 export interface Asset extends BaseEntity {
+  tenantId: string; // Expert ID that owns this asset (used as PK partition)
   filename: string;
   originalUrl: string; // Cloudflare Images URL for original
   croppedUrl?: string; // Cloudflare Images URL for cropped version

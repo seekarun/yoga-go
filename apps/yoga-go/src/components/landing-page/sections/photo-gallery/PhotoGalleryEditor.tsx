@@ -316,6 +316,7 @@ export default function PhotoGalleryEditor({
                       width={800}
                       height={600}
                       category="other"
+                      tenantId={expertId}
                       defaultSearchQuery="yoga"
                       onImageSelect={(url, attr) => handleImageSelect(image.id, url, attr)}
                       onError={handleUploadError}
@@ -475,6 +476,7 @@ export default function PhotoGalleryEditor({
               width={800}
               height={600}
               category="other"
+              tenantId={expertId}
               defaultSearchQuery="yoga"
               onImageSelect={(url, attr) => handleAddNewImage(url, attr)}
               onError={handleUploadError}

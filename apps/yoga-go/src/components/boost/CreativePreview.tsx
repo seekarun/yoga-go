@@ -426,6 +426,7 @@ export default function CreativePreview({
               width={1200}
               height={628}
               category="other"
+              tenantId={expertId}
               label="Select Ad Image"
               currentImageUrl={creative.imageUrl}
               relatedTo={{ type: 'expert', id: expertId }}

@@ -432,6 +432,7 @@ export default function EditExpertPage() {
                     width={500}
                     height={500}
                     category="avatar"
+                    tenantId={expertId}
                     label="Profile Picture (500x500px) *"
                     onUploadComplete={handleAvatarUpload}
                     onError={handleUploadError}

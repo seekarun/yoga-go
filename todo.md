@@ -1,7 +1,8 @@
-notes
+NOTES
 
-[ ] Duration is confusing
-[ ] no learner welcome email sent.
+Misc
+[ ] privacy and other footer links handled for platform 
+[ ] privacy and other footer links handled for individuals
 [ ] For learner - show enroll button in home page
 [ ] fix rating display. (don't show dummy data)
 [ ] expert commenting on other expert videos shows as EXPERT!!! fix.
@@ -12,13 +13,10 @@ notes
 [ ] setup custom domain email (Remove this section if domain set up already)
 [ ] options to raise ticket to add custom domain.
 [ ] add calendar.
-[ ] privacy and other footer links handled for platform 
-[ ] privacy and other footer links handled for individuals
 [ ] tell you they can set up their own domain after - all settings - you can change your preference anytime in settings.
 [ ] what if expert already has a domain email, and want to use that?
-[ ] move events to separate table.
-[ ] redo myyoga.guru landing page, to match landing page principles - what if it's a subdomain, set up page like an expert. dog food.
-[ ] remove website from social links
+[ ] move emails to separate table.
+[ ] set up launch.myyoga.guru
 [ ] how do we call hero section (etc.) to make this UI more understandable for newbies?
 [ ] in expert dashboard, on save, it should take user back to the same section.
 [ ] use formatting option for paragraphs when editing landing page.
@@ -35,6 +33,9 @@ notes
 [ ] disable the next button until the expertID is validated.
 [ ] buy domain
 [ ] remove back button from first screen of on boarding
+[ ] add language attribute for course
+[ ] switching templates should work
+[ ] handle 404 elegantly
 
 [ ] http to https redirect - check if /etc/hosts still active
 [ ] custom domain: prefix with https://
@@ -48,6 +49,8 @@ notes
 [ ] review code for all fallbacks.
 [ ] ability to sell digital assets.
 
+[x] Duration is confusing
+[x] no learner welcome email sent.
 [x] email to new expert not working.    
 [x] copy buttons for dns record name/value
 [x] consider setting up hero section as part of onboarding.

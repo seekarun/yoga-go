@@ -7,6 +7,7 @@ import NotificationOverlay from '@/components/NotificationOverlay';
 import type { BlogPost, BlogPostAttachment, BlogPostStatus, Asset } from '@/types';
 
 interface BlogPostEditorProps {
+  expertId: string; // Required for asset isolation
   initialPost?: Partial<BlogPost>;
   onSave: (post: {
     title: string;
@@ -22,6 +23,7 @@ interface BlogPostEditorProps {
 }
 
 export default function BlogPostEditor({
+  expertId,
   initialPost,
   onSave,
   onCancel,
@@ -265,6 +267,7 @@ export default function BlogPostEditor({
               width={1200}
               height={630}
               category="blog_cover"
+              tenantId={expertId}
               onUploadComplete={handleCoverImageUpload}
               onError={error => {
                 console.error('Cover upload error:', error);
@@ -292,6 +295,7 @@ export default function BlogPostEditor({
               width={800}
               height={600}
               category="blog_inline"
+              tenantId={expertId}
               onUploadComplete={handleInlineImageComplete}
               onError={error => {
                 console.error('Image upload error:', error);

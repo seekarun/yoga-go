@@ -10,6 +10,7 @@ interface ImageUploadCropProps {
   width: number;
   height: number;
   category: AssetCategory;
+  tenantId: string; // Required: expert ID for asset isolation
   onUploadComplete: (asset: Asset) => void;
   onError?: (error: string) => void;
   relatedTo?: {
@@ -25,6 +26,7 @@ export default function ImageUploadCrop({
   width,
   height,
   category,
+  tenantId,
   onUploadComplete,
   onError,
   relatedTo,
@@ -83,6 +85,7 @@ export default function ImageUploadCrop({
       formData.append('original', originalFile);
       formData.append('cropped', croppedFile);
       formData.append('category', category);
+      formData.append('tenantId', tenantId);
 
       if (relatedTo) {
         formData.append('relatedToType', relatedTo.type);

@@ -182,6 +182,7 @@ export default function HeroEditor({ data, onChange, expertId, onError }: Sectio
               width={1920}
               height={600}
               category="banner"
+              tenantId={expertId}
               defaultSearchQuery="yoga meditation"
               onImageSelect={handleImageSelect}
               onError={handleUploadError}

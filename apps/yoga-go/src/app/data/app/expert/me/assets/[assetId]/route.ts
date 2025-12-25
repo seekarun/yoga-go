@@ -58,8 +58,10 @@ export async function DELETE(
       );
     }
 
+    const tenantId = user.expertProfile;
+
     // Get the asset to verify ownership
-    const asset = await assetRepository.getAssetById(assetId);
+    const asset = await assetRepository.getAssetById(assetId, tenantId);
 
     if (!asset) {
       console.log('[DBG][expert/me/assets/[assetId]] Asset not found:', assetId);
@@ -68,12 +70,8 @@ export async function DELETE(
       });
     }
 
-    // Verify the asset belongs to this expert
-    if (
-      !asset.relatedTo ||
-      asset.relatedTo.type !== 'expert' ||
-      asset.relatedTo.id !== user.expertProfile
-    ) {
+    // Verify the asset belongs to this expert (belt and suspenders)
+    if (asset.tenantId !== tenantId) {
       console.log('[DBG][expert/me/assets/[assetId]] Asset does not belong to this expert');
       return NextResponse.json(
         {
@@ -146,7 +144,7 @@ export async function DELETE(
     }
 
     // Delete from DynamoDB
-    await assetRepository.deleteAsset(assetId);
+    await assetRepository.deleteAsset(assetId, tenantId);
 
     console.log('[DBG][expert/me/assets/[assetId]] Asset deleted successfully:', assetId);
     return NextResponse.json({

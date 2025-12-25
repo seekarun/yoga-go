@@ -950,6 +950,7 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
                 width={400}
                 height={400}
                 category="avatar"
+                tenantId={formData.id}
                 label="Upload your photo"
                 onUploadComplete={handleImageUpload}
                 onError={handleUploadError}

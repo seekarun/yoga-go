@@ -9,6 +9,7 @@ interface UnsplashImagePickerProps {
   width: number;
   height: number;
   category: AssetCategory;
+  tenantId: string; // Required for asset isolation
   onImageSelect: (imageUrl: string, attribution?: UnsplashAttribution) => void;
   onError?: (error: string) => void;
   relatedTo?: {
@@ -33,6 +34,7 @@ export default function UnsplashImagePicker({
   width,
   height,
   category,
+  tenantId,
   onImageSelect,
   onError,
   relatedTo,
@@ -320,6 +322,7 @@ export default function UnsplashImagePicker({
           width={width}
           height={height}
           category={category}
+          tenantId={tenantId}
           label={`Upload image (${width}x${height}px)`}
           onUploadComplete={handleUploadComplete}
           onError={onError}

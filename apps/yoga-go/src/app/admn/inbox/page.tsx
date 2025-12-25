@@ -21,6 +21,7 @@ export default function AdminInboxPage() {
   const [lastKey, setLastKey] = useState<string | undefined>(undefined);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Redirect if not admin
   useEffect(() => {
@@ -123,6 +124,38 @@ export default function AdminInboxPage() {
       );
     } catch (err) {
       console.log('[DBG][admn/inbox] Failed to toggle star:', err);
+    }
+  };
+
+  const handleDelete = async (e: React.MouseEvent, email: Email) => {
+    e.stopPropagation();
+
+    if (!confirm(`Delete email "${email.subject || '(no subject)'}"?`)) {
+      return;
+    }
+
+    setDeletingId(email.id);
+    try {
+      const response = await fetch(`/data/admn/inbox/${email.id}`, {
+        method: 'DELETE',
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        setEmails(prev => prev.filter(em => em.id !== email.id));
+        if (!email.isRead) {
+          setUnreadCount(prev => Math.max(0, prev - 1));
+        }
+        console.log('[DBG][admn/inbox] Deleted email:', email.id);
+      } else {
+        console.error('[DBG][admn/inbox] Failed to delete:', data.error);
+        alert('Failed to delete email: ' + (data.error || 'Unknown error'));
+      }
+    } catch (err) {
+      console.error('[DBG][admn/inbox] Delete error:', err);
+      alert('Failed to delete email');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -331,6 +364,51 @@ export default function AdminInboxPage() {
                           d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
                         />
                       </svg>
+                    </button>
+
+                    {/* Delete Button */}
+                    <button
+                      onClick={e => handleDelete(e, email)}
+                      disabled={deletingId === email.id}
+                      className="flex-shrink-0 mt-0.5 text-gray-300 hover:text-red-500 disabled:opacity-50"
+                      title="Delete email"
+                    >
+                      {deletingId === email.id ? (
+                        <svg
+                          className="w-5 h-5 animate-spin"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          />
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          />
+                        </svg>
+                      ) : (
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                      )}
                     </button>
 
                     {/* Email Content */}

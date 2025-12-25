@@ -144,6 +144,7 @@ export default function AboutEditor({ data, onChange, expertId, onError }: Secti
               width={800}
               height={600}
               category="about"
+              tenantId={expertId}
               label="About Image (800x600px recommended)"
               onUploadComplete={handleImageUpload}
               onError={handleUploadError}

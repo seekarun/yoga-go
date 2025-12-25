@@ -17,6 +17,7 @@ export async function POST(request: Request) {
     const originalFile = formData.get('original') as File;
     const croppedFile = formData.get('cropped') as File | null;
     const category = formData.get('category') as string;
+    const tenantId = formData.get('tenantId') as string; // Required: expert ID
     const relatedToType = formData.get('relatedToType') as string | null;
     const relatedToId = formData.get('relatedToId') as string | null;
     const uploadedBy = formData.get('uploadedBy') as string | null;
@@ -27,6 +28,16 @@ export async function POST(request: Request) {
         {
           success: false,
           error: 'Original file is required',
+        } as ApiResponse<Asset>,
+        { status: 400 }
+      );
+    }
+
+    if (!tenantId) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'tenantId is required',
         } as ApiResponse<Asset>,
         { status: 400 }
       );
@@ -110,6 +121,7 @@ export async function POST(request: Request) {
 
     const assetData: Asset = {
       id: assetId,
+      tenantId, // Partition key for tenant isolation
       filename: originalFile.name,
       originalUrl,
       croppedUrl,

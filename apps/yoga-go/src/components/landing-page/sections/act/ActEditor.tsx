@@ -99,6 +99,7 @@ export default function ActEditor({ data, onChange, expertId, onError }: Section
           width={800}
           height={600}
           category="about"
+          tenantId={expertId}
           onImageSelect={handleImageSelect}
           onError={handleUploadError}
           relatedTo={{

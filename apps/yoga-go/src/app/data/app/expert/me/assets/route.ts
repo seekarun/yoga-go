@@ -52,8 +52,8 @@ export async function GET() {
       );
     }
 
-    // Get all assets related to this expert
-    const assets = await assetRepository.getAssetsByRelatedTo('expert', user.expertProfile);
+    // Get all assets for this expert (tenant)
+    const assets = await assetRepository.getAssetsByTenant(user.expertProfile);
 
     console.log('[DBG][expert/me/assets/route.ts] Found', assets.length, 'assets');
     return NextResponse.json({

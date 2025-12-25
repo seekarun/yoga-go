@@ -252,23 +252,26 @@ export default function NewExpertPage() {
               </div>
 
               <div className="md:col-span-2">
-                <ImageUploadCrop
-                  width={500}
-                  height={500}
-                  category="avatar"
-                  label="Profile Picture (500x500px) *"
-                  onUploadComplete={handleAvatarUpload}
-                  onError={handleUploadError}
-                  relatedTo={
-                    formData.id
-                      ? {
-                          type: 'expert',
-                          id: formData.id,
-                        }
-                      : undefined
-                  }
-                  currentImageUrl={formData.avatar}
-                />
+                {formData.id ? (
+                  <ImageUploadCrop
+                    width={500}
+                    height={500}
+                    category="avatar"
+                    tenantId={formData.id}
+                    label="Profile Picture (500x500px) *"
+                    onUploadComplete={handleAvatarUpload}
+                    onError={handleUploadError}
+                    relatedTo={{
+                      type: 'expert',
+                      id: formData.id,
+                    }}
+                    currentImageUrl={formData.avatar}
+                  />
+                ) : (
+                  <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-center text-gray-500 text-sm">
+                    Enter Expert ID above to enable profile picture upload
+                  </div>
+                )}
                 {avatarAsset && (
                   <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                     <p className="text-sm text-green-800">✓ Avatar uploaded successfully</p>

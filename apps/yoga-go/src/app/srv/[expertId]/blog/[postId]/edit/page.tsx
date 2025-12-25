@@ -204,6 +204,7 @@ export default function EditBlogPostPage() {
       >
         <div style={{ background: '#fff', borderRadius: '12px', padding: '32px' }}>
           <BlogPostEditor
+            expertId={expertId}
             initialPost={post}
             onSave={handleSave}
             onCancel={handleCancel}
