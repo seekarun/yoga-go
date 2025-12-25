@@ -394,7 +394,8 @@ The MyYoga.Guru Team`,
         environment: {
           DYNAMODB_TABLE: coreTable.tableName,
           SES_FROM_EMAIL: "hi@myyoga.guru",
-          SES_CONFIG_SET: sesConfigSet.configurationSetName,
+          // Use us-west-2 config set since Lambda sends email via SES in us-west-2
+          SES_CONFIG_SET: "yoga-go-emails-west",
         },
         bundling: { minify: true, sourceMap: false },
       }

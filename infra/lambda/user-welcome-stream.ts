@@ -94,14 +94,15 @@ interface ExpertRecord {
  * Get expert data from DynamoDB
  */
 async function getExpert(expertId: string): Promise<ExpertRecord | null> {
-  console.log(`[user-welcome-stream] Looking up expert: ${expertId}`);
+  console.log(`[user-welcome-stream] Looking up expert/tenant: ${expertId}`);
 
   try {
+    // Experts are stored as TENANT records (PK: TENANT, SK: expertId)
     const result = await dynamodb.send(
       new GetItemCommand({
         TableName: TABLE_NAME,
         Key: {
-          PK: { S: "EXPERT" },
+          PK: { S: "TENANT" },
           SK: { S: expertId },
         },
       })
@@ -133,15 +134,38 @@ async function sendExpertWelcomeEmail(
   user: UserRecord,
   expertId: string
 ): Promise<void> {
-  const subdomain = `${expertId}.myyoga.guru`;
-  const dashboardUrl = `https://${subdomain}/srv/${expertId}`;
-  const expertEmail = `${expertId}@myyoga.guru`;
+  // For new experts without a subdomain yet, guide them to complete setup
+  const isNewExpert = expertId === "new-expert";
+  const subdomain = isNewExpert ? "your-subdomain.myyoga.guru" : `${expertId}.myyoga.guru`;
+  const dashboardUrl = isNewExpert ? "https://www.myyoga.guru/srv" : `https://${subdomain}/srv/${expertId}`;
+  const expertEmail = isNewExpert ? "your-subdomain@myyoga.guru" : `${expertId}@myyoga.guru`;
 
-  console.log(`[user-welcome-stream] Sending expert welcome to ${user.email}`);
+  console.log(`[user-welcome-stream] Sending expert welcome to ${user.email} (isNewExpert: ${isNewExpert})`);
 
   const brandPrimary = "#7a2900";
   const brandPrimaryLight = "#fed094";
   const logoUrl = "https://myyoga.guru/myg_light.png";
+
+  // Content varies based on whether expert has subdomain yet
+  const infoSection = isNewExpert
+    ? `<div style="background: ${brandPrimaryLight}; padding: 25px; border-radius: 10px; margin-bottom: 25px; border-left: 4px solid ${brandPrimary};">
+                <h2 style="margin: 0 0 15px 0; font-size: 18px; color: ${brandPrimary};">Complete Your Setup</h2>
+                <p style="margin: 10px 0; color: #555;">As an expert, you'll get:</p>
+                <ul style="margin: 10px 0; padding-left: 20px; color: #555;">
+                  <li>Your own subdomain (yourname.myyoga.guru)</li>
+                  <li>A professional email address (yourname@myyoga.guru)</li>
+                  <li>Your expert dashboard to manage courses and students</li>
+                </ul>
+                <p style="margin: 10px 0; color: #555;">Complete your onboarding to set up your profile and choose your subdomain.</p>
+              </div>`
+    : `<div style="background: ${brandPrimaryLight}; padding: 25px; border-radius: 10px; margin-bottom: 25px; border-left: 4px solid ${brandPrimary};">
+                <h2 style="margin: 0 0 15px 0; font-size: 18px; color: ${brandPrimary};">What's ready for you:</h2>
+                <p style="margin: 10px 0;"><strong>Your subdomain:</strong> <a href="https://${subdomain}" style="color: ${brandPrimary};">${subdomain}</a></p>
+                <p style="margin: 10px 0;"><strong>Your email:</strong> ${expertEmail}</p>
+                <p style="margin: 10px 0;"><strong>Dashboard:</strong> <a href="${dashboardUrl}" style="color: ${brandPrimary};">Access your dashboard</a></p>
+              </div>`;
+
+  const buttonText = isNewExpert ? "Complete Your Setup" : "Go to Your Dashboard";
 
   const html = `
 <!DOCTYPE html>
@@ -171,15 +195,10 @@ async function sendExpertWelcomeEmail(
               <p style="font-size: 16px; color: #555; line-height: 1.6; margin: 0 0 25px 0;">
                 Congratulations on joining MyYoga.guru as an expert! We're thrilled to have you on board.
               </p>
-              <div style="background: ${brandPrimaryLight}; padding: 25px; border-radius: 10px; margin-bottom: 25px; border-left: 4px solid ${brandPrimary};">
-                <h2 style="margin: 0 0 15px 0; font-size: 18px; color: ${brandPrimary};">What's ready for you:</h2>
-                <p style="margin: 10px 0;"><strong>Your subdomain:</strong> <a href="https://${subdomain}" style="color: ${brandPrimary};">${subdomain}</a></p>
-                <p style="margin: 10px 0;"><strong>Your email:</strong> ${expertEmail}</p>
-                <p style="margin: 10px 0;"><strong>Dashboard:</strong> <a href="${dashboardUrl}" style="color: ${brandPrimary};">Access your dashboard</a></p>
-              </div>
+              ${infoSection}
               <div style="text-align: center; margin: 30px 0;">
                 <a href="${dashboardUrl}" style="display: inline-block; background: ${brandPrimary}; color: #ffffff; padding: 16px 40px; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
-                  Go to Your Dashboard
+                  ${buttonText}
                 </a>
               </div>
             </td>
@@ -198,7 +217,23 @@ async function sendExpertWelcomeEmail(
 </body>
 </html>`;
 
-  const text = `Welcome to MyYoga.guru!
+  const textContent = isNewExpert
+    ? `Welcome to MyYoga.guru!
+
+Hi ${user.name || "there"},
+
+Congratulations on joining MyYoga.guru as an expert!
+
+As an expert, you'll get:
+- Your own subdomain (yourname.myyoga.guru)
+- A professional email address (yourname@myyoga.guru)
+- Your expert dashboard to manage courses and students
+
+Complete your setup: ${dashboardUrl}
+
+---
+MyYoga.guru`
+    : `Welcome to MyYoga.guru!
 
 Hi ${user.name || "there"},
 
@@ -213,6 +248,8 @@ Go to your dashboard: ${dashboardUrl}
 
 ---
 MyYoga.guru`;
+
+  const text = textContent;
 
   await ses.send(
     new SendEmailCommand({
@@ -433,9 +470,14 @@ async function processRecord(record: DynamoDBRecord): Promise<void> {
   }
 
   try {
-    // Case 1: User is an expert (has expertProfile)
-    if (user.expertProfile) {
-      await sendExpertWelcomeEmail(user, user.expertProfile);
+    // Check if user is an expert (role includes 'expert')
+    const roles = Array.isArray(user.role) ? user.role : [user.role];
+    const isExpert = roles.includes("expert");
+
+    // Case 1: User is an expert
+    if (isExpert) {
+      // Send expert welcome - they'll complete onboarding at /srv to get their subdomain
+      await sendExpertWelcomeEmail(user, "new-expert");
       return;
     }
 
