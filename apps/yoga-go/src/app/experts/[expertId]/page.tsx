@@ -485,42 +485,40 @@ export default function ExpertDetailPage() {
             </p>
 
             {/* CTA Button */}
-            {!expertMode.isExpertMode && (
-              <div
+            <div
+              style={{
+                display: 'flex',
+                gap: '16px',
+                flexWrap: 'wrap',
+                justifyContent: heroAlignment,
+              }}
+            >
+              <a
+                href={resolveCtaLink(customHero?.ctaLink)}
+                className="hero-cta-button"
                 style={{
-                  display: 'flex',
-                  gap: '16px',
-                  flexWrap: 'wrap',
-                  justifyContent: heroAlignment,
+                  display: 'inline-block',
+                  padding: '16px 48px',
+                  background: 'var(--brand-500, #fcd34d)',
+                  color: 'var(--brand-500-contrast, #1f2937)',
+                  fontSize: '18px',
+                  fontWeight: '600',
+                  borderRadius: '8px',
+                  textDecoration: 'none',
+                  transition: 'transform 0.2s, background 0.2s',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.background = 'var(--brand-600, #fbbf24)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.background = 'var(--brand-500, #fcd34d)';
                 }}
               >
-                <a
-                  href={resolveCtaLink(customHero?.ctaLink)}
-                  className="hero-cta-button"
-                  style={{
-                    display: 'inline-block',
-                    padding: '16px 48px',
-                    background: 'var(--brand-500, #fcd34d)',
-                    color: 'var(--brand-500-contrast, #1f2937)',
-                    fontSize: '18px',
-                    fontWeight: '600',
-                    borderRadius: '8px',
-                    textDecoration: 'none',
-                    transition: 'transform 0.2s, background 0.2s',
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.background = 'var(--brand-600, #fbbf24)';
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.background = 'var(--brand-500, #fcd34d)';
-                  }}
-                >
-                  {heroCtaText}
-                </a>
-              </div>
-            )}
+                {heroCtaText}
+              </a>
+            </div>
           </div>
         </div>
 
@@ -597,42 +595,40 @@ export default function ExpertDetailPage() {
           </p>
 
           {/* CTA Buttons */}
-          {!expertMode.isExpertMode && (
-            <div
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              alignItems: 'center',
+            }}
+          >
+            <a
+              href={resolveCtaLink(customHero?.ctaLink)}
+              className="hero-cta-button"
               style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '12px',
-                alignItems: 'center',
+                display: 'inline-block',
+                padding: '14px 32px',
+                background: 'var(--brand-500, #fcd34d)',
+                color: 'var(--brand-500-contrast, #1f2937)',
+                fontSize: '16px',
+                fontWeight: '600',
+                borderRadius: '8px',
+                textDecoration: 'none',
+                transition: 'transform 0.2s, background 0.2s',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.background = 'var(--brand-600, #fbbf24)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.background = 'var(--brand-500, #fcd34d)';
               }}
             >
-              <a
-                href={resolveCtaLink(customHero?.ctaLink)}
-                className="hero-cta-button"
-                style={{
-                  display: 'inline-block',
-                  padding: '14px 32px',
-                  background: 'var(--brand-500, #fcd34d)',
-                  color: 'var(--brand-500-contrast, #1f2937)',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  borderRadius: '8px',
-                  textDecoration: 'none',
-                  transition: 'transform 0.2s, background 0.2s',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.background = 'var(--brand-600, #fbbf24)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.background = 'var(--brand-500, #fcd34d)';
-                }}
-              >
-                {heroCtaText}
-              </a>
-            </div>
-          )}
+              {heroCtaText}
+            </a>
+          </div>
         </div>
       </section>
     </>
@@ -1343,35 +1339,31 @@ export default function ExpertDetailPage() {
                 {expert.customLandingPage.act.text ||
                   "Take the guesswork out of your branding and marketing today with this rapid questionnaire. At the end you'll receive a personalised report with data insights and key suggestions to help you move forward with your business in a new light."}
               </p>
-              {!expertMode.isExpertMode && (
-                <Link
-                  href={resolveCtaLink(expert.customLandingPage.act.ctaLink || customHero?.ctaLink)}
-                  className="act-cta-button"
-                  style={{
-                    padding: '16px 48px',
-                    background: 'var(--brand-500, #fcd34d)',
-                    color: 'var(--brand-500-contrast, #1f2937)',
-                    borderRadius: '8px',
-                    fontSize: '18px',
-                    fontWeight: '600',
-                    textDecoration: 'none',
-                    display: 'inline-block',
-                    transition: 'transform 0.2s, background 0.2s',
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.background = 'var(--brand-600, #fbbf24)';
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.background = 'var(--brand-500, #fcd34d)';
-                  }}
-                >
-                  {expert.customLandingPage.act.ctaText ||
-                    customHero?.ctaText ||
-                    'Get Your Results'}
-                </Link>
-              )}
+              <Link
+                href={resolveCtaLink(expert.customLandingPage.act.ctaLink || customHero?.ctaLink)}
+                className="act-cta-button"
+                style={{
+                  padding: '16px 48px',
+                  background: 'var(--brand-500, #fcd34d)',
+                  color: 'var(--brand-500-contrast, #1f2937)',
+                  borderRadius: '8px',
+                  fontSize: '18px',
+                  fontWeight: '600',
+                  textDecoration: 'none',
+                  display: 'inline-block',
+                  transition: 'transform 0.2s, background 0.2s',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.background = 'var(--brand-600, #fbbf24)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.background = 'var(--brand-500, #fcd34d)';
+                }}
+              >
+                {expert.customLandingPage.act.ctaText || customHero?.ctaText || 'Get Your Results'}
+              </Link>
             </div>
           </div>
         </div>
