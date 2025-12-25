@@ -1,6 +1,9 @@
 NOTES
 
 Misc
+[ ] on expert page the logo flickers in header
+[ ] Profile icon is always black. no profile pic.
+[ ] redo the value proposition section in landing classic template
 [ ] what about photo credit in actual website
 [ ] remove logo in expert landing page
 [ ] ability to position image (Eg. in hero image)
@@ -62,6 +65,20 @@ Misc
 [ ] review code for all fallbacks.
 [ ] ability to sell digital assets.
 
+
+I support expecting mothers through gentle, mindful prenatal yoga designed to nurture both body and baby. My sessions focus on safe movement, breath awareness, and relaxation techniques that ease common pregnancy discomforts, build strength and confidence, and create a deeper connection with your growing baby. Each practice is adaptable, supportive, and centred around your changing needs throughout pregnancy.
+Learners can expect to gain greater comfort, strength, and calm throughout pregnancy. Through gentle movement and guided breathing, you’ll build confidence in your changing body, reduce stress and tension, and develop tools to support both pregnancy and birth.
+
+
+My journey into yoga began during a time when I was searching for balance—physically, mentally, and emotionally. What started as a simple practice to relieve stress soon became a powerful tool for healing, self-awareness, and inner strength. Through yoga, I learned to listen to my body, move with intention, and breathe through life’s challenges both on and off the mat.
+Over the years, my personal practice deepened into a calling to teach. I pursued advanced yoga training with a strong focus on anatomy, breathwork, and mindful movement, and later specialised in prenatal yoga after witnessing the profound impact it can have on expecting mothers. Supporting women through pregnancy—helping them feel strong, calm, and connected during such a transformative time—has become the heart of my work.
+Today, I bring together years of dedicated practice, ongoing education, and lived experience to create safe, nurturing yoga spaces where learners feel supported at every stage of their journey. My teaching is grounded in compassion, adaptability, and the belief that yoga is for every body.
+
+
+====================================================================================================================================================================================================
+DONE
+====================================================================================================================================================================================================
+
 [x] Duration is confusing
 [x] no learner welcome email sent.
 [x] email to new expert not working.    
@@ -106,16 +123,3 @@ Misc
 [x] about text - AI generation
 [x] webinar - did not understand (use live session)
 [x] hide footer when using subdomain.
-
-
-
-
-I support expecting mothers through gentle, mindful prenatal yoga designed to nurture both body and baby. My sessions focus on safe movement, breath awareness, and relaxation techniques that ease common pregnancy discomforts, build strength and confidence, and create a deeper connection with your growing baby. Each practice is adaptable, supportive, and centred around your changing needs throughout pregnancy.
-Learners can expect to gain greater comfort, strength, and calm throughout pregnancy. Through gentle movement and guided breathing, you’ll build confidence in your changing body, reduce stress and tension, and develop tools to support both pregnancy and birth.
-
-
-My journey into yoga began during a time when I was searching for balance—physically, mentally, and emotionally. What started as a simple practice to relieve stress soon became a powerful tool for healing, self-awareness, and inner strength. Through yoga, I learned to listen to my body, move with intention, and breathe through life’s challenges both on and off the mat.
-Over the years, my personal practice deepened into a calling to teach. I pursued advanced yoga training with a strong focus on anatomy, breathwork, and mindful movement, and later specialised in prenatal yoga after witnessing the profound impact it can have on expecting mothers. Supporting women through pregnancy—helping them feel strong, calm, and connected during such a transformative time—has become the heart of my work.
-Today, I bring together years of dedicated practice, ongoing education, and lived experience to create safe, nurturing yoga spaces where learners feel supported at every stage of their journey. My teaching is grounded in compassion, adaptability, and the belief that yoga is for every body.
-
-

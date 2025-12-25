@@ -303,9 +303,17 @@ export default async function middleware(request: NextRequest) {
       return addTenantHeaders(NextResponse.rewrite(url));
     }
 
-    // Expert's own page: Allow access
-    if (pathname === expertPath || pathname.startsWith(`${expertPath}/`)) {
-      console.log(`[DBG][middleware] Allowing access to ${expertPath}`);
+    // Expert's own page: Redirect to root (keep URL clean)
+    // /experts/aaa on aaa.myyoga.guru should redirect to /
+    if (pathname === expertPath) {
+      console.log(`[DBG][middleware] Redirecting ${expertPath} to / for clean URL`);
+      const url = request.nextUrl.clone();
+      url.pathname = '/';
+      return NextResponse.redirect(url);
+    }
+    // Allow subpaths of expert page (e.g., /experts/aaa/something)
+    if (pathname.startsWith(`${expertPath}/`)) {
+      console.log(`[DBG][middleware] Allowing access to ${pathname}`);
       return addTenantHeaders(NextResponse.next());
     }
 
@@ -331,13 +339,11 @@ export default async function middleware(request: NextRequest) {
       return addTenantHeaders(NextResponse.next());
     }
 
-    // All other routes: Block access (redirect to expert page)
-    // This prevents navigation to /, /experts, other expert pages, etc.
-    console.log(
-      `[DBG][middleware] Blocking unauthorized route ${pathname}, redirecting to ${expertPath}`
-    );
+    // All other routes: Block access (redirect to root)
+    // This prevents navigation to /experts, other expert pages, etc.
+    console.log(`[DBG][middleware] Blocking unauthorized route ${pathname}, redirecting to /`);
     const url = request.nextUrl.clone();
-    url.pathname = expertPath;
+    url.pathname = '/';
     return NextResponse.redirect(url);
   }
 

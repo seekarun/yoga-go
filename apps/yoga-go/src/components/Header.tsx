@@ -8,7 +8,14 @@ import { isPrimaryDomain } from '@/config/domains';
 import type { Expert } from '@/types';
 
 export default function Header() {
-  const { user, isAuthenticated, isExpert, login: _login, logout } = useAuth();
+  const {
+    user,
+    isAuthenticated,
+    isExpert,
+    isLoading: authLoading,
+    login: _login,
+    logout,
+  } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -353,6 +360,9 @@ export default function Header() {
                 </div>
               )}
             </div>
+          ) : authLoading ? (
+            // Don't show anything while auth is loading
+            <div style={{ width: '36px', height: '36px' }} />
           ) : (
             <a
               href="/auth/signin"
