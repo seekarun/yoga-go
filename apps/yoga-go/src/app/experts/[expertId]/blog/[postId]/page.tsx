@@ -91,7 +91,7 @@ export default function BlogPostPage() {
             <h2 style={{ fontSize: '24px', marginBottom: '16px', color: '#dc2626' }}>
               {error || 'Post not found'}
             </h2>
-            <Link href={`/experts/${expertId}/blog`} style={{ color: '#2563eb' }}>
+            <Link href="/blog" style={{ color: '#2563eb' }}>
               ← Back to blog
             </Link>
           </div>
@@ -153,10 +153,7 @@ export default function BlogPostPage() {
         >
           {/* Breadcrumb */}
           <div style={{ marginBottom: '24px' }}>
-            <Link
-              href={`/experts/${expertId}/blog`}
-              style={{ color: '#666', fontSize: '14px', textDecoration: 'none' }}
-            >
+            <Link href="/blog" style={{ color: '#666', fontSize: '14px', textDecoration: 'none' }}>
               ← Back to blog
             </Link>
           </div>

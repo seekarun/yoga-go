@@ -14,7 +14,7 @@ export default function ExpertCourseDetailPage() {
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
   const { convertPrice } = useCurrency();
-  const expertId = params.expertId as string;
+  const _expertId = params.expertId as string; // Extracted for URL params, not used directly (links use /)
   const courseId = params.courseId as string;
   const [course, setCourse] = useState<Course | null>(null);
   const [lessons, setLessons] = useState<Lesson[]>([]);
@@ -146,7 +146,7 @@ export default function ExpertCourseDetailPage() {
         <div style={{ textAlign: 'center' }}>
           <h2 style={{ fontSize: '24px', marginBottom: '16px' }}>Course not found</h2>
           <Link
-            href={`/experts/${expertId}`}
+            href="/"
             style={{
               color: 'var(--color-primary)',
               textDecoration: 'underline',
@@ -219,10 +219,7 @@ export default function ExpertCourseDetailPage() {
         >
           {/* Breadcrumb */}
           <div style={{ marginBottom: '24px', fontSize: '14px', color: '#666' }}>
-            <Link
-              href={`/experts/${expertId}`}
-              style={{ color: 'var(--color-primary)', textDecoration: 'none' }}
-            >
+            <Link href="/" style={{ color: 'var(--color-primary)', textDecoration: 'none' }}>
               {course.instructor.name}
             </Link>
             <span style={{ margin: '0 8px' }}>/</span>

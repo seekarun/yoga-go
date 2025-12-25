@@ -105,35 +105,6 @@ export default function ValuePropsSection({
 
         {/* Right - Content */}
         <div>
-          {/* Section label */}
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              marginBottom: '20px',
-            }}
-          >
-            <span
-              style={{
-                width: '40px',
-                height: '2px',
-                background: 'linear-gradient(90deg, var(--brand-500), var(--brand-600))',
-              }}
-            />
-            <span
-              style={{
-                fontSize: '12px',
-                fontWeight: '600',
-                letterSpacing: '0.1em',
-                textTransform: 'uppercase',
-                color: 'var(--brand-400)',
-              }}
-            >
-              Why Choose Us
-            </span>
-          </div>
-
           <h2
             style={{
               fontSize: '36px',

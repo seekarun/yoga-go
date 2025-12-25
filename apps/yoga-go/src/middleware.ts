@@ -319,10 +319,31 @@ export default async function middleware(request: NextRequest) {
       return addTenantHeaders(NextResponse.next());
     }
 
-    // Courses belonging to this expert: Allow access
-    if (pathname.startsWith('/courses/')) {
-      console.log('[DBG][middleware] Allowing access to course page (will validate expert)');
-      return addTenantHeaders(NextResponse.next());
+    // Courses paths: Rewrite to /experts/{expertId}/courses/* for this expert
+    if (pathname.startsWith('/courses/') || pathname === '/courses') {
+      const rewritePath = `/experts/${expertId}${pathname}`;
+      console.log(`[DBG][middleware] Rewriting course path to ${rewritePath}`);
+      const url = request.nextUrl.clone();
+      url.pathname = rewritePath;
+      return addTenantHeaders(NextResponse.rewrite(url));
+    }
+
+    // Blog paths: Rewrite to /experts/{expertId}/blog/* for this expert
+    if (pathname.startsWith('/blog')) {
+      const rewritePath = `/experts/${expertId}${pathname}`;
+      console.log(`[DBG][middleware] Rewriting blog path to ${rewritePath}`);
+      const url = request.nextUrl.clone();
+      url.pathname = rewritePath;
+      return addTenantHeaders(NextResponse.rewrite(url));
+    }
+
+    // Survey paths: Rewrite to /experts/{expertId}/survey/* for this expert
+    if (pathname.startsWith('/survey')) {
+      const rewritePath = `/experts/${expertId}${pathname}`;
+      console.log(`[DBG][middleware] Rewriting survey path to ${rewritePath}`);
+      const url = request.nextUrl.clone();
+      url.pathname = rewritePath;
+      return addTenantHeaders(NextResponse.rewrite(url));
     }
 
     // Protected routes: Check authentication
@@ -401,6 +422,9 @@ export const config = {
     // Expert routes (for domain isolation)
     '/experts/:path*',
     '/courses/:path*',
+    // Blog and survey routes (for subdomain rewriting)
+    '/blog/:path*',
+    '/survey/:path*',
     /*
      * Match all request paths except:
      * - _next/static (static files)

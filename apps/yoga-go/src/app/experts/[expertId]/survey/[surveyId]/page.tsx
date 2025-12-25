@@ -135,7 +135,7 @@ export default function SurveyPage() {
         setSubmitted(true);
         // Redirect to expert page after 2 seconds
         setTimeout(() => {
-          router.push(`/experts/${expertId}`);
+          router.push('/');
         }, 2000);
       } else {
         setError(data.error || 'Failed to submit survey');
@@ -231,7 +231,7 @@ export default function SurveyPage() {
         <div className="text-center">
           <h2 className="text-2xl mb-4 text-red-500">{error || 'Survey not found'}</h2>
           <button
-            onClick={() => router.push(`/experts/${expertId}`)}
+            onClick={() => router.push('/')}
             className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"
           >
             Go Back
@@ -327,7 +327,7 @@ export default function SurveyPage() {
             <div className="flex gap-4 justify-end">
               <button
                 type="button"
-                onClick={() => router.push(`/experts/${expertId}`)}
+                onClick={() => router.push('/')}
                 className="px-8 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300"
               >
                 Cancel

@@ -1,5 +1,5 @@
-import type { HeroSectionProps } from '../../types';
 import { UnsplashAttribution } from '../../shared';
+import type { HeroSectionProps } from '../../types';
 
 interface ModernHeroSectionProps extends HeroSectionProps {
   resolveCtaLink: (link: string | undefined) => string;
@@ -62,35 +62,6 @@ export default function HeroSection({
               padding: '60px 40px 60px 60px',
             }}
           >
-            {/* Small label */}
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                marginBottom: '24px',
-              }}
-            >
-              <span
-                style={{
-                  width: '40px',
-                  height: '2px',
-                  background: 'linear-gradient(90deg, var(--brand-500), var(--brand-600))',
-                }}
-              />
-              <span
-                style={{
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  letterSpacing: '0.1em',
-                  textTransform: 'uppercase',
-                  color: 'var(--brand-400)',
-                }}
-              >
-                Welcome
-              </span>
-            </div>
-
             <h1
               style={{
                 fontSize: '48px',

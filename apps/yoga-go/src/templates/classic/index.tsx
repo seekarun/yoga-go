@@ -97,7 +97,6 @@ export default function ClassicTemplate({ data, config, context }: TemplateProps
     title: blogConfig?.title,
     description: blogConfig?.description || `Insights, tips, and articles from ${expert.name}`,
     latestPost: latestBlogPost,
-    expertId,
   };
 
   const act = expert.customLandingPage?.act;

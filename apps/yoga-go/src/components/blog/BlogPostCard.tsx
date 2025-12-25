@@ -5,11 +5,11 @@ import type { BlogPost } from '@/types';
 
 interface BlogPostCardProps {
   post: BlogPost;
-  expertId: string;
+  expertId?: string; // Deprecated - no longer needed for links
   showStatus?: boolean;
 }
 
-export default function BlogPostCard({ post, expertId, showStatus = false }: BlogPostCardProps) {
+export default function BlogPostCard({ post, showStatus = false }: BlogPostCardProps) {
   const formattedDate = post.publishedAt
     ? new Date(post.publishedAt).toLocaleDateString('en-US', {
         year: 'numeric',
@@ -23,7 +23,7 @@ export default function BlogPostCard({ post, expertId, showStatus = false }: Blo
       });
 
   return (
-    <Link href={`/experts/${expertId}/blog/${post.id}`}>
+    <Link href={`/blog/${post.id}`}>
       <article className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow cursor-pointer">
         {/* Cover Image */}
         {post.coverImage ? (

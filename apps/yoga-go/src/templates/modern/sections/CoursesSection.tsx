@@ -18,28 +18,6 @@ export default function CoursesSection({ title, description, courses }: CoursesS
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         {/* Section Header */}
         <div style={{ textAlign: 'center', marginBottom: '60px' }}>
-          <div
-            style={{
-              display: 'inline-block',
-              padding: '8px 16px',
-              background: 'rgba(255,255,255,0.05)',
-              borderRadius: '50px',
-              marginBottom: '16px',
-              border: '1px solid rgba(255,255,255,0.1)',
-            }}
-          >
-            <span
-              style={{
-                fontSize: '12px',
-                fontWeight: '600',
-                color: 'var(--brand-400)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.1em',
-              }}
-            >
-              Featured Courses
-            </span>
-          </div>
           <h2
             style={{
               fontSize: '42px',

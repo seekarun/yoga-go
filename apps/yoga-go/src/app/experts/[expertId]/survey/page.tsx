@@ -27,7 +27,7 @@ export default function SurveysListPage() {
 
           // If only one survey, redirect directly to it
           if (data.data?.length === 1) {
-            router.replace(`/experts/${expertId}/survey/${data.data[0].id}`);
+            router.replace(`/survey/${data.data[0].id}`);
           }
         } else {
           setError(data.error || 'Failed to load surveys');
@@ -62,7 +62,7 @@ export default function SurveysListPage() {
             {error || 'No surveys available at this time'}
           </h2>
           <button
-            onClick={() => router.push(`/experts/${expertId}`)}
+            onClick={() => router.push('/')}
             className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"
           >
             Go Back
@@ -77,7 +77,7 @@ export default function SurveysListPage() {
       <div className="max-w-3xl mx-auto">
         <div className="mb-8">
           <button
-            onClick={() => router.push(`/experts/${expertId}`)}
+            onClick={() => router.push('/')}
             className="text-blue-600 hover:text-blue-800 flex items-center gap-2"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -101,7 +101,7 @@ export default function SurveysListPage() {
           {surveys.map(survey => (
             <Link
               key={survey.id}
-              href={`/experts/${expertId}/survey/${survey.id}`}
+              href={`/survey/${survey.id}`}
               className="block bg-white rounded-xl p-6 shadow hover:shadow-md transition-shadow border border-gray-200"
             >
               <h2 className="text-xl font-semibold text-gray-900 mb-2">{survey.title}</h2>

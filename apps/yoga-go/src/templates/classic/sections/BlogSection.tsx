@@ -1,12 +1,7 @@
 import Link from 'next/link';
 import type { BlogSectionProps } from '../../types';
 
-export default function BlogSection({
-  title,
-  description,
-  latestPost,
-  expertId,
-}: BlogSectionProps) {
+export default function BlogSection({ title, description, latestPost }: BlogSectionProps) {
   return (
     <section style={{ padding: '80px 20px', background: '#f8f9fa', textAlign: 'center' }}>
       <div style={{ maxWidth: '700px', margin: '0 auto' }}>
@@ -58,7 +53,7 @@ export default function BlogSection({
                 {latestPost.excerpt}
               </p>
               <Link
-                href={`/experts/${expertId}/blog/${latestPost.id}`}
+                href={`/blog/${latestPost.id}`}
                 style={{ fontSize: '14px', color: '#2563eb', fontWeight: '500' }}
               >
                 Read more →
@@ -67,7 +62,7 @@ export default function BlogSection({
           </div>
         )}
         <Link
-          href={`/experts/${expertId}/blog`}
+          href="/blog"
           style={{
             padding: '14px 32px',
             background: '#111',

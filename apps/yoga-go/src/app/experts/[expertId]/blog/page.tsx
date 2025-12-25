@@ -81,7 +81,7 @@ export default function ExpertBlogPage() {
             }}
           >
             <h2 style={{ fontSize: '24px', marginBottom: '16px', color: '#dc2626' }}>{error}</h2>
-            <Link href={`/experts/${expertId}`} style={{ color: '#2563eb' }}>
+            <Link href="/" style={{ color: '#2563eb' }}>
               ← Back to expert page
             </Link>
           </div>
@@ -99,7 +99,7 @@ export default function ExpertBlogPage() {
           style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}
         >
           <Link
-            href={`/experts/${expertId}`}
+            href="/"
             style={{
               color: '#666',
               fontSize: '14px',

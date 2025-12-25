@@ -314,14 +314,10 @@ export default function ExpertDetailPage() {
   };
 
   // Helper to resolve CTA links
+  // On subdomains, middleware handles rewriting /survey/* and /courses/* to /experts/{expertId}/*
   const resolveCtaLink = (link: string | undefined): string => {
     if (!link) return '#courses';
-    if (link.startsWith('/survey/')) {
-      return `/experts/${expertId}${link}`;
-    }
-    if (link.startsWith('/courses/')) {
-      return `/experts/${expertId}${link}`;
-    }
+    // Return links as-is - middleware handles subdomain rewriting
     return link;
   };
 

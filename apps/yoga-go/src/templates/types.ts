@@ -108,7 +108,6 @@ export interface BlogSectionProps {
   title?: string;
   description?: string;
   latestPost?: BlogPost;
-  expertId: string;
 }
 
 // Act (CTA) Section

@@ -221,7 +221,6 @@ export function renderTemplateSection(
           title={blogConfig?.title}
           description={blogConfig?.description || `Insights, tips, and articles from ${expertName}`}
           latestPost={latestBlogPost}
-          expertId={expertId}
         />
       );
     }

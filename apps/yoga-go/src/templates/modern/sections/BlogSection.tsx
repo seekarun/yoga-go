@@ -1,12 +1,7 @@
 import Link from 'next/link';
 import type { BlogSectionProps } from '../../types';
 
-export default function BlogSection({
-  title,
-  description,
-  latestPost,
-  expertId,
-}: BlogSectionProps) {
+export default function BlogSection({ title, description, latestPost }: BlogSectionProps) {
   return (
     <section
       style={{
@@ -18,28 +13,6 @@ export default function BlogSection({
       <div style={{ maxWidth: '900px', margin: '0 auto' }}>
         {/* Section Header */}
         <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-          <div
-            style={{
-              display: 'inline-block',
-              padding: '8px 16px',
-              background: 'rgba(255,255,255,0.05)',
-              borderRadius: '50px',
-              marginBottom: '16px',
-              border: '1px solid rgba(255,255,255,0.1)',
-            }}
-          >
-            <span
-              style={{
-                fontSize: '12px',
-                fontWeight: '600',
-                color: 'var(--brand-400)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.1em',
-              }}
-            >
-              Latest Insights
-            </span>
-          </div>
           <h2
             style={{
               fontSize: '42px',
@@ -65,7 +38,7 @@ export default function BlogSection({
         {/* Featured Post Card */}
         {latestPost && (
           <Link
-            href={`/experts/${expertId}/blog/${latestPost.id}`}
+            href={`/blog/${latestPost.id}`}
             style={{
               display: 'block',
               background: 'rgba(255,255,255,0.03)',
@@ -162,7 +135,7 @@ export default function BlogSection({
         {/* View All Posts Button */}
         <div style={{ textAlign: 'center' }}>
           <Link
-            href={`/experts/${expertId}/blog`}
+            href="/blog"
             style={{
               display: 'inline-flex',
               alignItems: 'center',

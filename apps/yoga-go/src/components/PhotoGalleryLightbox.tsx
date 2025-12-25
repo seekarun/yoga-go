@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface GalleryImage {
   id: string;
@@ -199,40 +199,6 @@ export default function PhotoGalleryLightbox({
       <div style={{ maxWidth: '1100px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
         {/* Section Header */}
         <div style={{ textAlign: 'center', marginBottom: '60px' }}>
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '12px',
-              marginBottom: '20px',
-            }}
-          >
-            <span
-              style={{
-                width: '40px',
-                height: '2px',
-                background: 'linear-gradient(90deg, transparent, var(--brand-500))',
-              }}
-            />
-            <span
-              style={{
-                fontSize: '12px',
-                fontWeight: '600',
-                letterSpacing: '0.1em',
-                textTransform: 'uppercase',
-                color: 'var(--brand-400)',
-              }}
-            >
-              Gallery
-            </span>
-            <span
-              style={{
-                width: '40px',
-                height: '2px',
-                background: 'linear-gradient(90deg, var(--brand-500), transparent)',
-              }}
-            />
-          </div>
           <h2
             style={{
               fontSize: '42px',

@@ -48,40 +48,6 @@ export default function AboutSection({
       >
         {/* Section header */}
         <div style={{ textAlign: 'center', marginBottom: '60px' }}>
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '12px',
-              marginBottom: '20px',
-            }}
-          >
-            <span
-              style={{
-                width: '40px',
-                height: '2px',
-                background: 'linear-gradient(90deg, transparent, var(--brand-500))',
-              }}
-            />
-            <span
-              style={{
-                fontSize: '12px',
-                fontWeight: '600',
-                letterSpacing: '0.1em',
-                textTransform: 'uppercase',
-                color: 'var(--brand-400)',
-              }}
-            >
-              About Me
-            </span>
-            <span
-              style={{
-                width: '40px',
-                height: '2px',
-                background: 'linear-gradient(90deg, var(--brand-500), transparent)',
-              }}
-            />
-          </div>
           <h2
             style={{
               fontSize: '42px',

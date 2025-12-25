@@ -29,39 +29,6 @@ export default function WebinarsSection({ title, description, webinars }: Webina
       <div style={{ maxWidth: '1200px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
         {/* Section Header */}
         <div style={{ textAlign: 'center', marginBottom: '60px' }}>
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '8px 16px',
-              background: 'rgba(239, 68, 68, 0.1)',
-              borderRadius: '50px',
-              marginBottom: '16px',
-              border: '1px solid rgba(239, 68, 68, 0.2)',
-            }}
-          >
-            <span
-              style={{
-                width: '8px',
-                height: '8px',
-                background: '#ef4444',
-                borderRadius: '50%',
-                animation: 'pulse 2s infinite',
-              }}
-            />
-            <span
-              style={{
-                fontSize: '12px',
-                fontWeight: '600',
-                color: '#ef4444',
-                textTransform: 'uppercase',
-                letterSpacing: '0.1em',
-              }}
-            >
-              Live Sessions
-            </span>
-          </div>
           <h2
             style={{
               fontSize: '42px',
