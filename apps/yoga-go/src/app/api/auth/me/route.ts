@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { decode } from 'next-auth/jwt';
 import { getUserByCognitoSub, getOrCreateUser } from '@/lib/auth';
+import { adminGetUserBySub } from '@/lib/cognito-auth';
 import type { ApiResponse, User } from '@/types';
 
 interface DecodedToken {
@@ -12,9 +13,15 @@ interface DecodedToken {
 
 /**
  * GET /api/auth/me
- * Get the currently authenticated user's data from MongoDB
+ * Get the currently authenticated user's data from DynamoDB
  * Decodes JWT directly from cookie instead of using NextAuth's auth()
  * This is needed because we use custom login that creates JWT directly
+ *
+ * Flow:
+ * 1. Decode session JWT to get cognitoSub
+ * 2. Verify user exists in Cognito (source of truth)
+ * 3. If Cognito user doesn't exist → 401 (stale session)
+ * 4. If Cognito user exists but DB user doesn't → auto-create DB user
  */
 export async function GET(request: NextRequest) {
   console.log('[DBG][api/auth/me] GET /api/auth/me called');
@@ -68,16 +75,30 @@ export async function GET(request: NextRequest) {
 
     console.log('[DBG][api/auth/me] Session found for cognitoSub:', cognitoSub);
 
-    // Try to get user from MongoDB first
+    // Step 1: Verify user exists in Cognito (source of truth)
+    const cognitoUser = await adminGetUserBySub(cognitoSub);
+
+    if (!cognitoUser) {
+      console.log('[DBG][api/auth/me] Cognito user not found - stale session');
+      const response: ApiResponse<null> = {
+        success: false,
+        error: 'User not found - please login again',
+      };
+      return NextResponse.json(response, { status: 401 });
+    }
+
+    console.log('[DBG][api/auth/me] Cognito user verified:', cognitoUser.email);
+
+    // Step 2: Try to get user from DynamoDB
     let user = await getUserByCognitoSub(cognitoSub);
 
-    // If user doesn't exist in MongoDB, create them (first login)
+    // Step 3: If user doesn't exist in DynamoDB but exists in Cognito, create them
     if (!user) {
-      console.log('[DBG][api/auth/me] User not found in MongoDB, creating new user');
+      console.log('[DBG][api/auth/me] DB user not found, creating from Cognito data');
       user = await getOrCreateUser({
         sub: cognitoSub,
-        email: decoded.email || '',
-        name: decoded.name || undefined,
+        email: cognitoUser.email,
+        name: cognitoUser.name || decoded.name || undefined,
       });
       console.log('[DBG][api/auth/me] New user created:', user.id);
     } else {

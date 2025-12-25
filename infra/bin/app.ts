@@ -64,6 +64,8 @@ new SesStack(app, "YogaGoSesStack", {
   },
   coreTableArn: `arn:aws:dynamodb:ap-southeast-2:${account}:table/yoga-go-core`,
   coreTableName: "yoga-go-core",
+  emailsTableArn: `arn:aws:dynamodb:ap-southeast-2:${account}:table/yoga-go-emails`,
+  emailsTableName: "yoga-go-emails",
 });
 
 // ========================================

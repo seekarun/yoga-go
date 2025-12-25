@@ -36,6 +36,7 @@ Misc
 [ ] add language attribute for course
 [ ] switching templates should work
 [ ] handle 404 elegantly
+[ ] ONBOARDING: change currency based on location
 
 [ ] http to https redirect - check if /etc/hosts still active
 [ ] custom domain: prefix with https://

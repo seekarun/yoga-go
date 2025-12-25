@@ -1231,9 +1231,13 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
 
       {/* Navigation Buttons */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '32px' }}>
-        <SecondaryButton onClick={handleBack} disabled={step === 1 || loading || extracting}>
-          Back
-        </SecondaryButton>
+        {step > 1 ? (
+          <SecondaryButton onClick={handleBack} disabled={loading || extracting}>
+            Back
+          </SecondaryButton>
+        ) : (
+          <div />
+        )}
 
         {step < 3 ? (
           <PrimaryButton

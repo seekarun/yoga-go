@@ -9,6 +9,7 @@ import {
   ResendConfirmationCodeCommand,
   InitiateAuthCommand,
   GetUserCommand,
+  AdminGetUserCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { createHmac } from 'crypto';
 import { cognitoConfig } from './cognito';
@@ -309,4 +310,46 @@ export function isCognitoError(error: unknown, errorName: string): boolean {
     'name' in error &&
     (error as { name: string }).name === errorName
   );
+}
+
+/**
+ * Check if a user exists in Cognito by their cognitoSub (username)
+ * Uses AdminGetUser which requires IAM permissions
+ * Returns user info if exists, null if not found
+ */
+export async function adminGetUserBySub(cognitoSub: string): Promise<CognitoUserInfo | null> {
+  try {
+    console.log('[DBG][cognito-auth] Checking if Cognito user exists:', cognitoSub);
+
+    const command = new AdminGetUserCommand({
+      UserPoolId: cognitoConfig.userPoolId,
+      Username: cognitoSub,
+    });
+
+    const response = await client.send(command);
+
+    const attributes: Record<string, string> = {};
+    response.UserAttributes?.forEach(attr => {
+      if (attr.Name && attr.Value) {
+        attributes[attr.Name] = attr.Value;
+      }
+    });
+
+    console.log('[DBG][cognito-auth] Cognito user found:', cognitoSub);
+
+    return {
+      sub: attributes['sub'] || response.Username || '',
+      email: attributes['email'] || '',
+      name: attributes['name'],
+      phone: attributes['phone_number'],
+      emailVerified: attributes['email_verified'] === 'true',
+    };
+  } catch (error) {
+    if (isCognitoError(error, 'UserNotFoundException')) {
+      console.log('[DBG][cognito-auth] Cognito user not found:', cognitoSub);
+      return null;
+    }
+    console.error('[DBG][cognito-auth] adminGetUserBySub error:', error);
+    throw error;
+  }
 }

@@ -17,6 +17,10 @@ export interface SesStackProps extends cdk.StackProps {
   coreTableArn: string;
   /** DynamoDB Core Table Name */
   coreTableName: string;
+  /** DynamoDB Emails Table ARN (for Lambda to store emails) */
+  emailsTableArn: string;
+  /** DynamoDB Emails Table Name */
+  emailsTableName: string;
 }
 
 /**
@@ -39,7 +43,7 @@ export class SesStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: SesStackProps) {
     super(scope, id, props);
 
-    const { coreTableArn, coreTableName } = props;
+    const { coreTableArn, coreTableName, emailsTableArn, emailsTableName } = props;
 
     // ========================================
     // SES Email Identity (Domain Verification)
@@ -199,6 +203,7 @@ The MyYoga.Guru Team`,
         memorySize: 256,
         environment: {
           DYNAMODB_TABLE: coreTableName,
+          EMAILS_TABLE: emailsTableName,
           EMAIL_BUCKET: emailBucket.bucketName,
           DEFAULT_FROM_EMAIL: "hi@myyoga.guru",
           PLATFORM_ADMIN_EMAILS: platformAdminEmails,
@@ -210,14 +215,23 @@ The MyYoga.Guru Team`,
     // Grant Lambda permissions - read incoming emails, write parsed attachments
     emailBucket.grantReadWrite(emailForwarderLambda);
 
-    // DynamoDB read/write access (cross-region)
+    // DynamoDB Core table access (cross-region)
     // Read: lookup expert/tenant for forwarding
+    emailForwarderLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["dynamodb:GetItem", "dynamodb:Query"],
+        resources: [coreTableArn, `${coreTableArn}/index/*`],
+      })
+    );
+
+    // DynamoDB Emails table access (cross-region)
     // Write: store parsed email metadata for inbox feature
     emailForwarderLambda.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        actions: ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:PutItem"],
-        resources: [coreTableArn, `${coreTableArn}/index/*`],
+        actions: ["dynamodb:PutItem"],
+        resources: [emailsTableArn],
       })
     );
 

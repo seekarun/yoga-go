@@ -16,6 +16,7 @@ const ses = new SESClient({});
 const dynamodb = new DynamoDBClient({ region: "ap-southeast-2" });
 
 const TABLE_NAME = process.env.DYNAMODB_TABLE || "yoga-go-core";
+const EMAILS_TABLE_NAME = process.env.EMAILS_TABLE || "yoga-go-emails";
 const BUCKET_NAME = process.env.EMAIL_BUCKET || "";
 const DEFAULT_FROM = process.env.DEFAULT_FROM_EMAIL || "hi@myyoga.guru";
 const PLATFORM_DOMAIN = "myyoga.guru";
@@ -325,7 +326,8 @@ async function storeEmailToInbox(
   console.log(`[DBG][email-forwarder] Storing email to inbox for expert: ${expertId}`);
 
   const now = new Date().toISOString();
-  const pk = `EMAIL#${expertId}`;
+  // Use INBOX#{expertId} pattern to match email repository schema
+  const pk = `INBOX#${expertId}`;
   const sk = `${receivedAt}#${emailId}`;
 
   // Convert attachments to DynamoDB format
@@ -357,7 +359,7 @@ async function storeEmailToInbox(
 
   await dynamodb.send(
     new PutItemCommand({
-      TableName: TABLE_NAME,
+      TableName: EMAILS_TABLE_NAME,
       Item: {
         PK: { S: pk },
         SK: { S: sk },
