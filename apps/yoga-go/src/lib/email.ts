@@ -231,6 +231,242 @@ export const sendInvoiceEmail = async (options: InvoiceEmailOptions): Promise<vo
 };
 
 // ========================================
+// Branded Invoice Email (Expert Branded)
+// ========================================
+
+export interface BrandedInvoiceEmailOptions {
+  to: string;
+  customerName: string;
+  orderId: string;
+  orderDate: string;
+  paymentMethod: string;
+  itemName: string;
+  itemDescription: string;
+  currency: string;
+  amount: string;
+  transactionId: string;
+  expert: {
+    id: string;
+    name: string;
+    logo?: string;
+    avatar?: string;
+    primaryColor?: string;
+    palette?: ColorPalette;
+  };
+}
+
+/**
+ * Send a branded invoice/payment confirmation email using expert's branding
+ * @param options - Invoice details with expert branding
+ * @returns Promise that resolves when email is sent
+ */
+export const sendBrandedInvoiceEmail = async (
+  options: BrandedInvoiceEmailOptions
+): Promise<void> => {
+  const {
+    to,
+    customerName,
+    orderId,
+    orderDate,
+    paymentMethod,
+    itemName,
+    itemDescription,
+    currency,
+    amount,
+    transactionId,
+    expert,
+  } = options;
+
+  const expertUrl = `https://${expert.id}.myyoga.guru`;
+
+  console.log(`[DBG][email] Sending branded invoice email to ${to}`);
+  console.log(`[DBG][email] Expert: ${expert.name} (${expert.id}), Order: ${orderId}`);
+
+  // Use expert's colors or fall back to defaults
+  const primaryColor = expert.primaryColor || '#2A9D8F';
+  const palette = expert.palette || generatePalette(primaryColor);
+  const lightBg = palette[50] || '#f0fdf9';
+  const darkText = palette[900] || '#134e4a';
+
+  // Use expert logo if available, otherwise use avatar or MyYoga.guru logo
+  const logoUrl = expert.logo || expert.avatar || 'https://myyoga.guru/myg_light.png';
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif; background-color: ${lightBg};">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: ${lightBg}; padding: 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);">
+          <!-- Header with Logo -->
+          <tr>
+            <td style="background: ${primaryColor}; padding: 35px 30px; text-align: center;">
+              <img src="${logoUrl}" alt="${expert.name}" width="120" style="display: block; margin: 0 auto; max-height: 80px; object-fit: contain;" />
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              <h1 style="font-size: 24px; color: ${darkText}; margin: 0 0 10px 0; text-align: center;">
+                Payment Confirmation
+              </h1>
+              <p style="font-size: 14px; color: #888; margin: 0 0 30px 0; text-align: center;">
+                Order #${orderId}
+              </p>
+
+              <p style="font-size: 16px; color: #555; line-height: 1.6; margin: 0 0 25px 0;">
+                Hi ${customerName},
+              </p>
+
+              <p style="font-size: 16px; color: #555; line-height: 1.6; margin: 0 0 25px 0;">
+                Thank you for your purchase! Your payment has been successfully processed.
+              </p>
+
+              <!-- Order Details Box -->
+              <div style="background: ${lightBg}; padding: 25px; border-radius: 10px; margin-bottom: 25px;">
+                <h2 style="margin: 0 0 20px 0; font-size: 16px; color: ${darkText}; border-bottom: 1px solid ${palette[200] || '#e0e0e0'}; padding-bottom: 10px;">
+                  Order Details
+                </h2>
+
+                <table width="100%" cellpadding="0" cellspacing="0" style="font-size: 14px;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #666;">Item</td>
+                    <td style="padding: 8px 0; color: ${darkText}; font-weight: 500; text-align: right;">${itemName}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #666;">Description</td>
+                    <td style="padding: 8px 0; color: #555; text-align: right; max-width: 250px;">${itemDescription}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #666;">Date</td>
+                    <td style="padding: 8px 0; color: #555; text-align: right;">${orderDate}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #666;">Payment Method</td>
+                    <td style="padding: 8px 0; color: #555; text-align: right;">${paymentMethod}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #666;">Transaction ID</td>
+                    <td style="padding: 8px 0; color: #555; text-align: right; font-family: monospace; font-size: 12px;">${transactionId}</td>
+                  </tr>
+                  <tr style="border-top: 2px solid ${palette[300] || '#ccc'};">
+                    <td style="padding: 15px 0 8px 0; color: ${darkText}; font-weight: 600; font-size: 16px;">Total</td>
+                    <td style="padding: 15px 0 8px 0; color: ${primaryColor}; font-weight: 700; font-size: 18px; text-align: right;">${currency} ${amount}</td>
+                  </tr>
+                </table>
+              </div>
+
+              <!-- CTA Button -->
+              <div style="text-align: center; margin-bottom: 25px;">
+                <a href="${expertUrl}/app/my-courses" style="display: inline-block; background: ${primaryColor}; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                  Start Learning
+                </a>
+              </div>
+
+              <p style="font-size: 14px; color: #888; margin: 25px 0 0 0; text-align: center;">
+                Questions? Visit <a href="${expertUrl}" style="color: ${primaryColor}; text-decoration: none;">${expert.id}.myyoga.guru</a>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: ${primaryColor}; padding: 20px; text-align: center;">
+              <p style="margin: 0; font-size: 13px; color: rgba(255,255,255,0.9);">
+                ${expert.name}
+              </p>
+              <p style="margin: 10px 0 0 0; font-size: 11px; color: rgba(255,255,255,0.7);">
+                Powered by <a href="https://myyoga.guru" style="color: rgba(255,255,255,0.9); text-decoration: none;">MyYoga.guru</a>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`;
+
+  const text = `
+Payment Confirmation - Order #${orderId}
+
+Hi ${customerName},
+
+Thank you for your purchase! Your payment has been successfully processed.
+
+ORDER DETAILS
+-------------
+Item: ${itemName}
+Description: ${itemDescription}
+Date: ${orderDate}
+Payment Method: ${paymentMethod}
+Transaction ID: ${transactionId}
+
+Total: ${currency} ${amount}
+
+Start learning now: ${expertUrl}/app/my-courses
+
+Questions? Visit ${expertUrl}
+
+---
+${expert.name}
+Powered by MyYoga.guru
+`;
+
+  const command = new SendEmailCommand({
+    Source: fromEmail,
+    Destination: {
+      ToAddresses: [to],
+    },
+    Message: {
+      Subject: {
+        Data: `Payment Confirmation - ${itemName}`,
+        Charset: 'UTF-8',
+      },
+      Body: {
+        Text: {
+          Data: text,
+          Charset: 'UTF-8',
+        },
+        Html: {
+          Data: html,
+          Charset: 'UTF-8',
+        },
+      },
+    },
+    ReplyToAddresses: ['hi@myyoga.guru'],
+    ConfigurationSetName: configSet,
+    Tags: [
+      {
+        Name: 'EmailType',
+        Value: 'invoice-branded',
+      },
+      {
+        Name: 'ExpertId',
+        Value: expert.id,
+      },
+    ],
+  });
+
+  try {
+    const response = await sesClient.send(command);
+    console.log(
+      `[DBG][email] Branded invoice email sent successfully. MessageId: ${response.MessageId}`
+    );
+  } catch (error) {
+    console.error('[DBG][email] Error sending branded invoice email:', error);
+    throw error;
+  }
+};
+
+// ========================================
 // Webinar Registration Email
 // ========================================
 

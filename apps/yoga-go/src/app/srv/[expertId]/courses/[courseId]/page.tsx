@@ -51,6 +51,7 @@ export default function CourseManagement() {
   const [showUploadConfirmation, setShowUploadConfirmation] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [lessonToDelete, setLessonToDelete] = useState<string | null>(null);
+  const [showStripeSetupModal, setShowStripeSetupModal] = useState(false);
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -491,10 +492,7 @@ export default function CourseManagement() {
         const data = await response.json();
 
         if (!data.success || data.data.status !== 'active') {
-          setError(
-            'To publish a paid course, you must first connect your Stripe account to receive payments. ' +
-              'Go to Settings > Payments to connect Stripe.'
-          );
+          setShowStripeSetupModal(true);
           return;
         }
       } catch (err) {
@@ -1018,6 +1016,30 @@ export default function CourseManagement() {
         onConfirm={handleDeleteLessonConfirm}
         confirmText="Delete"
         cancelText="Cancel"
+      />
+
+      {/* Stripe Setup Required Modal */}
+      <NotificationOverlay
+        isOpen={showStripeSetupModal}
+        onClose={() => setShowStripeSetupModal(false)}
+        message={
+          <div className="space-y-3">
+            <p className="font-medium">Payment Setup Required</p>
+            <p className="text-sm text-gray-600">
+              To publish a paid course, you need to connect your Stripe account first. This allows
+              you to receive payments from students.
+            </p>
+            <Link
+              href={`/srv/${expertId}/settings`}
+              className="inline-block mt-2 px-4 py-2 text-sm font-medium text-white rounded-lg"
+              style={{ backgroundColor: 'var(--color-primary)' }}
+              onClick={() => setShowStripeSetupModal(false)}
+            >
+              Go to Settings
+            </Link>
+          </div>
+        }
+        type="warning"
       />
 
       {/* Pulsing Animation for Processing Status */}

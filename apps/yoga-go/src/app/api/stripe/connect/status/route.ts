@@ -9,7 +9,8 @@
  *                        If not provided, returns status for authenticated expert
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getSession, getUserByCognitoSub } from '@/lib/auth';
 import * as expertRepository from '@/lib/repositories/expertRepository';
 import * as stripeConnect from '@/lib/stripe-connect';

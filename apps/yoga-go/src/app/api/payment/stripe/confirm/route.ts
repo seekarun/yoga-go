@@ -6,10 +6,11 @@ import * as userRepository from '@/lib/repositories/userRepository';
 import * as courseRepository from '@/lib/repositories/courseRepository';
 import * as webinarRepository from '@/lib/repositories/webinarRepository';
 import {
-  sendInvoiceEmail,
+  sendBrandedInvoiceEmail,
   sendWebinarRegistrationEmail,
   getContextualFromEmail,
 } from '@/lib/email';
+import { getTenantById } from '@/lib/repositories/tenantRepository';
 
 function getStripeInstance() {
   if (!PAYMENT_CONFIG.stripe.secretKey) {
@@ -177,27 +178,45 @@ export async function POST(request: Request) {
             `[DBG][stripe] Webinar registration email sent to ${user.profile.email} from ${fromEmail}`
           );
         } else {
-          // Send course invoice email
-          await sendInvoiceEmail({
-            to: user.profile.email,
-            from: fromEmail,
-            customerName: user.profile.name || 'Valued Customer',
-            orderId: paymentIntentId.slice(-8).toUpperCase(),
-            orderDate: new Date().toLocaleDateString('en-AU', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-            }),
-            paymentMethod: 'Credit Card (Stripe)',
-            itemName: course?.title || 'Course Purchase',
-            itemDescription: course?.description?.slice(0, 100) || 'Online yoga course access',
-            currency: currencySymbol,
-            amount: amount.toFixed(2),
-            transactionId: paymentIntentId,
-          });
-          console.log(
-            `[DBG][stripe] Invoice email sent to ${user.profile.email} from ${fromEmail}`
-          );
+          // Send branded course invoice email
+          if (expertId) {
+            const tenant = await getTenantById(expertId);
+            if (tenant) {
+              await sendBrandedInvoiceEmail({
+                to: user.profile.email,
+                customerName: user.profile.name || 'Valued Customer',
+                orderId: paymentIntentId.slice(-8).toUpperCase(),
+                orderDate: new Date().toLocaleDateString('en-AU', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                }),
+                paymentMethod: 'Credit Card (Stripe)',
+                itemName: course?.title || 'Course Purchase',
+                itemDescription: course?.description?.slice(0, 100) || 'Online yoga course access',
+                currency: currencySymbol,
+                amount: amount.toFixed(2),
+                transactionId: paymentIntentId,
+                expert: {
+                  id: tenant.id,
+                  name: tenant.name,
+                  logo: tenant.customLandingPage?.branding?.logo,
+                  avatar: tenant.avatar,
+                  primaryColor: tenant.customLandingPage?.theme?.primaryColor,
+                  palette: tenant.customLandingPage?.theme?.palette,
+                },
+              });
+              console.log(
+                `[DBG][stripe] Branded invoice email sent to ${user.profile.email} for expert ${expertId}`
+              );
+            } else {
+              console.warn(
+                `[DBG][stripe] Tenant not found for expertId: ${expertId}, skipping email`
+              );
+            }
+          } else {
+            console.warn('[DBG][stripe] No expertId found for course, skipping invoice email');
+          }
         }
       } else {
         console.warn('[DBG][stripe] No user email found, skipping email');
