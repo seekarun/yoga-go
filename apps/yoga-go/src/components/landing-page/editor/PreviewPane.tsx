@@ -1,12 +1,19 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import type { CustomLandingPageConfig, LandingPageTemplate } from '@/types';
+import type {
+  CustomLandingPageConfig,
+  LandingPageTemplate,
+  Course,
+  Webinar,
+  BlogPost,
+} from '@/types';
 import { sectionRegistry, type SectionType } from '../sections';
 import SectionWrapper from '../shared/SectionWrapper';
 import { templates, DEFAULT_TEMPLATE } from '../templates';
 import { generatePalette } from '@/lib/colorPalette';
 import { LandingPageThemeProvider } from '../ThemeProvider';
+import { renderTemplateSection, type EditorRenderContext } from './templateSections';
 
 type ViewMode = 'desktop' | 'mobile';
 
@@ -35,6 +42,10 @@ interface PreviewPaneProps {
   expertName?: string;
   expertBio?: string;
   expertId?: string;
+  // Data for sections that display real content
+  courses?: Course[];
+  webinars?: Webinar[];
+  latestBlogPost?: BlogPost;
   onSelectSection: (sectionId: SectionType | null) => void;
   onChange: (updates: Partial<CustomLandingPageConfig>) => void;
 }
@@ -47,6 +58,9 @@ export default function PreviewPane({
   expertName,
   expertBio,
   expertId,
+  courses = [],
+  webinars = [],
+  latestBlogPost,
   onSelectSection,
   onChange,
 }: PreviewPaneProps) {
@@ -341,9 +355,19 @@ export default function PreviewPane({
               ) : (
                 visibleSections.map(sectionId => {
                   const section = sectionRegistry[sectionId];
-                  const PreviewComponent = section.PreviewComponent;
                   const isSelected = selectedSection === sectionId;
                   const isDisabled = disabledSections.includes(sectionId);
+
+                  // Build context for template section rendering
+                  const renderContext: EditorRenderContext = {
+                    data,
+                    expertName: expertName || 'Expert',
+                    expertBio,
+                    expertId: expertId || '',
+                    courses,
+                    webinars,
+                    latestBlogPost,
+                  };
 
                   return (
                     <SectionWrapper
@@ -357,13 +381,7 @@ export default function PreviewPane({
                         onSelectSection(sectionId);
                       }}
                     >
-                      <PreviewComponent
-                        data={data}
-                        expertName={expertName}
-                        expertBio={expertBio}
-                        expertId={expertId}
-                        template={currentTemplate}
-                      />
+                      {renderTemplateSection(sectionId, currentTemplate, renderContext)}
                     </SectionWrapper>
                   );
                 })

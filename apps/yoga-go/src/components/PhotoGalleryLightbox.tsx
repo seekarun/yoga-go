@@ -18,17 +18,83 @@ interface PhotoGalleryLightboxProps {
   images: GalleryImage[];
   title?: string;
   description?: string;
+  theme?: 'light' | 'dark';
 }
 
 export default function PhotoGalleryLightbox({
   images,
   title = 'Gallery',
   description,
+  theme = 'light',
 }: PhotoGalleryLightboxProps) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [scrollPosition, setScrollPosition] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
+
+  const isDark = theme === 'dark';
+
+  // Theme-based styles for carousel (classic theme)
+  const styles = {
+    section: {
+      padding: '80px 20px',
+      background: isDark ? '#0a0a0a' : '#fff',
+    },
+    title: {
+      fontSize: '48px',
+      fontWeight: '700' as const,
+      textAlign: 'center' as const,
+      marginBottom: '16px',
+      color: isDark ? '#fff' : '#1a202c',
+    },
+    description: {
+      fontSize: '18px',
+      textAlign: 'center' as const,
+      marginBottom: '48px',
+      color: isDark ? 'rgba(255,255,255,0.6)' : '#666',
+    },
+    navButton: {
+      width: '48px',
+      height: '48px',
+      borderRadius: '50%',
+      background: isDark ? 'rgba(255,255,255,0.1)' : '#fff',
+      border: isDark ? '1px solid rgba(255,255,255,0.2)' : '1px solid #e5e7eb',
+      boxShadow: isDark ? 'none' : '0 4px 12px rgba(0,0,0,0.15)',
+      display: 'flex' as const,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+      zIndex: 10,
+      transition: 'opacity 0.2s, transform 0.2s',
+    },
+    navIcon: {
+      stroke: isDark ? '#fff' : '#333',
+    },
+    card: {
+      flex: '0 0 320px',
+      background: isDark ? 'rgba(255,255,255,0.03)' : '#fff',
+      borderRadius: '12px',
+      overflow: 'hidden' as const,
+      boxShadow: isDark ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+      border: isDark ? '1px solid rgba(255,255,255,0.1)' : 'none',
+      cursor: 'pointer',
+      transition: 'transform 0.2s, box-shadow 0.2s',
+      padding: 0,
+    },
+    caption: {
+      fontSize: '14px',
+      color: isDark ? 'rgba(255,255,255,0.7)' : '#666',
+      lineHeight: '1.5',
+      margin: 0,
+    },
+    photoCount: {
+      fontSize: '14px',
+      color: isDark ? 'rgba(255,255,255,0.5)' : '#9ca3af',
+    },
+    hint: {
+      fontSize: '12px',
+      color: isDark ? 'rgba(255,255,255,0.3)' : '#d1d5db',
+    },
+  };
 
   // Navigate to next image (with cycling)
   const goToNext = useCallback(() => {
@@ -105,17 +171,75 @@ export default function PhotoGalleryLightbox({
 
   const currentImage = images[currentIndex];
 
-  return (
-    <>
-      <section style={{ padding: '80px 20px', background: '#fff' }}>
-        <div className="container" style={{ maxWidth: '1200px', margin: '0 auto' }}>
+  // Modern/Dark theme - Masonry grid layout
+  const renderMasonryGrid = () => (
+    <section
+      style={{
+        padding: '100px 40px',
+        background: '#0a0a0a',
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Background gradient */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: '80%',
+          height: '80%',
+          background:
+            'radial-gradient(ellipse at center, color-mix(in srgb, var(--brand-500) 8%, transparent) 0%, transparent 60%)',
+          pointerEvents: 'none',
+        }}
+      />
+
+      <div style={{ maxWidth: '1100px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
+        {/* Section Header */}
+        <div style={{ textAlign: 'center', marginBottom: '60px' }}>
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '12px',
+              marginBottom: '20px',
+            }}
+          >
+            <span
+              style={{
+                width: '40px',
+                height: '2px',
+                background: 'linear-gradient(90deg, transparent, var(--brand-500))',
+              }}
+            />
+            <span
+              style={{
+                fontSize: '12px',
+                fontWeight: '600',
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                color: 'var(--brand-400)',
+              }}
+            >
+              Gallery
+            </span>
+            <span
+              style={{
+                width: '40px',
+                height: '2px',
+                background: 'linear-gradient(90deg, var(--brand-500), transparent)',
+              }}
+            />
+          </div>
           <h2
             style={{
-              fontSize: '48px',
-              fontWeight: '700',
-              textAlign: 'center',
+              fontSize: '42px',
+              fontWeight: '800',
+              color: '#fff',
+              letterSpacing: '-0.02em',
               marginBottom: '16px',
-              color: '#1a202c',
             }}
           >
             {title}
@@ -123,222 +247,296 @@ export default function PhotoGalleryLightbox({
           {description && (
             <p
               style={{
-                fontSize: '18px',
-                textAlign: 'center',
-                marginBottom: '48px',
-                color: '#666',
+                fontSize: '16px',
+                color: 'rgba(255,255,255,0.6)',
+                maxWidth: '500px',
+                margin: '0 auto',
               }}
             >
               {description}
             </p>
           )}
+        </div>
 
-          {/* Gallery Carousel with Navigation */}
-          <div style={{ position: 'relative' }}>
-            {/* Left Arrow */}
-            {images.length > 3 && (
-              <button
-                onClick={() => scrollCarousel('left')}
-                disabled={!canScrollLeft}
-                style={{
-                  position: 'absolute',
-                  left: '-20px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: '50%',
-                  background: '#fff',
-                  border: '1px solid #e5e7eb',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                  cursor: canScrollLeft ? 'pointer' : 'default',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  zIndex: 10,
-                  opacity: canScrollLeft ? 1 : 0.4,
-                  transition: 'opacity 0.2s, transform 0.2s',
-                }}
-                onMouseEnter={e => {
-                  if (canScrollLeft)
-                    e.currentTarget.style.transform = 'translateY(-50%) scale(1.1)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.transform = 'translateY(-50%)';
-                }}
-              >
-                <svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#333"
-                  strokeWidth="2"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-            )}
-
-            {/* Right Arrow */}
-            {images.length > 3 && (
-              <button
-                onClick={() => scrollCarousel('right')}
-                disabled={!canScrollRight}
-                style={{
-                  position: 'absolute',
-                  right: '-20px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: '50%',
-                  background: '#fff',
-                  border: '1px solid #e5e7eb',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                  cursor: canScrollRight ? 'pointer' : 'default',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  zIndex: 10,
-                  opacity: canScrollRight ? 1 : 0.4,
-                  transition: 'opacity 0.2s, transform 0.2s',
-                }}
-                onMouseEnter={e => {
-                  if (canScrollRight)
-                    e.currentTarget.style.transform = 'translateY(-50%) scale(1.1)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.transform = 'translateY(-50%)';
-                }}
-              >
-                <svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#333"
-                  strokeWidth="2"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            )}
-
-            {/* Image Carousel */}
-            <div
-              ref={carouselRef}
-              onScroll={handleScroll}
+        {/* Masonry Grid */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gridTemplateRows: 'repeat(2, 200px)',
+            gap: '16px',
+          }}
+        >
+          {images.slice(0, 4).map((image, idx) => (
+            <button
+              key={image.id}
+              onClick={() => openLightbox(idx)}
               style={{
-                display: 'flex',
-                gap: '20px',
-                overflowX: 'auto',
-                scrollBehavior: 'smooth',
-                padding: '8px 4px',
-                scrollbarWidth: 'none',
-                msOverflowStyle: 'none',
+                position: 'relative',
+                borderRadius: '16px',
+                overflow: 'hidden',
+                gridColumn: idx === 0 ? 'span 2' : 'span 1',
+                gridRow: idx === 0 ? 'span 2' : 'span 1',
+                boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+                cursor: 'pointer',
+                border: 'none',
+                padding: 0,
               }}
             >
-              {images.map((image, index) => (
-                <button
-                  key={image.id}
-                  onClick={() => openLightbox(index)}
+              {/* Image */}
+              <div
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  background: `url(${image.thumbUrl || image.url}) center/cover`,
+                }}
+              />
+
+              {/* Gradient overlay */}
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  height: '60%',
+                  background: 'linear-gradient(to top, rgba(0,0,0,0.7), transparent)',
+                  pointerEvents: 'none',
+                }}
+              />
+
+              {/* Caption */}
+              {image.caption && (
+                <div
                   style={{
-                    flex: '0 0 320px',
-                    background: '#fff',
-                    borderRadius: '12px',
-                    overflow: 'hidden',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                    border: 'none',
-                    cursor: 'pointer',
-                    transition: 'transform 0.2s, box-shadow 0.2s',
-                    padding: 0,
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.transform = 'translateY(-4px)';
-                    e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.15)';
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
+                    position: 'absolute',
+                    bottom: '16px',
+                    left: '16px',
+                    right: '16px',
                   }}
                 >
-                  <div
+                  <p
                     style={{
-                      width: '100%',
-                      height: '240px',
-                      backgroundImage: `url(${image.thumbUrl || image.url})`,
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center',
-                      position: 'relative',
+                      fontSize: idx === 0 ? '16px' : '13px',
+                      fontWeight: '500',
+                      color: '#fff',
+                      textShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                      margin: 0,
+                      textAlign: 'left',
                     }}
                   >
-                    {/* Hover overlay with zoom icon */}
-                    <div
-                      style={{
-                        position: 'absolute',
-                        inset: 0,
-                        background: 'rgba(0,0,0,0.3)',
-                        opacity: 0,
-                        transition: 'opacity 0.2s',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                      className="hover-overlay"
-                    >
-                      <svg
-                        width="32"
-                        height="32"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="white"
-                        strokeWidth="2"
-                      >
-                        <circle cx="11" cy="11" r="8" />
-                        <path d="M21 21l-4.35-4.35" />
-                        <path d="M11 8v6M8 11h6" />
-                      </svg>
-                    </div>
-                  </div>
-                  {image.caption && (
-                    <div style={{ padding: '16px', textAlign: 'left' }}>
-                      <p
-                        style={{
-                          fontSize: '14px',
-                          color: '#666',
-                          lineHeight: '1.5',
-                          margin: 0,
-                        }}
-                      >
-                        {image.caption}
-                      </p>
-                    </div>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
+                    {image.caption}
+                  </p>
+                </div>
+              )}
 
-          {/* Photo count and keyboard hint */}
+              {/* Corner accent for featured image */}
+              {idx === 0 && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '16px',
+                    left: '16px',
+                    padding: '8px 16px',
+                    background:
+                      'linear-gradient(135deg, var(--brand-500) 0%, var(--brand-600) 100%)',
+                    borderRadius: '50px',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      color: 'var(--brand-500-contrast)',
+                    }}
+                  >
+                    Featured
+                  </span>
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* View All Photos - shows total count */}
+        {images.length > 0 && (
+          <div style={{ textAlign: 'center', marginTop: '40px' }}>
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '14px 28px',
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '50px',
+                color: 'rgba(255,255,255,0.8)',
+                fontSize: '14px',
+                fontWeight: '500',
+              }}
+            >
+              {images.length} {images.length === 1 ? 'Photo' : 'Photos'} • Click to View
+            </span>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+
+  // Classic/Light theme - Carousel layout
+  const renderCarousel = () => (
+    <section style={styles.section}>
+      <div className="container" style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        <h2 style={styles.title}>{title}</h2>
+        {description && <p style={styles.description}>{description}</p>}
+
+        {/* Gallery Carousel with Navigation */}
+        <div style={{ position: 'relative' }}>
+          {/* Left Arrow */}
+          {images.length > 3 && (
+            <button
+              onClick={() => scrollCarousel('left')}
+              disabled={!canScrollLeft}
+              style={{
+                ...styles.navButton,
+                position: 'absolute',
+                left: '-20px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                cursor: canScrollLeft ? 'pointer' : 'default',
+                opacity: canScrollLeft ? 1 : 0.4,
+              }}
+            >
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke={styles.navIcon.stroke}
+                strokeWidth="2"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+          )}
+
+          {/* Right Arrow */}
+          {images.length > 3 && (
+            <button
+              onClick={() => scrollCarousel('right')}
+              disabled={!canScrollRight}
+              style={{
+                ...styles.navButton,
+                position: 'absolute',
+                right: '-20px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                cursor: canScrollRight ? 'pointer' : 'default',
+                opacity: canScrollRight ? 1 : 0.4,
+              }}
+            >
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke={styles.navIcon.stroke}
+                strokeWidth="2"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          )}
+
+          {/* Image Carousel */}
           <div
+            ref={carouselRef}
+            onScroll={handleScroll}
             style={{
               display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              gap: '16px',
-              marginTop: '24px',
+              gap: '20px',
+              overflowX: 'auto',
+              scrollBehavior: 'smooth',
+              padding: '8px 4px',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
             }}
           >
-            <span style={{ fontSize: '14px', color: '#9ca3af' }}>
-              {images.length} {images.length === 1 ? 'photo' : 'photos'}
-            </span>
-            <span style={{ fontSize: '12px', color: '#d1d5db' }}>• Click to enlarge</span>
+            {images.map((image, index) => (
+              <button key={image.id} onClick={() => openLightbox(index)} style={styles.card}>
+                <div
+                  style={{
+                    width: '100%',
+                    height: '240px',
+                    backgroundImage: `url(${image.thumbUrl || image.url})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    position: 'relative',
+                  }}
+                >
+                  {/* Hover overlay with zoom icon */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      background: 'rgba(0,0,0,0.3)',
+                      opacity: 0,
+                      transition: 'opacity 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                    className="hover-overlay"
+                  >
+                    <svg
+                      width="32"
+                      height="32"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="white"
+                      strokeWidth="2"
+                    >
+                      <circle cx="11" cy="11" r="8" />
+                      <path d="M21 21l-4.35-4.35" />
+                      <path d="M11 8v6M8 11h6" />
+                    </svg>
+                  </div>
+                </div>
+                {image.caption && (
+                  <div style={{ padding: '16px', textAlign: 'left' }}>
+                    <p style={styles.caption}>{image.caption}</p>
+                  </div>
+                )}
+              </button>
+            ))}
           </div>
         </div>
-      </section>
 
-      {/* Lightbox Overlay */}
+        {/* Photo count and keyboard hint */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: '16px',
+            marginTop: '24px',
+          }}
+        >
+          <span style={styles.photoCount}>
+            {images.length} {images.length === 1 ? 'photo' : 'photos'}
+          </span>
+          <span style={styles.hint}>• Click to enlarge</span>
+        </div>
+      </div>
+    </section>
+  );
+
+  // Render the appropriate layout based on theme
+  return (
+    <>
+      {isDark ? renderMasonryGrid() : renderCarousel()}
+
+      {/* Lightbox Overlay - shared between both layouts */}
       {lightboxOpen && currentImage && (
         <div
           style={{
@@ -370,12 +568,6 @@ export default function PhotoGalleryLightbox({
               alignItems: 'center',
               justifyContent: 'center',
               transition: 'background 0.2s',
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
             }}
           >
             <svg
@@ -412,14 +604,6 @@ export default function PhotoGalleryLightbox({
               justifyContent: 'center',
               transition: 'background 0.2s, transform 0.2s',
             }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
-              e.currentTarget.style.transform = 'translateY(-50%) scale(1.1)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
-              e.currentTarget.style.transform = 'translateY(-50%)';
-            }}
           >
             <svg
               width="28"
@@ -455,14 +639,6 @@ export default function PhotoGalleryLightbox({
               justifyContent: 'center',
               transition: 'background 0.2s, transform 0.2s',
             }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = 'rgba(255,255,255,0.2)';
-              e.currentTarget.style.transform = 'translateY(-50%) scale(1.1)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
-              e.currentTarget.style.transform = 'translateY(-50%)';
-            }}
           >
             <svg
               width="28"
@@ -487,6 +663,7 @@ export default function PhotoGalleryLightbox({
               alignItems: 'center',
             }}
           >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={currentImage.url}
               alt={currentImage.caption || `Photo ${currentIndex + 1}`}
@@ -586,12 +763,6 @@ export default function PhotoGalleryLightbox({
                   transition: 'opacity 0.2s, border-color 0.2s',
                   flexShrink: 0,
                   padding: 0,
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.opacity = '1';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.opacity = index === currentIndex ? '1' : '0.6';
                 }}
               />
             ))}

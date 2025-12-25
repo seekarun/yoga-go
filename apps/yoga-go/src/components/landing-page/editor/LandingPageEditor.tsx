@@ -16,6 +16,26 @@ interface LandingPageEditorProps {
 // Auto-save delay in milliseconds
 const AUTO_SAVE_DELAY = 1500;
 
+// Fixed sections that cannot be reordered
+const FIXED_TOP_SECTIONS: SectionType[] = ['hero'];
+const FIXED_BOTTOM_SECTIONS: SectionType[] = ['footer'];
+
+// Normalize section order to ensure hero is first and footer is last
+function normalizeSectionOrder(order: SectionType[]): SectionType[] {
+  // Extract fixed sections
+  const topSections = order.filter(id => FIXED_TOP_SECTIONS.includes(id));
+  const bottomSections = order.filter(id => FIXED_BOTTOM_SECTIONS.includes(id));
+  const middleSections = order.filter(
+    id => !FIXED_TOP_SECTIONS.includes(id) && !FIXED_BOTTOM_SECTIONS.includes(id)
+  );
+
+  // Ensure fixed sections exist
+  const finalTop = topSections.length > 0 ? topSections : FIXED_TOP_SECTIONS;
+  const finalBottom = bottomSections.length > 0 ? bottomSections : FIXED_BOTTOM_SECTIONS;
+
+  return [...finalTop, ...middleSections, ...finalBottom];
+}
+
 export default function LandingPageEditor({ expertId }: LandingPageEditorProps) {
   const router = useRouter();
 
@@ -115,13 +135,13 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
                 ...newSections,
                 ...savedOrder.slice(actIndex),
               ];
-              setSectionOrder(updatedOrder);
+              setSectionOrder(normalizeSectionOrder(updatedOrder));
             } else {
               // Just append at the end
-              setSectionOrder([...savedOrder, ...newSections]);
+              setSectionOrder(normalizeSectionOrder([...savedOrder, ...newSections]));
             }
           } else {
-            setSectionOrder(savedOrder);
+            setSectionOrder(normalizeSectionOrder(savedOrder));
           }
         }
 
@@ -203,12 +223,17 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
 
   // Handle section reorder
   const handleReorder = useCallback((newOrder: SectionType[]) => {
-    setSectionOrder(newOrder);
+    // Normalize to ensure hero is first and footer is last
+    setSectionOrder(normalizeSectionOrder(newOrder));
     setIsDirty(true);
   }, []);
 
   // Handle section toggle (enable/disable)
   const handleToggleSection = useCallback((sectionId: SectionType) => {
+    // Hero section cannot be disabled
+    if (sectionId === 'hero') {
+      return;
+    }
     setDisabledSections(prev => {
       if (prev.includes(sectionId)) {
         return prev.filter(id => id !== sectionId);
@@ -395,9 +420,9 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
       const landingPage = expertData.customLandingPage || {};
       setData(landingPage);
 
-      // Update section order
+      // Update section order (normalized to ensure hero first, footer last)
       if (landingPage.sectionOrder && landingPage.sectionOrder.length > 0) {
-        setSectionOrder(landingPage.sectionOrder as SectionType[]);
+        setSectionOrder(normalizeSectionOrder(landingPage.sectionOrder as SectionType[]));
       } else {
         setSectionOrder(DEFAULT_SECTION_ORDER);
       }

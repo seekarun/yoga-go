@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { CustomLandingPageConfig, Asset, LandingPageTemplate } from '@/types';
+import type { CustomLandingPageConfig, Asset } from '@/types';
 
 // Section type union
 export type SectionType =
@@ -26,15 +26,6 @@ export const DEFAULT_SECTION_ORDER: SectionType[] = [
   'footer',
 ];
 
-// Props for preview components
-export interface SectionPreviewProps {
-  data: CustomLandingPageConfig;
-  expertName?: string;
-  expertBio?: string;
-  expertId?: string;
-  template?: LandingPageTemplate;
-}
-
 // Props for editor components
 export interface SectionEditorProps {
   data: CustomLandingPageConfig;
@@ -49,7 +40,6 @@ export interface SectionConfig {
   label: string;
   icon: ReactNode;
   description: string;
-  PreviewComponent: React.FC<SectionPreviewProps>;
   EditorComponent: React.FC<SectionEditorProps>;
 }
 

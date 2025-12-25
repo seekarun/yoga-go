@@ -2,13 +2,13 @@
 
 import { PrimaryButton, SecondaryButton } from '@/components/Button';
 import ImageUploadCrop from '@/components/ImageUploadCrop';
-import AboutPreview from '@/components/landing-page/sections/about/AboutPreview';
-import ActPreview from '@/components/landing-page/sections/act/ActPreview';
-import FooterPreview from '@/components/landing-page/sections/footer/FooterPreview';
-import HeroPreview from '@/components/landing-page/sections/hero/HeroPreview';
-import PhotoGalleryPreview from '@/components/landing-page/sections/photo-gallery/PhotoGalleryPreview';
-import ValuePropsPreview from '@/components/landing-page/sections/value-props/ValuePropsPreview';
+import {
+  renderTemplateSection,
+  type EditorRenderContext,
+} from '@/components/landing-page/editor/templateSections';
+import { LandingPageThemeProvider } from '@/components/landing-page/ThemeProvider';
 import { DEFAULT_TEMPLATE, templates } from '@/components/landing-page/templates';
+import { generatePalette } from '@/lib/colorPalette';
 import type { Asset, CustomLandingPageConfig, LandingPageTemplate } from '@/types';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -1170,34 +1170,45 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
               </div>
 
               {/* Full Preview - All Sections */}
-              <div
-                style={{
-                  border: '2px solid #e2e8f0',
-                  borderRadius: '12px',
-                  overflow: 'hidden',
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-                }}
-              >
-                <HeroPreview
-                  data={previewData}
-                  expertName={expertName}
-                  expertBio={landingContent.aboutBio || LOREM.medium}
-                  template={currentTemplate.id}
-                />
-                <ValuePropsPreview data={previewData} template={currentTemplate.id} />
-                <AboutPreview data={previewData} template={currentTemplate.id} />
-                <PhotoGalleryPreview
-                  data={previewData}
-                  expertName={expertName}
-                  template={currentTemplate.id}
-                />
-                <ActPreview data={previewData} template={currentTemplate.id} />
-                <FooterPreview
-                  data={previewData}
-                  expertName={expertName}
-                  template={currentTemplate.id}
-                />
-              </div>
+              {(() => {
+                // Build render context for template sections
+                const renderContext: EditorRenderContext = {
+                  data: previewData,
+                  expertName: expertName,
+                  expertBio: landingContent.aboutBio || LOREM.medium,
+                  expertId: formData.id || 'preview',
+                  courses: [],
+                  webinars: [],
+                  latestBlogPost: undefined,
+                };
+
+                // Sections to preview (excluding courses, webinars, blog which are empty)
+                const previewSections = [
+                  'hero',
+                  'valuePropositions',
+                  'about',
+                  'photoGallery',
+                  'act',
+                  'footer',
+                ] as const;
+
+                return (
+                  <div
+                    style={{
+                      border: '2px solid #e2e8f0',
+                      borderRadius: '12px',
+                      overflow: 'hidden',
+                      boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                    }}
+                  >
+                    <LandingPageThemeProvider palette={generatePalette(defaultBrandColor)}>
+                      {previewSections.map(sectionId =>
+                        renderTemplateSection(sectionId, currentTemplate.id, renderContext)
+                      )}
+                    </LandingPageThemeProvider>
+                  </div>
+                );
+              })()}
 
               {/* Template Dots Indicator */}
               <div

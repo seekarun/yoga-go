@@ -1,16 +1,5 @@
 import type { SectionConfig, SectionType } from './types';
 
-// Import preview components
-import HeroPreview from './hero/HeroPreview';
-import ValuePropsPreview from './value-props/ValuePropsPreview';
-import AboutPreview from './about/AboutPreview';
-import CoursesPreview from './courses/CoursesPreview';
-import WebinarsPreview from './webinars/WebinarsPreview';
-import PhotoGalleryPreview from './photo-gallery/PhotoGalleryPreview';
-import BlogPreview from './blog/BlogPreview';
-import ActPreview from './act/ActPreview';
-import FooterPreview from './footer/FooterPreview';
-
 // Import editor components
 import HeroEditor from './hero/HeroEditor';
 import ValuePropsEditor from './value-props/ValuePropsEditor';
@@ -180,7 +169,6 @@ export const sectionRegistry: Record<SectionType, SectionConfig> = {
     label: 'Hero Section',
     description: 'Main banner with headline, description, and call-to-action',
     icon: <HeroIcon />,
-    PreviewComponent: HeroPreview,
     EditorComponent: HeroEditor,
   },
   valuePropositions: {
@@ -188,7 +176,6 @@ export const sectionRegistry: Record<SectionType, SectionConfig> = {
     label: 'Value Propositions',
     description: 'Highlight key benefits or features',
     icon: <ValuePropsIcon />,
-    PreviewComponent: ValuePropsPreview,
     EditorComponent: ValuePropsEditor,
   },
   about: {
@@ -196,7 +183,6 @@ export const sectionRegistry: Record<SectionType, SectionConfig> = {
     label: 'About Section',
     description: 'Share your story with video or image + text',
     icon: <AboutIcon />,
-    PreviewComponent: AboutPreview,
     EditorComponent: AboutEditor,
   },
   courses: {
@@ -204,7 +190,6 @@ export const sectionRegistry: Record<SectionType, SectionConfig> = {
     label: 'Courses Section',
     description: 'Display your courses in a carousel',
     icon: <CoursesIcon />,
-    PreviewComponent: CoursesPreview,
     EditorComponent: CoursesEditor,
   },
   webinars: {
@@ -212,7 +197,6 @@ export const sectionRegistry: Record<SectionType, SectionConfig> = {
     label: 'Live Sessions',
     description: 'Showcase your upcoming webinars and live sessions',
     icon: <WebinarsIcon />,
-    PreviewComponent: WebinarsPreview,
     EditorComponent: WebinarsEditor,
   },
   photoGallery: {
@@ -220,7 +204,6 @@ export const sectionRegistry: Record<SectionType, SectionConfig> = {
     label: 'Photo Gallery',
     description: 'Display photos in a horizontal carousel',
     icon: <PhotoGalleryIcon />,
-    PreviewComponent: PhotoGalleryPreview,
     EditorComponent: PhotoGalleryEditor,
   },
   blog: {
@@ -228,7 +211,6 @@ export const sectionRegistry: Record<SectionType, SectionConfig> = {
     label: 'Blog Section',
     description: 'Showcase your latest blog post',
     icon: <BlogIcon />,
-    PreviewComponent: BlogPreview,
     EditorComponent: BlogEditor,
   },
   act: {
@@ -236,7 +218,6 @@ export const sectionRegistry: Record<SectionType, SectionConfig> = {
     label: 'Call to Action',
     description: 'Final section to drive conversions',
     icon: <ActIcon />,
-    PreviewComponent: ActPreview,
     EditorComponent: ActEditor,
   },
   footer: {
@@ -244,7 +225,6 @@ export const sectionRegistry: Record<SectionType, SectionConfig> = {
     label: 'Footer',
     description: 'Copyright, social links, and legal pages',
     icon: <FooterIcon />,
-    PreviewComponent: FooterPreview,
     EditorComponent: FooterEditor,
   },
 };
@@ -252,13 +232,13 @@ export const sectionRegistry: Record<SectionType, SectionConfig> = {
 // Export all section types
 export * from './types';
 
-// Export individual components for direct use
-export { HeroPreview, HeroEditor };
-export { ValuePropsPreview, ValuePropsEditor };
-export { AboutPreview, AboutEditor };
-export { CoursesPreview, CoursesEditor };
-export { WebinarsPreview, WebinarsEditor };
-export { PhotoGalleryPreview, PhotoGalleryEditor };
-export { BlogPreview, BlogEditor };
-export { ActPreview, ActEditor };
-export { FooterPreview, FooterEditor };
+// Export individual editor components for direct use
+export { HeroEditor };
+export { ValuePropsEditor };
+export { AboutEditor };
+export { CoursesEditor };
+export { WebinarsEditor };
+export { PhotoGalleryEditor };
+export { BlogEditor };
+export { ActEditor };
+export { FooterEditor };
