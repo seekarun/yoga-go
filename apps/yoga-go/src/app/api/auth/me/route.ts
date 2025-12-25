@@ -2,7 +2,6 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { decode } from 'next-auth/jwt';
 import { getUserByCognitoSub, getOrCreateUser } from '@/lib/auth';
-import { adminGetUserBySub } from '@/lib/cognito-auth';
 import type { ApiResponse, User } from '@/types';
 
 interface DecodedToken {
@@ -19,9 +18,8 @@ interface DecodedToken {
  *
  * Flow:
  * 1. Decode session JWT to get cognitoSub
- * 2. Verify user exists in Cognito (source of truth)
- * 3. If Cognito user doesn't exist → 401 (stale session)
- * 4. If Cognito user exists but DB user doesn't → auto-create DB user
+ * 2. Try to get user from DynamoDB
+ * 3. If DB user doesn't exist → auto-create from JWT data (JWT is already validated)
  */
 export async function GET(request: NextRequest) {
   console.log('[DBG][api/auth/me] GET /api/auth/me called');
@@ -75,30 +73,28 @@ export async function GET(request: NextRequest) {
 
     console.log('[DBG][api/auth/me] Session found for cognitoSub:', cognitoSub);
 
-    // Step 1: Verify user exists in Cognito (source of truth)
-    const cognitoUser = await adminGetUserBySub(cognitoSub);
-
-    if (!cognitoUser) {
-      console.log('[DBG][api/auth/me] Cognito user not found - stale session');
-      const response: ApiResponse<null> = {
-        success: false,
-        error: 'User not found - please login again',
-      };
-      return NextResponse.json(response, { status: 401 });
-    }
-
-    console.log('[DBG][api/auth/me] Cognito user verified:', cognitoUser.email);
-
-    // Step 2: Try to get user from DynamoDB
+    // Try to get user from DynamoDB
     let user = await getUserByCognitoSub(cognitoSub);
 
-    // Step 3: If user doesn't exist in DynamoDB but exists in Cognito, create them
+    // If user doesn't exist in DynamoDB, create from JWT data
+    // The JWT is already validated, so we trust the data in it
     if (!user) {
-      console.log('[DBG][api/auth/me] DB user not found, creating from Cognito data');
+      console.log('[DBG][api/auth/me] DB user not found, creating from JWT data');
+
+      // JWT must have email to create user
+      if (!decoded.email) {
+        console.log('[DBG][api/auth/me] No email in JWT, cannot create user');
+        const response: ApiResponse<null> = {
+          success: false,
+          error: 'Invalid session - missing email',
+        };
+        return NextResponse.json(response, { status: 401 });
+      }
+
       user = await getOrCreateUser({
         sub: cognitoSub,
-        email: cognitoUser.email,
-        name: cognitoUser.name || decoded.name || undefined,
+        email: decoded.email,
+        name: decoded.name || undefined,
       });
       console.log('[DBG][api/auth/me] New user created:', user.id);
     } else {

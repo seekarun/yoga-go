@@ -4,6 +4,7 @@ import * as cognito from "aws-cdk-lib/aws-cognito";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
 import * as nodejsLambda from "aws-cdk-lib/aws-lambda-nodejs";
 import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 import * as ses from "aws-cdk-lib/aws-ses";
@@ -356,6 +357,7 @@ The MyYoga.Guru Team`,
     // ========================================
     // DynamoDB Tables
     // ========================================
+    // Note: Core table is created first so we can reference it for the stream Lambda
     const coreTable = new dynamodb.Table(this, "CoreTable", {
       tableName: "yoga-go-core",
       partitionKey: { name: "PK", type: dynamodb.AttributeType.STRING },
@@ -363,6 +365,8 @@ The MyYoga.Guru Team`,
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
       pointInTimeRecovery: false,
+      // Enable DynamoDB Streams for welcome email trigger
+      stream: dynamodb.StreamViewType.NEW_IMAGE,
     });
 
     coreTable.addGlobalSecondaryIndex({
@@ -371,6 +375,70 @@ The MyYoga.Guru Team`,
       sortKey: { name: "GSI1SK", type: dynamodb.AttributeType.STRING },
       projectionType: dynamodb.ProjectionType.ALL,
     });
+
+    // ========================================
+    // User Welcome Stream Lambda (DynamoDB Streams)
+    // ========================================
+    // Triggered when new USER records are created in yoga-go-core
+    // Sends appropriate welcome email based on user type (expert/learner)
+    const userWelcomeStreamLambda = new nodejsLambda.NodejsFunction(
+      this,
+      "UserWelcomeStreamLambda",
+      {
+        functionName: "yoga-go-user-welcome-stream",
+        runtime: lambda.Runtime.NODEJS_22_X,
+        handler: "handler",
+        entry: path.join(__dirname, "../lambda/user-welcome-stream.ts"),
+        timeout: cdk.Duration.seconds(30),
+        memorySize: 256,
+        environment: {
+          DYNAMODB_TABLE: coreTable.tableName,
+          SES_FROM_EMAIL: "hi@myyoga.guru",
+          SES_CONFIG_SET: sesConfigSet.configurationSetName,
+        },
+        bundling: { minify: true, sourceMap: false },
+      }
+    );
+
+    // Grant DynamoDB read access for looking up expert data
+    coreTable.grantReadData(userWelcomeStreamLambda);
+
+    // Grant SES email sending permissions
+    userWelcomeStreamLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          "ses:SendEmail",
+          "ses:SendRawEmail",
+          "ses:SendTemplatedEmail",
+        ],
+        resources: ["*"],
+        conditions: {
+          StringLike: { "ses:FromAddress": "*@myyoga.guru" },
+        },
+      })
+    );
+
+    // Add DynamoDB Stream as event source
+    // Filter to only process USER records (PK starts with "USER")
+    userWelcomeStreamLambda.addEventSource(
+      new lambdaEventSources.DynamoEventSource(coreTable, {
+        startingPosition: lambda.StartingPosition.LATEST,
+        batchSize: 10,
+        retryAttempts: 2,
+        // Only trigger on INSERT events
+        filters: [
+          lambda.FilterCriteria.filter({
+            eventName: lambda.FilterRule.isEqual("INSERT"),
+            dynamodb: {
+              Keys: {
+                PK: { S: lambda.FilterRule.beginsWith("USER") },
+              },
+            },
+          }),
+        ],
+      })
+    );
 
     new dynamodb.Table(this, "OrdersTable", {
       tableName: "yoga-go-orders",
