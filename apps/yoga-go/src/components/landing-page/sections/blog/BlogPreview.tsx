@@ -4,10 +4,17 @@ import { useState, useEffect } from 'react';
 import type { SectionPreviewProps } from '../types';
 import type { BlogPost } from '@/types';
 
-export default function BlogPreview({ data, expertId, expertName }: SectionPreviewProps) {
+export default function BlogPreview({
+  data,
+  expertId,
+  expertName,
+  template = 'classic',
+}: SectionPreviewProps) {
   const blog = data.blog;
   const [latestPost, setLatestPost] = useState<BlogPost | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const isModern = template === 'modern';
 
   useEffect(() => {
     const fetchLatestPost = async () => {
@@ -37,83 +44,102 @@ export default function BlogPreview({ data, expertId, expertName }: SectionPrevi
   const description =
     blog?.description || `Insights, tips, and articles from ${expertName || 'our expert'}`;
 
+  // Theme-based styles
+  const styles = {
+    section: {
+      padding: '40px 20px',
+      background: isModern ? '#111' : '#fff',
+    },
+    title: {
+      fontSize: '20px',
+      fontWeight: '700' as const,
+      marginBottom: '8px',
+      color: isModern ? '#fff' : '#111',
+    },
+    description: {
+      fontSize: '14px',
+      marginBottom: '24px',
+      color: isModern ? 'rgba(255,255,255,0.6)' : '#666',
+    },
+    emptyText: {
+      color: isModern ? 'rgba(255,255,255,0.5)' : '#9ca3af',
+      fontSize: '14px',
+    },
+    card: {
+      background: isModern ? 'rgba(255,255,255,0.03)' : '#f8f8f8',
+      borderRadius: '12px',
+      overflow: 'hidden' as const,
+      textAlign: 'left' as const,
+      boxShadow: isModern ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+      border: isModern ? '1px solid rgba(255,255,255,0.1)' : 'none',
+    },
+    cardTitle: {
+      fontSize: '16px',
+      fontWeight: '600' as const,
+      marginBottom: '8px',
+      color: isModern ? '#fff' : '#111',
+      lineHeight: '1.3',
+    },
+    cardExcerpt: {
+      fontSize: '13px',
+      color: isModern ? 'rgba(255,255,255,0.6)' : '#666',
+      marginBottom: '12px',
+      lineHeight: '1.5',
+      display: '-webkit-box' as const,
+      WebkitLineClamp: 2,
+      WebkitBoxOrient: 'vertical' as const,
+      overflow: 'hidden' as const,
+    },
+    readTime: {
+      fontSize: '12px',
+      color: isModern ? 'rgba(255,255,255,0.4)' : '#999',
+    },
+    readMore: {
+      fontSize: '13px',
+      color: 'var(--brand-600)',
+      fontWeight: '500' as const,
+    },
+    loadingBg: {
+      background: isModern ? 'rgba(255,255,255,0.03)' : '#f8f8f8',
+      borderRadius: '8px',
+      padding: '40px',
+      border: isModern ? '1px solid rgba(255,255,255,0.1)' : 'none',
+    },
+    loadingText: {
+      color: isModern ? 'rgba(255,255,255,0.5)' : '#9ca3af',
+      fontSize: '14px',
+    },
+    viewAllLink: {
+      fontSize: '14px',
+      color: 'var(--brand-600)',
+      fontWeight: '500' as const,
+    },
+  };
+
   // Show placeholder if no posts
   if (!loading && !latestPost) {
     return (
-      <section
-        style={{
-          padding: '40px 20px',
-          background: '#fff',
-          textAlign: 'center',
-        }}
-      >
-        <h2
-          style={{
-            fontSize: '20px',
-            fontWeight: '700',
-            marginBottom: '8px',
-            color: '#111',
-          }}
-        >
-          {title}
-        </h2>
-        <p style={{ color: '#9ca3af', fontSize: '14px' }}>
-          No blog posts yet. Create your first post to show it here.
-        </p>
+      <section style={{ ...styles.section, textAlign: 'center' }}>
+        <h2 style={styles.title}>{title}</h2>
+        <p style={styles.emptyText}>No blog posts yet. Create your first post to show it here.</p>
       </section>
     );
   }
 
   return (
-    <section
-      style={{
-        padding: '40px 20px',
-        background: '#fff',
-      }}
-    >
+    <section style={styles.section}>
       <div style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
         {/* Section Header */}
-        <h2
-          style={{
-            fontSize: '20px',
-            fontWeight: '700',
-            marginBottom: '8px',
-            color: '#111',
-          }}
-        >
-          {title}
-        </h2>
-        <p
-          style={{
-            fontSize: '14px',
-            marginBottom: '24px',
-            color: '#666',
-          }}
-        >
-          {description}
-        </p>
+        <h2 style={styles.title}>{title}</h2>
+        <p style={styles.description}>{description}</p>
 
         {/* Latest Post Card */}
         {loading ? (
-          <div
-            style={{
-              background: '#f8f8f8',
-              borderRadius: '8px',
-              padding: '40px',
-            }}
-          >
-            <p style={{ color: '#9ca3af', fontSize: '14px' }}>Loading latest post...</p>
+          <div style={styles.loadingBg}>
+            <p style={styles.loadingText}>Loading latest post...</p>
           </div>
         ) : latestPost ? (
-          <div
-            style={{
-              background: '#f8f8f8',
-              borderRadius: '12px',
-              overflow: 'hidden',
-              textAlign: 'left',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-            }}
-          >
+          <div style={styles.card}>
             {/* Cover Image */}
             {latestPost.coverImage && (
               <div
@@ -123,6 +149,7 @@ export default function BlogPreview({ data, expertId, expertName }: SectionPrevi
                   overflow: 'hidden',
                 }}
               >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={latestPost.coverImage}
                   alt={latestPost.title}
@@ -137,31 +164,8 @@ export default function BlogPreview({ data, expertId, expertName }: SectionPrevi
 
             {/* Post Content */}
             <div style={{ padding: '16px' }}>
-              <h3
-                style={{
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  marginBottom: '8px',
-                  color: '#111',
-                  lineHeight: '1.3',
-                }}
-              >
-                {latestPost.title}
-              </h3>
-              <p
-                style={{
-                  fontSize: '13px',
-                  color: '#666',
-                  marginBottom: '12px',
-                  lineHeight: '1.5',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden',
-                }}
-              >
-                {latestPost.excerpt}
-              </p>
+              <h3 style={styles.cardTitle}>{latestPost.title}</h3>
+              <p style={styles.cardExcerpt}>{latestPost.excerpt}</p>
               <div
                 style={{
                   display: 'flex',
@@ -169,18 +173,8 @@ export default function BlogPreview({ data, expertId, expertName }: SectionPrevi
                   justifyContent: 'space-between',
                 }}
               >
-                <span style={{ fontSize: '12px', color: '#999' }}>
-                  {latestPost.readTimeMinutes} min read
-                </span>
-                <span
-                  style={{
-                    fontSize: '13px',
-                    color: 'var(--brand-600)',
-                    fontWeight: '500',
-                  }}
-                >
-                  Read more →
-                </span>
+                <span style={styles.readTime}>{latestPost.readTimeMinutes} min read</span>
+                <span style={styles.readMore}>Read more →</span>
               </div>
             </div>
           </div>
@@ -189,15 +183,7 @@ export default function BlogPreview({ data, expertId, expertName }: SectionPrevi
         {/* View All Link */}
         {latestPost && (
           <div style={{ marginTop: '16px' }}>
-            <span
-              style={{
-                fontSize: '14px',
-                color: 'var(--brand-600)',
-                fontWeight: '500',
-              }}
-            >
-              View all posts →
-            </span>
+            <span style={styles.viewAllLink}>View all posts →</span>
           </div>
         )}
       </div>

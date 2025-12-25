@@ -9,7 +9,6 @@ import * as courseProgressRepository from '@/lib/repositories/courseProgressRepo
 import * as tenantRepository from '@/lib/repositories/tenantRepository';
 import { addDomainToVercel } from '@/lib/vercel';
 import { validateExpertIdWithAI } from '@/lib/reservedIds';
-import { sendExpertWelcomeEmail } from '@/lib/email';
 
 export async function GET() {
   console.log('[DBG][experts/route.ts] GET /data/experts called');
@@ -259,18 +258,8 @@ export async function POST(request: Request) {
 
     console.log('[DBG][experts/route.ts] User updated with expert profile');
 
-    // Send welcome email (non-blocking - don't fail if email fails)
-    const userEmail = user.profile?.email || session.user.email;
-    if (userEmail) {
-      sendExpertWelcomeEmail({
-        to: userEmail,
-        expertName: newExpert.name,
-        expertId: newExpert.id,
-      }).catch(emailError => {
-        console.error('[DBG][experts/route.ts] Failed to send welcome email:', emailError);
-        // Don't throw - expert is created, email failure shouldn't break onboarding
-      });
-    }
+    // Note: Welcome email is sent by DynamoDB stream Lambda (user-welcome-stream)
+    // when the TENANT record is created above
 
     // Build response with warning if flagged
     const response: ApiResponse<Expert> & { warning?: string } = {

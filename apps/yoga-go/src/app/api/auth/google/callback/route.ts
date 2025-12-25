@@ -8,10 +8,8 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { encode } from 'next-auth/jwt';
 import { cognitoConfig } from '@/lib/cognito';
-import { getOrCreateUser, getUserByCognitoSub } from '@/lib/auth';
+import { getOrCreateUser } from '@/lib/auth';
 import { getSubdomainFromMyYogaGuru, isPrimaryDomain } from '@/config/domains';
-import { sendLearnerWelcomeEmail } from '@/lib/email';
-import { getTenantById } from '@/lib/repositories/tenantRepository';
 
 export async function GET(request: NextRequest) {
   console.log('[DBG][auth/google/callback] Processing Google OAuth callback');
@@ -125,12 +123,6 @@ export async function GET(request: NextRequest) {
       name: payload.name,
     });
 
-    // Check if this is a new user (for welcome email)
-    const existingUser = await getUserByCognitoSub(payload.sub);
-    const isNewUser = !existingUser;
-
-    console.log('[DBG][auth/google/callback] Is new user:', isNewUser);
-
     // Determine roles based on signup origin:
     // - Expert subdomain: learner only (they're signing up as a learner)
     // - Main domain: learner + expert (they're signing up as an expert)
@@ -162,41 +154,8 @@ export async function GET(request: NextRequest) {
       signupExpertId || 'none'
     );
 
-    // Send learner welcome email for NEW users signing up on expert subdomain
-    if (isNewUser && signupExpertId) {
-      try {
-        const tenant = await getTenantById(signupExpertId);
-        if (tenant) {
-          // Send email asynchronously - don't block auth flow
-          sendLearnerWelcomeEmail({
-            to: payload.email,
-            learnerName: payload.name || payload.email?.split('@')[0],
-            expert: {
-              id: tenant.id,
-              name: tenant.name,
-              logo: tenant.customLandingPage?.branding?.logo,
-              avatar: tenant.avatar,
-              primaryColor: tenant.customLandingPage?.theme?.primaryColor,
-              palette: tenant.customLandingPage?.theme?.palette,
-            },
-          }).catch(emailError => {
-            console.error(
-              '[DBG][auth/google/callback] Failed to send learner welcome email:',
-              emailError
-            );
-          });
-          console.log(
-            '[DBG][auth/google/callback] Triggered learner welcome email for expert:',
-            signupExpertId
-          );
-        }
-      } catch (tenantError) {
-        console.error(
-          '[DBG][auth/google/callback] Failed to fetch tenant for welcome email:',
-          tenantError
-        );
-      }
-    }
+    // Note: Welcome email is sent by DynamoDB stream Lambda (user-welcome-stream)
+    // when the USER record is created above
 
     // Create session token using NextAuth's encode function
     // This ensures compatibility with /api/auth/me which uses decode

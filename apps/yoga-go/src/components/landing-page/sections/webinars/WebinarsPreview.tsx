@@ -22,12 +22,19 @@ function formatTime(dateString: string): string {
   });
 }
 
-export default function WebinarsPreview({ data, expertId, expertName }: SectionPreviewProps) {
+export default function WebinarsPreview({
+  data,
+  expertId,
+  expertName,
+  template = 'classic',
+}: SectionPreviewProps) {
   const webinars = data.webinars;
   const [webinarList, setWebinarList] = useState<Webinar[]>([]);
   const [loading, setLoading] = useState(true);
   const [scrollPosition, setScrollPosition] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
+
+  const isModern = template === 'modern';
 
   useEffect(() => {
     const fetchWebinars = async () => {
@@ -78,82 +85,121 @@ export default function WebinarsPreview({ data, expertId, expertName }: SectionP
     }
   };
 
+  // Theme-based styles
+  const styles = {
+    section: {
+      padding: '40px 20px',
+      background: isModern ? '#0f0f0f' : '#fff',
+    },
+    title: {
+      fontSize: '20px',
+      fontWeight: '700' as const,
+      marginBottom: '8px',
+      color: isModern ? '#fff' : '#111',
+    },
+    description: {
+      fontSize: '14px',
+      color: isModern ? 'rgba(255,255,255,0.6)' : '#666',
+    },
+    emptyText: {
+      color: isModern ? 'rgba(255,255,255,0.5)' : '#9ca3af',
+      fontSize: '14px',
+    },
+    card: {
+      flex: '0 0 260px',
+      background: isModern ? 'rgba(255,255,255,0.03)' : '#fff',
+      borderRadius: '12px',
+      overflow: 'hidden' as const,
+      boxShadow: isModern ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+      textDecoration: 'none' as const,
+      color: 'inherit',
+      transition: 'transform 0.2s, box-shadow 0.2s',
+    },
+    cardBorder: (isLive: boolean) => ({
+      border: isLive
+        ? '2px solid #ef4444'
+        : isModern
+          ? '1px solid rgba(255,255,255,0.1)'
+          : '1px solid #e5e7eb',
+    }),
+    cardTitle: {
+      fontSize: '14px',
+      fontWeight: '600' as const,
+      color: isModern ? '#fff' : '#111',
+      marginBottom: '6px',
+      lineHeight: '1.3',
+      display: '-webkit-box' as const,
+      WebkitLineClamp: 2,
+      WebkitBoxOrient: 'vertical' as const,
+      overflow: 'hidden' as const,
+    },
+    cardDate: {
+      fontSize: '12px',
+      color: isModern ? 'rgba(255,255,255,0.6)' : '#666',
+      marginBottom: '8px',
+    },
+    badge: {
+      padding: '2px 6px',
+      background: isModern ? 'rgba(255,255,255,0.1)' : '#f3f4f6',
+      borderRadius: '4px',
+      color: isModern ? 'rgba(255,255,255,0.8)' : '#666',
+    },
+    price: {
+      fontWeight: '600' as const,
+      color: isModern ? '#fff' : '#111',
+    },
+    navButton: {
+      width: '32px',
+      height: '32px',
+      borderRadius: '50%',
+      background: isModern ? 'rgba(255,255,255,0.1)' : '#fff',
+      border: isModern ? '1px solid rgba(255,255,255,0.2)' : '1px solid #e5e7eb',
+      boxShadow: isModern ? 'none' : '0 2px 4px rgba(0,0,0,0.1)',
+      cursor: 'pointer',
+      display: 'flex' as const,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+      zIndex: 10,
+      color: isModern ? '#fff' : '#000',
+    },
+    viewAllLink: {
+      fontSize: '14px',
+      color: 'var(--brand-600)',
+      fontWeight: '500' as const,
+      textDecoration: 'none' as const,
+    },
+    skeleton: {
+      width: '260px',
+      height: '200px',
+      background: isModern ? 'rgba(255,255,255,0.05)' : '#e5e7eb',
+      borderRadius: '12px',
+    },
+  };
+
   // Show placeholder if no webinars
   if (!loading && webinarList.length === 0) {
     return (
-      <section
-        style={{
-          padding: '40px 20px',
-          background: '#fff',
-          textAlign: 'center',
-        }}
-      >
-        <h2
-          style={{
-            fontSize: '20px',
-            fontWeight: '700',
-            marginBottom: '8px',
-            color: '#111',
-          }}
-        >
-          {title}
-        </h2>
-        <p style={{ color: '#9ca3af', fontSize: '14px' }}>
-          No live sessions scheduled. Check back soon!
-        </p>
+      <section style={{ ...styles.section, textAlign: 'center' }}>
+        <h2 style={styles.title}>{title}</h2>
+        <p style={styles.emptyText}>No live sessions scheduled. Check back soon!</p>
       </section>
     );
   }
 
   return (
-    <section
-      style={{
-        padding: '40px 20px',
-        background: '#fff',
-      }}
-    >
+    <section style={styles.section}>
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
         {/* Section Header */}
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <h2
-            style={{
-              fontSize: '20px',
-              fontWeight: '700',
-              marginBottom: '8px',
-              color: '#111',
-            }}
-          >
-            {title}
-          </h2>
-          <p
-            style={{
-              fontSize: '14px',
-              color: '#666',
-            }}
-          >
-            {description}
-          </p>
+          <h2 style={styles.title}>{title}</h2>
+          <p style={styles.description}>{description}</p>
         </div>
 
         {/* Carousel */}
         {loading ? (
-          <div
-            style={{
-              display: 'flex',
-              gap: '16px',
-              justifyContent: 'center',
-            }}
-          >
+          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
             {[1, 2].map(i => (
-              <div
-                key={i}
-                style={{
-                  width: '260px',
-                  height: '200px',
-                  background: '#e5e7eb',
-                  borderRadius: '12px',
-                }}
-              />
+              <div key={i} style={styles.skeleton} />
             ))}
           </div>
         ) : (
@@ -164,21 +210,11 @@ export default function WebinarsPreview({ data, expertId, expertName }: SectionP
                 <button
                   onClick={() => scroll('left')}
                   style={{
+                    ...styles.navButton,
                     position: 'absolute',
                     left: '-12px',
                     top: '50%',
                     transform: 'translateY(-50%)',
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '50%',
-                    background: '#fff',
-                    border: '1px solid #e5e7eb',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 10,
                     opacity: scrollPosition > 0 ? 1 : 0.5,
                   }}
                   disabled={scrollPosition === 0}
@@ -195,21 +231,11 @@ export default function WebinarsPreview({ data, expertId, expertName }: SectionP
                 <button
                   onClick={() => scroll('right')}
                   style={{
+                    ...styles.navButton,
                     position: 'absolute',
                     right: '-12px',
                     top: '50%',
                     transform: 'translateY(-50%)',
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '50%',
-                    background: '#fff',
-                    border: '1px solid #e5e7eb',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 10,
                   }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -247,23 +273,8 @@ export default function WebinarsPreview({ data, expertId, expertName }: SectionP
                     key={webinar.id}
                     href={`/webinars/${webinar.id}`}
                     style={{
-                      flex: '0 0 260px',
-                      background: '#fff',
-                      borderRadius: '12px',
-                      overflow: 'hidden',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                      border: isLive ? '2px solid #ef4444' : '1px solid #e5e7eb',
-                      textDecoration: 'none',
-                      color: 'inherit',
-                      transition: 'transform 0.2s, box-shadow 0.2s',
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.12)';
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
+                      ...styles.card,
+                      ...styles.cardBorder(isLive),
                     }}
                   >
                     {/* Webinar Thumbnail */}
@@ -309,30 +320,10 @@ export default function WebinarsPreview({ data, expertId, expertName }: SectionP
 
                     {/* Webinar Info */}
                     <div style={{ padding: '12px' }}>
-                      <h3
-                        style={{
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          color: '#111',
-                          marginBottom: '6px',
-                          lineHeight: '1.3',
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                        }}
-                      >
-                        {webinar.title}
-                      </h3>
+                      <h3 style={styles.cardTitle}>{webinar.title}</h3>
 
                       {nextSession && (
-                        <div
-                          style={{
-                            fontSize: '12px',
-                            color: '#666',
-                            marginBottom: '8px',
-                          }}
-                        >
+                        <div style={styles.cardDate}>
                           {formatDate(nextSession.startTime)} at {formatTime(nextSession.startTime)}
                         </div>
                       )}
@@ -345,18 +336,11 @@ export default function WebinarsPreview({ data, expertId, expertName }: SectionP
                           fontSize: '12px',
                         }}
                       >
-                        <span
-                          style={{
-                            padding: '2px 6px',
-                            background: '#f3f4f6',
-                            borderRadius: '4px',
-                            color: '#666',
-                          }}
-                        >
+                        <span style={styles.badge}>
                           {webinar.sessions.length} session
                           {webinar.sessions.length !== 1 ? 's' : ''}
                         </span>
-                        <span style={{ fontWeight: '600', color: '#111' }}>
+                        <span style={styles.price}>
                           {webinar.price === 0 ? 'Free' : `$${webinar.price}`}
                         </span>
                       </div>
@@ -371,15 +355,7 @@ export default function WebinarsPreview({ data, expertId, expertName }: SectionP
         {/* View All Link */}
         {webinarList.length > 0 && (
           <div style={{ textAlign: 'center', marginTop: '20px' }}>
-            <Link
-              href="/webinars"
-              style={{
-                fontSize: '14px',
-                color: 'var(--brand-600)',
-                fontWeight: '500',
-                textDecoration: 'none',
-              }}
-            >
+            <Link href="/webinars" style={styles.viewAllLink}>
               View all sessions →
             </Link>
           </div>

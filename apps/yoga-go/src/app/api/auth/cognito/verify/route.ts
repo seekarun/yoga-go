@@ -15,8 +15,6 @@ import { getOrCreateUser } from '@/lib/auth';
 import { encode } from 'next-auth/jwt';
 import { jwtVerify } from 'jose';
 import type { UserRole } from '@/types';
-import { sendLearnerWelcomeEmail } from '@/lib/email';
-import { getTenantById } from '@/lib/repositories/tenantRepository';
 
 interface VerifyRequestBody {
   email: string;
@@ -138,37 +136,8 @@ export async function POST(request: NextRequest) {
             signupExpertId || 'none'
           );
 
-          // Send learner welcome email if signed up on expert subdomain
-          if (signupExpertId) {
-            try {
-              const tenant = await getTenantById(signupExpertId);
-              if (tenant) {
-                // Send email asynchronously - don't block verification
-                sendLearnerWelcomeEmail({
-                  to: userInfo.email,
-                  learnerName: userInfo.name || userInfo.email.split('@')[0],
-                  expert: {
-                    id: tenant.id,
-                    name: tenant.name,
-                    logo: tenant.customLandingPage?.branding?.logo,
-                    avatar: tenant.avatar,
-                    primaryColor: tenant.customLandingPage?.theme?.primaryColor,
-                    palette: tenant.customLandingPage?.theme?.palette,
-                  },
-                }).catch(emailError => {
-                  // Log but don't fail verification if email fails
-                  console.error('[DBG][verify] Failed to send learner welcome email:', emailError);
-                });
-                console.log(
-                  '[DBG][verify] Triggered learner welcome email for expert:',
-                  signupExpertId
-                );
-              }
-            } catch (tenantError) {
-              console.error('[DBG][verify] Failed to fetch tenant for welcome email:', tenantError);
-              // Don't fail verification
-            }
-          }
+          // Note: Welcome email is sent by DynamoDB stream Lambda (user-welcome-stream)
+          // when the USER record is created above
 
           // Create NextAuth JWT token
           const token = await encode({

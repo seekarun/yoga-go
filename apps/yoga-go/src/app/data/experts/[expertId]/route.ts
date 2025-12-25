@@ -57,13 +57,21 @@ export async function GET(request: Request, { params }: { params: Promise<{ expe
       totalStudents,
     };
 
-    // In draft preview mode, serve draftLandingPage as customLandingPage
-    // This allows the preview page to render the draft content
-    if (isDraftPreview && expertDoc.draftLandingPage) {
-      console.log('[DBG][experts/[expertId]/route.ts] Serving draft landing page for preview');
+    // In draft preview mode, merge draftLandingPage with customLandingPage
+    // Draft overrides published, but we fall back to published for missing fields
+    // This ensures template and other settings are preserved when draft was created before a feature existed
+    if (isDraftPreview) {
+      const published = expertDoc.customLandingPage || {};
+      const draft = expertDoc.draftLandingPage || {};
+      const merged = { ...published, ...draft };
+      console.log('[DBG][experts/[expertId]/route.ts] Serving merged landing page for preview:', {
+        publishedTemplate: published.template,
+        draftTemplate: draft.template,
+        mergedTemplate: merged.template,
+      });
       expert = {
         ...expert,
-        customLandingPage: expertDoc.draftLandingPage,
+        customLandingPage: merged,
       };
     }
 

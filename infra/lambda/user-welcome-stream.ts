@@ -1,11 +1,16 @@
 /**
- * DynamoDB Stream Lambda for User Welcome Emails
+ * DynamoDB Stream Lambda for User Welcome Emails & Analytics
  *
- * Triggered when new USER records are created in yoga-go-core table.
- * Sends appropriate welcome email based on user type:
- * - Expert: Expert welcome email with dashboard links
+ * Triggered when new USER or TENANT records are created in yoga-go-core table.
+ *
+ * For USER records:
+ * - Expert: Skipped (handled by TENANT creation)
  * - Learner (on expert subdomain): Branded welcome with expert's colors/logo
  * - Learner (main site): Generic welcome email
+ *
+ * For TENANT records:
+ * - Sends expert welcome email with dashboard links
+ * - Tracks CREATE_TENANT analytics event for admin dashboard
  */
 
 import {
@@ -13,7 +18,11 @@ import {
   SendEmailCommand,
   SendTemplatedEmailCommand,
 } from "@aws-sdk/client-ses";
-import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb";
+import {
+  DynamoDBClient,
+  GetItemCommand,
+  PutItemCommand,
+} from "@aws-sdk/client-dynamodb";
 import type { DynamoDBStreamEvent, DynamoDBRecord } from "aws-lambda";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 import type { AttributeValue } from "@aws-sdk/client-dynamodb";
@@ -24,6 +33,7 @@ const ses = new SESClient({ region: "us-west-2" });
 const dynamodb = new DynamoDBClient({ region: "ap-southeast-2" });
 
 const TABLE_NAME = process.env.DYNAMODB_TABLE || "yoga-go-core";
+const ANALYTICS_TABLE = process.env.ANALYTICS_TABLE || "yoga-go-analytics";
 const FROM_EMAIL = process.env.SES_FROM_EMAIL || "hi@myyoga.guru";
 const CONFIG_SET = process.env.SES_CONFIG_SET;
 
@@ -384,8 +394,65 @@ async function sendGenericLearnerWelcomeEmail(user: UserRecord): Promise<void> {
 }
 
 /**
- * Process a USER record - send learner welcome emails only
- * Experts are handled by TENANT creation trigger instead
+ * Track CREATE_USER analytics event for admin dashboard
+ * PK: GLOBAL (admin-level analytics)
+ * SK: CREATE_USER#{timestamp}#{userId}
+ */
+async function trackUserCreatedEvent(
+  userData: Record<string, unknown>,
+): Promise<void> {
+  const userId = (userData.id as string) || (userData.SK as string);
+  const timestamp = new Date().toISOString();
+  const profile = userData.profile as Record<string, unknown> | undefined;
+  const roles = Array.isArray(userData.role) ? userData.role : [userData.role];
+  const signupExperts = userData.signupExperts as string[] | undefined;
+
+  console.log(
+    `[user-welcome-stream] Tracking CREATE_USER event for: ${userId}`,
+  );
+
+  try {
+    await dynamodb.send(
+      new PutItemCommand({
+        TableName: ANALYTICS_TABLE,
+        Item: {
+          PK: { S: "GLOBAL" },
+          SK: { S: `CREATE_USER#${timestamp}#${userId}` },
+          eventType: { S: "CREATE_USER" },
+          userId: { S: userId },
+          email: profile?.email
+            ? { S: profile.email as string }
+            : { NULL: true },
+          name: profile?.name ? { S: profile.name as string } : { NULL: true },
+          roles: { SS: roles.filter(Boolean).map(String) },
+          isExpert: { BOOL: roles.includes("expert") },
+          isLearner: { BOOL: roles.includes("learner") },
+          signupExpertId: signupExperts?.[0]
+            ? { S: signupExperts[0] }
+            : { NULL: true },
+          userCreatedAt: userData.createdAt
+            ? { S: userData.createdAt as string }
+            : { NULL: true },
+          createdAt: { S: timestamp },
+        },
+      }),
+    );
+
+    console.log(
+      `[user-welcome-stream] CREATE_USER event tracked for: ${userId}`,
+    );
+  } catch (error) {
+    console.error(
+      `[user-welcome-stream] Error tracking CREATE_USER event:`,
+      error,
+    );
+    // Don't throw - analytics is non-critical
+  }
+}
+
+/**
+ * Process a USER record - track analytics and send learner welcome emails
+ * Experts are handled by TENANT creation trigger for welcome emails
  */
 async function processUserRecord(item: Record<string, unknown>): Promise<void> {
   // Extract email and name from profile (they're nested, not top-level)
@@ -410,10 +477,13 @@ async function processUserRecord(item: Record<string, unknown>): Promise<void> {
     signupExpertId,
   });
 
-  // Skip experts - they'll get welcome email when TENANT is created
+  // Track analytics event for admin dashboard (always, for all user types)
+  await trackUserCreatedEvent(item);
+
+  // Skip experts for welcome email - they'll get it when TENANT is created
   if (isExpert) {
     console.log(
-      `[user-welcome-stream] User is expert, skipping (will send on TENANT create)`,
+      `[user-welcome-stream] User is expert, skipping email (will send on TENANT create)`,
     );
     return;
   }
@@ -499,7 +569,65 @@ async function getUserById(
 }
 
 /**
- * Process a TENANT record - send expert welcome email
+ * Track CREATE_TENANT analytics event for admin dashboard
+ * PK: GLOBAL (admin-level analytics)
+ * SK: CREATE_TENANT#{timestamp}#{tenantId}
+ */
+async function trackTenantCreatedEvent(
+  tenantData: Record<string, unknown>,
+): Promise<void> {
+  const tenantId = tenantData.SK as string;
+  const timestamp = new Date().toISOString();
+
+  console.log(
+    `[user-welcome-stream] Tracking CREATE_TENANT event for: ${tenantId}`,
+  );
+
+  try {
+    await dynamodb.send(
+      new PutItemCommand({
+        TableName: ANALYTICS_TABLE,
+        Item: {
+          PK: { S: "GLOBAL" },
+          SK: { S: `CREATE_TENANT#${timestamp}#${tenantId}` },
+          eventType: { S: "CREATE_TENANT" },
+          tenantId: { S: tenantId },
+          tenantName: tenantData.name
+            ? { S: tenantData.name as string }
+            : { NULL: true },
+          userId: tenantData.userId
+            ? { S: tenantData.userId as string }
+            : { NULL: true },
+          primaryDomain: tenantData.primaryDomain
+            ? { S: tenantData.primaryDomain as string }
+            : { NULL: true },
+          status: tenantData.status
+            ? { S: tenantData.status as string }
+            : { S: "active" },
+          featuredOnPlatform: {
+            BOOL: (tenantData.featuredOnPlatform as boolean) ?? true,
+          },
+          createdAt: { S: timestamp },
+          // Store the full tenant data as JSON for reference
+          tenantData: { S: JSON.stringify(tenantData) },
+        },
+      }),
+    );
+
+    console.log(
+      `[user-welcome-stream] CREATE_TENANT event tracked for: ${tenantId}`,
+    );
+  } catch (error) {
+    console.error(
+      `[user-welcome-stream] Error tracking CREATE_TENANT event:`,
+      error,
+    );
+    // Don't throw - analytics is non-critical
+  }
+}
+
+/**
+ * Process a TENANT record - send expert welcome email and track analytics
  * The TENANT record contains userId (cognitoSub) which links to the USER record.
  */
 async function processTenantRecord(
@@ -515,10 +643,13 @@ async function processTenantRecord(
     displayName,
   });
 
-  // TENANT record must have userId to look up the owner
+  // Track analytics event for admin dashboard (always, regardless of email)
+  await trackTenantCreatedEvent(item);
+
+  // TENANT record must have userId to look up the owner for email
   if (!userId) {
     console.log(
-      `[user-welcome-stream] No userId on TENANT record: ${tenantId}, skipping`,
+      `[user-welcome-stream] No userId on TENANT record: ${tenantId}, skipping email`,
     );
     return;
   }

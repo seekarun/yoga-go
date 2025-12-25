@@ -86,9 +86,17 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
           setHasUnpublishedChanges(false);
         }
 
-        // Initialize editor state from draft (if exists) or published
-        // Draft takes precedence as it represents work-in-progress
-        const landingPage = expertData.draftLandingPage || expertData.customLandingPage || {};
+        // Initialize editor state by merging published with draft
+        // Draft overrides published, but we fall back to published for missing fields
+        // This ensures template and other settings are preserved when draft was created before a feature existed
+        const published = expertData.customLandingPage || {};
+        const draft = expertData.draftLandingPage || {};
+        const landingPage = { ...published, ...draft };
+        console.log('[DBG][LandingPageEditor] Merged config:', {
+          publishedTemplate: published.template,
+          draftTemplate: draft.template,
+          finalTemplate: landingPage.template,
+        });
         setData(landingPage);
 
         // Load section order or use default

@@ -4,12 +4,19 @@ import { useState, useEffect, useRef } from 'react';
 import type { SectionPreviewProps } from '../types';
 import type { Course } from '@/types';
 
-export default function CoursesPreview({ data, expertId, expertName }: SectionPreviewProps) {
+export default function CoursesPreview({
+  data,
+  expertId,
+  expertName,
+  template = 'classic',
+}: SectionPreviewProps) {
   const courses = data.courses;
   const [courseList, setCourseList] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [scrollPosition, setScrollPosition] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
+
+  const isModern = template === 'modern';
 
   useEffect(() => {
     const fetchCourses = async () => {
@@ -56,82 +63,113 @@ export default function CoursesPreview({ data, expertId, expertName }: SectionPr
     }
   };
 
+  // Theme-based styles
+  const styles = {
+    section: {
+      padding: '40px 20px',
+      background: isModern ? '#0a0a0a' : '#f8f8f8',
+    },
+    title: {
+      fontSize: '20px',
+      fontWeight: '700' as const,
+      marginBottom: '8px',
+      color: isModern ? '#fff' : '#111',
+    },
+    description: {
+      fontSize: '14px',
+      color: isModern ? 'rgba(255,255,255,0.6)' : '#666',
+    },
+    emptyText: {
+      color: isModern ? 'rgba(255,255,255,0.5)' : '#9ca3af',
+      fontSize: '14px',
+    },
+    card: {
+      flex: '0 0 260px',
+      background: isModern ? 'rgba(255,255,255,0.03)' : '#fff',
+      borderRadius: '12px',
+      overflow: 'hidden' as const,
+      boxShadow: isModern ? 'none' : '0 2px 8px rgba(0,0,0,0.08)',
+      border: isModern ? '1px solid rgba(255,255,255,0.1)' : 'none',
+    },
+    cardTitle: {
+      fontSize: '14px',
+      fontWeight: '600' as const,
+      color: isModern ? '#fff' : '#111',
+      marginBottom: '6px',
+      lineHeight: '1.3',
+      display: '-webkit-box' as const,
+      WebkitLineClamp: 2,
+      WebkitBoxOrient: 'vertical' as const,
+      overflow: 'hidden' as const,
+    },
+    cardMeta: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      fontSize: '12px',
+      color: isModern ? 'rgba(255,255,255,0.6)' : '#666',
+    },
+    badge: {
+      padding: '2px 6px',
+      background: isModern ? 'rgba(255,255,255,0.1)' : '#f3f4f6',
+      borderRadius: '4px',
+      color: isModern ? 'rgba(255,255,255,0.8)' : undefined,
+    },
+    price: {
+      fontWeight: '600' as const,
+      color: isModern ? '#fff' : '#111',
+    },
+    navButton: {
+      width: '32px',
+      height: '32px',
+      borderRadius: '50%',
+      background: isModern ? 'rgba(255,255,255,0.1)' : '#fff',
+      border: isModern ? '1px solid rgba(255,255,255,0.2)' : '1px solid #e5e7eb',
+      boxShadow: isModern ? 'none' : '0 2px 4px rgba(0,0,0,0.1)',
+      cursor: 'pointer',
+      display: 'flex' as const,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
+      zIndex: 10,
+      color: isModern ? '#fff' : '#000',
+    },
+    viewAllLink: {
+      fontSize: '14px',
+      color: 'var(--brand-600)',
+      fontWeight: '500' as const,
+    },
+    skeleton: {
+      width: '260px',
+      height: '200px',
+      background: isModern ? 'rgba(255,255,255,0.05)' : '#e5e7eb',
+      borderRadius: '12px',
+    },
+  };
+
   // Show placeholder if no courses
   if (!loading && courseList.length === 0) {
     return (
-      <section
-        style={{
-          padding: '40px 20px',
-          background: '#f8f8f8',
-          textAlign: 'center',
-        }}
-      >
-        <h2
-          style={{
-            fontSize: '20px',
-            fontWeight: '700',
-            marginBottom: '8px',
-            color: '#111',
-          }}
-        >
-          {title}
-        </h2>
-        <p style={{ color: '#9ca3af', fontSize: '14px' }}>
-          No courses yet. Create your first course to show it here.
-        </p>
+      <section style={{ ...styles.section, textAlign: 'center' }}>
+        <h2 style={styles.title}>{title}</h2>
+        <p style={styles.emptyText}>No courses yet. Create your first course to show it here.</p>
       </section>
     );
   }
 
   return (
-    <section
-      style={{
-        padding: '40px 20px',
-        background: '#f8f8f8',
-      }}
-    >
+    <section style={styles.section}>
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
         {/* Section Header */}
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <h2
-            style={{
-              fontSize: '20px',
-              fontWeight: '700',
-              marginBottom: '8px',
-              color: '#111',
-            }}
-          >
-            {title}
-          </h2>
-          <p
-            style={{
-              fontSize: '14px',
-              color: '#666',
-            }}
-          >
-            {description}
-          </p>
+          <h2 style={styles.title}>{title}</h2>
+          <p style={styles.description}>{description}</p>
         </div>
 
         {/* Carousel */}
         {loading ? (
-          <div
-            style={{
-              display: 'flex',
-              gap: '16px',
-              justifyContent: 'center',
-            }}
-          >
+          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
             {[1, 2].map(i => (
-              <div
-                key={i}
-                style={{
-                  width: '260px',
-                  height: '200px',
-                  background: '#e5e7eb',
-                  borderRadius: '12px',
-                }}
-              />
+              <div key={i} style={styles.skeleton} />
             ))}
           </div>
         ) : (
@@ -142,21 +180,11 @@ export default function CoursesPreview({ data, expertId, expertName }: SectionPr
                 <button
                   onClick={() => scroll('left')}
                   style={{
+                    ...styles.navButton,
                     position: 'absolute',
                     left: '-12px',
                     top: '50%',
                     transform: 'translateY(-50%)',
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '50%',
-                    background: '#fff',
-                    border: '1px solid #e5e7eb',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 10,
                     opacity: scrollPosition > 0 ? 1 : 0.5,
                   }}
                   disabled={scrollPosition === 0}
@@ -173,21 +201,11 @@ export default function CoursesPreview({ data, expertId, expertName }: SectionPr
                 <button
                   onClick={() => scroll('right')}
                   style={{
+                    ...styles.navButton,
                     position: 'absolute',
                     right: '-12px',
                     top: '50%',
                     transform: 'translateY(-50%)',
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '50%',
-                    background: '#fff',
-                    border: '1px solid #e5e7eb',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 10,
                   }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -217,16 +235,7 @@ export default function CoursesPreview({ data, expertId, expertName }: SectionPr
               }}
             >
               {courseList.map(course => (
-                <div
-                  key={course.id}
-                  style={{
-                    flex: '0 0 260px',
-                    background: '#fff',
-                    borderRadius: '12px',
-                    overflow: 'hidden',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                  }}
-                >
+                <div key={course.id} style={styles.card}>
                   {/* Course Thumbnail */}
                   <div
                     style={{
@@ -240,43 +249,11 @@ export default function CoursesPreview({ data, expertId, expertName }: SectionPr
 
                   {/* Course Info */}
                   <div style={{ padding: '12px' }}>
-                    <h3
-                      style={{
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        color: '#111',
-                        marginBottom: '6px',
-                        lineHeight: '1.3',
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                      }}
-                    >
-                      {course.title}
-                    </h3>
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        fontSize: '12px',
-                        color: '#666',
-                      }}
-                    >
-                      {course.level && (
-                        <span
-                          style={{
-                            padding: '2px 6px',
-                            background: '#f3f4f6',
-                            borderRadius: '4px',
-                          }}
-                        >
-                          {course.level}
-                        </span>
-                      )}
+                    <h3 style={styles.cardTitle}>{course.title}</h3>
+                    <div style={styles.cardMeta}>
+                      {course.level && <span style={styles.badge}>{course.level}</span>}
                       {course.price !== undefined && (
-                        <span style={{ fontWeight: '600', color: '#111' }}>
+                        <span style={styles.price}>
                           {course.price === 0 ? 'Free' : `$${course.price}`}
                         </span>
                       )}
@@ -291,15 +268,7 @@ export default function CoursesPreview({ data, expertId, expertName }: SectionPr
         {/* View All Link */}
         {courseList.length > 0 && (
           <div style={{ textAlign: 'center', marginTop: '20px' }}>
-            <span
-              style={{
-                fontSize: '14px',
-                color: 'var(--brand-600)',
-                fontWeight: '500',
-              }}
-            >
-              View all courses →
-            </span>
+            <span style={styles.viewAllLink}>View all courses →</span>
           </div>
         )}
       </div>

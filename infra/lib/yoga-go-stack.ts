@@ -98,18 +98,20 @@ export class YogaGoStack extends cdk.Stack {
     //
     // IMPORTANT: Always include the cognitoCertificateArn context parameter in deploys!
 
-    const cognitoCertificateArn = this.node.tryGetContext("cognitoCertificateArn");
+    const cognitoCertificateArn = this.node.tryGetContext(
+      "cognitoCertificateArn",
+    );
 
     if (!cognitoCertificateArn) {
       throw new Error(
-        "cognitoCertificateArn context is required. Deploy with: cdk deploy -c cognitoCertificateArn=arn:aws:acm:us-east-1:..."
+        "cognitoCertificateArn context is required. Deploy with: cdk deploy -c cognitoCertificateArn=arn:aws:acm:us-east-1:...",
       );
     }
 
     const certificate = acm.Certificate.fromCertificateArn(
       this,
       "CognitoCertificate",
-      cognitoCertificateArn
+      cognitoCertificateArn,
     );
 
     const customDomain = userPool.addDomain("CognitoCustomDomain", {
@@ -134,7 +136,7 @@ export class YogaGoStack extends cdk.Stack {
     const appSecret = secretsmanager.Secret.fromSecretNameV2(
       this,
       "AppSecret",
-      "yoga-go/production"
+      "yoga-go/production",
     );
 
     // ========================================
@@ -149,7 +151,7 @@ export class YogaGoStack extends cdk.Stack {
           .secretValueFromJson("GOOGLE_CLIENT_ID")
           .unsafeUnwrap(),
         clientSecretValue: appSecret.secretValueFromJson(
-          "GOOGLE_CLIENT_SECRET"
+          "GOOGLE_CLIENT_SECRET",
         ),
         scopes: ["email", "profile", "openid"],
         attributeMapping: {
@@ -157,7 +159,7 @@ export class YogaGoStack extends cdk.Stack {
           fullname: cognito.ProviderAttribute.GOOGLE_NAME,
           profilePicture: cognito.ProviderAttribute.GOOGLE_PICTURE,
         },
-      }
+      },
     );
 
     const facebookProvider = new cognito.UserPoolIdentityProviderFacebook(
@@ -176,7 +178,7 @@ export class YogaGoStack extends cdk.Stack {
           email: cognito.ProviderAttribute.FACEBOOK_EMAIL,
           fullname: cognito.ProviderAttribute.FACEBOOK_NAME,
         },
-      }
+      },
     );
 
     // ========================================
@@ -333,7 +335,7 @@ The MyYoga.Guru Team`,
           SES_WELCOME_TEMPLATE: "yoga-go-welcome",
         },
         bundling: { minify: true, sourceMap: false },
-      }
+      },
     );
 
     welcomeEmailLambda.addToRolePolicy(
@@ -346,12 +348,12 @@ The MyYoga.Guru Team`,
         ],
         resources: ["*"],
         conditions: { StringEquals: { "ses:FromAddress": "hi@myyoga.guru" } },
-      })
+      }),
     );
 
     userPool.addTrigger(
       cognito.UserPoolOperation.POST_CONFIRMATION,
-      welcomeEmailLambda
+      welcomeEmailLambda,
     );
 
     // ========================================
@@ -393,12 +395,13 @@ The MyYoga.Guru Team`,
         memorySize: 256,
         environment: {
           DYNAMODB_TABLE: coreTable.tableName,
+          ANALYTICS_TABLE: "yoga-go-analytics",
           SES_FROM_EMAIL: "hi@myyoga.guru",
           // Use us-west-2 config set since Lambda sends email via SES in us-west-2
           SES_CONFIG_SET: "yoga-go-emails-west",
         },
         bundling: { minify: true, sourceMap: false },
-      }
+      },
     );
 
     // Grant DynamoDB read access for looking up expert data
@@ -417,7 +420,7 @@ The MyYoga.Guru Team`,
         conditions: {
           StringLike: { "ses:FromAddress": "*@myyoga.guru" },
         },
-      })
+      }),
     );
 
     // Add DynamoDB Stream as event source
@@ -450,7 +453,7 @@ The MyYoga.Guru Team`,
             },
           }),
         ],
-      })
+      }),
     );
 
     new dynamodb.Table(this, "OrdersTable", {
@@ -462,7 +465,7 @@ The MyYoga.Guru Team`,
       pointInTimeRecovery: false,
     });
 
-    new dynamodb.Table(this, "AnalyticsTable", {
+    const analyticsTable = new dynamodb.Table(this, "AnalyticsTable", {
       tableName: "yoga-go-analytics",
       partitionKey: { name: "PK", type: dynamodb.AttributeType.STRING },
       sortKey: { name: "SK", type: dynamodb.AttributeType.STRING },
@@ -470,6 +473,9 @@ The MyYoga.Guru Team`,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
       pointInTimeRecovery: false,
     });
+
+    // Grant the user welcome stream Lambda write access to analytics table
+    analyticsTable.grantWriteData(userWelcomeStreamLambda);
 
     const discussionsTable = new dynamodb.Table(this, "DiscussionsTable", {
       tableName: "yoga-go-discussions",
