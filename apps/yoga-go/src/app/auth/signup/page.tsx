@@ -496,7 +496,7 @@ function SignupForm() {
             {/* Google Sign Up - uses <a> intentionally for full page redirect to API route */}
             {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <a
-              href="/api/auth/google?callbackUrl=/srv"
+              href={`/api/auth/google?callbackUrl=${isExpertDomain ? '/' : '/srv'}`}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -547,7 +547,7 @@ function SignupForm() {
             {/* Facebook Sign Up - uses <a> intentionally for full page redirect to API route */}
             {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <a
-              href="/api/auth/facebook?callbackUrl=/srv"
+              href={`/api/auth/facebook?callbackUrl=${isExpertDomain ? '/' : '/srv'}`}
               style={{
                 display: 'flex',
                 alignItems: 'center',

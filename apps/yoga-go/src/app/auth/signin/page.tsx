@@ -8,8 +8,7 @@ import { getClientExpertContext } from '@/lib/domainContext';
 
 function SigninForm() {
   const searchParams = useSearchParams();
-  // Default to /srv since all users on this domain are experts
-  const callbackUrl = searchParams.get('callbackUrl') || '/srv';
+  const callbackUrlParam = searchParams.get('callbackUrl');
   const errorParam = searchParams.get('error');
   const [isExpertDomain, setIsExpertDomain] = useState(false);
 
@@ -17,6 +16,9 @@ function SigninForm() {
     const { isExpertMode } = getClientExpertContext();
     setIsExpertDomain(isExpertMode);
   }, []);
+
+  // Default callback: /srv for main domain, / for expert domains (learners go to landing page)
+  const callbackUrl = callbackUrlParam || (isExpertDomain ? '/' : '/srv');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

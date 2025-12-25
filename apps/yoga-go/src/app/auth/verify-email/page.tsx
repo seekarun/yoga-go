@@ -4,6 +4,7 @@ import type { FormEvent } from 'react';
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { getClientExpertContext } from '@/lib/domainContext';
 
 function VerifyEmailForm() {
   const searchParams = useSearchParams();
@@ -15,8 +16,15 @@ function VerifyEmailForm() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [isExpertDomain, setIsExpertDomain] = useState(false);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Detect expert domain
+  useEffect(() => {
+    const { isExpertMode } = getClientExpertContext();
+    setIsExpertDomain(isExpertMode);
+  }, []);
 
   // Focus first input on mount
   useEffect(() => {
@@ -115,9 +123,15 @@ function VerifyEmailForm() {
 
       setSuccess('Email verified successfully! Redirecting...');
 
+      // On expert domains, learners should go to landing page (/), not /app
+      let finalRedirectUrl = data.redirectUrl || '/app';
+      if (isExpertDomain && finalRedirectUrl === '/app') {
+        finalRedirectUrl = '/';
+      }
+
       // Redirect
       setTimeout(() => {
-        window.location.href = data.redirectUrl || '/app';
+        window.location.href = finalRedirectUrl;
       }, 1500);
     } catch (err) {
       console.error('[DBG][verify-email] Error:', err);
