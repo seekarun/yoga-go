@@ -121,7 +121,10 @@ export default function HeroSection({
               {[
                 { value: `${stats.totalStudents}+`, label: 'Students' },
                 { value: `${stats.totalCourses}+`, label: 'Courses' },
-                { value: stats.rating.toFixed(1), label: 'Rating' },
+                // Only show rating if there are actual ratings
+                ...(stats.totalRatings && stats.totalRatings > 0
+                  ? [{ value: stats.rating.toFixed(1), label: 'Rating' }]
+                  : []),
               ].map((stat, i) => (
                 <div key={i}>
                   <div
@@ -268,6 +271,10 @@ export default function HeroSection({
             {[
               { value: `${stats.totalStudents}+`, label: 'Students' },
               { value: `${stats.totalCourses}+`, label: 'Courses' },
+              // Only show rating if there are actual ratings
+              ...(stats.totalRatings && stats.totalRatings > 0
+                ? [{ value: stats.rating.toFixed(1), label: 'Rating' }]
+                : []),
             ].map((stat, i) => (
               <div key={i}>
                 <div style={{ fontSize: '24px', fontWeight: '700', color: '#fff' }}>

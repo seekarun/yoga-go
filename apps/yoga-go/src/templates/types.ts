@@ -50,6 +50,7 @@ export interface HeroSectionProps {
     totalStudents: number;
     totalCourses: number;
     rating: number;
+    totalRatings?: number;
   };
   expertName: string;
 }
@@ -203,4 +204,16 @@ export interface CourseDetailPageProps {
   isEnrolled: boolean;
   isAuthenticated: boolean;
   onEnrollClick: () => void;
+}
+
+// Blog List Page Props
+export interface BlogListPageProps {
+  posts: BlogPost[];
+  expert: Expert;
+}
+
+// Blog Post Page Props
+export interface BlogPostPageProps {
+  post: BlogPost;
+  expert: Expert;
 }

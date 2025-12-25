@@ -100,7 +100,7 @@ export function renderTemplateSection(
     customLandingPage: data,
     totalStudents: 0,
     totalCourses: courses.length,
-    rating: 5.0,
+    rating: 0,
   };
 
   const customHero = data.hero;
@@ -121,7 +121,8 @@ export function renderTemplateSection(
           stats={{
             totalStudents: expertLike.totalStudents || 0,
             totalCourses: expertLike.totalCourses || 0,
-            rating: expertLike.rating || 5.0,
+            rating: expertLike.rating || 0,
+            totalRatings: 0, // No ratings in editor preview
           }}
           expertName={expertName}
           resolveCtaLink={resolveCtaLink}

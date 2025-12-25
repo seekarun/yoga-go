@@ -46,7 +46,7 @@ export default function ClassicTemplate({ data, config, context }: TemplateProps
     stats: {
       totalStudents: expert.totalStudents || 0,
       totalCourses: expert.totalCourses || 0,
-      rating: expert.rating || 5.0,
+      rating: expert.rating || 0,
     },
     expertName: expert.name,
     resolveCtaLink,

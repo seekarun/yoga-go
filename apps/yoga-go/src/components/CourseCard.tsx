@@ -316,10 +316,15 @@ export default function CourseCard({ course, variant = 'full' }: CourseCardProps
                 borderTop: '1px solid #e2e8f0',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span style={{ color: '#FFB800' }}>★</span>
-                <span style={{ fontSize: '14px', fontWeight: '600' }}>{course.rating}</span>
-              </div>
+              {/* Only show rating if there are actual ratings */}
+              {course.totalRatings && course.totalRatings > 0 ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ color: '#FFB800' }}>★</span>
+                  <span style={{ fontSize: '14px', fontWeight: '600' }}>{course.rating}</span>
+                </div>
+              ) : (
+                <div />
+              )}
               <div style={{ color: 'var(--color-primary)' }}>
                 <PriceDisplay amount={course.price} currency={course.currency} size="md" />
               </div>
@@ -501,10 +506,13 @@ export default function CourseCard({ course, variant = 'full' }: CourseCardProps
               marginBottom: '16px',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <span style={{ color: '#FFB800' }}>★</span>
-              <span style={{ fontSize: '14px', fontWeight: '600' }}>{course.rating}</span>
-            </div>
+            {/* Only show rating if there are actual ratings */}
+            {course.totalRatings && course.totalRatings > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ color: '#FFB800' }}>★</span>
+                <span style={{ fontSize: '14px', fontWeight: '600' }}>{course.rating}</span>
+              </div>
+            )}
             <div style={{ fontSize: '14px', color: '#666' }}>{course.totalLessons} lessons</div>
             <div style={{ fontSize: '14px', color: '#666' }}>{course.duration}</div>
           </div>

@@ -195,23 +195,26 @@ export default function CourseDetailPage({
             }}
           >
             <div style={{ display: 'flex', gap: '32px' }}>
-              <div>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    color: '#FFB800',
-                    marginBottom: '4px',
-                  }}
-                >
-                  <span style={{ fontSize: '20px' }}>★</span>
-                  <span style={{ fontSize: '18px', fontWeight: '700' }}>{course.rating}</span>
+              {/* Only show rating if there are actual ratings */}
+              {course.totalRatings && course.totalRatings > 0 && (
+                <div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      color: '#FFB800',
+                      marginBottom: '4px',
+                    }}
+                  >
+                    <span style={{ fontSize: '20px' }}>★</span>
+                    <span style={{ fontSize: '18px', fontWeight: '700' }}>{course.rating}</span>
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>
+                    {course.totalRatings} ratings
+                  </div>
                 </div>
-                <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>
-                  {course.totalRatings || 0} ratings
-                </div>
-              </div>
+              )}
               <div>
                 <div style={{ fontSize: '18px', fontWeight: '700', color: '#fff' }}>
                   {course.totalStudents?.toLocaleString()}
