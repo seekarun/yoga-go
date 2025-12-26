@@ -18,6 +18,7 @@ import { useEffect, useState } from 'react';
 
 // Lazy load templates
 import dynamic from 'next/dynamic';
+import LoadingSpinner from '../../../components/LoadingSpinner';
 
 const ClassicTemplate = dynamic(() => import('@/templates/classic'), { ssr: false });
 const ModernTemplate = dynamic(() => import('@/templates/modern'), { ssr: false });
@@ -158,7 +159,7 @@ export default function ExpertDetailPage() {
           background: '#f5f5f5',
         }}
       >
-        <div style={{ fontSize: '16px', color: '#666' }}>Loading...</div>
+        <LoadingSpinner size="lg" />
       </div>
     );
   }

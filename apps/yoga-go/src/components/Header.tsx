@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
+import { isPrimaryDomain } from '@/config/domains';
 import { useAuth } from '@/contexts/AuthContext';
 import { getClientExpertContext } from '@/lib/domainContext';
-import { isPrimaryDomain } from '@/config/domains';
 import type { Expert } from '@/types';
+import Link from 'next/link';
+import { useEffect, useRef, useState } from 'react';
 
 export default function Header() {
   const {
@@ -220,7 +220,7 @@ export default function Header() {
           )}
 
           {/* Logo - show expert's logo/name on subdomains, MYG logo otherwise */}
-          <Link
+          {/* <Link
             href={logoHref}
             style={{
               display: 'flex',
@@ -267,7 +267,7 @@ export default function Header() {
                 }}
               />
             ) : null}
-          </Link>
+          </Link> */}
         </div>
 
         {/* Desktop Nav - Hidden in expert mode */}
