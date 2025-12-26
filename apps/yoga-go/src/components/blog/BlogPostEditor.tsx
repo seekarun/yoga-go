@@ -5,6 +5,7 @@ import TiptapEditor from './TiptapEditor';
 import ImageUploadCrop from '../ImageUploadCrop';
 import PexelsImagePicker from '../PexelsImagePicker';
 import NotificationOverlay from '@/components/NotificationOverlay';
+import BlogInspirationModal from './BlogInspirationModal';
 import type { BlogPost, BlogPostAttachment, BlogPostStatus, Asset } from '@/types';
 
 interface BlogPostEditorProps {
@@ -47,6 +48,7 @@ export default function BlogPostEditor({
     type: 'warning' | 'error' | 'success';
   } | null>(null);
   const [isFormatting, setIsFormatting] = useState(false);
+  const [showInspirationModal, setShowInspirationModal] = useState(false);
 
   const handleSubmit = async (saveStatus: BlogPostStatus) => {
     if (!title.trim()) {
@@ -90,6 +92,12 @@ export default function BlogPostEditor({
       setImageUploadResolve(null);
     }
     setShowImageUpload(false);
+  };
+
+  const handleInsertBlogPost = (newTitle: string, newContent: string) => {
+    setTitle(newTitle);
+    setContent(newContent);
+    setNotification({ message: 'Blog post inserted! Feel free to edit.', type: 'success' });
   };
 
   const handleAutoFormat = async () => {
@@ -176,7 +184,25 @@ export default function BlogPostEditor({
 
       {/* Content Editor */}
       <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">Content</label>
+        <div className="flex items-center justify-between mb-2">
+          <label className="block text-sm font-medium text-gray-700">Content</label>
+          <button
+            type="button"
+            onClick={() => setShowInspirationModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors"
+            style={{ color: 'var(--color-primary)', backgroundColor: 'var(--color-primary-light)' }}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+              />
+            </svg>
+            Need inspiration?
+          </button>
+        </div>
         <TiptapEditor
           content={content}
           onChange={setContent}
@@ -322,6 +348,13 @@ export default function BlogPostEditor({
           </div>
         </div>
       )}
+
+      {/* Blog Inspiration Modal */}
+      <BlogInspirationModal
+        isOpen={showInspirationModal}
+        onClose={() => setShowInspirationModal(false)}
+        onInsertBlogPost={handleInsertBlogPost}
+      />
 
       {/* Notification Overlay */}
       <NotificationOverlay

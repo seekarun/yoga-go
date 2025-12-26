@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
-import { useAuth } from '@/contexts/AuthContext';
-import { LandingPageThemeProvider } from '@/components/landing-page/ThemeProvider';
-import ThemeBridge from './ThemeBridge';
 import CourseCard from '@/components/CourseCard';
-import type { UserCourseData, Expert, BlogPost, Webinar, WebinarSession, Course } from '@/types';
+import { LandingPageThemeProvider } from '@/components/landing-page/ThemeProvider';
+import { useAuth } from '@/contexts/AuthContext';
+import type { BlogPost, Course, Expert, UserCourseData, Webinar, WebinarSession } from '@/types';
+import Link from 'next/link';
+import { useEffect, useRef, useState } from 'react';
+import ThemeBridge from './ThemeBridge';
 
 interface ExpertDashboardProps {
   expertId: string;
@@ -196,8 +196,7 @@ export default function ExpertDashboard({ expertId }: ExpertDashboardProps) {
           {/* Welcome Banner */}
           <section
             style={{
-              background:
-                'linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%)',
+              background: 'var(--color-primary)',
               color: '#fff',
               padding: '24px 20px',
             }}

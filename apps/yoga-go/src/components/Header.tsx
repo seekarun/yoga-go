@@ -284,28 +284,6 @@ export default function Header() {
             paddingRight: expertMode.isExpertMode ? '12px' : '20px',
           }}
         >
-          {/* My Learning link for authenticated learners on expert subdomains */}
-          {isAuthenticated && !isExpert && expertMode.isExpertMode && (
-            <Link
-              href="/app"
-              style={{
-                padding: '8px 16px',
-                fontSize: '14px',
-                fontWeight: '500',
-                textDecoration: 'none',
-                color: scrollOpacity < 0.5 ? '#fff' : 'var(--color-primary, #333)',
-                textShadow: scrollOpacity < 0.5 ? '0 1px 4px rgba(0,0,0,0.5)' : 'none',
-                borderRadius: '6px',
-                background:
-                  scrollOpacity > 0.5
-                    ? 'var(--color-primary-light, #f5f5f5)'
-                    : 'rgba(255,255,255,0.15)',
-                transition: 'background 0.2s, color 0.2s',
-              }}
-            >
-              My Learning
-            </Link>
-          )}
           {isAuthenticated ? (
             <div ref={userMenuRef} style={{ position: 'relative' }}>
               <button
@@ -397,22 +375,6 @@ export default function Header() {
                   ) : (
                     /* Learner menu items */
                     <>
-                      {expertMode.isExpertMode && (
-                        <Link
-                          href="/app"
-                          onClick={() => setIsUserMenuOpen(false)}
-                          style={{
-                            display: 'block',
-                            padding: '12px 20px',
-                            textDecoration: 'none',
-                            color: '#333',
-                            fontSize: '14px',
-                            fontWeight: '500',
-                          }}
-                        >
-                          My Learning
-                        </Link>
-                      )}
                       <Link
                         href="/app/profile"
                         onClick={() => setIsUserMenuOpen(false)}
