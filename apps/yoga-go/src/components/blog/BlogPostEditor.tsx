@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import TiptapEditor from './TiptapEditor';
+import type { TiptapEditorRef } from './TiptapEditor';
 import ImageUploadCrop from '../ImageUploadCrop';
 import PexelsImagePicker from '../PexelsImagePicker';
 import NotificationOverlay from '@/components/NotificationOverlay';
@@ -49,6 +50,7 @@ export default function BlogPostEditor({
   } | null>(null);
   const [isFormatting, setIsFormatting] = useState(false);
   const [showInspirationModal, setShowInspirationModal] = useState(false);
+  const editorRef = useRef<TiptapEditorRef>(null);
 
   const handleSubmit = async (saveStatus: BlogPostStatus) => {
     if (!title.trim()) {
@@ -96,12 +98,21 @@ export default function BlogPostEditor({
 
   const handleInsertBlogPost = (newTitle: string, newContent: string) => {
     setTitle(newTitle);
-    setContent(newContent);
+    // Use editorRef to set HTML content properly (not JSON)
+    if (editorRef.current) {
+      editorRef.current.setHTML(newContent);
+    }
     setNotification({ message: 'Blog post inserted! Feel free to edit.', type: 'success' });
   };
 
   const handleAutoFormat = async () => {
-    if (!content.trim()) {
+    if (!editorRef.current) {
+      setNotification({ message: 'Editor not ready', type: 'warning' });
+      return;
+    }
+
+    const htmlContent = editorRef.current.getHTML();
+    if (!htmlContent || htmlContent === '<p></p>') {
       setNotification({ message: 'Please add some content first', type: 'warning' });
       return;
     }
@@ -112,13 +123,13 @@ export default function BlogPostEditor({
       const response = await fetch('/api/ai/format-blog-content', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content: htmlContent }),
       });
 
       const result = await response.json();
 
       if (result.success && result.data?.content) {
-        setContent(result.data.content);
+        editorRef.current.setHTML(result.data.content);
         setNotification({ message: 'Content formatted successfully', type: 'success' });
         console.log('[DBG][BlogPostEditor] Content formatted');
       } else {
@@ -204,6 +215,7 @@ export default function BlogPostEditor({
           </button>
         </div>
         <TiptapEditor
+          ref={editorRef}
           content={content}
           onChange={setContent}
           onImageUpload={handleInlineImageUpload}

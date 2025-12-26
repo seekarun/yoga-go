@@ -5,8 +5,13 @@ import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useImperativeHandle, forwardRef } from 'react';
 import TiptapMenuBar from './TiptapMenuBar';
+
+export interface TiptapEditorRef {
+  getHTML: () => string;
+  setHTML: (html: string) => void;
+}
 
 interface TiptapEditorProps {
   content: string;
@@ -15,12 +20,10 @@ interface TiptapEditorProps {
   onImageUpload?: () => Promise<string | null>;
 }
 
-export default function TiptapEditor({
-  content,
-  onChange,
-  placeholder = 'Start writing your blog post...',
-  onImageUpload,
-}: TiptapEditorProps) {
+const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(function TiptapEditor(
+  { content, onChange, placeholder = 'Start writing your blog post...', onImageUpload },
+  ref
+) {
   const [isMounted, setIsMounted] = useState(false);
 
   const editor = useEditor({
@@ -28,7 +31,7 @@ export default function TiptapEditor({
     extensions: [
       StarterKit.configure({
         heading: {
-          levels: [2, 3],
+          levels: [1, 2, 3],
         },
       }),
       Link.configure({
@@ -59,6 +62,22 @@ export default function TiptapEditor({
       onChange(JSON.stringify(json));
     },
   });
+
+  // Expose methods to parent via ref
+  useImperativeHandle(
+    ref,
+    () => ({
+      getHTML: () => editor?.getHTML() || '',
+      setHTML: (html: string) => {
+        if (editor) {
+          editor.commands.setContent(html);
+          // Also update the parent state with the new JSON
+          onChange(JSON.stringify(editor.getJSON()));
+        }
+      },
+    }),
+    [editor, onChange]
+  );
 
   // Handle client-side mounting
   useEffect(() => {
@@ -126,4 +145,6 @@ export default function TiptapEditor({
       <EditorContent editor={editor} />
     </div>
   );
-}
+});
+
+export default TiptapEditor;
