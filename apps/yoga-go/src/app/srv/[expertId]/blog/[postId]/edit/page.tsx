@@ -96,7 +96,6 @@ export default function EditBlogPostPage() {
     status: BlogPostStatus;
     tags: string[];
     attachments: BlogPostAttachment[];
-    excerpt?: string;
   }) => {
     setIsSaving(true);
     try {

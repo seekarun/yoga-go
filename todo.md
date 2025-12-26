@@ -4,21 +4,14 @@ Misc
 [ ] SUBDOMAIN: on expert page the logo flickers in header
 [ ] SUBDOMAIN: on expert page login yoga girl flickers in card
 [ ] MAYBE: use formatting option for paragraphs when editing landing page.
-[x] FIX: fix rating display. (don't show dummy data)
 [ ] FIX: expert commenting on other expert videos shows as EXPERT!!! fix.
 [ ] FIX: in expert dashboard, on save, it should take user back to the same section.
 [ ] FIX: total students not showing the correct number
-[ ] FIX: fix google meet and zoom integration (worked for me)
 [ ] FIX: formatting in blog post editor
-[ ] FIX: welcome email theme not matching changes in landing page edits
 [ ] FIX: welcome email shows browser courses, what if only live sessions?
 [ ] FIX: formatting in blog post editor
-[ ] ONBOARDING: change currency based on location
-[ ] LP: switching templates should work
 [ ] LP: redo the value proposition section in landing classic template
-[ ] LP: what about photo credit in actual website
 [ ] LP: make sure only shown sections in draft make it to published version
-[ ] LP: lock hero and footer sections.
 [ ] UI: For learner - show enroll button in home page
 [ ] UI: Profile icon is always black. no profile pic.
 [ ] UI: change unsplash text to be generic. earch for beautiful, free photos to use as your hero background.
@@ -37,7 +30,6 @@ Misc
 [ ] GTM: expert support - can we get a successful yoga teacher?
 [ ] GTM: country specific incremental launches
 [ ] FEAT: add an about me page. should it be a blog post?
-[x] FEAT: better landing page templates set up, expandable
 [ ] FEAT: privacy and other footer links handled for platform 
 [ ] FEAT: privacy and other footer links handled for individuals
 [ ] FEAT: add calendar.
@@ -46,6 +38,7 @@ Misc
 [ ] FEAT: add payment gateway when setting up course (or some other time after sign up), confirm subscription before next 
 [ ] FEAT: gifting option
 [ ] FEAT: discounts - expert can create discount codes
+[ ] FEAT: SEO
 [ ] UX: expert should be able to see discussion in admin page.
 [ ] UX: ability to position image (Eg. in hero image)
 [ ] UX: set up stipe account alert - check if course is free
@@ -55,7 +48,6 @@ Misc
 [ ] UX: setup custom domain email (Remove this section if domain set up already)
 [ ] UX: options to raise ticket to add custom domain.
 [ ] UX: how do we call hero section (etc.) to make this UI more understandable for newbies?
-[ ] UX: link zoom setting from live session section
 
 
 [ ] TECH: cloudflare orange cloud impl
@@ -132,3 +124,12 @@ DONE
 [x] about text - AI generation
 [x] webinar - did not understand (use live session)
 [x] hide footer when using subdomain.
+[x] UX: link zoom setting from live session section
+[x] FIX: fix google meet and zoom integration (worked for me)
+[x] FIX: fix rating display. (don't show dummy data)
+[x] FIX: welcome email theme not matching changes in landing page edits
+[x] ONBOARDING: change currency based on location
+[x] LP: switching templates should work
+[x] LP: what about photo credit in actual website
+[x] LP: lock hero and footer sections.
+[x] FEAT: better landing page templates set up, expandable

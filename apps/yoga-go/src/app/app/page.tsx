@@ -4,14 +4,30 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { getClientExpertContext } from '@/lib/domainContext';
 import type { UserCoursesData } from '@/types';
 import CourseCard from '@/components/CourseCard';
+import ExpertDashboard from '@/components/learner-dashboard/ExpertDashboard';
 
 export default function Dashboard() {
   const { user, isAuthenticated, isExpert } = useAuth();
   const router = useRouter();
   const [userCourses, setUserCourses] = useState<UserCoursesData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [expertContext, setExpertContext] = useState<{
+    isExpertMode: boolean;
+    expertId: string | null;
+  }>({ isExpertMode: false, expertId: null });
+
+  // Detect expert subdomain context
+  useEffect(() => {
+    const context = getClientExpertContext();
+    setExpertContext({
+      isExpertMode: context.isExpertMode,
+      expertId: context.expertId,
+    });
+    console.log('[DBG][app/page] Expert context:', context.isExpertMode, context.expertId);
+  }, []);
 
   // Clean up auth_token parameter from URL after OAuth callback
   useEffect(() => {
@@ -74,6 +90,11 @@ export default function Dashboard() {
         <div style={{ fontSize: '16px', color: '#666' }}>Loading user data...</div>
       </div>
     );
+  }
+
+  // On expert subdomain, show the themed expert dashboard
+  if (expertContext.isExpertMode && expertContext.expertId) {
+    return <ExpertDashboard expertId={expertContext.expertId} />;
   }
 
   const formatTime = (minutes: number) => {

@@ -44,6 +44,9 @@ export default async function middleware(request: NextRequest) {
   const hostname = request.headers.get('host') || '';
   const hasSession = hasSessionCookie(request);
 
+  // Get country code from Vercel's geo headers (available on Vercel deployment)
+  const countryCode = request.headers.get('x-vercel-ip-country') || '';
+
   // Geo-restriction: Only allow specific country traffic to the main platform
   // Expert subdomains are accessible globally
   // Set to true to enable geo-restriction, false to allow all countries
@@ -51,7 +54,6 @@ export default async function middleware(request: NextRequest) {
   const ALLOWED_COUNTRIES = ['AU']; // Add country codes to allow (e.g., 'AU', 'NZ', 'US')
 
   if (GEO_RESTRICTION_ENABLED) {
-    const country = request.headers.get('x-vercel-ip-country') || '';
     const isPrimaryForGeo = isPrimaryDomain(hostname) || isLearnerDomain(hostname);
 
     // Skip geo-check for localhost, static assets, and API routes
@@ -62,8 +64,13 @@ export default async function middleware(request: NextRequest) {
       pathname.startsWith('/data') ||
       pathname.match(/\.(ico|png|jpg|jpeg|svg|css|js|woff|woff2)$/);
 
-    if (isPrimaryForGeo && !skipGeoCheck && country && !ALLOWED_COUNTRIES.includes(country)) {
-      console.log('[DBG][middleware] Geo-blocked request from:', country, 'to:', pathname);
+    if (
+      isPrimaryForGeo &&
+      !skipGeoCheck &&
+      countryCode &&
+      !ALLOWED_COUNTRIES.includes(countryCode)
+    ) {
+      console.log('[DBG][middleware] Geo-blocked request from:', countryCode, 'to:', pathname);
       const url = request.nextUrl.clone();
       url.pathname = '/geo-blocked';
       return NextResponse.rewrite(url);
@@ -244,7 +251,7 @@ export default async function middleware(request: NextRequest) {
     isLandingPagePublished
   );
 
-  // Helper to add tenant headers to response
+  // Helper to add tenant headers and geo cookie to response
   const addTenantHeaders = (response: NextResponse, isPreviewMode = false): NextResponse => {
     if (tenantId) {
       response.headers.set('x-tenant-id', tenantId);
@@ -256,6 +263,14 @@ export default async function middleware(request: NextRequest) {
     // The page will verify if the user is the expert owner
     if (isPreviewMode) {
       response.headers.set('x-preview-mode', 'true');
+    }
+    // Set country code cookie for client-side geo detection (e.g., onboarding form)
+    if (countryCode) {
+      response.cookies.set('x-geo-country', countryCode, {
+        path: '/',
+        maxAge: 60 * 60, // 1 hour - short lived as IP can change
+        sameSite: 'lax',
+      });
     }
     return response;
   };

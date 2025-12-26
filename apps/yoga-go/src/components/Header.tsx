@@ -165,56 +165,102 @@ export default function Header() {
           width: '100%',
         }}
       >
-        {/* Logo - show expert's logo/name on subdomains, MYG logo otherwise */}
-        <Link
-          href={logoHref}
+        {/* Left section - Home button (expert mode) or Logo (primary) */}
+        <div
           style={{
             display: 'flex',
             alignItems: 'center',
-            textDecoration: 'none',
-            cursor: expertMode.isExpertMode ? 'default' : 'pointer',
+            gap: '12px',
             paddingLeft: '20px',
-            filter:
-              expertMode.isExpertMode && scrollOpacity < 0.5
-                ? 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))'
-                : 'none',
-          }}
-          onClick={e => {
-            if (expertMode.isExpertMode) {
-              e.preventDefault();
-            }
           }}
         >
-          {expertMode.isExpertMode && expertData ? (
-            // Show expert's custom logo or name on expert subdomains
-            expertData.customLandingPage?.branding?.logo ? (
+          {/* Home button for expert subdomains */}
+          {expertMode.isExpertMode && (
+            <Link
+              href={isAuthenticated ? '/app' : '/'}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '36px',
+                height: '36px',
+                borderRadius: '8px',
+                background: scrollOpacity > 0.5 ? '#f5f5f5' : 'rgba(255,255,255,0.15)',
+                color: scrollOpacity < 0.5 ? '#fff' : '#333',
+                textDecoration: 'none',
+                transition: 'background 0.2s, color 0.2s',
+              }}
+              title={isAuthenticated ? 'My Learning' : 'Home'}
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{
+                  filter: scrollOpacity < 0.5 ? 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' : 'none',
+                }}
+              >
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                <polyline points="9 22 9 12 15 12 15 22" />
+              </svg>
+            </Link>
+          )}
+
+          {/* Logo - show expert's logo/name on subdomains, MYG logo otherwise */}
+          <Link
+            href={logoHref}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              textDecoration: 'none',
+              cursor: expertMode.isExpertMode ? 'default' : 'pointer',
+              filter:
+                expertMode.isExpertMode && scrollOpacity < 0.5
+                  ? 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))'
+                  : 'none',
+            }}
+            onClick={e => {
+              if (expertMode.isExpertMode) {
+                e.preventDefault();
+              }
+            }}
+          >
+            {expertMode.isExpertMode && expertData ? (
+              // Show expert's custom logo or name on expert subdomains
+              expertData.customLandingPage?.branding?.logo ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={expertData.customLandingPage.branding.logo}
+                  alt={expertData.name}
+                  height={40}
+                  style={{
+                    height: '40px',
+                    width: 'auto',
+                    maxWidth: '150px',
+                    objectFit: 'contain',
+                  }}
+                />
+              ) : null
+            ) : (
+              // Show MYG logo on primary domain
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={expertData.customLandingPage.branding.logo}
-                alt={expertData.name}
+                src="/myg.png"
+                alt="My Yoga.Guru"
+                width={40}
                 height={40}
                 style={{
-                  height: '40px',
-                  width: 'auto',
-                  maxWidth: '150px',
                   objectFit: 'contain',
                 }}
               />
-            ) : null
-          ) : (
-            // Show MYG logo on primary domain
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src="/myg.png"
-              alt="My Yoga.Guru"
-              width={40}
-              height={40}
-              style={{
-                objectFit: 'contain',
-              }}
-            />
-          )}
-        </Link>
+            )}
+          </Link>
+        </div>
 
         {/* Desktop Nav - Hidden in expert mode */}
         {!expertMode.isExpertMode && (
@@ -238,6 +284,28 @@ export default function Header() {
             paddingRight: expertMode.isExpertMode ? '12px' : '20px',
           }}
         >
+          {/* My Learning link for authenticated learners on expert subdomains */}
+          {isAuthenticated && !isExpert && expertMode.isExpertMode && (
+            <Link
+              href="/app"
+              style={{
+                padding: '8px 16px',
+                fontSize: '14px',
+                fontWeight: '500',
+                textDecoration: 'none',
+                color: scrollOpacity < 0.5 ? '#fff' : 'var(--color-primary, #333)',
+                textShadow: scrollOpacity < 0.5 ? '0 1px 4px rgba(0,0,0,0.5)' : 'none',
+                borderRadius: '6px',
+                background:
+                  scrollOpacity > 0.5
+                    ? 'var(--color-primary-light, #f5f5f5)'
+                    : 'rgba(255,255,255,0.15)',
+                transition: 'background 0.2s, color 0.2s',
+              }}
+            >
+              My Learning
+            </Link>
+          )}
           {isAuthenticated ? (
             <div ref={userMenuRef} style={{ position: 'relative' }}>
               <button
@@ -298,22 +366,53 @@ export default function Header() {
                   {/* Role-specific menu items */}
                   {isExpert ? (
                     /* Expert menu items */
-                    <Link
-                      href="/srv"
-                      onClick={() => setIsUserMenuOpen(false)}
-                      style={{
-                        display: 'block',
-                        padding: '12px 20px',
-                        textDecoration: 'none',
-                        color: '#333',
-                        fontSize: '14px',
-                      }}
-                    >
-                      Dashboard
-                    </Link>
+                    <>
+                      <Link
+                        href="/srv"
+                        onClick={() => setIsUserMenuOpen(false)}
+                        style={{
+                          display: 'block',
+                          padding: '12px 20px',
+                          textDecoration: 'none',
+                          color: '#333',
+                          fontSize: '14px',
+                        }}
+                      >
+                        Dashboard
+                      </Link>
+                      <Link
+                        href={`/srv/${user?.expertProfile}/edit`}
+                        onClick={() => setIsUserMenuOpen(false)}
+                        style={{
+                          display: 'block',
+                          padding: '12px 20px',
+                          textDecoration: 'none',
+                          color: '#333',
+                          fontSize: '14px',
+                        }}
+                      >
+                        Edit Profile
+                      </Link>
+                    </>
                   ) : (
                     /* Learner menu items */
                     <>
+                      {expertMode.isExpertMode && (
+                        <Link
+                          href="/app"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          style={{
+                            display: 'block',
+                            padding: '12px 20px',
+                            textDecoration: 'none',
+                            color: '#333',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                          }}
+                        >
+                          My Learning
+                        </Link>
+                      )}
                       <Link
                         href="/app/profile"
                         onClick={() => setIsUserMenuOpen(false)}

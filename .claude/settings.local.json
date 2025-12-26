@@ -91,7 +91,13 @@
       "Bash(AWS_PROFILE=myg aws cloudfront list-distributions:*)",
       "Bash(AWS_PROFILE=myg aws cloudformation list-stacks:*)",
       "WebFetch(domain:help.unsplash.com)",
-      "Bash(AWS_PROFILE=myg aws dynamodb get-item:*)"
+      "Bash(AWS_PROFILE=myg aws dynamodb get-item:*)",
+      "Bash(\"src/app/api/ai/extract-blog-metadata/route.ts\" )",
+      "Bash(\"src/app/data/app/expert/me/blog/route.ts\" )",
+      "Bash(\"src/app/data/app/expert/me/blog/\\\\[postId\\\\]/route.ts\" )",
+      "Bash(\"src/components/blog/BlogPostEditor.tsx\" )",
+      "Bash(\"src/app/srv/\\\\[expertId\\\\]/blog/new/page.tsx\" )",
+      "Bash(\"src/app/srv/\\\\[expertId\\\\]/blog/\\\\[postId\\\\]/edit/page.tsx\" )"
     ],
     "deny": [],
     "ask": []

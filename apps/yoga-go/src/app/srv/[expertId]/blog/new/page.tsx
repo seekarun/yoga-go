@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import type { User, BlogPostStatus, BlogPostAttachment } from '@/types';
+import type { User, BlogPostStatus, BlogPostAttachment, Expert } from '@/types';
 import { BlogPostEditor } from '@/components/blog';
 import NotificationOverlay from '@/components/NotificationOverlay';
 
@@ -14,14 +14,16 @@ export default function NewBlogPostPage() {
 
   const [authChecking, setAuthChecking] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [heroImage, setHeroImage] = useState<string | undefined>(undefined);
   const [notification, setNotification] = useState<{
     message: string;
     type: 'error';
   } | null>(null);
 
-  // Check authorization
+  // Check authorization and fetch hero image
   useEffect(() => {
     checkAuthorization();
+    fetchHeroImage();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expertId]);
 
@@ -54,6 +56,27 @@ export default function NewBlogPostPage() {
     }
   };
 
+  // Fetch expert's hero image from landing page config
+  const fetchHeroImage = async () => {
+    try {
+      const response = await fetch(`/data/experts/${expertId}`);
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        const expert: Expert = data.data;
+        // Try published landing page first, then draft
+        const heroImg =
+          expert.customLandingPage?.hero?.heroImage || expert.draftLandingPage?.hero?.heroImage;
+        if (heroImg) {
+          console.log('[DBG][new-blog-post] Using hero image as default cover:', heroImg);
+          setHeroImage(heroImg);
+        }
+      }
+    } catch (err) {
+      console.log('[DBG][new-blog-post] Could not fetch hero image:', err);
+    }
+  };
+
   const handleSave = async (post: {
     title: string;
     content: string;
@@ -61,7 +84,6 @@ export default function NewBlogPostPage() {
     status: BlogPostStatus;
     tags: string[];
     attachments: BlogPostAttachment[];
-    excerpt?: string;
   }) => {
     setIsSaving(true);
     try {
@@ -143,6 +165,7 @@ export default function NewBlogPostPage() {
         <div style={{ background: '#fff', borderRadius: '12px', padding: '32px' }}>
           <BlogPostEditor
             expertId={expertId}
+            defaultCoverImage={heroImage}
             onSave={handleSave}
             onCancel={handleCancel}
             isSaving={isSaving}
