@@ -65,7 +65,7 @@ Misc
 [ ] FEAT: add language attribute for course
 [ ] FEAT: localisation
 [ ] FEAT: ability to sell digital assets.
-
+[ ] FEAT: help with course videos. with stock videos?
 
 
 I support expecting mothers through gentle, mindful prenatal yoga designed to nurture both body and baby. My sessions focus on safe movement, breath awareness, and relaxation techniques that ease common pregnancy discomforts, build strength and confidence, and create a deeper connection with your growing baby. Each practice is adaptable, supportive, and centred around your changing needs throughout pregnancy.

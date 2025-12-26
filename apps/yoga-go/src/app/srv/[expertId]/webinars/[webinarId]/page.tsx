@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import type { Webinar, WebinarStatus, VideoPlatform } from '@/types';
+import type { Webinar, WebinarStatus, VideoPlatform, WebinarRegistration } from '@/types';
 import NotificationOverlay from '@/components/NotificationOverlay';
 
 export default function EditWebinarPage() {
@@ -31,6 +31,15 @@ export default function EditWebinarPage() {
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+
+  // Registrations state
+  const [registrations, setRegistrations] = useState<WebinarRegistration[]>([]);
+  const [loadingRegistrations, setLoadingRegistrations] = useState(false);
+
+  // Email modal state
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailMessage, setEmailMessage] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   useEffect(() => {
     const fetchWebinar = async () => {
@@ -62,6 +71,29 @@ export default function EditWebinarPage() {
 
     fetchWebinar();
   }, [webinarId]);
+
+  // Fetch registrations
+  const fetchRegistrations = useCallback(async () => {
+    if (!webinarId) return;
+    setLoadingRegistrations(true);
+    try {
+      const response = await fetch(`/data/app/expert/me/webinars/${webinarId}/registrations`);
+      const data = await response.json();
+      if (data.success) {
+        setRegistrations(data.data.registrations || []);
+      }
+    } catch (err) {
+      console.error('[DBG][edit-webinar] Error fetching registrations:', err);
+    } finally {
+      setLoadingRegistrations(false);
+    }
+  }, [webinarId]);
+
+  useEffect(() => {
+    if (webinar) {
+      fetchRegistrations();
+    }
+  }, [webinar, fetchRegistrations]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -233,6 +265,42 @@ export default function EditWebinarPage() {
       setError('Failed to generate Zoom links');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSendEmail = async () => {
+    if (!emailMessage.trim()) {
+      setError('Please enter a message');
+      return;
+    }
+
+    setSendingEmail(true);
+    setError('');
+
+    try {
+      const response = await fetch(`/data/app/expert/me/webinars/${webinarId}/email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: emailMessage.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setSuccess(data.message || 'Email sent successfully');
+        setShowEmailModal(false);
+        setEmailMessage('');
+        setTimeout(() => setSuccess(''), 5000);
+      } else {
+        setError(data.error || 'Failed to send email');
+      }
+    } catch (err) {
+      console.error('[DBG][edit-webinar] Email error:', err);
+      setError('Failed to send email');
+    } finally {
+      setSendingEmail(false);
     }
   };
 
@@ -754,6 +822,146 @@ export default function EditWebinarPage() {
         </div>
       </div>
 
+      {/* Registered Users */}
+      <div
+        style={{
+          background: '#fff',
+          border: '1px solid #e5e7eb',
+          borderRadius: '12px',
+          padding: '24px',
+          marginBottom: '24px',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '20px',
+          }}
+        >
+          <h2 style={{ fontSize: '18px', fontWeight: '600', margin: 0 }}>
+            Registered Users ({registrations.filter(r => r.status === 'registered').length})
+          </h2>
+          {registrations.filter(r => r.status === 'registered' && r.userEmail).length > 0 && (
+            <button
+              onClick={() => setShowEmailModal(true)}
+              style={{
+                padding: '8px 16px',
+                background: 'var(--color-primary)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '13px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              <svg
+                style={{ width: '16px', height: '16px' }}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                />
+              </svg>
+              Email All
+            </button>
+          )}
+        </div>
+
+        {loadingRegistrations ? (
+          <div style={{ textAlign: 'center', padding: '20px', color: '#6b7280' }}>
+            Loading registrations...
+          </div>
+        ) : registrations.length === 0 ? (
+          <div
+            style={{
+              textAlign: 'center',
+              padding: '40px 20px',
+              color: '#6b7280',
+              background: '#f9fafb',
+              borderRadius: '8px',
+            }}
+          >
+            <svg
+              style={{ width: '48px', height: '48px', margin: '0 auto 16px', color: '#d1d5db' }}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+              />
+            </svg>
+            <p style={{ margin: 0 }}>No registrations yet</p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {registrations
+              .filter(r => r.status === 'registered')
+              .map(registration => (
+                <div
+                  key={registration.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '12px 16px',
+                    background: '#f9fafb',
+                    borderRadius: '8px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div
+                      style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '50%',
+                        background: 'var(--color-primary)',
+                        color: '#fff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                      }}
+                    >
+                      {(registration.userName || 'U').charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: '500', fontSize: '14px' }}>
+                        {registration.userName || 'Unknown User'}
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#6b7280' }}>
+                        {registration.userEmail || 'No email'}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#9ca3af' }}>
+                    {new Date(registration.registeredAt).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
+                  </div>
+                </div>
+              ))}
+          </div>
+        )}
+      </div>
+
       {/* Actions */}
       <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
         {/* Cancel Webinar - only for SCHEDULED or LIVE webinars */}
@@ -851,6 +1059,142 @@ export default function EditWebinarPage() {
         confirmText="Cancel Live Session"
         cancelText="Keep Live Session"
       />
+
+      {/* Email Modal */}
+      {showEmailModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+          onClick={() => setShowEmailModal(false)}
+        >
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: '12px',
+              padding: '24px',
+              width: '100%',
+              maxWidth: '500px',
+              margin: '20px',
+              maxHeight: '90vh',
+              overflow: 'auto',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '20px',
+              }}
+            >
+              <h2 style={{ fontSize: '20px', fontWeight: '600', margin: 0 }}>Email Registrants</h2>
+              <button
+                onClick={() => setShowEmailModal(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  color: '#6b7280',
+                }}
+              >
+                <svg
+                  style={{ width: '24px', height: '24px' }}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '20px' }}>
+              Send a custom message to all{' '}
+              {registrations.filter(r => r.status === 'registered' && r.userEmail).length}{' '}
+              registered users with email addresses.
+            </p>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label
+                style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  marginBottom: '8px',
+                }}
+              >
+                Message
+              </label>
+              <textarea
+                value={emailMessage}
+                onChange={e => setEmailMessage(e.target.value)}
+                placeholder="Write your message here..."
+                rows={6}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  fontSize: '15px',
+                  resize: 'vertical',
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowEmailModal(false)}
+                style={{
+                  padding: '10px 20px',
+                  background: '#f3f4f6',
+                  color: '#374151',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSendEmail}
+                disabled={sendingEmail || !emailMessage.trim()}
+                style={{
+                  padding: '10px 20px',
+                  background: 'var(--color-primary)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: sendingEmail || !emailMessage.trim() ? 'not-allowed' : 'pointer',
+                  opacity: sendingEmail || !emailMessage.trim() ? 0.7 : 1,
+                }}
+              >
+                {sendingEmail ? 'Sending...' : 'Send Email'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

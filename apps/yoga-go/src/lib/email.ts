@@ -727,8 +727,9 @@ export async function getFromEmailForExpert(expertId: string): Promise<string> {
   console.log(`[DBG][email] Getting from email for expert: ${expertId}`);
 
   try {
-    // Look up tenant for the expert to check for BYOD email
+    // Look up tenant for the expert to check for BYOD email and name
     const tenant = await getTenantByExpertId(expertId);
+    const expertName = tenant?.name || expertId;
 
     // If tenant has verified BYOD email, use it
     if (
@@ -738,13 +739,13 @@ export async function getFromEmailForExpert(expertId: string): Promise<string> {
       console.log(
         `[DBG][email] Using BYOD email for ${expertId}: ${tenant.emailConfig.domainEmail}`
       );
-      return tenant.emailConfig.domainEmail;
+      return `${expertName} <${tenant.emailConfig.domainEmail}>`;
     }
 
-    // Fall back to platform email
+    // Fall back to platform email with expert name
     const platformEmail = getExpertFromEmail(expertId);
     console.log(`[DBG][email] Using platform email for ${expertId}: ${platformEmail}`);
-    return platformEmail;
+    return `${expertName} <${platformEmail}>`;
   } catch (error) {
     console.error(`[DBG][email] Error getting from email for ${expertId}:`, error);
     // On error, fall back to platform email
@@ -894,11 +895,21 @@ export interface WebinarReminderEmailOptions {
   from?: string;
   customerName: string;
   webinarTitle: string;
+  webinarId: string;
   sessionTitle: string;
   startTime: string;
   duration: number;
   meetLink?: string;
+  zoomLink?: string;
   reminderType: 'dayBefore' | 'hourBefore';
+  expert?: {
+    id: string;
+    name: string;
+    logo?: string;
+    avatar?: string;
+    primaryColor?: string;
+    palette?: ColorPalette;
+  };
 }
 
 /**
@@ -914,15 +925,33 @@ export const sendWebinarReminderEmail = async (
     from,
     customerName,
     webinarTitle,
+    webinarId,
     sessionTitle,
     startTime,
     duration,
     meetLink,
+    zoomLink,
     reminderType,
+    expert,
   } = options;
 
   const sourceEmail = from || fromEmail;
   const { date, time } = formatSessionDateTime(startTime);
+
+  // Use expert branding or defaults
+  const primaryColor = expert?.palette?.[500] || expert?.primaryColor || '#7a2900';
+  const primaryLight = expert?.palette?.[100] || '#fed094';
+  const expertName = expert?.name || 'Your Instructor';
+  const logoUrl = expert?.logo || expert?.avatar;
+
+  // Build webinar URL on expert subdomain
+  const webinarUrl = expert?.id
+    ? `https://${expert.id}.myyoga.guru/webinars/${webinarId}`
+    : `https://myyoga.guru/webinars/${webinarId}`;
+
+  // Determine meeting link and button text
+  const joinLink = zoomLink || meetLink;
+  const joinButtonText = zoomLink ? 'Join Zoom Meeting' : meetLink ? 'Join Google Meet' : null;
 
   const reminderText = reminderType === 'dayBefore' ? 'starts tomorrow' : 'starts in 1 hour';
   const subject =
@@ -939,16 +968,24 @@ export const sendWebinarReminderEmail = async (
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif; background-color: #f5f5f5;">
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 20px;">
     <tr>
       <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-          <!-- Header -->
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+          <!-- Header with Logo -->
           <tr>
-            <td style="background: linear-gradient(135deg, ${reminderType === 'hourBefore' ? '#e53e3e' : '#667eea'} 0%, ${reminderType === 'hourBefore' ? '#c53030' : '#764ba2'} 100%); padding: 30px; text-align: center;">
-              <h1 style="color: #ffffff; margin: 0; font-size: 24px;">
-                ${reminderType === 'hourBefore' ? '⏰ Starting Soon!' : '📅 Reminder'}
+            <td style="background: ${primaryColor}; padding: 25px 30px;">
+              ${
+                logoUrl
+                  ? `<img src="${logoUrl}" alt="${expertName}" style="max-height: 50px; max-width: 180px; margin-bottom: 12px; display: block;" />`
+                  : `<p style="color: #ffffff; margin: 0 0 8px 0; font-size: 18px; font-weight: 600;">${expertName}</p>`
+              }
+              <p style="color: #ffffff; margin: 0; font-size: 14px; opacity: 0.9;">
+                ${reminderType === 'hourBefore' ? 'Starting Soon!' : 'Reminder'}
+              </p>
+              <h1 style="color: #ffffff; margin: 8px 0 0 0; font-size: 20px;">
+                ${webinarTitle}
               </h1>
             </td>
           </tr>
@@ -961,42 +998,42 @@ export const sendWebinarReminderEmail = async (
               </p>
 
               <p style="font-size: 16px; color: #333; margin: 0 0 20px 0;">
-                Your session <strong>${sessionTitle}</strong> from <strong>${webinarTitle}</strong> ${reminderText}!
+                Your session <strong>${sessionTitle}</strong> ${reminderText}!
               </p>
 
               <!-- Session Details -->
-              <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
-                <h3 style="margin: 0 0 15px 0; color: #333;">${sessionTitle}</h3>
-                <p style="margin: 0 0 8px 0; color: #666;">
+              <div style="background: ${primaryLight}; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                <h3 style="margin: 0 0 15px 0; color: ${primaryColor};">${sessionTitle}</h3>
+                <p style="margin: 0 0 8px 0; color: #333;">
                   <strong>Date:</strong> ${date}
                 </p>
-                <p style="margin: 0 0 8px 0; color: #666;">
+                <p style="margin: 0 0 8px 0; color: #333;">
                   <strong>Time:</strong> ${time}
                 </p>
-                <p style="margin: 0; color: #666;">
+                <p style="margin: 0; color: #333;">
                   <strong>Duration:</strong> ${duration} minutes
                 </p>
               </div>
 
               ${
-                meetLink
+                joinLink
                   ? `
               <!-- Join Button -->
               <div style="text-align: center; margin-bottom: 25px;">
-                <a href="${meetLink}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: bold;">
-                  Join Google Meet
+                <a href="${joinLink}" style="display: inline-block; background: ${primaryColor}; color: #ffffff; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: bold;">
+                  ${joinButtonText}
                 </a>
               </div>
 
               <p style="font-size: 14px; color: #666; text-align: center; margin: 0 0 20px 0;">
                 Or copy this link: <br/>
-                <a href="${meetLink}" style="color: #667eea; word-break: break-all;">${meetLink}</a>
+                <a href="${joinLink}" style="color: ${primaryColor}; word-break: break-all;">${joinLink}</a>
               </p>
               `
                   : `
               <div style="background: #fff3cd; padding: 15px; border-radius: 6px; margin-bottom: 25px;">
                 <p style="margin: 0; font-size: 14px; color: #856404;">
-                  <strong>Note:</strong> The meeting link will be available on your webinar page.
+                  <strong>Note:</strong> The meeting link will be available on your <a href="${webinarUrl}" style="color: ${primaryColor};">webinar page</a>.
                 </p>
               </div>
               `
@@ -1010,9 +1047,9 @@ export const sendWebinarReminderEmail = async (
 
           <!-- Footer -->
           <tr>
-            <td style="background-color: #f8f9fa; padding: 20px; text-align: center;">
-              <p style="margin: 0; font-size: 13px; color: #888;">
-                &copy; ${new Date().getFullYear()} MyYoga.guru. All rights reserved.
+            <td style="background: ${primaryLight}; padding: 20px 30px; text-align: center;">
+              <p style="color: ${primaryColor}; margin: 0; font-size: 13px;">
+                This message was sent by the organiser of <a href="${webinarUrl}" style="color: ${primaryColor}; text-decoration: underline;">your upcoming webinar</a>.
               </p>
             </td>
           </tr>
@@ -1034,11 +1071,11 @@ SESSION DETAILS
 - Time: ${time}
 - Duration: ${duration} minutes
 
-${meetLink ? `JOIN LINK: ${meetLink}` : 'The meeting link will be available on your webinar page.'}
+${joinLink ? `JOIN LINK: ${joinLink}` : `The meeting link will be available on your webinar page: ${webinarUrl}`}
 
 We look forward to seeing you there!
 
-© ${new Date().getFullYear()} MyYoga.guru. All rights reserved.
+From: ${expertName}
 `;
 
   const command = new SendEmailCommand({
@@ -1696,6 +1733,161 @@ Powered by MyYoga.guru
     );
   } catch (error) {
     console.error('[DBG][email] Error sending learner welcome email:', error);
+    throw error;
+  }
+};
+
+// ========================================
+// Custom Webinar Email (Expert to Registrants)
+// ========================================
+
+export interface CustomWebinarEmailOptions {
+  to: string;
+  from: string;
+  subject: string;
+  message: string;
+  recipientName: string;
+  webinarTitle: string;
+  webinarId: string;
+  expert?: {
+    id: string;
+    name: string;
+    logo?: string;
+    avatar?: string;
+    primaryColor?: string;
+    palette?: ColorPalette;
+  };
+}
+
+/**
+ * Send a custom email from expert to webinar registrants
+ */
+export const sendCustomWebinarEmail = async (options: CustomWebinarEmailOptions): Promise<void> => {
+  const { to, from, subject, message, recipientName, webinarTitle, webinarId, expert } = options;
+
+  console.log(`[DBG][email] Sending custom webinar email to ${to} for webinar: ${webinarTitle}`);
+
+  // Build webinar URL on expert subdomain
+  const webinarUrl = expert?.id
+    ? `https://${expert.id}.myyoga.guru/webinars/${webinarId}`
+    : `https://myyoga.guru/webinars/${webinarId}`;
+
+  // Use expert branding or defaults
+  const primaryColor = expert?.palette?.[500] || expert?.primaryColor || '#7a2900';
+  const primaryLight = expert?.palette?.[100] || '#fed094';
+  const expertName = expert?.name || 'Your Instructor';
+  const logoUrl = expert?.logo || expert?.avatar;
+
+  // Convert newlines to HTML breaks
+  const formattedMessage = message.replace(/\n/g, '<br>');
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+          <!-- Header with Logo -->
+          <tr>
+            <td style="background: ${primaryColor}; padding: 25px 30px;">
+              ${
+                logoUrl
+                  ? `<img src="${logoUrl}" alt="${expertName}" style="max-height: 50px; max-width: 180px; margin-bottom: 12px; display: block;" />`
+                  : `<p style="color: #ffffff; margin: 0 0 8px 0; font-size: 18px; font-weight: 600;">${expertName}</p>`
+              }
+              <p style="color: #ffffff; margin: 0; font-size: 14px; opacity: 0.9;">
+                Message regarding:
+              </p>
+              <h1 style="color: #ffffff; margin: 8px 0 0 0; font-size: 20px;">
+                ${webinarTitle}
+              </h1>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 30px;">
+              <p style="font-size: 16px; color: #333; margin: 0 0 20px 0;">
+                Hi ${recipientName},
+              </p>
+
+              <div style="font-size: 15px; color: #333; line-height: 1.6;">
+                ${formattedMessage}
+              </div>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background: ${primaryLight}; padding: 20px 30px; text-align: center;">
+              <p style="color: ${primaryColor}; margin: 0; font-size: 13px;">
+                This message was sent by the organiser of <a href="${webinarUrl}" style="color: ${primaryColor}; text-decoration: underline;">your upcoming webinar</a>.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`;
+
+  const text = `
+Hi ${recipientName},
+
+${message}
+
+---
+From: ${expertName}
+Regarding: ${webinarTitle}
+`;
+
+  const command = new SendEmailCommand({
+    Source: from,
+    Destination: {
+      ToAddresses: [to],
+    },
+    Message: {
+      Subject: {
+        Data: subject,
+        Charset: 'UTF-8',
+      },
+      Body: {
+        Text: {
+          Data: text,
+          Charset: 'UTF-8',
+        },
+        Html: {
+          Data: html,
+          Charset: 'UTF-8',
+        },
+      },
+    },
+    ReplyToAddresses: [from],
+    ConfigurationSetName: configSet,
+    Tags: [
+      {
+        Name: 'EmailType',
+        Value: 'custom-webinar-email',
+      },
+      ...(expert?.id ? [{ Name: 'ExpertId', Value: expert.id }] : []),
+    ],
+  });
+
+  try {
+    const response = await sesClient.send(command);
+    console.log(
+      `[DBG][email] Custom webinar email sent successfully. MessageId: ${response.MessageId}`
+    );
+  } catch (error) {
+    console.error('[DBG][email] Error sending custom webinar email:', error);
     throw error;
   }
 };

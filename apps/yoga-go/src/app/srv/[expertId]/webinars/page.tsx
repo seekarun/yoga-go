@@ -226,6 +226,7 @@ export default function ExpertWebinarsPage() {
               return (
                 <div
                   key={webinar.id}
+                  onClick={() => router.push(`/srv/${expertId}/webinars/${webinar.id}`)}
                   style={{
                     background: '#fff',
                     border: '1px solid #e5e7eb',
@@ -234,6 +235,16 @@ export default function ExpertWebinarsPage() {
                     display: 'flex',
                     alignItems: 'flex-start',
                     gap: '20px',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.borderColor = 'var(--color-primary)';
+                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.borderColor = '#e5e7eb';
+                    e.currentTarget.style.boxShadow = 'none';
                   }}
                 >
                   {/* Thumbnail */}
@@ -302,7 +313,10 @@ export default function ExpertWebinarsPage() {
                   </div>
 
                   {/* Actions */}
-                  <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                  <div
+                    style={{ display: 'flex', gap: '8px', flexShrink: 0 }}
+                    onClick={e => e.stopPropagation()}
+                  >
                     <button
                       onClick={() => router.push(`/srv/${expertId}/webinars/${webinar.id}`)}
                       style={{

@@ -317,44 +317,11 @@ The MyYoga.Guru Team`,
     });
 
     // ========================================
-    // Welcome Email Lambda (Cognito Trigger)
+    // Welcome Email Lambda - DEPRECATED
     // ========================================
-    const welcomeEmailLambda = new nodejsLambda.NodejsFunction(
-      this,
-      "WelcomeEmailLambda",
-      {
-        functionName: "yoga-go-welcome-email",
-        runtime: lambda.Runtime.NODEJS_22_X,
-        handler: "handler",
-        entry: path.join(__dirname, "../lambda/welcome-email.ts"),
-        timeout: cdk.Duration.seconds(10),
-        memorySize: 128,
-        environment: {
-          SES_FROM_EMAIL: "hi@myyoga.guru",
-          SES_CONFIG_SET: sesConfigSet.configurationSetName,
-          SES_WELCOME_TEMPLATE: "yoga-go-welcome",
-        },
-        bundling: { minify: true, sourceMap: false },
-      },
-    );
-
-    welcomeEmailLambda.addToRolePolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: [
-          "ses:SendEmail",
-          "ses:SendRawEmail",
-          "ses:SendTemplatedEmail",
-        ],
-        resources: ["*"],
-        conditions: { StringEquals: { "ses:FromAddress": "hi@myyoga.guru" } },
-      }),
-    );
-
-    userPool.addTrigger(
-      cognito.UserPoolOperation.POST_CONFIRMATION,
-      welcomeEmailLambda,
-    );
+    // Welcome emails are now handled by the DynamoDB stream Lambda (user-welcome-stream)
+    // which provides better logic for expert-branded vs generic emails.
+    // The Cognito PostConfirmation trigger has been removed to prevent duplicate emails.
 
     // ========================================
     // DynamoDB Tables

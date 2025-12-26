@@ -13,6 +13,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import * as webinarRepository from '@/lib/repositories/webinarRepository';
 import * as webinarRegistrationRepository from '@/lib/repositories/webinarRegistrationRepository';
+import { getTenantById } from '@/lib/repositories/tenantRepository';
 import { sendWebinarReminderEmail, getFromEmailForExpert } from '@/lib/email';
 
 interface ReminderResult {
@@ -147,6 +148,7 @@ interface SessionInfo {
   startTime: string;
   duration: number;
   googleMeetLink?: string;
+  zoomMeetingLink?: string;
 }
 
 async function sendRemindersForSession(
@@ -190,8 +192,11 @@ async function sendRemindersForSession(
       return result;
     }
 
-    // Get the from email for the expert
+    // Get the from email for the expert (now includes expert name)
     const fromEmail = await getFromEmailForExpert(expertId);
+
+    // Fetch tenant for branding
+    const tenant = await getTenantById(expertId);
 
     // Send reminders
     for (const registration of registrations) {
@@ -207,11 +212,23 @@ async function sendRemindersForSession(
           from: fromEmail,
           customerName: registration.userName || 'Yoga Enthusiast',
           webinarTitle,
+          webinarId,
           sessionTitle: session.title,
           startTime: session.startTime,
           duration: session.duration,
           meetLink: session.googleMeetLink,
+          zoomLink: session.zoomMeetingLink,
           reminderType,
+          expert: tenant
+            ? {
+                id: tenant.id,
+                name: tenant.name,
+                logo: tenant.customLandingPage?.branding?.logo,
+                avatar: tenant.avatar,
+                primaryColor: tenant.customLandingPage?.theme?.primaryColor,
+                palette: tenant.customLandingPage?.theme?.palette,
+              }
+            : undefined,
         });
 
         // Mark reminder as sent
