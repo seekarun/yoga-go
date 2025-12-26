@@ -1032,6 +1032,7 @@ export interface PaymentMetadata {
 export interface PaymentTransaction extends BaseEntity {
   userId: string;
   courseId?: string;
+  webinarId?: string;
   itemType: PaymentType;
   itemId: string;
   amount: number;

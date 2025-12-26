@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import { PAYMENT_CONFIG } from '@/config/payment';
 import * as paymentRepository from '@/lib/repositories/paymentRepository';
 import * as courseRepository from '@/lib/repositories/courseRepository';
+import * as webinarRepository from '@/lib/repositories/webinarRepository';
 import * as expertRepository from '@/lib/repositories/expertRepository';
 import { calculatePlatformFee } from '@/lib/stripe-connect';
 
@@ -28,25 +29,35 @@ export async function POST(request: Request) {
       );
     }
 
-    // For course purchases, look up expert's Stripe Connect account
+    // For course/webinar purchases, look up expert's Stripe Connect account
     let expertStripeAccountId: string | undefined;
     let applicationFeeAmount: number | undefined;
+    let expertId: string | undefined;
 
     if (type === 'course') {
       const course = await courseRepository.getCourseById(itemId);
       if (!course) {
         return NextResponse.json({ success: false, error: 'Course not found' }, { status: 404 });
       }
+      expertId = course.instructor.id;
+    } else if (type === 'webinar') {
+      const webinar = await webinarRepository.getWebinarById(itemId);
+      if (!webinar) {
+        return NextResponse.json({ success: false, error: 'Webinar not found' }, { status: 404 });
+      }
+      expertId = webinar.expertId;
+    }
 
-      const expertId = course.instructor.id;
+    // Check if expert has active Stripe Connect
+    if (expertId) {
       const expert = await expertRepository.getExpertById(expertId);
 
-      // Check if expert has active Stripe Connect
       if (expert?.stripeConnect?.status === 'active' && expert?.stripeConnect?.chargesEnabled) {
         expertStripeAccountId = expert.stripeConnect.accountId;
-        applicationFeeAmount = calculatePlatformFee(amount); // 5% platform fee
+        applicationFeeAmount = calculatePlatformFee(amount); // Platform fee percentage
 
         console.log('[DBG][stripe] Using Connect with on_behalf_of:', {
+          type,
           connectedAccount: expertStripeAccountId,
           platformFee: applicationFeeAmount,
           expertGets: amount - applicationFeeAmount,
@@ -89,7 +100,8 @@ export async function POST(request: Request) {
     const payment = await paymentRepository.createPayment({
       userId,
       courseId: type === 'course' ? itemId : undefined,
-      itemType: 'course_enrollment',
+      webinarId: type === 'webinar' ? itemId : undefined,
+      itemType: type === 'webinar' ? 'webinar_registration' : 'course_enrollment',
       itemId,
       amount,
       currency: currency.toUpperCase(),
@@ -101,6 +113,7 @@ export async function POST(request: Request) {
         userAgent: request.headers.get('user-agent') || undefined,
         connectAccountId: expertStripeAccountId,
         platformFee: applicationFeeAmount,
+        expertId,
       },
     });
 
