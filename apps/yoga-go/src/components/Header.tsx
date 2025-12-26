@@ -19,9 +19,14 @@ export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
-  const [expertMode, setExpertMode] = useState<{ isExpertMode: boolean; expertId: string | null }>({
+  const [expertMode, setExpertMode] = useState<{
+    isExpertMode: boolean;
+    expertId: string | null;
+    isDetecting: boolean;
+  }>({
     isExpertMode: false,
     expertId: null,
+    isDetecting: true, // Start as true to prevent logo flicker
   });
   const [expertData, setExpertData] = useState<Expert | null>(null);
   const [scrollOpacity, setScrollOpacity] = useState(0);
@@ -38,6 +43,7 @@ export default function Header() {
         setExpertMode({
           isExpertMode: true,
           expertId: context.expertId,
+          isDetecting: false,
         });
         return;
       }
@@ -58,6 +64,7 @@ export default function Header() {
               setExpertMode({
                 isExpertMode: true,
                 expertId: data.expertId,
+                isDetecting: false,
               });
               return;
             }
@@ -71,6 +78,7 @@ export default function Header() {
       setExpertMode({
         isExpertMode: false,
         expertId: null,
+        isDetecting: false,
       });
     };
 
@@ -246,8 +254,8 @@ export default function Header() {
                   }}
                 />
               ) : null
-            ) : (
-              // Show MYG logo on primary domain
+            ) : !expertMode.isDetecting ? (
+              // Show MYG logo on primary domain (only after detection complete)
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src="/myg.png"
@@ -258,7 +266,7 @@ export default function Header() {
                   objectFit: 'contain',
                 }}
               />
-            )}
+            ) : null}
           </Link>
         </div>
 

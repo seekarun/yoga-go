@@ -21,6 +21,7 @@ Misc
 [ ] TECH: remove excess fields in the user data (like membership)
 [ ] TECH: consider triggers for other tables for analytics.
 [ ] TECH: review currency conversion
+[ ] TECH: Pay only after course is done?
     [ ] TECH: review code for all fallbacks.
     [ ] TECH: security review - all urls, all edits etc..
     [ ] TECH: review all delete endpoints that admin has access to, security, remove any unnecessary
