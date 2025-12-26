@@ -1,20 +1,20 @@
 'use client';
 
+import Header from '@/components/Header';
+import { LandingPageThemeProvider } from '@/components/landing-page/ThemeProvider';
 import { getClientExpertContext } from '@/lib/domainContext';
-import type { Course, Expert, BlogPost, Webinar } from '@/types';
 import type {
-  SectionType,
-  TemplateId,
-  LandingPageData,
   LandingPageConfig,
   LandingPageContext,
+  LandingPageData,
+  SectionType,
+  TemplateId,
 } from '@/templates/types';
 import { DEFAULT_SECTION_ORDER } from '@/templates/types';
+import type { BlogPost, Course, Expert, Webinar } from '@/types';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import Header from '@/components/Header';
-import { LandingPageThemeProvider } from '@/components/landing-page/ThemeProvider';
 
 // Lazy load templates
 import dynamic from 'next/dynamic';
@@ -158,7 +158,7 @@ export default function ExpertDetailPage() {
           background: '#f5f5f5',
         }}
       >
-        <div style={{ fontSize: '16px', color: '#666' }}>Loading expert profile...</div>
+        <div style={{ fontSize: '16px', color: '#666' }}>Loading...</div>
       </div>
     );
   }

@@ -154,6 +154,24 @@ export default function ExpertDashboard() {
     };
   };
 
+  // Open Stripe dashboard in new tab
+  const openStripeDashboard = async () => {
+    try {
+      const response = await fetch('/api/stripe/connect/dashboard', {
+        method: 'POST',
+      });
+      const data = await response.json();
+
+      if (data.success && data.data?.url) {
+        window.open(data.data.url, '_blank', 'noopener,noreferrer');
+      } else {
+        console.error('[DBG][expert-dashboard] Failed to get Stripe dashboard URL:', data.error);
+      }
+    } catch (err) {
+      console.error('[DBG][expert-dashboard] Error opening Stripe dashboard:', err);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -228,14 +246,12 @@ export default function ExpertDashboard() {
                   {earnings.pending !== '$0.00' && `${earnings.pending} pending`}
                   {earnings.pending === '$0.00' && 'Available balance'}
                 </p>
-                <a
-                  href="/api/stripe/connect/dashboard"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  onClick={openStripeDashboard}
                   className="text-xs text-blue-600 hover:underline mt-2 inline-block"
                 >
                   View Stripe Dashboard →
-                </a>
+                </button>
               </>
             ) : stripeBalance?.connected && !stripeBalance?.active ? (
               <>

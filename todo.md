@@ -10,6 +10,7 @@ Misc
 [ ] FIX: formatting in blog post editor
 [ ] FIX: welcome email shows browser courses, what if only live sessions?
 [ ] FIX: formatting in blog post editor
+[ ] FIX: preview
 [ ] LP: redo the value proposition section in landing classic template
 [ ] LP: make sure only shown sections in draft make it to published version
 [ ] UI: For learner - show enroll button in home page
@@ -59,6 +60,7 @@ Misc
 [ ] FEAT: localisation
 [ ] FEAT: ability to sell digital assets.
 [ ] FEAT: help with course videos. with stock videos?
+[ ] FEAT: multi expert tenant
 
 
 I support expecting mothers through gentle, mindful prenatal yoga designed to nurture both body and baby. My sessions focus on safe movement, breath awareness, and relaxation techniques that ease common pregnancy discomforts, build strength and confidence, and create a deeper connection with your growing baby. Each practice is adaptable, supportive, and centred around your changing needs throughout pregnancy.
