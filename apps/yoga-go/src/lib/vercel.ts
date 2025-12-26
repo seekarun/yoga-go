@@ -115,7 +115,7 @@ export async function addDomainToVercel(domain: string): Promise<AddDomainResult
 
       // Handle specific error cases
       if (data.error?.code === 'domain_already_in_use') {
-        return { success: false, error: 'Domain is already in use by another Vercel project' };
+        return { success: false, error: 'Unable to add domain. This domain is already in use.' };
       }
       if (data.error?.code === 'invalid_domain') {
         return { success: false, error: 'Invalid domain format' };

@@ -406,7 +406,7 @@ export async function addDomainToTenant(tenantId: string, domain: string): Promi
   // Check if domain is used by another tenant
   const existingTenant = await getTenantByDomain(normalizedDomain);
   if (existingTenant && existingTenant.id !== tenantId) {
-    throw new Error(`Domain already in use by another tenant: ${normalizedDomain}`);
+    throw new Error('Unable to add domain. This domain is already in use.');
   }
 
   // Add domain reference

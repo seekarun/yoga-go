@@ -28,8 +28,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Important
 
 - After making changes do not start the application, let user start and verify changes
-- After every request iteration, build the app with `npm run build` to confirm it works
-- Always verify build succeeds before pushing to git remote
+- After every request iteration, if there are type changes, build the app with `npm run build` to confirm it works
+- If pushing code to remote, always verify build succeeds before pushing code
 - Use logging extensively with `[DBG][$filename]` prefix to understand issues
 - Code is automatically formatted and linted on commit via pre-commit hook
 - Always keep the postman collection in root folder when changes to api are made (Eg. new endpoints added, updates)

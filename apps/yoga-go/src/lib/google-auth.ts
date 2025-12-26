@@ -23,6 +23,12 @@ const SCOPES = [
   'https://www.googleapis.com/auth/userinfo.profile',
 ];
 
+// Required scopes for creating Meet links
+const MEET_REQUIRED_SCOPES = [
+  'https://www.googleapis.com/auth/calendar',
+  'https://www.googleapis.com/auth/calendar.events',
+];
+
 /**
  * Create OAuth2 client
  */
@@ -205,5 +211,42 @@ export async function getGoogleAccountInfo(
   return {
     connected: true,
     email: auth.email,
+  };
+}
+
+/**
+ * Check if expert's Google token has required scopes for Meet/Calendar
+ * Returns object with hasRequiredScopes boolean and missing scopes list
+ */
+export async function checkMeetScopes(
+  expertId: string
+): Promise<{ hasRequiredScopes: boolean; missingScopes: string[]; storedScopes: string[] }> {
+  const auth = await expertGoogleAuthRepository.getGoogleAuth(expertId);
+  if (!auth) {
+    return {
+      hasRequiredScopes: false,
+      missingScopes: MEET_REQUIRED_SCOPES,
+      storedScopes: [],
+    };
+  }
+
+  // Parse stored scopes (space-separated string)
+  const storedScopes = auth.scope ? auth.scope.split(' ') : [];
+
+  // Check which required scopes are missing
+  const missingScopes = MEET_REQUIRED_SCOPES.filter(
+    requiredScope => !storedScopes.includes(requiredScope)
+  );
+
+  console.log('[DBG][google-auth] Scope check for expert:', expertId, {
+    storedScopes,
+    missingScopes,
+    hasRequired: missingScopes.length === 0,
+  });
+
+  return {
+    hasRequiredScopes: missingScopes.length === 0,
+    missingScopes,
+    storedScopes,
   };
 }

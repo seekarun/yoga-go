@@ -75,6 +75,9 @@ export default function DomainSettingsPage() {
   // Copy to clipboard state
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
+  // Tab state
+  const [activeTab, setActiveTab] = useState<'domain' | 'email'>('domain');
+
   // Cloudflare NS flow state
   const [dnsMethod, setDnsMethod] = useState<DnsManagementMethod>('manual');
   const [cfSetupLoading, setCfSetupLoading] = useState(false);
@@ -889,10 +892,59 @@ export default function DomainSettingsPage() {
       {/* Header */}
       <div className="bg-white shadow">
         <div className="px-6 lg:px-8 py-6">
-          <h1 className="text-2xl font-bold text-gray-900">Domain Settings</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Domain & Email Settings</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Configure custom domains for your expert portal
+            Configure custom domains and email for your expert portal
           </p>
+
+          {/* Tabs */}
+          <div
+            style={{
+              display: 'flex',
+              gap: '4px',
+              marginTop: '20px',
+              borderBottom: '1px solid #e5e7eb',
+            }}
+          >
+            <button
+              onClick={() => setActiveTab('domain')}
+              style={{
+                padding: '12px 24px',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: activeTab === 'domain' ? 'var(--color-primary)' : '#6b7280',
+                background: 'transparent',
+                border: 'none',
+                borderBottom:
+                  activeTab === 'domain'
+                    ? '2px solid var(--color-primary)'
+                    : '2px solid transparent',
+                cursor: 'pointer',
+                marginBottom: '-1px',
+              }}
+            >
+              Domain
+            </button>
+            <button
+              onClick={() => setActiveTab('email')}
+              style={{
+                padding: '12px 24px',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: activeTab === 'email' ? 'var(--color-primary)' : '#6b7280',
+                background: 'transparent',
+                border: 'none',
+                borderBottom:
+                  activeTab === 'email'
+                    ? '2px solid var(--color-primary)'
+                    : '2px solid transparent',
+                cursor: 'pointer',
+                marginBottom: '-1px',
+              }}
+            >
+              Email
+            </button>
+          </div>
         </div>
       </div>
 
@@ -910,417 +962,221 @@ export default function DomainSettingsPage() {
             </div>
           )}
 
-          {/* No Tenant Yet */}
-          {!tenant && (
-            <div
-              style={{
-                background: '#fff',
-                borderRadius: '12px',
-                padding: '32px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-              }}
-            >
-              <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px' }}>
-                Set Up Your Custom Domain
-              </h2>
-              <p style={{ color: '#666', marginBottom: '24px' }}>
-                Add a custom domain to create your own branded yoga portal. SSL certificates are
-                automatically provisioned - no additional configuration needed!
-              </p>
-
-              <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-                <input
-                  type="text"
-                  value={newDomain}
-                  onChange={e => setNewDomain(e.target.value)}
-                  placeholder="e.g., youryogastudio.com"
-                  style={{
-                    flex: 1,
-                    padding: '12px 16px',
-                    border: '1px solid #ddd',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                  }}
-                />
-                <button
-                  onClick={handleCreateTenant}
-                  disabled={saving}
-                  style={{
-                    padding: '12px 24px',
-                    background: 'var(--color-primary)',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: saving ? 'not-allowed' : 'pointer',
-                    opacity: saving ? 0.7 : 1,
-                  }}
-                >
-                  {saving ? 'Setting up...' : 'Set Up Domain'}
-                </button>
-              </div>
-
-              <p style={{ fontSize: '12px', color: '#999' }}>
-                After setup, you&apos;ll just need to point your domain to our servers.
-              </p>
-            </div>
-          )}
-
-          {/* Cloudflare NS Setup - Show when tenant has Cloudflare DNS pending */}
-          {tenant?.cloudflareDns?.zoneStatus === 'pending' && (
-            <div
-              style={{
-                background: '#fff',
-                borderRadius: '12px',
-                padding: '24px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                marginBottom: '24px',
-                border: '2px solid #f59e0b',
-              }}
-            >
-              <div
-                style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}
-              >
-                <span style={{ fontSize: '24px' }}>⚡</span>
-                <h2 style={{ fontSize: '18px', fontWeight: '600' }}>Complete Cloudflare Setup</h2>
-              </div>
-
-              <p style={{ color: '#666', marginBottom: '16px' }}>
-                Update your domain&apos;s nameservers at your registrar to the values below:
-              </p>
-
-              <div
-                style={{
-                  background: '#fef3c7',
-                  borderRadius: '8px',
-                  padding: '16px',
-                  marginBottom: '16px',
-                }}
-              >
-                {tenant.cloudflareDns.nameservers?.map((ns, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '8px 0',
-                      borderBottom:
-                        i < (tenant.cloudflareDns?.nameservers?.length || 0) - 1
-                          ? '1px solid #fcd34d'
-                          : 'none',
-                    }}
-                  >
-                    <span style={{ fontFamily: 'monospace', fontWeight: '500' }}>
-                      NS {i + 1}: {ns}
-                    </span>
-                    <CopyableField label={`NS ${i + 1}`} value={ns} fieldId={`cf-ns-${i}`} />
-                  </div>
-                ))}
-              </div>
-
-              <p style={{ fontSize: '13px', color: '#666', marginBottom: '16px' }}>
-                After updating nameservers at your registrar, click the button below to check
-                propagation. This can take a few minutes to 48 hours.
-              </p>
-
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <button
-                  onClick={handleCheckCloudflareNs}
-                  disabled={cfNsCheckLoading}
-                  style={{
-                    padding: '12px 24px',
-                    background: 'var(--color-primary)',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    cursor: cfNsCheckLoading ? 'not-allowed' : 'pointer',
-                    opacity: cfNsCheckLoading ? 0.7 : 1,
-                  }}
-                >
-                  {cfNsCheckLoading ? 'Checking...' : 'Check Nameserver Propagation'}
-                </button>
-                <button
-                  onClick={handleSwitchToManualDns}
-                  disabled={cfSetupLoading}
-                  style={{
-                    padding: '12px 24px',
-                    background: '#f3f4f6',
-                    color: '#374151',
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    cursor: cfSetupLoading ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  Switch to Manual DNS
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Cloudflare Active Badge - Show when Cloudflare DNS is active */}
-          {tenant?.cloudflareDns?.zoneStatus === 'active' && (
-            <div
-              style={{
-                background: '#ecfdf5',
-                borderRadius: '12px',
-                padding: '16px 24px',
-                marginBottom: '24px',
-                border: '1px solid #10b981',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span
-                  style={{
-                    background: '#10b981',
-                    color: '#fff',
-                    padding: '4px 12px',
-                    borderRadius: '4px',
-                    fontSize: '12px',
-                    fontWeight: '600',
-                  }}
-                >
-                  Cloudflare Active
-                </span>
-                <span style={{ color: '#047857' }}>
-                  DNS is managed automatically via Cloudflare
-                </span>
-              </div>
-              <button
-                onClick={handleSwitchToManualDns}
-                disabled={cfSetupLoading}
-                style={{
-                  padding: '6px 12px',
-                  background: '#fff',
-                  color: '#374151',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '12px',
-                  cursor: cfSetupLoading ? 'not-allowed' : 'pointer',
-                }}
-              >
-                Switch to Manual
-              </button>
-            </div>
-          )}
-
-          {/* Existing Tenant */}
-          {tenant && tenant.primaryDomain && (
+          {/* ===== DOMAIN TAB ===== */}
+          {activeTab === 'domain' && (
             <>
-              {/* Current Domains */}
-              <div
-                style={{
-                  background: '#fff',
-                  borderRadius: '12px',
-                  padding: '24px',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                  marginBottom: '24px',
-                }}
-              >
-                <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
-                  Your Domains
-                </h2>
-
-                {/* Primary Domain */}
+              {/* No Tenant Yet */}
+              {!tenant && (
                 <div
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '12px 16px',
-                    background: '#f8f8f8',
-                    borderRadius: '8px',
-                    marginBottom: '8px',
+                    background: '#fff',
+                    borderRadius: '12px',
+                    padding: '32px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontWeight: '500' }}>{tenant.primaryDomain}</span>
-                    <span
+                  <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px' }}>
+                    Set Up Your Custom Domain
+                  </h2>
+                  <p style={{ color: '#666', marginBottom: '24px' }}>
+                    Add a custom domain to create your own branded yoga portal. SSL certificates are
+                    automatically provisioned - no additional configuration needed!
+                  </p>
+
+                  <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+                    <input
+                      type="text"
+                      value={newDomain}
+                      onChange={e => setNewDomain(e.target.value)}
+                      placeholder="e.g., youryogastudio.com"
                       style={{
+                        flex: 1,
+                        padding: '12px 16px',
+                        border: '1px solid #ddd',
+                        borderRadius: '8px',
+                        fontSize: '16px',
+                      }}
+                    />
+                    <button
+                      onClick={handleCreateTenant}
+                      disabled={saving}
+                      style={{
+                        padding: '12px 24px',
                         background: 'var(--color-primary)',
                         color: '#fff',
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        fontSize: '11px',
-                      }}
-                    >
-                      Primary
-                    </span>
-                    {domainStatuses[tenant.primaryDomain]?.verified ? (
-                      <span
-                        style={{
-                          background: '#0a0',
-                          color: '#fff',
-                          padding: '2px 8px',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                        }}
-                      >
-                        Verified
-                      </span>
-                    ) : (
-                      <span
-                        style={{
-                          background: '#f90',
-                          color: '#fff',
-                          padding: '2px 8px',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                        }}
-                      >
-                        Pending DNS
-                      </span>
-                    )}
-                  </div>
-                  {!domainStatuses[tenant.primaryDomain]?.verified && (
-                    <button
-                      onClick={() => verifyDomain(tenant.primaryDomain!)}
-                      disabled={domainStatuses[tenant.primaryDomain]?.checking}
-                      style={{
-                        padding: '4px 12px',
-                        background: '#eef',
-                        color: '#00a',
                         border: 'none',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        cursor: 'pointer',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        cursor: saving ? 'not-allowed' : 'pointer',
+                        opacity: saving ? 0.7 : 1,
                       }}
                     >
-                      {domainStatuses[tenant.primaryDomain]?.checking
-                        ? 'Checking...'
-                        : 'Verify DNS'}
+                      {saving ? 'Setting up...' : 'Set Up Domain'}
                     </button>
-                  )}
-                </div>
+                  </div>
 
-                {/* Additional Domains */}
-                {tenant.additionalDomains?.map(domain => (
+                  <p style={{ fontSize: '12px', color: '#999' }}>
+                    After setup, you&apos;ll just need to point your domain to our servers.
+                  </p>
+                </div>
+              )}
+
+              {/* Cloudflare NS Setup - Show when tenant has Cloudflare DNS pending */}
+              {tenant?.cloudflareDns?.zoneStatus === 'pending' && (
+                <div
+                  style={{
+                    background: '#fff',
+                    borderRadius: '12px',
+                    padding: '24px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                    marginBottom: '24px',
+                    border: '2px solid #f59e0b',
+                  }}
+                >
                   <div
-                    key={domain}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '12px 16px',
-                      background: '#f8f8f8',
-                      borderRadius: '8px',
-                      marginBottom: '8px',
+                      gap: '8px',
+                      marginBottom: '16px',
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span>{domain}</span>
-                      {domainStatuses[domain]?.verified ? (
-                        <span
-                          style={{
-                            background: '#0a0',
-                            color: '#fff',
-                            padding: '2px 8px',
-                            borderRadius: '4px',
-                            fontSize: '11px',
-                          }}
-                        >
-                          Verified
-                        </span>
-                      ) : (
-                        <span
-                          style={{
-                            background: '#f90',
-                            color: '#fff',
-                            padding: '2px 8px',
-                            borderRadius: '4px',
-                            fontSize: '11px',
-                          }}
-                        >
-                          Pending DNS
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      {!domainStatuses[domain]?.verified && (
-                        <button
-                          onClick={() => verifyDomain(domain)}
-                          disabled={domainStatuses[domain]?.checking}
-                          style={{
-                            padding: '4px 12px',
-                            background: '#eef',
-                            color: '#00a',
-                            border: 'none',
-                            borderRadius: '4px',
-                            fontSize: '12px',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          {domainStatuses[domain]?.checking ? 'Checking...' : 'Verify'}
-                        </button>
-                      )}
-                      {/* Don't allow removing the default myyoga.guru subdomain */}
-                      {!domain.endsWith('.myyoga.guru') && (
-                        <button
-                          onClick={() => handleRemoveDomainClick(domain)}
-                          disabled={saving}
-                          style={{
-                            padding: '4px 12px',
-                            background: '#fee',
-                            color: '#c00',
-                            border: 'none',
-                            borderRadius: '4px',
-                            fontSize: '12px',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          Remove
-                        </button>
-                      )}
-                    </div>
+                    <span style={{ fontSize: '24px' }}>⚡</span>
+                    <h2 style={{ fontSize: '18px', fontWeight: '600' }}>
+                      Complete Cloudflare Setup
+                    </h2>
                   </div>
-                ))}
 
-                {/* Add Domain */}
-                <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
-                  <input
-                    type="text"
-                    value={newDomain}
-                    onChange={e => setNewDomain(e.target.value)}
-                    placeholder="Add another domain..."
+                  <p style={{ color: '#666', marginBottom: '16px' }}>
+                    Update your domain&apos;s nameservers at your registrar to the values below:
+                  </p>
+
+                  <div
                     style={{
-                      flex: 1,
-                      padding: '10px 14px',
-                      border: '1px solid #ddd',
+                      background: '#fef3c7',
                       borderRadius: '8px',
-                      fontSize: '14px',
-                    }}
-                  />
-                  <button
-                    onClick={handleAddDomain}
-                    disabled={saving || !newDomain.trim()}
-                    style={{
-                      padding: '10px 20px',
-                      background: 'var(--color-primary)',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      cursor: saving || !newDomain.trim() ? 'not-allowed' : 'pointer',
-                      opacity: saving || !newDomain.trim() ? 0.7 : 1,
+                      padding: '16px',
+                      marginBottom: '16px',
                     }}
                   >
-                    {saving ? 'Adding...' : 'Add Domain'}
+                    {tenant.cloudflareDns.nameservers?.map((ns, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '8px 0',
+                          borderBottom:
+                            i < (tenant.cloudflareDns?.nameservers?.length || 0) - 1
+                              ? '1px solid #fcd34d'
+                              : 'none',
+                        }}
+                      >
+                        <span style={{ fontFamily: 'monospace', fontWeight: '500' }}>
+                          NS {i + 1}: {ns}
+                        </span>
+                        <CopyableField label={`NS ${i + 1}`} value={ns} fieldId={`cf-ns-${i}`} />
+                      </div>
+                    ))}
+                  </div>
+
+                  <p style={{ fontSize: '13px', color: '#666', marginBottom: '16px' }}>
+                    After updating nameservers at your registrar, click the button below to check
+                    propagation. This can take a few minutes to 48 hours.
+                  </p>
+
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <button
+                      onClick={handleCheckCloudflareNs}
+                      disabled={cfNsCheckLoading}
+                      style={{
+                        padding: '12px 24px',
+                        background: 'var(--color-primary)',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        cursor: cfNsCheckLoading ? 'not-allowed' : 'pointer',
+                        opacity: cfNsCheckLoading ? 0.7 : 1,
+                      }}
+                    >
+                      {cfNsCheckLoading ? 'Checking...' : 'Check Nameserver Propagation'}
+                    </button>
+                    <button
+                      onClick={handleSwitchToManualDns}
+                      disabled={cfSetupLoading}
+                      style={{
+                        padding: '12px 24px',
+                        background: '#f3f4f6',
+                        color: '#374151',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        cursor: cfSetupLoading ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      Switch to Manual DNS
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Cloudflare Active Badge - Show when Cloudflare DNS is active */}
+              {tenant?.cloudflareDns?.zoneStatus === 'active' && (
+                <div
+                  style={{
+                    background: '#ecfdf5',
+                    borderRadius: '12px',
+                    padding: '16px 24px',
+                    marginBottom: '24px',
+                    border: '1px solid #10b981',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span
+                      style={{
+                        background: '#10b981',
+                        color: '#fff',
+                        padding: '4px 12px',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                      }}
+                    >
+                      Cloudflare Active
+                    </span>
+                    <span style={{ color: '#047857' }}>
+                      DNS is managed automatically via Cloudflare
+                    </span>
+                  </div>
+                  <button
+                    onClick={handleSwitchToManualDns}
+                    disabled={cfSetupLoading}
+                    style={{
+                      padding: '6px 12px',
+                      background: '#fff',
+                      color: '#374151',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      cursor: cfSetupLoading ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    Switch to Manual
                   </button>
                 </div>
-              </div>
+              )}
 
-              {/* DNS Instructions - Only show if there are unverified domains and NOT using Cloudflare NS */}
-              {hasUnverifiedDomains() &&
-                tenant?.cloudflareDns?.zoneStatus !== 'active' &&
-                tenant?.cloudflareDns?.zoneStatus !== 'pending' && (
+              {/* Existing Tenant */}
+              {tenant && tenant.primaryDomain && (
+                <>
+                  {/* Current Domains */}
                   <div
                     style={{
                       background: '#fff',
@@ -1331,161 +1187,475 @@ export default function DomainSettingsPage() {
                     }}
                   >
                     <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
-                      DNS Configuration
+                      Your Domains
                     </h2>
-                    <p style={{ color: '#666', marginBottom: '16px' }}>
-                      Add the following DNS record with your domain provider to complete setup:
-                    </p>
 
+                    {/* Primary Domain */}
                     <div
                       style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '12px 16px',
                         background: '#f8f8f8',
                         borderRadius: '8px',
-                        padding: '16px',
-                        fontFamily: 'monospace',
-                        fontSize: '13px',
+                        marginBottom: '8px',
                       }}
                     >
-                      {verificationRecords.length > 0 ? (
-                        verificationRecords.map((record, index) => (
-                          <div
-                            key={index}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontWeight: '500' }}>{tenant.primaryDomain}</span>
+                        <span
+                          style={{
+                            background: 'var(--color-primary)',
+                            color: '#fff',
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                            fontSize: '11px',
+                          }}
+                        >
+                          Primary
+                        </span>
+                        {domainStatuses[tenant.primaryDomain]?.verified ? (
+                          <span
                             style={{
-                              marginBottom: index < verificationRecords.length - 1 ? '16px' : 0,
+                              background: '#0a0',
+                              color: '#fff',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
                             }}
                           >
-                            <div
+                            Verified
+                          </span>
+                        ) : (
+                          <span
+                            style={{
+                              background: '#f90',
+                              color: '#fff',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                            }}
+                          >
+                            Pending DNS
+                          </span>
+                        )}
+                      </div>
+                      {!domainStatuses[tenant.primaryDomain]?.verified && (
+                        <a
+                          href="#dns-config"
+                          style={{
+                            padding: '4px 12px',
+                            background: '#eef',
+                            color: '#00a',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            textDecoration: 'none',
+                          }}
+                        >
+                          Configure
+                        </a>
+                      )}
+                    </div>
+
+                    {/* Additional Domains */}
+                    {tenant.additionalDomains?.map(domain => (
+                      <div
+                        key={domain}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '12px 16px',
+                          background: '#f8f8f8',
+                          borderRadius: '8px',
+                          marginBottom: '8px',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span>{domain}</span>
+                          {domainStatuses[domain]?.verified ? (
+                            <span
                               style={{
-                                display: 'grid',
-                                gridTemplateColumns: '80px 1fr',
-                                gap: '8px',
+                                background: '#0a0',
+                                color: '#fff',
+                                padding: '2px 8px',
+                                borderRadius: '4px',
+                                fontSize: '11px',
                               }}
                             >
-                              <strong>Type:</strong>
-                              <span>{record.type}</span>
-                              <strong>Name:</strong>
-                              <CopyableField
-                                label="name"
-                                value={record.name}
-                                fieldId={`verify-name-${index}`}
-                              />
-                              <strong>Value:</strong>
-                              <CopyableField
-                                label="value"
-                                value={record.value}
-                                fieldId={`verify-value-${index}`}
-                              />
+                              Verified
+                            </span>
+                          ) : (
+                            <span
+                              style={{
+                                background: '#f90',
+                                color: '#fff',
+                                padding: '2px 8px',
+                                borderRadius: '4px',
+                                fontSize: '11px',
+                              }}
+                            >
+                              Pending DNS
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          {!domainStatuses[domain]?.verified && (
+                            <a
+                              href="#dns-config"
+                              style={{
+                                padding: '4px 12px',
+                                background: '#eef',
+                                color: '#00a',
+                                borderRadius: '4px',
+                                fontSize: '12px',
+                                textDecoration: 'none',
+                              }}
+                            >
+                              Configure
+                            </a>
+                          )}
+                          {/* Don't allow removing the default myyoga.guru subdomain */}
+                          {!domain.endsWith('.myyoga.guru') && (
+                            <button
+                              onClick={() => handleRemoveDomainClick(domain)}
+                              disabled={saving}
+                              style={{
+                                padding: '4px 12px',
+                                background: '#fee',
+                                color: '#c00',
+                                border: 'none',
+                                borderRadius: '4px',
+                                fontSize: '12px',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Add Domain */}
+                    <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+                      <input
+                        type="text"
+                        value={newDomain}
+                        onChange={e => setNewDomain(e.target.value)}
+                        placeholder="Add another domain..."
+                        style={{
+                          flex: 1,
+                          padding: '10px 14px',
+                          border: '1px solid #ddd',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                        }}
+                      />
+                      <button
+                        onClick={handleAddDomain}
+                        disabled={saving || !newDomain.trim()}
+                        style={{
+                          padding: '10px 20px',
+                          background: 'var(--color-primary)',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                          cursor: saving || !newDomain.trim() ? 'not-allowed' : 'pointer',
+                          opacity: saving || !newDomain.trim() ? 0.7 : 1,
+                        }}
+                      >
+                        {saving ? 'Adding...' : 'Add Domain'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* DNS Instructions - Only show if there are unverified domains and NOT using Cloudflare NS */}
+                  {hasUnverifiedDomains() &&
+                    tenant?.cloudflareDns?.zoneStatus !== 'active' &&
+                    tenant?.cloudflareDns?.zoneStatus !== 'pending' && (
+                      <div
+                        id="dns-config"
+                        style={{
+                          background: '#fff',
+                          borderRadius: '12px',
+                          padding: '24px',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                          marginBottom: '24px',
+                        }}
+                      >
+                        <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
+                          DNS Configuration
+                        </h2>
+                        <p style={{ color: '#666', marginBottom: '16px' }}>
+                          Add the following DNS record with your domain provider to complete setup:
+                        </p>
+
+                        <div
+                          style={{
+                            background: '#f8f8f8',
+                            borderRadius: '8px',
+                            padding: '16px',
+                            fontFamily: 'monospace',
+                            fontSize: '13px',
+                          }}
+                        >
+                          {verificationRecords.length > 0 ? (
+                            verificationRecords.map((record, index) => (
+                              <div
+                                key={index}
+                                style={{
+                                  marginBottom: index < verificationRecords.length - 1 ? '16px' : 0,
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: '80px 1fr',
+                                    gap: '8px',
+                                  }}
+                                >
+                                  <strong>Type:</strong>
+                                  <span>{record.type}</span>
+                                  <strong>Name:</strong>
+                                  <CopyableField
+                                    label="name"
+                                    value={record.name}
+                                    fieldId={`verify-name-${index}`}
+                                  />
+                                  <strong>Value:</strong>
+                                  <CopyableField
+                                    label="value"
+                                    value={record.value}
+                                    fieldId={`verify-value-${index}`}
+                                  />
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div>
+                              <div
+                                style={{
+                                  display: 'grid',
+                                  gridTemplateColumns: '80px 1fr',
+                                  gap: '8px',
+                                }}
+                              >
+                                <strong>Type:</strong>
+                                <span>A</span>
+                                <strong>Name:</strong>
+                                <CopyableField label="name" value="@" fieldId="default-a-name" />
+                                <strong>Value:</strong>
+                                <CopyableField
+                                  label="value"
+                                  value="216.150.1.1"
+                                  fieldId="default-a-value"
+                                />
+                              </div>
+                              <div
+                                style={{
+                                  marginTop: '16px',
+                                  paddingTop: '16px',
+                                  borderTop: '1px solid #ddd',
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: '80px 1fr',
+                                    gap: '8px',
+                                  }}
+                                >
+                                  <strong>Type:</strong>
+                                  <span>CNAME</span>
+                                  <strong>Name:</strong>
+                                  <CopyableField
+                                    label="name"
+                                    value="www"
+                                    fieldId="default-cname-name"
+                                  />
+                                  <strong>Value:</strong>
+                                  <CopyableField
+                                    label="value"
+                                    value="cname.vercel-dns.com"
+                                    fieldId="default-cname-value"
+                                  />
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div>
-                          <div
-                            style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '8px' }}
-                          >
-                            <strong>Type:</strong>
-                            <span>A</span>
-                            <strong>Name:</strong>
-                            <CopyableField label="name" value="@" fieldId="default-a-name" />
-                            <strong>Value:</strong>
-                            <CopyableField
-                              label="value"
-                              value="216.150.1.1"
-                              fieldId="default-a-value"
-                            />
-                          </div>
+                          )}
+
                           <div
                             style={{
+                              color: '#666',
+                              fontSize: '12px',
                               marginTop: '16px',
-                              paddingTop: '16px',
+                              paddingTop: '12px',
                               borderTop: '1px solid #ddd',
                             }}
                           >
-                            <div
-                              style={{
-                                display: 'grid',
-                                gridTemplateColumns: '80px 1fr',
-                                gap: '8px',
-                              }}
-                            >
-                              <strong>Type:</strong>
-                              <span>CNAME</span>
-                              <strong>Name:</strong>
-                              <CopyableField
-                                label="name"
-                                value="www"
-                                fieldId="default-cname-name"
-                              />
-                              <strong>Value:</strong>
-                              <CopyableField
-                                label="value"
-                                value="cname.vercel-dns.com"
-                                fieldId="default-cname-value"
-                              />
+                            DNS changes typically take 1-10 minutes to propagate (up to 48 hours in
+                            some cases). Click &quot;Verify DNS&quot; once you&apos;ve added the
+                            records.
+                          </div>
+                        </div>
+
+                        {/* Cloudflare NS Alternative */}
+                        {getCustomDomain() && !tenant?.cloudflareDns && (
+                          <div
+                            style={{
+                              marginTop: '20px',
+                              padding: '16px',
+                              background: '#f0f9ff',
+                              borderRadius: '8px',
+                              border: '1px solid #0ea5e9',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                              <span style={{ fontSize: '20px' }}>⚡</span>
+                              <div style={{ flex: 1 }}>
+                                <strong style={{ display: 'block', marginBottom: '4px' }}>
+                                  Prefer a simpler setup?
+                                </strong>
+                                <p
+                                  style={{ color: '#666', fontSize: '13px', marginBottom: '12px' }}
+                                >
+                                  Use Cloudflare Nameservers instead. Just change 2 NS records at
+                                  your registrar, and we&apos;ll manage all DNS records
+                                  automatically - including email setup.
+                                </p>
+                                <button
+                                  onClick={() => handleSetupCloudflareNs(getCustomDomain()!)}
+                                  disabled={cfSetupLoading}
+                                  style={{
+                                    padding: '8px 16px',
+                                    background: '#0ea5e9',
+                                    color: '#fff',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    fontSize: '13px',
+                                    fontWeight: '500',
+                                    cursor: cfSetupLoading ? 'not-allowed' : 'pointer',
+                                    opacity: cfSetupLoading ? 0.7 : 1,
+                                  }}
+                                >
+                                  {cfSetupLoading ? 'Setting up...' : 'Use Cloudflare NS Instead'}
+                                </button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      )}
-
-                      <div
-                        style={{
-                          color: '#666',
-                          fontSize: '12px',
-                          marginTop: '16px',
-                          paddingTop: '12px',
-                          borderTop: '1px solid #ddd',
-                        }}
-                      >
-                        DNS changes typically take 1-10 minutes to propagate (up to 48 hours in some
-                        cases). Click &quot;Verify DNS&quot; once you&apos;ve added the records.
-                      </div>
-                    </div>
-
-                    {/* Cloudflare NS Alternative */}
-                    {getCustomDomain() && !tenant?.cloudflareDns && (
-                      <div
-                        style={{
-                          marginTop: '20px',
-                          padding: '16px',
-                          background: '#f0f9ff',
-                          borderRadius: '8px',
-                          border: '1px solid #0ea5e9',
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                          <span style={{ fontSize: '20px' }}>⚡</span>
-                          <div style={{ flex: 1 }}>
-                            <strong style={{ display: 'block', marginBottom: '4px' }}>
-                              Prefer a simpler setup?
-                            </strong>
-                            <p style={{ color: '#666', fontSize: '13px', marginBottom: '12px' }}>
-                              Use Cloudflare Nameservers instead. Just change 2 NS records at your
-                              registrar, and we&apos;ll manage all DNS records automatically -
-                              including email setup.
-                            </p>
-                            <button
-                              onClick={() => handleSetupCloudflareNs(getCustomDomain()!)}
-                              disabled={cfSetupLoading}
-                              style={{
-                                padding: '8px 16px',
-                                background: '#0ea5e9',
-                                color: '#fff',
-                                border: 'none',
-                                borderRadius: '6px',
-                                fontSize: '13px',
-                                fontWeight: '500',
-                                cursor: cfSetupLoading ? 'not-allowed' : 'pointer',
-                                opacity: cfSetupLoading ? 0.7 : 1,
-                              }}
-                            >
-                              {cfSetupLoading ? 'Setting up...' : 'Use Cloudflare NS Instead'}
-                            </button>
-                          </div>
-                        </div>
+                        )}
                       </div>
                     )}
+                </>
+              )}
+            </>
+          )}
+
+          {/* ===== EMAIL TAB ===== */}
+          {activeTab === 'email' && !tenant && (
+            <div
+              style={{
+                background: '#fff',
+                borderRadius: '12px',
+                padding: '32px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                textAlign: 'center',
+              }}
+            >
+              <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '16px' }}>
+                Set Up Your Domain First
+              </h2>
+              <p style={{ color: '#666', marginBottom: '24px' }}>
+                Add a custom domain in the Domain tab to unlock email features like custom domain
+                email and forwarding.
+              </p>
+              <button
+                onClick={() => setActiveTab('domain')}
+                style={{
+                  padding: '12px 24px',
+                  background: 'var(--color-primary)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                }}
+              >
+                Go to Domain Settings
+              </button>
+            </div>
+          )}
+
+          {activeTab === 'email' && tenant && tenant.primaryDomain && (
+            <>
+              {/* Default Email Section */}
+              <div
+                style={{
+                  background: '#fff',
+                  borderRadius: '12px',
+                  padding: '24px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  marginBottom: '24px',
+                }}
+              >
+                <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
+                  Your Email
+                </h2>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '16px',
+                    background: '#f8f8f8',
+                    borderRadius: '8px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span
+                      style={{
+                        fontSize: '20px',
+                      }}
+                    >
+                      ✉️
+                    </span>
+                    <div>
+                      <div
+                        style={{
+                          fontFamily: 'monospace',
+                          fontSize: '16px',
+                          fontWeight: '500',
+                          color: '#333',
+                        }}
+                      >
+                        {expertId}@myyoga.guru
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#666', marginTop: '2px' }}>
+                        Your default email address
+                      </div>
+                    </div>
                   </div>
-                )}
+                  <Link
+                    href={`/srv/${expertId}/inbox`}
+                    style={{
+                      padding: '8px 16px',
+                      background: 'var(--color-primary)',
+                      color: '#fff',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      textDecoration: 'none',
+                    }}
+                  >
+                    Go to Inbox
+                  </Link>
+                </div>
+              </div>
 
               {/* Email Setup Section - Only show if custom domain exists */}
               {getCustomDomain() && (
@@ -1777,7 +1947,12 @@ export default function DomainSettingsPage() {
                   )}
                 </div>
               )}
+            </>
+          )}
 
+          {/* ===== DOMAIN TAB - Custom Branding ===== */}
+          {activeTab === 'domain' && tenant && tenant.primaryDomain && (
+            <>
               {/* Custom Branding - Only show for custom domains */}
               {getCustomDomain() && (
                 <div

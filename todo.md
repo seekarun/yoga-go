@@ -4,11 +4,14 @@ Misc
 [ ] SUBDOMAIN: on expert page the logo flickers in header
 [ ] SUBDOMAIN: on expert page login yoga girl flickers in card
 [ ] MAYBE: use formatting option for paragraphs when editing landing page.
-[ ] FIX: fix rating display. (don't show dummy data)
+[x] FIX: fix rating display. (don't show dummy data)
 [ ] FIX: expert commenting on other expert videos shows as EXPERT!!! fix.
 [ ] FIX: in expert dashboard, on save, it should take user back to the same section.
 [ ] FIX: total students not showing the correct number
 [ ] FIX: fix google meet and zoom integration (worked for me)
+[ ] FIX: formatting in blog post editor
+[ ] FIX: welcome email theme not matching changes in landing page edits
+[ ] FIX: welcome email shows browser courses, what if only live sessions?
 [ ] FIX: formatting in blog post editor
 [ ] ONBOARDING: change currency based on location
 [ ] LP: switching templates should work
@@ -22,15 +25,14 @@ Misc
 [ ] UI: add message in dashboard that dns changes takes time.
 [ ] UI: tell you they can set up their own domain after - all settings - change your preference anytime in settings.
 [ ] UI: disable the next button until the expertID is validated.
-[ ] TECH:handle 404 elegantly
 [ ] TECH: remove excess fields in the user data (like membership)
-[ ] TECH: welcome email sent from DB trigger
-[ ] TECH: if user does not verify account in 10 mins, delete from user pool
-[ ] TECH: use the lambda email trigger to collect signup stats. consider triggers for other tables.
+[ ] TECH: consider triggers for other tables for analytics.
 [ ] TECH: review currency conversion
-[ ] TECH: review all delete endpoints that admin has access to, security, remove any unnecessary
-[ ] TECH: review code for all fallbacks.
-[ ] TECH: security review - all urls, all edits etc..
+    [ ] TECH: review code for all fallbacks.
+    [ ] TECH: security review - all urls, all edits etc..
+    [ ] TECH: review all delete endpoints that admin has access to, security, remove any unnecessary
+    [ ] TECH: if user does not verify account in 10 mins, delete from user pool
+    [ ] TECH: handle 404 elegantly
 [ ] GTM: set up launch.myyoga.guru
 [ ] GTM: expert support - can we get a successful yoga teacher?
 [ ] GTM: country specific incremental launches
@@ -75,10 +77,11 @@ Over the years, my personal practice deepened into a calling to teach. I pursued
 Today, I bring together years of dedicated practice, ongoing education, and lived experience to create safe, nurturing yoga spaces where learners feel supported at every stage of their journey. My teaching is grounded in compassion, adaptability, and the belief that yoga is for every body.
 
 
-====================================================================================================================================================================================================
+============================================================
 DONE
-====================================================================================================================================================================================================
+============================================================
 
+[x] TECH: welcome email sent from DB trigger
 [x] lock out certain subdomains, like admin, support, etc.
 [x] remove logo in expert landing page
 [x] payments not showing up in expert dashboard.

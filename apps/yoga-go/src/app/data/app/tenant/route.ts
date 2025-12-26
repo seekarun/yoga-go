@@ -347,11 +347,74 @@ export async function PUT(request: Request): Promise<NextResponse<ApiResponse<Te
         if (!removeResult.success) {
           console.warn('[DBG][tenant-api] Vercel remove domain failed:', removeResult.error);
           // Continue anyway - remove from DynamoDB
+        } else {
+          console.log('[DBG][tenant-api] Removed domain from Vercel:', body.domain);
         }
 
-        // Remove from DynamoDB
+        // Check if this domain has Cloudflare DNS configured - if so, delete the zone
+        let shouldClearCloudflareDns = false;
+        if (
+          tenant.cloudflareDns?.zoneId &&
+          tenant.cloudflareDns.domain?.toLowerCase() === normalizedDomain
+        ) {
+          console.log(
+            '[DBG][tenant-api] Domain has Cloudflare DNS, deleting zone:',
+            tenant.cloudflareDns.zoneId
+          );
+          try {
+            const cfDeleteResult = await deleteZone(tenant.cloudflareDns.zoneId);
+            if (cfDeleteResult.success) {
+              console.log('[DBG][tenant-api] Cloudflare zone deleted');
+              shouldClearCloudflareDns = true;
+            } else {
+              console.warn(
+                '[DBG][tenant-api] Failed to delete Cloudflare zone:',
+                cfDeleteResult.error
+              );
+              // Continue anyway
+              shouldClearCloudflareDns = true; // Clear the config even if delete failed
+            }
+          } catch (cfError) {
+            console.warn('[DBG][tenant-api] Error deleting Cloudflare zone:', cfError);
+            shouldClearCloudflareDns = true; // Clear the config even on error
+          }
+        }
+
+        // Check if email was configured for this domain - if so, delete SES identity
+        let shouldClearEmailConfig = false;
+        if (tenant.emailConfig?.domainEmail) {
+          const emailDomain = tenant.emailConfig.domainEmail.split('@')[1];
+          if (emailDomain?.toLowerCase() === normalizedDomain) {
+            console.log('[DBG][tenant-api] Domain has email configured, deleting SES identity');
+            try {
+              await deleteDomainIdentity(emailDomain);
+              console.log('[DBG][tenant-api] SES identity deleted for:', emailDomain);
+              shouldClearEmailConfig = true;
+            } catch (sesError) {
+              console.warn('[DBG][tenant-api] Failed to delete SES identity:', sesError);
+              // Continue anyway
+              shouldClearEmailConfig = true; // Clear the config even if delete failed
+            }
+          }
+        }
+
+        // Remove from DynamoDB and clear related configs if needed
         updatedTenant = await removeDomainFromTenant(tenant.id, body.domain);
-        console.log('[DBG][tenant-api] Removed domain:', body.domain);
+
+        // Clear Cloudflare DNS config if we deleted the zone
+        if (shouldClearCloudflareDns) {
+          updatedTenant = await updateTenant(tenant.id, { cloudflareDns: undefined });
+        }
+
+        // Clear email config if we deleted the SES identity
+        if (shouldClearEmailConfig) {
+          updatedTenant = await updateTenant(tenant.id, { emailConfig: undefined });
+        }
+
+        console.log('[DBG][tenant-api] Removed domain:', body.domain, {
+          clearedCloudflare: shouldClearCloudflareDns,
+          clearedEmail: shouldClearEmailConfig,
+        });
         break;
       }
 

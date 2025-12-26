@@ -16,6 +16,11 @@ interface SessionInput {
   duration: number;
 }
 
+interface IntegrationStatus {
+  google: { connected: boolean; email?: string };
+  zoom: { connected: boolean; email?: string };
+}
+
 export default function CreateWebinarPage() {
   const params = useParams();
   const router = useRouter();
@@ -23,6 +28,28 @@ export default function CreateWebinarPage() {
 
   const [expertCurrency, setExpertCurrency] = useState<SupportedCurrency>(DEFAULT_CURRENCY);
   const [currencySymbol, setCurrencySymbol] = useState('$');
+  const [integrationStatus, setIntegrationStatus] = useState<IntegrationStatus>({
+    google: { connected: false },
+    zoom: { connected: false },
+  });
+
+  // Fetch integration status
+  const fetchIntegrationStatus = useCallback(async () => {
+    try {
+      const [googleRes, zoomRes] = await Promise.all([
+        fetch('/api/auth/google-calendar/status'),
+        fetch('/api/auth/zoom/status'),
+      ]);
+      const [googleData, zoomData] = await Promise.all([googleRes.json(), zoomRes.json()]);
+
+      setIntegrationStatus({
+        google: googleData.success ? googleData.data : { connected: false },
+        zoom: zoomData.success ? zoomData.data : { connected: false },
+      });
+    } catch (err) {
+      console.error('[DBG][create-webinar] Error fetching integration status:', err);
+    }
+  }, []);
 
   // Fetch expert's preferred currency
   const fetchExpertCurrency = useCallback(async () => {
@@ -42,14 +69,13 @@ export default function CreateWebinarPage() {
 
   useEffect(() => {
     fetchExpertCurrency();
-  }, [fetchExpertCurrency]);
+    fetchIntegrationStatus();
+  }, [fetchExpertCurrency, fetchIntegrationStatus]);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('0');
   const [maxParticipants, setMaxParticipants] = useState('');
-  const [category, setCategory] = useState('');
-  const [level, setLevel] = useState('Beginner');
   const [videoPlatform, setVideoPlatform] = useState<VideoPlatform>('none');
   const [sessions, setSessions] = useState<SessionInput[]>([
     {
@@ -159,8 +185,6 @@ export default function CreateWebinarPage() {
           price: parseFloat(price) || 0,
           currency: expertCurrency,
           maxParticipants: maxParticipants ? parseInt(maxParticipants) : undefined,
-          category: category || undefined,
-          level,
           videoPlatform,
           status: shouldPublish ? 'SCHEDULED' : 'DRAFT',
           sessions: formattedSessions,
@@ -275,7 +299,7 @@ export default function CreateWebinarPage() {
             />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <div>
               <label
                 style={{
@@ -328,87 +352,199 @@ export default function CreateWebinarPage() {
                 }}
               />
             </div>
-            <div>
-              <label
-                style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  marginBottom: '8px',
-                }}
-              >
-                Level
-              </label>
-              <select
-                value={level}
-                onChange={e => setLevel(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '15px',
-                  background: '#fff',
-                }}
-              >
-                <option value="Beginner">Beginner</option>
-                <option value="Intermediate">Intermediate</option>
-                <option value="Advanced">Advanced</option>
-                <option value="All Levels">All Levels</option>
-              </select>
-            </div>
           </div>
 
-          <div style={{ marginTop: '16px' }}>
+          <div style={{ marginTop: '20px' }}>
             <label
-              style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}
-            >
-              Category
-            </label>
-            <input
-              type="text"
-              value={category}
-              onChange={e => setCategory(e.target.value)}
-              placeholder="e.g., Vinyasa Yoga, Meditation, Pranayama"
               style={{
-                width: '100%',
-                padding: '12px 16px',
-                border: '1px solid #d1d5db',
-                borderRadius: '8px',
-                fontSize: '15px',
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '500',
+                marginBottom: '12px',
               }}
-            />
-          </div>
-
-          <div style={{ marginTop: '16px' }}>
-            <label
-              style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}
             >
               Video Platform
             </label>
-            <select
-              value={videoPlatform}
-              onChange={e => setVideoPlatform(e.target.value as VideoPlatform)}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                border: '1px solid #d1d5db',
-                borderRadius: '8px',
-                fontSize: '15px',
-                background: '#fff',
-              }}
-            >
-              <option value="none">No video platform</option>
-              <option value="google_meet">Google Meet</option>
-              <option value="zoom">Zoom</option>
-            </select>
-            <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '6px' }}>
-              {videoPlatform === 'none' && 'You can add meeting links manually later.'}
-              {videoPlatform === 'google_meet' &&
-                'Google Meet links will be auto-generated when you publish.'}
-              {videoPlatform === 'zoom' &&
-                'Zoom meeting links will be auto-generated when you publish.'}
-            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '12px 16px',
+                  border: `2px solid ${videoPlatform === 'none' ? 'var(--color-primary)' : '#e5e7eb'}`,
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  background:
+                    videoPlatform === 'none' ? 'var(--color-primary-light, #f0f9ff)' : '#fff',
+                }}
+              >
+                <input
+                  type="radio"
+                  name="videoPlatform"
+                  value="none"
+                  checked={videoPlatform === 'none'}
+                  onChange={e => setVideoPlatform(e.target.value as VideoPlatform)}
+                  style={{ width: '18px', height: '18px' }}
+                />
+                <div>
+                  <span style={{ fontWeight: '500' }}>Manual Links</span>
+                  <p style={{ fontSize: '13px', color: '#6b7280', margin: '2px 0 0 0' }}>
+                    You&apos;ll add meeting links manually for each session
+                  </p>
+                </div>
+              </label>
+
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '12px',
+                  padding: '12px 16px',
+                  border: `2px solid ${videoPlatform === 'google_meet' ? 'var(--color-primary)' : '#e5e7eb'}`,
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  background:
+                    videoPlatform === 'google_meet'
+                      ? 'var(--color-primary-light, #f0f9ff)'
+                      : '#fff',
+                }}
+              >
+                <input
+                  type="radio"
+                  name="videoPlatform"
+                  value="google_meet"
+                  checked={videoPlatform === 'google_meet'}
+                  onChange={e => setVideoPlatform(e.target.value as VideoPlatform)}
+                  style={{ width: '18px', height: '18px', marginTop: '2px' }}
+                />
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontWeight: '500' }}>Google Meet</span>
+                    {integrationStatus.google.connected ? (
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          padding: '2px 8px',
+                          background: '#dcfce7',
+                          color: '#166534',
+                          borderRadius: '9999px',
+                          fontWeight: '500',
+                        }}
+                      >
+                        Connected
+                      </span>
+                    ) : (
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          padding: '2px 8px',
+                          background: '#fef3c7',
+                          color: '#92400e',
+                          borderRadius: '9999px',
+                          fontWeight: '500',
+                        }}
+                      >
+                        Not Connected
+                      </span>
+                    )}
+                  </div>
+                  <p style={{ fontSize: '13px', color: '#6b7280', margin: '2px 0 0 0' }}>
+                    {integrationStatus.google.connected
+                      ? `Meet links will be auto-created (${integrationStatus.google.email})`
+                      : 'Connect Google to auto-generate Meet links'}
+                  </p>
+                  {!integrationStatus.google.connected && (
+                    <Link
+                      href={`/srv/${expertId}/settings`}
+                      style={{
+                        fontSize: '13px',
+                        color: 'var(--color-primary)',
+                        textDecoration: 'underline',
+                        marginTop: '4px',
+                        display: 'inline-block',
+                      }}
+                    >
+                      Connect Google in Settings
+                    </Link>
+                  )}
+                </div>
+              </label>
+
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '12px',
+                  padding: '12px 16px',
+                  border: `2px solid ${videoPlatform === 'zoom' ? 'var(--color-primary)' : '#e5e7eb'}`,
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  background:
+                    videoPlatform === 'zoom' ? 'var(--color-primary-light, #f0f9ff)' : '#fff',
+                }}
+              >
+                <input
+                  type="radio"
+                  name="videoPlatform"
+                  value="zoom"
+                  checked={videoPlatform === 'zoom'}
+                  onChange={e => setVideoPlatform(e.target.value as VideoPlatform)}
+                  style={{ width: '18px', height: '18px', marginTop: '2px' }}
+                />
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontWeight: '500' }}>Zoom</span>
+                    {integrationStatus.zoom.connected ? (
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          padding: '2px 8px',
+                          background: '#dcfce7',
+                          color: '#166534',
+                          borderRadius: '9999px',
+                          fontWeight: '500',
+                        }}
+                      >
+                        Connected
+                      </span>
+                    ) : (
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          padding: '2px 8px',
+                          background: '#fef3c7',
+                          color: '#92400e',
+                          borderRadius: '9999px',
+                          fontWeight: '500',
+                        }}
+                      >
+                        Not Connected
+                      </span>
+                    )}
+                  </div>
+                  <p style={{ fontSize: '13px', color: '#6b7280', margin: '2px 0 0 0' }}>
+                    {integrationStatus.zoom.connected
+                      ? `Zoom meetings will be auto-created (${integrationStatus.zoom.email})`
+                      : 'Connect Zoom to auto-generate meeting links'}
+                  </p>
+                  {!integrationStatus.zoom.connected && (
+                    <Link
+                      href={`/srv/${expertId}/settings`}
+                      style={{
+                        fontSize: '13px',
+                        color: 'var(--color-primary)',
+                        textDecoration: 'underline',
+                        marginTop: '4px',
+                        display: 'inline-block',
+                      }}
+                    >
+                      Connect Zoom in Settings
+                    </Link>
+                  )}
+                </div>
+              </label>
+            </div>
           </div>
         </div>
 

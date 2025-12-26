@@ -7,7 +7,7 @@ import { NextResponse } from 'next/server';
 import type { ApiResponse, Webinar } from '@/types';
 import { getSessionFromCookies, getUserByCognitoSub } from '@/lib/auth';
 import * as webinarRepository from '@/lib/repositories/webinarRepository';
-import { isGoogleConnected } from '@/lib/google-auth';
+import { isGoogleConnected, checkMeetScopes } from '@/lib/google-auth';
 import { createMeetEventsForWebinar } from '@/lib/google-meet';
 
 interface RouteParams {
@@ -80,6 +80,24 @@ export async function POST(_request: Request, { params }: RouteParams) {
         {
           success: false,
           error: 'Google account not connected. Please connect your Google account first.',
+        },
+        { status: 400 }
+      );
+    }
+
+    // Check if the stored token has required scopes for Meet/Calendar
+    const scopeCheck = await checkMeetScopes(user.expertProfile);
+
+    if (!scopeCheck.hasRequiredScopes) {
+      console.log(
+        '[DBG][expert/me/webinars/[id]/meet] Missing required scopes:',
+        scopeCheck.missingScopes
+      );
+      return NextResponse.json<ApiResponse<MeetGenerationResult>>(
+        {
+          success: false,
+          error:
+            'Your Google account needs to be reconnected with calendar permissions. Please go to Settings > Google and click "Reconnect" to grant the required permissions.',
         },
         { status: 400 }
       );
