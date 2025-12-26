@@ -14,7 +14,11 @@ import type { NextRequest } from 'next/server';
 import * as webinarRepository from '@/lib/repositories/webinarRepository';
 import * as webinarRegistrationRepository from '@/lib/repositories/webinarRegistrationRepository';
 import { getTenantById } from '@/lib/repositories/tenantRepository';
-import { sendWebinarReminderEmail, getFromEmailForExpert } from '@/lib/email';
+import {
+  sendWebinarReminderEmail,
+  getFromEmailForExpert,
+  sendExpertNotificationEmail,
+} from '@/lib/email';
 
 interface ReminderResult {
   webinarId: string;
@@ -198,7 +202,7 @@ async function sendRemindersForSession(
     // Fetch tenant for branding
     const tenant = await getTenantById(expertId);
 
-    // Send reminders
+    // Send reminders to each participant individually
     for (const registration of registrations) {
       if (!registration.userEmail) {
         console.warn('[DBG][cron-webinar-reminders] No email for registration:', registration.id);
@@ -248,6 +252,32 @@ async function sendRemindersForSession(
         );
         result.failed++;
       }
+    }
+
+    // Send notification email to expert
+    const expertNotificationEmail = tenant?.platformPreferences?.defaultEmail;
+    if (expertNotificationEmail && result.sent > 0) {
+      await sendExpertNotificationEmail({
+        to: expertNotificationEmail,
+        from: fromEmail,
+        notificationType: 'reminder_sent',
+        webinarTitle,
+        webinarId,
+        recipientCount: result.sent,
+        failedCount: result.failed,
+        sessionTitle: session.title,
+        reminderType,
+        expert: tenant
+          ? {
+              id: tenant.id,
+              name: tenant.name,
+              logo: tenant.customLandingPage?.branding?.logo,
+              avatar: tenant.avatar,
+              primaryColor: tenant.customLandingPage?.theme?.primaryColor,
+              palette: tenant.customLandingPage?.theme?.palette,
+            }
+          : undefined,
+      });
     }
   } catch (error) {
     console.error('[DBG][cron-webinar-reminders] Error processing session:', session.id, error);

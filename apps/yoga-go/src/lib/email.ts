@@ -1891,3 +1891,199 @@ Regarding: ${webinarTitle}
     throw error;
   }
 };
+
+// ========================================
+// Expert Notification Email (sent after batch emails)
+// ========================================
+
+export interface ExpertNotificationEmailOptions {
+  to: string; // Expert's email
+  from: string;
+  notificationType: 'custom_email_sent' | 'reminder_sent';
+  webinarTitle: string;
+  webinarId: string;
+  recipientCount: number;
+  failedCount?: number;
+  sessionTitle?: string; // For reminder notifications
+  reminderType?: 'dayBefore' | 'hourBefore';
+  expert?: {
+    id: string;
+    name: string;
+    logo?: string;
+    avatar?: string;
+    primaryColor?: string;
+    palette?: ColorPalette;
+  };
+}
+
+/**
+ * Send notification email to expert after batch emails are sent
+ */
+export const sendExpertNotificationEmail = async (
+  options: ExpertNotificationEmailOptions
+): Promise<void> => {
+  const {
+    to,
+    from,
+    notificationType,
+    webinarTitle,
+    webinarId,
+    recipientCount,
+    failedCount = 0,
+    sessionTitle,
+    reminderType,
+    expert,
+  } = options;
+
+  console.log(`[DBG][email] Sending expert notification to ${to} for ${notificationType}`);
+
+  // Use expert branding or defaults
+  const primaryColor = expert?.palette?.[500] || expert?.primaryColor || '#7a2900';
+  const primaryLight = expert?.palette?.[100] || '#fed094';
+  const expertName = expert?.name || 'Expert';
+  const logoUrl = expert?.logo || expert?.avatar;
+
+  // Build webinar URL on expert subdomain
+  const webinarUrl = expert?.id
+    ? `https://${expert.id}.myyoga.guru/webinars/${webinarId}`
+    : `https://myyoga.guru/webinars/${webinarId}`;
+
+  let subject: string;
+  let headerText: string;
+  let bodyText: string;
+
+  if (notificationType === 'custom_email_sent') {
+    subject = `Email sent to ${recipientCount} registrant${recipientCount !== 1 ? 's' : ''}`;
+    headerText = 'Email Sent Successfully';
+    bodyText = `Your custom message for <strong>${webinarTitle}</strong> has been sent to <strong>${recipientCount}</strong> registrant${recipientCount !== 1 ? 's' : ''}.${failedCount > 0 ? ` (${failedCount} failed)` : ''}`;
+  } else {
+    const reminderLabel = reminderType === 'dayBefore' ? '24-hour' : '1-hour';
+    subject = `${reminderLabel} reminder sent to ${recipientCount} registrant${recipientCount !== 1 ? 's' : ''}`;
+    headerText = 'Reminder Emails Sent';
+    bodyText = `${reminderLabel} reminder emails for <strong>${sessionTitle || webinarTitle}</strong> have been sent to <strong>${recipientCount}</strong> registrant${recipientCount !== 1 ? 's' : ''}.${failedCount > 0 ? ` (${failedCount} failed)` : ''}`;
+  }
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+          <!-- Header with Logo -->
+          <tr>
+            <td style="background: ${primaryColor}; padding: 25px 30px;">
+              ${
+                logoUrl
+                  ? `<img src="${logoUrl}" alt="${expertName}" style="max-height: 50px; max-width: 180px; margin-bottom: 12px; display: block;" />`
+                  : `<p style="color: #ffffff; margin: 0 0 8px 0; font-size: 18px; font-weight: 600;">${expertName}</p>`
+              }
+              <h1 style="color: #ffffff; margin: 0; font-size: 20px;">
+                ${headerText}
+              </h1>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 30px;">
+              <p style="font-size: 16px; color: #333; margin: 0 0 20px 0;">
+                Hi ${expertName},
+              </p>
+
+              <p style="font-size: 16px; color: #333; margin: 0 0 20px 0;">
+                ${bodyText}
+              </p>
+
+              <!-- Summary Box -->
+              <div style="background: ${primaryLight}; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
+                <p style="margin: 0 0 8px 0; color: ${primaryColor};">
+                  <strong>Webinar:</strong> ${webinarTitle}
+                </p>
+                ${sessionTitle ? `<p style="margin: 0 0 8px 0; color: ${primaryColor};"><strong>Session:</strong> ${sessionTitle}</p>` : ''}
+                <p style="margin: 0; color: ${primaryColor};">
+                  <strong>Recipients:</strong> ${recipientCount}${failedCount > 0 ? ` (${failedCount} failed)` : ''}
+                </p>
+              </div>
+
+              <div style="text-align: center;">
+                <a href="${webinarUrl}" style="display: inline-block; background: ${primaryColor}; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-size: 14px; font-weight: bold;">
+                  View Webinar Details
+                </a>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background: ${primaryLight}; padding: 20px 30px; text-align: center;">
+              <p style="color: ${primaryColor}; margin: 0; font-size: 13px;">
+                This is an automated notification from your webinar platform.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`;
+
+  const text = `
+Hi ${expertName},
+
+${bodyText.replace(/<[^>]*>/g, '')}
+
+Webinar: ${webinarTitle}
+${sessionTitle ? `Session: ${sessionTitle}\n` : ''}Recipients: ${recipientCount}${failedCount > 0 ? ` (${failedCount} failed)` : ''}
+
+View webinar: ${webinarUrl}
+`;
+
+  const command = new SendEmailCommand({
+    Source: from,
+    Destination: {
+      ToAddresses: [to],
+    },
+    Message: {
+      Subject: {
+        Data: subject,
+        Charset: 'UTF-8',
+      },
+      Body: {
+        Text: {
+          Data: text,
+          Charset: 'UTF-8',
+        },
+        Html: {
+          Data: html,
+          Charset: 'UTF-8',
+        },
+      },
+    },
+    ConfigurationSetName: configSet,
+    Tags: [
+      {
+        Name: 'EmailType',
+        Value: 'expert-notification',
+      },
+      ...(expert?.id ? [{ Name: 'ExpertId', Value: expert.id }] : []),
+    ],
+  });
+
+  try {
+    const response = await sesClient.send(command);
+    console.log(
+      `[DBG][email] Expert notification email sent successfully. MessageId: ${response.MessageId}`
+    );
+  } catch (error) {
+    console.error('[DBG][email] Error sending expert notification email:', error);
+    // Don't throw - this is a notification, shouldn't fail the main operation
+  }
+};

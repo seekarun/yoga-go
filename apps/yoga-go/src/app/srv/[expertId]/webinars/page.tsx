@@ -6,6 +6,7 @@ import Link from 'next/link';
 import type { Webinar, WebinarStatus } from '@/types';
 import NotificationOverlay from '@/components/NotificationOverlay';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import { formatPrice } from '@/lib/currency/currencyService';
 
 interface WebinarWithStats extends Webinar {
   registrationCount?: number;
@@ -302,7 +303,7 @@ export default function ExpertWebinarsPage() {
                         {webinar.sessions.length} session{webinar.sessions.length !== 1 ? 's' : ''}
                       </span>
                       <span>{webinar.totalRegistrations || 0} registered</span>
-                      <span>${webinar.price}</span>
+                      <span>{formatPrice(webinar.price, webinar.currency || 'USD')}</span>
                       {nextSession && (
                         <span>
                           Next: {formatDate(nextSession.startTime)} at{' '}

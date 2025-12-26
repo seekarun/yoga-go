@@ -81,11 +81,12 @@ export interface CustomLandingPageConfig {
   hero?: {
     heroImage?: string; // Hero background image URL
     heroImageAttribution?: {
-      // Unsplash attribution (required when using Unsplash images)
+      // Photo attribution (for Pexels or other sources)
       photographerName: string;
-      photographerUsername: string;
+      photographerUsername?: string; // Legacy - for Unsplash
       photographerUrl: string;
-      unsplashUrl: string;
+      unsplashUrl?: string; // Legacy - for Unsplash
+      pexelsUrl?: string; // For Pexels images
     };
     headline?: string; // Custom headline (problem hook)
     description?: string; // Custom description (results hook)

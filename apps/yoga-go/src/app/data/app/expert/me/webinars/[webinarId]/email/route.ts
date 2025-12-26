@@ -9,7 +9,7 @@ import { getSessionFromCookies, getUserByCognitoSub } from '@/lib/auth';
 import * as webinarRepository from '@/lib/repositories/webinarRepository';
 import * as webinarRegistrationRepository from '@/lib/repositories/webinarRegistrationRepository';
 import { getTenantById } from '@/lib/repositories/tenantRepository';
-import { sendCustomWebinarEmail } from '@/lib/email';
+import { sendCustomWebinarEmail, sendExpertNotificationEmail } from '@/lib/email';
 
 interface RouteParams {
   params: Promise<{
@@ -133,7 +133,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     console.log('[DBG][expert/me/webinars/[id]/email] From email:', fromEmail);
 
-    // Send emails
+    // Send emails to each participant individually
     let sent = 0;
     let failed = 0;
 
@@ -170,6 +170,30 @@ export async function POST(request: Request, { params }: RouteParams) {
     }
 
     console.log('[DBG][expert/me/webinars/[id]/email] Sent:', sent, 'Failed:', failed);
+
+    // Send notification email to expert
+    const expertNotificationEmail = tenant?.platformPreferences?.defaultEmail;
+    if (expertNotificationEmail && sent > 0) {
+      await sendExpertNotificationEmail({
+        to: expertNotificationEmail,
+        from: fromEmail,
+        notificationType: 'custom_email_sent',
+        webinarTitle: webinar.title,
+        webinarId,
+        recipientCount: sent,
+        failedCount: failed,
+        expert: tenant
+          ? {
+              id: tenant.id,
+              name: tenant.name,
+              logo: tenant.customLandingPage?.branding?.logo,
+              avatar: tenant.avatar,
+              primaryColor: tenant.customLandingPage?.theme?.primaryColor,
+              palette: tenant.customLandingPage?.theme?.palette,
+            }
+          : undefined,
+      });
+    }
 
     return NextResponse.json<ApiResponse<EmailResponse>>({
       success: true,

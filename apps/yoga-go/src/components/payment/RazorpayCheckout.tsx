@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import type { SupportedCurrency } from '@/types';
+import { formatPrice } from '@/lib/currency/currencyService';
 
 interface RazorpayCheckoutProps {
   amount: number; // in paise
@@ -193,10 +195,7 @@ export default function RazorpayCheckout({
           </>
         ) : (
           <>
-            <span>
-              Pay {currency === 'INR' ? '₹' : '$'}
-              {(amount / 100).toFixed(2)}
-            </span>
+            <span>Pay {formatPrice(amount / 100, currency as SupportedCurrency)}</span>
           </>
         )}
       </button>

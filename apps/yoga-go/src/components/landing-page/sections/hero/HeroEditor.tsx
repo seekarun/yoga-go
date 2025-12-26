@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import UnsplashImagePicker from '@/components/UnsplashImagePicker';
-import type { UnsplashAttribution } from '@/components/UnsplashImagePicker';
+import PexelsImagePicker from '@/components/PexelsImagePicker';
 import CTAButtonConfig, { type CTAConfig } from '../../CTAButtonConfig';
 import type { SectionEditorProps, HeroFormData } from '../types';
 
@@ -50,11 +49,8 @@ export default function HeroEditor({ data, onChange, expertId, onError }: Sectio
     });
   };
 
-  const handleImageSelect = (imageUrl: string, attribution?: UnsplashAttribution) => {
+  const handleImageSelect = (imageUrl: string) => {
     console.log('[DBG][HeroEditor] Image selected:', imageUrl);
-    if (attribution) {
-      console.log('[DBG][HeroEditor] Attribution:', attribution.photographerName);
-    }
 
     const updated = { ...formData, heroImage: imageUrl };
     setFormData(updated);
@@ -64,14 +60,7 @@ export default function HeroEditor({ data, onChange, expertId, onError }: Sectio
       hero: {
         ...data.hero,
         heroImage: imageUrl,
-        heroImageAttribution: attribution
-          ? {
-              photographerName: attribution.photographerName,
-              photographerUsername: attribution.photographerUsername,
-              photographerUrl: attribution.photographerUrl,
-              unsplashUrl: attribution.unsplashUrl,
-            }
-          : undefined,
+        heroImageAttribution: undefined, // Pexels doesn't require attribution
         headline: updated.headline || undefined,
         description: updated.description || undefined,
         ctaText: updated.ctaText || 'Explore Courses',
@@ -178,7 +167,7 @@ export default function HeroEditor({ data, onChange, expertId, onError }: Sectio
         ) : (
           /* Show image picker when editing */
           <div className="space-y-3">
-            <UnsplashImagePicker
+            <PexelsImagePicker
               width={1920}
               height={600}
               category="banner"

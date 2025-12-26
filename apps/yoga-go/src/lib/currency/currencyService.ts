@@ -118,6 +118,7 @@ export function convertAmount(
 
 /**
  * Format a price with the correct currency symbol and locale
+ * Uses our custom symbols (e.g., A$ for AUD) instead of browser defaults
  */
 export function formatPrice(
   amount: number,
@@ -131,20 +132,30 @@ export function formatPrice(
   const { showDecimals = true, compact = false } = options || {};
 
   try {
-    const formatter = new Intl.NumberFormat(config.locale, {
-      style: 'currency',
-      currency: currency,
+    // Format number without currency symbol first
+    const numberFormatter = new Intl.NumberFormat(config.locale, {
       minimumFractionDigits: showDecimals ? config.decimalPlaces : 0,
       maximumFractionDigits: showDecimals ? config.decimalPlaces : 0,
       notation: compact ? 'compact' : 'standard',
     });
 
-    return formatter.format(amount);
+    const formattedNumber = numberFormatter.format(amount);
+
+    // Use our custom symbol (e.g., A$ for AUD, C$ for CAD) instead of browser default
+    return `${config.symbol}${formattedNumber}`;
   } catch (error) {
     // Fallback formatting
     console.error('[DBG][currencyService] Error formatting price:', error);
     return `${config.symbol}${amount.toFixed(config.decimalPlaces)}`;
   }
+}
+
+/**
+ * Get the currency symbol for a given currency code
+ */
+export function getCurrencySymbol(currency: SupportedCurrency): string {
+  const config = getCurrencyConfig(currency);
+  return config.symbol;
 }
 
 /**

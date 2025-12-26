@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import PaymentModal from '@/components/payment/PaymentModal';
 import NotificationOverlay from '@/components/NotificationOverlay';
 import type { Webinar, WebinarSession } from '@/types';
+import { formatPrice } from '@/lib/currency/currencyService';
 
 interface WebinarExpert {
   id: string;
@@ -431,7 +432,7 @@ export default function ExpertWebinarDetailPage() {
                       ? 'Registration Closed'
                       : webinar.price === 0
                         ? 'Register Free'
-                        : `Register - $${webinar.price}`}
+                        : `Register - ${formatPrice(webinar.price, webinar.currency || 'USD')}`}
               </button>
             </div>
           </div>
@@ -844,7 +845,7 @@ export default function ExpertWebinarDetailPage() {
                   ? 'Access Webinar'
                   : webinar.price === 0
                     ? 'Register Free'
-                    : `Register Now - $${webinar.price}`}
+                    : `Register Now - ${formatPrice(webinar.price, webinar.currency || 'USD')}`}
             </button>
           </section>
         )}

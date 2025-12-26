@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
+import { formatPrice } from '@/lib/currency/currencyService';
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- Admin page accesses dynamic expert/user/course properties */
 interface ExpertData {
@@ -367,7 +368,9 @@ export default function ExpertDetailsPage() {
                     <div style={{ fontSize: '12px', color: '#718096', marginBottom: '4px' }}>
                       Rating: {course.rating} ⭐
                     </div>
-                    <div style={{ fontSize: '12px', color: '#718096' }}>Price: ₹{course.price}</div>
+                    <div style={{ fontSize: '12px', color: '#718096' }}>
+                      Price: {formatPrice(course.price, course.currency || 'USD')}
+                    </div>
                   </div>
                 ))}
               </div>

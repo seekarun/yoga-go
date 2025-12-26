@@ -24,12 +24,13 @@ export const DEFAULT_SECTION_ORDER: SectionType[] = [
   'footer',
 ];
 
-// ===== Unsplash Attribution =====
+// ===== Photo Attribution (Unsplash/Pexels) =====
 export interface UnsplashAttribution {
   photographerName: string;
-  photographerUsername: string;
+  photographerUsername?: string; // Unsplash only
   photographerUrl: string;
-  unsplashUrl: string;
+  unsplashUrl?: string; // Unsplash
+  pexelsUrl?: string; // Pexels
 }
 
 // ===== Template Types =====

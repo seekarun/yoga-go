@@ -10,7 +10,8 @@ interface GalleryImage {
   attribution?: {
     photographerName: string;
     photographerUrl: string;
-    unsplashUrl: string;
+    unsplashUrl?: string;
+    pexelsUrl?: string;
   };
 }
 
@@ -662,13 +663,17 @@ export default function PhotoGalleryLightbox({
                   </a>{' '}
                   on{' '}
                   <a
-                    href={currentImage.attribution.unsplashUrl}
+                    href={
+                      currentImage.attribution.pexelsUrl ||
+                      currentImage.attribution.unsplashUrl ||
+                      '#'
+                    }
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'underline' }}
                     onClick={e => e.stopPropagation()}
                   >
-                    Unsplash
+                    {currentImage.attribution.pexelsUrl ? 'Pexels' : 'Unsplash'}
                   </a>
                 </p>
               )}

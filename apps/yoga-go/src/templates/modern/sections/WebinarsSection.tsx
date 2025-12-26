@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { WebinarsSectionProps } from '../../types';
+import { formatPrice } from '@/lib/currency/currencyService';
 
 export default function WebinarsSection({ title, description, webinars }: WebinarsSectionProps) {
   return (
@@ -217,7 +218,7 @@ export default function WebinarsSection({ title, description, webinars }: Webina
                           {webinar.price === 0 ? (
                             <span style={{ color: '#22c55e' }}>Free</span>
                           ) : (
-                            `₹${webinar.price}`
+                            formatPrice(webinar.price, webinar.currency || 'USD')
                           )}
                         </span>
                         <span

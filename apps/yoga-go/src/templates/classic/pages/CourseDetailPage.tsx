@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { CourseDetailPageProps } from '../../types';
 import type { Lesson } from '@/types';
+import { formatPrice } from '@/lib/currency/currencyService';
 
 const cfSubdomain = process.env.NEXT_PUBLIC_CF_SUBDOMAIN || 'placeholder';
 
@@ -11,10 +12,9 @@ export default function CourseDetailPage({
   isEnrolled,
   onEnrollClick,
 }: CourseDetailPageProps) {
-  const formatPrice = () => {
+  const displayPrice = () => {
     if (course.price === 0) return 'Free';
-    const symbol = course.currency === 'INR' ? '₹' : '$';
-    return `${symbol}${course.price.toLocaleString()}`;
+    return formatPrice(course.price, course.currency || 'USD');
   };
 
   return (
@@ -209,7 +209,7 @@ export default function CourseDetailPage({
                 transition: 'transform 0.2s, background 0.2s',
               }}
             >
-              {isEnrolled ? 'Start Learning' : `Enroll Now - ${formatPrice()}`}
+              {isEnrolled ? 'Start Learning' : `Enroll Now - ${displayPrice()}`}
             </button>
           </div>
         </div>

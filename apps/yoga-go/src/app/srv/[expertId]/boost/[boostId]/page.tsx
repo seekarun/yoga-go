@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import type { Boost } from '@/types';
+import type { Boost, SupportedCurrency } from '@/types';
+import { formatPrice } from '@/lib/currency/currencyService';
 
 const statusConfig: Record<Boost['status'], { label: string; color: string; bgColor: string }> = {
   draft: { label: 'Draft', color: 'text-gray-700', bgColor: 'bg-gray-100' },
@@ -136,12 +137,8 @@ export default function BoostDetailPage() {
     }
   };
 
-  const formatCurrency = (amount: number, currency: string) => {
-    const val = amount / 100;
-    if (currency === 'INR') {
-      return `₹${val.toLocaleString('en-IN')}`;
-    }
-    return `$${val.toLocaleString('en-US')}`;
+  const formatCurrency = (amount: number, curr: string) => {
+    return formatPrice(amount / 100, curr as SupportedCurrency);
   };
 
   const formatDate = (dateStr: string) => {

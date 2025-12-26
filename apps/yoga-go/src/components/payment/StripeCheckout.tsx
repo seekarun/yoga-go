@@ -6,6 +6,8 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { useAuth } from '@/contexts/AuthContext';
 import { PAYMENT_CONFIG } from '@/config/payment';
+import type { SupportedCurrency } from '@/types';
+import { formatPrice } from '@/lib/currency/currencyService';
 
 interface StripeCheckoutProps {
   amount: number; // in cents
@@ -222,10 +224,7 @@ function CheckoutForm({
             Processing...
           </>
         ) : (
-          <>
-            Pay {currency === 'USD' ? '$' : '€'}
-            {(amount / 100).toFixed(2)}
-          </>
+          <>Pay {formatPrice(amount / 100, currency as SupportedCurrency)}</>
         )}
       </button>
 

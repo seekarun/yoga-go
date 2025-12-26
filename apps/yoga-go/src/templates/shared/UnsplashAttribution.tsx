@@ -5,8 +5,17 @@ interface UnsplashAttributionProps {
   style?: React.CSSProperties;
 }
 
+/**
+ * Photo attribution component - supports both Unsplash and Pexels
+ * Displays photographer credit and source link
+ */
 export default function UnsplashAttribution({ attribution, style }: UnsplashAttributionProps) {
   if (!attribution) return null;
+
+  // Determine the source (Pexels or Unsplash)
+  const isPexels = !!attribution.pexelsUrl;
+  const sourceUrl = attribution.pexelsUrl || attribution.unsplashUrl || '#';
+  const sourceName = isPexels ? 'Pexels' : 'Unsplash';
 
   return (
     <div
@@ -31,12 +40,12 @@ export default function UnsplashAttribution({ attribution, style }: UnsplashAttr
       </a>{' '}
       on{' '}
       <a
-        href={attribution.unsplashUrl}
+        href={sourceUrl}
         target="_blank"
         rel="noopener noreferrer"
         style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'underline' }}
       >
-        Unsplash
+        {sourceName}
       </a>
     </div>
   );

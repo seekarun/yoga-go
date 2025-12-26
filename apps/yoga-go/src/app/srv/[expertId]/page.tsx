@@ -3,8 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import type { Course } from '@/types';
+import type { Course, SupportedCurrency } from '@/types';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import { formatPrice } from '@/lib/currency/currencyService';
 
 interface StripeBalanceData {
   connected: boolean;
@@ -132,24 +133,11 @@ export default function ExpertDashboard() {
 
   // Format currency amount (from cents to dollars)
   const formatAmount = (amount: number, currency: string) => {
-    const currencySymbols: Record<string, string> = {
-      USD: '$',
-      AUD: 'A$',
-      EUR: '€',
-      GBP: '£',
-      INR: '₹',
-    };
-    const symbol = currencySymbols[currency] || currency + ' ';
-    return `${symbol}${(amount / 100).toFixed(2)}`;
+    return formatPrice(amount / 100, currency as SupportedCurrency);
   };
 
   const formatCurrency = (amount: number, currency: string) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount / 100);
+    return formatPrice(amount / 100, currency as SupportedCurrency);
   };
 
   // Get total available and pending amounts

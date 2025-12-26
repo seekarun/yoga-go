@@ -10,6 +10,8 @@ import {
   getContextualFromEmail,
 } from '@/lib/email';
 import { getTenantById } from '@/lib/repositories/tenantRepository';
+import type { SupportedCurrency } from '@/types';
+import { getCurrencySymbol } from '@/lib/currency/currencyService';
 
 export async function POST(request: Request) {
   try {
@@ -92,8 +94,7 @@ export async function POST(request: Request) {
       if (user?.profile?.email) {
         // Amount from Razorpay is in paise (smallest unit)
         const amountValue = amount ? amount / 100 : 0;
-        const currencySymbol =
-          currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency || 'INR';
+        const currencySymbol = getCurrencySymbol((currency || 'INR') as SupportedCurrency);
 
         // Determine from address based on context (expert subdomain vs main domain)
         const referer = request.headers.get('referer');

@@ -10,6 +10,7 @@ import UserTable from '@/components/UserTable';
 import ExpertTable from '@/components/ExpertTable';
 import WaitlistTable from '@/components/WaitlistTable';
 import NotificationOverlay from '@/components/NotificationOverlay';
+import { formatPrice } from '@/lib/currency/currencyService';
 import type { AdminStats, UserListItem, ExpertListItem } from '@/types';
 import type { WaitlistSignup } from '@/lib/repositories/waitlistRepository';
 
@@ -574,7 +575,7 @@ export default function AdminDashboard() {
               />
               <AdminStatsCard
                 title="Revenue"
-                value={`₹${stats.totalRevenue.toLocaleString()}`}
+                value={formatPrice(stats.totalRevenue, 'USD')}
                 icon="💰"
                 description="Total revenue"
               />

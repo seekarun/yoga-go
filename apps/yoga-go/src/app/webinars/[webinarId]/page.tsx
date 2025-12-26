@@ -7,6 +7,7 @@ import type { Webinar, WebinarSession } from '@/types';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { formatPrice } from '@/lib/currency/currencyService';
 
 interface WebinarExpert {
   id: string;
@@ -442,7 +443,7 @@ export default function WebinarDetailPage() {
                       ? 'Registration Closed'
                       : webinar.price === 0
                         ? 'Register Free'
-                        : `Register - $${webinar.price}`}
+                        : `Register - ${formatPrice(webinar.price, webinar.currency || 'USD')}`}
               </button>
             </div>
           </div>
@@ -926,7 +927,7 @@ export default function WebinarDetailPage() {
                   ? 'Access Webinar'
                   : webinar.price === 0
                     ? 'Register Free'
-                    : `Register Now - $${webinar.price}`}
+                    : `Register Now - ${formatPrice(webinar.price, webinar.currency || 'USD')}`}
             </button>
           </section>
         )}

@@ -8,7 +8,16 @@ import BudgetSelector from '@/components/boost/BudgetSelector';
 import CourseSelector from '@/components/boost/CourseSelector';
 import CreativePreview from '@/components/boost/CreativePreview';
 import BoostPaymentModal from '@/components/boost/BoostPaymentModal';
-import type { Boost, BoostGoal, BoostCreative, BoostTargeting, Course, Expert } from '@/types';
+import type {
+  Boost,
+  BoostGoal,
+  BoostCreative,
+  BoostTargeting,
+  Course,
+  Expert,
+  SupportedCurrency,
+} from '@/types';
+import { formatPrice } from '@/lib/currency/currencyService';
 
 type Step = 'goal' | 'course' | 'budget' | 'preview' | 'payment';
 
@@ -230,11 +239,7 @@ export default function CreateBoostPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    const val = amount / 100;
-    if (currency === 'INR') {
-      return `₹${val.toLocaleString('en-IN')}`;
-    }
-    return `$${val.toLocaleString('en-US')}`;
+    return formatPrice(amount / 100, currency as SupportedCurrency);
   };
 
   if (loading) {

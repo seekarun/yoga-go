@@ -1,27 +1,28 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import type { SupportedCurrency } from '@/types';
+import { formatPrice, getCurrencySymbol } from '@/lib/currency/currencyService';
 
 interface BudgetOption {
   amount: number; // in cents
-  label: string;
   description: string;
 }
 
 const getBudgetOptions = (currency: string): BudgetOption[] => {
   if (currency === 'INR') {
     return [
-      { amount: 50000, label: '₹500', description: 'Starter' },
-      { amount: 100000, label: '₹1,000', description: 'Recommended' },
-      { amount: 250000, label: '₹2,500', description: 'Growth' },
-      { amount: 500000, label: '₹5,000', description: 'Professional' },
+      { amount: 50000, description: 'Starter' },
+      { amount: 100000, description: 'Recommended' },
+      { amount: 250000, description: 'Growth' },
+      { amount: 500000, description: 'Professional' },
     ];
   }
   return [
-    { amount: 2500, label: '$25', description: 'Starter' },
-    { amount: 5000, label: '$50', description: 'Recommended' },
-    { amount: 10000, label: '$100', description: 'Growth' },
-    { amount: 25000, label: '$250', description: 'Professional' },
+    { amount: 2500, description: 'Starter' },
+    { amount: 5000, description: 'Recommended' },
+    { amount: 10000, description: 'Growth' },
+    { amount: 25000, description: 'Professional' },
   ];
 };
 
@@ -78,11 +79,7 @@ export default function BudgetSelector({
   };
 
   const formatCurrency = (amount: number) => {
-    const val = amount / 100;
-    if (currency === 'INR') {
-      return `₹${val.toLocaleString('en-IN')}`;
-    }
-    return `$${val.toLocaleString('en-US')}`;
+    return formatPrice(amount / 100, currency as SupportedCurrency);
   };
 
   return (
@@ -106,7 +103,7 @@ export default function BudgetSelector({
               <div
                 className={`text-xl font-bold ${selected ? 'text-indigo-600' : 'text-gray-900'}`}
               >
-                {option.label}
+                {formatCurrency(option.amount)}
               </div>
               <div className="text-sm text-gray-500">{option.description}</div>
             </button>
@@ -121,7 +118,7 @@ export default function BudgetSelector({
         </label>
         <div className="relative">
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
-            {currency === 'INR' ? '₹' : '$'}
+            {getCurrencySymbol(currency as SupportedCurrency)}
           </span>
           <input
             type="text"

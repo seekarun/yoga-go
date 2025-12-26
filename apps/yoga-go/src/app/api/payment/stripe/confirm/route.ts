@@ -11,6 +11,8 @@ import {
   getContextualFromEmail,
 } from '@/lib/email';
 import { getTenantById } from '@/lib/repositories/tenantRepository';
+import type { SupportedCurrency } from '@/types';
+import { getCurrencySymbol } from '@/lib/currency/currencyService';
 
 function getStripeInstance() {
   if (!PAYMENT_CONFIG.stripe.secretKey) {
@@ -155,7 +157,7 @@ export async function POST(request: Request) {
         const referer = request.headers.get('referer');
         const expertId = course?.instructor?.id || webinar?.expertId || null;
         const fromEmail = getContextualFromEmail(expertId, referer);
-        const currencySymbol = currency === 'INR' ? '₹' : currency === 'USD' ? '$' : currency;
+        const currencySymbol = getCurrencySymbol(currency as SupportedCurrency);
 
         if (type === 'webinar' && webinar) {
           // Send webinar registration confirmation email

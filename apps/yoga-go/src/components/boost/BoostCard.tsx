@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import type { Boost } from '@/types';
+import type { Boost, SupportedCurrency } from '@/types';
+import { formatPrice } from '@/lib/currency/currencyService';
 
 interface BoostCardProps {
   boost: Boost;
@@ -83,11 +84,7 @@ export default function BoostCard({ boost, expertId, onDelete }: BoostCardProps)
   };
 
   const formatCurrency = (amount: number) => {
-    const val = amount / 100;
-    if (boost.currency === 'INR') {
-      return `₹${val.toLocaleString('en-IN')}`;
-    }
-    return `$${val.toLocaleString('en-US')}`;
+    return formatPrice(amount / 100, (boost.currency || 'USD') as SupportedCurrency);
   };
 
   const formatDate = (dateStr: string) => {
