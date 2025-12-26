@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { LandingPageThemeProvider } from '@/components/landing-page/ThemeProvider';
 import ThemeBridge from './ThemeBridge';
 import CourseCard from '@/components/CourseCard';
-import type { UserCourseData, Expert, BlogPost, Webinar, WebinarSession } from '@/types';
+import type { UserCourseData, Expert, BlogPost, Webinar, WebinarSession, Course } from '@/types';
 
 interface ExpertDashboardProps {
   expertId: string;
@@ -55,10 +55,12 @@ function isLiveNow(session: WebinarSession): boolean {
 export default function ExpertDashboard({ expertId }: ExpertDashboardProps) {
   const { user } = useAuth();
   const [expert, setExpert] = useState<Expert | null>(null);
-  const [courses, setCourses] = useState<UserCourseData[]>([]);
+  const [enrolledCourses, setEnrolledCourses] = useState<UserCourseData[]>([]);
+  const [availableCourses, setAvailableCourses] = useState<Course[]>([]);
   const [webinars, setWebinars] = useState<WebinarWithRegistration[]>([]);
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const carouselRef = useRef<HTMLDivElement>(null);
 
   // Fetch expert data and theme
   useEffect(() => {
@@ -78,23 +80,42 @@ export default function ExpertDashboard({ expertId }: ExpertDashboardProps) {
     fetchExpert();
   }, [expertId]);
 
-  // Fetch user's courses, filter by this expert
+  // Fetch user's enrolled courses and available courses
   useEffect(() => {
     const fetchCourses = async () => {
       try {
         console.log('[DBG][ExpertDashboard] Fetching courses for expert:', expertId);
-        const response = await fetch(`/data/app/courses?t=${Date.now()}`);
-        const data = await response.json();
-        if (data.success && data.data.enrolled) {
-          // Filter to only this expert's courses
-          const expertCourses = data.data.enrolled.filter(
+
+        // Fetch enrolled courses
+        const enrolledResponse = await fetch(`/data/app/courses?t=${Date.now()}`);
+        const enrolledData = await enrolledResponse.json();
+        let expertEnrolledCourses: UserCourseData[] = [];
+        if (enrolledData.success && enrolledData.data.enrolled) {
+          expertEnrolledCourses = enrolledData.data.enrolled.filter(
             (course: UserCourseData) => course.instructor?.id === expertId
           );
-          setCourses(expertCourses);
+          setEnrolledCourses(expertEnrolledCourses);
           console.log(
             '[DBG][ExpertDashboard] Found',
-            expertCourses.length,
-            'courses from this expert'
+            expertEnrolledCourses.length,
+            'enrolled courses from this expert'
+          );
+        }
+
+        // Fetch available courses from this expert (uses x-expert-id header automatically)
+        const availableResponse = await fetch('/data/courses');
+        const availableData = await availableResponse.json();
+        if (availableData.success) {
+          // Filter out courses user is already enrolled in
+          const enrolledIds = new Set(expertEnrolledCourses.map(c => c.id));
+          const notEnrolledCourses = availableData.data.filter(
+            (course: Course) => !enrolledIds.has(course.id)
+          );
+          setAvailableCourses(notEnrolledCourses);
+          console.log(
+            '[DBG][ExpertDashboard] Found',
+            notEnrolledCourses.length,
+            'available courses from this expert'
           );
         }
       } catch (error) {
@@ -185,83 +206,212 @@ export default function ExpertDashboard({ expertId }: ExpertDashboardProps) {
               style={{
                 maxWidth: '1200px',
                 margin: '0 auto',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: '16px',
               }}
             >
-              <div>
-                <h1 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '4px' }}>
-                  Welcome back, {user.profile?.name?.split(' ')[0] || 'there'}!
-                </h1>
-                <p style={{ fontSize: '14px', opacity: 0.9 }}>
-                  Continue your learning journey with {expertName}
-                </p>
-              </div>
-              <Link
-                href="/"
-                style={{
-                  padding: '10px 20px',
-                  background: 'rgba(255,255,255,0.2)',
-                  color: '#fff',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  textDecoration: 'none',
-                  border: '1px solid rgba(255,255,255,0.3)',
-                }}
-              >
-                View All Offerings
-              </Link>
+              <h1 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '4px' }}>
+                Welcome back, {user.profile?.name?.split(' ')[0] || 'there'}!
+              </h1>
+              <p style={{ fontSize: '14px', opacity: 0.9 }}>
+                Continue your learning journey with {expertName}
+              </p>
             </div>
           </section>
 
-          {/* Enrolled Courses Section */}
+          {/* Courses Section */}
           <section style={{ padding: '48px 20px' }}>
             <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '24px',
-                }}
-              >
-                <h2 style={{ fontSize: '22px', fontWeight: '600' }}>Your Courses</h2>
-                {courses.length > 0 && (
-                  <Link
-                    href="/app/my-courses"
-                    style={{
-                      color: 'var(--color-primary)',
-                      textDecoration: 'none',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                    }}
-                  >
-                    View All
-                  </Link>
-                )}
-              </div>
-
               {loading ? (
                 <div style={{ textAlign: 'center', padding: '40px' }}>
-                  <div style={{ fontSize: '16px', color: '#666' }}>Loading your courses...</div>
+                  <div style={{ fontSize: '16px', color: '#666' }}>Loading courses...</div>
                 </div>
-              ) : courses.length > 0 ? (
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-                    gap: '24px',
-                  }}
-                >
-                  {courses.slice(0, 4).map(course => (
-                    <CourseCard key={course.id} course={course} variant="enrolled" />
-                  ))}
-                </div>
+              ) : enrolledCourses.length > 0 ? (
+                /* User has enrolled courses - show "Continue Learning" */
+                <>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '24px',
+                    }}
+                  >
+                    <h2 style={{ fontSize: '22px', fontWeight: '600' }}>Continue Learning</h2>
+                    <Link
+                      href="/app/my-courses"
+                      style={{
+                        color: 'var(--color-primary)',
+                        textDecoration: 'none',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                      }}
+                    >
+                      View All
+                    </Link>
+                  </div>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+                      gap: '24px',
+                    }}
+                  >
+                    {enrolledCourses.slice(0, 4).map(course => (
+                      <CourseCard key={course.id} course={course} variant="enrolled" />
+                    ))}
+                  </div>
+                </>
+              ) : availableCourses.length > 0 ? (
+                /* User has no enrolled courses - show available courses */
+                <>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '24px',
+                    }}
+                  >
+                    <h2 style={{ fontSize: '22px', fontWeight: '600' }}>
+                      Start Your Journey with {expertName}
+                    </h2>
+                    {availableCourses.length > 1 && (
+                      <Link
+                        href="/courses"
+                        style={{
+                          color: 'var(--color-primary)',
+                          textDecoration: 'none',
+                          fontSize: '14px',
+                          fontWeight: '500',
+                        }}
+                      >
+                        View All Courses
+                      </Link>
+                    )}
+                  </div>
+
+                  {/* Horizontal carousel for multiple courses */}
+                  {availableCourses.length > 1 ? (
+                    <div style={{ position: 'relative' }}>
+                      {/* Scroll buttons */}
+                      <button
+                        onClick={() => {
+                          if (carouselRef.current) {
+                            carouselRef.current.scrollBy({ left: -340, behavior: 'smooth' });
+                          }
+                        }}
+                        style={{
+                          position: 'absolute',
+                          left: '-16px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '50%',
+                          background: '#fff',
+                          border: '1px solid #e0e0e0',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          zIndex: 10,
+                        }}
+                        aria-label="Scroll left"
+                      >
+                        <svg
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="#333"
+                          strokeWidth="2"
+                        >
+                          <path d="M15 18l-6-6 6-6" />
+                        </svg>
+                      </button>
+                      <div
+                        ref={carouselRef}
+                        style={{
+                          display: 'flex',
+                          gap: '20px',
+                          overflowX: 'auto',
+                          scrollSnapType: 'x mandatory',
+                          scrollbarWidth: 'none',
+                          msOverflowStyle: 'none',
+                          padding: '4px 0',
+                        }}
+                      >
+                        {availableCourses.map(course => (
+                          <div
+                            key={course.id}
+                            style={{
+                              flex: '0 0 320px',
+                              scrollSnapAlign: 'start',
+                            }}
+                          >
+                            <CourseCard course={course} variant="full" />
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (carouselRef.current) {
+                            carouselRef.current.scrollBy({ left: 340, behavior: 'smooth' });
+                          }
+                        }}
+                        style={{
+                          position: 'absolute',
+                          right: '-16px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '50%',
+                          background: '#fff',
+                          border: '1px solid #e0e0e0',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          zIndex: 10,
+                        }}
+                        aria-label="Scroll right"
+                      >
+                        <svg
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="#333"
+                          strokeWidth="2"
+                        >
+                          <path d="M9 18l6-6-6-6" />
+                        </svg>
+                      </button>
+                      <style jsx>{`
+                        div::-webkit-scrollbar {
+                          display: none;
+                        }
+                      `}</style>
+                    </div>
+                  ) : (
+                    /* Single course - show as grid */
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+                        gap: '24px',
+                      }}
+                    >
+                      {availableCourses.map(course => (
+                        <CourseCard key={course.id} course={course} variant="full" />
+                      ))}
+                    </div>
+                  )}
+                </>
               ) : (
+                /* No courses at all */
                 <div
                   style={{
                     background: '#fff',
@@ -273,26 +423,11 @@ export default function ExpertDashboard({ expertId }: ExpertDashboardProps) {
                 >
                   <div style={{ fontSize: '40px', marginBottom: '16px' }}>📚</div>
                   <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>
-                    No courses enrolled yet
+                    No courses available yet
                   </h3>
-                  <p style={{ color: '#666', marginBottom: '20px', fontSize: '14px' }}>
-                    Start your learning journey with {expertName}
+                  <p style={{ color: '#666', fontSize: '14px' }}>
+                    Check back soon for new courses from {expertName}
                   </p>
-                  <Link
-                    href="/courses"
-                    style={{
-                      padding: '10px 20px',
-                      background: 'var(--color-primary)',
-                      color: '#fff',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      textDecoration: 'none',
-                      display: 'inline-block',
-                    }}
-                  >
-                    Browse Courses
-                  </Link>
                 </div>
               )}
             </div>
@@ -506,36 +641,21 @@ export default function ExpertDashboard({ expertId }: ExpertDashboardProps) {
             </section>
           )}
 
-          {/* Empty State - No Content */}
+          {/* Empty State - No Content at all */}
           {!loading &&
-            courses.length === 0 &&
+            enrolledCourses.length === 0 &&
+            availableCourses.length === 0 &&
             upcomingWebinars.length === 0 &&
             blogPosts.length === 0 && (
               <section style={{ padding: '48px 20px' }}>
                 <div style={{ maxWidth: '600px', margin: '0 auto', textAlign: 'center' }}>
                   <div style={{ fontSize: '64px', marginBottom: '24px' }}>🧘</div>
                   <h2 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '12px' }}>
-                    Your Learning Journey Begins Here
+                    Coming Soon
                   </h2>
                   <p style={{ color: '#666', marginBottom: '24px', lineHeight: '1.6' }}>
-                    Explore {expertName}&apos;s courses, live sessions, and blog posts to start your
-                    transformation.
+                    {expertName} is preparing amazing content. Check back soon!
                   </p>
-                  <Link
-                    href="/"
-                    style={{
-                      padding: '14px 28px',
-                      background: 'var(--color-primary)',
-                      color: '#fff',
-                      borderRadius: '8px',
-                      fontSize: '16px',
-                      fontWeight: '600',
-                      textDecoration: 'none',
-                      display: 'inline-block',
-                    }}
-                  >
-                    Explore Offerings
-                  </Link>
                 </div>
               </section>
             )}
