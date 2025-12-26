@@ -21,14 +21,15 @@ function hasSessionCookie(request: NextRequest): boolean {
 /**
  * Middleware for authentication and domain-based routing
  * This middleware:
- * 1. Handles domain-based routing for expert-specific domains (e.g., kavithayoga.com)
- * 2. Checks for session cookie presence (not full validation - that's in route handlers)
- * 3. Redirects unauthenticated users to login for protected routes
+ * 1. Geo-restricts the main platform (myyoga.guru) to Australia only
+ * 2. Handles domain-based routing for expert-specific domains (e.g., kavithayoga.com)
+ * 3. Checks for session cookie presence (not full validation - that's in route handlers)
+ * 4. Redirects unauthenticated users to login for protected routes
  *
  * Domain routing:
- * - myyoga.guru / localhost -> serves all routes (full platform)
- * - kavithayoga.com -> ONLY /experts/kavitha content (isolated)
- * - deepakyoga.com -> ONLY /experts/deepak content (isolated)
+ * - myyoga.guru / localhost -> serves all routes (full platform) - AUSTRALIA ONLY
+ * - kavithayoga.com -> ONLY /experts/kavitha content (isolated) - GLOBAL
+ * - deepakyoga.com -> ONLY /experts/deepak content (isolated) - GLOBAL
  *
  * Protected routes:
  * - /app/* - User dashboard (learners AND experts can access)
@@ -42,6 +43,32 @@ export default async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hostname = request.headers.get('host') || '';
   const hasSession = hasSessionCookie(request);
+
+  // Geo-restriction: Only allow specific country traffic to the main platform
+  // Expert subdomains are accessible globally
+  // Set to true to enable geo-restriction, false to allow all countries
+  const GEO_RESTRICTION_ENABLED = false;
+  const ALLOWED_COUNTRIES = ['AU']; // Add country codes to allow (e.g., 'AU', 'NZ', 'US')
+
+  if (GEO_RESTRICTION_ENABLED) {
+    const country = request.headers.get('x-vercel-ip-country') || '';
+    const isPrimaryForGeo = isPrimaryDomain(hostname) || isLearnerDomain(hostname);
+
+    // Skip geo-check for localhost, static assets, and API routes
+    const skipGeoCheck =
+      hostname.includes('localhost') ||
+      pathname.startsWith('/_next') ||
+      pathname.startsWith('/api') ||
+      pathname.startsWith('/data') ||
+      pathname.match(/\.(ico|png|jpg|jpeg|svg|css|js|woff|woff2)$/);
+
+    if (isPrimaryForGeo && !skipGeoCheck && country && !ALLOWED_COUNTRIES.includes(country)) {
+      console.log('[DBG][middleware] Geo-blocked request from:', country, 'to:', pathname);
+      const url = request.nextUrl.clone();
+      url.pathname = '/geo-blocked';
+      return NextResponse.rewrite(url);
+    }
+  }
 
   console.log('[DBG][middleware] Request to:', pathname, 'from:', hostname);
 
