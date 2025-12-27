@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { SECTION_MAX_WIDTH } from '../../shared';
 import type { ActSectionProps } from '../../types';
 
 interface ModernActSectionProps extends ActSectionProps {
@@ -44,7 +45,7 @@ export default function ActSection({
 
       <div
         style={{
-          maxWidth: '1000px',
+          maxWidth: SECTION_MAX_WIDTH,
           margin: '0 auto',
           position: 'relative',
           zIndex: 1,

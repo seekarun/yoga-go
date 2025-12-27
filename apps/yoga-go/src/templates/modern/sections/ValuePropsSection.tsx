@@ -1,3 +1,4 @@
+import { SECTION_MAX_WIDTH } from '../../shared';
 import type { ValuePropsSectionProps } from '../../types';
 
 interface ModernValuePropsSectionProps extends ValuePropsSectionProps {
@@ -41,7 +42,7 @@ export default function ValuePropsSection({
       <div
         className="value-props-modern-grid"
         style={{
-          maxWidth: '1100px',
+          maxWidth: SECTION_MAX_WIDTH,
           margin: '0 auto',
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',

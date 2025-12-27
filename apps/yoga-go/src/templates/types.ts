@@ -41,6 +41,8 @@ export type TemplateId = 'classic' | 'modern';
 // Hero Section
 export interface HeroSectionProps {
   heroImage?: string;
+  heroImagePosition?: string; // Background position (e.g., "50% 50%")
+  heroImageZoom?: number; // Background size as percentage (100-200)
   heroImageAttribution?: UnsplashAttribution;
   headline: string;
   description: string;
@@ -76,6 +78,8 @@ export interface AboutSectionProps {
   videoCloudflareId?: string;
   videoStatus?: 'uploading' | 'processing' | 'ready' | 'error';
   imageUrl?: string;
+  imagePosition?: string;
+  imageZoom?: number;
   text?: string;
   expertName: string;
 }

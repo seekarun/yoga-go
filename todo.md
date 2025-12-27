@@ -138,3 +138,20 @@ DONE
 [x] LP: what about photo credit in actual website
 [x] LP: lock hero and footer sections.
 [x] FEAT: better landing page templates set up, expandable
+[x] FEAT: option to pin blog for display in landing page
+
+
+Hi Ian, 
+I am looking at Airwallex as a solution in my marketplace SaaS application. I already have a stripe implementation, and that works fine for the most part. But, their Stripe Connect solution does not work great for India. 
+India is important, as I expect a large portion of our vendor base to be in India.  
+
+I am now considering Airwallex (as an alternative for Stripe connect)   
+Is there a way for me to access sandbox env without a registered business? I am a solo founder, and am in the process of setting up my business.
+
+Thanks, Arun
+
+
+timeline app
+
+add multiple tasks that need to get done for a project.
+create sequence for the tasks

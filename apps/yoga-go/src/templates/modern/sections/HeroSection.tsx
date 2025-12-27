@@ -1,4 +1,4 @@
-import { UnsplashAttribution } from '../../shared';
+import { UnsplashAttribution, SECTION_MAX_WIDTH } from '../../shared';
 import type { HeroSectionProps } from '../../types';
 
 interface ModernHeroSectionProps extends HeroSectionProps {
@@ -7,6 +7,8 @@ interface ModernHeroSectionProps extends HeroSectionProps {
 
 export default function HeroSection({
   heroImage,
+  heroImagePosition = '50% 50%',
+  heroImageZoom = 100,
   heroImageAttribution,
   headline,
   description,
@@ -47,7 +49,7 @@ export default function HeroSection({
             display: 'grid',
             gridTemplateColumns: '1fr 1fr',
             minHeight: '600px',
-            maxWidth: '1200px',
+            maxWidth: SECTION_MAX_WIDTH,
             margin: '0 auto',
             position: 'relative',
             zIndex: 1,
@@ -183,9 +185,12 @@ export default function HeroSection({
                 borderRadius: '200px',
                 overflow: 'hidden',
                 boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
-                background: heroImage
-                  ? `url(${heroImage}) center/cover`
+                backgroundImage: heroImage
+                  ? `url(${heroImage})`
                   : 'linear-gradient(135deg, #374151 0%, #1f2937 100%)',
+                backgroundPosition: heroImage ? heroImagePosition : 'center',
+                backgroundSize: heroImage ? `${heroImageZoom}%` : 'cover',
+                backgroundRepeat: 'no-repeat',
               }}
             />
           </div>
@@ -208,9 +213,12 @@ export default function HeroSection({
             borderRadius: '100px',
             overflow: 'hidden',
             boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
-            background: heroImage
-              ? `url(${heroImage}) center/cover`
+            backgroundImage: heroImage
+              ? `url(${heroImage})`
               : 'linear-gradient(135deg, #374151 0%, #1f2937 100%)',
+            backgroundPosition: heroImage ? heroImagePosition : 'center',
+            backgroundSize: heroImage ? `${heroImageZoom}%` : 'cover',
+            backgroundRepeat: 'no-repeat',
           }}
         />
 

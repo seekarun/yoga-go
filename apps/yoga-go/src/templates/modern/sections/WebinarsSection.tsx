@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { SECTION_MAX_WIDTH } from '../../shared';
 import type { WebinarsSectionProps } from '../../types';
 import { formatPrice } from '@/lib/currency/currencyService';
 
@@ -27,7 +28,9 @@ export default function WebinarsSection({ title, description, webinars }: Webina
         }}
       />
 
-      <div style={{ maxWidth: '1200px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
+      <div
+        style={{ maxWidth: SECTION_MAX_WIDTH, margin: '0 auto', position: 'relative', zIndex: 1 }}
+      >
         {/* Section Header */}
         <div style={{ textAlign: 'center', marginBottom: '60px' }}>
           <h2

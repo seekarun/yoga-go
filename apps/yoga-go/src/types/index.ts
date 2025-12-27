@@ -87,6 +87,8 @@ export interface CustomLandingPageConfig {
   };
   hero?: {
     heroImage?: string; // Hero background image URL
+    heroImagePosition?: string; // Background position (e.g., "50% 50%")
+    heroImageZoom?: number; // Background size as percentage (100-200)
     heroImageAttribution?: {
       // Photo attribution (for Pexels or other sources)
       photographerName: string;
@@ -117,6 +119,8 @@ export interface CustomLandingPageConfig {
     videoCloudflareId?: string; // Cloudflare Stream video UID for video layout
     videoStatus?: 'uploading' | 'processing' | 'ready' | 'error';
     imageUrl?: string; // Image URL for image-text layout
+    imagePosition?: string; // Background position (e.g., "50% 50%")
+    imageZoom?: number; // Background size as percentage (100-200)
     text?: string; // Text content for image-text layout
   };
   act?: {

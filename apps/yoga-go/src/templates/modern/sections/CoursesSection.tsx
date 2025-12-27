@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { SECTION_MAX_WIDTH } from '../../shared';
 import type { CoursesSectionProps } from '../../types';
 
 export default function CoursesSection({ title, description, courses }: CoursesSectionProps) {
@@ -15,7 +16,7 @@ export default function CoursesSection({ title, description, courses }: CoursesS
         position: 'relative',
       }}
     >
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      <div style={{ maxWidth: SECTION_MAX_WIDTH, margin: '0 auto' }}>
         {/* Section Header */}
         <div style={{ textAlign: 'center', marginBottom: '60px' }}>
           <h2

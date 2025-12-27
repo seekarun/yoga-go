@@ -1,3 +1,4 @@
+import { SECTION_MAX_WIDTH } from '../../shared';
 import type { AboutSectionProps } from '../../types';
 
 export default function AboutSection({
@@ -5,6 +6,8 @@ export default function AboutSection({
   videoCloudflareId,
   videoStatus,
   imageUrl,
+  imagePosition = '50% 50%',
+  imageZoom = 100,
   text,
   expertName,
 }: AboutSectionProps) {
@@ -40,7 +43,7 @@ export default function AboutSection({
 
       <div
         style={{
-          maxWidth: '1100px',
+          maxWidth: SECTION_MAX_WIDTH,
           margin: '0 auto',
           position: 'relative',
           zIndex: 1,
@@ -127,16 +130,16 @@ export default function AboutSection({
               />
 
               {imageUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={imageUrl}
-                  alt="About"
+                <div
                   style={{
                     width: '100%',
                     height: '500px',
-                    objectFit: 'cover',
                     borderRadius: '20px',
                     boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+                    backgroundImage: `url(${imageUrl})`,
+                    backgroundPosition: imagePosition,
+                    backgroundSize: `${imageZoom}%`,
+                    backgroundRepeat: 'no-repeat',
                   }}
                 />
               )}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { SECTION_MAX_WIDTH } from '@/templates/shared';
 
 interface GalleryImage {
   id: string;
@@ -197,7 +198,9 @@ export default function PhotoGalleryLightbox({
         }}
       />
 
-      <div style={{ maxWidth: '1100px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
+      <div
+        style={{ maxWidth: SECTION_MAX_WIDTH, margin: '0 auto', position: 'relative', zIndex: 1 }}
+      >
         {/* Section Header */}
         <div style={{ textAlign: 'center', marginBottom: '60px' }}>
           <h2
@@ -353,7 +356,7 @@ export default function PhotoGalleryLightbox({
   // Classic/Light theme - Carousel layout
   const renderCarousel = () => (
     <section style={styles.section}>
-      <div className="container" style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      <div className="container" style={{ maxWidth: SECTION_MAX_WIDTH, margin: '0 auto' }}>
         <h2 style={styles.title}>{title}</h2>
         {description && <p style={styles.description}>{description}</p>}
 

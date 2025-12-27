@@ -465,6 +465,23 @@ export default function PreviewPane({
             aria-label="Landing page preview"
           >
             <LandingPageThemeProvider palette={data.theme?.palette}>
+              {/* Override responsive styles based on preview mode */}
+              {viewMode === 'mobile' && (
+                <style
+                  dangerouslySetInnerHTML={{
+                    __html: `
+                      .hero-section-mobile { display: block !important; }
+                      .hero-section-desktop { display: none !important; }
+                      .courses-grid, .webinars-grid { grid-template-columns: 1fr !important; }
+                      .value-props-grid { grid-template-columns: 1fr !important; }
+                      .about-grid { grid-template-columns: 1fr !important; }
+                      .act-grid { grid-template-columns: 1fr !important; }
+                      .footer-grid { grid-template-columns: 1fr !important; text-align: center; }
+                      .gallery-grid { grid-template-columns: repeat(2, 1fr) !important; }
+                    `,
+                  }}
+                />
+              )}
               {visibleSections.length === 0 ? (
                 <div className="flex items-center justify-center h-96 text-gray-400">
                   <div className="text-center">

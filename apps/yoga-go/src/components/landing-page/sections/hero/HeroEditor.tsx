@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import PexelsImagePicker from '@/components/PexelsImagePicker';
+import ImageSelector from '@/components/ImageSelector';
 import CTAButtonConfig, { type CTAConfig } from '../../CTAButtonConfig';
 import type { SectionEditorProps, HeroFormData } from '../types';
 
-export default function HeroEditor({ data, onChange, expertId, onError }: SectionEditorProps) {
+export default function HeroEditor({ data, onChange, expertId }: SectionEditorProps) {
   const [formData, setFormData] = useState<HeroFormData>({
     heroImage: data.hero?.heroImage || '',
     headline: data.hero?.headline || '',
@@ -14,7 +14,6 @@ export default function HeroEditor({ data, onChange, expertId, onError }: Sectio
     ctaLink: data.hero?.ctaLink || '#courses',
     alignment: data.hero?.alignment || 'center',
   });
-  const [showImageUpload, setShowImageUpload] = useState(false);
 
   // Sync with parent data when it changes externally
   useEffect(() => {
@@ -35,7 +34,6 @@ export default function HeroEditor({ data, onChange, expertId, onError }: Sectio
     const updated = { ...formData, [name]: value };
     setFormData(updated);
 
-    // Propagate changes to parent
     onChange({
       hero: {
         ...data.hero,
@@ -49,30 +47,28 @@ export default function HeroEditor({ data, onChange, expertId, onError }: Sectio
     });
   };
 
-  const handleImageSelect = (imageUrl: string) => {
-    console.log('[DBG][HeroEditor] Image selected:', imageUrl);
-
-    const updated = { ...formData, heroImage: imageUrl };
+  const handleImageChange = (imageData: {
+    imageUrl?: string;
+    imagePosition?: string;
+    imageZoom?: number;
+  }) => {
+    const updated = { ...formData, heroImage: imageData.imageUrl || '' };
     setFormData(updated);
-    // Don't close picker - let user try multiple images before clicking Done
 
     onChange({
       hero: {
         ...data.hero,
-        heroImage: imageUrl,
-        heroImageAttribution: undefined, // Pexels doesn't require attribution
-        headline: updated.headline || undefined,
-        description: updated.description || undefined,
-        ctaText: updated.ctaText || 'Explore Courses',
-        ctaLink: updated.ctaLink || undefined,
-        alignment: updated.alignment,
+        heroImage: imageData.imageUrl,
+        heroImagePosition: imageData.imagePosition,
+        heroImageZoom: imageData.imageZoom,
+        heroImageAttribution: undefined,
+        headline: formData.headline || undefined,
+        description: formData.description || undefined,
+        ctaText: formData.ctaText || 'Explore Courses',
+        ctaLink: formData.ctaLink || undefined,
+        alignment: formData.alignment,
       },
     });
-  };
-
-  const handleUploadError = (error: string) => {
-    console.error('[DBG][HeroEditor] Upload error:', error);
-    onError?.(error);
   };
 
   const handleCTAChange = (config: CTAConfig) => {
@@ -106,91 +102,15 @@ export default function HeroEditor({ data, onChange, expertId, onError }: Sectio
       </div>
 
       {/* Hero Image */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Hero Background Image
-        </label>
-
-        {/* Show thumbnail with edit icon when image exists and not editing */}
-        {formData.heroImage && !showImageUpload ? (
-          <div className="relative inline-block group">
-            <img
-              src={formData.heroImage}
-              alt="Hero background"
-              className="rounded-lg border border-gray-300 object-cover"
-              style={{ width: '240px', height: '75px' }}
-            />
-            <button
-              type="button"
-              onClick={() => setShowImageUpload(true)}
-              className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg"
-              title="Change image"
-            >
-              <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="white"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-              </svg>
-            </button>
-          </div>
-        ) : !formData.heroImage && !showImageUpload ? (
-          /* Show add button when no image exists */
-          <button
-            type="button"
-            onClick={() => setShowImageUpload(true)}
-            className="flex items-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-blue-400 hover:text-blue-500 transition-colors"
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-              <circle cx="8.5" cy="8.5" r="1.5" />
-              <polyline points="21 15 16 10 5 21" />
-            </svg>
-            <span className="text-sm font-medium">Add hero image</span>
-          </button>
-        ) : (
-          /* Show image picker when editing */
-          <div className="space-y-3">
-            <PexelsImagePicker
-              width={1920}
-              height={600}
-              category="banner"
-              tenantId={expertId}
-              defaultSearchQuery="yoga meditation"
-              onImageSelect={handleImageSelect}
-              onError={handleUploadError}
-              relatedTo={{
-                type: 'expert',
-                id: expertId,
-              }}
-              currentImageUrl={formData.heroImage}
-            />
-            <button
-              type="button"
-              onClick={() => setShowImageUpload(false)}
-              className="text-sm text-gray-500 hover:text-gray-700"
-            >
-              Done
-            </button>
-          </div>
-        )}
-      </div>
+      <ImageSelector
+        imageUrl={data.hero?.heroImage}
+        imagePosition={data.hero?.heroImagePosition}
+        imageZoom={data.hero?.heroImageZoom}
+        tenantId={expertId}
+        onChange={handleImageChange}
+        label="Hero Background Image"
+        defaultSearchQuery="yoga meditation"
+      />
 
       {/* Problem Hook (Headline) */}
       <div>

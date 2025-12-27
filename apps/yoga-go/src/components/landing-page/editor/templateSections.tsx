@@ -112,6 +112,8 @@ export function renderTemplateSection(
       return (
         <HeroSection
           heroImage={customHero?.heroImage}
+          heroImagePosition={customHero?.heroImagePosition}
+          heroImageZoom={customHero?.heroImageZoom}
           heroImageAttribution={customHero?.heroImageAttribution}
           headline={customHero?.headline || `Transform Your\nPractice with ${expertName}`}
           description={customHero?.description || expertBio || ''}
@@ -151,6 +153,8 @@ export function renderTemplateSection(
           videoCloudflareId={about?.videoCloudflareId}
           videoStatus={about?.videoStatus}
           imageUrl={about?.imageUrl}
+          imagePosition={about?.imagePosition}
+          imageZoom={about?.imageZoom}
           text={about?.text}
           expertName={expertName}
         />

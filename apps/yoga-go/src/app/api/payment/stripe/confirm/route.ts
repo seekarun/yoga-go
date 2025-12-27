@@ -101,6 +101,8 @@ export async function POST(request: Request) {
     }
 
     // Grant access based on type
+    let expertIdForTracking: string | null = null;
+
     if (type === 'boost') {
       // Boost payment - no enrollment needed
       // The boost status will be updated by the confirm-payment endpoint
@@ -122,6 +124,10 @@ export async function POST(request: Request) {
       }
 
       console.log(`[DBG][stripe] Enrolled user ${userId} in course ${itemId}`);
+
+      // Get the course to track the expert
+      const course = await courseRepository.getCourseById(itemId);
+      expertIdForTracking = course?.instructor?.id || null;
     } else if (type === 'webinar') {
       // Register user for webinar
       const { registerUserForWebinar } = await import('@/lib/enrollment');
@@ -139,6 +145,29 @@ export async function POST(request: Request) {
       }
 
       console.log(`[DBG][stripe] Registered user ${userId} for webinar ${itemId}`);
+
+      // Get the webinar to track the expert
+      const webinar = await webinarRepository.getWebinarById(itemId);
+      expertIdForTracking = webinar?.expertId || null;
+    }
+
+    // Track user-expert relationship for expert dashboard visibility
+    if (expertIdForTracking) {
+      try {
+        const user = await userRepository.getUserById(userId);
+        if (user) {
+          const existingExperts = user.signupExperts || [];
+          if (!existingExperts.includes(expertIdForTracking)) {
+            await userRepository.addSignupExperts(userId, [expertIdForTracking]);
+            console.log(
+              `[DBG][stripe] Added expert ${expertIdForTracking} to user ${userId} signupExperts`
+            );
+          }
+        }
+      } catch (trackingError) {
+        // Log but don't fail - tracking is not critical
+        console.error('[DBG][stripe] Failed to update signupExperts:', trackingError);
+      }
     }
 
     // Send invoice/confirmation email

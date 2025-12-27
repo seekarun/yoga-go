@@ -53,12 +53,12 @@ function FixedItem({ id, isDisabled, position, onToggle, onSelect }: FixedItemPr
 
   return (
     <div
-      className={`flex items-center gap-3 p-4 bg-gray-50 border rounded-lg border-gray-200 ${
+      className={`flex items-start gap-3 p-4 bg-gray-50 border rounded-lg border-gray-200 ${
         isDisabled ? 'opacity-50' : ''
       }`}
     >
       {/* Lock Icon (instead of drag handle) */}
-      <div className="p-1 text-gray-300" title={`${section.label} is fixed at ${position}`}>
+      <div className="p-1 mt-0.5 text-gray-300" title={`${section.label} is fixed at ${position}`}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
           <path d="M12 1C8.676 1 6 3.676 6 7v2H4v14h16V9h-2V7c0-3.324-2.676-6-6-6zm0 2c2.276 0 4 1.724 4 4v2H8V7c0-2.276 1.724-4 4-4zm0 10c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2z" />
         </svg>
@@ -66,7 +66,7 @@ function FixedItem({ id, isDisabled, position, onToggle, onSelect }: FixedItemPr
 
       {/* Section Icon */}
       <div
-        className="flex-shrink-0"
+        className="flex-shrink-0 mt-0.5"
         style={{ color: isDisabled ? '#9ca3af' : 'var(--color-primary)' }}
       >
         {section.icon}
@@ -94,7 +94,7 @@ function FixedItem({ id, isDisabled, position, onToggle, onSelect }: FixedItemPr
       {/* Toggle Switch - disabled for hero */}
       {isHero ? (
         <div
-          className="relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent cursor-not-allowed"
+          className="relative inline-flex h-6 w-11 flex-shrink-0 mt-0.5 rounded-full border-2 border-transparent cursor-not-allowed"
           style={{ background: 'var(--color-primary)' }}
           title="Hero section is always visible"
         >
@@ -106,7 +106,7 @@ function FixedItem({ id, isDisabled, position, onToggle, onSelect }: FixedItemPr
             e.stopPropagation();
             onToggle();
           }}
-          className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+          className={`relative inline-flex h-6 w-11 flex-shrink-0 mt-0.5 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 ${
             isDisabled ? 'bg-gray-200' : ''
           }`}
           style={{ background: isDisabled ? undefined : 'var(--color-primary)' }}
@@ -148,7 +148,7 @@ function SortableItem({ id, isDisabled, onToggle, onSelect }: SortableItemProps)
           ? ({ '--tw-ring-color': 'var(--color-primary)' } as React.CSSProperties)
           : {}),
       }}
-      className={`flex items-center gap-3 p-4 bg-white border rounded-lg ${
+      className={`flex items-start gap-3 p-4 bg-white border rounded-lg ${
         isDragging ? 'shadow-lg ring-2' : 'border-gray-200 hover:border-gray-300'
       } ${isDisabled ? 'opacity-50' : ''}`}
     >
@@ -156,7 +156,7 @@ function SortableItem({ id, isDisabled, onToggle, onSelect }: SortableItemProps)
       <button
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing p-1 text-gray-400 hover:text-gray-600"
+        className="cursor-grab active:cursor-grabbing p-1 mt-0.5 text-gray-400 hover:text-gray-600"
         title="Drag to reorder"
       >
         <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -166,7 +166,7 @@ function SortableItem({ id, isDisabled, onToggle, onSelect }: SortableItemProps)
 
       {/* Section Icon */}
       <div
-        className="flex-shrink-0"
+        className="flex-shrink-0 mt-0.5"
         style={{ color: isDisabled ? '#9ca3af' : 'var(--color-primary)' }}
       >
         {section.icon}
@@ -196,7 +196,7 @@ function SortableItem({ id, isDisabled, onToggle, onSelect }: SortableItemProps)
           e.stopPropagation();
           onToggle();
         }}
-        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+        className={`relative inline-flex h-6 w-11 flex-shrink-0 mt-0.5 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 ${
           isDisabled ? 'bg-gray-200' : ''
         }`}
         style={{ background: isDisabled ? undefined : 'var(--color-primary)' }}

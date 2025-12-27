@@ -37,6 +37,8 @@ export default function ClassicTemplate({ data, config, context }: TemplateProps
   const customHero = expert.customLandingPage?.hero;
   const heroProps: HeroSectionProps & { resolveCtaLink: typeof resolveCtaLink } = {
     heroImage: customHero?.heroImage,
+    heroImagePosition: customHero?.heroImagePosition,
+    heroImageZoom: customHero?.heroImageZoom,
     heroImageAttribution: customHero?.heroImageAttribution,
     headline: customHero?.headline || `Transform Your\nPractice with ${expert.name}`,
     description: customHero?.description || expert.bio,
@@ -65,6 +67,8 @@ export default function ClassicTemplate({ data, config, context }: TemplateProps
     videoCloudflareId: about?.videoCloudflareId,
     videoStatus: about?.videoStatus,
     imageUrl: about?.imageUrl,
+    imagePosition: about?.imagePosition,
+    imageZoom: about?.imageZoom,
     text: about?.text,
     expertName: expert.name,
   };

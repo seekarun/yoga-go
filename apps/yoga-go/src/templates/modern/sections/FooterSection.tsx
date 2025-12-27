@@ -1,5 +1,5 @@
+import { SECTION_MAX_WIDTH, InstagramIcon, YouTubeIcon, FacebookIcon } from '../../shared';
 import type { FooterSectionProps } from '../../types';
-import { InstagramIcon, YouTubeIcon, FacebookIcon } from '../../shared/SocialIcons';
 
 export default function FooterSection({
   copyrightText,
@@ -61,7 +61,7 @@ export default function FooterSection({
         }}
       />
 
-      <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+      <div style={{ maxWidth: SECTION_MAX_WIDTH, margin: '0 auto' }}>
         {/* Main footer content */}
         <div
           className="footer-modern-grid"

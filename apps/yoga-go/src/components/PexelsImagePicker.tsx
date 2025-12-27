@@ -10,7 +10,11 @@ interface PexelsImagePickerProps {
   height: number;
   category: AssetCategory;
   tenantId: string;
-  onImageSelect: (imageUrl: string, attribution?: PexelsAttribution) => void;
+  onImageSelect: (
+    imageUrl: string,
+    attribution?: PexelsAttribution,
+    source?: 'pexels' | 'upload'
+  ) => void;
   onError?: (error: string) => void;
   relatedTo?: {
     type: 'expert' | 'user' | 'course' | 'lesson';
@@ -103,11 +107,11 @@ export default function PexelsImagePicker({
 
     try {
       // Return the hero-optimized URL (no attribution needed - Pexels license doesn't require it)
-      onImageSelect(image.urls.hero);
+      onImageSelect(image.urls.hero, undefined, 'pexels');
       console.log('[DBG][PexelsImagePicker] Image selected:', image.urls.hero);
     } catch (error) {
       console.error('[DBG][PexelsImagePicker] Selection error:', error);
-      onImageSelect(image.urls.hero);
+      onImageSelect(image.urls.hero, undefined, 'pexels');
     } finally {
       setSelecting(false);
       setSelectedImage(null);
@@ -117,7 +121,7 @@ export default function PexelsImagePicker({
   const handleUploadComplete = (asset: Asset) => {
     const imageUrl = asset.croppedUrl || asset.originalUrl;
     console.log('[DBG][PexelsImagePicker] Upload complete:', imageUrl);
-    onImageSelect(imageUrl);
+    onImageSelect(imageUrl, undefined, 'upload');
   };
 
   return (
@@ -175,20 +179,34 @@ export default function PexelsImagePicker({
       {activeTab === 'pexels' && (
         <div className="space-y-4">
           {/* Search Form */}
-          <form onSubmit={handleSearch} className="flex gap-2">
+          <form onSubmit={handleSearch} className="relative">
             <input
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Search for images..."
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 font-medium"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-blue-600 disabled:text-gray-300"
             >
-              {loading ? 'Searching...' : 'Search'}
+              {loading ? (
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
+              ) : (
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="M21 21l-4.35-4.35" />
+                </svg>
+              )}
             </button>
           </form>
 
@@ -246,41 +264,46 @@ export default function PexelsImagePicker({
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="flex justify-center gap-2 pt-2">
+                <div className="flex justify-center items-center gap-4 pt-2">
                   <button
                     type="button"
                     onClick={() => handlePageChange(page - 1)}
                     disabled={page === 1 || loading}
-                    className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-1.5 text-gray-500 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
                   >
-                    Previous
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path d="M15 18l-6-6 6-6" />
+                    </svg>
                   </button>
-                  <span className="px-3 py-1 text-sm text-gray-600">
-                    Page {page} of {totalPages}
+                  <span className="text-sm text-gray-600">
+                    {page} / {totalPages}
                   </span>
                   <button
                     type="button"
                     onClick={() => handlePageChange(page + 1)}
                     disabled={page === totalPages || loading}
-                    className="px-3 py-1 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-1.5 text-gray-500 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
                   >
-                    Next
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path d="M9 18l6-6-6-6" />
+                    </svg>
                   </button>
                 </div>
               )}
-
-              {/* Pexels Attribution */}
-              <p className="text-xs text-gray-400 text-center">
-                Photos provided by{' '}
-                <a
-                  href="https://www.pexels.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline hover:text-gray-600"
-                >
-                  Pexels
-                </a>
-              </p>
             </>
           )}
 

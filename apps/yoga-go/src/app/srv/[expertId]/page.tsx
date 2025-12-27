@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import type { Course, SupportedCurrency } from '@/types';
+import type { Course, SupportedCurrency, Email } from '@/types';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { formatPrice } from '@/lib/currency/currencyService';
 
@@ -17,49 +17,23 @@ interface StripeBalanceData {
   };
 }
 
-interface AnalyticsData {
-  expertId: string;
-  period: string;
-  overview: {
-    totalCourses: number;
-    publishedCourses: number;
-    totalViews: number;
-    uniqueViewers: number;
-    enrollClicks: number;
-    totalEnrollments: number;
-    totalRevenue: number;
-    currency: string;
-  };
-  conversion: {
-    avgConversionRate: number;
-    avgClickToPaymentRate: number;
-    avgPaymentSuccessRate: number;
-  };
-  engagement: {
-    totalWatchTimeMinutes: number;
-    avgCompletionRate: number;
-  };
-  topPerformingCourses: Array<{
-    courseId: string;
-    title: string;
-    views: number;
-    enrollClicks: number;
-    enrollments: number;
-    revenue: number;
-  }>;
-}
-
 export default function ExpertDashboard() {
   const params = useParams();
+  const router = useRouter();
   const expertId = params.expertId as string;
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stripeBalance, setStripeBalance] = useState<StripeBalanceData | null>(null);
   const [loadingBalance, setLoadingBalance] = useState(true);
-  const [period, setPeriod] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
-  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
-  const [loadingAnalytics, setLoadingAnalytics] = useState(true);
+
+  // Inbox state
+  const [emails, setEmails] = useState<Email[]>([]);
+  const [loadingEmails, setLoadingEmails] = useState(true);
+  const [emailsLastKey, setEmailsLastKey] = useState<string | undefined>(undefined);
+  const [emailsHasMore, setEmailsHasMore] = useState(false);
+  const [loadingMoreEmails, setLoadingMoreEmails] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const fetchExpertCourses = useCallback(async () => {
     try {
@@ -103,40 +77,86 @@ export default function ExpertDashboard() {
     }
   }, []);
 
-  const fetchAnalytics = useCallback(async () => {
+  const fetchEmails = useCallback(async (append = false, lastKey?: string) => {
     try {
-      setLoadingAnalytics(true);
-      console.log('[DBG][expert-dashboard] Fetching analytics:', expertId, period);
+      if (!append) {
+        setLoadingEmails(true);
+      } else {
+        setLoadingMoreEmails(true);
+      }
 
-      const response = await fetch(`/api/srv/experts/${expertId}/analytics?period=${period}`);
+      const queryParams = new URLSearchParams();
+      queryParams.set('limit', '20');
+
+      if (lastKey) {
+        queryParams.set('lastKey', lastKey);
+      }
+
+      console.log('[DBG][expert-dashboard] Fetching emails');
+
+      const response = await fetch(`/data/app/expert/me/inbox?${queryParams.toString()}`);
       const data = await response.json();
 
-      if (data.success) {
-        setAnalytics(data.data);
-        console.log('[DBG][expert-dashboard] Analytics loaded:', data.data);
+      if (data.success && data.data) {
+        if (append) {
+          setEmails(prev => [...prev, ...data.data.emails]);
+        } else {
+          setEmails(data.data.emails);
+        }
+        setUnreadCount(data.data.unreadCount || 0);
+        setEmailsLastKey(data.data.lastKey);
+        setEmailsHasMore(!!data.data.lastKey);
       }
     } catch (err) {
-      console.error('[DBG][expert-dashboard] Error fetching analytics:', err);
+      console.error('[DBG][expert-dashboard] Error fetching emails:', err);
     } finally {
-      setLoadingAnalytics(false);
+      setLoadingEmails(false);
+      setLoadingMoreEmails(false);
     }
-  }, [expertId, period]);
+  }, []);
+
+  const handleEmailClick = async (email: Email) => {
+    // Mark as read if not already read
+    if (!email.isRead) {
+      try {
+        await fetch(`/data/app/expert/me/inbox/${email.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ isRead: true }),
+        });
+        setEmails(prev => prev.map(e => (e.id === email.id ? { ...e, isRead: true } : e)));
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      } catch (err) {
+        console.log('[DBG][expert-dashboard] Failed to mark as read:', err);
+      }
+    }
+    router.push(`/srv/${expertId}/inbox/${email.id}`);
+  };
+
+  const formatEmailDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else if (diffDays === 1) {
+      return 'Yesterday';
+    } else if (diffDays < 7) {
+      return date.toLocaleDateString([], { weekday: 'short' });
+    } else {
+      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    }
+  };
 
   useEffect(() => {
     fetchExpertCourses();
     fetchStripeBalance();
-  }, [fetchExpertCourses, fetchStripeBalance]);
-
-  useEffect(() => {
-    fetchAnalytics();
-  }, [fetchAnalytics]);
+    fetchEmails();
+  }, [fetchExpertCourses, fetchStripeBalance, fetchEmails]);
 
   // Format currency amount (from cents to dollars)
   const formatAmount = (amount: number, currency: string) => {
-    return formatPrice(amount / 100, currency as SupportedCurrency);
-  };
-
-  const formatCurrency = (amount: number, currency: string) => {
     return formatPrice(amount / 100, currency as SupportedCurrency);
   };
 
@@ -295,268 +315,246 @@ export default function ExpertDashboard() {
           </div>
         </div>
 
-        {/* Analytics Section Header with Period Selector */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <h2 className="text-xl font-bold text-gray-900">Analytics</h2>
-          <div className="flex gap-2">
-            {(['7d', '30d', '90d', 'all'] as const).map(p => (
-              <button
-                key={p}
-                onClick={() => setPeriod(p)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  period === p
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+        {/* Quick Actions */}
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Link
+            href={`/srv/${expertId}/courses`}
+            className="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow group"
+          >
+            <div className="flex items-center gap-4">
+              <div
+                className="w-12 h-12 rounded-lg flex items-center justify-center"
+                style={{ background: 'color-mix(in srgb, var(--color-primary) 10%, white)' }}
               >
-                {p === 'all'
-                  ? 'All Time'
-                  : p === '7d'
-                    ? '7 Days'
-                    : p === '30d'
-                      ? '30 Days'
-                      : '90 Days'}
-              </button>
-            ))}
-          </div>
+                <svg
+                  className="w-6 h-6"
+                  style={{ color: 'var(--color-primary)' }}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                  />
+                </svg>
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900 group-hover:text-blue-600">Courses</p>
+                <p className="text-sm text-gray-500">Manage your courses</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            href={`/srv/${expertId}/analytics`}
+            className="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow group"
+          >
+            <div className="flex items-center gap-4">
+              <div
+                className="w-12 h-12 rounded-lg flex items-center justify-center"
+                style={{ background: 'color-mix(in srgb, var(--color-primary) 10%, white)' }}
+              >
+                <svg
+                  className="w-6 h-6"
+                  style={{ color: 'var(--color-primary)' }}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900 group-hover:text-blue-600">Analytics</p>
+                <p className="text-sm text-gray-500">View performance data</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            href={`/srv/${expertId}/webinars`}
+            className="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow group"
+          >
+            <div className="flex items-center gap-4">
+              <div
+                className="w-12 h-12 rounded-lg flex items-center justify-center"
+                style={{ background: 'color-mix(in srgb, var(--color-primary) 10%, white)' }}
+              >
+                <svg
+                  className="w-6 h-6"
+                  style={{ color: 'var(--color-primary)' }}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900 group-hover:text-blue-600">
+                  Live Sessions
+                </p>
+                <p className="text-sm text-gray-500">Manage webinars</p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            href={`/srv/${expertId}/landing-page`}
+            className="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow group"
+          >
+            <div className="flex items-center gap-4">
+              <div
+                className="w-12 h-12 rounded-lg flex items-center justify-center"
+                style={{ background: 'color-mix(in srgb, var(--color-primary) 10%, white)' }}
+              >
+                <svg
+                  className="w-6 h-6"
+                  style={{ color: 'var(--color-primary)' }}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <p className="font-semibold text-gray-900 group-hover:text-blue-600">
+                  Landing Page
+                </p>
+                <p className="text-sm text-gray-500">Customize your page</p>
+              </div>
+            </div>
+          </Link>
         </div>
 
-        {loadingAnalytics ? (
-          <div className="flex items-center justify-center py-12">
-            <LoadingSpinner size="md" message="Loading analytics..." />
-          </div>
-        ) : analytics ? (
-          <>
-            {/* Analytics Overview Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-gray-600">Total Views</p>
-                  <span className="text-2xl">👁️</span>
-                </div>
-                <p className="text-3xl font-bold text-gray-900">
-                  {analytics.overview.totalViews.toLocaleString()}
-                </p>
-                <p className="text-sm text-gray-500 mt-1">
-                  {analytics.overview.uniqueViewers.toLocaleString()} unique viewers
-                </p>
-              </div>
-
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-gray-600">Enrollments</p>
-                  <span className="text-2xl">✅</span>
-                </div>
-                <p className="text-3xl font-bold text-gray-900">
-                  {analytics.overview.totalEnrollments.toLocaleString()}
-                </p>
-                <p className="text-sm text-gray-500 mt-1">
-                  From {analytics.overview.enrollClicks} clicks
-                </p>
-              </div>
-
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-gray-600">Total Revenue</p>
-                  <span className="text-2xl">💵</span>
-                </div>
-                <p className="text-3xl font-bold text-gray-900">
-                  {formatCurrency(analytics.overview.totalRevenue, analytics.overview.currency)}
-                </p>
-                <p className="text-sm text-gray-500 mt-1">
-                  Across {analytics.overview.totalCourses} courses
-                </p>
-              </div>
-
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm text-gray-600">Conversion Rate</p>
-                  <span className="text-2xl">📈</span>
-                </div>
-                <p className="text-3xl font-bold text-gray-900">
-                  {analytics.conversion.avgConversionRate}%
-                </p>
-                <p className="text-sm text-gray-500 mt-1">Click to enrollment</p>
-              </div>
-            </div>
-
-            {/* Conversion Metrics */}
-            <div className="bg-white rounded-lg shadow mb-8">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-bold text-gray-900">Conversion Funnel</h3>
-              </div>
-              <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-sm font-medium text-gray-700">Click → Payment</p>
-                      <span className="text-lg font-bold text-blue-600">
-                        {analytics.conversion.avgClickToPaymentRate}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
-                      <div
-                        className="bg-blue-600 h-2.5 rounded-full"
-                        style={{
-                          width: `${Math.min(analytics.conversion.avgClickToPaymentRate, 100)}%`,
-                        }}
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">Users who initiated payment</p>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-sm font-medium text-gray-700">Payment Success</p>
-                      <span className="text-lg font-bold text-green-600">
-                        {analytics.conversion.avgPaymentSuccessRate}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
-                      <div
-                        className="bg-green-600 h-2.5 rounded-full"
-                        style={{
-                          width: `${Math.min(analytics.conversion.avgPaymentSuccessRate, 100)}%`,
-                        }}
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">Payments that succeeded</p>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-sm font-medium text-gray-700">Overall Conversion</p>
-                      <span className="text-lg font-bold text-purple-600">
-                        {analytics.conversion.avgConversionRate}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
-                      <div
-                        className="bg-purple-600 h-2.5 rounded-full"
-                        style={{
-                          width: `${Math.min(analytics.conversion.avgConversionRate, 100)}%`,
-                        }}
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">Click to enrollment rate</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Engagement Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Watch Time</h3>
-                <div className="flex items-center gap-4">
-                  <span className="text-5xl">⏱️</span>
-                  <div>
-                    <p className="text-3xl font-bold text-gray-900">
-                      {Math.floor(analytics.engagement.totalWatchTimeMinutes / 60)}h{' '}
-                      {analytics.engagement.totalWatchTimeMinutes % 60}m
-                    </p>
-                    <p className="text-sm text-gray-500">Total watch time</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Course Completion</h3>
-                <div className="flex items-center gap-4">
-                  <span className="text-5xl">🎓</span>
-                  <div>
-                    <p className="text-3xl font-bold text-gray-900">
-                      {analytics.engagement.avgCompletionRate}%
-                    </p>
-                    <p className="text-sm text-gray-500">Average completion rate</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Top Performing Courses */}
-            {analytics.topPerformingCourses.length > 0 && (
-              <div className="bg-white rounded-lg shadow">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <h3 className="text-lg font-bold text-gray-900">Top Performing Courses</h3>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Course
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Views
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Clicks
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Enrollments
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Revenue
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {analytics.topPerformingCourses.map(course => (
-                        <tr key={course.courseId} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <Link
-                              href={`/srv/${expertId}/courses/${course.courseId}`}
-                              className="text-sm font-medium text-blue-600 hover:text-blue-700"
-                            >
-                              {course.title}
-                            </Link>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {course.views.toLocaleString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {course.enrollClicks.toLocaleString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {course.enrollments.toLocaleString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
-                            {formatCurrency(course.revenue, analytics.overview.currency)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {analytics.topPerformingCourses.length === 0 && (
-              <div className="bg-white rounded-lg shadow p-12 text-center">
-                <div className="text-6xl mb-4">📊</div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No Analytics Data Yet</h3>
-                <p className="text-gray-600 mb-4">
-                  Analytics data will appear here once your courses start receiving views and
-                  enrollments.
-                </p>
-                <Link
-                  href={`/srv/${expertId}/courses`}
-                  className="inline-flex items-center px-6 py-3 text-white font-semibold rounded-lg transition-colors"
+        {/* Inbox Section */}
+        <div className="mt-8">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl font-bold text-gray-900">Inbox</h2>
+              {unreadCount > 0 && (
+                <span
+                  className="px-2.5 py-0.5 text-xs font-medium text-white rounded-full"
                   style={{ background: 'var(--color-primary)' }}
                 >
-                  View My Courses
-                </Link>
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="bg-white rounded-lg shadow p-12 text-center">
-            <div className="text-6xl mb-4">📊</div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Analytics Unavailable</h3>
-            <p className="text-gray-600">Unable to load analytics data at this time.</p>
+                  {unreadCount} unread
+                </span>
+              )}
+            </div>
+            <Link
+              href={`/srv/${expertId}/inbox`}
+              className="text-sm font-medium hover:underline"
+              style={{ color: 'var(--color-primary)' }}
+            >
+              View all →
+            </Link>
           </div>
-        )}
+
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            {loadingEmails ? (
+              <div className="p-8 text-center">
+                <LoadingSpinner size="md" message="Loading emails..." />
+              </div>
+            ) : emails.length === 0 ? (
+              <div className="p-8 text-center">
+                <div className="text-4xl mb-3">📭</div>
+                <p className="text-gray-500">No emails yet</p>
+                <p className="text-sm text-gray-400 mt-1">
+                  Messages from students will appear here
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="divide-y divide-gray-100">
+                  {emails.map(email => (
+                    <button
+                      key={email.id}
+                      onClick={() => handleEmailClick(email)}
+                      className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${
+                        !email.isRead ? 'bg-blue-50/50' : ''
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        {/* Unread indicator */}
+                        <div className="flex-shrink-0 pt-2">
+                          {!email.isRead ? (
+                            <div
+                              className="w-2 h-2 rounded-full"
+                              style={{ background: 'var(--color-primary)' }}
+                            />
+                          ) : (
+                            <div className="w-2 h-2" />
+                          )}
+                        </div>
+
+                        {/* Email content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2 mb-0.5">
+                            <span
+                              className={`text-sm truncate ${
+                                !email.isRead ? 'font-semibold text-gray-900' : 'text-gray-700'
+                              }`}
+                            >
+                              {email.from.name || email.from.email}
+                            </span>
+                            <span className="text-xs text-gray-400 flex-shrink-0">
+                              {formatEmailDate(email.receivedAt)}
+                            </span>
+                          </div>
+                          <p
+                            className={`text-sm truncate ${
+                              !email.isRead ? 'font-medium text-gray-800' : 'text-gray-600'
+                            }`}
+                          >
+                            {email.subject}
+                          </p>
+                          {email.bodyText && (
+                            <p className="text-xs text-gray-400 truncate mt-0.5">
+                              {email.bodyText.slice(0, 80)}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Load more button */}
+                {emailsHasMore && (
+                  <div className="p-3 border-t border-gray-100">
+                    <button
+                      onClick={() => fetchEmails(true, emailsLastKey)}
+                      disabled={loadingMoreEmails}
+                      className="w-full py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      {loadingMoreEmails ? 'Loading...' : 'Load more emails'}
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
       </div>
     </>
   );

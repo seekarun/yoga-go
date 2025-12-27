@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { SECTION_MAX_WIDTH } from '../../shared';
 import type { BlogSectionProps } from '../../types';
 
 export default function BlogSection({ title, description, latestPost }: BlogSectionProps) {
@@ -10,7 +11,7 @@ export default function BlogSection({ title, description, latestPost }: BlogSect
         position: 'relative',
       }}
     >
-      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+      <div style={{ maxWidth: SECTION_MAX_WIDTH, margin: '0 auto' }}>
         {/* Section Header */}
         <div style={{ textAlign: 'center', marginBottom: '48px' }}>
           <h2

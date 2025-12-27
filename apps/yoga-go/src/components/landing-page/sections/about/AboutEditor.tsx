@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import ImageUploadCrop from '@/components/ImageUploadCrop';
+import ImageSelector from '@/components/ImageSelector';
 import VideoUpload from '@/components/VideoUpload';
 import type { VideoUploadResult } from '@/components/VideoUpload';
-import type { Asset } from '@/types';
 import type { SectionEditorProps, AboutFormData } from '../types';
 
 export default function AboutEditor({ data, onChange, expertId, onError }: SectionEditorProps) {
@@ -36,8 +35,7 @@ export default function AboutEditor({ data, onChange, expertId, onError }: Secti
     propagateChanges(updated);
   };
 
-  const propagateChanges = (updated: AboutFormData) => {
-    // Don't trim during typing
+  const propagateChanges = (updated: AboutFormData, imagePosition?: string, imageZoom?: number) => {
     const aboutSection =
       updated.layoutType === 'video' && updated.videoCloudflareId
         ? {
@@ -49,6 +47,8 @@ export default function AboutEditor({ data, onChange, expertId, onError }: Secti
           ? {
               layoutType: 'image-text' as const,
               imageUrl: updated.imageUrl || undefined,
+              imagePosition: imagePosition ?? data.about?.imagePosition,
+              imageZoom: imageZoom ?? data.about?.imageZoom,
               text: updated.text || undefined,
             }
           : undefined;
@@ -82,17 +82,15 @@ export default function AboutEditor({ data, onChange, expertId, onError }: Secti
     onError?.(errorMsg);
   };
 
-  const handleImageUpload = (asset: Asset) => {
-    console.log('[DBG][AboutEditor] Image uploaded:', asset);
-    const imageUrl = asset.croppedUrl || asset.originalUrl;
-    const updated = { ...formData, imageUrl };
+  const handleImageChange = (imageData: {
+    imageUrl?: string;
+    imagePosition?: string;
+    imageZoom?: number;
+  }) => {
+    console.log('[DBG][AboutEditor] Image changed:', imageData);
+    const updated = { ...formData, imageUrl: imageData.imageUrl || '' };
     setFormData(updated);
-    propagateChanges(updated);
-  };
-
-  const handleUploadError = (error: string) => {
-    console.error('[DBG][AboutEditor] Upload error:', error);
-    onError?.(error);
+    propagateChanges(updated, imageData.imagePosition, imageData.imageZoom);
   };
 
   return (
@@ -139,22 +137,15 @@ export default function AboutEditor({ data, onChange, expertId, onError }: Secti
       {/* Image + Text Layout Fields */}
       {formData.layoutType === 'image-text' && (
         <>
-          <div>
-            <ImageUploadCrop
-              width={800}
-              height={600}
-              category="about"
-              tenantId={expertId}
-              label="About Image (800x600px recommended)"
-              onUploadComplete={handleImageUpload}
-              onError={handleUploadError}
-              relatedTo={{
-                type: 'expert',
-                id: expertId,
-              }}
-              currentImageUrl={formData.imageUrl}
-            />
-          </div>
+          <ImageSelector
+            imageUrl={data.about?.imageUrl}
+            imagePosition={data.about?.imagePosition}
+            imageZoom={data.about?.imageZoom}
+            tenantId={expertId}
+            onChange={handleImageChange}
+            label="About Image"
+            defaultSearchQuery="yoga portrait"
+          />
           <div>
             <label htmlFor="text" className="block text-sm font-medium text-gray-700 mb-2">
               About Text
