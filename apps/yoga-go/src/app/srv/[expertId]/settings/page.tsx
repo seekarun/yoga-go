@@ -6,9 +6,9 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import NotificationOverlay from '@/components/NotificationOverlay';
 
-import type { StripeConnectDetails } from '@/types';
+import type { StripeConnectDetails, RazorpayRouteDetails, CashfreePayoutDetails } from '@/types';
 
-type DisconnectType = 'google' | 'zoom' | null;
+type DisconnectType = 'google' | 'zoom' | 'razorpay' | 'cashfree' | null;
 
 function SettingsContent() {
   const params = useParams();
@@ -44,6 +44,34 @@ function SettingsContent() {
   const [stripeConnectionStatus, setStripeConnectionStatus] = useState<StripeConnectDetails | null>(
     null
   );
+
+  // Razorpay Route state (India payouts)
+  const [razorpayLoading, setRazorpayLoading] = useState(true);
+  const [razorpaySaving, setRazorpaySaving] = useState(false);
+  const [razorpayDisconnecting, setRazorpayDisconnecting] = useState(false);
+  const [razorpayConnectionStatus, setRazorpayConnectionStatus] =
+    useState<RazorpayRouteDetails | null>(null);
+  const [razorpayFormData, setRazorpayFormData] = useState({
+    accountNumber: '',
+    confirmAccountNumber: '',
+    ifscCode: '',
+    beneficiaryName: '',
+  });
+
+  // Cashfree Payouts state (India payouts - Alternative)
+  const [cashfreeLoading, setCashfreeLoading] = useState(true);
+  const [cashfreeSaving, setCashfreeSaving] = useState(false);
+  const [cashfreeDisconnecting, setCashfreeDisconnecting] = useState(false);
+  const [cashfreeConnectionStatus, setCashfreeConnectionStatus] =
+    useState<CashfreePayoutDetails | null>(null);
+  const [cashfreeFormData, setCashfreeFormData] = useState({
+    accountNumber: '',
+    confirmAccountNumber: '',
+    ifscCode: '',
+    beneficiaryName: '',
+    email: '',
+    phone: '',
+  });
 
   // Check if user owns this expert profile
   useEffect(() => {
@@ -100,11 +128,51 @@ function SettingsContent() {
     }
   }, []);
 
+  const fetchRazorpayStatus = useCallback(async () => {
+    try {
+      setRazorpayLoading(true);
+      const response = await fetch('/api/razorpay/route/status');
+      const data = await response.json();
+
+      if (data.success && data.data.status !== 'not_connected') {
+        setRazorpayConnectionStatus(data.data);
+      }
+    } catch (err) {
+      console.error('[DBG][settings] Error fetching Razorpay status:', err);
+    } finally {
+      setRazorpayLoading(false);
+    }
+  }, []);
+
+  const fetchCashfreeStatus = useCallback(async () => {
+    try {
+      setCashfreeLoading(true);
+      const response = await fetch('/api/cashfree/payout/status');
+      const data = await response.json();
+
+      if (data.success && data.data.status !== 'not_connected') {
+        setCashfreeConnectionStatus(data.data);
+      }
+    } catch (err) {
+      console.error('[DBG][settings] Error fetching Cashfree status:', err);
+    } finally {
+      setCashfreeLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchGoogleStatus();
     fetchZoomStatus();
     fetchStripeStatus();
-  }, [fetchGoogleStatus, fetchZoomStatus, fetchStripeStatus]);
+    fetchRazorpayStatus();
+    fetchCashfreeStatus();
+  }, [
+    fetchGoogleStatus,
+    fetchZoomStatus,
+    fetchStripeStatus,
+    fetchRazorpayStatus,
+    fetchCashfreeStatus,
+  ]);
 
   // Handle Stripe callback query params
   useEffect(() => {
@@ -203,6 +271,221 @@ function SettingsContent() {
       handleGoogleDisconnectConfirm();
     } else if (confirmDisconnect === 'zoom') {
       handleZoomDisconnectConfirm();
+    } else if (confirmDisconnect === 'razorpay') {
+      handleRazorpayDisconnectConfirm();
+    } else if (confirmDisconnect === 'cashfree') {
+      handleCashfreeDisconnectConfirm();
+    }
+  };
+
+  // Razorpay handlers
+  const handleRazorpayFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setRazorpayFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleRazorpaySave = async () => {
+    setError('');
+    setSuccess('');
+
+    // Validation
+    if (
+      !razorpayFormData.accountNumber ||
+      !razorpayFormData.ifscCode ||
+      !razorpayFormData.beneficiaryName
+    ) {
+      setError('Please fill in all required fields');
+      return;
+    }
+
+    if (razorpayFormData.accountNumber !== razorpayFormData.confirmAccountNumber) {
+      setError('Account numbers do not match');
+      return;
+    }
+
+    // IFSC validation
+    const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+    if (!ifscRegex.test(razorpayFormData.ifscCode.toUpperCase())) {
+      setError('Invalid IFSC code format (e.g., SBIN0001234)');
+      return;
+    }
+
+    setRazorpaySaving(true);
+
+    try {
+      const response = await fetch('/api/razorpay/route/save-bank', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accountNumber: razorpayFormData.accountNumber,
+          ifscCode: razorpayFormData.ifscCode.toUpperCase(),
+          beneficiaryName: razorpayFormData.beneficiaryName,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setSuccess(
+          'Bank account saved successfully! Payouts will be enabled once Razorpay activates your account.'
+        );
+        fetchRazorpayStatus();
+        setRazorpayFormData({
+          accountNumber: '',
+          confirmAccountNumber: '',
+          ifscCode: '',
+          beneficiaryName: '',
+        });
+      } else {
+        setError(data.error || 'Failed to save bank account');
+      }
+    } catch (err) {
+      console.error('[DBG][settings] Error saving Razorpay bank details:', err);
+      setError('Failed to save bank account');
+    } finally {
+      setRazorpaySaving(false);
+    }
+  };
+
+  const handleRazorpayDisconnectClick = () => {
+    setConfirmDisconnect('razorpay');
+  };
+
+  const handleRazorpayDisconnectConfirm = async () => {
+    setRazorpayDisconnecting(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await fetch('/api/razorpay/route/status', {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setRazorpayConnectionStatus(null);
+        setSuccess('Bank account disconnected successfully');
+      } else {
+        setError(data.error || 'Failed to disconnect bank account');
+      }
+    } catch (err) {
+      console.error('[DBG][settings] Error disconnecting Razorpay:', err);
+      setError('Failed to disconnect bank account');
+    } finally {
+      setRazorpayDisconnecting(false);
+      setConfirmDisconnect(null);
+    }
+  };
+
+  // Cashfree handlers
+  const handleCashfreeFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setCashfreeFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleCashfreeSave = async () => {
+    setError('');
+    setSuccess('');
+
+    // Validation
+    if (
+      !cashfreeFormData.accountNumber ||
+      !cashfreeFormData.ifscCode ||
+      !cashfreeFormData.beneficiaryName ||
+      !cashfreeFormData.email ||
+      !cashfreeFormData.phone
+    ) {
+      setError('Please fill in all required fields');
+      return;
+    }
+
+    if (cashfreeFormData.accountNumber !== cashfreeFormData.confirmAccountNumber) {
+      setError('Account numbers do not match');
+      return;
+    }
+
+    // IFSC validation
+    const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+    if (!ifscRegex.test(cashfreeFormData.ifscCode.toUpperCase())) {
+      setError('Invalid IFSC code format (e.g., SBIN0001234)');
+      return;
+    }
+
+    // Phone validation (10 digits)
+    const phoneClean = cashfreeFormData.phone.replace(/[^0-9]/g, '');
+    if (phoneClean.length !== 10) {
+      setError('Phone number must be 10 digits');
+      return;
+    }
+
+    setCashfreeSaving(true);
+
+    try {
+      const response = await fetch('/api/cashfree/payout/save-bank', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accountNumber: cashfreeFormData.accountNumber,
+          ifscCode: cashfreeFormData.ifscCode.toUpperCase(),
+          beneficiaryName: cashfreeFormData.beneficiaryName,
+          email: cashfreeFormData.email,
+          phone: cashfreeFormData.phone,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setSuccess('Bank account saved successfully! Verification in progress.');
+        fetchCashfreeStatus();
+        setCashfreeFormData({
+          accountNumber: '',
+          confirmAccountNumber: '',
+          ifscCode: '',
+          beneficiaryName: '',
+          email: '',
+          phone: '',
+        });
+      } else {
+        setError(data.error || 'Failed to save bank account');
+      }
+    } catch (err) {
+      console.error('[DBG][settings] Error saving Cashfree bank details:', err);
+      setError('Failed to save bank account');
+    } finally {
+      setCashfreeSaving(false);
+    }
+  };
+
+  const handleCashfreeDisconnectClick = () => {
+    setConfirmDisconnect('cashfree');
+  };
+
+  const handleCashfreeDisconnectConfirm = async () => {
+    setCashfreeDisconnecting(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      const response = await fetch('/api/cashfree/payout/status', {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setCashfreeConnectionStatus(null);
+        setSuccess('Bank account disconnected successfully');
+      } else {
+        setError(data.error || 'Failed to disconnect bank account');
+      }
+    } catch (err) {
+      console.error('[DBG][settings] Error disconnecting Cashfree:', err);
+      setError('Failed to disconnect bank account');
+    } finally {
+      setCashfreeDisconnecting(false);
+      setConfirmDisconnect(null);
     }
   };
 
@@ -897,6 +1180,1023 @@ function SettingsContent() {
             )}
           </div>
 
+          {/* Stripe Connect Section - Payments */}
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: '12px',
+              padding: '24px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              marginTop: '24px',
+              border:
+                stripeConnectionStatus?.status === 'active'
+                  ? '2px solid #635bff'
+                  : '1px solid #ddd',
+            }}
+          >
+            {stripeLoading ? (
+              <div style={{ textAlign: 'center', padding: '20px' }}>
+                <div style={{ color: '#666' }}>Loading payment settings...</div>
+              </div>
+            ) : (
+              <>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    marginBottom: '16px',
+                  }}
+                >
+                  {/* Stripe Icon */}
+                  <div
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '12px',
+                      background:
+                        stripeConnectionStatus?.status === 'active' ? '#f0f0ff' : '#f8f8f8',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" width="28" height="28" fill="#635bff">
+                      <path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.591-7.305z" />
+                    </svg>
+                  </div>
+
+                  <div style={{ flex: 1 }}>
+                    <h2 style={{ fontSize: '18px', fontWeight: '600', margin: 0 }}>
+                      Payments (Stripe)
+                    </h2>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        marginTop: '4px',
+                      }}
+                    >
+                      <span
+                        style={{
+                          padding: '2px 8px',
+                          background:
+                            stripeConnectionStatus?.status === 'active'
+                              ? '#f0f0ff'
+                              : stripeConnectionStatus?.status === 'pending' ||
+                                  stripeConnectionStatus?.status === 'disabled'
+                                ? '#fff7e6'
+                                : stripeConnectionStatus?.status === 'restricted'
+                                  ? '#fee'
+                                  : '#f5f5f5',
+                          color:
+                            stripeConnectionStatus?.status === 'active'
+                              ? '#635bff'
+                              : stripeConnectionStatus?.status === 'pending' ||
+                                  stripeConnectionStatus?.status === 'disabled'
+                                ? '#d46b08'
+                                : stripeConnectionStatus?.status === 'restricted'
+                                  ? '#c00'
+                                  : '#666',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                        }}
+                      >
+                        {stripeConnectionStatus?.status === 'active'
+                          ? 'Connected'
+                          : stripeConnectionStatus?.status === 'pending'
+                            ? 'Pending Setup'
+                            : stripeConnectionStatus?.status === 'restricted'
+                              ? 'Action Required'
+                              : stripeConnectionStatus?.status === 'disabled'
+                                ? 'Setup Incomplete'
+                                : 'Not Connected'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {stripeConnectionStatus?.status === 'active' ? (
+                  <>
+                    {/* Connected State */}
+                    <div
+                      style={{
+                        padding: '16px',
+                        background: '#f0f0ff',
+                        borderRadius: '8px',
+                        marginBottom: '16px',
+                      }}
+                    >
+                      <div style={{ fontSize: '13px', color: '#635bff', marginBottom: '4px' }}>
+                        Connected Account
+                      </div>
+                      <div
+                        style={{
+                          fontFamily: 'monospace',
+                          fontSize: '16px',
+                          fontWeight: '500',
+                          color: '#635bff',
+                        }}
+                      >
+                        {stripeConnectionStatus.email || stripeConnectionStatus.accountId}
+                      </div>
+                    </div>
+
+                    <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>
+                      Your Stripe account is connected. When learners purchase your courses, you
+                      will receive 95% of the payment instantly. The platform retains 5% as a
+                      service fee.
+                    </p>
+
+                    <button
+                      onClick={handleOpenStripeDashboard}
+                      style={{
+                        padding: '10px 20px',
+                        background: '#635bff',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Open Stripe Dashboard
+                    </button>
+                  </>
+                ) : stripeConnectionStatus?.status === 'pending' ||
+                  stripeConnectionStatus?.status === 'restricted' ||
+                  stripeConnectionStatus?.status === 'disabled' ? (
+                  <>
+                    {/* Pending/Incomplete State */}
+                    <div
+                      style={{
+                        padding: '16px',
+                        background: '#fff7e6',
+                        borderRadius: '8px',
+                        marginBottom: '16px',
+                      }}
+                    >
+                      <div style={{ fontSize: '14px', color: '#d46b08' }}>
+                        Your Stripe account setup is incomplete. Please complete the onboarding to
+                        receive payments.
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleStripeConnect}
+                      disabled={stripeConnecting}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '12px 24px',
+                        background: '#635bff',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '15px',
+                        fontWeight: '500',
+                        cursor: stripeConnecting ? 'not-allowed' : 'pointer',
+                        opacity: stripeConnecting ? 0.7 : 1,
+                      }}
+                    >
+                      {stripeConnecting ? 'Redirecting...' : 'Complete Stripe Setup'}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {/* Not Connected State */}
+                    <p style={{ color: '#666', fontSize: '14px', marginBottom: '20px' }}>
+                      Connect your Stripe account to receive payments for your courses. This is
+                      required to publish paid courses.
+                    </p>
+
+                    <ul
+                      style={{
+                        margin: '0 0 20px 0',
+                        padding: '0 0 0 20px',
+                        color: '#666',
+                        fontSize: '14px',
+                      }}
+                    >
+                      <li style={{ marginBottom: '8px' }}>
+                        Receive 95% of course payments instantly
+                      </li>
+                      <li style={{ marginBottom: '8px' }}>
+                        Automatic payouts to your bank account
+                      </li>
+                      <li style={{ marginBottom: '8px' }}>
+                        View earnings and manage payouts in Stripe Dashboard
+                      </li>
+                    </ul>
+
+                    <button
+                      onClick={handleStripeConnect}
+                      disabled={stripeConnecting}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '12px 24px',
+                        background: '#635bff',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '15px',
+                        fontWeight: '500',
+                        cursor: stripeConnecting ? 'not-allowed' : 'pointer',
+                        opacity: stripeConnecting ? 0.7 : 1,
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                      }}
+                    >
+                      <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                        <path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.591-7.305z" />
+                      </svg>
+                      {stripeConnecting ? 'Connecting...' : 'Connect with Stripe'}
+                    </button>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Razorpay Payouts Section (India) */}
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: '12px',
+              padding: '24px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              marginTop: '24px',
+              border:
+                razorpayConnectionStatus?.status === 'activated'
+                  ? '2px solid #528ff0'
+                  : razorpayConnectionStatus?.status === 'pending'
+                    ? '2px solid #f59e0b'
+                    : '1px solid #ddd',
+            }}
+          >
+            {razorpayLoading ? (
+              <div style={{ textAlign: 'center', padding: '20px' }}>
+                <div style={{ color: '#666' }}>Loading Razorpay settings...</div>
+              </div>
+            ) : (
+              <>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    marginBottom: '16px',
+                  }}
+                >
+                  {/* Razorpay Icon */}
+                  <div
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '12px',
+                      background:
+                        razorpayConnectionStatus?.status === 'activated'
+                          ? '#e8f0fe'
+                          : razorpayConnectionStatus?.status === 'pending'
+                            ? '#fef3c7'
+                            : '#f8f8f8',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" width="28" height="28" fill="#528ff0">
+                      <path
+                        d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
+                        stroke="#528ff0"
+                        strokeWidth="2"
+                        fill="none"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </div>
+
+                  <div style={{ flex: 1 }}>
+                    <h2 style={{ fontSize: '18px', fontWeight: '600', margin: 0 }}>
+                      Payouts (India - Razorpay)
+                    </h2>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        marginTop: '4px',
+                      }}
+                    >
+                      <span
+                        style={{
+                          padding: '2px 8px',
+                          background:
+                            razorpayConnectionStatus?.status === 'activated'
+                              ? '#e8f0fe'
+                              : razorpayConnectionStatus?.status === 'pending'
+                                ? '#fef3c7'
+                                : '#f5f5f5',
+                          color:
+                            razorpayConnectionStatus?.status === 'activated'
+                              ? '#1e40af'
+                              : razorpayConnectionStatus?.status === 'pending'
+                                ? '#d97706'
+                                : '#666',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                        }}
+                      >
+                        {razorpayConnectionStatus?.status === 'activated'
+                          ? 'Connected'
+                          : razorpayConnectionStatus?.status === 'pending'
+                            ? 'Pending Verification'
+                            : 'Not Connected'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {razorpayConnectionStatus?.status === 'activated' ||
+                razorpayConnectionStatus?.status === 'pending' ? (
+                  <>
+                    {/* Connected/Pending State */}
+                    <div
+                      style={{
+                        padding: '16px',
+                        background:
+                          razorpayConnectionStatus.status === 'activated' ? '#e8f0fe' : '#fef3c7',
+                        borderRadius: '8px',
+                        marginBottom: '16px',
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: '13px',
+                          color:
+                            razorpayConnectionStatus.status === 'activated' ? '#1e40af' : '#d97706',
+                          marginBottom: '8px',
+                        }}
+                      >
+                        {razorpayConnectionStatus.status === 'activated'
+                          ? 'Bank Account Connected'
+                          : 'Verification in Progress'}
+                      </div>
+                      <div
+                        style={{
+                          fontFamily: 'monospace',
+                          fontSize: '14px',
+                          color: '#333',
+                        }}
+                      >
+                        <div>
+                          <strong>Account:</strong> ****
+                          {razorpayConnectionStatus.bankAccount?.accountNumberLast4}
+                        </div>
+                        <div>
+                          <strong>IFSC:</strong> {razorpayConnectionStatus.bankAccount?.ifscCode}
+                        </div>
+                        <div>
+                          <strong>Name:</strong>{' '}
+                          {razorpayConnectionStatus.bankAccount?.beneficiaryName}
+                        </div>
+                      </div>
+                    </div>
+
+                    {razorpayConnectionStatus.status === 'activated' && (
+                      <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>
+                        Your bank account is verified. When learners in India purchase your courses,
+                        you will receive 90% of the payment. The platform retains 10% as a service
+                        fee.
+                      </p>
+                    )}
+
+                    {razorpayConnectionStatus.status === 'pending' && (
+                      <p style={{ color: '#d97706', fontSize: '14px', marginBottom: '16px' }}>
+                        Your bank account is pending verification by Razorpay. This usually takes
+                        1-2 business days. You&apos;ll be able to receive payouts once verified.
+                      </p>
+                    )}
+
+                    <button
+                      onClick={handleRazorpayDisconnectClick}
+                      disabled={razorpayDisconnecting}
+                      style={{
+                        padding: '10px 20px',
+                        background: '#fee',
+                        color: '#c00',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        cursor: razorpayDisconnecting ? 'not-allowed' : 'pointer',
+                        opacity: razorpayDisconnecting ? 0.7 : 1,
+                      }}
+                    >
+                      {razorpayDisconnecting ? 'Disconnecting...' : 'Disconnect Bank Account'}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {/* Not Connected State - Show Form */}
+                    <p style={{ color: '#666', fontSize: '14px', marginBottom: '20px' }}>
+                      Add your Indian bank account to receive payouts from course sales in India.
+                      This is separate from Stripe (which handles international payments).
+                    </p>
+
+                    <ul
+                      style={{
+                        margin: '0 0 20px 0',
+                        padding: '0 0 0 20px',
+                        color: '#666',
+                        fontSize: '14px',
+                      }}
+                    >
+                      <li style={{ marginBottom: '8px' }}>
+                        Receive 90% of course payments from Indian learners
+                      </li>
+                      <li style={{ marginBottom: '8px' }}>
+                        Automatic payouts to your bank account via Razorpay
+                      </li>
+                      <li style={{ marginBottom: '8px' }}>
+                        Bank verification handled securely by Razorpay
+                      </li>
+                    </ul>
+
+                    {/* Bank Account Form */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <div>
+                        <label
+                          style={{
+                            display: 'block',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            marginBottom: '6px',
+                            color: '#333',
+                          }}
+                        >
+                          Account Number *
+                        </label>
+                        <input
+                          type="text"
+                          name="accountNumber"
+                          value={razorpayFormData.accountNumber}
+                          onChange={handleRazorpayFormChange}
+                          placeholder="Enter your bank account number"
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            border: '1px solid #ddd',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                      </div>
+
+                      <div>
+                        <label
+                          style={{
+                            display: 'block',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            marginBottom: '6px',
+                            color: '#333',
+                          }}
+                        >
+                          Confirm Account Number *
+                        </label>
+                        <input
+                          type="text"
+                          name="confirmAccountNumber"
+                          value={razorpayFormData.confirmAccountNumber}
+                          onChange={handleRazorpayFormChange}
+                          placeholder="Re-enter your bank account number"
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            border: '1px solid #ddd',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                      </div>
+
+                      <div>
+                        <label
+                          style={{
+                            display: 'block',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            marginBottom: '6px',
+                            color: '#333',
+                          }}
+                        >
+                          IFSC Code *
+                        </label>
+                        <input
+                          type="text"
+                          name="ifscCode"
+                          value={razorpayFormData.ifscCode}
+                          onChange={handleRazorpayFormChange}
+                          placeholder="e.g., SBIN0001234"
+                          maxLength={11}
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            border: '1px solid #ddd',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            textTransform: 'uppercase',
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                        <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
+                          11-character code (e.g., SBIN0001234)
+                        </div>
+                      </div>
+
+                      <div>
+                        <label
+                          style={{
+                            display: 'block',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            marginBottom: '6px',
+                            color: '#333',
+                          }}
+                        >
+                          Beneficiary Name (as per bank) *
+                        </label>
+                        <input
+                          type="text"
+                          name="beneficiaryName"
+                          value={razorpayFormData.beneficiaryName}
+                          onChange={handleRazorpayFormChange}
+                          placeholder="Enter name as shown in your bank account"
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            border: '1px solid #ddd',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                      </div>
+
+                      <button
+                        onClick={handleRazorpaySave}
+                        disabled={razorpaySaving}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '10px',
+                          padding: '12px 24px',
+                          background: '#528ff0',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '15px',
+                          fontWeight: '500',
+                          cursor: razorpaySaving ? 'not-allowed' : 'pointer',
+                          opacity: razorpaySaving ? 0.7 : 1,
+                          marginTop: '8px',
+                        }}
+                      >
+                        {razorpaySaving ? 'Saving...' : 'Save Bank Account'}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Cashfree Payouts Section (India - Alternative) */}
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: '12px',
+              padding: '24px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              marginTop: '24px',
+              border:
+                cashfreeConnectionStatus?.status === 'verified'
+                  ? '2px solid #6366f1'
+                  : cashfreeConnectionStatus?.status === 'pending'
+                    ? '2px solid #f59e0b'
+                    : '1px solid #ddd',
+            }}
+          >
+            {cashfreeLoading ? (
+              <div style={{ textAlign: 'center', padding: '20px' }}>
+                <div style={{ color: '#666' }}>Loading Cashfree settings...</div>
+              </div>
+            ) : (
+              <>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    marginBottom: '16px',
+                  }}
+                >
+                  {/* Cashfree Icon */}
+                  <div
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '12px',
+                      background:
+                        cashfreeConnectionStatus?.status === 'verified'
+                          ? '#eef2ff'
+                          : cashfreeConnectionStatus?.status === 'pending'
+                            ? '#fef3c7'
+                            : '#f8f8f8',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" width="28" height="28" fill="#6366f1">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                    </svg>
+                  </div>
+
+                  <div style={{ flex: 1 }}>
+                    <h2 style={{ fontSize: '18px', fontWeight: '600', margin: 0 }}>
+                      Payouts (India - Cashfree)
+                    </h2>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        marginTop: '4px',
+                      }}
+                    >
+                      <span
+                        style={{
+                          padding: '2px 8px',
+                          background:
+                            cashfreeConnectionStatus?.status === 'verified'
+                              ? '#eef2ff'
+                              : cashfreeConnectionStatus?.status === 'pending'
+                                ? '#fef3c7'
+                                : cashfreeConnectionStatus?.status === 'invalid'
+                                  ? '#fee'
+                                  : '#f5f5f5',
+                          color:
+                            cashfreeConnectionStatus?.status === 'verified'
+                              ? '#4338ca'
+                              : cashfreeConnectionStatus?.status === 'pending'
+                                ? '#d97706'
+                                : cashfreeConnectionStatus?.status === 'invalid'
+                                  ? '#c00'
+                                  : '#666',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                        }}
+                      >
+                        {cashfreeConnectionStatus?.status === 'verified'
+                          ? 'Verified'
+                          : cashfreeConnectionStatus?.status === 'pending'
+                            ? 'Pending Verification'
+                            : cashfreeConnectionStatus?.status === 'invalid'
+                              ? 'Invalid Details'
+                              : 'Not Connected'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {cashfreeConnectionStatus?.status === 'verified' ||
+                cashfreeConnectionStatus?.status === 'pending' ? (
+                  <>
+                    {/* Connected/Pending State */}
+                    <div
+                      style={{
+                        padding: '16px',
+                        background:
+                          cashfreeConnectionStatus.status === 'verified' ? '#eef2ff' : '#fef3c7',
+                        borderRadius: '8px',
+                        marginBottom: '16px',
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: '13px',
+                          color:
+                            cashfreeConnectionStatus.status === 'verified' ? '#4338ca' : '#d97706',
+                          marginBottom: '8px',
+                        }}
+                      >
+                        {cashfreeConnectionStatus.status === 'verified'
+                          ? 'Bank Account Verified'
+                          : 'Verification in Progress'}
+                      </div>
+                      <div
+                        style={{
+                          fontFamily: 'monospace',
+                          fontSize: '14px',
+                          color: '#333',
+                        }}
+                      >
+                        <div>
+                          <strong>Account:</strong> ****
+                          {cashfreeConnectionStatus.bankAccount?.accountNumberLast4}
+                        </div>
+                        <div>
+                          <strong>IFSC:</strong> {cashfreeConnectionStatus.bankAccount?.ifscCode}
+                        </div>
+                        <div>
+                          <strong>Name:</strong>{' '}
+                          {cashfreeConnectionStatus.bankAccount?.beneficiaryName}
+                        </div>
+                      </div>
+                    </div>
+
+                    {cashfreeConnectionStatus.status === 'verified' && (
+                      <p style={{ color: '#666', fontSize: '14px', marginBottom: '16px' }}>
+                        Your bank account is verified via Cashfree. When learners in India purchase
+                        your courses, you will receive 90% of the payment. The platform retains 10%
+                        as a service fee.
+                      </p>
+                    )}
+
+                    {cashfreeConnectionStatus.status === 'pending' && (
+                      <p style={{ color: '#d97706', fontSize: '14px', marginBottom: '16px' }}>
+                        Your bank account is pending verification. This usually takes a few minutes.
+                        You&apos;ll be able to receive payouts once verified.
+                      </p>
+                    )}
+
+                    <button
+                      onClick={handleCashfreeDisconnectClick}
+                      disabled={cashfreeDisconnecting}
+                      style={{
+                        padding: '10px 20px',
+                        background: '#fee',
+                        color: '#c00',
+                        border: 'none',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        cursor: cashfreeDisconnecting ? 'not-allowed' : 'pointer',
+                        opacity: cashfreeDisconnecting ? 0.7 : 1,
+                      }}
+                    >
+                      {cashfreeDisconnecting ? 'Disconnecting...' : 'Disconnect Bank Account'}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {/* Not Connected State - Show Form */}
+                    <p style={{ color: '#666', fontSize: '14px', marginBottom: '20px' }}>
+                      Add your Indian bank account via Cashfree to receive payouts. This is an
+                      alternative to Razorpay for Indian payouts.
+                    </p>
+
+                    <ul
+                      style={{
+                        margin: '0 0 20px 0',
+                        padding: '0 0 0 20px',
+                        color: '#666',
+                        fontSize: '14px',
+                      }}
+                    >
+                      <li style={{ marginBottom: '8px' }}>
+                        Receive 90% of course payments from Indian learners
+                      </li>
+                      <li style={{ marginBottom: '8px' }}>Fast bank verification via Cashfree</li>
+                      <li style={{ marginBottom: '8px' }}>
+                        Automatic payouts to your bank account
+                      </li>
+                    </ul>
+
+                    {/* Bank Account Form */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <div>
+                        <label
+                          style={{
+                            display: 'block',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            marginBottom: '6px',
+                            color: '#333',
+                          }}
+                        >
+                          Account Number *
+                        </label>
+                        <input
+                          type="text"
+                          name="accountNumber"
+                          value={cashfreeFormData.accountNumber}
+                          onChange={handleCashfreeFormChange}
+                          placeholder="Enter your bank account number"
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            border: '1px solid #ddd',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                      </div>
+
+                      <div>
+                        <label
+                          style={{
+                            display: 'block',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            marginBottom: '6px',
+                            color: '#333',
+                          }}
+                        >
+                          Confirm Account Number *
+                        </label>
+                        <input
+                          type="text"
+                          name="confirmAccountNumber"
+                          value={cashfreeFormData.confirmAccountNumber}
+                          onChange={handleCashfreeFormChange}
+                          placeholder="Re-enter your bank account number"
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            border: '1px solid #ddd',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                      </div>
+
+                      <div>
+                        <label
+                          style={{
+                            display: 'block',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            marginBottom: '6px',
+                            color: '#333',
+                          }}
+                        >
+                          IFSC Code *
+                        </label>
+                        <input
+                          type="text"
+                          name="ifscCode"
+                          value={cashfreeFormData.ifscCode}
+                          onChange={handleCashfreeFormChange}
+                          placeholder="e.g., SBIN0001234"
+                          maxLength={11}
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            border: '1px solid #ddd',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            textTransform: 'uppercase',
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                        <div style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
+                          11-character code (e.g., SBIN0001234)
+                        </div>
+                      </div>
+
+                      <div>
+                        <label
+                          style={{
+                            display: 'block',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            marginBottom: '6px',
+                            color: '#333',
+                          }}
+                        >
+                          Beneficiary Name (as per bank) *
+                        </label>
+                        <input
+                          type="text"
+                          name="beneficiaryName"
+                          value={cashfreeFormData.beneficiaryName}
+                          onChange={handleCashfreeFormChange}
+                          placeholder="Enter name as shown in your bank account"
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            border: '1px solid #ddd',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                      </div>
+
+                      <div>
+                        <label
+                          style={{
+                            display: 'block',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            marginBottom: '6px',
+                            color: '#333',
+                          }}
+                        >
+                          Email *
+                        </label>
+                        <input
+                          type="email"
+                          name="email"
+                          value={cashfreeFormData.email}
+                          onChange={handleCashfreeFormChange}
+                          placeholder="Enter your email address"
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            border: '1px solid #ddd',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                      </div>
+
+                      <div>
+                        <label
+                          style={{
+                            display: 'block',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            marginBottom: '6px',
+                            color: '#333',
+                          }}
+                        >
+                          Phone Number *
+                        </label>
+                        <input
+                          type="tel"
+                          name="phone"
+                          value={cashfreeFormData.phone}
+                          onChange={handleCashfreeFormChange}
+                          placeholder="10-digit mobile number"
+                          maxLength={10}
+                          style={{
+                            width: '100%',
+                            padding: '12px',
+                            border: '1px solid #ddd',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                      </div>
+
+                      <button
+                        onClick={handleCashfreeSave}
+                        disabled={cashfreeSaving}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '10px',
+                          padding: '12px 24px',
+                          background: '#6366f1',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '15px',
+                          fontWeight: '500',
+                          cursor: cashfreeSaving ? 'not-allowed' : 'pointer',
+                          opacity: cashfreeSaving ? 0.7 : 1,
+                          marginTop: '8px',
+                        }}
+                      >
+                        {cashfreeSaving ? 'Saving...' : 'Save Bank Account'}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+
           {/* Other Settings Link */}
           <div
             style={{
@@ -930,7 +2230,7 @@ function SettingsContent() {
       <NotificationOverlay
         isOpen={!!confirmDisconnect}
         onClose={() => setConfirmDisconnect(null)}
-        message={`Are you sure you want to disconnect your ${confirmDisconnect === 'google' ? 'Google' : 'Zoom'} account?`}
+        message={`Are you sure you want to disconnect your ${confirmDisconnect === 'google' ? 'Google' : confirmDisconnect === 'zoom' ? 'Zoom' : confirmDisconnect === 'razorpay' ? 'Razorpay bank' : confirmDisconnect === 'cashfree' ? 'Cashfree bank' : 'bank'} account?`}
         type="warning"
         onConfirm={handleDisconnectConfirm}
         confirmText="Disconnect"

@@ -20,7 +20,13 @@ import {
   BatchWriteCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { docClient, Tables, EntityType, CorePK } from '../dynamodb';
-import type { Tenant, TenantStatus, StripeConnectDetails } from '@/types';
+import type {
+  Tenant,
+  TenantStatus,
+  StripeConnectDetails,
+  RazorpayRouteDetails,
+  CashfreePayoutDetails,
+} from '@/types';
 
 // Type for DynamoDB Tenant item (includes PK/SK)
 interface DynamoDBTenantItem extends Tenant {
@@ -599,6 +605,81 @@ export async function hasActiveStripeConnect(tenantId: string): Promise<boolean>
     tenant?.stripeConnect?.chargesEnabled === true &&
     tenant?.stripeConnect?.payoutsEnabled === true
   );
+}
+
+// ===================================================================
+// RAZORPAY ROUTE OPERATIONS (India Payouts)
+// ===================================================================
+
+/**
+ * Update Razorpay Route details
+ */
+export async function updateRazorpayRoute(
+  tenantId: string,
+  razorpayRoute: Partial<RazorpayRouteDetails>
+): Promise<Tenant> {
+  console.log('[DBG][tenantRepository] Updating Razorpay Route for tenant:', tenantId);
+
+  const existing = await getTenantById(tenantId);
+  if (!existing) {
+    throw new Error('Tenant not found');
+  }
+
+  // Merge with existing razorpayRoute data
+  const updatedRoute: RazorpayRouteDetails = {
+    ...(existing.razorpayRoute as RazorpayRouteDetails),
+    ...razorpayRoute,
+    lastUpdatedAt: new Date().toISOString(),
+  } as RazorpayRouteDetails;
+
+  return updateTenant(tenantId, { razorpayRoute: updatedRoute });
+}
+
+/**
+ * Check if tenant has active Razorpay Route (can receive transfers)
+ */
+export async function hasActiveRazorpayRoute(tenantId: string): Promise<boolean> {
+  const tenant = await getTenantById(tenantId);
+  return (
+    tenant?.razorpayRoute?.status === 'activated' &&
+    tenant?.razorpayRoute?.transfersEnabled === true
+  );
+}
+
+// ===================================================================
+// CASHFREE PAYOUT OPERATIONS (India Payouts - Alternative)
+// ===================================================================
+
+/**
+ * Update Cashfree Payout details
+ */
+export async function updateCashfreePayout(
+  tenantId: string,
+  cashfreePayout: Partial<CashfreePayoutDetails>
+): Promise<Tenant> {
+  console.log('[DBG][tenantRepository] Updating Cashfree Payout for tenant:', tenantId);
+
+  const existing = await getTenantById(tenantId);
+  if (!existing) {
+    throw new Error('Tenant not found');
+  }
+
+  // Merge with existing cashfreePayout data
+  const updatedPayout: CashfreePayoutDetails = {
+    ...(existing.cashfreePayout as CashfreePayoutDetails),
+    ...cashfreePayout,
+    lastUpdatedAt: new Date().toISOString(),
+  } as CashfreePayoutDetails;
+
+  return updateTenant(tenantId, { cashfreePayout: updatedPayout });
+}
+
+/**
+ * Check if tenant has active Cashfree Payout (can receive transfers)
+ */
+export async function hasActiveCashfreePayout(tenantId: string): Promise<boolean> {
+  const tenant = await getTenantById(tenantId);
+  return tenant?.cashfreePayout?.status === 'verified';
 }
 
 // ===================================================================

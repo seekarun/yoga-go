@@ -227,6 +227,91 @@ export interface StripeConnectDetails {
   country?: string; // Account country
 }
 
+// Razorpay Route Status for Expert Payouts (India)
+export type RazorpayRouteStatus =
+  | 'not_connected' // Expert hasn't started onboarding
+  | 'pending' // Account created but not fully verified
+  | 'activated' // Account active and can receive transfers
+  | 'suspended' // Account suspended by Razorpay
+  | 'needs_clarification'; // Requires additional documents
+
+// Razorpay Route Account Details (for expert payouts in India)
+export interface RazorpayRouteDetails {
+  accountId: string; // Razorpay linked account ID (acc_xxx)
+  status: RazorpayRouteStatus;
+  transfersEnabled: boolean; // Can receive transfers
+  activatedAt?: string; // ISO timestamp when activated
+  lastUpdatedAt: string; // Last status sync
+  legalBusinessName: string; // Registered business/individual name
+  email: string; // Contact email
+  bankAccount: {
+    accountNumberLast4: string; // Last 4 digits only (masked)
+    ifscCode: string; // IFSC code
+    beneficiaryName: string; // Name on bank account
+  };
+  commissionRate?: number; // Override platform commission (default: 10%)
+}
+
+// Razorpay Transfer Status
+export type RazorpayTransferStatus = 'created' | 'pending' | 'processed' | 'failed' | 'reversed';
+
+// Razorpay Transfer Record
+export interface RazorpayTransfer extends BaseEntity {
+  transferId: string; // Razorpay transfer ID (trf_xxx)
+  paymentId: string; // Source payment ID
+  linkedAccountId: string; // Expert's linked account ID
+  expertId: string;
+  courseId: string;
+  amount: number; // Amount in paise
+  currency: string; // 'INR'
+  platformFee: number; // Platform commission in paise
+  status: RazorpayTransferStatus;
+  processedAt?: string;
+  error?: string;
+  notes?: Record<string, string>;
+}
+
+// Cashfree Payout Status for Expert Payouts (India - Alternative)
+export type CashfreePayoutStatus =
+  | 'not_connected' // Expert hasn't added bank details
+  | 'pending' // Beneficiary added, pending verification
+  | 'verified' // Can receive payouts
+  | 'invalid'; // Bank details invalid
+
+// Cashfree Payout Details (for expert payouts in India)
+export interface CashfreePayoutDetails {
+  beneficiaryId: string; // Cashfree beneficiary ID
+  status: CashfreePayoutStatus;
+  lastUpdatedAt: string;
+  bankAccount: {
+    accountNumberLast4: string; // Last 4 digits only (masked)
+    ifscCode: string; // IFSC code
+    beneficiaryName: string; // Name on bank account
+  };
+  commissionRate?: number; // Override platform commission (default: 10%)
+}
+
+// Cashfree Transfer Status
+export type CashfreeTransferStatus = 'PENDING' | 'SUCCESS' | 'FAILED' | 'REVERSED' | 'CANCELLED';
+
+// Cashfree Transfer Record
+export interface CashfreeTransfer extends BaseEntity {
+  referenceId: string; // Our internal transfer reference
+  cashfreeTransferId?: string; // Cashfree transfer ID (once processed)
+  beneficiaryId: string; // Cashfree beneficiary ID
+  expertId: string;
+  courseId: string;
+  paymentId: string; // Source payment ID
+  amount: number; // Amount in paise
+  currency: string; // 'INR'
+  platformFee: number; // Platform commission in paise
+  status: CashfreeTransferStatus;
+  processedAt?: string;
+  utr?: string; // Bank UTR number
+  error?: string;
+  remarks?: string;
+}
+
 // Expert is now an alias for Tenant (consolidated entity)
 // All expert data is stored in the TENANT entity
 export type Expert = Tenant;
@@ -344,6 +429,8 @@ export interface Tenant extends BaseEntity {
 
   // ===== Payments =====
   stripeConnect?: StripeConnectDetails; // Stripe Connect for receiving course payments
+  razorpayRoute?: RazorpayRouteDetails; // Razorpay Route for receiving course payments (India)
+  cashfreePayout?: CashfreePayoutDetails; // Cashfree Payouts for receiving course payments (India - Alternative)
 
   // ===== Domain & Multi-tenancy =====
   primaryDomain?: string; // e.g., "kavithayoga.com" (custom domain)

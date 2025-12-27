@@ -11,9 +11,20 @@ export const PAYMENT_CONFIG = {
     currency: 'USD',
     webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
   },
-  // Stripe Connect for expert payouts
+  // Stripe Connect for expert payouts (International)
   stripeConnect: {
     platformFeePercent: 5, // 5% platform commission
+  },
+  // Razorpay Route for expert payouts (India)
+  razorpayRoute: {
+    platformFeePercent: 10, // 10% platform commission (default)
+  },
+  // Cashfree Payouts for expert payouts (India - Alternative)
+  cashfreePayout: {
+    clientId: process.env.CASHFREE_PAYOUT_CLIENT_ID || '',
+    clientSecret: process.env.CASHFREE_PAYOUT_CLIENT_SECRET || '',
+    baseUrl: process.env.CASHFREE_PAYOUT_BASE_URL || 'https://payout-gamma.cashfree.com/payout/v1',
+    platformFeePercent: 10, // 10% platform commission (default)
   },
   plans: {
     curious: {

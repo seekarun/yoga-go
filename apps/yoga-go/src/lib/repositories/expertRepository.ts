@@ -35,6 +35,14 @@ export {
   updateStripeConnect,
   hasActiveStripeConnect,
 
+  // Razorpay Route (India Payouts)
+  updateRazorpayRoute,
+  hasActiveRazorpayRoute,
+
+  // Cashfree Payouts (India - Alternative)
+  updateCashfreePayout,
+  hasActiveCashfreePayout,
+
   // Tenant-specific functions (also available)
   getTenantById,
   getAllTenants,
