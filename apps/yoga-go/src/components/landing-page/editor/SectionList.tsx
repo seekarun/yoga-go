@@ -1,8 +1,8 @@
 'use client';
 
 import {
-  DndContext,
   closestCenter,
+  DndContext,
   KeyboardSensor,
   PointerSensor,
   useSensor,

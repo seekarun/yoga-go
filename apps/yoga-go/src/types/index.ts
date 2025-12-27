@@ -11,7 +11,10 @@ export type UserRole = 'learner' | 'expert' | 'admin';
 // Landing Page Template Types
 export type LandingPageTemplate = 'classic' | 'modern';
 
-// Brand Color Palette (11 shades from light to dark)
+// Color harmony types for palette generation
+export type ColorHarmonyType = 'analogous' | 'triadic' | 'split-complementary';
+
+// Brand Color Palette (11 shades from light to dark + harmony colors)
 export interface ColorPalette {
   50: string; // Lightest - subtle backgrounds
   100: string; // Light backgrounds, badges
@@ -24,6 +27,10 @@ export interface ColorPalette {
   800: string; // Dark accents
   900: string; // Dark text
   950: string; // Darkest
+  // Harmony-based colors
+  secondary?: string; // Secondary color based on harmony
+  highlight?: string; // Highlight/accent color based on harmony
+  harmonyType?: ColorHarmonyType; // Which harmony was used
 }
 
 // Currency Types
@@ -95,9 +102,13 @@ export interface CustomLandingPageConfig {
     alignment?: 'center' | 'left' | 'right'; // Text alignment
   };
   valuePropositions?: {
-    type?: 'paragraph' | 'list'; // Display as paragraph or list
+    type?: 'paragraph' | 'cards'; // Display as paragraph or cards
     content?: string; // Paragraph text (when type is 'paragraph')
-    items?: string[]; // List items (when type is 'list')
+    items?: Array<{
+      title: string;
+      description: string;
+      image?: string;
+    }>; // Card items (when type is 'cards')
   };
   about?: {
     bio?: string;
@@ -808,6 +819,7 @@ export type AssetCategory =
   | 'blog_cover'
   | 'blog_inline'
   | 'blog_attachment'
+  | 'value_prop'
   | 'other';
 
 export interface AssetDimensions {

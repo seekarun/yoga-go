@@ -8,6 +8,7 @@ import { DEFAULT_SECTION_ORDER, type SectionType } from '../sections';
 import PreviewPane from './PreviewPane';
 import EditPane from './EditPane';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import { PrimaryButton, SecondaryButton } from '@/components/Button';
 
 interface LandingPageEditorProps {
   expertId: string;
@@ -515,19 +516,17 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
             </p>
           </div>
 
-          {/* Unpublished Changes Indicator */}
-          {hasUnpublishedChanges && !isDirty && (
-            <span className="flex-shrink-0 text-sm text-blue-600 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
-              Draft has unpublished changes
-            </span>
-          )}
-
           {/* Discard Changes Button - only show if there are unpublished changes and page has been published before */}
           {hasUnpublishedChanges && isPublished && (
             <button
               onClick={() => setShowDiscardConfirm(true)}
               disabled={isDiscarding || saving}
-              className="flex-shrink-0 flex items-center gap-2 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors border border-gray-300"
+              className="flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors border"
+              style={{
+                color: 'var(--color-primary)',
+                backgroundColor: 'color-mix(in srgb, var(--color-primary) 8%, transparent)',
+                borderColor: 'color-mix(in srgb, var(--color-primary) 25%, transparent)',
+              }}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -537,16 +536,16 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
                   d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                 />
               </svg>
-              Discard
+              Discard unpublished changes
             </button>
           )}
 
           {/* Preview Draft Button */}
-          <a
+          <SecondaryButton
             href={`https://preview.myyoga.guru/${expertId}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-shrink-0 flex items-center gap-2 px-4 py-2 text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg font-medium transition-colors border border-blue-200"
+            className="flex-shrink-0 flex items-center gap-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -563,49 +562,28 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
               />
             </svg>
             Preview Draft
-          </a>
+          </SecondaryButton>
 
           {/* Publish Button - show when there are unpublished changes OR when not yet published */}
           {(hasUnpublishedChanges || !isPublished) && (
-            <button
+            <PrimaryButton
               onClick={() => handlePublish(true)}
-              disabled={isPublishing || saving}
-              className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors bg-green-600 text-white hover:bg-green-700 ${isPublishing || saving ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={saving}
+              loading={isPublishing}
+              className="flex-shrink-0 flex items-center gap-2"
             >
-              {isPublishing ? (
-                <>
-                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                      fill="none"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                  Publishing...
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  Publish
-                </>
+              {!isPublishing && (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
               )}
-            </button>
+              {isPublishing ? 'Publishing...' : 'Publish'}
+            </PrimaryButton>
           )}
         </div>
 

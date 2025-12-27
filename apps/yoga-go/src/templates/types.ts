@@ -56,11 +56,18 @@ export interface HeroSectionProps {
   expertName: string;
 }
 
+// Value Proposition Item (for cards display)
+export interface ValuePropItem {
+  title: string;
+  description: string;
+  image?: string;
+}
+
 // Value Propositions Section
 export interface ValuePropsSectionProps {
-  type: 'paragraph' | 'list';
+  type: 'paragraph' | 'cards';
   content?: string;
-  items?: string[];
+  items?: ValuePropItem[];
 }
 
 // About Section

@@ -97,7 +97,8 @@
       "Bash(\"src/app/data/app/expert/me/blog/\\\\[postId\\\\]/route.ts\" )",
       "Bash(\"src/components/blog/BlogPostEditor.tsx\" )",
       "Bash(\"src/app/srv/\\\\[expertId\\\\]/blog/new/page.tsx\" )",
-      "Bash(\"src/app/srv/\\\\[expertId\\\\]/blog/\\\\[postId\\\\]/edit/page.tsx\" )"
+      "Bash(\"src/app/srv/\\\\[expertId\\\\]/blog/\\\\[postId\\\\]/edit/page.tsx\" )",
+      "WebFetch(domain:aws.amazon.com)"
     ],
     "deny": [],
     "ask": []

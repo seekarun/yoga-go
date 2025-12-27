@@ -1,5 +1,5 @@
-import type { HeroSectionProps } from '../../types';
 import { UnsplashAttribution } from '../../shared';
+import type { HeroSectionProps } from '../../types';
 
 interface ClassicHeroSectionProps extends HeroSectionProps {
   resolveCtaLink: (link: string | undefined) => string;
@@ -27,28 +27,30 @@ export default function HeroSection({
           minHeight: '600px',
           paddingTop: '64px',
           position: 'relative',
-          background: heroImage
+          backgroundImage: heroImage
             ? `url(${heroImage})`
             : 'linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
           overflow: 'hidden',
         }}
       >
-        {/* Gradient Overlay */}
-        <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            background: heroImage
-              ? 'rgba(0, 0, 0, 0.5)'
-              : 'radial-gradient(circle at 20% 50%, color-mix(in srgb, var(--brand-500) 20%, transparent) 0%, transparent 50%)',
-            pointerEvents: 'none',
-          }}
-        />
+        {/* Decorative gradient for non-image hero */}
+        {!heroImage && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              background:
+                'radial-gradient(circle at 20% 50%, color-mix(in srgb, var(--brand-500) 20%, transparent) 0%, transparent 50%)',
+              pointerEvents: 'none',
+            }}
+          />
+        )}
 
         <div
           className="container"
@@ -81,6 +83,7 @@ export default function HeroSection({
                 color: '#fff',
                 letterSpacing: '-0.02em',
                 whiteSpace: 'pre-line',
+                textShadow: '0 2px 4px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3)',
               }}
             >
               {hasCustomHeadline ? (
@@ -107,10 +110,11 @@ export default function HeroSection({
 
             <p
               style={{
-                fontSize: '20px',
+                fontSize: '26px',
                 lineHeight: '1.6',
                 marginBottom: '40px',
-                color: 'rgba(255, 255, 255, 0.85)',
+                color: 'rgba(255, 255, 255, 0.95)',
+                textShadow: '0 1px 3px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3)',
               }}
             >
               {description}
@@ -137,15 +141,20 @@ export default function HeroSection({
                   fontWeight: '600',
                   borderRadius: '8px',
                   textDecoration: 'none',
-                  transition: 'transform 0.2s, background 0.2s',
+                  transition: 'transform 0.2s, background 0.2s, box-shadow 0.2s',
+                  boxShadow: '0 0 20px rgba(255,255,255,0.4), 0 0 40px rgba(255,255,255,0.2)',
                 }}
                 onMouseEnter={e => {
                   e.currentTarget.style.transform = 'translateY(-2px)';
                   e.currentTarget.style.background = 'var(--brand-600, #fbbf24)';
+                  e.currentTarget.style.boxShadow =
+                    '0 0 25px rgba(255,255,255,0.5), 0 0 50px rgba(255,255,255,0.3)';
                 }}
                 onMouseLeave={e => {
                   e.currentTarget.style.transform = 'translateY(0)';
                   e.currentTarget.style.background = 'var(--brand-500, #fcd34d)';
+                  e.currentTarget.style.boxShadow =
+                    '0 0 20px rgba(255,255,255,0.4), 0 0 40px rgba(255,255,255,0.2)';
                 }}
               >
                 {ctaText}

@@ -54,7 +54,7 @@ export default function ClassicTemplate({ data, config, context }: TemplateProps
 
   const valueProps = expert.customLandingPage?.valuePropositions;
   const valuePropsProps: ValuePropsSectionProps = {
-    type: valueProps?.type || 'list',
+    type: valueProps?.type || 'cards',
     content: valueProps?.content,
     items: valueProps?.items,
   };

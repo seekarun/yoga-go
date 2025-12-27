@@ -46,7 +46,7 @@ export default function PhotoGalleryLightbox({
       fontWeight: '700' as const,
       textAlign: 'center' as const,
       marginBottom: '16px',
-      color: isDark ? '#fff' : '#1a202c',
+      color: isDark ? '#fff' : 'var(--brand-500)',
     },
     description: {
       fontSize: '18px',

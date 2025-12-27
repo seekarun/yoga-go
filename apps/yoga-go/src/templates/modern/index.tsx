@@ -54,7 +54,7 @@ export default function ModernTemplate({ data, config, context }: TemplateProps)
 
   const valueProps = expert.customLandingPage?.valuePropositions;
   const valuePropsProps: ValuePropsSectionProps & { heroImage?: string } = {
-    type: valueProps?.type || 'list',
+    type: valueProps?.type || 'cards',
     content: valueProps?.content,
     items: valueProps?.items,
     heroImage: customHero?.heroImage,

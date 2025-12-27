@@ -5,6 +5,12 @@
  * Uses HSL color space for natural-looking tints and shades.
  */
 
+// Color harmony types for palette generation
+export type ColorHarmonyType = 'analogous' | 'triadic' | 'split-complementary';
+
+// Shade keys for the base palette (50-950)
+export type ShadeKey = 50 | 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900 | 950;
+
 export interface ColorPalette {
   50: string; // Lightest - subtle backgrounds
   100: string; // Light backgrounds, badges
@@ -17,6 +23,10 @@ export interface ColorPalette {
   800: string; // Dark accents
   900: string; // Dark text
   950: string; // Darkest
+  // Harmony-based colors
+  secondary?: string; // Secondary color based on harmony
+  highlight?: string; // Highlight/accent color based on harmony
+  harmonyType?: ColorHarmonyType; // Which harmony was used
 }
 
 interface HSL {
@@ -153,7 +163,7 @@ export function generatePalette(hexColor: string): ColorPalette {
 
   // Define target lightness values for each shade
   // These values create a natural progression
-  const lightnessValues: Record<keyof ColorPalette, number> = {
+  const lightnessValues: Record<ShadeKey, number> = {
     50: 97, // Almost white
     100: 94,
     200: 88,

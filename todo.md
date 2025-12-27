@@ -22,6 +22,8 @@ Misc
 [ ] TECH: remove excess fields in the user data (like membership)
 [ ] TECH: consider triggers for other tables for analytics.
 [ ] TECH: review currency conversion
+[ ] TECH: email: compose, with rich text
+[ ] TECH: email: spam gaurd
 [ ] TECH: Pay only after course is done?
     [ ] TECH: review code for all fallbacks.
     [ ] TECH: security review - all urls, all edits etc..

@@ -71,11 +71,18 @@ export interface HeroFormData {
   alignment: 'center' | 'left' | 'right';
 }
 
+// Value prop item form data
+export interface ValuePropItemFormData {
+  title: string;
+  description: string;
+  image: string;
+}
+
 // Value props form data
 export interface ValuePropsFormData {
-  type: 'paragraph' | 'list';
+  type: 'paragraph' | 'cards';
   content: string;
-  items: string[];
+  items: ValuePropItemFormData[];
 }
 
 // About section form data

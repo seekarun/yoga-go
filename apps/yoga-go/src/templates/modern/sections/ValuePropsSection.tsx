@@ -143,43 +143,76 @@ export default function ValuePropsSection({
                     gap: '20px',
                   }}
                 >
-                  {/* Icon circle */}
+                  {/* Icon/Image */}
                   <div
                     style={{
-                      width: '48px',
-                      height: '48px',
+                      width: '56px',
+                      height: '56px',
                       borderRadius: '12px',
-                      background: 'color-mix(in srgb, var(--brand-500) 15%, transparent)',
-                      border: '1px solid color-mix(in srgb, var(--brand-500) 30%, transparent)',
+                      background: item.image
+                        ? 'transparent'
+                        : 'color-mix(in srgb, var(--brand-500) 15%, transparent)',
+                      border: item.image
+                        ? 'none'
+                        : '1px solid color-mix(in srgb, var(--brand-500) 30%, transparent)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       flexShrink: 0,
+                      overflow: 'hidden',
                     }}
                   >
-                    <span
-                      style={{
-                        fontSize: '20px',
-                        background: 'linear-gradient(135deg, var(--brand-500), var(--brand-600))',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                      }}
-                    >
-                      {idx === 0 ? '✦' : idx === 1 ? '◈' : '✧'}
-                    </span>
+                    {item.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={item.image}
+                        alt={item.title || `Value ${idx + 1}`}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          borderRadius: '12px',
+                        }}
+                      />
+                    ) : (
+                      <span
+                        style={{
+                          fontSize: '20px',
+                          background: 'linear-gradient(135deg, var(--brand-500), var(--brand-600))',
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent',
+                        }}
+                      >
+                        {idx === 0 ? '✦' : idx === 1 ? '◈' : '✧'}
+                      </span>
+                    )}
                   </div>
                   {/* Text */}
-                  <div>
-                    <p
-                      style={{
-                        fontSize: '16px',
-                        fontWeight: '600',
-                        color: '#fff',
-                        marginBottom: '4px',
-                      }}
-                    >
-                      {item}
-                    </p>
+                  <div style={{ flex: 1 }}>
+                    {item.title && (
+                      <h4
+                        style={{
+                          fontSize: '16px',
+                          fontWeight: '600',
+                          color: '#fff',
+                          marginBottom: item.description ? '6px' : '0',
+                        }}
+                      >
+                        {item.title}
+                      </h4>
+                    )}
+                    {item.description && (
+                      <p
+                        style={{
+                          fontSize: '14px',
+                          lineHeight: '1.5',
+                          color: 'rgba(255,255,255,0.6)',
+                          margin: 0,
+                        }}
+                      >
+                        {item.description}
+                      </p>
+                    )}
                   </div>
                 </div>
               ))}

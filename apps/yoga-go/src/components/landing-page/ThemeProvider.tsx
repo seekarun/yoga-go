@@ -17,6 +17,8 @@ interface LandingPageThemeProviderProps {
  * - var(--brand-600) for hover states
  * - var(--brand-100) for light badges
  * - var(--brand-500-contrast) for text on brand-500 background
+ * - var(--brand-secondary) for secondary backgrounds (harmony-based)
+ * - var(--brand-highlight) for accent/highlight colors (harmony-based)
  * - etc.
  */
 export function LandingPageThemeProvider({ palette, children }: LandingPageThemeProviderProps) {
@@ -25,6 +27,10 @@ export function LandingPageThemeProvider({ palette, children }: LandingPageTheme
   // Calculate contrast colors for key shades (for text on colored backgrounds)
   const contrast500 = getContrastColor(colors[500]);
   const contrast600 = getContrastColor(colors[600]);
+
+  // Use harmony-based secondary/highlight if available, fallback to shades
+  const secondaryColor = colors.secondary || colors[100];
+  const highlightColor = colors.highlight || colors[400];
 
   const style = {
     '--brand-50': colors[50],
@@ -41,6 +47,9 @@ export function LandingPageThemeProvider({ palette, children }: LandingPageTheme
     // Contrast colors for text on brand backgrounds
     '--brand-500-contrast': contrast500,
     '--brand-600-contrast': contrast600,
+    // Harmony-based colors
+    '--brand-secondary': secondaryColor,
+    '--brand-highlight': highlightColor,
   } as React.CSSProperties;
 
   return <div style={style}>{children}</div>;

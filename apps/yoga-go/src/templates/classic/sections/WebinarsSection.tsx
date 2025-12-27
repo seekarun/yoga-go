@@ -12,7 +12,7 @@ export default function WebinarsSection({ title, description, webinars }: Webina
             fontWeight: '700',
             textAlign: 'center',
             marginBottom: '16px',
-            color: '#1a202c',
+            color: 'var(--brand-500)',
           }}
         >
           {title || 'Live Sessions'}

@@ -11,23 +11,49 @@ import type {
 import { sectionRegistry, type SectionType } from '../sections';
 import SectionWrapper from '../shared/SectionWrapper';
 import { templates, DEFAULT_TEMPLATE } from '../templates';
-import { generatePalette } from '@/lib/colorPalette';
+import { generatePalette, hexToHsl, hslToHex } from '@/lib/colorPalette';
 import { LandingPageThemeProvider } from '../ThemeProvider';
 import { renderTemplateSection, type EditorRenderContext } from './templateSections';
 
 type ViewMode = 'desktop' | 'mobile';
 
-// Preset brand colors for quick selection
-const PRESET_COLORS = [
-  '#E07A5F', // Coral
-  '#81B29A', // Sage
-  '#3D5A80', // Ocean
-  '#F2994A', // Sunset
-  '#9B8AB8', // Lavender
-  '#2A9D8F', // Teal
-  '#C97B84', // Rose
-  '#264653', // Midnight
+// Color harmony types
+type ColorHarmony = 'analogous' | 'triadic' | 'split-complementary';
+
+const HARMONY_OPTIONS: { type: ColorHarmony; label: string; description: string }[] = [
+  { type: 'analogous', label: 'Analogous', description: 'Calm & unified' },
+  { type: 'triadic', label: 'Triadic', description: 'Vibrant & balanced' },
+  { type: 'split-complementary', label: 'Split-Comp', description: 'Sophisticated contrast' },
 ];
+
+// Generate color palette based on harmony type
+function getHarmonyColors(
+  hexColor: string,
+  harmony: ColorHarmony
+): { secondary: string; highlight: string } {
+  const hsl = hexToHsl(hexColor);
+
+  switch (harmony) {
+    case 'analogous': {
+      // Adjacent colors on the wheel (30° apart)
+      const secondary = hslToHex((hsl.h + 30) % 360, Math.max(30, hsl.s * 0.6), 85);
+      const highlight = hslToHex((hsl.h - 30 + 360) % 360, Math.max(40, hsl.s * 0.7), 75);
+      return { secondary, highlight };
+    }
+    case 'triadic': {
+      // Evenly spaced (120° apart)
+      const secondary = hslToHex((hsl.h + 120) % 360, Math.max(30, hsl.s * 0.5), 85);
+      const highlight = hslToHex((hsl.h + 240) % 360, Math.max(40, hsl.s * 0.7), 75);
+      return { secondary, highlight };
+    }
+    case 'split-complementary': {
+      // Base + two colors adjacent to complement (150° and 210° from base)
+      const secondary = hslToHex((hsl.h + 150) % 360, Math.max(30, hsl.s * 0.5), 85);
+      const highlight = hslToHex((hsl.h + 210) % 360, Math.max(40, hsl.s * 0.7), 75);
+      return { secondary, highlight };
+    }
+  }
+}
 
 // Validate hex color format
 function isValidHexColor(hex: string): boolean {
@@ -72,6 +98,16 @@ export default function PreviewPane({
   const [hexError, setHexError] = useState(false);
   const colorPickerRef = useRef<HTMLDivElement>(null);
   const colorInputRef = useRef<HTMLInputElement>(null);
+  const [colorHarmony, setColorHarmony] = useState<ColorHarmony>(
+    (data.theme?.palette?.harmonyType as ColorHarmony) || 'analogous'
+  );
+
+  // Cycle through harmony options
+  const cycleHarmony = () => {
+    const currentIndex = HARMONY_OPTIONS.findIndex(h => h.type === colorHarmony);
+    const nextIndex = (currentIndex + 1) % HARMONY_OPTIONS.length;
+    setColorHarmony(HARMONY_OPTIONS[nextIndex].type);
+  };
 
   // Sync hex input when color changes externally
   useEffect(() => {
@@ -103,11 +139,18 @@ export default function PreviewPane({
   const handleBrandColorChange = (color: string, closePopup = false) => {
     // Generate a complete color palette from the primary color
     const palette = generatePalette(color);
+    // Add harmony colors to the palette
+    const harmonyColors = getHarmonyColors(color, colorHarmony);
     onChange({
       theme: {
         ...data.theme,
         primaryColor: color,
-        palette: palette,
+        palette: {
+          ...palette,
+          secondary: harmonyColors.secondary,
+          highlight: harmonyColors.highlight,
+          harmonyType: colorHarmony,
+        },
       },
     });
     setHexInput(color);
@@ -116,6 +159,36 @@ export default function PreviewPane({
       setShowColorPicker(false);
     }
   };
+
+  // Update palette when harmony type changes
+  const handleHarmonyChange = () => {
+    cycleHarmony();
+  };
+
+  // Effect to update palette when harmony changes
+  useEffect(() => {
+    if (currentBrandColor && data.theme?.palette) {
+      const harmonyColors = getHarmonyColors(currentBrandColor, colorHarmony);
+      // Only update if harmony colors are different
+      if (
+        data.theme.palette.secondary !== harmonyColors.secondary ||
+        data.theme.palette.highlight !== harmonyColors.highlight
+      ) {
+        onChange({
+          theme: {
+            ...data.theme,
+            palette: {
+              ...data.theme.palette,
+              secondary: harmonyColors.secondary,
+              highlight: harmonyColors.highlight,
+              harmonyType: colorHarmony,
+            },
+          },
+        });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [colorHarmony]);
 
   const handleHexInputChange = (value: string) => {
     // Allow typing with or without #
@@ -238,24 +311,71 @@ export default function PreviewPane({
                     )}
                   </div>
 
-                  {/* Preset Colors */}
+                  {/* Color Palette Display */}
                   <div>
-                    <label className="block text-xs text-gray-500 mb-2">Presets</label>
-                    <div className="grid grid-cols-8 gap-1.5">
-                      {PRESET_COLORS.map(color => (
-                        <button
-                          key={color}
-                          onClick={() => handleBrandColorChange(color, true)}
-                          className={`w-6 h-6 rounded-md border transition-transform hover:scale-110 ${
-                            currentBrandColor.toUpperCase() === color.toUpperCase()
-                              ? 'border-gray-800 ring-1 ring-offset-1 ring-gray-400'
-                              : 'border-gray-200'
-                          }`}
-                          style={{ backgroundColor: color }}
-                          title={color}
-                        />
-                      ))}
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs text-gray-500">Color Palette</label>
+                      <button
+                        onClick={cycleHarmony}
+                        className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                        title="Cycle color harmony"
+                      >
+                        <span className="text-[10px]">
+                          {HARMONY_OPTIONS.find(h => h.type === colorHarmony)?.label}
+                        </span>
+                        <svg
+                          className="w-3.5 h-3.5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                          />
+                        </svg>
+                      </button>
                     </div>
+                    {(() => {
+                      const harmonyColors = getHarmonyColors(currentBrandColor, colorHarmony);
+                      return (
+                        <div className="flex flex-col gap-2">
+                          {/* Primary */}
+                          <div
+                            className="h-10 rounded-lg border border-gray-200 flex items-center justify-center"
+                            style={{ backgroundColor: currentBrandColor }}
+                          >
+                            <span
+                              className="text-xs font-medium"
+                              style={{
+                                color: hexToHsl(currentBrandColor).l > 50 ? '#374151' : '#fff',
+                              }}
+                            >
+                              Primary
+                            </span>
+                          </div>
+                          {/* Secondary */}
+                          <div
+                            className="h-8 rounded-lg border border-gray-200 flex items-center justify-center"
+                            style={{ backgroundColor: harmonyColors.secondary }}
+                          >
+                            <span className="text-xs font-medium text-gray-700">Secondary</span>
+                          </div>
+                          {/* Highlight */}
+                          <div
+                            className="h-8 rounded-lg border border-gray-200 flex items-center justify-center"
+                            style={{ backgroundColor: harmonyColors.highlight }}
+                          >
+                            <span className="text-xs font-medium text-gray-700">Highlight</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                    <p className="text-[10px] text-gray-400 mt-1.5 text-center">
+                      {HARMONY_OPTIONS.find(h => h.type === colorHarmony)?.description}
+                    </p>
                   </div>
                 </div>
               )}

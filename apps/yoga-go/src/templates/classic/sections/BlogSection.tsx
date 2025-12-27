@@ -5,7 +5,14 @@ export default function BlogSection({ title, description, latestPost }: BlogSect
   return (
     <section style={{ padding: '80px 20px', background: '#f8f9fa', textAlign: 'center' }}>
       <div style={{ maxWidth: '700px', margin: '0 auto' }}>
-        <h2 style={{ fontSize: '32px', fontWeight: '600', marginBottom: '12px', color: '#111' }}>
+        <h2
+          style={{
+            fontSize: '32px',
+            fontWeight: '600',
+            marginBottom: '12px',
+            color: 'var(--brand-500)',
+          }}
+        >
           {title || 'From the Blog'}
         </h2>
         <p style={{ fontSize: '18px', marginBottom: '24px', color: '#666', lineHeight: '1.6' }}>
@@ -65,22 +72,22 @@ export default function BlogSection({ title, description, latestPost }: BlogSect
           href="/blog"
           style={{
             padding: '14px 32px',
-            background: '#111',
-            color: '#fff',
+            background: 'var(--brand-500)',
+            color: 'var(--brand-500-contrast, #fff)',
             borderRadius: '8px',
             fontSize: '16px',
             fontWeight: '600',
             textDecoration: 'none',
             display: 'inline-block',
-            transition: 'transform 0.2s, background 0.2s',
+            transition: 'transform 0.2s, opacity 0.2s',
           }}
           onMouseEnter={e => {
             e.currentTarget.style.transform = 'translateY(-2px)';
-            e.currentTarget.style.background = '#333';
+            e.currentTarget.style.opacity = '0.9';
           }}
           onMouseLeave={e => {
             e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.background = '#111';
+            e.currentTarget.style.opacity = '1';
           }}
         >
           View All Posts

@@ -16,7 +16,7 @@ export default function CoursesSection({ courses }: CoursesSectionProps) {
             fontWeight: '700',
             textAlign: 'center',
             marginBottom: '60px',
-            color: '#1a202c',
+            color: 'var(--brand-500)',
           }}
         >
           Courses

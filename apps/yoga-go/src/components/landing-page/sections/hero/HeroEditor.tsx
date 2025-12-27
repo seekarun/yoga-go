@@ -54,7 +54,7 @@ export default function HeroEditor({ data, onChange, expertId, onError }: Sectio
 
     const updated = { ...formData, heroImage: imageUrl };
     setFormData(updated);
-    setShowImageUpload(false);
+    // Don't close picker - let user try multiple images before clicking Done
 
     onChange({
       hero: {
@@ -186,7 +186,7 @@ export default function HeroEditor({ data, onChange, expertId, onError }: Sectio
               onClick={() => setShowImageUpload(false)}
               className="text-sm text-gray-500 hover:text-gray-700"
             >
-              Cancel
+              Done
             </button>
           </div>
         )}

@@ -1429,15 +1429,24 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
             // Value propositions with dummy items
             valuePropositions: extractedContent?.valuePropositions
               ? {
-                  type: 'list',
-                  items: extractedContent.valuePropositions.items,
+                  type: 'cards' as const,
+                  items: extractedContent.valuePropositions.items?.map(
+                    (item: string | { title: string; description: string; image?: string }) =>
+                      typeof item === 'string' ? { title: item, description: '' } : item
+                  ),
                 }
               : {
-                  type: 'list',
+                  type: 'cards' as const,
                   items: [
-                    'Lorem ipsum dolor sit amet consectetur',
-                    'Sed do eiusmod tempor incididunt',
-                    'Ut enim ad minim veniam quis nostrud',
+                    {
+                      title: 'Lorem ipsum dolor',
+                      description: 'Sit amet consectetur adipiscing elit',
+                    },
+                    {
+                      title: 'Sed do eiusmod',
+                      description: 'Tempor incididunt ut labore et dolore',
+                    },
+                    { title: 'Ut enim ad minim', description: 'Veniam quis nostrud exercitation' },
                   ],
                 },
             // About section with dummy content

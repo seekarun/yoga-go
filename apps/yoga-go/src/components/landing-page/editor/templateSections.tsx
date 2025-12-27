@@ -135,7 +135,7 @@ export function renderTemplateSection(
       const valueProps = data.valuePropositions;
       return (
         <ValuePropsSection
-          type={valueProps?.type || 'list'}
+          type={valueProps?.type || 'cards'}
           content={valueProps?.content}
           items={valueProps?.items}
         />
