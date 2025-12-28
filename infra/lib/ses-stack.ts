@@ -9,8 +9,8 @@ import * as sesActions from "aws-cdk-lib/aws-ses-actions";
 import type { Construct } from "constructs";
 import * as path from "path";
 
-// Domain configuration (DNS managed by Vercel)
-const MYYOGA_GURU_DOMAIN = "myyoga.guru";
+// Default domain - can be overridden via CDK context: -c domain=reelzai.com
+const DEFAULT_DOMAIN = "myyoga.guru";
 
 export interface SesStackProps extends cdk.StackProps {
   /** DynamoDB Core Table ARN (for Lambda to read expert data) */
@@ -46,12 +46,18 @@ export class SesStack extends cdk.Stack {
     const { coreTableArn, coreTableName, emailsTableArn, emailsTableName } = props;
 
     // ========================================
+    // Domain Configuration
+    // ========================================
+    const appDomain: string =
+      this.node.tryGetContext("domain") || DEFAULT_DOMAIN;
+
+    // ========================================
     // SES Email Identity (Domain Verification)
     // ========================================
     // Using ses.Identity.domain() since DNS is managed by Vercel, not Route53
     // DKIM and other DNS records are configured manually in Vercel DNS
     const emailIdentity = new ses.EmailIdentity(this, "EmailIdentity", {
-      identity: ses.Identity.domain(MYYOGA_GURU_DOMAIN),
+      identity: ses.Identity.domain(appDomain),
     });
 
     // Suppress the unused variable warning - emailIdentity is used for implicit dependency
@@ -205,7 +211,8 @@ The MyYoga.Guru Team`,
           DYNAMODB_TABLE: coreTableName,
           EMAILS_TABLE: emailsTableName,
           EMAIL_BUCKET: emailBucket.bucketName,
-          DEFAULT_FROM_EMAIL: "hi@myyoga.guru",
+          DEFAULT_FROM_EMAIL: `hi@${appDomain}`,
+          APP_DOMAIN: appDomain,
           PLATFORM_ADMIN_EMAILS: platformAdminEmails,
         },
         bundling: { minify: true, sourceMap: false },
@@ -257,11 +264,11 @@ The MyYoga.Guru Team`,
       receiptRuleSetName: "yoga-go-inbound",
     });
 
-    // Rule 1: Platform emails (@myyoga.guru)
-    // This matches all @myyoga.guru emails
+    // Rule 1: Platform emails (e.g., @myyoga.guru or @reelzai.com)
+    // This matches all emails for the configured app domain
     // StopAction prevents fall-through to the catch-all BYOD rule
     receiptRuleSet.addRule("ForwardPlatformEmails", {
-      recipients: ["myyoga.guru"],
+      recipients: [appDomain],
       actions: [
         new sesActions.S3({
           bucket: emailBucket,
@@ -279,7 +286,7 @@ The MyYoga.Guru Team`,
     // Rule 2: BYOD custom domain emails (catch-all for any verified domain)
     // Empty recipients array = catch all emails for any verified domain in SES
     // Lambda filters by domain to find the right tenant
-    // Platform emails (myyoga.guru) won't reach here due to StopAction above
+    // Platform emails won't reach here due to StopAction above
     receiptRuleSet.addRule("ForwardByodEmails", {
       recipients: [], // Catch-all for any SES-verified domain
       actions: [

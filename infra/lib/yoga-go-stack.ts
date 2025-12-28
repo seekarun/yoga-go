@@ -12,9 +12,8 @@ import * as sqs from "aws-cdk-lib/aws-sqs";
 import type { Construct } from "constructs";
 import * as path from "path";
 
-// Domain configuration (DNS managed by Vercel)
-const MYYOGA_GURU_DOMAIN = "myyoga.guru";
-const COGNITO_CUSTOM_DOMAIN = `signin.${MYYOGA_GURU_DOMAIN}`;
+// Default domain - can be overridden via CDK context: -c domain=reelzai.com
+const DEFAULT_DOMAIN = "myyoga.guru";
 
 export type YogaGoStackProps = cdk.StackProps;
 
@@ -44,6 +43,16 @@ export class YogaGoStack extends cdk.Stack {
     super(scope, id, props);
 
     // ========================================
+    // Domain Configuration
+    // ========================================
+    // Get domain from context, default to myyoga.guru
+    // Deploy with: npx cdk deploy -c domain=reelzai.com (for dev)
+    const appDomain: string =
+      this.node.tryGetContext("domain") || DEFAULT_DOMAIN;
+    const cognitoDomain = `signin.${appDomain}`;
+    const appName = appDomain === "myyoga.guru" ? "MyYoga.Guru" : "ReelzAI";
+
+    // ========================================
     // Cognito User Pool
     // ========================================
     const userPool = new cognito.UserPool(this, "YogaGoUserPool", {
@@ -70,15 +79,15 @@ export class YogaGoStack extends cdk.Stack {
       // Use SES for branded verification emails (instead of default Cognito email)
       // Note: SES is configured in us-west-2 (required for email receiving capability)
       email: cognito.UserPoolEmail.withSES({
-        fromEmail: "noreply@myyoga.guru",
-        fromName: "MyYoga.Guru",
+        fromEmail: `noreply@${appDomain}`,
+        fromName: appName,
         sesRegion: "us-west-2",
-        sesVerifiedDomain: MYYOGA_GURU_DOMAIN,
+        sesVerifiedDomain: appDomain,
       }),
 
       // Custom verification email template
       userVerification: {
-        emailSubject: "Verify your MyYoga.Guru account",
+        emailSubject: `Verify your ${appName} account`,
         emailBody:
           "Namaste! Please verify your email by entering this code: {####}",
         emailStyle: cognito.VerificationEmailStyle.CODE,
@@ -97,27 +106,27 @@ export class YogaGoStack extends cdk.Stack {
     // 4. Deploy with: cdk deploy YogaGoStack -c cognitoCertificateArn=arn:aws:acm:us-east-1:...
     // 5. Add CNAME record in Vercel: signin.myyoga.guru -> [CloudFront domain from output]
     //
-    // IMPORTANT: Always include the cognitoCertificateArn context parameter in deploys!
+    // IMPORTANT: Always include the cognitoCertificateArn context parameter when deploying this stack!
+    // For other stacks (CognitoCertStack, etc.), a placeholder is used to allow synthesis.
 
     const cognitoCertificateArn = this.node.tryGetContext(
       "cognitoCertificateArn",
     );
 
-    if (!cognitoCertificateArn) {
-      throw new Error(
-        "cognitoCertificateArn context is required. Deploy with: cdk deploy -c cognitoCertificateArn=arn:aws:acm:us-east-1:...",
-      );
-    }
+    // Use placeholder during synthesis if not provided - will fail at deploy time with clear error
+    const certificateArn =
+      cognitoCertificateArn ||
+      `arn:aws:acm:us-east-1:${this.account}:certificate/PLACEHOLDER-DEPLOY-COGNITO-CERT-STACK-FIRST`;
 
     const certificate = acm.Certificate.fromCertificateArn(
       this,
       "CognitoCertificate",
-      cognitoCertificateArn,
+      certificateArn,
     );
 
     const customDomain = userPool.addDomain("CognitoCustomDomain", {
       customDomain: {
-        domainName: COGNITO_CUSTOM_DOMAIN,
+        domainName: cognitoDomain,
         certificate,
       },
     });
@@ -127,7 +136,7 @@ export class YogaGoStack extends cdk.Stack {
     // Output the CloudFront domain for DNS CNAME record
     new cdk.CfnOutput(this, "CognitoCloudFrontDomain", {
       value: customDomain.cloudFrontEndpoint,
-      description: `Add CNAME record in Vercel: ${COGNITO_CUSTOM_DOMAIN} -> this value`,
+      description: `Add CNAME record in Vercel: ${cognitoDomain} -> this value`,
       exportName: "YogaGoCognitoCloudFrontDomain",
     });
 
@@ -198,19 +207,19 @@ export class YogaGoStack extends cdk.Stack {
         ],
         callbackUrls: [
           "http://localhost:3111/api/auth/callback/cognito",
-          "https://myyoga.guru/api/auth/callback/cognito",
-          "https://www.myyoga.guru/api/auth/callback/cognito",
+          `https://${appDomain}/api/auth/callback/cognito`,
+          `https://www.${appDomain}/api/auth/callback/cognito`,
           "http://localhost:3111/api/auth/google/callback",
-          "https://myyoga.guru/api/auth/google/callback",
-          "https://www.myyoga.guru/api/auth/google/callback",
+          `https://${appDomain}/api/auth/google/callback`,
+          `https://www.${appDomain}/api/auth/google/callback`,
           "http://localhost:3111/api/auth/facebook/callback",
-          "https://myyoga.guru/api/auth/facebook/callback",
-          "https://www.myyoga.guru/api/auth/facebook/callback",
+          `https://${appDomain}/api/auth/facebook/callback`,
+          `https://www.${appDomain}/api/auth/facebook/callback`,
         ],
         logoutUrls: [
           "http://localhost:3111",
-          "https://myyoga.guru",
-          "https://www.myyoga.guru",
+          `https://${appDomain}`,
+          `https://www.${appDomain}`,
         ],
       },
       supportedIdentityProviders: [
@@ -230,8 +239,8 @@ export class YogaGoStack extends cdk.Stack {
     // Using ses.Identity.domain() since DNS is managed by Vercel, not Route53
     // DKIM and other DNS records are configured manually in Vercel DNS
     new ses.EmailIdentity(this, "EmailIdentity", {
-      identity: ses.Identity.domain(MYYOGA_GURU_DOMAIN),
-      mailFromDomain: `mail.${MYYOGA_GURU_DOMAIN}`,
+      identity: ses.Identity.domain(appDomain),
+      mailFromDomain: `mail.${appDomain}`,
     });
 
     const sesConfigSet = new ses.ConfigurationSet(this, "SesConfigSet", {
@@ -364,7 +373,8 @@ The MyYoga.Guru Team`,
         environment: {
           DYNAMODB_TABLE: coreTable.tableName,
           ANALYTICS_TABLE: "yoga-go-analytics",
-          SES_FROM_EMAIL: "hi@myyoga.guru",
+          SES_FROM_EMAIL: `hi@${appDomain}`,
+          APP_DOMAIN: appDomain,
           // Use us-west-2 config set since Lambda sends email via SES in us-west-2
           SES_CONFIG_SET: "yoga-go-emails-west",
         },
@@ -386,7 +396,7 @@ The MyYoga.Guru Team`,
         ],
         resources: ["*"],
         conditions: {
-          StringLike: { "ses:FromAddress": "*@myyoga.guru" },
+          StringLike: { "ses:FromAddress": `*@${appDomain}` },
         },
       }),
     );
@@ -652,7 +662,7 @@ The MyYoga.Guru Team`,
       resources: ["*"],
       conditions: {
         StringLike: {
-          "ses:FromAddress": "*@myyoga.guru",
+          "ses:FromAddress": `*@${appDomain}`,
         },
       },
     });

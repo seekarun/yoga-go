@@ -10,6 +10,14 @@ const app = new cdk.App();
 
 const account = process.env.CDK_DEFAULT_ACCOUNT;
 
+// ========================================
+// Domain Configuration
+// ========================================
+// Deploy with: npx cdk deploy -c domain=reelzai.com (for dev)
+// Default: myyoga.guru (prod)
+const appDomain = app.node.tryGetContext("domain") || "myyoga.guru";
+const cognitoDomain = `signin.${appDomain}`;
+
 const envSydney = {
   account,
   region: "ap-southeast-2",
@@ -88,18 +96,18 @@ new CalelStack(app, "CalelStack", {
 // ========================================
 // Cognito Certificate Stack (us-east-1)
 // ========================================
-// Creates ACM certificate for Cognito custom domain (signin.myyoga.guru)
+// Creates ACM certificate for Cognito custom domain
 // Must be in us-east-1 as required by Cognito custom domains.
 //
 // Deployment steps:
-// 1. Deploy this stack: cdk deploy CognitoCertStack
+// 1. Deploy this stack: cdk deploy CognitoCertStack -c domain=<domain>
 // 2. Add DNS validation CNAME to Vercel (check ACM console)
 // 3. Wait for certificate to show "Issued"
-// 4. Deploy YogaGoStack with: cdk deploy YogaGoStack -c cognitoCertificateArn=<ARN>
-// 5. Add CNAME for signin.myyoga.guru -> CloudFront domain (from YogaGoStack output)
-// 6. Update COGNITO_DOMAIN env var in Vercel to signin.myyoga.guru
+// 4. Deploy YogaGoStack with: cdk deploy YogaGoStack -c cognitoCertificateArn=<ARN> -c domain=<domain>
+// 5. Add CNAME for signin.<domain> -> CloudFront domain (from YogaGoStack output)
+// 6. Update COGNITO_DOMAIN env var in Vercel to signin.<domain>
 new CognitoCertStack(app, "CognitoCertStack", {
-  description: "Cognito Certificate for signin.myyoga.guru (us-east-1)",
+  description: `Cognito Certificate for ${cognitoDomain} (us-east-1)`,
   env: envVirginia,
   crossRegionReferences: true,
   tags: {
@@ -107,5 +115,5 @@ new CognitoCertStack(app, "CognitoCertStack", {
     Environment: "production",
     ManagedBy: "CDK",
   },
-  domainName: "signin.myyoga.guru",
+  domainName: cognitoDomain,
 });
