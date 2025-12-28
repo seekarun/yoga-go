@@ -155,3 +155,96 @@ timeline app
 
 add multiple tasks that need to get done for a project.
 create sequence for the tasks
+
+$86.62
+
+Assumptions: 3,000 learners, 100 experts, 200 courses (avg 10 lessons × 30 min each)
+
+  ---
+  Vercel (Hosting)
+
+  | Item                 | Details                        | Monthly Cost |
+  |----------------------|--------------------------------|--------------|
+  | Pro Plan             | $20/seat (assuming 1 seat)     | $20.00       |
+  | Bandwidth            | Included 1TB (likely under)    | $0.00        |
+  | Serverless Functions | Included 40 hrs (likely under) | $0.00        |
+
+  Vercel Total: ~$20.00/month
+
+  ---
+  Cloudflare Stream (Video)
+
+  | Item     | Calculation                                      | Monthly Cost       |
+  |----------|--------------------------------------------------|--------------------|
+  | Storage  | 200 courses × 10 lessons × 30 min = 60,000 min   | 60 × $5 = $300.00  |
+  | Delivery | 3,000 learners × 5 videos × 30 min = 450,000 min | 450 × $1 = $450.00 |
+
+  Cloudflare Stream Total: ~$750.00/month
+
+  ---
+  Cloudflare Images
+
+  | Item     | Calculation                            | Monthly Cost            |
+  |----------|----------------------------------------|-------------------------|
+  | Storage  | 100 experts × 20 images = 2,000 images | 1 block of 100K = $5.00 |
+  | Delivery | ~100,000 requests/month                | 1 × $1 = $1.00          |
+
+  Cloudflare Images Total: ~$6.00/month
+
+  ---
+  Complete Monthly Cost Summary
+
+  | Service           | Monthly Cost   | % of Total |
+  |-------------------|----------------|------------|
+  | Cloudflare Stream | $750.00        | 87%        |
+  | AWS (Total)       | $51.74         | 6%         |
+  | Vercel            | $20.00         | 2%         |
+  | Cloudflare Images | $6.00          | 1%         |
+  | TOTAL             | ~$827.74/month |            |
+
+  ---
+  Cost Breakdown by Category
+
+  Video Streaming (Cloudflare)  ████████████████████████████████  87% ($750)
+  Authentication (AWS Cognito)  ███                                6% ($47)
+  Hosting (Vercel)              █                                  2% ($20)
+  Database (AWS DynamoDB)       ░                                  0.4% ($3)
+  Images (Cloudflare)           ░                                  0.7% ($6)
+  Email (AWS SES)               ░                                  0.1% ($1)
+
+  ---
+  Key Insights
+
+  1. Video streaming is 87% of costs - Cloudflare Stream dominates the bill
+  2. Storage vs Delivery split:
+    - Stream Storage: $300 (fixed, based on content library)
+    - Stream Delivery: $450 (variable, based on views)
+  3. Per-learner cost: ~$0.28/learner/month (mostly video delivery)
+  4. Per-expert cost: ~$8.28/expert/month (hosting their courses)
+
+  ---
+  Cost at Scale
+
+  | Scale   | Learners | Experts | Stream | AWS  | Vercel | Total  |
+  |---------|----------|---------|--------|------|--------|--------|
+  | Current | 3,000    | 100     | $750   | $52  | $20    | $822   |
+  | 5x      | 15,000   | 500     | $2,750 | $260 | $20    | $3,030 |
+  | 10x     | 30,000   | 1,000   | $5,250 | $520 | $40    | $5,810 |
+
+  Stream scales with both content (storage) and views (delivery)
+
+  ---
+  Cost Optimization Ideas
+
+  | Optimization                              | Potential Savings      |
+  |-------------------------------------------|------------------------|
+  | Shorter video lessons (20 min avg vs 30)  | -33% on Stream (~$250) |
+  | Lower video quality options               | -20-40% on delivery    |
+  | Email login vs social (Cognito)           | -$47/month             |
+  | Cloudflare Pro plan (100 free Stream min) | Minimal                |
+
+  ---
+  Sources:
+  - https://vercel.com/pricing
+  - https://developers.cloudflare.com/stream/pricing/
+  - https://developers.cloudflare.com/images/pricing/

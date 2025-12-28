@@ -17,8 +17,8 @@ function SigninForm() {
     setIsExpertDomain(isExpertMode);
   }, []);
 
-  // Default callback: /srv for main domain, / for expert domains (learners go to landing page)
-  const callbackUrl = callbackUrlParam || (isExpertDomain ? '/' : '/srv');
+  // Default callback: /app for main domain (role-based redirect happens in API), / for expert domains
+  const callbackUrl = callbackUrlParam || (isExpertDomain ? '/' : '/app');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
