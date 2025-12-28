@@ -397,14 +397,17 @@ export default async function middleware(request: NextRequest) {
       return addTenantHeaders(NextResponse.rewrite(url));
     }
 
-    // Protected routes: Check authentication
-    if (
-      pathname === '/app' ||
-      pathname.startsWith('/app/') ||
-      pathname === '/srv' ||
-      pathname.startsWith('/srv/') ||
-      pathname.startsWith('/data/app/')
-    ) {
+    // /srv routes should NOT work on expert subdomains
+    // Experts should manage their dashboard from their own subdomain or main domain
+    if (pathname === '/srv' || pathname.startsWith('/srv/')) {
+      console.log('[DBG][middleware] /srv not allowed on expert subdomain, redirecting to /');
+      const url = request.nextUrl.clone();
+      url.pathname = '/';
+      return NextResponse.redirect(url);
+    }
+
+    // Protected routes: Check authentication (only /app routes on expert subdomains)
+    if (pathname === '/app' || pathname.startsWith('/app/') || pathname.startsWith('/data/app/')) {
       if (!hasSession) {
         console.log('[DBG][middleware] No session cookie, redirecting to signin');
         const loginUrl = new URL('/auth/signin', request.url);

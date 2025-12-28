@@ -39,19 +39,27 @@ export default function Dashboard() {
     }
   }, []);
 
-  // Redirect experts to /srv, UNLESS they explicitly want to view their learning dashboard
+  // Redirect experts to /srv, UNLESS:
+  // 1. They explicitly want to view their learning dashboard (?view=learning)
+  // 2. They are on another expert's subdomain (treated as learner there)
   useEffect(() => {
     const url = new URL(window.location.href);
     const isLearningView =
       url.searchParams.has('view') && url.searchParams.get('view') === 'learning';
 
-    if (isExpert && !isLearningView) {
-      console.log('[DBG][app/page] User is expert, redirecting to /srv');
+    // On expert subdomains, users with expert role should NOT be redirected to /srv
+    // They are learners on other expert's sites
+    const isOnOtherExpertSubdomain = expertContext.isExpertMode;
+
+    if (isExpert && !isLearningView && !isOnOtherExpertSubdomain) {
+      console.log('[DBG][app/page] User is expert on main domain, redirecting to /srv');
       router.push('/srv');
     } else if (isExpert && isLearningView) {
       console.log('[DBG][app/page] Expert viewing learning dashboard');
+    } else if (isExpert && isOnOtherExpertSubdomain) {
+      console.log('[DBG][app/page] Expert on other expert subdomain, staying on /app as learner');
     }
-  }, [isExpert, router]);
+  }, [isExpert, router, expertContext.isExpertMode]);
 
   useEffect(() => {
     const fetchUserCourses = async () => {

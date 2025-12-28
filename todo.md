@@ -244,7 +244,562 @@ Assumptions: 3,000 learners, 100 experts, 200 courses (avg 10 lessons × 30 min 
   | Cloudflare Pro plan (100 free Stream min) | Minimal                |
 
   ---
+⏺ Monthly Cost Per Expert
+
+  Simple Calculation
+
+  | Total Monthly Cost | Experts | Cost Per Expert    |
+  |--------------------|---------|--------------------|
+  | $827.74            | 100     | $8.28/expert/month |
+
+  ---
+  Detailed Breakdown Per Expert
+
+  | Cost Component             | Total   | Per Expert | Notes                                            |
+  |----------------------------|---------|------------|--------------------------------------------------|
+  | Cloudflare Stream Storage  | $300    | $3.00      | 2 courses × 10 lessons × 30 min = 600 min stored |
+  | Cloudflare Stream Delivery | $450    | $4.50      | 30 learners/expert × 5 videos × 30 min           |
+  | AWS Cognito (Social Login) | $46.50  | $0.47      | ~30 learners per expert                          |
+  | AWS DynamoDB               | $3.13   | $0.03      | User data, courses, orders                       |
+  | Cloudflare Images          | $6.00   | $0.06      | ~20 images per expert                            |
+  | Vercel (shared)            | $20.00  | $0.20      | Platform hosting                                 |
+  | Other AWS                  | $2.11   | $0.02      | SES, S3, Secrets                                 |
+  | TOTAL                      | $827.74 | $8.28      |                                                  |
+
+  ---
+  Variable vs Fixed Costs
+
+  | Type           | Amount/Expert | What It Covers                               |
+  |----------------|---------------|----------------------------------------------|
+  | Variable       | ~$8.00        | Video storage/delivery, learner auth, images |
+  | Fixed (shared) | ~$0.28        | Vercel, base infra (amortized)               |
+
+  ---
+  Break-Even Pricing
+
+  To cover infrastructure costs, each expert would need to pay:
+
+  | Margin       | Monthly Fee | Notes           |
+  |--------------|-------------|-----------------|
+  | Cost only    | $8.28       | Break-even      |
+  | +20% margin  | $9.94       | Covers overhead |
+  | +50% margin  | $12.42      | Sustainable     |
+  | +100% margin | $16.56      | Profitable      |
+
+  Current market comparison: Teachable charges $39-119/month, Kajabi $149-399/month
+
+
+////////////////// ZOOOOM
+
+> the main intention of having an alternative in-platform video conferencing option is so that the meeting can be
+ recoded ans store for fugure reference in the platfrom itself. Allowing experts to reuse if required. 
+
+⏺ That changes things significantly. You want:
+
+  1. Live webinar → Auto-record → Store in platform → Reuse as course content
+
+  This is a content creation pipeline, not just video conferencing.
+
+⏺ Web Search("Zoom cloud recording API download programmatically storage costs 2025")
+  ⎿  Did 1 search in 23s                                                                                        
+
+⏺ Web Search("Daily.co 100ms video SDK recording storage API pricing 2025")
+  ⎿  Did 1 search in 26s                                                                                        
+
+⏺ Recording + Storage for Content Reuse
+
+  Your Workflow
+
+  Live Webinar → Auto-Record → Store in Platform → Reuse as Course
+       ↓              ↓              ↓                  ↓
+    100 experts   Recording fee   Cloudflare       Already have
+    × 2/month     per minute      Stream           this!
+
+  ---
+  Option Comparison (Recording Focus)
+
+  Assumptions: 100 experts × 2 webinars/month × 60 min = 12,000 recorded minutes/month
+
+  | Provider                | Live Session     | Recording        | Storage         | Total/Month      |
+  |-------------------------|------------------|------------------|-----------------|------------------|
+  | Zoom Video SDK          | $0.0035/min      | $0.015/min       | $100/TB         | ~$240 + storage  |
+  | Daily.co                | $0.004/min       | $0.0135/min      | $0.003/min      | ~$246            |
+  | 100ms                   | $0.004/min       | $0.0135/min      | Included 7 days | ~$210 + transfer |
+  | Jitsi + Jibri           | Free (self-host) | Free (self-host) | Your S3/R2      | ~$50 (server)    |
+  | Current BYOZ + Download | $0               | Expert's Zoom    | Cloudflare      | ~$0 + CF         |
+
+  ---
+  Best Option: Enhance Current BYOZ
+
+  Flow: Zoom Records → Webhook → Download → Cloudflare Stream
+
+  Expert hosts webinar (their Zoom)
+          ↓
+  Zoom cloud records (5GB free/license)
+          ↓
+  Webhook: recording.completed
+          ↓
+  Lambda downloads MP4 via API
+          ↓
+  Upload to Cloudflare Stream
+          ↓
+  Expert can add to course library
+
+  Cost: Only Cloudflare Stream storage (~$60/month for 12,000 min)
+
+  ---
+  Full Cost Breakdown by Option
+
+  Option A: Current Zoom + Auto-Import (Recommended)
+
+  | Item                      | Cost                            |
+  |---------------------------|---------------------------------|
+  | Live webinar              | $0 (expert's Zoom)              |
+  | Recording                 | $0 (expert's Zoom cloud)        |
+  | Lambda processing         | ~$0.50/month                    |
+  | Cloudflare Stream storage | 12,000 min × $0.005 = $60/month |
+
+  Total: ~$60/month ✅
+
+  ---
+  Option B: Zoom Video SDK (Platform-owned)
+
+  | Item                   | Calculation                             | Cost   |
+  |------------------------|-----------------------------------------|--------|
+  | Session minutes        | 12,000 min × 30 avg attendees × $0.0035 | $1,260 |
+  | Recording              | 12,000 min × $0.015                     | $180   |
+  | Transfer to Cloudflare | Lambda + bandwidth                      | ~$10   |
+  | Cloudflare Stream      | 12,000 min                              | $60    |
+
+  Total: ~$1,510/month ❌
+
+  ---
+  Option C: 100ms
+
+  | Item                   | Calculation                      | Cost   |
+  |------------------------|----------------------------------|--------|
+  | Session minutes        | 360,000 participant-min × $0.004 | $1,440 |
+  | Recording              | 12,000 min × $0.0135             | $162   |
+  | Transfer to Cloudflare | API download                     | ~$10   |
+  | Cloudflare Stream      | 12,000 min                       | $60    |
+
+  Total: ~$1,672/month ❌
+
+  ---
+  Option D: Jitsi + Jibri (Self-Hosted)
+
+  | Item                   | Calculation   | Cost        |
+  |------------------------|---------------|-------------|
+  | Jitsi server (EC2)     | t3.medium     | ~$30/month  |
+  | Jibri recorder (EC2)   | c5.xlarge × 2 | ~$120/month |
+  | S3 temp storage        | ~50GB         | ~$1         |
+  | Transfer to Cloudflare | Lambda        | ~$5         |
+  | Cloudflare Stream      | 12,000 min    | $60         |
+
+  Total: ~$216/month (but complex to manage)
+
+  ---
+  Recommendation
+
+  Option A: Enhance Current BYOZ with Auto-Import
+
+  Implementation:
+
+  1. Zoom Webhook - Listen for recording.completed
+  2. Lambda - Download recording via Zoom API
+  3. Upload - Push to Cloudflare Stream
+  4. Link - Associate with webinar in DynamoDB
+  5. UI - "Add to Course" button for expert
+
+  Cost: ~$60/month (just Cloudflare Stream storage)
+
+  Effort: Medium (1-2 days development)
+
+  ---
+  Architecture
+
+  ┌─────────────────┐     ┌──────────────┐     ┌─────────────────┐
+  │  Expert's Zoom  │────▶│ Zoom Webhook │────▶│  Lambda         │
+  │  (hosts webinar)│     │ recording.   │     │  - Download MP4 │
+  └─────────────────┘     │ completed    │     │  - Upload to CF │
+                          └──────────────┘     └────────┬────────┘
+                                                        │
+                          ┌──────────────┐              ▼
+                          │  DynamoDB    │◀────┌─────────────────┐
+                          │  Link webinar│     │ Cloudflare      │
+                          │  to recording│     │ Stream          │
+                          └──────────────┘     └─────────────────┘
+                                                        │
+                                                        ▼
+                                               ┌─────────────────┐
+                                               │ Expert can add  │
+                                               │ to course       │
+                                               └─────────────────┘
+
+  ---
+  Summary
+
+  | Option                | Monthly Cost | Complexity | Recommendation |
+  |-----------------------|--------------|------------|----------------|
+  | A: BYOZ + Auto-Import | $60          | Medium     | ✅ Best        |
+  | B: Zoom Video SDK     | $1,510       | High       | ❌ Expensive   |
+  | C: 100ms              | $1,672       | High       | ❌ Expensive   |
+  | D: Jitsi Self-Host    | $216         | Very High  | ⚠️ Complex ops |
+
   Sources:
-  - https://vercel.com/pricing
-  - https://developers.cloudflare.com/stream/pricing/
-  - https://developers.cloudflare.com/images/pricing/
+  - https://developers.zoom.us/docs/video-sdk/web/recording/
+  - https://www.daily.co/pricing/
+  - https://www.100ms.live/pricing
+
+> is there a way to make auto-import work for google meet? that another BYO option 
+
+⏺ Web Search("Google Meet recording API download programmatically webhook 2025")
+  ⎿  Did 1 search in 27s                                                                                        
+
+⏺ Web Search("Google Workspace Events API Meet recording notification subscribe webhook")
+  ⎿  Did 1 search in 25s                                                                                        
+
+⏺ Google Meet Auto-Import: Possible but Harder
+
+  Comparison: Zoom vs Google Meet
+
+  | Feature                       | Zoom                   | Google Meet                   |
+  |-------------------------------|------------------------|-------------------------------|
+  | Recording API                 | ✅ Direct download URL | ❌ Stored in Google Drive     |
+  | Webhook for "recording ready" | ✅ recording.completed | ✅ recording.v2.fileGenerated |
+  | Download recording            | ✅ Simple API call     | ⚠️ Requires Drive API         |
+  | API scope                     | Normal OAuth           | Restricted scope ($$$)        |
+  | Start recording via API       | ✅ Yes                 | ❌ No (manual only)           |
+
+  ---
+  The Google Meet Challenge
+
+  Expert records Google Meet
+          ↓
+  Recording saved to their Google Drive
+          ↓
+  Webhook: recording.v2.fileGenerated  ✅ Works!
+          ↓
+  Download via Drive API  ❌ PROBLEM
+          ↓
+  Drive readonly = RESTRICTED SCOPE
+          ↓
+  Requires Google security review
+  $15,000-75,000 + 2-6 months
+
+  ---
+  Options for Google Meet
+
+  Option 1: Full Integration (Expensive)
+
+  | Requirement                   | Details                       |
+  |-------------------------------|-------------------------------|
+  | Google Workspace Events API   | Subscribe to recording events |
+  | Google Drive API              | Download recordings           |
+  | Restricted scope verification | $15K-75K security audit       |
+  | Timeline                      | 2-6 months                    |
+
+  Not recommended unless you have significant budget.
+
+  ---
+  Option 2: Manual Export Flow (Free)
+
+  Expert records on Google Meet
+          ↓
+  Recording appears in their Drive
+          ↓
+  Expert clicks "Add to Library" in your app
+          ↓
+  Expert pastes Google Drive share link
+          ↓
+  Your app imports via public share link
+
+  Cost: $0
+  Effort: Low (just UI for link input)
+  UX: Manual step for expert
+
+  ---
+  Option 3: Google Workspace Add-on
+
+  Build a Google Workspace add-on that runs in expert's context:
+
+  Add-on installed in expert's Google Workspace
+          ↓
+  Listens for new recordings in Meet Recordings folder
+          ↓
+  Add-on uploads to your platform (using expert's auth)
+          ↓
+  No restricted scope needed (runs as user)
+
+  Cost: Free
+  Effort: Medium (build add-on)
+  Limitation: Expert must install add-on
+
+  ---
+  Option 4: Use Third-Party Service
+
+  | Service      | How it works                 | Cost               |
+  |--------------|------------------------------|--------------------|
+  | Recall.ai    | Bot joins meeting, records   | ~$0.02/min         |
+  | Nylas        | Unified calendar + recording | Enterprise pricing |
+  | Fireflies.ai | Bot joins + transcribes      | $19/user/month     |
+
+  ---
+  Recommendation: Dual BYO Strategy
+
+  Zoom: Full Auto-Import
+
+  Zoom OAuth connected
+          ↓
+  Webhook: recording.completed
+          ↓
+  Lambda downloads + uploads to Cloudflare
+          ↓
+  Fully automatic ✅
+
+  Google Meet: Semi-Auto Import
+
+  Google OAuth connected (Calendar scope only - not restricted)
+          ↓
+  Create Google Meet links via Calendar API ✅
+          ↓
+  After meeting, expert clicks "Import Recording"
+          ↓
+  Expert pastes Drive share link
+          ↓
+  Lambda downloads shared file + uploads to Cloudflare
+
+  ---
+  Cost Summary
+
+  | Provider    | Auto-Import               | Cost  | Effort    |
+  |-------------|---------------------------|-------|-----------|
+  | Zoom        | ✅ Fully automatic        | $0    | Medium    |
+  | Google Meet | ⚠️ Semi-auto (paste link) | $0    | Low       |
+  | Google Meet | ✅ Full auto (add-on)     | $0    | High      |
+  | Google Meet | ✅ Full auto (restricted) | $15K+ | Very High |
+
+  ---
+  Implementation Plan
+
+  | Phase   | Feature                               | Effort |
+  |---------|---------------------------------------|--------|
+  | Phase 1 | Zoom auto-import (webhook + download) | 2 days |
+  | Phase 2 | Google Meet link import (paste URL)   | 1 day  |
+  | Phase 3 | (Optional) Google Workspace add-on    | 1 week |
+
+  Want me to plan the implementation for Phase 1 (Zoom) and Phase 2 (Google Meet paste)?
+
+  Sources:
+  - https://developers.google.com/workspace/meet/api/guides/overview
+  - https://developers.google.com/workspace/events/guides/events-meet
+  - https://www.recall.ai/blog/how-to-get-a-recording-from-the-google-meet-api
+
+> Does the expert have to be on a paid zoom/meet account to be able to record? 
+
+⏺ Web Search("Zoom free account cloud recording local recording requirements 2025")
+  ⎿  Did 1 search in 22s                                                                                        
+
+⏺ Web Search("Google Meet free account recording requirements Google Workspace 2025")
+  ⎿  Did 1 search in 21s                                                                                        
+
+⏺ Recording Requirements: Paid Accounts Needed
+
+  Summary
+
+  | Platform    | Free Account                 | Paid Account       | Auto-Import Works? |
+  |-------------|------------------------------|--------------------|--------------------|
+  | Zoom        | ❌ Local only (40 min limit) | ✅ Cloud recording | ✅ Yes (paid only) |
+  | Google Meet | ❌ No recording at all       | ✅ Cloud to Drive  | ⚠️ Semi-auto       |
+
+  ---
+  Zoom Recording Requirements
+
+  | Account Type | Cloud Recording    | Local Recording | Cost      |
+  |--------------|--------------------|-----------------|-----------|
+  | Free (Basic) | ❌ No              | ⚠️ 40 min limit | $0        |
+  | Pro          | ✅ Yes (5GB)       | ✅ Unlimited    | $15.99/mo |
+  | Business     | ✅ Yes (5GB)       | ✅ Unlimited    | $21.99/mo |
+  | Enterprise   | ✅ Yes (unlimited) | ✅ Unlimited    | Custom    |
+
+  For auto-import: Expert needs Zoom Pro ($15.99/mo) minimum
+
+  ---
+  Google Meet Recording Requirements
+
+  | Account Type              | Recording | Cost      |
+  |---------------------------|-----------|-----------|
+  | Free Gmail                | ❌ No     | $0        |
+  | Google Workspace Starter  | ❌ No     | $7.20/mo  |
+  | Google Workspace Standard | ✅ Yes    | $14.40/mo |
+  | Google Workspace Plus     | ✅ Yes    | $21.60/mo |
+
+  For recording: Expert needs Google Workspace Business Standard ($14.40/mo) minimum
+
+  ---
+  Reality Check for Your Experts
+
+  | Expert Type             | Likely Has             | Recording Capable? |
+  |-------------------------|------------------------|--------------------|
+  | Casual/hobby instructor | Free accounts          | ❌ No              |
+  | Professional/business   | Paid Zoom or Workspace | ✅ Yes             |
+  | Studio/established      | Enterprise accounts    | ✅ Yes             |
+
+  ---
+  The Problem
+
+  Most yoga instructors starting out will have:
+  - Free Gmail (no Meet recording)
+  - Free Zoom (no cloud recording, 40 min limit)
+
+  This means auto-import won't work for beginners.
+
+  ---
+  Solutions
+
+  Option A: Require Paid Accounts (Current BYOZ)
+
+  - Only works for established experts
+  - Limits your market to professionals
+  - Cost to you: $0
+
+  Option B: Platform-Provided Recording
+
+  Provide your own video solution for experts without paid accounts:
+
+  | Solution       | Cost/Expert/Month | Notes                      |
+  |----------------|-------------------|----------------------------|
+  | Zoom Video SDK | ~$12-15           | Build custom, usage-based  |
+  | Jitsi + Jibri  | ~$2               | Self-hosted, complex ops   |
+  | Daily.co       | ~$10-15           | Easy API, usage-based      |
+  | 100ms          | ~$10-15           | Good features, usage-based |
+
+  Option C: Hybrid Approach (Recommended)
+
+  Expert has paid Zoom/Meet? → Use their account (BYOZ) → Auto-import
+                  ↓
+  Expert has free account? → Use platform video → Auto-record
+
+  | Tier         | What Expert Gets             | Your Cost    |
+  |--------------|------------------------------|--------------|
+  | Free experts | Platform video (Jitsi/Daily) | ~$2-5/expert |
+  | Pro experts  | BYOZ + auto-import           | $0           |
+
+  ---
+  Cost Comparison for 100 Experts
+
+  | Scenario                | Assumption        | Monthly Cost |
+  |-------------------------|-------------------|--------------|
+  | All have paid Zoom      | 100% BYOZ         | $0           |
+  | 50% paid, 50% free      | Hybrid with Jitsi | ~$100-250    |
+  | All need platform video | Daily.co/100ms    | ~$1,500      |
+
+  ---
+  Recommendation
+
+  Short term: Keep BYOZ (works for serious experts who already have paid accounts)
+
+  Medium term: Add Jitsi self-hosted as fallback for free-tier experts (~$150-200/month for servers)
+
+  Long term: Evaluate if free experts convert enough to justify platform-provided video
+
+  Want me to research Jitsi self-hosted setup and costs?
+
+  Sources:
+  - https://support.zoom.us/hc/en-us/articles/203741855-cloud-recording
+  - https://support.google.com/meet/answer/9308681
+  - https://community.zoom.com/t5/Zoom-Events/Recording-Restrictions-for-Free-Accounts/m-p/8158
+
+> hybrid approach is fine. 
+  ⎿  Interrupted · What should Claude do instead?
+
+> hybrid approach is fine. 
+if expert has paid account they can BYO, we'll allow for picking up recording, 
+  ⎿  Interrupted · What should Claude do instead?
+
+> hybrid approach is fine. 
+if expert has paid account they can BYO, we'll allow for picking up recording, 
+If not, they can choose to use in-platform zoom, (additional charge ~$15) 
+
+⏺ Hybrid Video Strategy
+
+  Two Tiers
+
+  | Tier          | Expert Has      | Platform Provides              | Monthly Fee |
+  |---------------|-----------------|--------------------------------|-------------|
+  | BYOZ          | Paid Zoom/Meet  | Auto-import recordings         | $0          |
+  | Platform Zoom | No paid account | Zoom Pro license + auto-import | ~$15        |
+
+  ---
+  Business Model
+
+  Expert signs up
+        ↓
+  "Do you have a Zoom Pro or Google Workspace account?"
+        ↓
+     ┌──YES──┐                    ┌──NO──┐
+     ↓       ↓                    ↓      ↓
+  Connect    Connect         "Upgrade to Pro Webinars"
+  Zoom       Google              $15/month
+     ↓       ↓                    ↓
+  Auto-import              Platform provides
+  recordings               Zoom Pro license
+     ↓                            ↓
+     └────────────────────────────┘
+                ↓
+     Recordings → Cloudflare Stream
+                ↓
+     Expert can reuse as course content
+
+  ---
+  Cost/Revenue per Expert
+
+  | Item              | BYOZ Expert  | Platform Zoom Expert |
+  |-------------------|--------------|----------------------|
+  | Revenue           | $0           | $15/month            |
+  | Your Zoom cost    | $0           | -$15.99/month        |
+  | Cloudflare Stream | -$0.60/month | -$0.60/month         |
+  | Net               | -$0.60       | -$1.59               |
+
+  Note: At $15/month you're subsidizing slightly (-$1.59), but gaining:
+  - Stickiness (expert depends on your platform)
+  - Upsell opportunity
+  - Better UX for beginners
+
+  Alternative: Charge $18-20/month to be profitable on this tier.
+
+  ---
+  Implementation Summary
+
+  | Component                 | For BYOZ            | For Platform Zoom         |
+  |---------------------------|---------------------|---------------------------|
+  | OAuth connect             | ✅ Expert's account | ✅ Platform's sub-account |
+  | Create meetings           | Via expert's Zoom   | Via platform license      |
+  | Recording webhook         | ✅ Same             | ✅ Same                   |
+  | Auto-import to Cloudflare | ✅ Same             | ✅ Same                   |
+  | Expert can add to course  | ✅ Same             | ✅ Same                   |
+
+  ---
+  What Needs to Be Built
+
+  | Feature                                   | Effort  | Priority |
+  |-------------------------------------------|---------|----------|
+  | Zoom webhook for recording.completed      | 1 day   | High     |
+  | Lambda to download + upload to Cloudflare | 1 day   | High     |
+  | "Add to Course" UI for recordings         | 1 day   | High     |
+  | Platform Zoom license management          | 2 days  | Medium   |
+  | Billing integration ($15/mo tier)         | 1 day   | Medium   |
+  | Google Meet paste-link fallback           | 0.5 day | Low      |
+
+  Total: ~6-7 days development
+
+  ---
+  Platform Zoom License Options
+
+  | Approach              | How It Works                               | Complexity     |
+  |-----------------------|--------------------------------------------|----------------|
+  | Buy licenses manually | Purchase Zoom Pro seats, assign to experts | Low            |
+  | Zoom ISV Program      | Programmatic provisioning via API          | High ($2K min) |
+  | Reseller account      | Bulk discount, manage sub-accounts         | Medium         |
+
+  Recommendation: Start with manual license purchase (buy 10-20 seats), scale to ISV if demand grows.
