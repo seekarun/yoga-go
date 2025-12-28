@@ -27,16 +27,11 @@ if [ ! -f "$ENV_FILE" ]; then
     echo "Please create $ENV_FILE with your production environment variables."
     echo "Example format:"
     echo ""
-    echo "MONGODB_URI=mongodb+srv://..."
-    echo "AUTH0_SECRET=..."
-    echo "AUTH0_BASE_URL=..."
-    echo "AUTH0_ISSUER_BASE_URL=..."
-    echo "AUTH0_CLIENT_ID=..."
-    echo "AUTH0_CLIENT_SECRET=..."
     echo "CLOUDFLARE_ACCOUNT_ID=..."
     echo "CLOUDFLARE_API_TOKEN=..."
-    echo "STRIPE_SECRET_KEY=..."
+    echo "RAZORPAY_KEY_ID=..."
     echo "RAZORPAY_KEY_SECRET=..."
+    echo "NEXT_PUBLIC_DOMAIN=myyoga.guru"
     exit 1
 fi
 
