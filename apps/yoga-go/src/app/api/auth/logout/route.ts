@@ -9,6 +9,7 @@
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { getCognitoUrls, cognitoConfig } from '@/lib/cognito';
+import { BASE_URL, COOKIE_DOMAIN } from '@/config/env';
 
 export async function GET(request: NextRequest) {
   console.log('[DBG][logout] ========== LOGOUT ==========');
@@ -23,10 +24,9 @@ export async function GET(request: NextRequest) {
   const currentUrl = `${protocol}://${hostname}`;
 
   // Cognito requires logout_uri to EXACTLY match one of the configured allowed logout URLs
-  // Expert subdomains (e.g., myyoga.myyoga.guru) are NOT in the allowed list
+  // Expert subdomains are NOT in the allowed list
   // So we ALWAYS use the main domain for Cognito logout, then redirect back
-  const isLocalhost = hostname.includes('localhost');
-  const mainDomain = isLocalhost ? `http://localhost:3111` : `https://myyoga.guru`;
+  const mainDomain = BASE_URL;
 
   // Store the full return URL (including subdomain) to redirect back after logout
   const finalPath = returnTo.startsWith('/') ? returnTo : `/${returnTo}`;
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
     sameSite: 'lax',
     path: '/',
     maxAge: 0,
-    ...(isProduction && { domain: '.myyoga.guru' }),
+    ...(COOKIE_DOMAIN && { domain: COOKIE_DOMAIN }),
   });
 
   // Store the full return URL (including subdomain) in a cookie
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
       sameSite: 'lax',
       path: '/',
       maxAge: 60, // 1 minute - should be used immediately
-      ...(isProduction && { domain: '.myyoga.guru' }),
+      ...(COOKIE_DOMAIN && { domain: COOKIE_DOMAIN }),
     });
   }
 

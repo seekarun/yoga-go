@@ -7,42 +7,38 @@
 
 import type { UserRole } from '@/types';
 import { isAdminDomain } from '@/config/domains';
+import { getAdminUrl, BASE_URL } from '@/config/env';
 
 /**
  * Get the correct base domain for a user role
  * @param role - User role ('learner' or 'expert')
- * @param env - Environment ('development' or 'production')
- * @returns Full domain URL (e.g., 'http://admin.localhost:3111' or 'https://myyoga.guru')
+ * @returns Full domain URL (e.g., 'http://admin.localhost:3111' or 'https://{domain}')
  */
-export function getCorrectDomainForRole(role: UserRole, env: string = 'development'): string {
-  const isProduction = env === 'production';
-
+export function getCorrectDomainForRole(role: UserRole): string {
   if (role === 'expert') {
     // Expert → admin subdomain
-    return isProduction ? 'https://admin.myyoga.guru' : 'http://admin.localhost:3111';
+    return getAdminUrl();
   }
 
   // Learner → main domain
-  return isProduction ? 'https://myyoga.guru' : 'http://localhost:3111';
+  return BASE_URL;
 }
 
 /**
  * Get the full target URL for a user role (including path)
  * @param role - User role ('learner' or 'expert')
- * @param env - Environment ('development' or 'production')
  * @returns Full redirect URL with path
  *
  * Important:
  * - Expert: Returns ROOT path (/) because middleware rewrites to /srv
  * - Learner: Returns /app path explicitly
  */
-export function getTargetUrlForRole(role: UserRole, env: string = 'development'): string {
-  const baseDomain = getCorrectDomainForRole(role, env);
+export function getTargetUrlForRole(role: UserRole): string {
+  const baseDomain = getCorrectDomainForRole(role);
 
   if (role === 'expert') {
     // Expert → admin subdomain ROOT
     // Middleware automatically rewrites / to /srv
-    // This keeps URL clean: admin.myyoga.guru/ instead of admin.myyoga.guru/srv
     return `${baseDomain}/`;
   }
 

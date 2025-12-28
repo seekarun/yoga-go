@@ -21,6 +21,7 @@ import {
 } from '@aws-sdk/lib-dynamodb';
 import { docClient, Tables, EntityType, CorePK } from '../dynamodb';
 import type { Tenant, TenantStatus, StripeConnectDetails } from '@/types';
+import { getSubdomainHost, getExpertEmail } from '@/config/env';
 
 // Type for DynamoDB Tenant item (includes PK/SK)
 interface DynamoDBTenantItem extends Tenant {
@@ -196,8 +197,8 @@ export async function createTenant(input: CreateTenantInput): Promise<Tenant> {
 
   console.log('[DBG][tenantRepository] Creating tenant:', input.id, 'name:', input.name);
 
-  // Default primary domain is {id}.myyoga.guru
-  const primaryDomain = input.primaryDomain || `${input.id}.myyoga.guru`;
+  // Default primary domain is {id}.{DOMAIN}
+  const primaryDomain = input.primaryDomain || getSubdomainHost(input.id);
 
   const tenant: DynamoDBTenantItem = {
     PK: EntityType.TENANT,
@@ -220,7 +221,7 @@ export async function createTenant(input: CreateTenantInput): Promise<Tenant> {
     onboardingCompleted: input.onboardingCompleted ?? false,
     platformPreferences: input.platformPreferences ?? {
       featuredOnPlatform: true,
-      defaultEmail: `${input.id}@myyoga.guru`,
+      defaultEmail: getExpertEmail(input.id),
     },
     customLandingPage: input.customLandingPage,
     draftLandingPage: input.draftLandingPage,
@@ -515,7 +516,7 @@ export async function updateLandingPage(
 
 /**
  * Update draft landing page config
- * Draft changes are visible only on preview.myyoga.guru until published
+ * Draft changes are visible only on preview.{DOMAIN} until published
  */
 export async function updateDraftLandingPage(
   tenantId: string,

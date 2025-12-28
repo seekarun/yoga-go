@@ -47,6 +47,7 @@ import type {
   TenantBranding,
   CloudflareDnsConfig,
 } from '@/types';
+import { DOMAIN, getSubdomainHost } from '@/config/env';
 
 // Domain verification status for a single domain
 interface DomainVerificationStatus {
@@ -176,15 +177,15 @@ export async function POST(request: Request): Promise<NextResponse<ApiResponse<T
 
     const body = await request.json();
 
-    // Always include the myyoga.guru subdomain so expertId.myyoga.guru works
-    const myYogaGuruSubdomain = `${user.expertProfile}.myyoga.guru`;
+    // Always include the platform subdomain so expertId.{DOMAIN} works
+    const platformSubdomain = getSubdomainHost(user.expertProfile);
     const additionalDomains = body.additionalDomains || [];
 
     // If user provided a custom domain, use that as primary and add subdomain to additional
     // Otherwise, use the subdomain as primary
-    const primaryDomain = body.primaryDomain || myYogaGuruSubdomain;
-    if (body.primaryDomain && !additionalDomains.includes(myYogaGuruSubdomain)) {
-      additionalDomains.push(myYogaGuruSubdomain);
+    const primaryDomain = body.primaryDomain || platformSubdomain;
+    if (body.primaryDomain && !additionalDomains.includes(platformSubdomain)) {
+      additionalDomains.push(platformSubdomain);
     }
 
     // Create tenant in DynamoDB (Expert and Tenant are now merged)
@@ -203,12 +204,12 @@ export async function POST(request: Request): Promise<NextResponse<ApiResponse<T
     // Add domains to Vercel for SSL provisioning
     let domainVerification: TenantWithVerification['domainVerification'];
 
-    // Add the myyoga.guru subdomain to Vercel (always)
+    // Add the platform subdomain to Vercel (always)
     try {
-      const subdomainResult = await addDomainToVercel(myYogaGuruSubdomain);
+      const subdomainResult = await addDomainToVercel(platformSubdomain);
       console.log(
         '[DBG][tenant-api] Added subdomain to Vercel:',
-        myYogaGuruSubdomain,
+        platformSubdomain,
         'success:',
         subdomainResult.success
       );
@@ -324,12 +325,12 @@ export async function PUT(request: Request): Promise<NextResponse<ApiResponse<Te
           );
         }
 
-        // Protect the default myyoga.guru subdomain
+        // Protect the default platform subdomain
         const normalizedDomain = body.domain.toLowerCase();
-        const defaultSubdomain = `${tenant.slug}.myyoga.guru`;
+        const defaultSubdomain = getSubdomainHost(tenant.slug || tenant.id);
         if (normalizedDomain === defaultSubdomain) {
           return NextResponse.json(
-            { success: false, error: 'Cannot remove your default myyoga.guru subdomain' },
+            { success: false, error: 'Cannot remove your default platform subdomain' },
             { status: 400 }
           );
         }
@@ -493,10 +494,10 @@ export async function PUT(request: Request): Promise<NextResponse<ApiResponse<Te
           );
         }
 
-        // Don't allow enabling email for myyoga.guru subdomains
-        if (emailDomain.endsWith('.myyoga.guru') || emailDomain === 'myyoga.guru') {
+        // Don't allow enabling email for platform subdomains
+        if (emailDomain.endsWith(`.${DOMAIN}`) || emailDomain === DOMAIN) {
           return NextResponse.json(
-            { success: false, error: 'Cannot enable custom email for myyoga.guru subdomains' },
+            { success: false, error: 'Cannot enable custom email for platform subdomains' },
             { status: 400 }
           );
         }
@@ -772,8 +773,8 @@ export async function PUT(request: Request): Promise<NextResponse<ApiResponse<Te
           );
         }
 
-        // Don't allow for myyoga.guru subdomains
-        if (cfDomain.endsWith('.myyoga.guru') || cfDomain === 'myyoga.guru') {
+        // Don't allow for platform subdomains
+        if (cfDomain.endsWith(`.${DOMAIN}`) || cfDomain === DOMAIN) {
           return NextResponse.json(
             { success: false, error: 'Cloudflare NS is only available for custom domains' },
             { status: 400 }

@@ -5,6 +5,14 @@
  * Used by middleware and components to determine expert-specific behavior.
  */
 
+import {
+  DOMAIN,
+  RESERVED_SUBDOMAINS,
+  extractSubdomain,
+  isDomainSubdomain,
+  isMainDomain,
+} from './env';
+
 export interface ExpertDomainConfig {
   expertId: string;
   domains: string[];
@@ -30,7 +38,7 @@ export const EXPERT_DOMAINS: Record<string, ExpertDomainConfig> = {
   },
   tester: {
     expertId: 'tester',
-    domains: ['tester.myyoga.guru', 'www.tester.myyoga.guru', 'tester.local'],
+    domains: [`tester.${DOMAIN}`, `www.tester.${DOMAIN}`, 'tester.local'],
     name: 'Tester',
     title: 'Test Expert',
   },
@@ -40,25 +48,25 @@ export const EXPERT_DOMAINS: Record<string, ExpertDomainConfig> = {
  * Admin subdomain - redirects to expert portal (/srv)
  */
 export const ADMIN_DOMAINS = [
-  'admin.myyoga.guru',
-  'www.admin.myyoga.guru',
+  `admin.${DOMAIN}`,
+  `www.admin.${DOMAIN}`,
   'admin.local',
   'admin.localhost', // Local development subdomain
 ];
 
 /**
  * Learner domains - show learner-focused homepage (browse courses, experts)
- * These domains bypass the expert platform redirect on myyoga.guru
+ * These domains bypass the expert platform redirect
  */
-export const LEARNER_DOMAINS = ['learn.myyoga.guru', 'www.learn.myyoga.guru'];
+export const LEARNER_DOMAINS = [`learn.${DOMAIN}`, `www.learn.${DOMAIN}`];
 
 /**
  * Preview domains - allow logged-in experts to preview their draft landing page
- * URL format: preview.myyoga.guru/<expertId>
+ * URL format: preview.{DOMAIN}/<expertId>
  */
 export const PREVIEW_DOMAINS = [
-  'preview.myyoga.guru',
-  'www.preview.myyoga.guru',
+  `preview.${DOMAIN}`,
+  `www.preview.${DOMAIN}`,
   'preview.localhost',
   'preview.localhost:3111',
 ];
@@ -69,8 +77,8 @@ export const PREVIEW_DOMAINS = [
 export const PRIMARY_DOMAINS = [
   'yogago.com',
   'www.yogago.com',
-  'myyoga.guru',
-  'www.myyoga.guru',
+  DOMAIN,
+  `www.${DOMAIN}`,
   'localhost',
   'localhost:3111',
   'admin.localhost:3111', // Admin subdomain for local development
@@ -105,7 +113,7 @@ export function isAdminDomain(hostname: string): boolean {
 }
 
 /**
- * Check if hostname is a learner domain (learn.myyoga.guru)
+ * Check if hostname is a learner domain (learn.{DOMAIN})
  * Learner domains show the learner-focused homepage with courses and experts
  */
 export function isLearnerDomain(hostname: string): boolean {
@@ -114,7 +122,7 @@ export function isLearnerDomain(hostname: string): boolean {
 }
 
 /**
- * Check if hostname is a preview domain (preview.myyoga.guru)
+ * Check if hostname is a preview domain (preview.{DOMAIN})
  * Preview domains allow logged-in experts to preview their draft landing page
  */
 export function isPreviewDomain(hostname: string): boolean {
@@ -123,13 +131,11 @@ export function isPreviewDomain(hostname: string): boolean {
 }
 
 /**
- * Check if hostname is the main expert platform domain (myyoga.guru without subdomains)
+ * Check if hostname is the main expert platform domain (without subdomains)
  * This is where experts manage their business
  */
 export function isExpertPlatformDomain(hostname: string): boolean {
-  const cleanHostname = hostname.split(':')[0].toLowerCase();
-  // Only match myyoga.guru and www.myyoga.guru (not subdomains like learn.myyoga.guru)
-  return cleanHostname === 'myyoga.guru' || cleanHostname === 'www.myyoga.guru';
+  return isMainDomain(hostname);
 }
 
 /**
@@ -148,35 +154,20 @@ export function isPrimaryDomain(hostname: string): boolean {
 }
 
 /**
- * Extract subdomain from myyoga.guru hostname
+ * Extract subdomain from hostname
  * Returns subdomain if it's a valid expert subdomain, null otherwise
  *
  * Examples:
- * - deepak.myyoga.guru -> 'deepak'
- * - www.myyoga.guru -> null (www is excluded)
- * - admin.myyoga.guru -> null (admin is excluded)
- * - preview.myyoga.guru -> null (preview is excluded - handled separately)
- * - learn.myyoga.guru -> null (learn is excluded)
- * - myyoga.guru -> null (no subdomain)
+ * - deepak.{DOMAIN} -> 'deepak'
+ * - www.{DOMAIN} -> null (www is excluded)
+ * - admin.{DOMAIN} -> null (admin is excluded)
+ * - preview.{DOMAIN} -> null (preview is excluded - handled separately)
+ * - learn.{DOMAIN} -> null (learn is excluded)
+ * - {DOMAIN} -> null (no subdomain)
  */
 export function getSubdomainFromMyYogaGuru(hostname: string): string | null {
-  const cleanHostname = hostname.split(':')[0].toLowerCase();
-
-  // Check if it's a myyoga.guru domain
-  if (!cleanHostname.endsWith('.myyoga.guru')) {
-    return null;
-  }
-
-  // Extract subdomain part (everything before .myyoga.guru)
-  const subdomain = cleanHostname.replace('.myyoga.guru', '');
-
-  // Exclude reserved subdomains (www, admin, preview, learn)
-  const reservedSubdomains = ['www', 'admin', 'preview', 'learn'];
-  if (reservedSubdomains.includes(subdomain) || !subdomain) {
-    return null;
-  }
-
-  return subdomain;
+  // Use the centralized extractSubdomain function
+  return extractSubdomain(hostname);
 }
 
 /**
@@ -199,7 +190,7 @@ export function getAllExpertIds(): string[] {
  * Resolution order:
  * 1. Check if it's a primary domain -> return null
  * 2. Check static EXPERT_DOMAINS config (backwards compat)
- * 3. Check myyoga.guru subdomains (validated via API)
+ * 3. Check subdomains (validated via API)
  * 4. Try dynamic lookup via internal API for custom domains
  *
  * Note: This function uses an internal API route for DynamoDB lookups
@@ -233,7 +224,7 @@ export async function resolveDomainToTenant(
     };
   }
 
-  // 3. Check myyoga.guru subdomains
+  // 3. Check subdomains
   const subdomain = getSubdomainFromMyYogaGuru(hostname);
 
   // Use internal API route for domain lookup (works in Edge Runtime)
@@ -241,9 +232,9 @@ export async function resolveDomainToTenant(
     // Determine the base URL for the API call
     // In Edge Middleware, we need to construct the full URL
     const protocol = hostname.includes('localhost') ? 'http' : 'https';
-    // Use myyoga.guru as the API host since custom domains point to the same deployment
-    const apiHost = hostname.includes('localhost') ? hostname : 'myyoga.guru';
-    const lookupDomain = subdomain ? `${subdomain}.myyoga.guru` : hostname;
+    // Use main domain as the API host since custom domains point to the same deployment
+    const apiHost = hostname.includes('localhost') ? hostname : DOMAIN;
+    const lookupDomain = subdomain ? `${subdomain}.${DOMAIN}` : hostname;
 
     const apiUrl = `${protocol}://${apiHost}/api/internal/resolve-domain?domain=${encodeURIComponent(lookupDomain)}`;
 
@@ -290,7 +281,7 @@ export async function resolveDomainToTenant(
     // API call failed - fall back gracefully
     console.error('[DBG][domains] Domain resolution API failed:', error);
 
-    // For myyoga.guru subdomains without API access, allow the request
+    // For subdomains without API access, allow the request
     // through - the page/API will handle the 404 if tenant doesn't exist
     if (subdomain) {
       console.log('[DBG][domains] Allowing subdomain through without API validation:', subdomain);
@@ -304,3 +295,6 @@ export async function resolveDomainToTenant(
 
   return null;
 }
+
+// Re-export env helpers for convenience
+export { DOMAIN, isDomainSubdomain, isMainDomain, extractSubdomain, RESERVED_SUBDOMAINS };

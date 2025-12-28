@@ -9,6 +9,7 @@ import { getOrCreateUser } from '@/lib/auth';
 import { encode } from 'next-auth/jwt';
 import { jwtVerify } from 'jose';
 import type { UserRole } from '@/types';
+import { COOKIE_DOMAIN } from '@/config/env';
 
 interface LoginRequestBody {
   email: string;
@@ -129,7 +130,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Set the session cookie
-    // In production, set domain to .myyoga.guru to work across www and apex domain
+    // In production, set domain to work across subdomains
     const cookieOptions: {
       httpOnly: boolean;
       secure: boolean;
@@ -145,9 +146,9 @@ export async function POST(request: NextRequest) {
       maxAge: 30 * 24 * 60 * 60, // 30 days
     };
 
-    // Set domain for production to work across www.myyoga.guru and myyoga.guru
-    if (process.env.NODE_ENV === 'production') {
-      cookieOptions.domain = '.myyoga.guru';
+    // Set domain for production to work across subdomains
+    if (COOKIE_DOMAIN) {
+      cookieOptions.domain = COOKIE_DOMAIN;
     }
 
     response.cookies.set('authjs.session-token', token, cookieOptions);

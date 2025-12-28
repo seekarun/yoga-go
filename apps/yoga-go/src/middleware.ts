@@ -8,6 +8,7 @@ import {
   isLearnerDomain,
   isPreviewDomain,
 } from './config/domains';
+import { COOKIE_DOMAIN, BASE_URL, getPreviewUrl } from './config/env';
 
 /**
  * Check if user has a valid session by looking for the session token cookie
@@ -95,11 +96,10 @@ export default async function middleware(request: NextRequest) {
     const response = NextResponse.redirect(redirectUrl.toString());
 
     // Clear the cookie - must match domain used when setting
-    const isProduction = !hostname.includes('localhost');
     response.cookies.set('post-logout-redirect', '', {
       path: '/',
       maxAge: 0,
-      ...(isProduction && { domain: '.myyoga.guru' }),
+      ...(COOKIE_DOMAIN && { domain: COOKIE_DOMAIN }),
     });
 
     return response;
@@ -163,15 +163,15 @@ export default async function middleware(request: NextRequest) {
       ['experts', 'auth', 'app', 'srv', 'data', 'api'].includes(previewExpertId)
     ) {
       console.log('[DBG][middleware] Preview: No valid expertId, redirecting to main site');
-      const mainUrl = new URL('/', 'https://myyoga.guru');
+      const mainUrl = new URL('/', BASE_URL);
       return NextResponse.redirect(mainUrl);
     }
 
     // Require authentication
     if (!hasSession) {
       console.log('[DBG][middleware] Preview: Not authenticated, redirecting to login');
-      const loginUrl = new URL('/auth/signin', 'https://myyoga.guru');
-      loginUrl.searchParams.set('callbackUrl', `https://preview.myyoga.guru/${previewExpertId}`);
+      const loginUrl = new URL('/auth/signin', BASE_URL);
+      loginUrl.searchParams.set('callbackUrl', getPreviewUrl(previewExpertId));
       return NextResponse.redirect(loginUrl);
     }
 
@@ -213,13 +213,13 @@ export default async function middleware(request: NextRequest) {
       isExpertDomain = true;
       isLandingPagePublished = tenantResult.isLandingPagePublished;
     } else if (myYogaGuruSubdomain) {
-      // This is a myyoga.guru subdomain that doesn't exist in the database
+      // This is a subdomain that doesn't exist in the database
       // Redirect to the main site
       console.log(
         '[DBG][middleware] Invalid subdomain, redirecting to main site:',
         myYogaGuruSubdomain
       );
-      const mainUrl = new URL('/', 'https://myyoga.guru');
+      const mainUrl = new URL('/', BASE_URL);
       return NextResponse.redirect(mainUrl);
     }
     // For custom domains that don't resolve, fall through to check static config
@@ -243,7 +243,7 @@ export default async function middleware(request: NextRequest) {
     isPrimary,
     'Is learner:',
     isLearner,
-    'MyYoga.Guru subdomain:',
+    'Subdomain:',
     myYogaGuruSubdomain,
     'Has session cookie:',
     hasSession,
@@ -322,8 +322,8 @@ export default async function middleware(request: NextRequest) {
       if (pathname === '/' || pathname === expertPath || pathname.startsWith(`${expertPath}/`)) {
         if (!hasSession) {
           // Visitor trying to access unpublished page → redirect to main site
-          console.log('[DBG][middleware] Redirecting visitor from unpublished page to myyoga.guru');
-          const mainUrl = new URL('/', 'https://myyoga.guru');
+          console.log('[DBG][middleware] Redirecting visitor from unpublished page to main site');
+          const mainUrl = new URL('/', BASE_URL);
           return NextResponse.redirect(mainUrl);
         }
         // User is logged in - allow access in preview mode

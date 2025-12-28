@@ -7,6 +7,7 @@ import { NextResponse } from 'next/server';
 import { signUp, getCognitoErrorMessage, isCognitoError } from '@/lib/cognito-auth';
 import { SignJWT } from 'jose';
 import type { UserRole } from '@/types';
+import { COOKIE_DOMAIN } from '@/config/env';
 
 interface SignupRequestBody {
   email: string;
@@ -122,9 +123,9 @@ export async function POST(request: NextRequest) {
         maxAge: 30 * 60, // 30 minutes
       };
 
-      // Set domain for production
-      if (process.env.NODE_ENV === 'production') {
-        cookieOptions.domain = '.myyoga.guru';
+      // Set domain for production to work across subdomains
+      if (COOKIE_DOMAIN) {
+        cookieOptions.domain = COOKIE_DOMAIN;
       }
 
       response.cookies.set(PENDING_SIGNUP_COOKIE, signedToken, cookieOptions);
