@@ -1,17 +1,17 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { generatePalette, hexToHsl, hslToHex } from '@/lib/colorPalette';
 import type {
+  BlogPost,
+  Course,
   CustomLandingPageConfig,
   LandingPageTemplate,
-  Course,
   Webinar,
-  BlogPost,
 } from '@/types';
+import { useEffect, useRef, useState } from 'react';
 import { sectionRegistry, type SectionType } from '../sections';
 import SectionWrapper from '../shared/SectionWrapper';
-import { templates, DEFAULT_TEMPLATE } from '../templates';
-import { generatePalette, hexToHsl, hslToHex } from '@/lib/colorPalette';
+import { DEFAULT_TEMPLATE, templates } from '../templates';
 import { LandingPageThemeProvider } from '../ThemeProvider';
 import { renderTemplateSection, type EditorRenderContext } from './templateSections';
 
@@ -264,7 +264,9 @@ export default function PreviewPane({
 
               {showColorPicker && (
                 <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 z-50 w-[240px]">
-                  <div className="text-xs font-medium text-gray-700 mb-3">Brand Color</div>
+                  <div className="text-xs font-medium text-gray-700 mb-3">
+                    Your Brand Color (click to change)
+                  </div>
 
                   {/* Color Picker */}
                   <div className="mb-4">

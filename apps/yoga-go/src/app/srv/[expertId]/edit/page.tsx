@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ImageUploadCrop from '@/components/ImageUploadCrop';
 import NotificationOverlay from '@/components/NotificationOverlay';
+import UserAvatarUpload from '@/components/UserAvatarUpload';
 import type { Asset, Expert } from '@/types';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
@@ -17,6 +18,7 @@ export default function EditExpertPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [uploadError, setUploadError] = useState('');
+  const [profilePicError, setProfilePicError] = useState<string | null>(null);
   const [avatarAsset, setAvatarAsset] = useState<Asset | null>(null);
   const [selectedPromoFile, setSelectedPromoFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -32,6 +34,7 @@ export default function EditExpertPage() {
     title: '',
     bio: '',
     avatar: '',
+    profilePic: '',
     promoVideo: '',
     promoVideoCloudflareId: '',
     promoVideoStatus: '' as 'uploading' | 'processing' | 'ready' | 'error' | '',
@@ -93,7 +96,7 @@ export default function EditExpertPage() {
       setLoading(true);
       console.log('[DBG][expert-edit] Fetching expert data:', expertId);
 
-      const response = await fetch(`/data/experts/${expertId}`);
+      const response = await fetch(`/data/experts/${expertId}`, { cache: 'no-store' });
       const result = await response.json();
 
       if (!response.ok || !result.success) {
@@ -109,6 +112,7 @@ export default function EditExpertPage() {
         title: expert.title || '',
         bio: expert.bio || '',
         avatar: expert.avatar || '',
+        profilePic: expert.profilePic || '',
         promoVideo: expert.promoVideo || '',
         promoVideoCloudflareId: expert.promoVideoCloudflareId || '',
         promoVideoStatus: expert.promoVideoStatus || '',
@@ -162,6 +166,15 @@ export default function EditExpertPage() {
   const handleUploadError = (error: string) => {
     console.error('[DBG][expert-edit] Upload error:', error);
     setUploadError(error);
+  };
+
+  const handleProfilePicUpload = async (imageUrl: string) => {
+    console.log('[DBG][expert-edit] Profile pic uploaded:', imageUrl);
+    setProfilePicError(null);
+    setFormData(prev => ({
+      ...prev,
+      profilePic: imageUrl,
+    }));
   };
 
   const handlePromoFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -273,6 +286,7 @@ export default function EditExpertPage() {
         title: formData.title.trim(),
         bio: formData.bio.trim(),
         avatar: formData.avatar,
+        profilePic: formData.profilePic || undefined,
         promoVideo: formData.promoVideo.trim() || undefined,
         promoVideoCloudflareId: formData.promoVideoCloudflareId || undefined,
         promoVideoStatus: formData.promoVideoStatus || undefined,
@@ -400,13 +414,32 @@ export default function EditExpertPage() {
                   />
                 </div>
 
+                {/* Profile Picture - circular, for header/account */}
+                <div className="md:col-span-2">
+                  <div className="mb-4">
+                    <UserAvatarUpload
+                      currentAvatarUrl={formData.profilePic}
+                      userName={formData.name || 'Expert'}
+                      onUploadComplete={handleProfilePicUpload}
+                      onError={setProfilePicError}
+                    />
+                    {profilePicError && (
+                      <p className="text-sm text-red-600 mt-2">{profilePicError}</p>
+                    )}
+                    <p className="text-xs text-gray-500 mt-2">
+                      This circular profile picture appears in the header and your account menu.
+                    </p>
+                  </div>
+                </div>
+
+                {/* About Me Image - for landing page */}
                 <div className="md:col-span-2">
                   <ImageUploadCrop
                     width={500}
                     height={500}
                     category="avatar"
                     tenantId={expertId}
-                    label="Profile Picture (500x500px) *"
+                    label="About Me Photo (500x500px) *"
                     onUploadComplete={handleAvatarUpload}
                     onError={handleUploadError}
                     relatedTo={{
@@ -417,9 +450,12 @@ export default function EditExpertPage() {
                   />
                   {avatarAsset && (
                     <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                      <p className="text-sm text-green-800">✓ Avatar updated successfully</p>
+                      <p className="text-sm text-green-800">✓ Photo updated successfully</p>
                     </div>
                   )}
+                  <p className="text-xs text-gray-500 mt-2">
+                    This photo appears in the &quot;About Me&quot; section of your landing page.
+                  </p>
                 </div>
               </div>
             </div>

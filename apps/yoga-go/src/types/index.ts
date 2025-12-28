@@ -335,7 +335,8 @@ export interface Tenant extends BaseEntity {
   // ===== Profile Data (formerly Expert) =====
   title: string;
   bio: string;
-  avatar: string;
+  avatar: string; // "About me" image for landing page
+  profilePic?: string; // Profile picture for header/account (circular avatar)
   rating: number;
   totalCourses: number;
   totalStudents: number;
@@ -553,6 +554,7 @@ export interface UserPreferences {
   videoQuality?: 'sd' | 'hd' | '4k';
   autoPlayEnabled?: boolean;
   preferredCurrency?: SupportedCurrency; // Learner's preferred display currency
+  timezone?: string; // User's preferred timezone (IANA format, e.g., "America/New_York")
 }
 
 export interface Payment {

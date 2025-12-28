@@ -106,7 +106,11 @@ export async function GET(request: NextRequest) {
       data: user,
     };
 
-    return NextResponse.json(response);
+    return NextResponse.json(response, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+      },
+    });
   } catch (error) {
     console.error('[DBG][api/auth/me] Error:', error);
     const response: ApiResponse<null> = {

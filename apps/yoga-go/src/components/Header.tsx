@@ -85,10 +85,16 @@ export default function Header() {
     detectExpertMode();
   }, []);
 
-  // Fetch expert data when in expert mode (subdomain) to get custom logo
+  // Fetch expert data when in expert mode (subdomain) OR when user is an expert (for profilePic)
   useEffect(() => {
-    if (expertMode.isExpertMode && expertMode.expertId) {
-      fetch(`/data/experts/${expertMode.expertId}`)
+    const expertIdToFetch = expertMode.isExpertMode
+      ? expertMode.expertId
+      : isExpert && user?.expertProfile
+        ? user.expertProfile
+        : null;
+
+    if (expertIdToFetch) {
+      fetch(`/data/experts/${expertIdToFetch}`, { cache: 'no-store' })
         .then(res => res.json())
         .then(result => {
           if (result.success && result.data) {
@@ -99,7 +105,13 @@ export default function Header() {
           console.error('[DBG][Header] Failed to fetch expert data:', err);
         });
     }
-  }, [expertMode.isExpertMode, expertMode.expertId]);
+  }, [
+    expertMode.isExpertMode,
+    expertMode.expertId,
+    isExpert,
+    user?.expertProfile,
+    user?.updatedAt,
+  ]);
 
   // Track scroll position for background opacity
   useEffect(() => {
@@ -138,13 +150,20 @@ export default function Header() {
   };
 
   // Logo links to user's default page based on role
-  const logoHref = expertMode.isExpertMode
+  const _logoHref = expertMode.isExpertMode
     ? '#'
     : isAuthenticated
       ? isExpert
         ? '/srv'
         : '/app'
       : '/';
+
+  // Determine which profile picture to use:
+  // - Experts: use expertData.profilePic, fall back to user.profile.avatar
+  // - Learners: use user.profile.avatar
+  const avatarUrl = isExpert
+    ? expertData?.profilePic || user?.profile?.avatar
+    : user?.profile?.avatar;
 
   return (
     <header
@@ -164,13 +183,14 @@ export default function Header() {
       }}
     >
       <div
-        className={expertMode.isExpertMode ? '' : 'container'}
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           height: '64px',
           width: '100%',
+          maxWidth: '100%',
+          padding: '0 16px',
         }}
       >
         {/* Left section - Home button (expert mode) or Logo (primary) */}
@@ -179,7 +199,6 @@ export default function Header() {
             display: 'flex',
             alignItems: 'center',
             gap: '12px',
-            paddingLeft: '20px',
           }}
         >
           {/* Home button for expert subdomains */}
@@ -289,7 +308,6 @@ export default function Header() {
             display: 'flex',
             alignItems: 'center',
             gap: '16px',
-            paddingRight: expertMode.isExpertMode ? '12px' : '20px',
           }}
         >
           {isAuthenticated ? (
@@ -300,9 +318,7 @@ export default function Header() {
                   width: '36px',
                   height: '36px',
                   borderRadius: '50%',
-                  background: '#000',
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
+                  background: avatarUrl ? `url(${avatarUrl}) center/cover no-repeat` : '#000',
                   border: 'none',
                   cursor: 'pointer',
                   display: 'flex',
@@ -314,7 +330,7 @@ export default function Header() {
                       : 'none',
                 }}
               >
-                {!user?.profile?.avatar && (
+                {!avatarUrl && (
                   <svg width="20" height="20" fill="#fff" viewBox="0 0 24 24">
                     <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
                   </svg>

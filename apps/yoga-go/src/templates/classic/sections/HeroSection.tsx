@@ -124,6 +124,7 @@ export default function HeroSection({
                   marginBottom: '40px',
                   color: 'rgba(255, 255, 255, 0.95)',
                   textShadow: '0 1px 3px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3)',
+                  whiteSpace: 'pre-line',
                 }}
               >
                 {description}
@@ -232,6 +233,7 @@ export default function HeroSection({
               marginBottom: '20px',
               color: '#1a202c',
               letterSpacing: '-0.02em',
+              whiteSpace: 'pre-line',
             }}
           >
             {hasCustomHeadline ? headline : <>Transform Your Practice with {expertName}</>}
@@ -243,6 +245,7 @@ export default function HeroSection({
               lineHeight: '1.6',
               marginBottom: '32px',
               color: '#4a5568',
+              whiteSpace: 'pre-line',
             }}
           >
             {description}

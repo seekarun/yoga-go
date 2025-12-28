@@ -85,6 +85,7 @@ export default function HeroSection({
                 color: 'rgba(255, 255, 255, 0.7)',
                 marginBottom: '40px',
                 maxWidth: '480px',
+                whiteSpace: 'pre-line',
               }}
             >
               {description}
@@ -244,6 +245,7 @@ export default function HeroSection({
               lineHeight: '1.6',
               marginBottom: '32px',
               color: 'rgba(255, 255, 255, 0.7)',
+              whiteSpace: 'pre-line',
             }}
           >
             {description}

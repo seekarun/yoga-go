@@ -80,7 +80,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ expe
       data: expert,
     };
 
-    return NextResponse.json(response);
+    return NextResponse.json(response, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+      },
+    });
   } catch (error) {
     console.error(`[DBG][experts/[expertId]/route.ts] Error fetching expert ${expertId}:`, error);
     const response: ApiResponse<never> = {
@@ -120,6 +124,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ expe
     if (body.title !== undefined) updateData.title = body.title;
     if (body.bio !== undefined) updateData.bio = body.bio;
     if (body.avatar !== undefined) updateData.avatar = body.avatar;
+    if (body.profilePic !== undefined) updateData.profilePic = body.profilePic;
     if (body.rating !== undefined) updateData.rating = body.rating;
     if (body.totalCourses !== undefined) updateData.totalCourses = body.totalCourses;
     if (body.totalStudents !== undefined) updateData.totalStudents = body.totalStudents;

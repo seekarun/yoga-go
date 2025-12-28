@@ -1,13 +1,79 @@
 'use client';
 
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import CurrencySelector from '@/components/CurrencySelector';
+import TimezoneSelector from '@/components/TimezoneSelector';
+import UserAvatarUpload from '@/components/UserAvatarUpload';
 
 export default function Profile() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { displayCurrency, loading: currencyLoading } = useCurrency();
+  const [timezone, setTimezone] = useState<string | undefined>(undefined);
+  const [timezoneLoading, setTimezoneLoading] = useState(true);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+
+  // Fetch user preferences on mount
+  const fetchPreferences = useCallback(async () => {
+    try {
+      const response = await fetch('/data/app/user/me/preferences');
+      const data = await response.json();
+      if (data.success && data.data) {
+        setTimezone(data.data.timezone);
+      }
+    } catch (error) {
+      console.error('[DBG][profile] Error fetching preferences:', error);
+    } finally {
+      setTimezoneLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchPreferences();
+  }, [fetchPreferences]);
+
+  // Update timezone preference
+  const handleTimezoneChange = async (newTimezone: string) => {
+    setTimezone(newTimezone);
+    try {
+      await fetch('/data/app/user/me/preferences', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ timezone: newTimezone }),
+      });
+    } catch (error) {
+      console.error('[DBG][profile] Error saving timezone:', error);
+    }
+  };
+
+  // Handle avatar upload complete
+  const handleAvatarUpload = async (imageUrl: string) => {
+    setAvatarError(null);
+    try {
+      // Update user profile with new avatar
+      const profileResponse = await fetch('/data/app/user/me/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ avatar: imageUrl }),
+      });
+
+      const profileResult = await profileResponse.json();
+
+      if (!profileResult.success) {
+        throw new Error(profileResult.error || 'Failed to update profile');
+      }
+
+      // Refresh user data
+      if (refreshUser) {
+        await refreshUser();
+      }
+    } catch (error) {
+      console.error('[DBG][profile] Avatar update error:', error);
+      setAvatarError(error instanceof Error ? error.message : 'Failed to save');
+    }
+  };
 
   if (!user) {
     return (
@@ -69,38 +135,23 @@ export default function Profile() {
             boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
           }}
         >
-          {/* Avatar Section */}
-          <div
-            style={{
-              padding: '32px 24px',
-              textAlign: 'center',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            }}
-          >
-            <div
-              style={{
-                width: '80px',
-                height: '80px',
-                borderRadius: '50%',
-                background: user.profile.avatar ? `url(${user.profile.avatar})` : '#fff',
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '32px',
-                fontWeight: 'bold',
-                color: '#764ba2',
-                margin: '0 auto',
-                border: '3px solid rgba(255,255,255,0.3)',
-              }}
-            >
-              {!user.profile.avatar && user.profile.name.charAt(0).toUpperCase()}
-            </div>
-          </div>
-
           {/* Details Section */}
           <div style={{ padding: '24px' }}>
+            {/* Profile Picture */}
+            <div style={{ marginBottom: '24px' }}>
+              <UserAvatarUpload
+                currentAvatarUrl={user.profile.avatar}
+                userName={user.profile.name}
+                onUploadComplete={handleAvatarUpload}
+                onError={setAvatarError}
+              />
+              {avatarError && (
+                <p style={{ fontSize: '12px', color: '#dc2626', marginTop: '8px' }}>
+                  {avatarError}
+                </p>
+              )}
+            </div>
+
             {/* Name */}
             <div style={{ marginBottom: '20px' }}>
               <label
@@ -281,6 +332,58 @@ export default function Profile() {
                 currencies differ.
               </p>
             </div>
+          </div>
+        </div>
+
+        {/* Timezone Preferences Card */}
+        <div
+          style={{
+            background: '#fff',
+            borderRadius: '12px',
+            overflow: 'hidden',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+            marginTop: '24px',
+          }}
+        >
+          <div style={{ padding: '24px' }}>
+            <h2
+              style={{
+                fontSize: '18px',
+                fontWeight: '600',
+                marginBottom: '16px',
+              }}
+            >
+              Timezone Preferences
+            </h2>
+
+            <p style={{ fontSize: '14px', color: '#666', marginBottom: '20px' }}>
+              Set your timezone to ensure webinar schedules and reminders are displayed in your
+              local time.
+            </p>
+
+            {timezoneLoading ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#666' }}>
+                <div
+                  style={{
+                    width: '16px',
+                    height: '16px',
+                    border: '2px solid #e0e0e0',
+                    borderTopColor: '#666',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite',
+                  }}
+                />
+                <span>Loading timezone settings...</span>
+              </div>
+            ) : (
+              <div style={{ maxWidth: '400px' }}>
+                <TimezoneSelector
+                  value={timezone}
+                  onChange={handleTimezoneChange}
+                  label="Your Timezone"
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>

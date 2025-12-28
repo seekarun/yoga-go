@@ -58,7 +58,7 @@ function FixedItem({ id, isDisabled, position, onToggle, onSelect }: FixedItemPr
       }`}
     >
       {/* Lock Icon (instead of drag handle) */}
-      <div className="p-1 mt-0.5 text-gray-300" title={`${section.label} is fixed at ${position}`}>
+      <div className="p-1 mt-0.5 text-gray-300" title={`${section.label}`}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
           <path d="M12 1C8.676 1 6 3.676 6 7v2H4v14h16V9h-2V7c0-3.324-2.676-6-6-6zm0 2c2.276 0 4 1.724 4 4v2H8V7c0-2.276 1.724-4 4-4zm0 10c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2z" />
         </svg>
@@ -86,7 +86,6 @@ function FixedItem({ id, isDisabled, position, onToggle, onSelect }: FixedItemPr
       >
         <div className={`font-medium ${isDisabled ? 'text-gray-500' : 'text-gray-900'}`}>
           {section.label}
-          <span className="ml-2 text-xs text-gray-400 font-normal">(Fixed at {position})</span>
         </div>
         <div className="text-xs text-gray-500">{section.description}</div>
       </div>
