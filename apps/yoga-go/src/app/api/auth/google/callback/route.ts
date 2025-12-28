@@ -170,8 +170,27 @@ export async function GET(request: NextRequest) {
       salt: 'authjs.session-token',
     });
 
+    // Determine redirect path based on user's actual role (not just state)
+    // This ensures learners go to /app and experts go to /srv
+    const isExpert = Array.isArray(user.role)
+      ? user.role.includes('expert')
+      : user.role === 'expert';
+    const roleBasedPath = isExpert ? '/srv' : '/app';
+
+    // Use role-based path if callbackPath was the default '/srv' and user is not an expert
+    // This fixes the issue where learners were being redirected to /srv
+    const finalPath =
+      callbackPath === '/srv' && !isExpert ? roleBasedPath : callbackPath || roleBasedPath;
+
+    console.log('[DBG][auth/google/callback] Redirect path decision:', {
+      callbackPath,
+      isExpert,
+      roleBasedPath,
+      finalPath,
+    });
+
     // Build final redirect URL using origin domain (could be subdomain) + callback path
-    const finalRedirectUrl = new URL(callbackPath, originDomain);
+    const finalRedirectUrl = new URL(finalPath, originDomain);
 
     console.log(
       '[DBG][auth/google/callback] Creating session and redirecting to:',
