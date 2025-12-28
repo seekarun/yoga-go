@@ -480,47 +480,11 @@ async function processUserRecord(item: Record<string, unknown>): Promise<void> {
   // Track analytics event for admin dashboard (always, for all user types)
   await trackUserCreatedEvent(item);
 
-  // Skip experts for welcome email - they'll get it when TENANT is created
-  if (isExpert) {
-    console.log(
-      `[user-welcome-stream] User is expert, skipping email (will send on TENANT create)`,
-    );
-    return;
-  }
-
-  if (!email) {
-    console.log(`[user-welcome-stream] No email found, skipping`);
-    return;
-  }
-
-  const user: UserRecord = {
-    id: (item.id as string) || (item.SK as string),
-    email,
-    name,
-    role: item.role as string | string[],
-    signupExpertId,
-    createdAt: item.createdAt as string,
-  };
-
-  try {
-    // Case 1: Learner signed up on expert subdomain
-    if (user.signupExpertId) {
-      const expert = await getExpert(user.signupExpertId);
-      if (expert) {
-        await sendBrandedLearnerWelcomeEmail(user, expert);
-        return;
-      }
-      // Fall through to generic if expert not found
-    }
-
-    // Case 2: Generic learner (main site signup)
-    await sendGenericLearnerWelcomeEmail(user);
-  } catch (error) {
-    console.error(
-      `[user-welcome-stream] Error sending learner welcome:`,
-      error,
-    );
-  }
+  // DISABLED: Welcome emails are no longer sent automatically
+  // The app handles user experience without automatic welcome emails
+  console.log(
+    `[user-welcome-stream] Welcome emails disabled - skipping email for user: ${email}`,
+  );
 }
 
 /**
@@ -646,38 +610,11 @@ async function processTenantRecord(
   // Track analytics event for admin dashboard (always, regardless of email)
   await trackTenantCreatedEvent(item);
 
-  // TENANT record must have userId to look up the owner for email
-  if (!userId) {
-    console.log(
-      `[user-welcome-stream] No userId on TENANT record: ${tenantId}, skipping email`,
-    );
-    return;
-  }
-
-  // Fetch the USER record directly using the userId from TENANT
-  const owner = await getUserById(userId);
-
-  if (!owner?.email) {
-    console.log(
-      `[user-welcome-stream] No email found for user: ${userId}, skipping`,
-    );
-    return;
-  }
-
-  const user: UserRecord = {
-    id: tenantId,
-    email: owner.email,
-    name: owner.name || displayName,
-  };
-
-  try {
-    await sendExpertWelcomeEmail(user, tenantId);
-    console.log(
-      `[user-welcome-stream] Expert welcome sent for tenant: ${tenantId}`,
-    );
-  } catch (error) {
-    console.error(`[user-welcome-stream] Error sending expert welcome:`, error);
-  }
+  // DISABLED: Welcome emails are no longer sent automatically
+  // The app handles user experience without automatic welcome emails
+  console.log(
+    `[user-welcome-stream] Welcome emails disabled - skipping email for tenant: ${tenantId}`,
+  );
 }
 
 /**
