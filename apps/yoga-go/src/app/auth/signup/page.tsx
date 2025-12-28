@@ -544,8 +544,7 @@ function SignupForm() {
               Continue with Google
             </a>
 
-            {/* Facebook Sign Up - uses <a> intentionally for full page redirect to API route */}
-            {}
+            {/* Facebook Sign Up - commented out for now
             <a
               href={`/api/auth/facebook?callbackUrl=${isExpertDomain ? '/' : '/srv'}`}
               style={{
@@ -580,6 +579,7 @@ function SignupForm() {
               </svg>
               Continue with Facebook
             </a>
+            */}
 
             <div
               style={{
