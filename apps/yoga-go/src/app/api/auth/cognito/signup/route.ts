@@ -71,16 +71,11 @@ export async function POST(request: NextRequest) {
       requiresVerification: result.requiresVerification,
     });
 
-    // Determine user roles array
-    let userRoles: UserRole[] = ['learner']; // Default
-
-    if (roles && roles.length > 0) {
-      // Use provided roles array
-      userRoles = roles;
-    } else if (role) {
-      // Legacy: single role provided
-      userRoles = role === 'expert' ? ['learner', 'expert'] : ['learner'];
-    }
+    // All new users start as learners only
+    // Expert role is added when they complete onboarding at /srv/new
+    // This ensures role.includes('expert') is always reliable
+    // Ignore any roles/role passed from frontend - they're not used anymore
+    const userRoles: UserRole[] = ['learner'];
 
     // Create response
     const response = NextResponse.json({

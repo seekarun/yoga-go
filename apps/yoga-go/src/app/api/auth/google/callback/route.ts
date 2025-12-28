@@ -123,12 +123,10 @@ export async function GET(request: NextRequest) {
       name: payload.name,
     });
 
-    // Determine roles based on signup origin:
-    // - Expert subdomain: learner only (they're signing up as a learner)
-    // - Main domain: learner + expert (they're signing up as an expert)
-    const roles: ('learner' | 'expert' | 'admin')[] = signupExpertId
-      ? ['learner']
-      : ['learner', 'expert'];
+    // All new users start as learners only
+    // Expert role is added when they complete onboarding at /srv/new
+    // This ensures role.includes('expert') is always reliable
+    const roles: ('learner' | 'expert' | 'admin')[] = ['learner'];
 
     console.log('[DBG][auth/google/callback] Creating user with roles:', roles);
 
@@ -170,22 +168,29 @@ export async function GET(request: NextRequest) {
       salt: 'authjs.session-token',
     });
 
-    // Determine redirect path based on user's actual role (not just state)
-    // This ensures learners go to /app and experts go to /srv
-    const isExpert = Array.isArray(user.role)
-      ? user.role.includes('expert')
-      : user.role === 'expert';
-    const roleBasedPath = isExpert ? '/srv' : '/app';
+    // Determine redirect path based on context:
+    // 1. On expert subdomain: ALL users are treated as learners (go to /)
+    // 2. On main domain: experts with completed onboarding go to /srv, others to /app
+    const isOnExpertSubdomain = !!signupExpertId;
 
-    // Use role-based path if callbackPath was the default '/srv' and user is not an expert
-    // This fixes the issue where learners were being redirected to /srv
-    const finalPath =
-      callbackPath === '/srv' && !isExpert ? roleBasedPath : callbackPath || roleBasedPath;
+    let finalPath: string;
+    if (isOnExpertSubdomain) {
+      // On expert subdomain, everyone is a learner - go to landing page
+      finalPath = '/';
+    } else {
+      // On main domain, check if user is an active expert
+      const hasExpertRole = Array.isArray(user.role)
+        ? user.role.includes('expert')
+        : user.role === 'expert';
+      const hasCompletedOnboarding = !!user.expertProfile;
+      const isActiveExpert = hasExpertRole && hasCompletedOnboarding;
+      finalPath = isActiveExpert ? '/srv' : '/app';
+    }
 
     console.log('[DBG][auth/google/callback] Redirect path decision:', {
       callbackPath,
-      isExpert,
-      roleBasedPath,
+      isOnExpertSubdomain,
+      signupExpertId,
       finalPath,
     });
 

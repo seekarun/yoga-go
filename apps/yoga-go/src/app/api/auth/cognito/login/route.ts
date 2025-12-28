@@ -10,6 +10,7 @@ import { encode } from 'next-auth/jwt';
 import { jwtVerify } from 'jose';
 import type { UserRole } from '@/types';
 import { COOKIE_DOMAIN } from '@/config/env';
+import { isPrimaryDomain, getSubdomainFromMyYogaGuru } from '@/config/domains';
 
 interface LoginRequestBody {
   email: string;
@@ -110,11 +111,33 @@ export async function POST(request: NextRequest) {
       salt: 'authjs.session-token',
     });
 
-    // Determine redirect URL based on role (role is now an array)
-    const isExpert = Array.isArray(user.role)
-      ? user.role.includes('expert')
-      : user.role === 'expert';
-    const redirectUrl = isExpert ? '/srv' : '/app';
+    // Detect if we're on an expert subdomain
+    const hostname = request.headers.get('host') || '';
+    const isOnExpertSubdomain =
+      !isPrimaryDomain(hostname) && !!getSubdomainFromMyYogaGuru(hostname);
+
+    // Determine redirect URL based on context:
+    // 1. On expert subdomain: ALL users are treated as learners (go to /)
+    // 2. On main domain: experts with completed onboarding go to /srv, others to /app
+    let redirectUrl: string;
+    if (isOnExpertSubdomain) {
+      // On expert subdomain, everyone is a learner - go to landing page
+      redirectUrl = '/';
+    } else {
+      // On main domain, check if user is an active expert
+      const hasExpertRole = Array.isArray(user.role)
+        ? user.role.includes('expert')
+        : user.role === 'expert';
+      const hasCompletedOnboarding = !!user.expertProfile;
+      const isActiveExpert = hasExpertRole && hasCompletedOnboarding;
+      redirectUrl = isActiveExpert ? '/srv' : '/app';
+    }
+
+    console.log('[DBG][login] Redirect decision:', {
+      hostname,
+      isOnExpertSubdomain,
+      redirectUrl,
+    });
 
     // Create response with session cookie
     const response = NextResponse.json({

@@ -159,9 +159,11 @@ export default function Header() {
       : '/';
 
   // Determine which profile picture to use:
-  // - Experts: use expertData.profilePic, fall back to user.profile.avatar
+  // - When on someone else's subdomain: always use user's own avatar
+  // - When expert is managing their own dashboard (not on expert subdomain): use expertData.profilePic
   // - Learners: use user.profile.avatar
-  const avatarUrl = isExpert
+  const isManagingOwnDashboard = isExpert && !expertMode.isExpertMode;
+  const avatarUrl = isManagingOwnDashboard
     ? expertData?.profilePic || user?.profile?.avatar
     : user?.profile?.avatar;
 
