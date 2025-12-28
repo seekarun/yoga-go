@@ -66,12 +66,10 @@ function SigninForm() {
 
       console.log('[DBG][signin] Login successful, redirecting');
 
-      // On expert domains, learners should go to landing page (/), not /app
-      // Experts still go to /srv to manage their site
-      let finalRedirectUrl = data.redirectUrl || callbackUrl;
-      if (isExpertDomain && finalRedirectUrl === '/app') {
-        finalRedirectUrl = '/';
-      }
+      // Use the redirect URL from the login API - it already handles:
+      // - Expert subdomain: /app if enrolled, / if not
+      // - Main domain: /srv for active experts, / for learners
+      const finalRedirectUrl = data.redirectUrl || callbackUrl;
       window.location.href = finalRedirectUrl;
     } catch (err) {
       console.error('[DBG][signin] Error:', err);
