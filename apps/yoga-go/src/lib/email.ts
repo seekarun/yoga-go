@@ -1,6 +1,15 @@
 import { SESClient, SendEmailCommand, SendTemplatedEmailCommand } from '@aws-sdk/client-ses';
 import { getTenantByExpertId } from '@/lib/repositories/tenantRepository';
 import { generatePalette, type ColorPalette } from '@/lib/colorPalette';
+import {
+  DOMAIN,
+  BASE_URL,
+  PLATFORM_EMAIL,
+  getExpertEmail,
+  getSubdomainHost,
+  getSubdomainUrl,
+  BRAND_NAME,
+} from '@/config/env';
 
 // ========================================
 // AWS SES Email Service
@@ -12,7 +21,7 @@ const sesClient = new SESClient({
   region: process.env.SES_REGION || 'us-west-2',
 });
 
-const fromEmail = process.env.SES_FROM_EMAIL || 'hi@myyoga.guru';
+const fromEmail = process.env.SES_FROM_EMAIL || PLATFORM_EMAIL;
 const configSet = process.env.SES_CONFIG_SET;
 
 console.log('[DBG][email] SES Email service initialized');
@@ -155,7 +164,7 @@ export const sendBulkEmail = async (options: EmailOptions): Promise<void> => {
 
 export interface InvoiceEmailOptions {
   to: string;
-  from?: string; // Optional custom from address (e.g., expert@myyoga.guru)
+  from?: string; // Optional custom from address (e.g., expertId@{DOMAIN})
   customerName: string;
   orderId: string;
   orderDate: string;
@@ -277,7 +286,7 @@ export const sendBrandedInvoiceEmail = async (
     expert,
   } = options;
 
-  const expertUrl = `https://${expert.id}.myyoga.guru`;
+  const expertUrl = getSubdomainUrl(expert.id);
 
   console.log(`[DBG][email] Sending branded invoice email to ${to}`);
   console.log(`[DBG][email] Expert: ${expert.name} (${expert.id}), Order: ${orderId}`);
@@ -288,8 +297,8 @@ export const sendBrandedInvoiceEmail = async (
   const lightBg = palette[50] || '#f0fdf9';
   const darkText = palette[900] || '#134e4a';
 
-  // Use expert logo if available, otherwise use avatar or MyYoga.guru logo
-  const logoUrl = expert.logo || expert.avatar || 'https://myyoga.guru/myg_light.png';
+  // Use expert logo if available, otherwise use avatar or platform logo
+  const logoUrl = expert.logo || expert.avatar || `${BASE_URL}/myg_light.png`;
 
   const html = `
 <!DOCTYPE html>
@@ -370,7 +379,7 @@ export const sendBrandedInvoiceEmail = async (
               </div>
 
               <p style="font-size: 14px; color: #888; margin: 25px 0 0 0; text-align: center;">
-                Questions? Visit <a href="${expertUrl}" style="color: ${primaryColor}; text-decoration: none;">${expert.id}.myyoga.guru</a>
+                Questions? Visit <a href="${expertUrl}" style="color: ${primaryColor}; text-decoration: none;">${getSubdomainHost(expert.id)}</a>
               </p>
             </td>
           </tr>
@@ -382,7 +391,7 @@ export const sendBrandedInvoiceEmail = async (
                 ${expert.name}
               </p>
               <p style="margin: 10px 0 0 0; font-size: 11px; color: rgba(255,255,255,0.7);">
-                Powered by <a href="https://myyoga.guru" style="color: rgba(255,255,255,0.9); text-decoration: none;">MyYoga.guru</a>
+                Powered by <a href="${BASE_URL}" style="color: rgba(255,255,255,0.9); text-decoration: none;">${BRAND_NAME}</a>
               </p>
             </td>
           </tr>
@@ -417,7 +426,7 @@ Questions? Visit ${expertUrl}
 
 ---
 ${expert.name}
-Powered by MyYoga.guru
+Powered by ${BRAND_NAME}
 `;
 
   const command = new SendEmailCommand({
@@ -441,7 +450,7 @@ Powered by MyYoga.guru
         },
       },
     },
-    ReplyToAddresses: ['hi@myyoga.guru'],
+    ReplyToAddresses: [PLATFORM_EMAIL],
     ConfigurationSetName: configSet,
     Tags: [
       {
@@ -628,7 +637,7 @@ export const sendWebinarRegistrationEmail = async (
           <tr>
             <td style="background-color: #f8f9fa; padding: 20px; text-align: center;">
               <p style="margin: 0; font-size: 13px; color: #888;">
-                &copy; ${new Date().getFullYear()} MyYoga.guru. All rights reserved.
+                &copy; ${new Date().getFullYear()} ${BRAND_NAME}. All rights reserved.
               </p>
             </td>
           </tr>
@@ -657,7 +666,7 @@ Transaction ID: ${transactionId}
 
 If you have any questions, simply reply to this email.
 
-© ${new Date().getFullYear()} MyYoga.guru. All rights reserved.
+© ${new Date().getFullYear()} ${BRAND_NAME}. All rights reserved.
 `;
 
   const command = new SendEmailCommand({
@@ -709,7 +718,7 @@ If you have any questions, simply reply to this email.
  * Get the default email address for an expert
  */
 export function getExpertFromEmail(expertId: string): string {
-  return `${expertId}@myyoga.guru`;
+  return getExpertEmail(expertId);
 }
 
 /**
@@ -767,12 +776,12 @@ export function getContextualFromEmail(expertId: string | null, referer: string 
     return fromEmail;
   }
 
-  // Check if referer is from an expert subdomain (e.g., arun.myyoga.guru)
+  // Check if referer is from an expert subdomain (e.g., arun.{DOMAIN})
   const isExpertSubdomain =
-    referer.includes('.myyoga.guru') &&
-    !referer.includes('www.myyoga.guru') &&
-    !referer.startsWith('https://myyoga.guru') &&
-    !referer.startsWith('http://myyoga.guru');
+    referer.includes(`.${DOMAIN}`) &&
+    !referer.includes(`www.${DOMAIN}`) &&
+    !referer.startsWith(`https://${DOMAIN}`) &&
+    !referer.startsWith(`http://${DOMAIN}`);
 
   if (isExpertSubdomain) {
     return getExpertFromEmail(expertId);
@@ -946,8 +955,8 @@ export const sendWebinarReminderEmail = async (
 
   // Build webinar URL on expert subdomain
   const webinarUrl = expert?.id
-    ? `https://${expert.id}.myyoga.guru/webinars/${webinarId}`
-    : `https://myyoga.guru/webinars/${webinarId}`;
+    ? `${getSubdomainUrl(expert.id)}/webinars/${webinarId}`
+    : `${BASE_URL}/webinars/${webinarId}`;
 
   // Determine meeting link and button text
   const joinLink = zoomLink || meetLink;
@@ -1240,8 +1249,8 @@ export async function sendAdminReplyEmail(options: AdminReplyEmailOptions): Prom
   console.log(`[DBG][email] Sending admin reply email`);
   console.log(`[DBG][email] To: ${to}, Subject: ${subject}`);
 
-  // Admin replies always come from hi@myyoga.guru
-  const from = 'hi@myyoga.guru';
+  // Admin replies always come from platform email
+  const from = PLATFORM_EMAIL;
 
   // Build HTML body with attachment links if provided
   let htmlBody = html || text.replace(/\n/g, '<br>');
@@ -1325,9 +1334,9 @@ export interface ExpertWelcomeEmailOptions {
 export const sendExpertWelcomeEmail = async (options: ExpertWelcomeEmailOptions): Promise<void> => {
   const { to, expertName, expertId } = options;
 
-  const subdomain = `${expertId}.myyoga.guru`;
-  const dashboardUrl = `https://${subdomain}/srv/${expertId}`;
-  const expertEmail = `${expertId}@myyoga.guru`;
+  const subdomain = getSubdomainHost(expertId);
+  const dashboardUrl = `${getSubdomainUrl(expertId)}/srv/${expertId}`;
+  const expertEmailAddr = getExpertEmail(expertId);
 
   console.log(`[DBG][email] Sending expert welcome email to ${to}`);
   console.log(`[DBG][email] Expert: ${expertName} (${expertId})`);
@@ -1335,7 +1344,7 @@ export const sendExpertWelcomeEmail = async (options: ExpertWelcomeEmailOptions)
   // Brand colors from globals.css
   const brandPrimary = '#7a2900';
   const brandPrimaryLight = '#fed094';
-  const logoUrl = 'https://myyoga.guru/myg_light.png';
+  const logoUrl = `${BASE_URL}/myg_light.png`;
 
   const html = `
 <!DOCTYPE html>
@@ -1352,7 +1361,7 @@ export const sendExpertWelcomeEmail = async (options: ExpertWelcomeEmailOptions)
           <!-- Header with Logo -->
           <tr>
             <td style="background: ${brandPrimary}; padding: 35px 30px; text-align: center;">
-              <img src="${logoUrl}" alt="MyYoga.guru" width="180" style="display: block; margin: 0 auto 15px auto;" />
+              <img src="${logoUrl}" alt="${BRAND_NAME}" width="180" style="display: block; margin: 0 auto 15px auto;" />
               <p style="color: ${brandPrimaryLight}; margin: 0; font-size: 16px; font-weight: 500;">
                 Your journey as an expert begins here
               </p>
@@ -1367,7 +1376,7 @@ export const sendExpertWelcomeEmail = async (options: ExpertWelcomeEmailOptions)
               </p>
 
               <p style="font-size: 16px; color: #555; line-height: 1.6; margin: 0 0 25px 0;">
-                Congratulations on joining MyYoga.guru as an expert! We're thrilled to have you on board. Your expertise will help transform lives through yoga.
+                Congratulations on joining ${BRAND_NAME} as an expert! We're thrilled to have you on board. Your expertise will help transform lives through yoga.
               </p>
 
               <!-- What's Ready Box -->
@@ -1379,13 +1388,13 @@ export const sendExpertWelcomeEmail = async (options: ExpertWelcomeEmailOptions)
                   <tr>
                     <td style="padding: 10px 0;">
                       <strong style="color: #333;">Your subdomain:</strong><br/>
-                      <a href="https://${subdomain}" style="color: ${brandPrimary}; text-decoration: none; font-weight: 500;">${subdomain}</a>
+                      <a href="${getSubdomainUrl(expertId)}" style="color: ${brandPrimary}; text-decoration: none; font-weight: 500;">${subdomain}</a>
                     </td>
                   </tr>
                   <tr>
                     <td style="padding: 10px 0;">
                       <strong style="color: #333;">Your email address:</strong><br/>
-                      <span style="color: #555;">${expertEmail}</span>
+                      <span style="color: #555;">${expertEmailAddr}</span>
                     </td>
                   </tr>
                   <tr>
@@ -1470,7 +1479,7 @@ export const sendExpertWelcomeEmail = async (options: ExpertWelcomeEmailOptions)
                 Empowering yoga experts to share their knowledge
               </p>
               <p style="margin: 15px 0 0 0; font-size: 12px; color: rgba(254, 208, 148, 0.7);">
-                &copy; ${new Date().getFullYear()} MyYoga.guru. All rights reserved.
+                &copy; ${new Date().getFullYear()} ${BRAND_NAME}. All rights reserved.
               </p>
             </td>
           </tr>
@@ -1483,15 +1492,15 @@ export const sendExpertWelcomeEmail = async (options: ExpertWelcomeEmailOptions)
 `;
 
   const text = `
-Welcome to MyYoga.guru!
+Welcome to ${BRAND_NAME}!
 
 Hi ${expertName},
 
-Congratulations on joining MyYoga.guru as an expert! We're thrilled to have you on board. Your expertise will help transform lives through yoga.
+Congratulations on joining ${BRAND_NAME} as an expert! We're thrilled to have you on board. Your expertise will help transform lives through yoga.
 
 WHAT'S READY FOR YOU:
 - Your subdomain: ${subdomain}
-- Your email address: ${expertEmail}
+- Your email address: ${expertEmailAddr}
 - Expert dashboard: ${dashboardUrl}
 
 NEXT STEPS TO GET STARTED:
@@ -1510,10 +1519,10 @@ Go to your dashboard: ${dashboardUrl}
 Questions? Just reply to this email - we're here to help!
 
 ---
-MyYoga.guru
+${BRAND_NAME}
 Empowering yoga experts to share their knowledge
 
-(c) ${new Date().getFullYear()} MyYoga.guru. All rights reserved.
+(c) ${new Date().getFullYear()} ${BRAND_NAME}. All rights reserved.
 `;
 
   const command = new SendEmailCommand({
@@ -1523,7 +1532,7 @@ Empowering yoga experts to share their knowledge
     },
     Message: {
       Subject: {
-        Data: `Welcome to MyYoga.guru, ${expertName}!`,
+        Data: `Welcome to ${BRAND_NAME}, ${expertName}!`,
         Charset: 'UTF-8',
       },
       Body: {
@@ -1537,7 +1546,7 @@ Empowering yoga experts to share their knowledge
         },
       },
     },
-    ReplyToAddresses: ['hi@myyoga.guru'],
+    ReplyToAddresses: [PLATFORM_EMAIL],
     ConfigurationSetName: configSet,
     Tags: [
       {
@@ -1587,7 +1596,7 @@ export const sendLearnerWelcomeEmail = async (
 ): Promise<void> => {
   const { to, learnerName, expert } = options;
 
-  const expertUrl = `https://${expert.id}.myyoga.guru`;
+  const expertUrl = getSubdomainUrl(expert.id);
   const coursesUrl = `${expertUrl}/courses`;
 
   console.log(`[DBG][email] Sending learner welcome email to ${to}`);
@@ -1599,8 +1608,8 @@ export const sendLearnerWelcomeEmail = async (
   const lightBg = palette[50] || '#f0fdf9';
   const darkText = palette[900] || '#134e4a';
 
-  // Use expert logo if available, otherwise use avatar or MyYoga.guru logo
-  const logoUrl = expert.logo || expert.avatar || 'https://myyoga.guru/myg_light.png';
+  // Use expert logo if available, otherwise use avatar or platform logo
+  const logoUrl = expert.logo || expert.avatar || `${BASE_URL}/myg_light.png`;
 
   const html = `
 <!DOCTYPE html>
@@ -1649,7 +1658,7 @@ export const sendLearnerWelcomeEmail = async (
               </div>
 
               <p style="font-size: 14px; color: #888; margin: 25px 0 0 0; text-align: center;">
-                Questions? Just reply to this email or visit <a href="${expertUrl}" style="color: ${primaryColor}; text-decoration: none;">${expert.id}.myyoga.guru</a>
+                Questions? Just reply to this email or visit <a href="${expertUrl}" style="color: ${primaryColor}; text-decoration: none;">${getSubdomainHost(expert.id)}</a>
               </p>
             </td>
           </tr>
@@ -1661,7 +1670,7 @@ export const sendLearnerWelcomeEmail = async (
                 ${expert.name}
               </p>
               <p style="margin: 10px 0 0 0; font-size: 11px; color: rgba(255,255,255,0.7);">
-                Powered by <a href="https://myyoga.guru" style="color: rgba(255,255,255,0.9); text-decoration: none;">MyYoga.guru</a>
+                Powered by <a href="${BASE_URL}" style="color: rgba(255,255,255,0.9); text-decoration: none;">${BRAND_NAME}</a>
               </p>
             </td>
           </tr>
@@ -1688,7 +1697,7 @@ Questions? Visit ${expertUrl}
 
 ---
 ${expert.name}
-Powered by MyYoga.guru
+Powered by ${BRAND_NAME}
 `;
 
   const command = new SendEmailCommand({
@@ -1712,7 +1721,7 @@ Powered by MyYoga.guru
         },
       },
     },
-    ReplyToAddresses: ['hi@myyoga.guru'],
+    ReplyToAddresses: [PLATFORM_EMAIL],
     ConfigurationSetName: configSet,
     Tags: [
       {
@@ -1769,8 +1778,8 @@ export const sendCustomWebinarEmail = async (options: CustomWebinarEmailOptions)
 
   // Build webinar URL on expert subdomain
   const webinarUrl = expert?.id
-    ? `https://${expert.id}.myyoga.guru/webinars/${webinarId}`
-    : `https://myyoga.guru/webinars/${webinarId}`;
+    ? `${getSubdomainUrl(expert.id)}/webinars/${webinarId}`
+    : `${BASE_URL}/webinars/${webinarId}`;
 
   // Use expert branding or defaults
   const primaryColor = expert?.palette?.[500] || expert?.primaryColor || '#7a2900';
@@ -1945,8 +1954,8 @@ export const sendExpertNotificationEmail = async (
 
   // Build webinar URL on expert subdomain
   const webinarUrl = expert?.id
-    ? `https://${expert.id}.myyoga.guru/webinars/${webinarId}`
-    : `https://myyoga.guru/webinars/${webinarId}`;
+    ? `${getSubdomainUrl(expert.id)}/webinars/${webinarId}`
+    : `${BASE_URL}/webinars/${webinarId}`;
 
   let subject: string;
   let headerText: string;

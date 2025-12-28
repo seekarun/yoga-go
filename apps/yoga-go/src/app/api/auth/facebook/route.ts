@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { cognitoConfig } from '@/lib/cognito';
+import { BASE_URL } from '@/config/env';
 
 export async function GET(request: NextRequest) {
   console.log('[DBG][auth/facebook] Initiating Facebook OAuth flow');
@@ -20,10 +21,9 @@ export async function GET(request: NextRequest) {
   const currentUrl = `${protocol}://${hostname}`;
 
   // Cognito requires redirect_uri to EXACTLY match one of the configured callback URLs
-  // Expert subdomains (e.g., myyoga.myyoga.guru) are NOT in the allowed list
+  // Expert subdomains are NOT in the allowed list
   // So we ALWAYS use the main domain for redirect_uri
-  const isLocalhost = hostname.includes('localhost');
-  const mainDomain = isLocalhost ? 'http://localhost:3111' : 'https://myyoga.guru';
+  const mainDomain = BASE_URL;
 
   // Cognito Hosted UI domain - use custom domain if configured
   const domain =

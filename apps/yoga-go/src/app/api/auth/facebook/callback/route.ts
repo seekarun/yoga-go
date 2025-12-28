@@ -10,6 +10,7 @@ import { encode } from 'next-auth/jwt';
 import { cognitoConfig } from '@/lib/cognito';
 import { getOrCreateUser } from '@/lib/auth';
 import { getSubdomainFromMyYogaGuru, isPrimaryDomain } from '@/config/domains';
+import { BASE_URL, COOKIE_DOMAIN } from '@/config/env';
 
 export async function GET(request: NextRequest) {
   console.log('[DBG][auth/facebook/callback] Processing Facebook OAuth callback');
@@ -60,8 +61,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Use main domain for redirect_uri (must match what was sent in initial request)
-  const isLocalhost = hostname.includes('localhost');
-  const mainDomain = isLocalhost ? 'http://localhost:3111' : 'https://myyoga.guru';
+  const mainDomain = BASE_URL;
   const baseUrl = mainDomain;
 
   // Handle errors from Cognito
@@ -195,10 +195,10 @@ export async function GET(request: NextRequest) {
       maxAge: 30 * 24 * 60 * 60, // 30 days (matches email login)
     };
 
-    // Set domain for production to work across www.myyoga.guru and myyoga.guru
+    // Set domain for production to work across subdomains
     // IMPORTANT: Must match logout route domain setting for cookie to be cleared properly
-    if (isProduction) {
-      cookieOptions.domain = '.myyoga.guru';
+    if (COOKIE_DOMAIN) {
+      cookieOptions.domain = COOKIE_DOMAIN;
     }
 
     response.cookies.set('authjs.session-token', sessionToken, cookieOptions);
