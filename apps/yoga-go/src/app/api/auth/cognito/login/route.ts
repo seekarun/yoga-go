@@ -11,6 +11,37 @@ import { jwtVerify } from 'jose';
 import type { UserRole } from '@/types';
 import { COOKIE_DOMAIN } from '@/config/env';
 import { isPrimaryDomain, getSubdomainFromMyYogaGuru } from '@/config/domains';
+import * as webinarRegistrationRepository from '@/lib/repositories/webinarRegistrationRepository';
+import * as courseProgressRepository from '@/lib/repositories/courseProgressRepository';
+import * as courseRepository from '@/lib/repositories/courseRepository';
+
+/**
+ * Check if user has any enrollments (courses or webinars) with a specific expert
+ */
+async function hasEnrollmentsWithExpert(userId: string, expertId: string): Promise<boolean> {
+  console.log('[DBG][login] Checking enrollments for user:', userId, 'with expert:', expertId);
+
+  // Check webinar registrations first (has expertId directly)
+  const webinarRegs = await webinarRegistrationRepository.getRegistrationsByUserId(userId);
+  const hasWebinarWithExpert = webinarRegs.some(reg => reg.expertId === expertId);
+  if (hasWebinarWithExpert) {
+    console.log('[DBG][login] User has webinar registration with expert');
+    return true;
+  }
+
+  // Check course enrollments (need to look up course instructor)
+  const courseProgress = await courseProgressRepository.getCourseProgressByUserId(userId);
+  for (const progress of courseProgress) {
+    const course = await courseRepository.getCourseById(progress.courseId);
+    if (course?.instructor?.id === expertId) {
+      console.log('[DBG][login] User has course enrollment with expert');
+      return true;
+    }
+  }
+
+  console.log('[DBG][login] User has no enrollments with expert');
+  return false;
+}
 
 interface LoginRequestBody {
   email: string;
@@ -113,16 +144,23 @@ export async function POST(request: NextRequest) {
 
     // Detect if we're on an expert subdomain
     const hostname = request.headers.get('host') || '';
-    const isOnExpertSubdomain =
-      !isPrimaryDomain(hostname) && !!getSubdomainFromMyYogaGuru(hostname);
+    const subdomainExpertId = getSubdomainFromMyYogaGuru(hostname);
+    const isOnExpertSubdomain = !isPrimaryDomain(hostname) && !!subdomainExpertId;
 
     // Determine redirect URL based on context:
-    // 1. On expert subdomain: ALL users are treated as learners (go to /)
+    // 1. On expert subdomain: check enrollments - /app if enrolled, / if not
     // 2. On main domain: experts with completed onboarding go to /srv, others to /app
     let redirectUrl: string;
-    if (isOnExpertSubdomain) {
-      // On expert subdomain, everyone is a learner - go to landing page
-      redirectUrl = '/';
+    if (isOnExpertSubdomain && subdomainExpertId) {
+      // On expert subdomain - check if user has enrollments with this expert
+      // Note: Even if user is an expert on another subdomain, they're a learner here
+      const hasEnrollments = await hasEnrollmentsWithExpert(user.id, subdomainExpertId);
+      redirectUrl = hasEnrollments ? '/app' : '/';
+      console.log('[DBG][login] Expert subdomain redirect:', {
+        subdomainExpertId,
+        hasEnrollments,
+        redirectUrl,
+      });
     } else {
       // On main domain, check if user is an active expert
       const hasExpertRole = Array.isArray(user.role)
@@ -130,7 +168,8 @@ export async function POST(request: NextRequest) {
         : user.role === 'expert';
       const hasCompletedOnboarding = !!user.expertProfile;
       const isActiveExpert = hasExpertRole && hasCompletedOnboarding;
-      redirectUrl = isActiveExpert ? '/srv' : '/app';
+      // Active experts go to /srv, everyone else stays on landing page
+      redirectUrl = isActiveExpert ? '/srv' : '/';
     }
 
     console.log('[DBG][login] Redirect decision:', {

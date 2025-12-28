@@ -11,6 +11,42 @@ import { cognitoConfig } from '@/lib/cognito';
 import { getOrCreateUser } from '@/lib/auth';
 import { getSubdomainFromMyYogaGuru, isPrimaryDomain } from '@/config/domains';
 import { BASE_URL, COOKIE_DOMAIN } from '@/config/env';
+import * as webinarRegistrationRepository from '@/lib/repositories/webinarRegistrationRepository';
+import * as courseProgressRepository from '@/lib/repositories/courseProgressRepository';
+import * as courseRepository from '@/lib/repositories/courseRepository';
+
+/**
+ * Check if user has any enrollments (courses or webinars) with a specific expert
+ */
+async function hasEnrollmentsWithExpert(userId: string, expertId: string): Promise<boolean> {
+  console.log(
+    '[DBG][facebook/callback] Checking enrollments for user:',
+    userId,
+    'with expert:',
+    expertId
+  );
+
+  // Check webinar registrations first (has expertId directly)
+  const webinarRegs = await webinarRegistrationRepository.getRegistrationsByUserId(userId);
+  const hasWebinarWithExpert = webinarRegs.some(reg => reg.expertId === expertId);
+  if (hasWebinarWithExpert) {
+    console.log('[DBG][facebook/callback] User has webinar registration with expert');
+    return true;
+  }
+
+  // Check course enrollments (need to look up course instructor)
+  const courseProgress = await courseProgressRepository.getCourseProgressByUserId(userId);
+  for (const progress of courseProgress) {
+    const course = await courseRepository.getCourseById(progress.courseId);
+    if (course?.instructor?.id === expertId) {
+      console.log('[DBG][facebook/callback] User has course enrollment with expert');
+      return true;
+    }
+  }
+
+  console.log('[DBG][facebook/callback] User has no enrollments with expert');
+  return false;
+}
 
 export async function GET(request: NextRequest) {
   console.log('[DBG][auth/facebook/callback] Processing Facebook OAuth callback');
@@ -165,14 +201,21 @@ export async function GET(request: NextRequest) {
     });
 
     // Determine redirect path based on context:
-    // 1. On expert subdomain: ALL users are treated as learners (go to /)
+    // 1. On expert subdomain: check enrollments - /app if enrolled, / if not
     // 2. On main domain: experts with completed onboarding go to /srv, others to /app
     const isOnExpertSubdomain = !!signupExpertId;
 
     let finalPath: string;
-    if (isOnExpertSubdomain) {
-      // On expert subdomain, everyone is a learner - go to landing page
-      finalPath = '/';
+    if (isOnExpertSubdomain && signupExpertId) {
+      // On expert subdomain - check if user has enrollments with this expert
+      // Note: Even if user is an expert on another subdomain, they're a learner here
+      const hasEnrollments = await hasEnrollmentsWithExpert(user.id, signupExpertId);
+      finalPath = hasEnrollments ? '/app' : '/';
+      console.log('[DBG][auth/facebook/callback] Expert subdomain redirect:', {
+        signupExpertId,
+        hasEnrollments,
+        finalPath,
+      });
     } else {
       // On main domain, check if user is an active expert
       const hasExpertRole = Array.isArray(user.role)
@@ -180,7 +223,8 @@ export async function GET(request: NextRequest) {
         : user.role === 'expert';
       const hasCompletedOnboarding = !!user.expertProfile;
       const isActiveExpert = hasExpertRole && hasCompletedOnboarding;
-      finalPath = isActiveExpert ? '/srv' : '/app';
+      // Active experts go to /srv, everyone else stays on landing page
+      finalPath = isActiveExpert ? '/srv' : '/';
     }
 
     console.log('[DBG][auth/facebook/callback] Redirect path decision:', {
