@@ -8,6 +8,7 @@ import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
 import * as nodejsLambda from "aws-cdk-lib/aws-lambda-nodejs";
 import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 import * as ses from "aws-cdk-lib/aws-ses";
+import * as sqs from "aws-cdk-lib/aws-sqs";
 import type { Construct } from "constructs";
 import * as path from "path";
 
@@ -541,6 +542,68 @@ The MyYoga.Guru Team`,
     });
 
     // ========================================
+    // Recording Processor Queue (SQS)
+    // ========================================
+    // Processes Zoom/Meet recording imports to Cloudflare Stream
+    const recordingDlq = new sqs.Queue(this, "RecordingProcessorDLQ", {
+      queueName: "yoga-go-recording-processor-dlq",
+      retentionPeriod: cdk.Duration.days(14),
+    });
+
+    const recordingQueue = new sqs.Queue(this, "RecordingProcessorQueue", {
+      queueName: "yoga-go-recording-processor",
+      visibilityTimeout: cdk.Duration.minutes(15), // Long timeout for video processing
+      receiveMessageWaitTime: cdk.Duration.seconds(20), // Long polling
+      deadLetterQueue: {
+        queue: recordingDlq,
+        maxReceiveCount: 3,
+      },
+    });
+
+    // ========================================
+    // Recording Processor Lambda
+    // ========================================
+    // Downloads recordings from Zoom and uploads to Cloudflare Stream
+    const recordingProcessorLambda = new nodejsLambda.NodejsFunction(
+      this,
+      "RecordingProcessorLambda",
+      {
+        functionName: "yoga-go-recording-processor",
+        runtime: lambda.Runtime.NODEJS_22_X,
+        handler: "handler",
+        entry: path.join(__dirname, "../lambda/recording-processor.ts"),
+        timeout: cdk.Duration.minutes(15), // Max Lambda timeout
+        memorySize: 1024, // Higher memory for video download/upload
+        environment: {
+          DYNAMODB_TABLE: coreTable.tableName,
+          AWS_DYNAMODB_REGION: "ap-southeast-2",
+        },
+        bundling: { minify: true, sourceMap: false },
+      },
+    );
+
+    // Grant DynamoDB read/write for updating recording status
+    coreTable.grantReadWriteData(recordingProcessorLambda);
+
+    // Grant access to read Cloudflare secrets
+    appSecret.grantRead(recordingProcessorLambda);
+
+    // Add SQS as event source
+    recordingProcessorLambda.addEventSource(
+      new lambdaEventSources.SqsEventSource(recordingQueue, {
+        batchSize: 1, // Process one recording at a time
+        maxConcurrency: 5, // Limit concurrent processing
+      }),
+    );
+
+    // Output queue URL for webhook handler
+    new cdk.CfnOutput(this, "RecordingQueueUrl", {
+      value: recordingQueue.queueUrl,
+      description: "SQS Queue URL for recording processor",
+      exportName: "YogaGoRecordingQueueUrl",
+    });
+
+    // ========================================
     // IAM User for Vercel Deployment
     // ========================================
     // Since we're hosting on Vercel (not ECS), we need an IAM user
@@ -616,6 +679,13 @@ The MyYoga.Guru Team`,
       resources: [userPool.userPoolArn],
     });
 
+    // SQS send message policy (for webhook handlers to queue recordings)
+    const sqsSendPolicy = new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ["sqs:SendMessage"],
+      resources: [recordingQueue.queueArn],
+    });
+
     // Create managed policy and attach to user
     const vercelPolicy = new iam.ManagedPolicy(this, "VercelPolicy", {
       managedPolicyName: "yoga-go-vercel-policy",
@@ -624,6 +694,7 @@ The MyYoga.Guru Team`,
         sesEmailPolicy,
         sesVerificationPolicy,
         cognitoPolicy,
+        sqsSendPolicy,
       ],
     });
 

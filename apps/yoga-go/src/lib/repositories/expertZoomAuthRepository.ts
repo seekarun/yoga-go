@@ -5,7 +5,13 @@
  * PK: "ZOOM_AUTH", SK: expertId
  */
 
-import { GetCommand, PutCommand, UpdateCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
+import {
+  GetCommand,
+  PutCommand,
+  UpdateCommand,
+  DeleteCommand,
+  QueryCommand,
+} from '@aws-sdk/lib-dynamodb';
 import { docClient, Tables, EntityType } from '../dynamodb';
 import type { ExpertZoomAuth } from '@/types';
 
@@ -47,6 +53,34 @@ export async function getZoomAuth(expertId: string): Promise<ExpertZoomAuth | nu
 
   console.log('[DBG][expertZoomAuthRepo] Found Zoom auth');
   return toZoomAuth(result.Item as DynamoDBZoomAuthItem);
+}
+
+/**
+ * Get Zoom auth by email address (for webhook processing)
+ * Queries all ZOOM_AUTH records and filters by email
+ */
+export async function getExpertZoomAuthByEmail(email: string): Promise<ExpertZoomAuth | null> {
+  console.log('[DBG][expertZoomAuthRepo] Getting Zoom auth by email:', email);
+
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: Tables.CORE,
+      KeyConditionExpression: 'PK = :pk',
+      FilterExpression: 'email = :email',
+      ExpressionAttributeValues: {
+        ':pk': EntityType.ZOOM_AUTH,
+        ':email': email,
+      },
+    })
+  );
+
+  if (!result.Items || result.Items.length === 0) {
+    console.log('[DBG][expertZoomAuthRepo] Zoom auth not found for email');
+    return null;
+  }
+
+  console.log('[DBG][expertZoomAuthRepo] Found Zoom auth for email');
+  return toZoomAuth(result.Items[0] as DynamoDBZoomAuthItem);
 }
 
 /**

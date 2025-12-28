@@ -1283,6 +1283,68 @@ export interface EmailFilters {
 }
 
 // ========================================
+// Recording Types (Auto-imported from Zoom/Meet)
+// ========================================
+
+export type RecordingSource = 'zoom' | 'google_meet' | 'upload';
+export type RecordingImportStatus =
+  | 'pending'
+  | 'downloading'
+  | 'uploading'
+  | 'processing'
+  | 'ready'
+  | 'failed';
+
+export interface Recording extends BaseEntity {
+  expertId: string;
+  source: RecordingSource;
+  sourceId: string; // Zoom meeting ID or Google Drive file ID
+  sourceMeetingTopic?: string; // Original meeting topic from Zoom
+  title: string;
+  description?: string;
+  duration: number; // in seconds
+  fileSize: number; // in bytes
+
+  // Cloudflare Stream
+  cloudflareStreamId?: string;
+  cloudflarePlaybackUrl?: string;
+  thumbnailUrl?: string;
+
+  // Processing status
+  status: RecordingImportStatus;
+  statusMessage?: string; // Error message if failed
+  downloadUrl?: string; // Temporary Zoom download URL
+
+  // Links to webinar (optional)
+  webinarId?: string;
+  sessionId?: string;
+
+  // Linked to course lesson (optional)
+  courseId?: string;
+  lessonId?: string;
+
+  // Metadata
+  recordedAt?: string; // When the original meeting happened
+  importedAt?: string; // When we started importing
+  processedAt?: string; // When upload to CF completed
+}
+
+export interface RecordingListResult {
+  recordings: Recording[];
+  totalCount: number;
+  lastKey?: string;
+}
+
+export interface RecordingFilters {
+  source?: RecordingSource;
+  status?: RecordingImportStatus;
+  webinarId?: string;
+  search?: string;
+  limit?: number;
+  lastKey?: string;
+}
+
+// ========================================
 // Discoverability Boost Types
 // ========================================
 
