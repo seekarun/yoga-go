@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
-import type { Course, SupportedCurrency, Email } from '@/types';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { formatPrice } from '@/lib/currency/currencyService';
+import type { Course, Email, SupportedCurrency } from '@/types';
+import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
+import { useCallback, useEffect, useState } from 'react';
 
 interface StripeBalanceData {
   connected: boolean;
@@ -268,9 +268,22 @@ export default function ExpertDashboard() {
                 </p>
                 <button
                   onClick={openStripeDashboard}
-                  className="text-xs text-blue-600 hover:underline mt-2 inline-block"
+                  className="text-xs text-blue-600 hover:underline mt-2 inline-flex items-center gap-1"
                 >
-                  View Stripe Dashboard →
+                  Go to Stripe Dashboard
+                  <svg
+                    className="w-3 h-3"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
+                    />
+                  </svg>
                 </button>
               </>
             ) : stripeBalance?.connected && !stripeBalance?.active ? (

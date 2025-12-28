@@ -304,7 +304,7 @@ function SigninForm() {
               Continue with Google
             </a>
 
-            {/* Facebook Sign In */}
+            {/* Facebook Sign In - commented out for now
             <a
               href={`/api/auth/facebook?callbackUrl=${encodeURIComponent(callbackUrl)}`}
               style={{
@@ -339,6 +339,7 @@ function SigninForm() {
               </svg>
               Continue with Facebook
             </a>
+            */}
 
             {/* Forgot Password - commented out for now
             <div style={{ marginTop: '16px', textAlign: 'center' }}>
