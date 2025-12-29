@@ -126,25 +126,57 @@ export default function ExpertDashboard({ expertId }: ExpertDashboardProps) {
     fetchCourses();
   }, [expertId]);
 
-  // Fetch user's webinars, filter by this expert
+  // Fetch available webinars from this expert + user's registrations
   useEffect(() => {
     const fetchWebinars = async () => {
       try {
         console.log('[DBG][ExpertDashboard] Fetching webinars for expert:', expertId);
-        const response = await fetch('/data/app/webinars');
-        const data = await response.json();
-        if (data.success) {
-          // Filter to only this expert's webinars
-          const expertWebinars = data.data.filter(
-            (webinar: WebinarWithRegistration) => webinar.expertId === expertId
-          );
-          setWebinars(expertWebinars);
-          console.log(
-            '[DBG][ExpertDashboard] Found',
-            expertWebinars.length,
-            'webinars from this expert'
-          );
+
+        // Fetch available webinars from this expert (public endpoint)
+        // The x-expert-id header is set automatically by middleware on subdomains
+        const availableResponse = await fetch('/data/webinars');
+        const availableData = await availableResponse.json();
+
+        // Fetch user's registered webinars
+        const registeredResponse = await fetch('/data/app/webinars');
+        const registeredData = await registeredResponse.json();
+
+        // Create a map of registered webinar IDs
+        const registeredMap = new Map<string, WebinarWithRegistration>();
+        if (registeredData.success && registeredData.data) {
+          registeredData.data
+            .filter((w: WebinarWithRegistration) => w.expertId === expertId)
+            .forEach((w: WebinarWithRegistration) => registeredMap.set(w.id, w));
         }
+
+        // Merge available and registered webinars
+        // Registered webinars have the registration info, available ones don't
+        const allWebinars: WebinarWithRegistration[] = [];
+        if (availableData.success && availableData.data) {
+          for (const webinar of availableData.data) {
+            const registered = registeredMap.get(webinar.id);
+            if (registered) {
+              // Use registered version (has registration info)
+              allWebinars.push(registered);
+              registeredMap.delete(webinar.id);
+            } else {
+              // Not registered yet - add without registration
+              allWebinars.push(webinar as WebinarWithRegistration);
+            }
+          }
+        }
+
+        // Add any registered webinars that weren't in available list (shouldn't happen but just in case)
+        for (const registered of registeredMap.values()) {
+          allWebinars.push(registered);
+        }
+
+        setWebinars(allWebinars);
+        console.log(
+          '[DBG][ExpertDashboard] Found',
+          allWebinars.length,
+          'webinars from this expert'
+        );
       } catch (error) {
         console.error('[DBG][ExpertDashboard] Error fetching webinars:', error);
       }
