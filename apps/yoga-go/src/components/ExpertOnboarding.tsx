@@ -888,31 +888,118 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
         // Landing page starts as DRAFT (not published) - expert must explicitly publish
         isLandingPagePublished: false,
         // Save to draftLandingPage, NOT customLandingPage (published)
+        // Include rich default content so expert has a complete starting point to edit
         draftLandingPage: {
           template: selectedTemplate,
           theme: {
             primaryColor: '#2A9D8F', // Default teal - user can customize in landing page editor
           },
-          hero: contentToUse?.hero
-            ? {
-                headline: contentToUse.hero.headline,
-                description: contentToUse.hero.description,
-                ctaText: contentToUse.hero.ctaText,
-                alignment: 'center' as const,
-              }
-            : undefined,
+          // Hero section with background image
+          hero: {
+            headline:
+              contentToUse?.hero?.headline ||
+              `Transform Your Life with ${formData.name || 'Expert'}`,
+            description:
+              contentToUse?.hero?.description ||
+              'Discover the path to inner peace and physical wellness through personalized yoga practice.',
+            ctaText: contentToUse?.hero?.ctaText || 'Start Your Journey',
+            alignment: 'center' as const,
+            heroImage: '/template/hero.jpg',
+          },
+          // Value propositions with placeholder images
           valuePropositions: contentToUse?.valuePropositions
             ? {
-                type: 'list' as const,
-                items: contentToUse.valuePropositions.items,
+                type: 'cards' as const,
+                items: contentToUse.valuePropositions.items?.map(
+                  (
+                    item: string | { title: string; description: string; image?: string },
+                    idx: number
+                  ) =>
+                    typeof item === 'string'
+                      ? {
+                          title: item,
+                          description: '',
+                          image: `/template/gallery${(idx % 2) + 1}.jpg`,
+                        }
+                      : { ...item, image: item.image || `/template/gallery${(idx % 2) + 1}.jpg` }
+                ),
               }
-            : undefined,
+            : {
+                type: 'cards' as const,
+                items: [
+                  {
+                    title: 'Personalized Practice',
+                    description:
+                      'Tailored sessions designed to meet your unique needs and goals on your wellness journey.',
+                    image: '/template/gallery1.jpg',
+                  },
+                  {
+                    title: 'Mind-Body Connection',
+                    description:
+                      'Learn techniques that harmonize your physical practice with mental clarity and peace.',
+                    image: '/template/gallery2.jpg',
+                  },
+                  {
+                    title: 'Flexible Learning',
+                    description:
+                      'Access classes anytime, anywhere with our on-demand library and live sessions.',
+                    image: '/template/gallery1.jpg',
+                  },
+                ],
+              },
+          // About section
           about: {
             layoutType: 'image-text' as const,
-            imageUrl: landingContent.aboutImage || undefined,
-            text: landingContent.aboutBio || undefined,
-            bio: landingContent.aboutBio || undefined,
+            imageUrl: landingContent.aboutImage || '/template/hero.jpg',
+            text:
+              landingContent.aboutBio ||
+              'With years of dedicated practice and teaching experience, I guide students through transformative yoga journeys. My approach combines traditional wisdom with modern understanding, creating a safe space for all levels to explore and grow.',
+            bio: landingContent.aboutBio,
             highlights: [],
+          },
+          // Courses section header
+          courses: {
+            title: 'Featured Courses',
+            description: `Start your learning journey with ${formData.name || 'me'}`,
+          },
+          // Photo gallery with placeholder images
+          photoGallery: {
+            title: 'Gallery',
+            description: 'A glimpse into our practice',
+            images: [
+              { id: '1', url: '/template/gallery1.jpg', caption: 'Peaceful morning yoga session' },
+              { id: '2', url: '/template/gallery2.jpg', caption: 'Group meditation practice' },
+              { id: '3', url: '/template/gallery1.jpg', caption: 'Advanced pose workshop' },
+              { id: '4', url: '/template/gallery2.jpg', caption: 'Sunset yoga by the beach' },
+            ],
+          },
+          // Blog section header
+          blog: {
+            title: 'From the Blog',
+            description: `Insights and articles from ${formData.name || 'me'}`,
+          },
+          // Act (CTA) section
+          act: {
+            title: 'Ready to Transform Your Practice?',
+            text: 'Take the first step towards a healthier, more balanced life. Join our community and discover the transformative power of yoga.',
+            imageUrl: '/template/hero.jpg',
+          },
+          // Footer
+          footer: {
+            tagline: 'Namaste - The light in me honors the light in you',
+            showSocialLinks: true,
+            socialLinks: {
+              instagram: '#',
+              youtube: '#',
+              facebook: '#',
+            },
+            showLegalLinks: true,
+            legalLinks: {
+              privacyPolicy: '#',
+              termsOfService: '#',
+            },
+            showContactInfo: true,
+            contactEmail: `hello@${expertId}.myyoga.guru`,
           },
           sectionOrder: [
             'hero',
@@ -1444,27 +1531,59 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
               alignment: 'center',
               heroImage: DUMMY_IMAGE,
             },
-            // Value propositions with dummy items
+            // Value propositions with images for desirable preview
             valuePropositions: extractedContent?.valuePropositions
               ? {
                   type: 'cards' as const,
-                  items: extractedContent.valuePropositions.items?.map(
-                    (item: string | { title: string; description: string; image?: string }) =>
-                      typeof item === 'string' ? { title: item, description: '' } : item
-                  ),
+                  items: (() => {
+                    const placeholderDescriptions = [
+                      'Tailored sessions designed to meet your unique needs and goals on your wellness journey.',
+                      'Learn techniques that harmonize your physical practice with mental clarity and peace.',
+                      'Access classes anytime, anywhere with our on-demand library and live sessions.',
+                    ];
+                    return extractedContent.valuePropositions.items?.map(
+                      (
+                        item: string | { title: string; description: string; image?: string },
+                        idx: number
+                      ) =>
+                        typeof item === 'string'
+                          ? {
+                              title: item,
+                              description:
+                                placeholderDescriptions[idx % placeholderDescriptions.length],
+                              image: `/template/gallery${(idx % 2) + 1}.jpg`,
+                            }
+                          : {
+                              ...item,
+                              description:
+                                item.description ||
+                                placeholderDescriptions[idx % placeholderDescriptions.length],
+                              image: item.image || `/template/gallery${(idx % 2) + 1}.jpg`,
+                            }
+                    );
+                  })(),
                 }
               : {
                   type: 'cards' as const,
                   items: [
                     {
-                      title: 'Lorem ipsum dolor',
-                      description: 'Sit amet consectetur adipiscing elit',
+                      title: 'Personalized Practice',
+                      description:
+                        'Tailored sessions designed to meet your unique needs and goals on your wellness journey.',
+                      image: '/template/gallery1.jpg',
                     },
                     {
-                      title: 'Sed do eiusmod',
-                      description: 'Tempor incididunt ut labore et dolore',
+                      title: 'Mind-Body Connection',
+                      description:
+                        'Learn techniques that harmonize your physical practice with mental clarity and peace.',
+                      image: '/template/gallery2.jpg',
                     },
-                    { title: 'Ut enim ad minim', description: 'Veniam quis nostrud exercitation' },
+                    {
+                      title: 'Flexible Learning',
+                      description:
+                        'Access classes anytime, anywhere with our on-demand library and live sessions.',
+                      image: '/template/gallery1.jpg',
+                    },
                   ],
                 },
             // About section with dummy content

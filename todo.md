@@ -71,7 +71,19 @@ Relational Database Service
 EC2 - Compute
     $6.73 - 29th 10am
 
+Move better, feel lighter, and unlock your full range of motion.
+This mobility class blends yoga, mindful movement, and breathwork to gently improve joint health, flexibility, and strength. Perfect for easing stiffness, preventing injury, and helping your body move with more freedom—on the mat and in everyday life. Suitable for all levels.
 
+I am a yoga instructor and wellness coach. I am trying to help you with your yoga, meditation, and spiritual journey for a healthy and balanced lifestyle. 
+Join me on the mat for a journey of breath, strength, and serenity. As a certified yoga teacher, I'm passionate about sharing the transformative power of this ancient practice. Whether you're new to yoga or have an established practice, my classes offer a welcoming space to cultivate inner peace and physical well-being. 
+Let's connect, flow, and find our center together. 🧘‍♀️🧘‍♂️
+
+
+Better mobility means moving through daily life with less stiffness and more ease.
+Improved mobility protects your joints and helps prevent pain and injury.
+When your joints move well, your strength, balance, and performance naturally improve.
+
+---
 
 I support expecting mothers through gentle, mindful prenatal yoga designed to nurture both body and baby. My sessions focus on safe movement, breath awareness, and relaxation techniques that ease common pregnancy discomforts, build strength and confidence, and create a deeper connection with your growing baby. Each practice is adaptable, supportive, and centred around your changing needs throughout pregnancy.
 Learners can expect to gain greater comfort, strength, and calm throughout pregnancy. Through gentle movement and guided breathing, you’ll build confidence in your changing body, reduce stress and tension, and develop tools to support both pregnancy and birth.
