@@ -31,6 +31,7 @@ export default function EditWebinarPage() {
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [showStripeSetupModal, setShowStripeSetupModal] = useState(false);
 
   // Registrations state
   const [registrations, setRegistrations] = useState<WebinarRegistration[]>([]);
@@ -131,7 +132,26 @@ export default function EditWebinarPage() {
     }
   };
 
-  const handlePublishClick = () => {
+  const handlePublishClick = async () => {
+    // Check if this is a paid webinar
+    const webinarPrice = parseFloat(price) || 0;
+    if (webinarPrice > 0) {
+      try {
+        // Verify expert has Stripe Connect set up
+        const response = await fetch('/api/stripe/connect/status');
+        const data = await response.json();
+
+        if (!data.success || data.data.status !== 'active') {
+          setShowStripeSetupModal(true);
+          return;
+        }
+      } catch (err) {
+        console.error('[DBG][edit-webinar] Error checking Stripe status:', err);
+        setError('Unable to verify payment setup. Please try again.');
+        return;
+      }
+    }
+
     setShowPublishConfirm(true);
   };
 
@@ -1195,6 +1215,39 @@ export default function EditWebinarPage() {
           </div>
         </div>
       )}
+
+      {/* Stripe Setup Required Modal */}
+      <NotificationOverlay
+        isOpen={showStripeSetupModal}
+        onClose={() => setShowStripeSetupModal(false)}
+        message={
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <p style={{ fontWeight: '500', margin: 0 }}>Payment Setup Required</p>
+            <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
+              To publish a paid live session, you need to connect your Stripe account first. This
+              allows you to receive payments from participants.
+            </p>
+            <Link
+              href={`/srv/${expertId}/settings`}
+              style={{
+                display: 'inline-block',
+                marginTop: '8px',
+                padding: '8px 16px',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#fff',
+                backgroundColor: 'var(--color-primary)',
+                borderRadius: '8px',
+                textDecoration: 'none',
+              }}
+              onClick={() => setShowStripeSetupModal(false)}
+            >
+              Go to Settings
+            </Link>
+          </div>
+        }
+        type="warning"
+      />
     </div>
   );
 }
