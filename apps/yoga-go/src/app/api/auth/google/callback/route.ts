@@ -9,44 +9,8 @@ import type { NextRequest } from 'next/server';
 import { encode } from 'next-auth/jwt';
 import { cognitoConfig } from '@/lib/cognito';
 import { getOrCreateUser } from '@/lib/auth';
-import { getSubdomainFromMyYogaGuru, isPrimaryDomain } from '@/config/domains';
+import { isPrimaryDomain } from '@/config/domains';
 import { BASE_URL, COOKIE_DOMAIN } from '@/config/env';
-import * as webinarRegistrationRepository from '@/lib/repositories/webinarRegistrationRepository';
-import * as courseProgressRepository from '@/lib/repositories/courseProgressRepository';
-import * as courseRepository from '@/lib/repositories/courseRepository';
-
-/**
- * Check if user has any enrollments (courses or webinars) with a specific expert
- */
-async function hasEnrollmentsWithExpert(userId: string, expertId: string): Promise<boolean> {
-  console.log(
-    '[DBG][google/callback] Checking enrollments for user:',
-    userId,
-    'with expert:',
-    expertId
-  );
-
-  // Check webinar registrations first (has expertId directly)
-  const webinarRegs = await webinarRegistrationRepository.getRegistrationsByUserId(userId);
-  const hasWebinarWithExpert = webinarRegs.some(reg => reg.expertId === expertId);
-  if (hasWebinarWithExpert) {
-    console.log('[DBG][google/callback] User has webinar registration with expert');
-    return true;
-  }
-
-  // Check course enrollments (need to look up course instructor)
-  const courseProgress = await courseProgressRepository.getCourseProgressByUserId(userId);
-  for (const progress of courseProgress) {
-    const course = await courseRepository.getCourseById(progress.courseId);
-    if (course?.instructor?.id === expertId) {
-      console.log('[DBG][google/callback] User has course enrollment with expert');
-      return true;
-    }
-  }
-
-  console.log('[DBG][google/callback] User has no enrollments with expert');
-  return false;
-}
 
 export async function GET(request: NextRequest) {
   console.log('[DBG][auth/google/callback] Processing Google OAuth callback');
@@ -86,16 +50,15 @@ export async function GET(request: NextRequest) {
 
   console.log('[DBG][auth/google/callback] Parsed state:', { callbackPath, originDomain });
 
-  // Extract expertId from origin domain if it's an expert subdomain
-  let signupExpertId: string | null = null;
+  // Determine if origin is main domain or expert subdomain
+  let isMainDomain = true;
   try {
     const originUrl = new URL(originDomain);
-    const originHost = originUrl.host;
-    // Check if origin is an expert subdomain (not primary domain)
-    if (!isPrimaryDomain(originHost)) {
-      signupExpertId = getSubdomainFromMyYogaGuru(originHost);
-      console.log('[DBG][auth/google/callback] Detected expert subdomain signup:', signupExpertId);
-    }
+    isMainDomain = isPrimaryDomain(originUrl.host);
+    console.log('[DBG][auth/google/callback] Origin domain check:', {
+      originHost: originUrl.host,
+      isMainDomain,
+    });
   } catch {
     console.log('[DBG][auth/google/callback] Could not parse origin domain:', originDomain);
   }
@@ -167,7 +130,6 @@ export async function GET(request: NextRequest) {
     console.log('[DBG][auth/google/callback] Creating user with roles:', roles);
 
     // Create or update user in DynamoDB
-    const signupExperts = signupExpertId ? [signupExpertId] : undefined;
     const user = await getOrCreateUser(
       {
         sub: payload.sub,
@@ -175,18 +137,10 @@ export async function GET(request: NextRequest) {
         name: payload.name || payload.email?.split('@')[0],
         picture: payload.picture,
       },
-      roles,
-      signupExperts
+      roles
     );
 
-    console.log(
-      '[DBG][auth/google/callback] User created/updated:',
-      user.id,
-      'roles:',
-      roles,
-      'signupExpertId:',
-      signupExpertId || 'none'
-    );
+    console.log('[DBG][auth/google/callback] User created/updated:', user.id, 'roles:', roles);
 
     // Note: Welcome email is sent by DynamoDB stream Lambda (user-welcome-stream)
     // when the USER record is created above
@@ -204,37 +158,13 @@ export async function GET(request: NextRequest) {
       salt: 'authjs.session-token',
     });
 
-    // Determine redirect path based on context:
-    // 1. On expert subdomain: check enrollments - /app if enrolled, / if not
-    // 2. On main domain: experts with completed onboarding go to /srv, others to /app
-    const isOnExpertSubdomain = !!signupExpertId;
-
-    let finalPath: string;
-    if (isOnExpertSubdomain && signupExpertId) {
-      // On expert subdomain - check if user has enrollments with this expert
-      // Note: Even if user is an expert on another subdomain, they're a learner here
-      const hasEnrollments = await hasEnrollmentsWithExpert(user.id, signupExpertId);
-      finalPath = hasEnrollments ? '/app' : '/';
-      console.log('[DBG][auth/google/callback] Expert subdomain redirect:', {
-        signupExpertId,
-        hasEnrollments,
-        finalPath,
-      });
-    } else {
-      // On main domain, check if user is an active expert
-      const hasExpertRole = Array.isArray(user.role)
-        ? user.role.includes('expert')
-        : user.role === 'expert';
-      const hasCompletedOnboarding = !!user.expertProfile;
-      const isActiveExpert = hasExpertRole && hasCompletedOnboarding;
-      // Active experts go to /srv, everyone else stays on landing page
-      finalPath = isActiveExpert ? '/srv' : '/';
-    }
+    // Determine redirect path based on domain:
+    // - Main domain: always /srv (expert portal)
+    // - Expert subdomain: always /app (learner dashboard)
+    const finalPath = isMainDomain ? '/srv' : '/app';
 
     console.log('[DBG][auth/google/callback] Redirect path decision:', {
-      callbackPath,
-      isOnExpertSubdomain,
-      signupExpertId,
+      isMainDomain,
       finalPath,
     });
 

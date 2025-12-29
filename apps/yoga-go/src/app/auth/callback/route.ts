@@ -12,6 +12,7 @@ import { auth } from '@/auth';
 import { getOrCreateUser } from '@/lib/auth';
 import { jwtVerify } from 'jose';
 import type { UserRole } from '@/types';
+import { isPrimaryDomain } from '@/config/domains';
 
 // Cookie name for pending OAuth auth data
 const PENDING_OAUTH_COOKIE = 'pending-oauth-role';
@@ -36,10 +37,13 @@ export async function GET(request: NextRequest) {
 
     console.log('[DBG][auth/callback] User:', session.user.cognitoSub);
 
-    // Extract redirectTo from query params
-    // Default to /srv (expert portal) since myyoga.guru targets yoga experts
-    const searchParams = request.nextUrl.searchParams;
-    const redirectTo = searchParams.get('redirectTo') || '/srv';
+    // Determine redirect based on domain:
+    // - Main domain: always /srv (expert portal)
+    // - Expert subdomain: always /app (learner dashboard)
+    const isMainDomain = isPrimaryDomain(hostname);
+    const redirectTo = isMainDomain ? '/srv' : '/app';
+
+    console.log('[DBG][auth/callback] Redirect decision:', { hostname, isMainDomain, redirectTo });
 
     let roles: UserRole[] = ['learner'];
 

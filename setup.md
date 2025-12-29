@@ -296,3 +296,26 @@ find user yoga-go-vercel in iam console and create access token
 add AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY to vercel env vars
 (make sure AWS_REGION is as expected region)
 
+see cognito outputs from cdk deploy
+  COGNITO_CLIENT_SECRET:
+  AWS_PROFILE=myg-prod aws cognito-idp describe-user-pool-client \
+    --user-pool-id <USER_POOL_ID> \
+    --client-id <CLIENT_ID> \
+    --region ap-southeast-2 \
+    --query 'UserPoolClient.ClientSecret' \
+    --output text
+
+get cognito issuer url:
+  https://cognito-idp.ap-southeast-2.amazonaws.com/<USER_POOL_ID>
+
+add cognito env vars (from cdk outputs) to vercel env vars:
+COGNITO_USER_POOL_ID
+COGNITO_CLIENT_ID
+COGNITO_CLIENT_SECRET
+COGNITO_DOMAIN
+COGNITO_ISSUER
+
+Don't forget to add the CNAME for Cognito signin:
+Type: CNAME
+Name: signin
+Value: <CognitoCloudFrontDomain from stack outputs>
