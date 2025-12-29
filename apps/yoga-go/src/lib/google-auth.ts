@@ -12,8 +12,10 @@ import type { ExpertGoogleAuth } from '@/types';
 // Google OAuth configuration
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const GOOGLE_REDIRECT_URI =
-  process.env.GOOGLE_REDIRECT_URI || 'https://myyoga.guru/api/auth/google/callback';
+// Calendar OAuth redirect URI (for connecting Google Calendar/Meet)
+const GOOGLE_CALENDAR_REDIRECT_URI =
+  process.env.GOOGLE_CALENDAR_REDIRECT_URI ||
+  `${process.env.BASE_URL || 'https://myyoga.guru'}/api/auth/google-calendar/callback`;
 
 // Scopes required for Google Meet and Calendar
 const SCOPES = [
@@ -37,7 +39,11 @@ function createOAuth2Client() {
     throw new Error('Google OAuth credentials not configured');
   }
 
-  return new google.auth.OAuth2(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI);
+  return new google.auth.OAuth2(
+    GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET,
+    GOOGLE_CALENDAR_REDIRECT_URI
+  );
 }
 
 /**

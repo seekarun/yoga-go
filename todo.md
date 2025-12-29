@@ -43,6 +43,7 @@ Misc
 [ ] FEAT: gifting option
 [ ] FEAT: discounts - expert can create discount codes
 [ ] FEAT: SEO
+[ ] FEAT: FAQ section for each course
 [ ] UX: expert should be able to see discussion in admin page.
 [ ] UX: ability to position image (Eg. in hero image)
 [ ] UX: set up stipe account alert - check if course is free
