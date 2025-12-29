@@ -16,6 +16,7 @@ import { encode } from 'next-auth/jwt';
 import { jwtVerify } from 'jose';
 import type { UserRole } from '@/types';
 import { COOKIE_DOMAIN } from '@/config/env';
+import { isPrimaryDomain } from '@/config/domains';
 
 interface VerifyRequestBody {
   email: string;
@@ -151,9 +152,15 @@ export async function POST(request: NextRequest) {
             salt: 'authjs.session-token',
           });
 
-          // Create response with session cookie
-          // Redirect to /srv if user has expert role, otherwise /app
-          const isExpert = roles.includes('expert');
+          // Determine redirect based on domain:
+          // - Main domain: always /srv (expert portal)
+          // - Expert subdomain: always /app (learner dashboard)
+          const hostname = request.headers.get('host') || '';
+          const isMainDomain = isPrimaryDomain(hostname);
+          const redirectUrl = isMainDomain ? '/srv' : '/app';
+
+          console.log('[DBG][verify] Redirect decision:', { hostname, isMainDomain, redirectUrl });
+
           const response = NextResponse.json({
             success: true,
             message: 'Email verified and logged in successfully.',
@@ -163,7 +170,7 @@ export async function POST(request: NextRequest) {
               name: user.profile.name,
               role: user.role,
             },
-            redirectUrl: isExpert ? '/srv' : '/app',
+            redirectUrl,
           });
 
           // Set the session cookie

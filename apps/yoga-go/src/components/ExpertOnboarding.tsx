@@ -949,6 +949,24 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
       }
 
       console.log('[DBG][ExpertOnboarding] Expert profile created successfully');
+
+      // Add expert role to user now that onboarding is complete
+      try {
+        const roleResponse = await fetch('/api/user/become-expert', {
+          method: 'POST',
+        });
+        const roleResult = await roleResponse.json();
+        if (!roleResponse.ok || !roleResult.success) {
+          console.error('[DBG][ExpertOnboarding] Failed to add expert role:', roleResult);
+          // Continue anyway - profile was created successfully
+        } else {
+          console.log('[DBG][ExpertOnboarding] Expert role added successfully');
+        }
+      } catch (roleErr) {
+        console.error('[DBG][ExpertOnboarding] Error adding expert role:', roleErr);
+        // Continue anyway - profile was created successfully
+      }
+
       window.location.href = `/srv/${expertId}/landing-page`;
     } catch (err) {
       console.error('[DBG][ExpertOnboarding] Error creating expert profile:', err);
