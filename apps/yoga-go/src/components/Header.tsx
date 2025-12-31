@@ -457,27 +457,18 @@ export default function Header() {
           ) : authLoading ? (
             // Don't show anything while auth is loading
             <div style={{ width: '36px', height: '36px' }} />
-          ) : (
+          ) : expertMode.isExpertMode ? // Users will be prompted to login when they sign up for a course or live session // On expert subdomain: don't show sign in button
+          null : (
+            // On main domain: show sign in button
             <a
               href="/auth/signin"
-              className={expertMode.isExpertMode ? '' : 'btn btn-primary'}
-              style={
-                expertMode.isExpertMode
-                  ? {
-                      padding: '10px 16px',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      textDecoration: 'none',
-                      color: scrollOpacity < 0.5 ? '#fff' : '#333',
-                      textShadow: scrollOpacity < 0.5 ? '0 1px 4px rgba(0,0,0,0.6)' : 'none',
-                    }
-                  : {
-                      padding: '10px 24px',
-                      fontSize: '14px',
-                      textDecoration: 'none',
-                      display: 'inline-block',
-                    }
-              }
+              className="btn btn-primary"
+              style={{
+                padding: '10px 24px',
+                fontSize: '14px',
+                textDecoration: 'none',
+                display: 'inline-block',
+              }}
             >
               Sign In
             </a>

@@ -9,6 +9,7 @@ interface ExpertContextType {
   expertId: string | null;
   template: TemplateId;
   palette: ColorPalette | undefined;
+  fontFamily: string | undefined;
   loading: boolean;
   error: string | null;
 }
@@ -18,6 +19,7 @@ const ExpertContext = createContext<ExpertContextType>({
   expertId: null,
   template: 'classic',
   palette: undefined,
+  fontFamily: undefined,
   loading: true,
   error: null,
 });
@@ -59,9 +61,10 @@ export function ExpertProvider({ children, expertId }: ExpertProviderProps) {
     }
   }, [expertId]);
 
-  // Extract template and palette from expert data
+  // Extract template, palette, and fontFamily from expert data
   const template: TemplateId = expert?.customLandingPage?.template || 'classic';
   const palette = expert?.customLandingPage?.theme?.palette;
+  const fontFamily = expert?.customLandingPage?.theme?.fontFamily;
 
   return (
     <ExpertContext.Provider
@@ -70,6 +73,7 @@ export function ExpertProvider({ children, expertId }: ExpertProviderProps) {
         expertId,
         template,
         palette,
+        fontFamily,
         loading,
         error,
       }}

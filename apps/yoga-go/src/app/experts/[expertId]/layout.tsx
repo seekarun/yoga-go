@@ -8,7 +8,7 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 
 // Inner component that can use the useExpert hook
 function ExpertLayoutInner({ children }: { children: ReactNode }) {
-  const { palette, loading } = useExpert();
+  const { palette, fontFamily, loading } = useExpert();
 
   // Show a minimal loading state while expert data is being fetched
   if (loading) {
@@ -27,7 +27,11 @@ function ExpertLayoutInner({ children }: { children: ReactNode }) {
     );
   }
 
-  return <LandingPageThemeProvider palette={palette}>{children}</LandingPageThemeProvider>;
+  return (
+    <LandingPageThemeProvider palette={palette} fontFamily={fontFamily}>
+      {children}
+    </LandingPageThemeProvider>
+  );
 }
 
 export default function ExpertLayout({ children }: { children: ReactNode }) {

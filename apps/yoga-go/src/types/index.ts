@@ -9,7 +9,7 @@ export interface BaseEntity {
 export type UserRole = 'learner' | 'expert' | 'admin';
 
 // Landing Page Template Types
-export type LandingPageTemplate = 'classic' | 'modern';
+export type LandingPageTemplate = 'classic' | 'modern' | 'classic-dark';
 
 // Color harmony types for palette generation
 export type ColorHarmonyType = 'analogous' | 'triadic' | 'split-complementary';
@@ -198,6 +198,7 @@ export interface CustomLandingPageConfig {
     primaryColor?: string;
     secondaryColor?: string;
     palette?: ColorPalette; // Generated color palette from primaryColor
+    fontFamily?: string; // Google Font name (e.g., 'Inter', 'Playfair Display')
   };
   contact?: {
     email?: string;

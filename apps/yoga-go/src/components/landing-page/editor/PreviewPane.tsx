@@ -1,6 +1,7 @@
 'use client';
 
 import { generatePalette, hexToHsl, hslToHex } from '@/lib/colorPalette';
+import { DEFAULT_FONT, WEB_FONTS } from '@/lib/webFonts';
 import type {
   BlogPost,
   Course,
@@ -101,6 +102,9 @@ export default function PreviewPane({
   const [colorHarmony, setColorHarmony] = useState<ColorHarmony>(
     (data.theme?.palette?.harmonyType as ColorHarmony) || 'analogous'
   );
+  const [showFontPicker, setShowFontPicker] = useState(false);
+  const fontPickerRef = useRef<HTMLDivElement>(null);
+  const currentFont = data.theme?.fontFamily || DEFAULT_FONT;
 
   // Cycle through harmony options
   const cycleHarmony = () => {
@@ -131,6 +135,23 @@ export default function PreviewPane({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showColorPicker]);
+
+  // Close font picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (fontPickerRef.current && !fontPickerRef.current.contains(event.target as Node)) {
+        setShowFontPicker(false);
+      }
+    };
+
+    if (showFontPicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showFontPicker]);
 
   const handleTemplateChange = (template: LandingPageTemplate) => {
     onChange({ template });
@@ -211,6 +232,16 @@ export default function PreviewPane({
     if (e.key === 'Enter' && isValidHexColor(hexInput)) {
       handleBrandColorChange(hexInput, true);
     }
+  };
+
+  const handleFontChange = (fontFamily: string) => {
+    onChange({
+      theme: {
+        ...data.theme,
+        fontFamily,
+      },
+    });
+    setShowFontPicker(false);
   };
 
   // Filter out disabled sections for preview
@@ -383,6 +414,104 @@ export default function PreviewPane({
               )}
             </div>
 
+            {/* Font Selector */}
+            <div className="relative" ref={fontPickerRef}>
+              <button
+                onClick={() => setShowFontPicker(!showFontPicker)}
+                className="flex items-center gap-1.5 text-xs border border-gray-200 rounded-md px-2 py-1 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                title="Font"
+                style={{ fontFamily: `'${currentFont}', sans-serif` }}
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="4 7 4 4 20 4 20 7" />
+                  <line x1="9" y1="20" x2="15" y2="20" />
+                  <line x1="12" y1="4" x2="12" y2="20" />
+                </svg>
+                <span className="hidden sm:inline max-w-[80px] truncate">{currentFont}</span>
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+
+              {showFontPicker && (
+                <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 w-[220px] max-h-[400px] overflow-hidden flex flex-col">
+                  <div className="text-xs font-medium text-gray-700 px-3 py-2 border-b border-gray-100">
+                    Select Font
+                  </div>
+                  <div className="overflow-y-auto flex-1">
+                    {/* Sans-Serif */}
+                    <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider bg-gray-50">
+                      Sans-Serif
+                    </div>
+                    {WEB_FONTS.filter(f => f.category === 'sans-serif').map(font => (
+                      <button
+                        key={font.value}
+                        onClick={() => handleFontChange(font.value)}
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 transition-colors ${
+                          currentFont === font.value ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                        }`}
+                        style={{ fontFamily: `'${font.value}', sans-serif` }}
+                      >
+                        {font.label}
+                      </button>
+                    ))}
+
+                    {/* Serif */}
+                    <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider bg-gray-50">
+                      Serif
+                    </div>
+                    {WEB_FONTS.filter(f => f.category === 'serif').map(font => (
+                      <button
+                        key={font.value}
+                        onClick={() => handleFontChange(font.value)}
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 transition-colors ${
+                          currentFont === font.value ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                        }`}
+                        style={{ fontFamily: `'${font.value}', serif` }}
+                      >
+                        {font.label}
+                      </button>
+                    ))}
+
+                    {/* Display */}
+                    <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider bg-gray-50">
+                      Display
+                    </div>
+                    {WEB_FONTS.filter(f => f.category === 'display').map(font => (
+                      <button
+                        key={font.value}
+                        onClick={() => handleFontChange(font.value)}
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 transition-colors ${
+                          currentFont === font.value ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                        }`}
+                        style={{ fontFamily: `'${font.value}', sans-serif` }}
+                      >
+                        {font.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* View Mode Toggle */}
             <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
               <button
@@ -466,7 +595,7 @@ export default function PreviewPane({
             role="application"
             aria-label="Landing page preview"
           >
-            <LandingPageThemeProvider palette={data.theme?.palette}>
+            <LandingPageThemeProvider palette={data.theme?.palette} fontFamily={currentFont}>
               {/* Override responsive styles based on preview mode */}
               {viewMode === 'mobile' && (
                 <style

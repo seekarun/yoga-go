@@ -34,7 +34,7 @@ export interface UnsplashAttribution {
 }
 
 // ===== Template Types =====
-export type TemplateId = 'classic' | 'modern';
+export type TemplateId = 'classic' | 'modern' | 'classic-dark';
 
 // ===== Section-Specific Props =====
 

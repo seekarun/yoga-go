@@ -16,7 +16,7 @@ docs/
 │   ├── pricing-production-checklist.md
 │   └── subscription-testing-guide.md
 └── development/
-    └── (future development guides)
+    └── templates.md
 ```
 
 ---
@@ -132,6 +132,33 @@ docs/
 - 🚨 HIGH = Must complete before launch (~20-25 hours)
 - 🔧 MEDIUM = Should complete before public launch
 - 🌟 LOW = Nice to have, defer to post-launch
+
+---
+
+## 🎨 Development
+
+### [Landing Page Templates](./development/templates.md)
+
+**Purpose:** Create, customize, and delete landing page templates
+**Status:** Active
+
+**What's Inside:**
+
+- Template creation script usage
+- Template deletion script (interactive mode)
+- Customization guide (colors, sections)
+- Architecture overview
+- AI-assisted template creation tips
+
+**Quick Commands:**
+
+```bash
+# Create a new template
+npx tsx scripts/create-template.ts my-template
+
+# Delete a template (interactive)
+npx tsx scripts/delete-template.ts
+```
 
 ---
 

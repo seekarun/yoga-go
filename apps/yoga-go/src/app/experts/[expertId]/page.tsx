@@ -22,6 +22,7 @@ import LoadingSpinner from '../../../components/LoadingSpinner';
 
 const ClassicTemplate = dynamic(() => import('@/templates/classic'), { ssr: false });
 const ModernTemplate = dynamic(() => import('@/templates/modern'), { ssr: false });
+const ClassicDarkTemplate = dynamic(() => import('@/templates/classic-dark'), { ssr: false });
 
 export default function ExpertDetailPage() {
   const params = useParams();
@@ -362,10 +363,23 @@ export default function ExpertDetailPage() {
   };
 
   // Select template component
-  const TemplateComponent = template === 'modern' ? ModernTemplate : ClassicTemplate;
+  const getTemplateComponent = () => {
+    switch (template) {
+      case 'modern':
+        return ModernTemplate;
+      case 'classic-dark':
+        return ClassicDarkTemplate;
+      default:
+        return ClassicTemplate;
+    }
+  };
+  const TemplateComponent = getTemplateComponent();
 
   return (
-    <LandingPageThemeProvider palette={expert.customLandingPage?.theme?.palette}>
+    <LandingPageThemeProvider
+      palette={expert.customLandingPage?.theme?.palette}
+      fontFamily={expert.customLandingPage?.theme?.fontFamily}
+    >
       <div
         style={{
           minHeight: '100vh',

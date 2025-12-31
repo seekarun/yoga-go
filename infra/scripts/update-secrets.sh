@@ -73,14 +73,8 @@ aws secretsmanager put-secret-value \
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✅ Success!${NC} Secrets updated in AWS Secrets Manager"
     echo ""
-    echo -e "🔄 ${YELLOW}Important:${NC} You must restart your ECS service for changes to take effect:"
-    echo ""
-    echo -e "   ${GREEN}aws ecs update-service \\${NC}"
-    echo -e "   ${GREEN}  --cluster yoga-go-cluster \\${NC}"
-    echo -e "   ${GREEN}  --service yoga-go-service \\${NC}"
-    echo -e "   ${GREEN}  --force-new-deployment \\${NC}"
-    echo -e "   ${GREEN}  --region $AWS_REGION \\${NC}"
-    echo -e "   ${GREEN}  --profile $AWS_PROFILE${NC}"
+    echo -e "🔄 ${YELLOW}Note:${NC} These secrets are used by CDK for Cognito identity providers."
+    echo -e "   App secrets are managed in Vercel environment variables."
     echo ""
 else
     echo -e "${RED}❌ Failed to update secrets${NC}"

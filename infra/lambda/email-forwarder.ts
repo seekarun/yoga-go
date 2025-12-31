@@ -157,28 +157,27 @@ async function getTenantByDomain(domain: string): Promise<TenantData | null> {
 
 /**
  * Get expert data from DynamoDB
- * Key pattern: PK = "EXPERT", SK = expertId
+ * Key pattern: PK = "TENANT", SK = expertId
  */
 async function getExpert(expertId: string): Promise<ExpertData | null> {
   console.log(`[DBG][email-forwarder] Looking up expert: ${expertId}`);
 
   const result = await dynamodb.send(
-    new QueryCommand({
+    new GetItemCommand({
       TableName: TABLE_NAME,
-      KeyConditionExpression: "PK = :pk AND SK = :sk",
-      ExpressionAttributeValues: {
-        ":pk": { S: "EXPERT" },
-        ":sk": { S: expertId },
+      Key: {
+        PK: { S: "TENANT" },
+        SK: { S: expertId },
       },
     }),
   );
 
-  if (!result.Items || result.Items.length === 0) {
+  if (!result.Item) {
     console.log(`[DBG][email-forwarder] Expert not found: ${expertId}`);
     return null;
   }
 
-  const item = result.Items[0];
+  const item = result.Item;
   const platformPreferences = item.platformPreferences?.M;
 
   console.log(

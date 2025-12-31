@@ -1,10 +1,10 @@
 'use client';
 
-import type { FormEvent } from 'react';
-import { useState, Suspense, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import { getClientExpertContext } from '@/lib/domainContext';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import type { FormEvent } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 
 function SigninForm() {
   const searchParams = useSearchParams();
@@ -91,22 +91,6 @@ function SigninForm() {
               boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
             }}
           >
-            {/* Header Image - only show on main domain */}
-            {!isExpertDomain && (
-              <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/yg_girl_signup.png"
-                  alt="Welcome"
-                  style={{
-                    width: '120px',
-                    height: 'auto',
-                    margin: '0 auto',
-                  }}
-                />
-              </div>
-            )}
-
             {error && (
               <div
                 style={{

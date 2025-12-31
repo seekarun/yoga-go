@@ -8,10 +8,11 @@ let registryInitialized = false;
 async function initializeRegistry() {
   if (registryInitialized) return;
 
-  const [{ default: ClassicTemplate }, { default: ModernTemplate }] = await Promise.all([
-    import('./classic'),
-    import('./modern'),
-  ]);
+  const [
+    { default: ClassicTemplate },
+    { default: ModernTemplate },
+    { default: ClassicDarkTemplate },
+  ] = await Promise.all([import('./classic'), import('./modern'), import('./classic-dark')]);
 
   templateRegistry.set('classic', {
     id: 'classic',
@@ -25,6 +26,13 @@ async function initializeRegistry() {
     name: 'Modern',
     description: 'Bold, dark theme with split layouts and gradient accents',
     Component: ModernTemplate,
+  });
+
+  templateRegistry.set('classic-dark', {
+    id: 'classic-dark',
+    name: 'Classic Dark',
+    description: 'Classic layout with a sleek dark theme',
+    Component: ClassicDarkTemplate,
   });
 
   registryInitialized = true;
@@ -48,5 +56,5 @@ export async function getAllTemplates(): Promise<TemplateRegistration[]> {
 
 // Get template IDs
 export function getTemplateIds(): TemplateId[] {
-  return ['classic', 'modern'];
+  return ['classic', 'modern', 'classic-dark'];
 }

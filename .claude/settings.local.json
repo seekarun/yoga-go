@@ -98,7 +98,9 @@
       "Bash(\"src/components/blog/BlogPostEditor.tsx\" )",
       "Bash(\"src/app/srv/\\\\[expertId\\\\]/blog/new/page.tsx\" )",
       "Bash(\"src/app/srv/\\\\[expertId\\\\]/blog/\\\\[postId\\\\]/edit/page.tsx\" )",
-      "WebFetch(domain:aws.amazon.com)"
+      "WebFetch(domain:aws.amazon.com)",
+      "Bash(bash -c 'START_TIME=$\\(\\($\\(date +%s\\) - 600\\)\\)000 && AWS_PROFILE=myg aws logs filter-log-events --log-group-name /aws/lambda/yoga-go-email-forwarder --start-time $START_TIME --region us-west-2 2>&1 | jq -r \"\".events[].message\"\" 2>/dev/null || cat')",
+      "Bash(npx tsx scripts/create-template.ts classic-dark)"
     ],
     "deny": [],
     "ask": []

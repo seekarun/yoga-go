@@ -31,6 +31,17 @@ import ModernBlogSection from '@/templates/modern/sections/BlogSection';
 import ModernActSection from '@/templates/modern/sections/ActSection';
 import ModernFooterSection from '@/templates/modern/sections/FooterSection';
 
+// Import Classic Dark template sections
+import ClassicDarkHeroSection from '@/templates/classic-dark/sections/HeroSection';
+import ClassicDarkValuePropsSection from '@/templates/classic-dark/sections/ValuePropsSection';
+import ClassicDarkAboutSection from '@/templates/classic-dark/sections/AboutSection';
+import ClassicDarkCoursesSection from '@/templates/classic-dark/sections/CoursesSection';
+import ClassicDarkWebinarsSection from '@/templates/classic-dark/sections/WebinarsSection';
+import ClassicDarkPhotoGallerySection from '@/templates/classic-dark/sections/PhotoGallerySection';
+import ClassicDarkBlogSection from '@/templates/classic-dark/sections/BlogSection';
+import ClassicDarkActSection from '@/templates/classic-dark/sections/ActSection';
+import ClassicDarkFooterSection from '@/templates/classic-dark/sections/FooterSection';
+
 // Section component maps by template
 const classicSections = {
   hero: ClassicHeroSection,
@@ -56,10 +67,23 @@ const modernSections = {
   footer: ModernFooterSection,
 };
 
+const classicDarkSections = {
+  hero: ClassicDarkHeroSection,
+  valuePropositions: ClassicDarkValuePropsSection,
+  about: ClassicDarkAboutSection,
+  courses: ClassicDarkCoursesSection,
+  webinars: ClassicDarkWebinarsSection,
+  photoGallery: ClassicDarkPhotoGallerySection,
+  blog: ClassicDarkBlogSection,
+  act: ClassicDarkActSection,
+  footer: ClassicDarkFooterSection,
+};
+
 // Template section registry
 const templateSections: Record<TemplateId, typeof classicSections> = {
   classic: classicSections,
   modern: modernSections,
+  'classic-dark': classicDarkSections,
 };
 
 // Context for rendering sections in the editor

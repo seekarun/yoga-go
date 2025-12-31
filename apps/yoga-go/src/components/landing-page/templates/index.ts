@@ -17,6 +17,11 @@ export const templates: TemplateConfig[] = [
     name: 'Modern',
     description: 'Bold typography with refined spacing',
   },
+  {
+    id: 'classic-dark',
+    name: 'Classic Dark',
+    description: 'Classic layout with a sleek dark theme',
+  },
 ];
 
 export const DEFAULT_TEMPLATE: LandingPageTemplate = 'classic';

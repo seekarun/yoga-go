@@ -22,6 +22,7 @@ Misc
 [ ] TECH: remove excess fields in the user data (like membership)
 [ ] TECH: consider triggers for other tables for analytics.
 [ ] TECH: review currency conversion
+[ ] TECH: create overlay for google and zoom that can be used in both settings and webinar session
 [ ] TECH: email: compose, with rich text
 [ ] TECH: email: spam gaurd
 [ ] TECH: Pay only after course is done?
@@ -43,6 +44,8 @@ Misc
 [ ] FEAT: gifting option
 [ ] FEAT: discounts - expert can create discount codes
 [ ] FEAT: SEO
+[ ] FEAT: music MaaS
+[ ] FEAT: ability to create sequences from stock images/gifs/vids
 [ ] FEAT: FAQ section for each course
 [ ] UX: expert should be able to see discussion in admin page.
 [ ] UX: ability to position image (Eg. in hero image)
@@ -53,6 +56,7 @@ Misc
 [ ] UX: setup custom domain email (Remove this section if domain set up already)
 [ ] UX: options to raise ticket to add custom domain.
 [ ] UX: how do we call hero section (etc.) to make this UI more understandable for newbies?
+[ ] UX: user creates live session, auto add to landing page
 
 
 [ ] TECH: cloudflare orange cloud impl
