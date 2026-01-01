@@ -1,0 +1,186 @@
+{
+  "yoga_niche_dropdown": [
+    {
+      "category": "Yoga for Busy Professionals",
+      "hint": "Focuses on desk workers and high-stress roles, addressing chronic back pain, 'tech neck', and mental burnout.",
+      "hook": {
+        "problem_hook": "Desk-bound days leaving your body depleted?",
+        "solution_hook": "Short, intelligent yoga sessions designed to unwind posture, restore energy, and calm focus"
+      },
+      "value_propositions": [
+        {
+          "title": "Ergonomic Recovery",
+          "description": "Targeted movements to release tension in the shoulders, neck, and lower back caused by sedentary work.",
+          "image_prompt": "A professional in business-casual attire performing a gentle seated spinal twist in an ergonomic office chair, soft natural light, modern office background, high resolution."
+        },
+        {
+          "title": "Mental Reset",
+          "description": "Short mindfulness techniques that clear mental clutter and improve focus during a high-pressure workday.",
+          "image_prompt": "Close-up of a person with closed eyes at a desk, hands in a calm mudra, translucent digital waves representing mental clarity flowing around them, serene aesthetic."
+        },
+        {
+          "title": "Time-Efficient Wellness",
+          "description": "Bite-sized classes that fit perfectly into lunch breaks or between meetings for consistent, sustainable health.",
+          "image_prompt": "A split-screen showing a digital clock at 12:15 PM and a woman doing a standing yoga stretch next to her desk, vibrant energy, clean minimalist style."
+        }
+      ],
+      "about_me": "I am a dedicated instructor focused on reversing the effects of the modern sedentary lifestyle. My mission is to help desk workers manage chronic back pain and digital burnout through accessible, time-efficient practices. I specialise in 15-to-20-minute micro-sessions designed to refresh the nervous system and manage situational stress without disrupting the professional workflow."
+    },
+    {
+      "category": "Yoga for Athletes & Runners",
+      "hint": "Functional movement yoga designed to complement sports, focusing on mobility, injury prevention, and recovery.",
+      "hook": {
+        "problem_hook": "Restricted mobility limiting your true potential?",
+        "solution_hook": "Science-led mobility and yoga sequences that strengthen joints and expand athletic potential"
+      },
+      "value_propositions": [
+        {
+          "title": "Injury Resilience",
+          "description": "Sports-specific flexibility work that strengthens connective tissues to prevent common strains and tears.",
+          "image_prompt": "A runner on a track transitioning into a deep low lunge stretch, anatomical highlights on the joints showing stability, cinematic lighting, athletic vibe."
+        },
+        {
+          "title": "Enhanced Mobility",
+          "description": "Functional flows that increase the active range of motion for better performance in the gym or on the field.",
+          "image_prompt": "A muscular athlete performing an advanced mobility flow with a yoga block, 3D anatomical overlays showing muscle engagement, professional studio setting."
+        },
+        {
+          "title": "Active Recovery",
+          "description": "Restorative sessions that flush out toxins and reduce soreness, getting you back to training faster.",
+          "image_prompt": "A person resting in a supported yoga pose with a bolster and blanket, calm blue lighting, atmosphere of deep muscular relaxation and repair."
+        }
+      ],
+      "about_me": "As a movement specialist, I help athletes and runners unlock explosive power and injury resilience through functional yoga. My approach blends movement science with athletic recovery, ensuring your body is as mobile as it is strong. I focus on sports-specific flexibility and stability to help you reach your next personal best while protecting your longevity in the sport."
+    },
+    {
+      "category": "Trauma-Informed & Accessible Yoga",
+      "hint": "Safe, inclusive practices using invitational language and chair-based options for every body type and history.",
+      "hook": {
+        "problem_hook": "Has yoga ever truly adapted to you?",
+        "solution_hook": "A modern, adaptive yoga practice shaped entirely around your body and lived experience"
+      },
+      "value_propositions": [
+        {
+          "title": "Somatic Safety",
+          "description": "Invitational language and a titration method that allows you to move bit-by-bit to build emotional resilience.",
+          "image_prompt": "A serene yoga space with soft textures, a teacher guiding a student with open palms, warm 'golden hour' lighting, feeling of absolute safety and trust."
+        },
+        {
+          "title": "Chair-Based Freedom",
+          "description": "Full-body sequences performed in a chair, making the benefits of yoga accessible to those with limited mobility.",
+          "image_prompt": "A diverse group of people of various ages and abilities practicing yoga in sturdy wooden chairs, smiling, bright and inclusive community center setting."
+        },
+        {
+          "title": "Judgment-Free Exploration",
+          "description": "A practice focused on interoception—how you feel on the inside—rather than how the pose looks on the outside.",
+          "image_prompt": "A person of a non-traditional yoga body type in a comfortable pose, focused inward, soft glowing light emanating from the chest area, artistic and empowering."
+        }
+      ],
+      "about_me": "I believe that yoga is for every body, regardless of age, size, or physical history. My teaching uses an intentional titration method and invitational language to create a safe sanctuary for students to reconnect with visceral sensations at their own pace. Whether on a mat or through a revolutionary chair practice, I am here to help you find your unique version of ease and empowerment."
+    },
+    {
+      "category": "Ayurvedic Lifestyle & Yoga",
+      "hint": "Integrating yoga with the sister-science of Ayurveda to align your health with nature's rhythms and your unique 'Dosha'.",
+      "hook": {
+        "problem_hook": "Is your wellness aligned with your season of life?",
+        "solution_hook": "Seasonally aligned yoga guided by Ayurvedic wisdom, personalised to your unique constitution"
+      },
+      "value_propositions": [
+        {
+          "title": "Dosha-Specific Practice",
+          "description": "Yoga flows specifically tailored to balance your unique energy—whether you need to ground, cool down, or energize.",
+          "image_prompt": "A collage showing three different yoga styles associated with fire (sun), air (wind), and earth (mountains), rich vibrant colors, ancient Vedic aesthetic."
+        },
+        {
+          "title": "Seasonal Alignment",
+          "description": "Adaptive routines that change with the weather to keep you healthy and resilient all year round.",
+          "image_prompt": "A circular 'clock' graphic with icons of the four seasons, each segment featuring a different yoga pose in a matching environment, clean infographic style."
+        },
+        {
+          "title": "Habits of Longevity",
+          "description": "Holistic coaching on the 'daily habits of longevity'—from sleep cycles to mindful eating—that extend your practice off the mat.",
+          "image_prompt": "A peaceful morning ritual scene: warm water with lemon, a yoga mat, and a rising sun through a window, soft textures, feeling of a purposeful life."
+        }
+      ],
+      "about_me": "I guide students to align their lives with nature's rhythms by integrating yoga with its sister-science, Ayurveda. I specialise in dosha-specific practices that target individual energy imbalances through movement, breath, and the 9 daily habits of longevity. My goal is to help you 'preserve the health of the healthy' and find total mind-body harmony in every season of life."
+    },
+    {
+      "category": "Mental Health & Stress Relief",
+      "hint": "Mindful movement and breathwork tailored to manage anxiety, depression, and emotional regulation.",
+      "hook": {
+        "problem_hook": "Is your nervous system asking for calm?",
+        "solution_hook": "Somatic yoga techniques that calm your nervous system and cultivate lasting mental clarity"
+      },
+      "value_propositions": [
+        {
+          "title": "Nervous System Regulation",
+          "description": "Breathwork and movement sequences proven to stimulate the vagus nerve and lower cortisol levels.",
+          "image_prompt": "Visual representation of the nervous system as glowing blue roots calming down and turning into soft light during a child's pose, ethereal and scientific blend."
+        },
+        {
+          "title": "Emotional Resilience",
+          "description": "A safe space to process 'intolerable' emotions and build the capacity to handle life's challenges with equanimity.",
+          "image_prompt": "A person standing in a strong mountain pose amidst a storm, with a calm transparent shield of light around them, powerful and symbolic."
+        },
+        {
+          "title": "Guided Stillness",
+          "description": "Deep relaxation through Yoga Nidra and meditation to replenish your energy and mental clarity.",
+          "image_prompt": "A person lying in Savasana under a starry sky, celestial patterns in the background, deep purple and indigo tones, high-quality digital art."
+        }
+      ],
+      "about_me": "I am a wellness provider focused on emotional regulation and holistic stress management. My classes use evidence-based somatic techniques to calm the nervous system and reduce the physical impact of anxiety and depression. I provide a meditative sanctuary where you can cultivate resilience and find internal balance amidst life's most difficult transitions."
+    },
+    {
+      "category": "Yoga for Life Stages (Prenatal, Kids, & Seniors)",
+      "hint": "Caters to specific developmental and physical milestones, including safe pregnancy care, children's mindfulness, and mobility for older populations [1-3].",
+      "hook": {
+        "problem_hook": "Does your movement evolve with your life stage?",
+        "solution_hook": "Expert-led yoga programs evolving with pregnancy, parenthood, aging, and changing bodies"
+      },
+      "value_propositions": [
+        {
+          "title": "Golden Age Vitality",
+          "description": "Gentle, accessible movements specifically designed to improve balance, protect joint health, and reduce age-related stress [3, 9].",
+          "image_prompt": "A smiling senior citizen in a sunlit garden performing a gentle supported balancing pose with a chair, soft focus, high-quality photograph, peaceful and empowering vibe."
+        },
+        {
+          "title": "Playful Mindfulness for Kids",
+          "description": "Engaging sessions that combine storytelling, games, and movement to help children build focus and emotional regulation from a young age [3, 10].",
+          "image_prompt": "A group of diverse children in a colourful classroom sitting in a circle with a teacher, all doing a playful animal-themed yoga pose, vibrant and joyful lighting, candid style."
+        },
+        {
+          "title": "Nurturing the Maternal Journey",
+          "description": "Safe, modified asanas and breathwork specifically for prenatal comfort and postpartum recovery, supporting both mother and child [3, 6, 11].",
+          "image_prompt": "An expectant mother in a comfortable yoga studio sitting in a modified seated pose with a bolster for support, warm lighting, serene and nurturing atmosphere, realistic photography."
+        }
+      ],
+      "about_me": "I specialise in guiding individuals through yoga's most transformative life stages [1]. Whether I am helping an expectant mother find comfort in her changing body or teaching a child to find calm through breath, my mission is to provide safe, inclusive, and age-appropriate instruction [1, 7, 11]. I believe that yoga isn't a one-size-fits-all practice but a lifelong companion that adapts as we grow and age [12-14]."
+    },
+    {
+      "category": "Holistic Wellbeing & Creative Movement",
+      "hint": "Ideal for instructors teaching traditional lineages (Hatha, Vinyasa), hybrid fitness, or creative styles like Acro, Aerial, or community-based yoga [1-3].",
+      "hook": {
+        "problem_hook": "Have you lost joy in intentional movement?",
+        "solution_hook": "An inspiring yoga practice that feels purposeful, fluid, and deeply rewarding to sustain"
+      },
+      "value_propositions": [
+        {
+          "title": "Versatile Movement Paths",
+          "description": "Whether you crave the flow of Vinyasa, the precision of Hatha, or the thrill of creative hybrid styles, we offer a dynamic range to suit your daily energy [1, 3].",
+          "image_prompt": "A high-quality photo of a yoga practitioner in a creative outdoor setting, transitioning between a traditional pose and a modern flow, vibrant natural colors, soft bokeh."
+        },
+        {
+          "title": "Total Self-Alignment",
+          "description": "Go beyond the physical with practices that integrate breath, meditation, and philosophy for true emotional and mental growth [6, 7].",
+          "image_prompt": "A serene composite image of a person in meditation with glowing geometric lines representing mental alignment and inner peace, ethereal aesthetic."
+        },
+        {
+          "title": "A Home for Practitioners",
+          "description": "Join a vibrant, supportive ecosystem where students connect through shared practice and collective growth beyond the mat [8, 9].",
+          "image_prompt": "A group of diverse yoga students laughing and connecting after a class in a bright, modern studio, warm authentic lighting, wide-angle shot."
+        }
+      ],
+      "about_me": "I am an experienced yoga educator who believes that yoga is an evolving art form. My teaching bridges the gap between ancient tradition and modern lifestyle, offering a sanctuary for students to explore their potential through Hatha, Vinyasa, and creative hybrid practices [10, 11]. I am dedicated to helping you build a sustainable, soulful routine that celebrates movement as a path to wholeness [6, 7]."
+    }
+  ]
+}

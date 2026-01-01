@@ -1,7 +1,6 @@
 'use client';
 
-import { PrimaryButton, SecondaryButton } from '@/components/Button';
-import ImageUploadCrop from '@/components/ImageUploadCrop';
+import { PrimaryButton } from '@/components/Button';
 import {
   renderTemplateSection,
   type EditorRenderContext,
@@ -9,11 +8,16 @@ import {
 import { LandingPageThemeProvider } from '@/components/landing-page/ThemeProvider';
 import { DEFAULT_TEMPLATE, templates } from '@/components/landing-page/templates';
 import { generatePalette } from '@/lib/colorPalette';
-import type { Asset, CustomLandingPageConfig, LandingPageTemplate } from '@/types';
+import type { CustomLandingPageConfig, LandingPageTemplate } from '@/types';
 import { useCallback, useEffect, useState } from 'react';
+import { yogaCategories, type YogaCategory } from '@/data/yogaCategories';
+import { BASE_URL } from '@/config/env';
 
 // Dummy image for preview (will be replaced with proper images later)
 const DUMMY_IMAGE = '/template/hero.jpg';
+
+// About placeholder image - use absolute URL so it works on subdomains
+const ABOUT_PLACEHOLDER_IMAGE = `${BASE_URL}/aboutmePlaceholder.png`;
 
 // Comprehensive list of all countries (ISO 3166-1 alpha-2)
 const COUNTRIES = [
@@ -506,9 +510,7 @@ interface ExpertOnboardingProps {
 }
 
 interface LandingPageContent {
-  teachingPlan: string;
-  aboutBio: string;
-  aboutImage: string;
+  selectedCategory: YogaCategory | null;
 }
 
 interface ExtractedContent {
@@ -530,7 +532,6 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
   const [loading, setLoading] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [error, setError] = useState('');
-  const [uploadError, setUploadError] = useState('');
 
   // Extracted content from AI
   const [extractedContent, setExtractedContent] = useState<ExtractedContent | null>(null);
@@ -620,10 +621,11 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
 
   // Landing page content for step 2
   const [landingContent, setLandingContent] = useState<LandingPageContent>({
-    teachingPlan: '',
-    aboutBio: '',
-    aboutImage: '',
+    selectedCategory: null,
   });
+
+  // Category dropdown state
+  const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
 
   // Template selection for step 3
   const [selectedTemplate, setSelectedTemplate] = useState<LandingPageTemplate>(DEFAULT_TEMPLATE);
@@ -733,29 +735,12 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
     }
   };
 
-  const handleLandingContentChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
+  const handleCategorySelect = (category: YogaCategory) => {
     setLandingContent(prev => ({
       ...prev,
-      [name]: value,
+      selectedCategory: category,
     }));
-  };
-
-  const handleImageUpload = (asset: Asset) => {
-    console.log('[DBG][ExpertOnboarding] Image uploaded:', asset);
-    const imageUrl = asset.croppedUrl || asset.originalUrl;
-    setLandingContent(prev => ({
-      ...prev,
-      aboutImage: imageUrl,
-    }));
-    setUploadError('');
-  };
-
-  const handleUploadError = (errorMsg: string) => {
-    console.error('[DBG][ExpertOnboarding] Upload error:', errorMsg);
-    setUploadError(errorMsg);
+    setIsCategoryDropdownOpen(false);
   };
 
   const handleNext = async () => {
@@ -789,43 +774,31 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
       }
     }
 
-    // When moving from step 2 to step 3, run AI extraction
+    // When moving from step 2 to step 3, generate content from selected category
     if (step === 2) {
-      if (!landingContent.teachingPlan) {
-        setError('Please describe what you plan to teach');
+      if (!landingContent.selectedCategory) {
+        setError('Please select a yoga niche');
         return;
       }
 
-      setExtracting(true);
-      console.log('[DBG][ExpertOnboarding] Running AI extraction...');
+      console.log(
+        '[DBG][ExpertOnboarding] Generating content from category:',
+        landingContent.selectedCategory.category
+      );
 
-      try {
-        const aiResponse = await fetch('/api/ai/extract-landing-content', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            expertName: formData.name,
-            teachingPlan: landingContent.teachingPlan,
-            aboutBio: landingContent.aboutBio,
-          }),
-        });
-
-        const aiResult = await aiResponse.json();
-        console.log('[DBG][ExpertOnboarding] AI extraction result:', aiResult);
-
-        if (aiResult.success && aiResult.data) {
-          setExtractedContent(aiResult.data);
-        } else {
-          console.log(
-            '[DBG][ExpertOnboarding] AI extraction failed, continuing without extracted content'
-          );
-        }
-      } catch (err) {
-        console.error('[DBG][ExpertOnboarding] Error extracting content:', err);
-        // Continue anyway - we can still create the landing page without AI extraction
-      } finally {
-        setExtracting(false);
-      }
+      // Generate extracted content from the selected category
+      const category = landingContent.selectedCategory;
+      setExtractedContent({
+        hero: {
+          headline: category.hook.problem_hook,
+          description: category.hook.solution_hook,
+          ctaText: 'Start Your Journey',
+        },
+        valuePropositions: {
+          type: 'list',
+          items: category.value_propositions.map(vp => vp.title),
+        },
+      });
     }
 
     setStep(step + 1);
@@ -843,34 +816,18 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
     console.log('[DBG][ExpertOnboarding] Submitting expert profile');
 
     try {
-      // Use already extracted content or extract now
-      let contentToUse = extractedContent;
-
-      if (!contentToUse && landingContent.teachingPlan) {
-        const aiResponse = await fetch('/api/ai/extract-landing-content', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            expertName: formData.name,
-            teachingPlan: landingContent.teachingPlan,
-            aboutBio: landingContent.aboutBio,
-          }),
-        });
-
-        const aiResult = await aiResponse.json();
-        if (aiResult.success && aiResult.data) {
-          contentToUse = aiResult.data;
-        }
-      }
+      // Get content from selected category (already set in extractedContent)
+      const category = landingContent.selectedCategory;
+      const contentToUse = extractedContent;
 
       // Prepare expert data with landing page config
       const expertId = formData.id.trim();
       const expertData = {
         id: expertId,
         name: formData.name.trim(),
-        title: '',
-        bio: landingContent.aboutBio || '',
-        avatar: landingContent.aboutImage || '',
+        title: category?.category || '',
+        bio: '',
+        avatar: ABOUT_PLACEHOLDER_IMAGE,
         rating: 0,
         totalCourses: 0,
         totalStudents: 0,
@@ -906,23 +863,15 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
             alignment: 'center' as const,
             heroImage: '/template/hero.jpg',
           },
-          // Value propositions with placeholder images
-          valuePropositions: contentToUse?.valuePropositions
+          // Value propositions from selected category
+          valuePropositions: category
             ? {
                 type: 'cards' as const,
-                items: contentToUse.valuePropositions.items?.map(
-                  (
-                    item: string | { title: string; description: string; image?: string },
-                    idx: number
-                  ) =>
-                    typeof item === 'string'
-                      ? {
-                          title: item,
-                          description: '',
-                          image: `/template/gallery${(idx % 2) + 1}.jpg`,
-                        }
-                      : { ...item, image: item.image || `/template/gallery${(idx % 2) + 1}.jpg` }
-                ),
+                items: category.value_propositions.map((vp, idx) => ({
+                  title: vp.title,
+                  description: vp.description,
+                  image: `/template/gallery${(idx % 2) + 1}.jpg`,
+                })),
               }
             : {
                 type: 'cards' as const,
@@ -947,14 +896,14 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
                   },
                 ],
               },
-          // About section
+          // About section - use about_me from selected category
           about: {
             layoutType: 'image-text' as const,
-            imageUrl: landingContent.aboutImage || '/template/hero.jpg',
+            imageUrl: ABOUT_PLACEHOLDER_IMAGE,
             text:
-              landingContent.aboutBio ||
+              category?.about_me ||
               'With years of dedicated practice and teaching experience, I guide students through transformative yoga journeys. My approach combines traditional wisdom with modern understanding, creating a safe space for all levels to explore and grow.',
-            bio: landingContent.aboutBio,
+            bio: category?.about_me || '',
             highlights: [],
           },
           // Courses section header
@@ -1089,24 +1038,6 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
         <div style={{ textAlign: 'center', fontSize: '14px', color: '#666' }}>Step {step} of 3</div>
       </div>
 
-      {/* Welcome Header */}
-      <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-        <h1 style={{ fontSize: '32px', fontWeight: '600', marginBottom: '12px' }}>
-          {step === 1
-            ? "Welcome! Let's get started"
-            : step === 2
-              ? 'Create Your Landing Page'
-              : 'Choose Your Template'}
-        </h1>
-        <p style={{ fontSize: '16px', color: '#666' }}>
-          {step === 1
-            ? "First, let's set up your unique expert ID"
-            : step === 2
-              ? "Tell us about yourself and we'll create a beautiful landing page for you"
-              : 'Select a template style for your landing page'}
-        </p>
-      </div>
-
       {/* Error Message */}
       {error && (
         <div
@@ -1123,21 +1054,6 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
         </div>
       )}
 
-      {uploadError && (
-        <div
-          style={{
-            marginBottom: '24px',
-            padding: '16px',
-            background: '#fee',
-            border: '1px solid #fcc',
-            borderRadius: '8px',
-            color: '#c33',
-          }}
-        >
-          Upload Error: {uploadError}
-        </div>
-      )}
-
       {/* Step 1: Basic Information */}
       {step === 1 && (
         <div
@@ -1148,9 +1064,56 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
           }}
         >
-          <h2 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '24px' }}>
-            Basic Information
-          </h2>
+          {/* Step Header with Navigation */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '24px',
+            }}
+          >
+            <button
+              onClick={handleBack}
+              disabled={true}
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                border: '1px solid #e2e8f0',
+                background: '#fff',
+                cursor: 'not-allowed',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                color: '#ccc',
+                opacity: 0.5,
+              }}
+            >
+              ‹
+            </button>
+            <h2 style={{ fontSize: '24px', fontWeight: '600', margin: 0 }}>Basic Information</h2>
+            <button
+              onClick={handleNext}
+              disabled={loading || extracting}
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                border: '1px solid #e2e8f0',
+                background: '#fff',
+                cursor: loading || extracting ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                color: loading || extracting ? '#ccc' : 'var(--color-primary)',
+              }}
+            >
+              ›
+            </button>
+          </div>
 
           {/* Name - First field */}
           <div style={{ marginBottom: '20px' }}>
@@ -1378,7 +1341,7 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
         </div>
       )}
 
-      {/* Step 2: Landing Page Content */}
+      {/* Step 2: Select Yoga Niche */}
       {step === 2 && (
         <div
           style={{
@@ -1388,120 +1351,199 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
           }}
         >
-          <h2 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '8px' }}>
-            Tell Us About Your Teaching
-          </h2>
-          <p style={{ fontSize: '14px', color: '#666', marginBottom: '24px' }}>
-            We&apos;ll use AI to create a professional landing page from your answers
+          {/* Step Header with Navigation */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '8px',
+            }}
+          >
+            <button
+              onClick={handleBack}
+              disabled={loading || extracting}
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                border: '1px solid #e2e8f0',
+                background: '#fff',
+                cursor: loading || extracting ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                color: loading || extracting ? '#ccc' : 'var(--color-primary)',
+              }}
+            >
+              ‹
+            </button>
+            <h2 style={{ fontSize: '24px', fontWeight: '600', margin: 0 }}>
+              Select Your Yoga Niche
+            </h2>
+            <button
+              onClick={handleNext}
+              disabled={loading || extracting || !landingContent.selectedCategory}
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                border: '1px solid #e2e8f0',
+                background: '#fff',
+                cursor:
+                  loading || extracting || !landingContent.selectedCategory
+                    ? 'not-allowed'
+                    : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                color:
+                  loading || extracting || !landingContent.selectedCategory
+                    ? '#ccc'
+                    : 'var(--color-primary)',
+              }}
+            >
+              ›
+            </button>
+          </div>
+          <p style={{ fontSize: '14px', color: '#666', marginBottom: '24px', textAlign: 'center' }}>
+            Choose the area you specialize in - we&apos;ll create a landing page tailored to your
+            niche
           </p>
 
-          {/* Question 1: What do you plan to teach */}
+          {/* Custom Category Dropdown */}
           <div style={{ marginBottom: '24px' }}>
             <label
               style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}
             >
-              What do you plan to teach? *
+              What type of yoga do you teach? *
             </label>
-            <p style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>
-              Describe what you teach, who you help, and what outcomes students can expect
-            </p>
-            <textarea
-              name="teachingPlan"
-              value={landingContent.teachingPlan}
-              onChange={handleLandingContentChange}
-              placeholder="e.g., I teach yoga for busy professionals who struggle with stress, back pain, and low energy. Through simple 15-minute daily practices, my students achieve reduced anxiety, improved flexibility, better sleep, and lasting mindfulness skills..."
-              rows={5}
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: '1px solid #e2e8f0',
-                borderRadius: '8px',
-                fontSize: '14px',
-                resize: 'vertical',
-              }}
-            />
-          </div>
 
-          {/* Question 3: About/Bio */}
-          <div style={{ marginBottom: '24px' }}>
-            <label
-              style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}
-            >
-              Tell us about yourself
-            </label>
-            <p style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>
-              Share your background and experience (used as-is for About Section)
-            </p>
-            <textarea
-              name="aboutBio"
-              value={landingContent.aboutBio}
-              onChange={handleLandingContentChange}
-              placeholder="e.g., I'm a certified yoga instructor with 10 years of experience. I trained in India and have helped over 500 students transform their lives. My approach combines traditional yoga with modern science..."
-              rows={4}
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: '1px solid #e2e8f0',
-                borderRadius: '8px',
-                fontSize: '14px',
-                resize: 'vertical',
-              }}
-            />
-          </div>
-
-          {/* Profile Image Upload */}
-          <div style={{ marginBottom: '24px' }}>
-            <label
-              style={{ display: 'block', fontSize: '14px', fontWeight: '500', marginBottom: '8px' }}
-            >
-              Your Photo
-            </label>
-            <p style={{ fontSize: '12px', color: '#666', marginBottom: '12px' }}>
-              Upload a professional photo (used for About Section - Image+Text layout)
-            </p>
-            {landingContent.aboutImage ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <img
-                  src={landingContent.aboutImage}
-                  alt="Profile"
+            {/* Custom dropdown trigger */}
+            <div style={{ position: 'relative' }}>
+              <button
+                type="button"
+                onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                style={{
+                  width: '100%',
+                  padding: '16px',
+                  border: landingContent.selectedCategory
+                    ? '2px solid var(--color-primary)'
+                    : '1px solid #e2e8f0',
+                  borderRadius: '12px',
+                  background: '#fff',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                }}
+              >
+                {landingContent.selectedCategory ? (
+                  <div>
+                    <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '4px' }}>
+                      {landingContent.selectedCategory.category}
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.4' }}>
+                      {landingContent.selectedCategory.hint}
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ fontSize: '16px', color: '#999' }}>Select your yoga niche...</div>
+                  </div>
+                )}
+                <span
                   style={{
-                    width: '120px',
-                    height: '120px',
-                    objectFit: 'cover',
-                    borderRadius: '8px',
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setLandingContent(prev => ({ ...prev, aboutImage: '' }))}
-                  style={{
-                    padding: '8px 16px',
-                    background: '#fee',
-                    color: '#c33',
-                    border: '1px solid #fcc',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    cursor: 'pointer',
+                    transform: isCategoryDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.2s',
+                    fontSize: '20px',
+                    color: '#666',
+                    marginLeft: '12px',
+                    flexShrink: 0,
                   }}
                 >
-                  Remove
-                </button>
-              </div>
-            ) : (
-              <ImageUploadCrop
-                width={400}
-                height={400}
-                category="avatar"
-                tenantId={formData.id}
-                label="Upload your photo"
-                onUploadComplete={handleImageUpload}
-                onError={handleUploadError}
-                relatedTo={{
-                  type: 'expert',
-                  id: formData.id,
-                }}
-              />
-            )}
+                  ▼
+                </span>
+              </button>
+
+              {/* Dropdown options */}
+              {isCategoryDropdownOpen && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    background: '#fff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '12px',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+                    marginTop: '8px',
+                    zIndex: 100,
+                    maxHeight: '400px',
+                    overflowY: 'auto',
+                  }}
+                >
+                  {yogaCategories.map((category, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleCategorySelect(category)}
+                      style={{
+                        width: '100%',
+                        padding: '16px 20px',
+                        border: 'none',
+                        borderBottom:
+                          idx < yogaCategories.length - 1 ? '1px solid #f0f0f0' : 'none',
+                        background:
+                          landingContent.selectedCategory?.category === category.category
+                            ? 'var(--color-primary-light, #e6f7f5)'
+                            : '#fff',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        transition: 'background 0.15s',
+                      }}
+                      onMouseEnter={e => {
+                        if (landingContent.selectedCategory?.category !== category.category) {
+                          e.currentTarget.style.background = '#f8f9fa';
+                        }
+                      }}
+                      onMouseLeave={e => {
+                        if (landingContent.selectedCategory?.category !== category.category) {
+                          e.currentTarget.style.background = '#fff';
+                        }
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: '15px',
+                          fontWeight: '600',
+                          marginBottom: '6px',
+                          color:
+                            landingContent.selectedCategory?.category === category.category
+                              ? 'var(--color-primary)'
+                              : '#333',
+                        }}
+                      >
+                        {category.category}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '13px',
+                          color: '#666',
+                          lineHeight: '1.5',
+                        }}
+                      >
+                        {category.hint}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -1531,37 +1573,15 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
               alignment: 'center',
               heroImage: DUMMY_IMAGE,
             },
-            // Value propositions with images for desirable preview
-            valuePropositions: extractedContent?.valuePropositions
+            // Value propositions from selected category
+            valuePropositions: landingContent.selectedCategory
               ? {
                   type: 'cards' as const,
-                  items: (() => {
-                    const placeholderDescriptions = [
-                      'Tailored sessions designed to meet your unique needs and goals on your wellness journey.',
-                      'Learn techniques that harmonize your physical practice with mental clarity and peace.',
-                      'Access classes anytime, anywhere with our on-demand library and live sessions.',
-                    ];
-                    return extractedContent.valuePropositions.items?.map(
-                      (
-                        item: string | { title: string; description: string; image?: string },
-                        idx: number
-                      ) =>
-                        typeof item === 'string'
-                          ? {
-                              title: item,
-                              description:
-                                placeholderDescriptions[idx % placeholderDescriptions.length],
-                              image: `/template/gallery${(idx % 2) + 1}.jpg`,
-                            }
-                          : {
-                              ...item,
-                              description:
-                                item.description ||
-                                placeholderDescriptions[idx % placeholderDescriptions.length],
-                              image: item.image || `/template/gallery${(idx % 2) + 1}.jpg`,
-                            }
-                    );
-                  })(),
+                  items: landingContent.selectedCategory.value_propositions.map((vp, idx) => ({
+                    title: vp.title,
+                    description: vp.description,
+                    image: `/template/gallery${(idx % 2) + 1}.jpg`,
+                  })),
                 }
               : {
                   type: 'cards' as const,
@@ -1586,11 +1606,11 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
                     },
                   ],
                 },
-            // About section with dummy content
+            // About section with selected category about_me
             about: {
               layoutType: 'image-text',
-              imageUrl: landingContent.aboutImage || DUMMY_IMAGE,
-              text: landingContent.aboutBio || LOREM.long,
+              imageUrl: ABOUT_PLACEHOLDER_IMAGE,
+              text: landingContent.selectedCategory?.about_me || LOREM.long,
             },
             // Courses section header
             courses: {
@@ -1643,113 +1663,109 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
           };
 
           return (
-            <div>
-              {/* Template Header with Navigation */}
+            <div
+              style={{
+                background: '#fff',
+                borderRadius: '12px',
+                padding: '32px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              }}
+            >
+              {/* Step Header with Navigation */}
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  marginBottom: '16px',
-                  background: '#fff',
-                  padding: '16px 24px',
-                  borderRadius: '12px',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  marginBottom: '24px',
                 }}
               >
-                {/* Prev Button */}
                 <button
-                  onClick={() =>
-                    setPreviewTemplateIndex(
-                      (previewTemplateIndex - 1 + templates.length) % templates.length
-                    )
-                  }
+                  onClick={handleBack}
+                  disabled={loading || extracting}
                   style={{
-                    width: '40px',
-                    height: '40px',
+                    width: '36px',
+                    height: '36px',
                     borderRadius: '50%',
                     border: '1px solid #e2e8f0',
                     background: '#fff',
-                    cursor: 'pointer',
+                    cursor: loading || extracting ? 'not-allowed' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontSize: '18px',
-                    color: '#666',
+                    color: loading || extracting ? '#ccc' : 'var(--color-primary)',
                   }}
                 >
-                  ←
+                  ‹
                 </button>
-
-                {/* Template Info */}
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '12px', color: '#999', marginBottom: '4px' }}>
-                    Template {previewTemplateIndex + 1} of {templates.length}
-                  </div>
-                  <h3 style={{ fontSize: '20px', fontWeight: '600', margin: '0 0 4px 0' }}>
-                    {currentTemplate.name}
-                  </h3>
-                  <p style={{ fontSize: '13px', color: '#666', margin: 0 }}>
-                    {currentTemplate.description}
-                  </p>
-                </div>
-
-                {/* Next Button */}
+                <h2 style={{ fontSize: '24px', fontWeight: '600', margin: 0 }}>
+                  Choose Your Template
+                </h2>
                 <button
-                  onClick={() =>
-                    setPreviewTemplateIndex((previewTemplateIndex + 1) % templates.length)
-                  }
+                  disabled={true}
                   style={{
-                    width: '40px',
-                    height: '40px',
+                    width: '36px',
+                    height: '36px',
                     borderRadius: '50%',
                     border: '1px solid #e2e8f0',
                     background: '#fff',
-                    cursor: 'pointer',
+                    cursor: 'not-allowed',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontSize: '18px',
-                    color: '#666',
+                    color: '#ccc',
+                    opacity: 0.5,
                   }}
                 >
-                  →
+                  ›
                 </button>
               </div>
 
-              {/* Select Template Button */}
-              <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-                {selectedTemplate === currentTemplate.id ? (
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      padding: '10px 24px',
-                      background: 'var(--color-primary)',
-                      color: '#fff',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                    }}
-                  >
-                    ✓ Selected
-                  </span>
-                ) : (
-                  <button
-                    onClick={() => setSelectedTemplate(currentTemplate.id)}
-                    style={{
-                      padding: '10px 24px',
-                      background: '#f0f9ff',
-                      color: '#0369a1',
-                      border: '1px solid #bae6fd',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Select This Template
-                  </button>
-                )}
+              {/* Template Dropdown */}
+              <div style={{ marginBottom: '24px' }}>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    marginBottom: '8px',
+                    color: '#333',
+                  }}
+                >
+                  Select Template
+                </label>
+                <select
+                  value={selectedTemplate}
+                  onChange={e => {
+                    const newTemplateId = e.target.value as LandingPageTemplate;
+                    setSelectedTemplate(newTemplateId);
+                    const newIndex = templates.findIndex(t => t.id === newTemplateId);
+                    if (newIndex !== -1) {
+                      setPreviewTemplateIndex(newIndex);
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    fontSize: '15px',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    background: '#fff',
+                    cursor: 'pointer',
+                    appearance: 'none',
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'right 16px center',
+                  }}
+                >
+                  {templates.map(template => (
+                    <option key={template.id} value={template.id}>
+                      {template.name} - {template.description}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Full Preview - All Sections */}
@@ -1758,7 +1774,7 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
                 const renderContext: EditorRenderContext = {
                   data: previewData,
                   expertName: expertName,
-                  expertBio: landingContent.aboutBio || LOREM.medium,
+                  expertBio: landingContent.selectedCategory?.about_me || LOREM.medium,
                   expertId: formData.id || 'preview',
                   courses: [],
                   webinars: [],
@@ -1823,24 +1839,50 @@ export default function ExpertOnboarding({ userEmail, userName }: ExpertOnboardi
           );
         })()}
 
-      {/* Navigation Buttons */}
+      {/* Navigation Links */}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '32px' }}>
         {step > 1 ? (
-          <SecondaryButton onClick={handleBack} disabled={loading || extracting}>
-            Back
-          </SecondaryButton>
+          <button
+            onClick={handleBack}
+            disabled={loading || extracting}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: loading || extracting ? '#ccc' : 'var(--color-primary)',
+              fontSize: '15px',
+              fontWeight: '500',
+              cursor: loading || extracting ? 'not-allowed' : 'pointer',
+              padding: '8px 0',
+            }}
+          >
+            ← Back
+          </button>
         ) : (
           <div />
         )}
 
         {step < 3 ? (
-          <PrimaryButton
+          <button
             onClick={handleNext}
-            disabled={loading || extracting || (step === 2 && !landingContent.teachingPlan)}
-            loading={extracting}
+            disabled={loading || extracting || (step === 2 && !landingContent.selectedCategory)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color:
+                loading || extracting || (step === 2 && !landingContent.selectedCategory)
+                  ? '#ccc'
+                  : 'var(--color-primary)',
+              fontSize: '15px',
+              fontWeight: '500',
+              cursor:
+                loading || extracting || (step === 2 && !landingContent.selectedCategory)
+                  ? 'not-allowed'
+                  : 'pointer',
+              padding: '8px 0',
+            }}
           >
-            {extracting ? 'Generating...' : 'Next'}
-          </PrimaryButton>
+            {extracting ? 'Generating...' : 'Next →'}
+          </button>
         ) : (
           <PrimaryButton onClick={handleSubmit} disabled={loading} loading={loading}>
             {loading ? 'Creating Your Page...' : '✨ Create My Landing Page'}
