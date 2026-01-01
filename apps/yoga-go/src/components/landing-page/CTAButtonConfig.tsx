@@ -3,6 +3,18 @@
 import { useState, useEffect } from 'react';
 import type { Survey, Course } from '@/types';
 
+// Check if we're on a subdomain (e.g., arun.myyoga.guru)
+const isSubdomain = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const hostname = window.location.hostname;
+  // On localhost or main domain, use full paths
+  if (hostname === 'localhost' || hostname === 'myyoga.guru' || hostname === 'www.myyoga.guru') {
+    return false;
+  }
+  // On subdomains like arun.myyoga.guru, use short paths
+  return hostname.endsWith('.myyoga.guru');
+};
+
 export interface CTAConfig {
   ctaText: string;
   ctaLink: string;
@@ -58,12 +70,16 @@ export default function CTAButtonConfig({
           fetch(`/api/srv/experts/${expertId}/survey`),
         ]);
 
+        // Determine URL prefix based on subdomain vs localhost
+        const useShortPaths = isSubdomain();
+        const pathPrefix = useShortPaths ? '' : `/experts/${expertId}`;
+
         // Process courses
         const coursesResult = await coursesRes.json();
         if (coursesResult.success && coursesResult.data) {
           const courses: Course[] = coursesResult.data;
           const courseOpts: CTALinkOption[] = courses.map(course => ({
-            value: `/courses/${course.id}`,
+            value: `${pathPrefix}/courses/${course.id}`,
             label: `course page: ${course.title}`,
           }));
           setCourseOptions(courseOpts);
@@ -76,7 +92,7 @@ export default function CTAButtonConfig({
           const surveys: Survey[] = surveysResult.data;
           const activeSurveys = surveys.filter(s => s.status === 'active');
           const surveyOpts: CTALinkOption[] = activeSurveys.map(survey => ({
-            value: `/survey/${survey.id}`,
+            value: `${pathPrefix}/survey/${survey.id}`,
             label: `survey: ${survey.title}`,
           }));
           setSurveyOptions(surveyOpts);

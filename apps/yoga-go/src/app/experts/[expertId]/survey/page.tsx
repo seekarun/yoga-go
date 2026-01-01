@@ -8,6 +8,16 @@ import { SurveyListPage as ModernSurveyListPage } from '@/templates/modern/pages
 import { SurveyListPage as ClassicSurveyListPage } from '@/templates/classic/pages';
 import type { Survey } from '@/types';
 
+// Check if we're on a subdomain (e.g., arun.myyoga.guru)
+const isSubdomain = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const hostname = window.location.hostname;
+  if (hostname === 'localhost' || hostname === 'myyoga.guru' || hostname === 'www.myyoga.guru') {
+    return false;
+  }
+  return hostname.endsWith('.myyoga.guru');
+};
+
 export default function SurveysListPage() {
   const router = useRouter();
   const { expert, expertId, template, loading: expertLoading, error: expertError } = useExpert();
@@ -30,7 +40,10 @@ export default function SurveysListPage() {
 
           // If only one survey, redirect directly to it
           if (data.data?.length === 1) {
-            router.replace(`/survey/${data.data[0].id}`);
+            const surveyPath = isSubdomain()
+              ? `/survey/${data.data[0].id}`
+              : `/experts/${expertId}/survey/${data.data[0].id}`;
+            router.replace(surveyPath);
           }
         }
       } catch (error) {
@@ -45,7 +58,10 @@ export default function SurveysListPage() {
 
   const handleSurveyClick = (surveyId: string) => {
     if (surveyId) {
-      router.push(`/survey/${surveyId}`);
+      const surveyPath = isSubdomain()
+        ? `/survey/${surveyId}`
+        : `/experts/${expertId}/survey/${surveyId}`;
+      router.push(surveyPath);
     } else {
       router.push('/');
     }

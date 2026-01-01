@@ -9,8 +9,19 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import NotificationOverlay from '@/components/NotificationOverlay';
 import type { SurveyStatus } from '@/types';
 
+interface SurveyResponseMetadata {
+  country?: string;
+  countryRegion?: string;
+  city?: string;
+  timezone?: string;
+  deviceType?: 'mobile' | 'tablet' | 'desktop' | 'unknown';
+  browser?: string;
+  os?: string;
+  language?: string;
+}
+
 interface SurveyResponseData {
-  _id: string;
+  id: string;
   surveyId: string;
   expertId: string;
   userId?: string;
@@ -26,6 +37,7 @@ interface SurveyResponseData {
     questionType: string;
   }>;
   submittedAt: string;
+  metadata?: SurveyResponseMetadata;
 }
 
 interface ResponsesData {
@@ -100,7 +112,7 @@ export default function SurveyResponsesPage() {
     if (selectedResponses.size === filteredResponses.length) {
       setSelectedResponses(new Set());
     } else {
-      setSelectedResponses(new Set(filteredResponses.map(r => r._id)));
+      setSelectedResponses(new Set(filteredResponses.map(r => r.id)));
     }
   };
 
@@ -382,6 +394,9 @@ export default function SurveyResponsesPage() {
                     Responses
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Location / Device
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Submitted
                   </th>
                 </tr>
@@ -389,19 +404,19 @@ export default function SurveyResponsesPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredResponses.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
                       No responses found
                       {hasFilters && ' with the selected filters'}
                     </td>
                   </tr>
                 ) : (
                   filteredResponses.map(response => (
-                    <tr key={response._id} className="hover:bg-gray-50">
+                    <tr key={response.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <input
                           type="checkbox"
-                          checked={selectedResponses.has(response._id)}
-                          onChange={() => toggleSelectResponse(response._id)}
+                          checked={selectedResponses.has(response.id)}
+                          onChange={() => toggleSelectResponse(response.id)}
                           className="w-4 h-4 text-blue-600 rounded"
                         />
                       </td>
@@ -435,6 +450,84 @@ export default function SurveyResponsesPage() {
                               </span>
                             </div>
                           ))}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm space-y-1">
+                          {response.metadata?.city || response.metadata?.country ? (
+                            <div className="flex items-center gap-1 text-gray-700">
+                              <svg
+                                className="w-4 h-4 text-gray-400"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                                />
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                                />
+                              </svg>
+                              <span>
+                                {[
+                                  response.metadata?.city,
+                                  response.metadata?.countryRegion,
+                                  response.metadata?.country,
+                                ]
+                                  .filter(Boolean)
+                                  .join(', ')}
+                              </span>
+                            </div>
+                          ) : null}
+                          {response.metadata?.deviceType || response.metadata?.browser ? (
+                            <div className="flex items-center gap-1 text-gray-500">
+                              <svg
+                                className="w-4 h-4 text-gray-400"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                {response.metadata?.deviceType === 'mobile' ? (
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
+                                  />
+                                ) : (
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                                  />
+                                )}
+                              </svg>
+                              <span>
+                                {[
+                                  response.metadata?.deviceType !== 'unknown' &&
+                                    response.metadata?.deviceType,
+                                  response.metadata?.browser,
+                                  response.metadata?.os,
+                                ]
+                                  .filter(Boolean)
+                                  .join(' · ')}
+                              </span>
+                            </div>
+                          ) : null}
+                          {!response.metadata?.city &&
+                            !response.metadata?.country &&
+                            !response.metadata?.deviceType &&
+                            !response.metadata?.browser && (
+                              <span className="text-gray-400 italic">No data</span>
+                            )}
                         </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500">

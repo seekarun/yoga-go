@@ -989,6 +989,21 @@ export interface SurveyResponseContactInfo {
   phone?: string;
 }
 
+// Metadata automatically collected from Vercel headers
+export interface SurveyResponseMetadata {
+  country?: string; // Country code (e.g., "US", "IN")
+  countryRegion?: string; // Region/state code
+  city?: string; // City name
+  timezone?: string; // Timezone
+  ip?: string; // IP address (anonymized - last octet removed)
+  userAgent?: string; // Browser user agent
+  deviceType?: 'mobile' | 'tablet' | 'desktop' | 'unknown';
+  browser?: string; // Browser name
+  os?: string; // Operating system
+  language?: string; // Preferred language
+  referrer?: string; // Referrer URL
+}
+
 export interface SurveyResponse extends BaseEntity {
   surveyId: string;
   expertId: string;
@@ -996,6 +1011,7 @@ export interface SurveyResponse extends BaseEntity {
   contactInfo?: SurveyResponseContactInfo; // Contact information collected from user
   answers: SurveyAnswer[];
   submittedAt: string;
+  metadata?: SurveyResponseMetadata; // Auto-collected metadata from request
 }
 
 // Discussion Related Types

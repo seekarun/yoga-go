@@ -1,7 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import type { Survey, SurveyQuestion } from '@/types';
+import type { Survey } from '@/types';
+
+// Email validation regex
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Phone validation - allows digits, spaces, dashes, parentheses, and + prefix
+// Minimum 8 digits required
+const PHONE_REGEX = /^[+]?[\d\s\-()]{8,}$/;
+const hasMinDigits = (phone: string, min: number) => {
+  const digits = phone.replace(/\D/g, '');
+  return digits.length >= min;
+};
 
 interface SurveyResponseWizardProps {
   survey: Survey;
@@ -49,6 +60,7 @@ export default function SurveyResponseWizard({
     step === 'contact' ? 1 : (hasContactInfo ? 1 : 0) + currentQuestionIndex + 1;
 
   const validateContactInfo = (): boolean => {
+    // Name validation
     if (
       survey.contactInfo?.collectName &&
       survey.contactInfo.nameRequired &&
@@ -57,22 +69,33 @@ export default function SurveyResponseWizard({
       setValidationError('Please enter your name');
       return false;
     }
-    if (
-      survey.contactInfo?.collectEmail &&
-      survey.contactInfo.emailRequired &&
-      !contactInfo.email.trim()
-    ) {
-      setValidationError('Please enter your email');
-      return false;
+
+    // Email validation
+    if (survey.contactInfo?.collectEmail) {
+      const email = contactInfo.email.trim();
+      if (survey.contactInfo.emailRequired && !email) {
+        setValidationError('Please enter your email');
+        return false;
+      }
+      if (email && !EMAIL_REGEX.test(email)) {
+        setValidationError('Please enter a valid email address');
+        return false;
+      }
     }
-    if (
-      survey.contactInfo?.collectPhone &&
-      survey.contactInfo.phoneRequired &&
-      !contactInfo.phone.trim()
-    ) {
-      setValidationError('Please enter your phone number');
-      return false;
+
+    // Phone validation
+    if (survey.contactInfo?.collectPhone) {
+      const phone = contactInfo.phone.trim();
+      if (survey.contactInfo.phoneRequired && !phone) {
+        setValidationError('Please enter your phone number');
+        return false;
+      }
+      if (phone && (!PHONE_REGEX.test(phone) || !hasMinDigits(phone, 8))) {
+        setValidationError('Please enter a valid phone number (minimum 8 digits)');
+        return false;
+      }
     }
+
     setValidationError('');
     return true;
   };

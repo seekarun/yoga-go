@@ -9,7 +9,7 @@
 
 import { docClient, Tables, CorePK } from '../dynamodb';
 import { PutCommand, GetCommand, QueryCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
-import type { SurveyResponse } from '@/types';
+import type { SurveyResponse, SurveyResponseMetadata } from '@/types';
 
 // Helper to generate a unique response ID
 const generateResponseId = () => `resp_${Date.now()}_${Math.random().toString(36).substring(7)}`;
@@ -21,6 +21,7 @@ export interface CreateSurveyResponseInput {
   contactInfo?: SurveyResponse['contactInfo'];
   answers: SurveyResponse['answers'];
   submittedAt?: string;
+  metadata?: SurveyResponseMetadata;
 }
 
 /**
@@ -50,6 +51,7 @@ export async function createSurveyResponse(
     contactInfo: input.contactInfo,
     answers: input.answers,
     submittedAt: input.submittedAt || now,
+    metadata: input.metadata,
     createdAt: now,
     updatedAt: now,
   };
@@ -367,6 +369,7 @@ function mapToSurveyResponse(item: Record<string, unknown>): SurveyResponse {
     contactInfo: item.contactInfo as SurveyResponse['contactInfo'] | undefined,
     answers: (item.answers || []) as SurveyResponse['answers'],
     submittedAt: item.submittedAt as string,
+    metadata: item.metadata as SurveyResponse['metadata'] | undefined,
     createdAt: item.createdAt as string,
     updatedAt: item.updatedAt as string,
   };
