@@ -661,6 +661,8 @@ The MyYoga.Guru Team`,
       resources: [
         coreTable.tableArn,
         `${coreTable.tableArn}/index/*`,
+        usersTable.tableArn,
+        `${usersTable.tableArn}/index/*`,
         `arn:aws:dynamodb:${this.region}:${this.account}:table/yoga-go-orders`,
         `arn:aws:dynamodb:${this.region}:${this.account}:table/yoga-go-orders/index/*`,
         `arn:aws:dynamodb:${this.region}:${this.account}:table/yoga-go-analytics`,
@@ -701,13 +703,14 @@ The MyYoga.Guru Team`,
       resources: ["*"],
     });
 
-    // Cognito read-only policy
+    // Cognito policy - includes AdminGetUser for user verification
     const cognitoPolicy = new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       actions: [
         "cognito-idp:DescribeUserPool",
         "cognito-idp:DescribeUserPoolClient",
         "cognito-idp:GetUser",
+        "cognito-idp:AdminGetUser",
       ],
       resources: [userPool.userPoolArn],
     });
