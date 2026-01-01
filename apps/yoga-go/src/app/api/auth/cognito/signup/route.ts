@@ -8,6 +8,7 @@ import { signUp, getCognitoErrorMessage, isCognitoError } from '@/lib/cognito-au
 import { SignJWT } from 'jose';
 import type { UserRole } from '@/types';
 import { COOKIE_DOMAIN } from '@/config/env';
+import { isPrimaryDomain } from '@/config/domains';
 
 interface SignupRequestBody {
   email: string;
@@ -55,7 +56,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('[DBG][signup] Attempting signup for:', email, 'signupExpertId:', signupExpertId);
+    // Detect signup source: 'main' for main domain, or expertId for subdomain
+    const hostname = request.headers.get('host') || '';
+    const isMainDomain = isPrimaryDomain(hostname);
+    const signupSource = isMainDomain ? 'main' : signupExpertId || 'unknown';
+
+    console.log(
+      '[DBG][signup] Attempting signup for:',
+      email,
+      'signupExpertId:',
+      signupExpertId,
+      'signupSource:',
+      signupSource
+    );
 
     // Sign up with Cognito
     const result = await signUp({
@@ -95,6 +108,7 @@ export async function POST(request: NextRequest) {
         sub: result.userSub,
         roles: userRoles,
         email: email.toLowerCase().trim(),
+        signupSource: signupSource,
         signupExpertId: signupExpertId || undefined,
       })
         .setProtectedHeader({ alg: 'HS256' })

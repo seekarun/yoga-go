@@ -133,6 +133,7 @@ export function normalizeRoles(role: UserRole[] | UserRole | undefined): UserRol
  * This is called after Cognito authentication to sync user data
  *
  * @param roles - Optional roles array to assign to new users. Defaults to ['learner']
+ * @param signupSource - Where user first signed up: 'main' (main domain) or expertId (subdomain)
  * @param signupExperts - Optional array of expert IDs where user signed up (from subdomains)
  */
 export async function getOrCreateUser(
@@ -143,6 +144,7 @@ export async function getOrCreateUser(
     picture?: string;
   },
   roles?: UserRole[],
+  signupSource?: string,
   signupExperts?: string[]
 ): Promise<UserType> {
   console.log(
@@ -150,6 +152,8 @@ export async function getOrCreateUser(
     cognitoUser.sub,
     'roles:',
     roles,
+    'signupSource:',
+    signupSource || 'unknown',
     'signupExperts:',
     signupExperts || []
   );
@@ -162,7 +166,7 @@ export async function getOrCreateUser(
   });
 
   // Delegate to userRepository
-  return userRepository.getOrCreateUser(cognitoUser, roles, signupExperts);
+  return userRepository.getOrCreateUser(cognitoUser, roles, signupSource, signupExperts);
 }
 
 /**

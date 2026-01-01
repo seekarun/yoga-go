@@ -24,6 +24,7 @@ export interface CreateUserInput {
   name?: string;
   picture?: string;
   roles?: UserRole[];
+  signupSource?: string; // Where user first signed up: 'main' or expertId
   signupExperts?: string[]; // Expert IDs where user signed up (from subdomains)
 }
 
@@ -124,7 +125,7 @@ export async function getUsersByExpertId(expertId: string): Promise<User[]> {
  * Returns the created user
  */
 export async function createUser(input: CreateUserInput): Promise<User> {
-  const { cognitoSub, email, name, picture, roles, signupExperts } = input;
+  const { cognitoSub, email, name, picture, roles, signupSource, signupExperts } = input;
   const now = new Date().toISOString();
   const userRoles = roles || ['learner'];
   const userName = name || email;
@@ -134,6 +135,8 @@ export async function createUser(input: CreateUserInput): Promise<User> {
     cognitoSub,
     'roles:',
     userRoles,
+    'signupSource:',
+    signupSource || 'unknown',
     'signupExperts:',
     signupExperts || []
   );
@@ -144,6 +147,7 @@ export async function createUser(input: CreateUserInput): Promise<User> {
     entityType: EntityType.USER,
     id: cognitoSub, // cognitoSub is now the user id
     role: userRoles,
+    signupSource: signupSource,
     signupExperts: signupExperts || [],
     profile: {
       name: userName,
@@ -225,6 +229,7 @@ export async function getOrCreateUser(
     picture?: string;
   },
   roles?: UserRole[],
+  signupSource?: string,
   signupExperts?: string[]
 ): Promise<User> {
   console.log(
@@ -232,6 +237,8 @@ export async function getOrCreateUser(
     cognitoUser.sub,
     'roles:',
     roles,
+    'signupSource:',
+    signupSource || 'unknown',
     'signupExperts:',
     signupExperts || []
   );
@@ -288,6 +295,7 @@ export async function getOrCreateUser(
     name: cognitoUser.name,
     picture: cognitoUser.picture,
     roles: roles,
+    signupSource: signupSource,
     signupExperts: signupExperts,
   });
 }

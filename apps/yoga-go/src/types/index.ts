@@ -597,6 +597,7 @@ export interface UserSocial {
 export interface User extends BaseEntity {
   role: UserRole[]; // User roles array: ['learner'], ['learner', 'expert'], etc.
   expertProfile?: string; // Expert ID if user is an expert
+  signupSource?: string; // Where user first signed up: 'main' (main domain) or expertId (subdomain)
   signupExperts?: string[]; // Array of expert IDs where user signed up (from subdomains)
   profile: UserProfile;
   membership: Membership;

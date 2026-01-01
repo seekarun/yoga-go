@@ -71,8 +71,9 @@ export async function POST(request: NextRequest) {
             name: userInfo.name,
           });
 
-          // Get roles and signupExpertId from the signed cookie (instead of MongoDB PendingAuth)
+          // Get roles, signupSource, and signupExpertId from the signed cookie
           let roles: UserRole[] = ['learner']; // Default
+          let signupSource: string | undefined;
           let signupExpertId: string | undefined;
           const pendingSignupCookie = request.cookies.get(PENDING_SIGNUP_COOKIE);
 
@@ -89,6 +90,7 @@ export async function POST(request: NextRequest) {
               console.log('[DBG][verify] Cookie payload:', {
                 sub: payload.sub,
                 roles: payload.roles,
+                signupSource: payload.signupSource,
                 signupExpertId: payload.signupExpertId,
                 email: payload.email,
               });
@@ -98,6 +100,10 @@ export async function POST(request: NextRequest) {
                 if (payload.roles) {
                   roles = payload.roles as UserRole[];
                   console.log('[DBG][verify] Got roles from cookie:', roles);
+                }
+                if (payload.signupSource) {
+                  signupSource = payload.signupSource as string;
+                  console.log('[DBG][verify] Got signupSource from cookie:', signupSource);
                 }
                 if (payload.signupExpertId) {
                   signupExpertId = payload.signupExpertId as string;
@@ -126,6 +132,7 @@ export async function POST(request: NextRequest) {
               name: userInfo.name || '',
             },
             roles,
+            signupSource,
             signupExperts
           );
 
@@ -134,6 +141,8 @@ export async function POST(request: NextRequest) {
             user.id,
             'roles:',
             roles,
+            'signupSource:',
+            signupSource || 'unknown',
             'signupExpertId:',
             signupExpertId || 'none'
           );

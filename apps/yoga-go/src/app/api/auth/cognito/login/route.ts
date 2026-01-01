@@ -70,6 +70,8 @@ export async function POST(request: NextRequest) {
 
     // Check for pending signup cookie (for users who just verified)
     let role: UserRole[] | undefined;
+    let signupSource: string | undefined;
+    let signupExpertId: string | undefined;
     const pendingSignupCookie = request.cookies.get(PENDING_SIGNUP_COOKIE);
 
     if (pendingSignupCookie?.value) {
@@ -78,15 +80,31 @@ export async function POST(request: NextRequest) {
         const { payload } = await jwtVerify(pendingSignupCookie.value, secret);
 
         // Verify this cookie is for the same user
-        if (payload.sub === userInfo.sub && payload.roles) {
-          role = payload.roles as UserRole[];
-          console.log('[DBG][login] Got roles from pending-signup cookie:', role);
+        if (payload.sub === userInfo.sub) {
+          if (payload.roles) {
+            role = payload.roles as UserRole[];
+            console.log('[DBG][login] Got roles from pending-signup cookie:', role);
+          }
+          if (payload.signupSource) {
+            signupSource = payload.signupSource as string;
+            console.log('[DBG][login] Got signupSource from pending-signup cookie:', signupSource);
+          }
+          if (payload.signupExpertId) {
+            signupExpertId = payload.signupExpertId as string;
+            console.log(
+              '[DBG][login] Got signupExpertId from pending-signup cookie:',
+              signupExpertId
+            );
+          }
         }
       } catch (cookieError) {
         console.error('[DBG][login] Error reading pending-signup cookie:', cookieError);
-        // Continue without role from cookie
+        // Continue without data from cookie
       }
     }
+
+    // Build signupExperts array if we have an expertId
+    const signupExperts = signupExpertId ? [signupExpertId] : undefined;
 
     // Get or create DynamoDB user
     const user = await getOrCreateUser(
@@ -95,7 +113,9 @@ export async function POST(request: NextRequest) {
         email: userInfo.email,
         name: userInfo.name || '',
       },
-      role // Pass role if from pending signup cookie, otherwise uses existing or default
+      role, // Pass role if from pending signup cookie, otherwise uses existing or default
+      signupSource, // Where user first signed up
+      signupExperts // Expert IDs from subdomain signups
     );
 
     console.log('[DBG][login] User from DynamoDB:', user.id, 'role:', user.role);
