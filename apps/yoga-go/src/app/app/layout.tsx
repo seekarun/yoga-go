@@ -22,7 +22,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: '#f8f8f8',
+          background: 'var(--color-bg-main)',
         }}
       >
         <div style={{ textAlign: 'center' }}>
@@ -30,14 +30,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             style={{
               width: '40px',
               height: '40px',
-              border: '4px solid #e0e0e0',
+              border: '4px solid var(--color-border)',
               borderTop: '4px solid var(--color-primary)',
               borderRadius: '50%',
               animation: 'spin 1s linear infinite',
               margin: '0 auto 16px',
             }}
           />
-          <div style={{ fontSize: '16px', color: '#666' }}>Loading...</div>
+          <div style={{ fontSize: '16px', color: 'var(--text-muted)' }}>Loading...</div>
         </div>
         <style jsx>{`
           @keyframes spin {
@@ -57,5 +57,5 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return null; // Will redirect in useEffect
   }
 
-  return <div style={{ minHeight: '100vh', background: '#f8f8f8' }}>{children}</div>;
+  return <div style={{ minHeight: '100vh', background: 'var(--color-bg-main)' }}>{children}</div>;
 }

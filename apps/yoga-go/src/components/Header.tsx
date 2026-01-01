@@ -345,24 +345,24 @@ export default function Header() {
                     position: 'absolute',
                     top: '44px',
                     right: 0,
-                    background: '#fff',
+                    background: 'var(--color-surface)',
                     borderRadius: '12px',
                     boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
                     minWidth: '200px',
                     padding: '8px 0',
-                    border: '1px solid #e0e0e0',
+                    border: '1px solid var(--color-border)',
                   }}
                 >
                   <div
                     style={{
                       padding: '12px 20px',
-                      borderBottom: '1px solid #e0e0e0',
+                      borderBottom: '1px solid var(--color-border)',
                     }}
                   >
-                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#000' }}>
+                    <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-main)' }}>
                       {user?.profile?.name || 'User'}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#666' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                       {user?.profile?.email || 'user@example.com'}
                     </div>
                   </div>
@@ -378,7 +378,7 @@ export default function Header() {
                           display: 'block',
                           padding: '12px 20px',
                           textDecoration: 'none',
-                          color: '#333',
+                          color: 'var(--text-body)',
                           fontSize: '14px',
                         }}
                       >
@@ -391,7 +391,7 @@ export default function Header() {
                           display: 'block',
                           padding: '12px 20px',
                           textDecoration: 'none',
-                          color: '#333',
+                          color: 'var(--text-body)',
                           fontSize: '14px',
                         }}
                       >
@@ -408,7 +408,7 @@ export default function Header() {
                           display: 'block',
                           padding: '12px 20px',
                           textDecoration: 'none',
-                          color: '#333',
+                          color: 'var(--text-body)',
                           fontSize: '14px',
                         }}
                       >
@@ -421,7 +421,7 @@ export default function Header() {
                           display: 'block',
                           padding: '12px 20px',
                           textDecoration: 'none',
-                          color: '#333',
+                          color: 'var(--text-body)',
                           fontSize: '14px',
                         }}
                       >
@@ -430,7 +430,7 @@ export default function Header() {
                     </>
                   )}
 
-                  <div style={{ borderTop: '1px solid #e0e0e0', margin: '4px 0' }} />
+                  <div style={{ borderTop: '1px solid var(--color-border)', margin: '4px 0' }} />
 
                   <button
                     onClick={() => {

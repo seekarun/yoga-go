@@ -29,8 +29,8 @@ export default function Footer() {
   return (
     <footer
       style={{
-        background: '#fff',
-        borderTop: '1px solid #e2e8f0',
+        background: 'var(--color-surface)',
+        borderTop: '1px solid var(--color-border)',
         marginTop: 'auto',
       }}
     >
@@ -81,7 +81,7 @@ export default function Footer() {
             </div>
             <p
               style={{
-                color: '#666',
+                color: 'var(--text-muted)',
                 fontSize: '14px',
                 lineHeight: '1.6',
                 marginBottom: '20px',
@@ -98,14 +98,14 @@ export default function Footer() {
               <a
                 href="#"
                 style={{
-                  color: '#666',
+                  color: 'var(--text-muted)',
                   transition: 'color 0.2s',
                 }}
                 onMouseEnter={e => {
-                  e.currentTarget.style.color = '#000';
+                  e.currentTarget.style.color = 'var(--text-main)';
                 }}
                 onMouseLeave={e => {
-                  e.currentTarget.style.color = '#666';
+                  e.currentTarget.style.color = 'var(--text-muted)';
                 }}
               >
                 <svg
@@ -119,14 +119,14 @@ export default function Footer() {
               <a
                 href="#"
                 style={{
-                  color: '#666',
+                  color: 'var(--text-muted)',
                   transition: 'color 0.2s',
                 }}
                 onMouseEnter={e => {
-                  e.currentTarget.style.color = '#000';
+                  e.currentTarget.style.color = 'var(--text-main)';
                 }}
                 onMouseLeave={e => {
-                  e.currentTarget.style.color = '#666';
+                  e.currentTarget.style.color = 'var(--text-muted)';
                 }}
               >
                 <svg
@@ -140,14 +140,14 @@ export default function Footer() {
               <a
                 href="#"
                 style={{
-                  color: '#666',
+                  color: 'var(--text-muted)',
                   transition: 'color 0.2s',
                 }}
                 onMouseEnter={e => {
-                  e.currentTarget.style.color = '#000';
+                  e.currentTarget.style.color = 'var(--text-main)';
                 }}
                 onMouseLeave={e => {
-                  e.currentTarget.style.color = '#666';
+                  e.currentTarget.style.color = 'var(--text-muted)';
                 }}
               >
                 <svg
@@ -171,7 +171,7 @@ export default function Footer() {
                   fontWeight: '600',
                   fontSize: '16px',
                   marginBottom: '20px',
-                  color: '#000',
+                  color: 'var(--text-main)',
                 }}
               >
                 Company
@@ -187,7 +187,7 @@ export default function Footer() {
                   <Link
                     href="/about"
                     style={{
-                      color: '#666',
+                      color: 'var(--text-muted)',
                       fontSize: '14px',
                       textDecoration: 'none',
                       transition: 'color 0.2s',
@@ -200,7 +200,7 @@ export default function Footer() {
                   <Link
                     href="/srv"
                     style={{
-                      color: '#764ba2',
+                      color: 'var(--color-primary)',
                       fontSize: '14px',
                       textDecoration: 'none',
                       transition: 'color 0.2s',
@@ -214,7 +214,7 @@ export default function Footer() {
                   <Link
                     href="/blog"
                     style={{
-                      color: '#666',
+                      color: 'var(--text-muted)',
                       fontSize: '14px',
                       textDecoration: 'none',
                       transition: 'color 0.2s',
@@ -227,7 +227,7 @@ export default function Footer() {
                   <Link
                     href="/contact"
                     style={{
-                      color: '#666',
+                      color: 'var(--text-muted)',
                       fontSize: '14px',
                       textDecoration: 'none',
                       transition: 'color 0.2s',
@@ -247,7 +247,7 @@ export default function Footer() {
                 fontWeight: '600',
                 fontSize: '16px',
                 marginBottom: '20px',
-                color: '#000',
+                color: 'var(--text-main)',
               }}
             >
               Support
@@ -263,7 +263,7 @@ export default function Footer() {
                 <Link
                   href="/help"
                   style={{
-                    color: '#666',
+                    color: 'var(--text-muted)',
                     fontSize: '14px',
                     textDecoration: 'none',
                     transition: 'color 0.2s',
@@ -276,7 +276,7 @@ export default function Footer() {
                 <Link
                   href="/faq"
                   style={{
-                    color: '#666',
+                    color: 'var(--text-muted)',
                     fontSize: '14px',
                     textDecoration: 'none',
                     transition: 'color 0.2s',
@@ -289,7 +289,7 @@ export default function Footer() {
                 <Link
                   href="/privacy"
                   style={{
-                    color: '#666',
+                    color: 'var(--text-muted)',
                     fontSize: '14px',
                     textDecoration: 'none',
                     transition: 'color 0.2s',
@@ -302,7 +302,7 @@ export default function Footer() {
                 <Link
                   href="/terms"
                   style={{
-                    color: '#666',
+                    color: 'var(--text-muted)',
                     fontSize: '14px',
                     textDecoration: 'none',
                     transition: 'color 0.2s',
@@ -319,7 +319,7 @@ export default function Footer() {
         <div
           style={{
             paddingTop: '32px',
-            borderTop: '1px solid #e2e8f0',
+            borderTop: '1px solid var(--color-border)',
             display: 'flex',
             flexWrap: 'wrap',
             justifyContent: 'space-between',
@@ -329,7 +329,7 @@ export default function Footer() {
         >
           <p
             style={{
-              color: '#666',
+              color: 'var(--text-muted)',
               fontSize: '12px',
               margin: 0,
             }}
@@ -345,7 +345,7 @@ export default function Footer() {
             <Link
               href="/privacy"
               style={{
-                color: '#666',
+                color: 'var(--text-muted)',
                 fontSize: '12px',
                 textDecoration: 'none',
                 transition: 'color 0.2s',
@@ -356,7 +356,7 @@ export default function Footer() {
             <Link
               href="/terms"
               style={{
-                color: '#666',
+                color: 'var(--text-muted)',
                 fontSize: '12px',
                 textDecoration: 'none',
                 transition: 'color 0.2s',
@@ -367,7 +367,7 @@ export default function Footer() {
             <Link
               href="/cookies"
               style={{
-                color: '#666',
+                color: 'var(--text-muted)',
                 fontSize: '12px',
                 textDecoration: 'none',
                 transition: 'color 0.2s',

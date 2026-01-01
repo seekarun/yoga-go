@@ -8,6 +8,7 @@ interface SectionWrapperProps {
   label: string;
   isSelected: boolean;
   isDisabled: boolean;
+  hasSelection: boolean; // Whether any section is currently selected
   onClick: () => void;
 }
 
@@ -16,11 +17,22 @@ export default function SectionWrapper({
   label,
   isSelected,
   isDisabled,
+  hasSelection,
   onClick,
 }: SectionWrapperProps) {
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     onClick();
+  };
+
+  // Determine opacity:
+  // - Disabled sections: 0.4
+  // - When a section is selected: selected = 1, others = 0.3 (70% transparent)
+  // - When no selection: all = 1
+  const getOpacity = () => {
+    if (isDisabled) return 0.4;
+    if (hasSelection && !isSelected) return 0.3;
+    return 1;
   };
 
   return (
@@ -29,20 +41,9 @@ export default function SectionWrapper({
       style={{
         position: 'relative',
         cursor: 'pointer',
-        opacity: isDisabled ? 0.4 : 1,
-        transition: 'all 0.2s ease',
-        outline: isSelected ? '3px solid #3b82f6' : '3px solid transparent',
-        outlineOffset: '-3px',
-      }}
-      onMouseEnter={e => {
-        if (!isSelected && !isDisabled) {
-          e.currentTarget.style.outline = '3px solid #93c5fd';
-        }
-      }}
-      onMouseLeave={e => {
-        if (!isSelected) {
-          e.currentTarget.style.outline = '3px solid transparent';
-        }
+        opacity: getOpacity(),
+        transition: 'opacity 0.2s ease, box-shadow 0.2s ease',
+        boxShadow: isSelected ? '0 8px 30px rgba(0, 0, 0, 0.3)' : 'none',
       }}
     >
       {/* Section Label Badge */}

@@ -55,29 +55,12 @@ export default function ExpertCoursesPage() {
       {/* Header */}
       <div className="bg-white shadow">
         <div className="px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">My Courses</h1>
-              <p className="text-sm text-gray-500 mt-1">
-                {courses.length} courses ({publishedCourses.length} published,{' '}
-                {inProgressCourses.length} in progress)
-              </p>
-            </div>
-            <Link
-              href={`/srv/${expertId}/courses/create`}
-              className="px-4 py-2 text-white text-sm rounded-lg transition-colors font-medium inline-flex items-center"
-              style={{ background: 'var(--color-primary)' }}
-            >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              New Course
-            </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">My Courses</h1>
+            <p className="text-sm text-gray-500 mt-1">
+              {courses.length} courses ({publishedCourses.length} published,{' '}
+              {inProgressCourses.length} in progress)
+            </p>
           </div>
         </div>
       </div>

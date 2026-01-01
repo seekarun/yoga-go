@@ -64,6 +64,7 @@ function SignupForm() {
   });
   const [isExpertDomain, setIsExpertDomain] = useState(false);
   const [signupExpertId, setSignupExpertId] = useState<string | null>(null);
+  const [expertName, setExpertName] = useState<string | null>(null);
 
   useEffect(() => {
     setPasswordStrength(checkPasswordStrength(formData.password));
@@ -73,6 +74,21 @@ function SignupForm() {
     const { isExpertMode, expertId } = getClientExpertContext();
     setIsExpertDomain(isExpertMode);
     setSignupExpertId(isExpertMode ? expertId : null);
+
+    // Fetch expert name if on subdomain
+    if (isExpertMode && expertId) {
+      fetch(`/data/experts/${expertId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.data?.name) {
+            setExpertName(data.data.name);
+          }
+        })
+        .catch(() => {
+          // Fallback to expertId if fetch fails
+          setExpertName(expertId);
+        });
+    }
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -159,18 +175,40 @@ function SignupForm() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8f8f8' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--color-bg-main)' }}>
       {/* Form Section */}
       <section style={{ padding: '60px 20px' }}>
         <div style={{ maxWidth: '500px', margin: '0 auto' }}>
           <div
             style={{
-              background: '#fff',
+              background: 'var(--color-surface)',
               padding: '48px',
               borderRadius: '12px',
               boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
             }}
           >
+            {/* Header */}
+            <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+              <h1
+                style={{
+                  fontSize: '32px',
+                  fontWeight: 200,
+                  color: 'var(--text-main)',
+                  margin: 0,
+                  lineHeight: 1.1,
+                  textAlign: 'left',
+                }}
+              >
+                <span style={{ fontWeight: 'bold', color: 'var(--color-primary)' }}>
+                  {isExpertDomain && expertName ? expertName : 'Sign Up'}
+                </span>
+                <br />
+                my yoga
+                <br />
+                guru
+              </h1>
+            </div>
+
             {error && (
               <div
                 style={{
@@ -196,7 +234,7 @@ function SignupForm() {
                     marginBottom: '8px',
                     fontSize: '14px',
                     fontWeight: '500',
-                    color: '#333',
+                    color: 'var(--text-body)',
                   }}
                 >
                   Full Name *
@@ -214,7 +252,7 @@ function SignupForm() {
                   style={{
                     width: '100%',
                     padding: '12px 16px',
-                    border: '1px solid #ddd',
+                    border: '1px solid var(--color-border)',
                     borderRadius: '8px',
                     fontSize: '16px',
                     boxSizing: 'border-box',
@@ -231,7 +269,7 @@ function SignupForm() {
                     marginBottom: '8px',
                     fontSize: '14px',
                     fontWeight: '500',
-                    color: '#333',
+                    color: 'var(--text-body)',
                   }}
                 >
                   Email Address *
@@ -249,7 +287,7 @@ function SignupForm() {
                   style={{
                     width: '100%',
                     padding: '12px 16px',
-                    border: '1px solid #ddd',
+                    border: '1px solid var(--color-border)',
                     borderRadius: '8px',
                     fontSize: '16px',
                     boxSizing: 'border-box',
@@ -266,7 +304,7 @@ function SignupForm() {
                     marginBottom: '8px',
                     fontSize: '14px',
                     fontWeight: '500',
-                    color: '#333',
+                    color: 'var(--text-body)',
                   }}
                 >
                   Mobile Number (optional)
@@ -283,13 +321,13 @@ function SignupForm() {
                   style={{
                     width: '100%',
                     padding: '12px 16px',
-                    border: '1px solid #ddd',
+                    border: '1px solid var(--color-border)',
                     borderRadius: '8px',
                     fontSize: '16px',
                     boxSizing: 'border-box',
                   }}
                 />
-                <p style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
                   Include country code (e.g., +91 for India)
                 </p>
               </div>
@@ -303,7 +341,7 @@ function SignupForm() {
                     marginBottom: '8px',
                     fontSize: '14px',
                     fontWeight: '500',
-                    color: '#333',
+                    color: 'var(--text-body)',
                   }}
                 >
                   Password *
@@ -322,7 +360,7 @@ function SignupForm() {
                     style={{
                       width: '100%',
                       padding: '12px 48px 12px 16px',
-                      border: '1px solid #ddd',
+                      border: '1px solid var(--color-border)',
                       borderRadius: '8px',
                       fontSize: '16px',
                       boxSizing: 'border-box',
@@ -340,7 +378,7 @@ function SignupForm() {
                       border: 'none',
                       cursor: 'pointer',
                       fontSize: '14px',
-                      color: '#666',
+                      color: 'var(--text-muted)',
                     }}
                   >
                     {showPassword ? 'Hide' : 'Show'}
@@ -353,7 +391,7 @@ function SignupForm() {
                     <div
                       style={{
                         height: '4px',
-                        background: '#eee',
+                        background: 'var(--color-border)',
                         borderRadius: '2px',
                         overflow: 'hidden',
                       }}
@@ -371,7 +409,7 @@ function SignupForm() {
                       style={{
                         marginTop: '8px',
                         fontSize: '12px',
-                        color: '#666',
+                        color: 'var(--text-muted)',
                       }}
                     >
                       <div
@@ -411,7 +449,7 @@ function SignupForm() {
                     marginBottom: '8px',
                     fontSize: '14px',
                     fontWeight: '500',
-                    color: '#333',
+                    color: 'var(--text-body)',
                   }}
                 >
                   Confirm Password *
@@ -429,7 +467,7 @@ function SignupForm() {
                   style={{
                     width: '100%',
                     padding: '12px 16px',
-                    border: `1px solid ${formData.confirmPassword && formData.password !== formData.confirmPassword ? '#dc3545' : '#ddd'}`,
+                    border: `1px solid ${formData.confirmPassword && formData.password !== formData.confirmPassword ? '#dc3545' : 'var(--color-border)'}`,
                     borderRadius: '8px',
                     fontSize: '16px',
                     boxSizing: 'border-box',
@@ -472,9 +510,9 @@ function SignupForm() {
                 gap: '16px',
               }}
             >
-              <div style={{ flex: 1, height: '1px', background: '#ddd' }} />
-              <span style={{ color: '#999', fontSize: '14px' }}>or</span>
-              <div style={{ flex: 1, height: '1px', background: '#ddd' }} />
+              <div style={{ flex: 1, height: '1px', background: 'var(--color-border)' }} />
+              <span style={{ color: 'var(--text-muted)', fontSize: '14px' }}>or</span>
+              <div style={{ flex: 1, height: '1px', background: 'var(--color-border)' }} />
             </div>
 
             {/* Google Sign Up - uses <a> intentionally for full page redirect to API route */}
@@ -488,9 +526,9 @@ function SignupForm() {
                 gap: '12px',
                 width: '100%',
                 padding: '14px 24px',
-                background: '#fff',
-                color: '#333',
-                border: '1px solid #ddd',
+                background: 'var(--color-surface)',
+                color: 'var(--text-body)',
+                border: '1px solid var(--color-border)',
                 borderRadius: '8px',
                 fontSize: '16px',
                 fontWeight: '500',
@@ -499,12 +537,12 @@ function SignupForm() {
                 transition: 'background 0.2s, border-color 0.2s',
               }}
               onMouseOver={e => {
-                e.currentTarget.style.background = '#f8f8f8';
-                e.currentTarget.style.borderColor = '#ccc';
+                e.currentTarget.style.background = 'var(--color-bg-main)';
+                e.currentTarget.style.borderColor = 'var(--text-muted)';
               }}
               onMouseOut={e => {
-                e.currentTarget.style.background = '#fff';
-                e.currentTarget.style.borderColor = '#ddd';
+                e.currentTarget.style.background = 'var(--color-surface)';
+                e.currentTarget.style.borderColor = 'var(--color-border)';
               }}
             >
               <svg width="20" height="20" viewBox="0 0 24 24">
@@ -569,11 +607,11 @@ function SignupForm() {
               style={{
                 marginTop: '32px',
                 paddingTop: '32px',
-                borderTop: '1px solid #eee',
+                borderTop: '1px solid var(--color-border)',
                 textAlign: 'center',
               }}
             >
-              <p style={{ fontSize: '14px', color: '#666' }}>
+              <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>
                 Already have an account?{' '}
                 <Link
                   href="/auth/signin"
@@ -592,7 +630,7 @@ function SignupForm() {
               <Link
                 href="/"
                 style={{
-                  color: '#999',
+                  color: 'var(--text-muted)',
                   textDecoration: 'none',
                   fontSize: '14px',
                 }}
@@ -611,8 +649,10 @@ export default function SignupPage() {
   return (
     <Suspense
       fallback={
-        <div style={{ minHeight: '100vh', background: '#f8f8f8' }}>
-          <div style={{ textAlign: 'center', padding: '100px 20px' }}>Loading...</div>
+        <div style={{ minHeight: '100vh', background: 'var(--color-bg-main)' }}>
+          <div style={{ textAlign: 'center', padding: '100px 20px', color: 'var(--text-body)' }}>
+            Loading...
+          </div>
         </div>
       }
     >

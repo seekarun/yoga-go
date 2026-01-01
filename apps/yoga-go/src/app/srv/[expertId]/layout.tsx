@@ -97,7 +97,10 @@ export default function ExpertDashboardLayout({ children }: { children: React.Re
   // Loading state while checking auth
   if (authChecking) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center pt-16">
+      <div
+        className="min-h-screen flex items-center justify-center pt-16"
+        style={{ background: 'var(--color-bg-main)' }}
+      >
         <LoadingSpinner size="lg" message="Verifying access..." />
       </div>
     );
@@ -109,12 +112,17 @@ export default function ExpertDashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-16">
+    <div
+      className="h-screen overflow-hidden flex flex-col pt-16"
+      style={{ background: 'var(--color-bg-main)' }}
+    >
       {/* Sidebar */}
       <ExpertSidebar expertId={expertId} />
 
-      {/* Main Content - offset by sidebar width */}
-      <div className={`transition-all duration-300 ${sidebarCollapsed ? 'ml-16' : 'ml-56'}`}>
+      {/* Main Content - offset by sidebar width, fills remaining height */}
+      <div
+        className={`flex-1 overflow-auto transition-all duration-300 ${sidebarCollapsed ? 'ml-16' : 'ml-56'}`}
+      >
         {children}
       </div>
     </div>

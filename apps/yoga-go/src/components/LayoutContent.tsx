@@ -15,6 +15,9 @@ const EXPERT_MINIMAL_ROUTES = ['/auth/signin', '/auth/signup'];
 // Route prefixes that render their own header/footer
 const CUSTOM_LAYOUT_PREFIXES = ['/experts/'];
 
+// Route prefixes that show header but not footer (dashboard pages with sidebar)
+const NO_FOOTER_PREFIXES = ['/srv/', '/app/', '/admn'];
+
 export default function LayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [isExpertDomain, setIsExpertDomain] = useState(false);
@@ -32,6 +35,9 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     MINIMAL_LAYOUT_ROUTES.includes(pathname) ||
     (isExpertDomain && EXPERT_MINIMAL_ROUTES.includes(pathname));
 
+  // Check if this route should hide footer (dashboard pages with sidebar)
+  const hideFooter = NO_FOOTER_PREFIXES.some(prefix => pathname.startsWith(prefix));
+
   if (isMinimalLayout) {
     return <main className="flex-1">{children}</main>;
   }
@@ -40,7 +46,7 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     <>
       <Header />
       <main className="flex-1">{children}</main>
-      <Footer />
+      {!hideFooter && <Footer />}
     </>
   );
 }

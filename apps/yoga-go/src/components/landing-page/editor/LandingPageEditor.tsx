@@ -629,7 +629,12 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
       </header>
 
       {/* Main Content - Single scrollable area */}
-      <div className="flex-1 overflow-auto" style={{ backgroundColor: '#808080' }}>
+      {/* Clicking on the grey background deselects sections */}
+      <div
+        className="flex-1 overflow-auto"
+        style={{ backgroundColor: '#808080' }}
+        onClick={() => handleSelectSection(null)}
+      >
         {/* Preview Header - Template, Color, Font controls */}
         <PreviewPane
           data={data}
@@ -642,14 +647,17 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
           renderLayout={(header, preview) => (
             <>
               {/* Header bar with controls - sticky at top, full width */}
-              <div className="sticky top-0 z-10 bg-white shadow-sm border-b border-gray-200 px-4 py-3">
+              <div
+                className="sticky top-0 z-10 bg-white shadow-sm border-b border-gray-200 px-4 py-3"
+                onClick={e => e.stopPropagation()}
+              >
                 {header}
               </div>
 
               {/* Side by side: Preview + Edit Panel */}
               <div className="flex gap-4 p-4">
                 {/* Landing Page Preview */}
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0" onClick={e => e.stopPropagation()}>
                   <div className="bg-white shadow-sm border border-gray-200 overflow-hidden">
                     {preview}
                   </div>
@@ -660,6 +668,7 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
                   <div
                     className="flex-shrink-0 self-start sticky top-16"
                     style={{ width: '380px' }}
+                    onClick={e => e.stopPropagation()}
                   >
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden max-h-[calc(100vh-180px)] flex flex-col">
                       {/* Edit Panel Content */}
@@ -685,7 +694,10 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
                 {!isEditPaneVisible && (
                   <div className="flex-shrink-0 self-start sticky top-16">
                     <button
-                      onClick={toggleEditPane}
+                      onClick={e => {
+                        e.stopPropagation();
+                        toggleEditPane();
+                      }}
                       className="flex items-center gap-2 px-4 py-3 bg-white rounded-xl shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors"
                       title="Show editor"
                     >

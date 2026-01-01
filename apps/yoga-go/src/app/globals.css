@@ -2,9 +2,26 @@
 
 /* Color Variables */
 :root {
-  --color-primary: #7a2900;
-  --color-primary-light: #fed094;
-  --color-highlight: #8f8e43;
+  /* Brand Colors */
+  --color-primary: #a35638; /* Terracotta (Buttons/CTAs) */
+  --color-primary-hover: #8b482e; /* Darkened Terracotta */
+  --color-secondary: #e08963; /* Soft Clay (Accents) */
+  --color-highlight: #7d8e74; /* Sage (Success/Growth indicators) */
+
+  /* Neutral Surfaces */
+  --color-bg-main: #fbf7f0; /* The "Page" background */
+  --color-surface: #ffffff; /* Card/Modal background */
+  --color-border: #e8e2d6; /* Subtle dividers */
+
+  /* Typography */
+  --text-main: #2d2621; /* Headings */
+  --text-body: #4a443f; /* Paragraphs */
+  --text-muted: #7d756d; /* Labels/Captions */
+}
+
+/* Default font - Outfit for main domain and /srv routes */
+body {
+  font-family: var(--font-outfit), 'Outfit', system-ui, sans-serif;
 }
 
 /* Custom animations */

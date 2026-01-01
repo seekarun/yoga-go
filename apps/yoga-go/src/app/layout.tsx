@@ -9,13 +9,15 @@ import { PostHogProvider } from '@/providers/PostHogProvider';
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata } from 'next';
 import { SessionProvider } from 'next-auth/react';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Outfit, Geist_Mono } from 'next/font/google';
 import { headers } from 'next/headers';
 import './globals.css';
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
+const outfit = Outfit({
+  variable: '--font-outfit',
   subsets: ['latin'],
+  display: 'swap',
+  weight: ['100', '200', '300', '400', '500', '600', '700', '800', '900'],
 });
 
 const geistMono = Geist_Mono({
@@ -100,7 +102,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
+        className={`${outfit.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
+        style={{ fontFamily: 'var(--font-outfit), sans-serif' }}
       >
         <SessionProvider>
           <AuthProvider>

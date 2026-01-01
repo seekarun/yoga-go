@@ -297,6 +297,7 @@ export default function PreviewPane({
     const section = sectionRegistry[sectionId as SectionType];
     const isSelected = selectedSection === sectionId;
     const isDisabled = disabledSections.includes(sectionId as SectionType);
+    const hasSelection = selectedSection !== null;
 
     return (
       <SectionWrapper
@@ -305,6 +306,7 @@ export default function PreviewPane({
         label={section?.label || sectionId}
         isSelected={isSelected}
         isDisabled={isDisabled}
+        hasSelection={hasSelection}
         onClick={() => onSelectSection(sectionId as SectionType)}
       >
         {content}
