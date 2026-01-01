@@ -10,13 +10,7 @@
  * - SK: emailId
  */
 
-import {
-  GetCommand,
-  PutCommand,
-  UpdateCommand,
-  QueryCommand,
-  DeleteCommand,
-} from '@aws-sdk/lib-dynamodb';
+import { GetCommand, PutCommand, UpdateCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { docClient, Tables, EmailsPK } from '../dynamodb';
 import type { Email, EmailAttachment, EmailAddress, EmailListResult, EmailFilters } from '@/types';
 
@@ -86,7 +80,7 @@ export async function createEmail(input: CreateEmailInput): Promise<Email> {
     bodyHtml: input.bodyHtml,
     attachments: input.attachments,
     receivedAt: input.receivedAt,
-    isRead: false,
+    isRead: input.isOutgoing ?? false, // Outgoing emails are always "read"
     isStarred: false,
     isOutgoing: input.isOutgoing ?? false,
     status: input.status ?? 'received',
@@ -137,8 +131,10 @@ export async function getEmailsByExpert(
     new QueryCommand({
       TableName: Tables.EMAILS,
       KeyConditionExpression: 'PK = :pk',
+      FilterExpression: 'attribute_not_exists(isDeleted) OR isDeleted = :false',
       ExpressionAttributeValues: {
         ':pk': EmailsPK.INBOX(expertId),
+        ':false': false,
       },
       ScanIndexForward: false, // Most recent first
       Limit: limit,
@@ -223,10 +219,11 @@ export async function findEmailById(emailId: string, expertId: string): Promise<
     new QueryCommand({
       TableName: Tables.EMAILS,
       KeyConditionExpression: 'PK = :pk',
-      FilterExpression: 'id = :emailId',
+      FilterExpression: 'id = :emailId AND (attribute_not_exists(isDeleted) OR isDeleted = :false)',
       ExpressionAttributeValues: {
         ':pk': EmailsPK.INBOX(expertId),
         ':emailId': emailId,
+        ':false': false,
       },
     })
   );
@@ -293,6 +290,52 @@ export async function updateEmailStatus(
 }
 
 /**
+ * Update email threadId to start or join a thread
+ */
+export async function updateEmailThreadId(
+  emailId: string,
+  expertId: string,
+  threadId: string
+): Promise<Email | null> {
+  console.log('[DBG][emailRepository] Updating email threadId:', emailId, '->', threadId);
+
+  // First find the email to get its receivedAt for the SK
+  const email = await findEmailById(emailId, expertId);
+  if (!email) {
+    console.log('[DBG][emailRepository] Email not found for threadId update');
+    return null;
+  }
+
+  const result = await docClient.send(
+    new UpdateCommand({
+      TableName: Tables.EMAILS,
+      Key: {
+        PK: EmailsPK.INBOX(expertId),
+        SK: `${email.receivedAt}#${emailId}`,
+      },
+      UpdateExpression: 'SET #threadId = :threadId, #updatedAt = :updatedAt',
+      ExpressionAttributeNames: {
+        '#threadId': 'threadId',
+        '#updatedAt': 'updatedAt',
+      },
+      ExpressionAttributeValues: {
+        ':threadId': threadId,
+        ':updatedAt': new Date().toISOString(),
+      },
+      ReturnValues: 'ALL_NEW',
+    })
+  );
+
+  if (!result.Attributes) {
+    console.log('[DBG][emailRepository] Email not found for threadId update');
+    return null;
+  }
+
+  console.log('[DBG][emailRepository] Updated email threadId:', emailId);
+  return toEmail(result.Attributes as DynamoDBEmailItem);
+}
+
+/**
  * Get all emails in a thread
  */
 export async function getEmailThread(threadId: string): Promise<Email[]> {
@@ -340,10 +383,12 @@ export async function getUnreadCount(expertId: string): Promise<number> {
     new QueryCommand({
       TableName: Tables.EMAILS,
       KeyConditionExpression: 'PK = :pk',
-      FilterExpression: 'isRead = :isRead',
+      FilterExpression:
+        'isRead = :isRead AND (attribute_not_exists(isDeleted) OR isDeleted = :false)',
       ExpressionAttributeValues: {
         ':pk': EmailsPK.INBOX(expertId),
         ':isRead': false,
+        ':false': false,
       },
       Select: 'COUNT',
     })
@@ -355,8 +400,8 @@ export async function getUnreadCount(expertId: string): Promise<number> {
 }
 
 /**
- * Delete an email by ID
- * Also removes from thread grouping if applicable
+ * Soft delete an email by ID
+ * Sets isDeleted flag and TTL for auto-cleanup after 90 days
  */
 export async function deleteEmail(
   emailId: string,
@@ -364,33 +409,66 @@ export async function deleteEmail(
   receivedAt: string,
   threadId?: string
 ): Promise<boolean> {
-  console.log('[DBG][emailRepository] Deleting email:', emailId);
+  console.log('[DBG][emailRepository] Soft deleting email:', emailId);
 
-  // Delete from inbox
+  const now = new Date();
+  const deletedAt = now.toISOString();
+  // TTL: 90 days from now (Unix timestamp in seconds)
+  const ttl = Math.floor(now.getTime() / 1000) + 90 * 24 * 60 * 60;
+
+  // Soft delete - mark as deleted with TTL
   await docClient.send(
-    new DeleteCommand({
+    new UpdateCommand({
       TableName: Tables.EMAILS,
       Key: {
         PK: EmailsPK.INBOX(expertId),
         SK: `${receivedAt}#${emailId}`,
       },
+      UpdateExpression:
+        'SET #isDeleted = :isDeleted, #deletedAt = :deletedAt, #ttl = :ttl, #updatedAt = :updatedAt',
+      ExpressionAttributeNames: {
+        '#isDeleted': 'isDeleted',
+        '#deletedAt': 'deletedAt',
+        '#ttl': 'ttl',
+        '#updatedAt': 'updatedAt',
+      },
+      ExpressionAttributeValues: {
+        ':isDeleted': true,
+        ':deletedAt': deletedAt,
+        ':ttl': ttl,
+        ':updatedAt': deletedAt,
+      },
     })
   );
 
-  // If part of a thread, also delete from thread grouping
+  // If part of a thread, also mark thread reference for deletion
   if (threadId) {
     await docClient.send(
-      new DeleteCommand({
+      new UpdateCommand({
         TableName: Tables.EMAILS,
         Key: {
           PK: EmailsPK.THREAD(threadId),
           SK: emailId,
         },
+        UpdateExpression: 'SET #isDeleted = :isDeleted, #ttl = :ttl',
+        ExpressionAttributeNames: {
+          '#isDeleted': 'isDeleted',
+          '#ttl': 'ttl',
+        },
+        ExpressionAttributeValues: {
+          ':isDeleted': true,
+          ':ttl': ttl,
+        },
       })
     );
-    console.log('[DBG][emailRepository] Deleted from thread:', threadId);
+    console.log('[DBG][emailRepository] Marked thread reference as deleted:', threadId);
   }
 
-  console.log('[DBG][emailRepository] Deleted email:', emailId);
+  console.log(
+    '[DBG][emailRepository] Soft deleted email:',
+    emailId,
+    'TTL:',
+    new Date(ttl * 1000).toISOString()
+  );
   return true;
 }

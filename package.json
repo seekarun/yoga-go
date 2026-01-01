@@ -36,7 +36,11 @@
     "infra:deploy:app-two": "cd infra && npx cdk deploy AppTwoStack --profile myg",
     "infra:deploy:calel": "cd infra && npx cdk deploy CalelStack --profile myg",
     "infra:diff": "cd infra && npx cdk diff --profile myg",
-    "infra:destroy": "cd infra && npx cdk destroy --profile myg"
+    "infra:destroy": "cd infra && npx cdk destroy --profile myg",
+    "mobile:start": "npm run start -w yoga-mobile",
+    "mobile:ios": "npm run ios -w yoga-mobile",
+    "mobile:android": "npm run android -w yoga-mobile",
+    "mobile:typecheck": "npm run typecheck -w yoga-mobile"
   },
   "lint-staged": {
     "apps/**/*.{js,jsx,ts,tsx,json,css,md}": [

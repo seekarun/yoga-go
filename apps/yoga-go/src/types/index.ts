@@ -1361,11 +1361,22 @@ export interface Email extends BaseEntity {
   isOutgoing: boolean; // true for replies sent by expert
   status: 'received' | 'sent' | 'failed';
   errorMessage?: string; // If status is 'failed'
+  isDeleted?: boolean; // Soft delete flag
+  deletedAt?: string; // ISO timestamp of deletion
+  ttl?: number; // Unix timestamp (seconds) for DynamoDB TTL auto-deletion
+}
+
+// Email with thread metadata (for inbox list view)
+export interface EmailWithThread extends Email {
+  threadCount?: number; // Total messages in thread (if this is thread root)
+  threadHasUnread?: boolean; // Any unread messages in thread
+  threadLatestAt?: string; // Timestamp of latest message in thread
+  threadMessages?: Email[]; // All messages in thread (when expanded)
 }
 
 // Paginated email list result
 export interface EmailListResult {
-  emails: Email[];
+  emails: EmailWithThread[];
   totalCount: number;
   unreadCount: number;
   lastKey?: string; // For pagination

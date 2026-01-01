@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
-import type { Email } from '@/types';
+import type { EmailWithThread } from '@/types';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
 type FilterType = 'all' | 'unread' | 'starred';
@@ -12,7 +11,7 @@ export default function InboxPage() {
   const params = useParams();
   const router = useRouter();
   const expertId = params.expertId as string;
-  const [emails, setEmails] = useState<Email[]>([]);
+  const [emails, setEmails] = useState<EmailWithThread[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterType>('all');
@@ -82,9 +81,9 @@ export default function InboxPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter, searchQuery]);
 
-  const handleEmailClick = async (email: Email) => {
-    // Mark as read if not already read
-    if (!email.isRead) {
+  const handleEmailClick = async (email: EmailWithThread) => {
+    // Mark as read if not already read (and not outgoing)
+    if (!email.isRead && !email.isOutgoing) {
       try {
         await fetch(`/data/app/expert/me/inbox/${email.id}`, {
           method: 'PATCH',
@@ -100,7 +99,7 @@ export default function InboxPage() {
     router.push(`/srv/${expertId}/inbox/${email.id}`);
   };
 
-  const handleToggleStar = async (e: React.MouseEvent, email: Email) => {
+  const handleToggleStar = async (e: React.MouseEvent, email: EmailWithThread) => {
     e.stopPropagation();
     try {
       await fetch(`/data/app/expert/me/inbox/${email.id}`, {
@@ -113,6 +112,30 @@ export default function InboxPage() {
       );
     } catch (err) {
       console.log('[DBG][inbox] Failed to toggle star:', err);
+    }
+  };
+
+  const handleDelete = async (e: React.MouseEvent, email: EmailWithThread) => {
+    e.stopPropagation();
+    if (!confirm('Are you sure you want to delete this email?')) {
+      return;
+    }
+    try {
+      const response = await fetch(`/data/app/expert/me/inbox/${email.id}`, {
+        method: 'DELETE',
+      });
+      const data = await response.json();
+      if (data.success) {
+        setEmails(prev => prev.filter(em => em.id !== email.id));
+        if (!email.isRead && !email.isOutgoing) {
+          setUnreadCount(prev => Math.max(0, prev - 1));
+        }
+      } else {
+        alert('Failed to delete email');
+      }
+    } catch (err) {
+      console.log('[DBG][inbox] Failed to delete email:', err);
+      alert('Failed to delete email');
     }
   };
 
@@ -236,74 +259,52 @@ export default function InboxPage() {
                   </p>
                 </div>
               ) : (
-                emails.map(email => (
-                  <div
-                    key={email.id}
-                    onClick={() => handleEmailClick(email)}
-                    className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
-                      !email.isRead ? 'bg-blue-50' : ''
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      {/* Star Button */}
-                      <button
-                        onClick={e => handleToggleStar(e, email)}
-                        className="flex-shrink-0 mt-0.5"
-                      >
-                        <svg
-                          className={`w-5 h-5 ${
-                            email.isStarred ? 'text-yellow-400 fill-current' : 'text-gray-300'
-                          }`}
-                          fill={email.isStarred ? 'currentColor' : 'none'}
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
-                          />
-                        </svg>
-                      </button>
+                emails.map(email => {
+                  // Use thread-aware display values
+                  const hasUnread = email.threadHasUnread || (!email.isRead && !email.isOutgoing);
+                  const displayDate = email.threadLatestAt || email.receivedAt;
+                  const isThread = email.threadCount && email.threadCount > 1;
 
-                      {/* Email Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <p
-                            className={`text-sm truncate ${
-                              !email.isRead ? 'font-semibold text-gray-900' : 'text-gray-700'
-                            }`}
+                  return (
+                    <div
+                      key={email.id}
+                      onClick={() => handleEmailClick(email)}
+                      className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
+                        hasUnread ? 'bg-blue-50' : ''
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        {/* Action Buttons */}
+                        <div className="flex flex-col gap-1 flex-shrink-0 mt-0.5">
+                          {/* Star Button */}
+                          <button
+                            onClick={e => handleToggleStar(e, email)}
+                            title={email.isStarred ? 'Unstar' : 'Star'}
                           >
-                            {email.isOutgoing ? (
-                              <>
-                                <span className="text-gray-400">To: </span>
-                                {email.to[0]?.name || email.to[0]?.email}
-                              </>
-                            ) : (
-                              email.from.name || email.from.email
-                            )}
-                          </p>
-                          <span className="text-xs text-gray-500 flex-shrink-0">
-                            {formatDate(email.receivedAt)}
-                          </span>
-                        </div>
-                        <p
-                          className={`text-sm mt-0.5 truncate ${
-                            !email.isRead ? 'font-medium text-gray-800' : 'text-gray-600'
-                          }`}
-                        >
-                          {email.subject || '(no subject)'}
-                        </p>
-                        <p className="text-sm text-gray-500 mt-0.5 truncate">
-                          {email.bodyText?.substring(0, 100) || '(no content)'}
-                        </p>
-
-                        {/* Attachments indicator */}
-                        {email.attachments && email.attachments.length > 0 && (
-                          <div className="flex items-center gap-1 mt-1.5">
                             <svg
-                              className="w-4 h-4 text-gray-400"
+                              className={`w-5 h-5 ${
+                                email.isStarred ? 'text-yellow-400 fill-current' : 'text-gray-300'
+                              }`}
+                              fill={email.isStarred ? 'currentColor' : 'none'}
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
+                              />
+                            </svg>
+                          </button>
+                          {/* Delete Button */}
+                          <button
+                            onClick={e => handleDelete(e, email)}
+                            className="text-gray-300 hover:text-red-500 transition-colors"
+                            title="Delete"
+                          >
+                            <svg
+                              className="w-5 h-5"
                               fill="none"
                               stroke="currentColor"
                               viewBox="0 0 24 24"
@@ -312,19 +313,79 @@ export default function InboxPage() {
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 strokeWidth={2}
-                                d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                               />
                             </svg>
-                            <span className="text-xs text-gray-500">
-                              {email.attachments.length} attachment
-                              {email.attachments.length !== 1 ? 's' : ''}
+                          </button>
+                        </div>
+
+                        {/* Email Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <p
+                                className={`text-sm truncate ${
+                                  hasUnread ? 'font-semibold text-gray-900' : 'text-gray-700'
+                                }`}
+                              >
+                                {email.isOutgoing ? (
+                                  <>
+                                    <span className="text-gray-400">To: </span>
+                                    {email.to[0]?.name || email.to[0]?.email}
+                                  </>
+                                ) : (
+                                  email.from.name || email.from.email
+                                )}
+                              </p>
+                              {/* Thread count badge */}
+                              {isThread && (
+                                <span className="flex-shrink-0 px-1.5 py-0.5 text-xs font-medium bg-gray-200 text-gray-600 rounded">
+                                  {email.threadCount}
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-xs text-gray-500 flex-shrink-0">
+                              {formatDate(displayDate)}
                             </span>
                           </div>
-                        )}
+                          <p
+                            className={`text-sm mt-0.5 truncate ${
+                              hasUnread ? 'font-medium text-gray-800' : 'text-gray-600'
+                            }`}
+                          >
+                            {email.subject || '(no subject)'}
+                          </p>
+                          <p className="text-sm text-gray-500 mt-0.5 truncate">
+                            {email.bodyText?.substring(0, 100) || '(no content)'}
+                          </p>
+
+                          {/* Attachments indicator */}
+                          {email.attachments && email.attachments.length > 0 && (
+                            <div className="flex items-center gap-1 mt-1.5">
+                              <svg
+                                className="w-4 h-4 text-gray-400"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                                />
+                              </svg>
+                              <span className="text-xs text-gray-500">
+                                {email.attachments.length} attachment
+                                {email.attachments.length !== 1 ? 's' : ''}
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
 

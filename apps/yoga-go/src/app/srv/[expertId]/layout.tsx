@@ -8,7 +8,7 @@ import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
 // Routes that have their own header and don't need the layout header
-const routesWithOwnHeader: string[] = [];
+const routesWithOwnHeader: string[] = ['/settings/domain', '/settings/email'];
 
 // Route to header mapping
 const getHeaderInfo = (

@@ -103,7 +103,8 @@
       "Bash(npx tsx scripts/create-template.ts classic-dark)",
       "Bash(AWS_PROFILE=myg npx cdk synth:*)",
       "WebFetch(domain:developers.debounce.io)",
-      "WebFetch(domain:developers.debounce.com)"
+      "WebFetch(domain:developers.debounce.com)",
+      "Bash(AWS_PROFILE=myg aws cloudformation describe-stacks:*)"
     ],
     "deny": [],
     "ask": []

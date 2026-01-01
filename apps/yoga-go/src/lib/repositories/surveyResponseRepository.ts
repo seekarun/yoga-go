@@ -370,6 +370,7 @@ function mapToSurveyResponse(item: Record<string, unknown>): SurveyResponse {
     answers: (item.answers || []) as SurveyResponse['answers'],
     submittedAt: item.submittedAt as string,
     metadata: item.metadata as SurveyResponse['metadata'] | undefined,
+    validation: item.validation as SurveyResponse['validation'] | undefined,
     createdAt: item.createdAt as string,
     updatedAt: item.updatedAt as string,
   };

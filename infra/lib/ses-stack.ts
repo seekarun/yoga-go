@@ -233,11 +233,11 @@ The MyYoga.Guru Team`,
     );
 
     // DynamoDB Emails table access (cross-region)
-    // Write: store parsed email metadata for inbox feature
+    // Read/Write: store parsed email metadata for inbox feature, query for threading
     emailForwarderLambda.addToRolePolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        actions: ["dynamodb:PutItem"],
+        actions: ["dynamodb:PutItem", "dynamodb:Query", "dynamodb:UpdateItem"],
         resources: [emailsTableArn],
       })
     );

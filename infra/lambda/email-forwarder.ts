@@ -5,6 +5,7 @@ import {
   QueryCommand,
   GetItemCommand,
   PutItemCommand,
+  UpdateItemCommand,
 } from "@aws-sdk/client-dynamodb";
 import { simpleParser } from "mailparser";
 import type { SESEvent, SESEventRecord } from "aws-lambda";
@@ -157,7 +158,7 @@ async function getTenantByDomain(domain: string): Promise<TenantData | null> {
 
 /**
  * Get expert data from DynamoDB
- * Key pattern: PK = "TENANT", SK = expertId
+ * Key pattern: PK = "TENANT#{expertId}", SK = "META"
  */
 async function getExpert(expertId: string): Promise<ExpertData | null> {
   console.log(`[DBG][email-forwarder] Looking up expert: ${expertId}`);
@@ -166,8 +167,8 @@ async function getExpert(expertId: string): Promise<ExpertData | null> {
     new GetItemCommand({
       TableName: TABLE_NAME,
       Key: {
-        PK: { S: "TENANT" },
-        SK: { S: expertId },
+        PK: { S: `TENANT#${expertId}` },
+        SK: { S: "META" },
       },
     }),
   );
@@ -313,6 +314,80 @@ async function parseEmailMime(
   };
 }
 
+// Email record from DynamoDB for threading
+interface EmailRecord {
+  id: string;
+  messageId: string;
+  threadId?: string;
+  receivedAt: string;
+}
+
+/**
+ * Find email by messageId using GSI2 (messageId index)
+ * Returns the email record if found for threading purposes
+ */
+async function findEmailByMessageId(
+  expertId: string,
+  messageId: string,
+): Promise<EmailRecord | null> {
+  console.log(`[DBG][email-forwarder] Looking up email by messageId: ${messageId}`);
+
+  // Query the inbox for this expert and filter by messageId
+  const result = await dynamodb.send(
+    new QueryCommand({
+      TableName: EMAILS_TABLE_NAME,
+      KeyConditionExpression: "PK = :pk",
+      FilterExpression: "messageId = :messageId",
+      ExpressionAttributeValues: {
+        ":pk": { S: `INBOX#${expertId}` },
+        ":messageId": { S: messageId },
+      },
+    }),
+  );
+
+  if (!result.Items || result.Items.length === 0) {
+    console.log(`[DBG][email-forwarder] Email not found by messageId`);
+    return null;
+  }
+
+  const item = result.Items[0];
+  return {
+    id: item.id?.S || "",
+    messageId: item.messageId?.S || "",
+    threadId: item.threadId?.S,
+    receivedAt: item.receivedAt?.S || "",
+  };
+}
+
+/**
+ * Update email threadId to start or join a thread
+ */
+async function updateEmailThreadId(
+  expertId: string,
+  emailId: string,
+  receivedAt: string,
+  threadId: string,
+): Promise<void> {
+  console.log(`[DBG][email-forwarder] Updating threadId for email: ${emailId} -> ${threadId}`);
+
+  await dynamodb.send(
+    new UpdateItemCommand({
+      TableName: EMAILS_TABLE_NAME,
+      Key: {
+        PK: { S: `INBOX#${expertId}` },
+        SK: { S: `${receivedAt}#${emailId}` },
+      },
+      UpdateExpression: "SET threadId = :threadId, updatedAt = :updatedAt",
+      ExpressionAttributeValues: {
+        ":threadId": { S: threadId },
+        ":updatedAt": { S: new Date().toISOString() },
+      },
+    }),
+  );
+
+  console.log(`[DBG][email-forwarder] Updated threadId for email: ${emailId}`);
+}
+
 /**
  * Store email metadata in DynamoDB for inbox feature
  */
@@ -328,6 +403,35 @@ async function storeEmailToInbox(
   // Use INBOX#{expertId} pattern to match email repository schema
   const pk = `INBOX#${expertId}`;
   const sk = `${receivedAt}#${emailId}`;
+
+  // Handle threading - if this is a reply, link to the thread
+  let threadId: string | undefined;
+
+  if (parsedEmail.inReplyTo) {
+    console.log(`[DBG][email-forwarder] Email is a reply to: ${parsedEmail.inReplyTo}`);
+
+    // Look up the email being replied to
+    const originalEmail = await findEmailByMessageId(expertId, parsedEmail.inReplyTo);
+
+    if (originalEmail) {
+      // Use original's threadId, or original's id if no thread exists yet
+      threadId = originalEmail.threadId || originalEmail.id;
+      console.log(`[DBG][email-forwarder] Joining thread: ${threadId}`);
+
+      // If original email didn't have a threadId, update it to start the thread
+      if (!originalEmail.threadId) {
+        console.log(`[DBG][email-forwarder] Starting new thread with original email`);
+        await updateEmailThreadId(
+          expertId,
+          originalEmail.id,
+          originalEmail.receivedAt,
+          threadId,
+        );
+      }
+    } else {
+      console.log(`[DBG][email-forwarder] Original email not found, cannot link thread`);
+    }
+  }
 
   // Convert attachments to DynamoDB format
   const attachmentsList = parsedEmail.attachments.map((att) => ({
@@ -385,11 +489,12 @@ async function storeEmailToInbox(
         createdAt: { S: now },
         updatedAt: { S: now },
         ...(parsedEmail.inReplyTo ? { inReplyTo: { S: parsedEmail.inReplyTo } } : {}),
+        ...(threadId ? { threadId: { S: threadId } } : {}),
       },
     }),
   );
 
-  console.log(`[DBG][email-forwarder] Email stored to inbox: ${emailId}`);
+  console.log(`[DBG][email-forwarder] Email stored to inbox: ${emailId}${threadId ? ` (thread: ${threadId})` : ""}`);
 }
 
 /**

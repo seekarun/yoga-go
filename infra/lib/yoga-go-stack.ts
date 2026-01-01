@@ -685,6 +685,7 @@ The MyYoga.Guru Team`,
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
       pointInTimeRecovery: false,
+      timeToLiveAttribute: "ttl", // Auto-delete soft-deleted emails after 90 days
     });
 
     // GSI1: Query unread emails efficiently

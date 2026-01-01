@@ -6,7 +6,11 @@
 import { NextResponse } from 'next/server';
 import { getSessionFromCookies } from '@/lib/auth';
 import { getUserByCognitoSub } from '@/lib/repositories/userRepository';
-import { findEmailById, createEmail } from '@/lib/repositories/emailRepository';
+import {
+  findEmailById,
+  createEmail,
+  updateEmailThreadId,
+} from '@/lib/repositories/emailRepository';
 import { sendReplyEmail } from '@/lib/email';
 import type { ApiResponse, Email } from '@/types';
 
@@ -105,11 +109,20 @@ export async function POST(request: Request, { params }: RouteParams) {
     const now = new Date().toISOString();
     const newEmailId = `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
+    // Determine threadId - use original's threadId, or original's id if no thread exists yet
+    const threadId = originalEmail.threadId || originalEmail.id;
+
+    // If original email didn't have a threadId, update it to start the thread
+    if (!originalEmail.threadId) {
+      console.log('[DBG][inbox/reply] Starting new thread with id:', threadId);
+      await updateEmailThreadId(originalEmail.id, user.expertProfile, threadId);
+    }
+
     const outgoingEmail = await createEmail({
       id: newEmailId,
       expertId: user.expertProfile,
       messageId: messageId,
-      threadId: originalEmail.threadId,
+      threadId: threadId,
       inReplyTo: originalEmail.messageId,
       from: {
         email: `${user.expertProfile}@myyoga.guru`, // Will be replaced with actual from

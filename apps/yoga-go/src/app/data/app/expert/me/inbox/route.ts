@@ -7,7 +7,69 @@ import { NextResponse } from 'next/server';
 import { getSessionFromCookies } from '@/lib/auth';
 import { getUserByCognitoSub } from '@/lib/repositories/userRepository';
 import { getEmailsByExpert, getUnreadCount } from '@/lib/repositories/emailRepository';
-import type { ApiResponse, EmailListResult, EmailFilters } from '@/types';
+import type { ApiResponse, EmailListResult, EmailFilters, Email, EmailWithThread } from '@/types';
+
+/**
+ * Group emails by thread, returning thread roots with metadata
+ */
+function groupEmailsByThread(emails: Email[]): EmailWithThread[] {
+  // Separate emails into threads and standalone
+  const threadMap = new Map<string, Email[]>();
+  const standalone: Email[] = [];
+
+  for (const email of emails) {
+    if (email.threadId) {
+      const existing = threadMap.get(email.threadId) || [];
+      existing.push(email);
+      threadMap.set(email.threadId, existing);
+    } else {
+      standalone.push(email);
+    }
+  }
+
+  // Process threads - find root and add metadata
+  const threadRoots: EmailWithThread[] = [];
+
+  for (const [threadId, threadEmails] of threadMap) {
+    // Sort by receivedAt (oldest first for thread display)
+    threadEmails.sort(
+      (a, b) => new Date(a.receivedAt).getTime() - new Date(b.receivedAt).getTime()
+    );
+
+    // Thread root is the email whose id matches threadId
+    const root = threadEmails.find(e => e.id === threadId);
+
+    if (root) {
+      // Calculate thread metadata
+      const threadCount = threadEmails.length;
+      const threadHasUnread = threadEmails.some(e => !e.isRead && !e.isOutgoing);
+      const latestEmail = threadEmails[threadEmails.length - 1];
+
+      threadRoots.push({
+        ...root,
+        threadCount,
+        threadHasUnread,
+        threadLatestAt: latestEmail.receivedAt,
+        threadMessages: threadEmails,
+      });
+    } else {
+      // No root found (shouldn't happen), add all as standalone
+      for (const email of threadEmails) {
+        standalone.push(email);
+      }
+    }
+  }
+
+  // Combine and sort by latest activity (thread latest or standalone receivedAt)
+  const result: EmailWithThread[] = [...threadRoots, ...standalone];
+  result.sort((a, b) => {
+    const aTime = new Date(a.threadLatestAt || a.receivedAt).getTime();
+    const bTime = new Date(b.threadLatestAt || b.receivedAt).getTime();
+    return bTime - aTime; // Most recent first
+  });
+
+  return result;
+}
 
 export async function GET(request: Request) {
   try {
@@ -62,9 +124,12 @@ export async function GET(request: Request) {
     // Get total unread count (separate from filtered results)
     const totalUnreadCount = await getUnreadCount(user.expertProfile);
 
+    // Group emails by thread
+    const groupedEmails = groupEmailsByThread(result.emails);
+
     const response: EmailListResult = {
-      emails: result.emails,
-      totalCount: result.totalCount,
+      emails: groupedEmails,
+      totalCount: groupedEmails.length, // Count threads, not individual emails
       unreadCount: totalUnreadCount,
       lastKey: result.lastKey,
     };
@@ -72,7 +137,9 @@ export async function GET(request: Request) {
     console.log(
       '[DBG][expert/me/inbox] Found',
       result.emails.length,
-      'emails, unread:',
+      'emails in',
+      groupedEmails.length,
+      'threads/items, unread:',
       totalUnreadCount
     );
 
