@@ -115,10 +115,21 @@ export class YogaGoStack extends cdk.Stack {
       "cognitoCertificateArn",
     );
 
-    // Use placeholder during synthesis if not provided - will fail at deploy time with clear error
-    const certificateArn =
-      cognitoCertificateArn ||
-      `arn:aws:acm:us-east-1:${this.account}:certificate/PLACEHOLDER-DEPLOY-COGNITO-CERT-STACK-FIRST`;
+    // Fail early if certificate ARN is not provided
+    if (!cognitoCertificateArn) {
+      throw new Error(
+        `Missing required context parameter: cognitoCertificateArn
+
+Deploy with: npx cdk deploy YogaGoStack -c cognitoCertificateArn=arn:aws:acm:us-east-1:ACCOUNT:certificate/CERT-ID
+
+To get the certificate ARN:
+1. Deploy CognitoCertStack first: npx cdk deploy CognitoCertStack
+2. Validate the certificate in ACM (add DNS CNAME to Vercel)
+3. Copy the certificate ARN from ACM console or stack output`,
+      );
+    }
+
+    const certificateArn = cognitoCertificateArn;
 
     const certificate = acm.Certificate.fromCertificateArn(
       this,
