@@ -175,21 +175,7 @@ export default function ExpertRecordingsPage() {
 
   return (
     <>
-      {/* Header */}
-      <div className="bg-white shadow">
-        <div className="px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Recordings</h1>
-              <p className="text-sm text-gray-500 mt-1">
-                Imported recordings from Zoom and Google Meet
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="px-6 lg:px-8 py-8">
+      <div className="px-6 lg:px-8 py-6">
         {error && (
           <div
             style={{

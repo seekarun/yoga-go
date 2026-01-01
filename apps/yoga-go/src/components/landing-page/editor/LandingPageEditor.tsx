@@ -475,45 +475,41 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
 
   return (
     <div className="h-[calc(100vh-64px)] flex flex-col bg-gray-100">
-      {/* Header */}
-      <header className="flex-shrink-0 bg-white border-b border-gray-200 shadow px-6 py-4 relative z-40">
-        <div className="flex items-center gap-4">
-          {/* Title */}
-          <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-semibold text-gray-900">Landing Page</h1>
-            <p className="text-sm text-gray-500 flex items-center gap-2">
-              {expert.name}
-              {saving ? (
-                <span className="flex items-center gap-1 text-gray-400">
-                  <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                      fill="none"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                  Saving...
-                </span>
-              ) : isDirty ? (
-                <span className="text-amber-600">• Unsaved</span>
-              ) : (
-                <span
-                  className="text-green-600 transition-opacity duration-500"
-                  style={{ opacity: showSavedIndicator ? 1 : 0 }}
-                >
-                  ✓ Saved
-                </span>
-              )}
-            </p>
+      {/* Toolbar */}
+      <div className="flex-shrink-0 bg-gray-50 border-b border-gray-200 relative z-40">
+        <div className="px-6 lg:px-8 py-3 flex items-center gap-4">
+          {/* Status indicator */}
+          <div className="flex-1 min-w-0 text-sm text-gray-500 flex items-center gap-2">
+            {saving ? (
+              <span className="flex items-center gap-1 text-gray-400">
+                <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    fill="none"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+                Saving...
+              </span>
+            ) : isDirty ? (
+              <span className="text-amber-600">• Unsaved changes</span>
+            ) : (
+              <span
+                className="text-green-600 transition-opacity duration-500"
+                style={{ opacity: showSavedIndicator ? 1 : 0 }}
+              >
+                ✓ Saved
+              </span>
+            )}
           </div>
 
           {/* Discard Changes Button - only show if there are unpublished changes and page has been published before */}
@@ -611,7 +607,7 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
 
         {/* Error Banner */}
         {error && (
-          <div className="mt-4 px-4 py-3 bg-red-50 border border-red-200 text-red-800 rounded-lg">
+          <div className="mx-6 lg:mx-8 mt-3 px-4 py-3 bg-red-50 border border-red-200 text-red-800 rounded-lg">
             <div className="flex items-center justify-between">
               <p className="text-sm">{error}</p>
               <button
@@ -626,7 +622,7 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
             </div>
           </div>
         )}
-      </header>
+      </div>
 
       {/* Main Content - Single scrollable area */}
       {/* Clicking on the grey background deselects sections */}

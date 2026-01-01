@@ -1,19 +1,72 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, usePathname } from 'next/navigation';
 import type { User } from '@/types';
 import ExpertSidebar from '@/components/dashboard/ExpertSidebar';
+import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import LoadingSpinner from '@/components/LoadingSpinner';
+
+// Routes that have their own header and don't need the layout header
+const routesWithOwnHeader: string[] = [];
+
+// Route to header mapping
+const getHeaderInfo = (
+  pathname: string,
+  expertId: string
+): { title: string; subtitle?: string } | null => {
+  const basePath = `/srv/${expertId}`;
+  const relativePath = pathname.replace(basePath, '') || '/';
+
+  // Check if this route has its own header
+  for (const route of routesWithOwnHeader) {
+    if (relativePath === route || relativePath.startsWith(route + '/')) {
+      return null; // Don't show layout header
+    }
+  }
+
+  const headers: Record<string, { title: string; subtitle?: string }> = {
+    '/': { title: 'Dashboard', subtitle: 'Overview of your expert space' },
+    '/inbox': { title: 'Inbox', subtitle: 'Messages from students' },
+    '/users': { title: 'Users', subtitle: 'Users signed up via your space' },
+    '/courses': { title: 'My Courses', subtitle: 'Manage your courses' },
+    '/webinars': { title: 'Live Sessions', subtitle: 'Manage your live sessions' },
+    '/blog': { title: 'Blog', subtitle: 'Manage your blog posts' },
+    '/assets': { title: 'Assets', subtitle: 'Manage your images and videos' },
+    '/survey': { title: 'Surveys', subtitle: 'Create and manage surveys' },
+    '/analytics': { title: 'Analytics', subtitle: 'Track your performance' },
+    '/settings': { title: 'Integrations', subtitle: 'Connect payment and other services' },
+    '/preferences': { title: 'Settings', subtitle: 'Manage your account preferences' },
+    '/edit': { title: 'Edit Profile', subtitle: 'Update your expert profile information' },
+    '/recordings': { title: 'Recordings', subtitle: 'Manage your recorded sessions' },
+    '/landing-page': { title: 'Landing Page', subtitle: 'Customize your public page' },
+  };
+
+  // Check for exact match first
+  if (headers[relativePath]) {
+    return headers[relativePath];
+  }
+
+  // Check for partial matches (for nested routes)
+  for (const [route, info] of Object.entries(headers)) {
+    if (relativePath.startsWith(route + '/')) {
+      return info;
+    }
+  }
+
+  return { title: 'Dashboard' };
+};
 
 const SIDEBAR_COLLAPSED_KEY = 'expert-sidebar-collapsed';
 
 export default function ExpertDashboardLayout({ children }: { children: React.ReactNode }) {
   const params = useParams();
   const router = useRouter();
+  const pathname = usePathname();
   const expertId = params.expertId as string;
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const headerInfo = getHeaderInfo(pathname, expertId);
   const [authChecking, setAuthChecking] = useState(true);
   const [authorized, setAuthorized] = useState(false);
 
@@ -123,6 +176,10 @@ export default function ExpertDashboardLayout({ children }: { children: React.Re
       <div
         className={`flex-1 overflow-auto transition-all duration-300 ${sidebarCollapsed ? 'ml-16' : 'ml-56'}`}
       >
+        {/* Persistent Header - only show if route doesn't have its own header */}
+        {headerInfo && <DashboardHeader title={headerInfo.title} subtitle={headerInfo.subtitle} />}
+
+        {/* Page Content */}
         {children}
       </div>
     </div>

@@ -1,5 +1,7 @@
 'use client';
 
+import Image from 'next/image';
+
 interface LoadingSpinnerProps {
   size?: 'sm' | 'md' | 'lg';
   message?: string;
@@ -7,9 +9,9 @@ interface LoadingSpinnerProps {
 }
 
 const sizes = {
-  sm: { width: 24, height: 24, border: 2 },
-  md: { width: 40, height: 40, border: 3 },
-  lg: { width: 48, height: 48, border: 4 },
+  sm: 32,
+  md: 48,
+  lg: 64,
 };
 
 export default function LoadingSpinner({
@@ -17,21 +19,25 @@ export default function LoadingSpinner({
   message,
   className = '',
 }: LoadingSpinnerProps) {
-  const { width, height, border } = sizes[size];
+  const imgSize = sizes[size];
 
   return (
     <div className={`flex flex-col items-center justify-center ${className}`}>
-      <div
+      <Image
+        src="/loading.png"
+        alt="Loading"
+        width={imgSize}
+        height={imgSize}
         style={{
-          width: `${width}px`,
-          height: `${height}px`,
-          border: `${border}px solid #e5e7eb`,
-          borderTop: `${border}px solid var(--color-primary)`,
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite',
+          animation: 'spin 3s linear infinite',
         }}
       />
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
       {message && <p className="mt-4 text-gray-600 text-sm">{message}</p>}
     </div>
   );

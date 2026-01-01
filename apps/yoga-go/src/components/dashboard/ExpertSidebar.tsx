@@ -23,6 +23,12 @@ export default function ExpertSidebar({ expertId }: ExpertSidebarProps) {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+
+  // Clear pending state when pathname changes (navigation completed)
+  useEffect(() => {
+    setPendingHref(null);
+  }, [pathname]);
 
   // Fetch unread email count
   const fetchUnreadCount = useCallback(async () => {
@@ -301,6 +307,15 @@ export default function ExpertSidebar({ expertId }: ExpertSidebarProps) {
   ];
 
   const isActive = (href: string) => {
+    // If there's a pending navigation, use that for immediate feedback
+    if (pendingHref !== null) {
+      // For pending state, use simple matching
+      if (href === `/srv/${expertId}`) {
+        return pendingHref === href;
+      }
+      return pendingHref === href || pendingHref.startsWith(href + '/');
+    }
+
     // Exact match for dashboard
     if (href === `/srv/${expertId}`) {
       return pathname === href;
@@ -363,6 +378,7 @@ export default function ExpertSidebar({ expertId }: ExpertSidebarProps) {
             <Link
               key={item.id}
               href={item.href}
+              onClick={() => setPendingHref(item.href)}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group relative ${
                 active ? '' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
               }`}

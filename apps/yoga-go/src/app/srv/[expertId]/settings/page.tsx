@@ -255,17 +255,7 @@ function SettingsContent() {
 
   return (
     <>
-      {/* Header */}
-      <div className="bg-white shadow">
-        <div className="px-6 lg:px-8 py-6">
-          <h1 className="text-2xl font-bold text-gray-900">Integrations</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Connect third-party services to enhance your platform
-          </p>
-        </div>
-      </div>
-
-      <div className="px-6 lg:px-8 py-8">
+      <div className="px-6 lg:px-8 py-6">
         <div className="max-w-3xl">
           {/* Messages */}
           {error && (

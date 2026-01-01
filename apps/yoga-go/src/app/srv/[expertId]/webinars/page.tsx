@@ -124,41 +124,30 @@ export default function ExpertWebinarsPage() {
 
   return (
     <>
-      {/* Header */}
-      <div className="bg-white shadow">
-        <div className="px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Live Sessions</h1>
-              <p className="text-sm text-gray-500 mt-1">
-                Create and manage your live yoga sessions
-              </p>
-            </div>
-            <Link
-              href={`/srv/${expertId}/webinars/create`}
-              className="px-6 py-2.5 text-white text-sm font-semibold rounded-lg flex items-center gap-2"
-              style={{ background: 'var(--color-primary)' }}
+      <div className="px-6 lg:px-8 py-6">
+        {/* Action Button */}
+        <div className="flex justify-end mb-6">
+          <Link
+            href={`/srv/${expertId}/webinars/create`}
+            className="px-6 py-2.5 text-white text-sm font-semibold rounded-lg flex items-center gap-2"
+            style={{ background: 'var(--color-primary)' }}
+          >
+            <svg
+              style={{ width: '20px', height: '20px' }}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              <svg
-                style={{ width: '20px', height: '20px' }}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              Create Live Session
-            </Link>
-          </div>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            Create Live Session
+          </Link>
         </div>
-      </div>
-
-      <div className="px-6 lg:px-8 py-8">
         {error && (
           <div
             style={{

@@ -249,35 +249,24 @@ export default function SurveyListPage() {
 
   return (
     <>
-      {/* Header */}
-      <div className="bg-white shadow">
-        <div className="px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Surveys</h1>
-              <p className="text-sm text-gray-500 mt-1">
-                Create and manage surveys to learn about your audience
-              </p>
-            </div>
-            <Link
-              href={`/srv/${expertId}/survey/new`}
-              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors font-medium inline-flex items-center"
-            >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              New Survey
-            </Link>
-          </div>
+      <div className="px-6 lg:px-8 py-6">
+        {/* Action Button */}
+        <div className="flex justify-end mb-6">
+          <Link
+            href={`/srv/${expertId}/survey/new`}
+            className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors font-medium inline-flex items-center"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            New Survey
+          </Link>
         </div>
-      </div>
-
-      <div className="px-6 lg:px-8 py-8">
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
             <div className="flex">

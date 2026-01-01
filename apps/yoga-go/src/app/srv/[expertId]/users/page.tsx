@@ -166,17 +166,15 @@ export default function ExpertUsersPage() {
     );
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <LoadingSpinner size="lg" message="Loading users..." />
-      </div>
-    );
-  }
+  const summary = usersData?.summary;
 
-  if (error) {
-    return (
-      <div className="px-6 lg:px-8 py-8">
+  return (
+    <div className="px-6 lg:px-8 py-8">
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <LoadingSpinner size="lg" message="Loading users..." />
+        </div>
+      ) : error ? (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <div className="flex">
             <div className="flex-shrink-0">
@@ -188,231 +186,215 @@ export default function ExpertUsersPage() {
             </div>
           </div>
         </div>
-      </div>
-    );
-  }
-
-  const summary = usersData?.summary;
-
-  return (
-    <>
-      {/* Header */}
-      <div className="bg-white shadow">
-        <div className="px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Users</h1>
-              <p className="text-sm text-gray-500 mt-1">
-                {usersData?.total || 0} users signed up via your space
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="px-6 lg:px-8 py-8">
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-gray-600">Total Users</p>
-              <span className="text-2xl">👥</span>
-            </div>
-            <p className="text-3xl font-bold text-gray-900">{summary?.totalUsers || 0}</p>
-            <p className="text-sm text-gray-500 mt-1">Signed up via your space</p>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-gray-600">Active Users</p>
-              <span className="text-2xl">🟢</span>
-            </div>
-            <p className="text-3xl font-bold text-gray-900">{summary?.activeUsers || 0}</p>
-            <p className="text-sm text-gray-500 mt-1">Active in last 30 days</p>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-gray-600">Avg Courses</p>
-              <span className="text-2xl">📚</span>
-            </div>
-            <p className="text-3xl font-bold text-gray-900">{summary?.avgCoursesPerUser || 0}</p>
-            <p className="text-sm text-gray-500 mt-1">Per user</p>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-gray-600">Avg Sessions</p>
-              <span className="text-2xl">🎥</span>
-            </div>
-            <p className="text-3xl font-bold text-gray-900">{summary?.avgWebinarsPerUser || 0}</p>
-            <p className="text-sm text-gray-500 mt-1">Per user</p>
-          </div>
-        </div>
-
-        {/* Search and Filters */}
-        <div className="bg-white rounded-lg shadow mb-6">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Search by name or email..."
-                    value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                  <svg
-                    className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                    />
-                  </svg>
-                </div>
+      ) : (
+        <>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm text-gray-600">Total Users</p>
+                <span className="text-2xl">👥</span>
               </div>
-              <p className="text-sm text-gray-500">
-                Showing {filteredUsers?.length || 0} of {usersData?.total || 0} users
-              </p>
+              <p className="text-3xl font-bold text-gray-900">{summary?.totalUsers || 0}</p>
+              <p className="text-sm text-gray-500 mt-1">Signed up via your space</p>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm text-gray-600">Active Users</p>
+                <span className="text-2xl">🟢</span>
+              </div>
+              <p className="text-3xl font-bold text-gray-900">{summary?.activeUsers || 0}</p>
+              <p className="text-sm text-gray-500 mt-1">Active in last 30 days</p>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm text-gray-600">Avg Courses</p>
+                <span className="text-2xl">📚</span>
+              </div>
+              <p className="text-3xl font-bold text-gray-900">{summary?.avgCoursesPerUser || 0}</p>
+              <p className="text-sm text-gray-500 mt-1">Per user</p>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm text-gray-600">Avg Sessions</p>
+                <span className="text-2xl">🎥</span>
+              </div>
+              <p className="text-3xl font-bold text-gray-900">{summary?.avgWebinarsPerUser || 0}</p>
+              <p className="text-sm text-gray-500 mt-1">Per user</p>
             </div>
           </div>
 
-          {/* Users Table */}
-          {filteredUsers && filteredUsers.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      User
-                    </th>
-                    <th
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('joinedAt')}
+          {/* Search and Filters */}
+          <div className="bg-white rounded-lg shadow mb-6">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="flex-1">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Search by name or email..."
+                      value={searchTerm}
+                      onChange={e => setSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <svg
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
                     >
-                      <div className="flex items-center gap-1">
-                        Joined
-                        <SortIcon column="joinedAt" />
-                      </div>
-                    </th>
-                    <th
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('coursesEnrolled')}
-                    >
-                      <div className="flex items-center gap-1">
-                        Courses
-                        <SortIcon column="coursesEnrolled" />
-                      </div>
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Sessions
-                    </th>
-                    <th
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('watchTime')}
-                    >
-                      <div className="flex items-center gap-1">
-                        Watch Time
-                        <SortIcon column="watchTime" />
-                      </div>
-                    </th>
-                    <th
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                      onClick={() => handleSort('lastActive')}
-                    >
-                      <div className="flex items-center gap-1">
-                        Last Active
-                        <SortIcon column="lastActive" />
-                      </div>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredUsers.map(user => (
-                    <tr key={user.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10">
-                            {user.avatar ? (
-                              <img
-                                className="h-10 w-10 rounded-full object-cover"
-                                src={user.avatar}
-                                alt={user.name}
-                              />
-                            ) : (
-                              <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                                <span className="text-gray-500 font-medium text-sm">
-                                  {user.name.charAt(0).toUpperCase()}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                            <div className="text-sm text-gray-500">{user.email}</div>
-                          </div>
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-500">
+                  Showing {filteredUsers?.length || 0} of {usersData?.total || 0} users
+                </p>
+              </div>
+            </div>
+
+            {/* Users Table */}
+            {filteredUsers && filteredUsers.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        User
+                      </th>
+                      <th
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSort('joinedAt')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Joined
+                          <SortIcon column="joinedAt" />
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{formatDate(user.joinedAt)}</div>
-                        <div className="text-xs text-gray-500">
-                          {formatRelativeTime(user.joinedAt)}
+                      </th>
+                      <th
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSort('coursesEnrolled')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Courses
+                          <SortIcon column="coursesEnrolled" />
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{user.coursesEnrolled} enrolled</div>
-                        <div className="text-xs text-gray-500">
-                          {user.coursesCompleted} completed
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Sessions
+                      </th>
+                      <th
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSort('watchTime')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Watch Time
+                          <SortIcon column="watchTime" />
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {user.webinarsRegistered} registered
+                      </th>
+                      <th
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                        onClick={() => handleSort('lastActive')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Last Active
+                          <SortIcon column="lastActive" />
                         </div>
-                        <div className="text-xs text-gray-500">
-                          {user.webinarsAttended} attended
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {formatWatchTime(user.totalWatchTime)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {formatRelativeTime(user.lastActive)}
-                        </div>
-                        {user.lastActive && (
-                          <div className="text-xs text-gray-500">{formatDate(user.lastActive)}</div>
-                        )}
-                      </td>
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="p-12 text-center">
-              <div className="text-6xl mb-4">👥</div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                {searchTerm ? 'No users found' : 'No users yet'}
-              </h3>
-              <p className="text-gray-600">
-                {searchTerm
-                  ? 'Try adjusting your search term'
-                  : 'Users who sign up via your space will appear here'}
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-    </>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredUsers.map(user => (
+                      <tr key={user.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 h-10 w-10">
+                              {user.avatar ? (
+                                <img
+                                  className="h-10 w-10 rounded-full object-cover"
+                                  src={user.avatar}
+                                  alt={user.name}
+                                />
+                              ) : (
+                                <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                  <span className="text-gray-500 font-medium text-sm">
+                                    {user.name.charAt(0).toUpperCase()}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                              <div className="text-sm text-gray-500">{user.email}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{formatDate(user.joinedAt)}</div>
+                          <div className="text-xs text-gray-500">
+                            {formatRelativeTime(user.joinedAt)}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {user.coursesEnrolled} enrolled
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {user.coursesCompleted} completed
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {user.webinarsRegistered} registered
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {user.webinarsAttended} attended
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {formatWatchTime(user.totalWatchTime)}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {formatRelativeTime(user.lastActive)}
+                          </div>
+                          {user.lastActive && (
+                            <div className="text-xs text-gray-500">
+                              {formatDate(user.lastActive)}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="p-12 text-center">
+                <div className="text-6xl mb-4">👥</div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  {searchTerm ? 'No users found' : 'No users yet'}
+                </h3>
+                <p className="text-gray-600">
+                  {searchTerm
+                    ? 'Try adjusting your search term'
+                    : 'Users who sign up via your space will appear here'}
+                </p>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
