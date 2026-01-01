@@ -328,7 +328,8 @@ export default function SurveyEditor({
           <button
             type="button"
             onClick={handleAddQuestion}
-            className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+            className="px-4 py-2 text-white text-sm rounded-lg transition-opacity hover:opacity-90"
+            style={{ background: 'var(--color-primary)' }}
           >
             + Add Question
           </button>
@@ -503,7 +504,8 @@ export default function SurveyEditor({
           type="button"
           onClick={handleSubmit}
           disabled={isLoading}
-          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+          className="px-6 py-2 text-white rounded-lg transition-opacity hover:opacity-90 disabled:opacity-50"
+          style={{ background: 'var(--color-primary)' }}
         >
           {isLoading ? 'Saving...' : mode === 'create' ? 'Create Survey' : 'Save Changes'}
         </button>

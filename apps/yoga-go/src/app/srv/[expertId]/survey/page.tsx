@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import Link from 'next/link';
 import type { Survey } from '@/types';
 import SurveyCard from '@/components/survey/SurveyCard';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import NotificationOverlay from '@/components/NotificationOverlay';
+import SurveyWizardModal from '@/components/survey/SurveyWizardModal';
+import type { SurveyWizardData } from '@/components/survey/SurveyWizardModal';
 
 type ConfirmAction = 'publish' | 'close' | 'reopen' | 'delete' | null;
 
@@ -26,6 +27,10 @@ export default function SurveyListPage() {
     message: string;
     type: 'success' | 'error';
   } | null>(null);
+
+  // Wizard modal state
+  const [showWizard, setShowWizard] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => {
     fetchSurveys();
@@ -49,6 +54,34 @@ export default function SurveyListPage() {
       setError('Failed to load surveys');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateSurvey = async (data: SurveyWizardData) => {
+    setIsCreating(true);
+    try {
+      console.log('[DBG][survey-list] Creating survey via wizard:', data.title);
+      const response = await fetch(`/api/srv/experts/${expertId}/survey`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        console.log('[DBG][survey-list] Survey created:', result.data.id);
+        setSurveys([result.data, ...surveys]);
+        setShowWizard(false);
+        setNotification({ message: 'Survey created successfully!', type: 'success' });
+      } else {
+        setNotification({ message: result.error || 'Failed to create survey', type: 'error' });
+      }
+    } catch (err) {
+      console.error('[DBG][survey-list] Error creating survey:', err);
+      setNotification({ message: 'Failed to create survey', type: 'error' });
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -252,9 +285,10 @@ export default function SurveyListPage() {
       <div className="px-6 lg:px-8 py-6">
         {/* Action Button */}
         <div className="flex justify-end mb-6">
-          <Link
-            href={`/srv/${expertId}/survey/new`}
-            className="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors font-medium inline-flex items-center"
+          <button
+            onClick={() => setShowWizard(true)}
+            className="px-4 py-2 text-white text-sm rounded-lg transition-opacity hover:opacity-90 font-medium inline-flex items-center"
+            style={{ background: 'var(--color-primary)' }}
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -265,7 +299,7 @@ export default function SurveyListPage() {
               />
             </svg>
             New Survey
-          </Link>
+          </button>
         </div>
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
@@ -288,13 +322,14 @@ export default function SurveyListPage() {
             <p className="text-gray-600 mb-6">
               Create your first survey to start collecting feedback from your audience.
             </p>
-            <Link
-              href={`/srv/${expertId}/survey/new`}
-              className="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+            <button
+              onClick={() => setShowWizard(true)}
+              className="inline-flex items-center px-6 py-3 text-white font-semibold rounded-lg transition-opacity hover:opacity-90"
+              style={{ background: 'var(--color-primary)' }}
             >
               <span className="text-xl mr-2">+</span>
               Create Your First Survey
-            </Link>
+            </button>
           </div>
         ) : (
           <div className="space-y-8">
@@ -385,6 +420,14 @@ export default function SurveyListPage() {
         message={notification?.message || ''}
         type={notification?.type || 'error'}
         duration={4000}
+      />
+
+      {/* Survey Creation Wizard */}
+      <SurveyWizardModal
+        isOpen={showWizard}
+        onClose={() => setShowWizard(false)}
+        onComplete={handleCreateSurvey}
+        isSubmitting={isCreating}
       />
     </>
   );

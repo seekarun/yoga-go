@@ -67,7 +67,8 @@ export default function SurveyCard({
           <button
             onClick={() => onPublish(survey.id)}
             disabled={isLoading}
-            className="px-3 py-1.5 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
+            className="px-3 py-1.5 text-sm font-medium text-white rounded-lg hover:opacity-90 disabled:opacity-50 transition-opacity"
+            style={{ background: 'var(--color-primary)' }}
           >
             Publish
           </button>
@@ -77,7 +78,8 @@ export default function SurveyCard({
         {(survey.status === 'active' || survey.status === 'closed') && (
           <Link
             href={`/srv/${expertId}/survey/${survey.id}/responses`}
-            className="px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+            className="px-3 py-1.5 text-sm font-medium bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+            style={{ color: 'var(--color-primary)' }}
           >
             Responses ({survey.responseCount || 0})
           </Link>
@@ -88,7 +90,7 @@ export default function SurveyCard({
           <button
             onClick={() => onClose(survey.id)}
             disabled={isLoading}
-            className="px-3 py-1.5 text-sm font-medium text-yellow-700 bg-yellow-50 rounded-lg hover:bg-yellow-100 disabled:opacity-50 transition-colors"
+            className="px-3 py-1.5 text-sm font-medium text-amber-600 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50 transition-colors"
           >
             Close
           </button>
@@ -99,7 +101,8 @@ export default function SurveyCard({
           <button
             onClick={() => onReopen(survey.id)}
             disabled={isLoading}
-            className="px-3 py-1.5 text-sm font-medium text-green-700 bg-green-50 rounded-lg hover:bg-green-100 disabled:opacity-50 transition-colors"
+            className="px-3 py-1.5 text-sm font-medium text-white rounded-lg hover:opacity-90 disabled:opacity-50 transition-opacity"
+            style={{ background: 'var(--color-primary)' }}
           >
             Reopen
           </button>

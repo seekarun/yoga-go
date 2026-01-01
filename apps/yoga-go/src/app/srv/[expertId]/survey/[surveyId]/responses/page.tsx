@@ -196,6 +196,26 @@ export default function SurveyResponsesPage() {
     return null;
   }
 
+  // Helper to get option label from option ID
+  const getAnswerDisplay = (questionId: string, answer: string, questionType: string): string => {
+    // For text questions, just return the answer as-is
+    if (questionType === 'text') {
+      return answer;
+    }
+
+    // For multiple choice, look up the option label
+    const question = data.survey.questions.find(q => q.id === questionId);
+    if (question?.options) {
+      const option = question.options.find(opt => opt.id === answer);
+      if (option) {
+        return option.label;
+      }
+    }
+
+    // Fallback to the raw answer if lookup fails
+    return answer;
+  };
+
   const filteredResponses = data.responses;
   const hasFilters = filterQuestion && filterAnswer;
 
@@ -322,7 +342,8 @@ export default function SurveyResponsesPage() {
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowEmailModal(true)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="px-4 py-2 text-white rounded-lg transition-opacity hover:opacity-90"
+                  style={{ background: 'var(--color-primary)' }}
                 >
                   Email Selected Users
                 </button>
@@ -409,7 +430,9 @@ export default function SurveyResponsesPage() {
                           {response.answers.map((ans, idx) => (
                             <div key={idx} className="text-sm">
                               <span className="font-medium text-gray-700">{ans.questionText}:</span>{' '}
-                              <span className="text-gray-900">{ans.answer}</span>
+                              <span className="text-gray-900">
+                                {getAnswerDisplay(ans.questionId, ans.answer, ans.questionType)}
+                              </span>
                             </div>
                           ))}
                         </div>
@@ -469,7 +492,8 @@ export default function SurveyResponsesPage() {
                 <button
                   onClick={handleSendEmail}
                   disabled={sendingEmail}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  className="px-4 py-2 text-white rounded-lg transition-opacity hover:opacity-90 disabled:opacity-50"
+                  style={{ background: 'var(--color-primary)' }}
                 >
                   {sendingEmail ? 'Sending...' : 'Send Email'}
                 </button>
