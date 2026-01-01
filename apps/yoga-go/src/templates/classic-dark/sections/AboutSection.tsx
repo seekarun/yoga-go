@@ -17,12 +17,11 @@ export default function AboutSection({
   const cfSubdomain = process.env.NEXT_PUBLIC_CF_SUBDOMAIN || 'placeholder';
 
   return (
-    <div style={{ background: '#0f0f0f' }}>
+    <div>
       <section
         id="about"
         style={{
           padding: '60px 20px',
-          background: '#0f0f0f',
           maxWidth: SECTION_MAX_WIDTH,
           margin: '0 auto',
         }}

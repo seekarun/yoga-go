@@ -10,7 +10,7 @@ export default function PhotoGallerySection({
   if (images.length === 0) return null;
 
   return (
-    <div style={{ background: '#fff' }}>
+    <div>
       <div id="photoGallery" style={{ maxWidth: SECTION_MAX_WIDTH, margin: '0 auto' }}>
         <PhotoGalleryLightbox
           images={images}

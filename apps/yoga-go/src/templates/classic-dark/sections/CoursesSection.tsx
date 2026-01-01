@@ -8,7 +8,7 @@ export default function CoursesSection({ courses }: CoursesSectionProps) {
   const cfSubdomain = process.env.NEXT_PUBLIC_CF_SUBDOMAIN || 'placeholder';
 
   return (
-    <div style={{ background: '#0f0f0f' }}>
+    <div>
       <section
         id="courses"
         style={{

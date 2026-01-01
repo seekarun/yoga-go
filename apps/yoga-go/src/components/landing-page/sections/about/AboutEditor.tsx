@@ -95,12 +95,9 @@ export default function AboutEditor({ data, onChange, expertId, onError }: Secti
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-1">About Section</h3>
-        <p className="text-sm text-gray-600 mb-4">
-          Add an about section with either a video or image + text layout
-        </p>
-      </div>
+      <p className="text-sm text-gray-600">
+        Add an about section with either a video or image + text layout
+      </p>
 
       {/* Layout Type Selection */}
       <div>

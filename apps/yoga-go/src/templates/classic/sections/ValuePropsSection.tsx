@@ -7,7 +7,7 @@ export default function ValuePropsSection({ type, content, items }: ValuePropsSe
   }
 
   return (
-    <div style={{ background: '#fff' }}>
+    <div>
       <section
         style={{
           padding: '12px 20px 30px 20px',

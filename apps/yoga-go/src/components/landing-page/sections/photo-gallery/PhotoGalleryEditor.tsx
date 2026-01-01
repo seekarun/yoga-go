@@ -233,12 +233,9 @@ export default function PhotoGalleryEditor({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-1">Photo Gallery</h3>
-        <p className="text-sm text-gray-600 mb-4">
-          Showcase your photos in a horizontal carousel. Click any image to replace it.
-        </p>
-      </div>
+      <p className="text-sm text-gray-600">
+        Showcase your photos in a horizontal carousel. Click any image to replace it.
+      </p>
 
       {/* Section Title */}
       <div>

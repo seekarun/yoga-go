@@ -628,66 +628,90 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
         )}
       </header>
 
-      {/* Main Content - Side by Side */}
-      <div className="flex-1 flex overflow-hidden relative">
-        {/* Left Pane - Preview (70% when edit visible, 100% when hidden) */}
-        <div
-          className="border-r border-gray-200 transition-all duration-300"
-          style={{ width: isEditPaneVisible ? '70%' : '100%' }}
-        >
-          <PreviewPane
-            data={data}
-            sectionOrder={sectionOrder}
-            disabledSections={disabledSections}
-            selectedSection={selectedSection}
-            expertName={expert.name}
-            expertBio={expert.bio}
-            expertId={expertId}
-            onSelectSection={handleSelectSection}
-            onChange={handleDataChange}
-          />
-        </div>
+      {/* Main Content - Single scrollable area */}
+      <div className="flex-1 overflow-auto" style={{ backgroundColor: '#808080' }}>
+        {/* Preview Header - Template, Color, Font controls */}
+        <PreviewPane
+          data={data}
+          sectionOrder={sectionOrder}
+          disabledSections={disabledSections}
+          selectedSection={selectedSection}
+          expert={{ ...expert, id: expertId }}
+          onSelectSection={handleSelectSection}
+          onChange={handleDataChange}
+          renderLayout={(header, preview) => (
+            <>
+              {/* Header bar with controls - sticky at top, full width */}
+              <div className="sticky top-0 z-10 bg-white shadow-sm border-b border-gray-200 px-4 py-3">
+                {header}
+              </div>
 
-        {/* Toggle Button - positioned at the edge */}
-        <button
-          onClick={toggleEditPane}
-          className="absolute top-4 z-20 flex items-center justify-center w-6 h-12 bg-white border border-gray-300 rounded-l-lg shadow-md hover:bg-gray-50 transition-all duration-300"
-          style={{ right: isEditPaneVisible ? '30%' : '0' }}
-          title={isEditPaneVisible ? 'Hide editor' : 'Show editor'}
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            className={`text-gray-600 transition-transform duration-300 ${isEditPaneVisible ? '' : 'rotate-180'}`}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
+              {/* Side by side: Preview + Edit Panel */}
+              <div className="flex gap-4 p-4">
+                {/* Landing Page Preview */}
+                <div className="flex-1 min-w-0">
+                  <div className="bg-white shadow-sm border border-gray-200 overflow-hidden">
+                    {preview}
+                  </div>
+                </div>
 
-        {/* Right Pane - Edit (30% width, hideable) */}
-        <div
-          className="bg-white transition-all duration-300 overflow-hidden"
-          style={{ width: isEditPaneVisible ? '30%' : '0' }}
-        >
-          {isEditPaneVisible && (
-            <EditPane
-              data={data}
-              sectionOrder={sectionOrder}
-              disabledSections={disabledSections}
-              selectedSection={selectedSection}
-              expertId={expertId}
-              onDataChange={handleDataChange}
-              onReorder={handleReorder}
-              onToggleSection={handleToggleSection}
-              onSelectSection={handleSelectSection}
-              onError={handleError}
-            />
+                {/* Sticky Edit Panel */}
+                {isEditPaneVisible && (
+                  <div
+                    className="flex-shrink-0 self-start sticky top-16"
+                    style={{ width: '380px' }}
+                  >
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden max-h-[calc(100vh-180px)] flex flex-col">
+                      {/* Edit Panel Content */}
+                      <div className="flex-1 overflow-auto">
+                        <EditPane
+                          data={data}
+                          sectionOrder={sectionOrder}
+                          disabledSections={disabledSections}
+                          selectedSection={selectedSection}
+                          expertId={expertId}
+                          onDataChange={handleDataChange}
+                          onReorder={handleReorder}
+                          onToggleSection={handleToggleSection}
+                          onSelectSection={handleSelectSection}
+                          onError={handleError}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Toggle Button when panel is hidden */}
+                {!isEditPaneVisible && (
+                  <div className="flex-shrink-0 self-start sticky top-16">
+                    <button
+                      onClick={toggleEditPane}
+                      className="flex items-center gap-2 px-4 py-3 bg-white rounded-xl shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors"
+                      title="Show editor"
+                    >
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        className="text-gray-600"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                        />
+                      </svg>
+                      <span className="text-sm font-medium text-gray-700">Edit</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
           )}
-        </div>
+        />
       </div>
 
       {/* Discard Changes Confirmation Modal */}

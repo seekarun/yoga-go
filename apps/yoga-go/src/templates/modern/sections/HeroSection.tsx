@@ -25,7 +25,6 @@ export default function HeroSection({
         style={{
           minHeight: '600px',
           paddingTop: '64px',
-          background: '#0a0a0a',
           position: 'relative',
           overflow: 'hidden',
         }}
@@ -201,10 +200,7 @@ export default function HeroSection({
       </section>
 
       {/* Mobile Modern Hero */}
-      <section
-        className="hero-section-mobile"
-        style={{ display: 'none', paddingTop: '64px', background: '#0a0a0a' }}
-      >
+      <section className="hero-section-mobile" style={{ display: 'none', paddingTop: '64px' }}>
         {/* Hero Image */}
         <div
           style={{

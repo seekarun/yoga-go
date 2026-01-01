@@ -9,7 +9,6 @@ export default function WebinarsSection({ title, description, webinars }: Webina
       id="webinars"
       style={{
         padding: '100px 40px',
-        background: '#0f0f0f',
         position: 'relative',
         overflow: 'hidden',
       }}

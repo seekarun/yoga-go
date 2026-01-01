@@ -19,7 +19,7 @@ export default function ActSection({
   }
 
   return (
-    <div style={{ background: '#fff' }}>
+    <div>
       <section
         className="act-section"
         style={{

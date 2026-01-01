@@ -17,7 +17,7 @@ export default function AboutSection({
   const cfSubdomain = process.env.NEXT_PUBLIC_CF_SUBDOMAIN || 'placeholder';
 
   return (
-    <div style={{ background: '#fff' }}>
+    <div>
       <section
         id="about"
         style={{

@@ -43,7 +43,6 @@ export default function FooterSection({
     <footer
       style={{
         padding: '80px 40px 40px',
-        background: '#0a0a0a',
         position: 'relative',
         overflow: 'hidden',
       }}

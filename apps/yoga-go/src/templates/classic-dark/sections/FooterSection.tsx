@@ -33,7 +33,7 @@ export default function FooterSection({
     legalLinks.privacyPolicy || legalLinks.termsOfService || legalLinks.refundPolicy;
 
   return (
-    <div style={{ background: '#0a0a0a' }}>
+    <div>
       <footer
         style={{
           padding: '40px 20px',

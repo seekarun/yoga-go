@@ -5,7 +5,7 @@ import { formatPrice } from '@/lib/currency/currencyService';
 
 export default function WebinarsSection({ title, description, webinars }: WebinarsSectionProps) {
   return (
-    <div style={{ background: '#fff' }}>
+    <div>
       <section
         id="webinars"
         style={{

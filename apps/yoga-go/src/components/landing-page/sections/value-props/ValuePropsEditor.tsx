@@ -111,12 +111,9 @@ export default function ValuePropsEditor({ data, onChange, expertId }: SectionEd
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-1">Value Propositions</h3>
-        <p className="text-sm text-gray-600 mb-4">
-          Highlight 1-3 key benefits or value propositions for your students
-        </p>
-      </div>
+      <p className="text-sm text-gray-600">
+        Highlight 1-3 key benefits or value propositions for your students
+      </p>
 
       {/* Type Selection */}
       <div>

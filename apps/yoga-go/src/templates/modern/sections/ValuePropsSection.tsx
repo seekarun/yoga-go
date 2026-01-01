@@ -19,7 +19,6 @@ export default function ValuePropsSection({
     <section
       style={{
         padding: '100px 40px',
-        background: '#0a0a0a',
         position: 'relative',
         overflow: 'hidden',
       }}

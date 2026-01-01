@@ -23,12 +23,7 @@ export default function HeroSection({
   return (
     <>
       {/* Desktop Hero Section */}
-      <div
-        className="hero-section-desktop"
-        style={{
-          background: '#0f0f0f',
-        }}
-      >
+      <div className="hero-section-desktop">
         <section
           style={{
             maxWidth: SECTION_MAX_WIDTH,
@@ -221,7 +216,6 @@ export default function HeroSection({
         <div
           style={{
             padding: '40px 20px',
-            background: '#0f0f0f',
             textAlign: 'center',
           }}
         >

@@ -5,12 +5,11 @@ import { formatPrice } from '@/lib/currency/currencyService';
 
 export default function WebinarsSection({ title, description, webinars }: WebinarsSectionProps) {
   return (
-    <div style={{ background: '#0f0f0f' }}>
+    <div>
       <section
         id="webinars"
         style={{
           padding: '80px 20px',
-          background: '#0f0f0f',
           maxWidth: SECTION_MAX_WIDTH,
           margin: '0 auto',
         }}

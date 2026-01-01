@@ -4,7 +4,7 @@ import type { BlogSectionProps } from '../../types';
 
 export default function BlogSection({ title, description, latestPost }: BlogSectionProps) {
   return (
-    <div style={{ background: '#fff' }}>
+    <div>
       <section
         style={{
           padding: '80px 20px',

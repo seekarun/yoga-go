@@ -3,7 +3,7 @@
  */
 
 /** Maximum width for section content to prevent overly wide layouts on large screens */
-export const SECTION_MAX_WIDTH = '1200px';
+export const SECTION_MAX_WIDTH = '1600px';
 
 /** Wrapper styles for sections - provides white background on sides for wide screens */
 export const sectionWrapperStyle = {

@@ -84,13 +84,10 @@ export default function ActEditor({ data, onChange, expertId, onError }: Section
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-1">Call to Action Section</h3>
-        <p className="text-sm text-gray-600 mb-4">
-          Add a call-to-action section with an image and text. You can customize the CTA button or
-          leave it blank to use your Hero section&apos;s CTA.
-        </p>
-      </div>
+      <p className="text-sm text-gray-600">
+        Add a call-to-action section with an image and text. You can customize the CTA button or
+        leave it blank to use your Hero section&apos;s CTA.
+      </p>
 
       {/* Act Image */}
       <div>
