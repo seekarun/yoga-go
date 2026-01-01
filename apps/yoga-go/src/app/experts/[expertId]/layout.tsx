@@ -3,7 +3,10 @@
 import type { ReactNode } from 'react';
 import { useParams } from 'next/navigation';
 import { ExpertProvider, useExpert } from '@/contexts/ExpertContext';
+import { SurveyModalProvider } from '@/contexts/SurveyModalContext';
 import { LandingPageThemeProvider } from '@/components/landing-page/ThemeProvider';
+import SurveyModal from '@/components/survey/SurveyModal';
+import SurveyLinkInterceptor from '@/components/survey/SurveyLinkInterceptor';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
 // Inner component that can use the useExpert hook
@@ -29,7 +32,11 @@ function ExpertLayoutInner({ children }: { children: ReactNode }) {
 
   return (
     <LandingPageThemeProvider palette={palette} fontFamily={fontFamily}>
-      {children}
+      <SurveyModalProvider>
+        <SurveyLinkInterceptor />
+        {children}
+        <SurveyModal />
+      </SurveyModalProvider>
     </LandingPageThemeProvider>
   );
 }
