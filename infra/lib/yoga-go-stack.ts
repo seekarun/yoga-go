@@ -8,6 +8,8 @@ import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
 import * as nodejsLambda from "aws-cdk-lib/aws-lambda-nodejs";
 import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 import * as ses from "aws-cdk-lib/aws-ses";
+import * as sns from "aws-cdk-lib/aws-sns";
+import * as snsSubscriptions from "aws-cdk-lib/aws-sns-subscriptions";
 import * as sqs from "aws-cdk-lib/aws-sqs";
 import type { Construct } from "constructs";
 import * as path from "path";
@@ -457,6 +459,125 @@ The MyYoga.Guru Team`,
       }),
     );
 
+    // ========================================
+    // Survey Response Validator Lambda (DynamoDB Streams)
+    // ========================================
+    // Triggered when new SURVEYRESP records are created in yoga-go-core
+    // Validates email addresses for survey responses:
+    // - Checks for duplicate submissions (> 3 from same email)
+    // - Checks for disposable/temporary email domains
+    // - Verifies MX DNS records exist for the domain
+    // - Sends verification email to check for bounces
+    const surveyResponseValidatorLambda = new nodejsLambda.NodejsFunction(
+      this,
+      "SurveyResponseValidatorLambda",
+      {
+        functionName: "yoga-go-survey-response-validator",
+        runtime: lambda.Runtime.NODEJS_22_X,
+        handler: "handler",
+        entry: path.join(__dirname, "../lambda/survey-response-validator.ts"),
+        timeout: cdk.Duration.seconds(30),
+        memorySize: 256,
+        environment: {
+          DYNAMODB_TABLE: coreTable.tableName,
+          EMAILS_TABLE: "yoga-go-emails",
+          SES_FROM_EMAIL: `verify@${appDomain}`,
+          // Use us-west-2 config set since Lambda sends email via SES in us-west-2
+          SES_CONFIG_SET: "yoga-go-emails-west",
+          // DeBounce API for email validation (key from Secrets Manager)
+          DEBOUNCE_API_KEY: appSecret
+            .secretValueFromJson("DEBOUNCE_API_KEY")
+            .unsafeUnwrap(),
+        },
+        bundling: { minify: true, sourceMap: false },
+      },
+    );
+
+    // Grant DynamoDB read/write for querying responses and updating validation status
+    coreTable.grantReadWriteData(surveyResponseValidatorLambda);
+
+    // Grant SES email sending permissions for verification emails
+    surveyResponseValidatorLambda.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["ses:SendEmail", "ses:SendRawEmail"],
+        resources: ["*"],
+        conditions: {
+          StringLike: { "ses:FromAddress": `*@${appDomain}` },
+        },
+      }),
+    );
+
+    // Add DynamoDB Stream event source for SURVEYRESP records
+    surveyResponseValidatorLambda.addEventSource(
+      new lambdaEventSources.DynamoEventSource(coreTable, {
+        startingPosition: lambda.StartingPosition.LATEST,
+        batchSize: 10,
+        retryAttempts: 2,
+        filters: [
+          lambda.FilterCriteria.filter({
+            eventName: lambda.FilterRule.isEqual("INSERT"),
+            dynamodb: {
+              Keys: {
+                SK: {
+                  S: lambda.FilterRule.beginsWith("SURVEYRESP#"),
+                },
+              },
+            },
+          }),
+        ],
+      }),
+    );
+
+    // ========================================
+    // SES Bounce Handler Lambda (SNS Triggered)
+    // ========================================
+    // Handles bounce/complaint notifications from SES via SNS
+    // Updates survey response validation status to 'invalid'
+
+    // SNS Topic for SES bounce notifications
+    const sesBounceNotificationTopic = new sns.Topic(
+      this,
+      "SesBounceNotificationTopic",
+      {
+        topicName: "yoga-go-ses-bounce-notifications",
+        displayName: "SES Bounce Notifications",
+      },
+    );
+
+    // Bounce handler Lambda
+    const sesBounceHandlerLambda = new nodejsLambda.NodejsFunction(
+      this,
+      "SesBounceHandlerLambda",
+      {
+        functionName: "yoga-go-ses-bounce-handler",
+        runtime: lambda.Runtime.NODEJS_22_X,
+        handler: "handler",
+        entry: path.join(__dirname, "../lambda/ses-bounce-handler.ts"),
+        timeout: cdk.Duration.seconds(30),
+        memorySize: 256,
+        environment: {
+          DYNAMODB_TABLE: coreTable.tableName,
+          EMAILS_TABLE: "yoga-go-emails",
+        },
+        bundling: { minify: true, sourceMap: false },
+      },
+    );
+
+    // Grant DynamoDB read/write for updating validation status
+    coreTable.grantReadWriteData(sesBounceHandlerLambda);
+
+    // Subscribe Lambda to SNS topic
+    sesBounceNotificationTopic.addSubscription(
+      new snsSubscriptions.LambdaSubscription(sesBounceHandlerLambda),
+    );
+
+    // Add SNS event destination for bounces and complaints
+    sesConfigSet.addEventDestination("BounceNotificationDestination", {
+      destination: ses.EventDestination.snsTopic(sesBounceNotificationTopic),
+      events: [ses.EmailSendingEvent.BOUNCE, ses.EmailSendingEvent.COMPLAINT],
+    });
+
     new dynamodb.Table(this, "OrdersTable", {
       tableName: "yoga-go-orders",
       partitionKey: { name: "PK", type: dynamodb.AttributeType.STRING },
@@ -573,6 +694,10 @@ The MyYoga.Guru Team`,
       sortKey: { name: "GSI1SK", type: dynamodb.AttributeType.STRING },
       projectionType: dynamodb.ProjectionType.ALL,
     });
+
+    // Grant email validation lambdas access to emails table for blocklist
+    emailsTable.grantReadData(surveyResponseValidatorLambda);
+    emailsTable.grantReadWriteData(sesBounceHandlerLambda);
 
     // ========================================
     // Recording Processor Queue (SQS)

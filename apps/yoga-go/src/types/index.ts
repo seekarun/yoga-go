@@ -1004,6 +1004,31 @@ export interface SurveyResponseMetadata {
   referrer?: string; // Referrer URL
 }
 
+// Email validation status for survey responses
+export type SurveyResponseValidationStatus = 'pending' | 'valid' | 'invalid' | 'skipped';
+
+// Reasons why a response was marked invalid
+export type SurveyResponseInvalidReason =
+  | 'duplicate_email' // Email has > 3 responses for this survey
+  | 'disposable_email' // Email uses a temporary/disposable domain
+  | 'no_mx_record' // Domain has no MX DNS records
+  | 'blocklisted' // Email previously bounced or received complaints
+  | 'debounce_invalid' // DeBounce API rejected the email
+  | 'email_bounced' // Verification email bounced
+  | 'complaint' // User marked email as spam
+  | 'no_email'; // No email provided
+
+// Validation metadata stored with the response
+export interface SurveyResponseValidation {
+  status: SurveyResponseValidationStatus;
+  reason?: SurveyResponseInvalidReason;
+  checkedAt?: string; // When validation was performed
+  emailDomain?: string; // Extracted email domain
+  mxRecordFound?: boolean; // Whether MX record was found
+  verificationEmailSent?: boolean; // Whether we sent a verification ping
+  previousResponseCount?: number; // How many responses from this email
+}
+
 export interface SurveyResponse extends BaseEntity {
   surveyId: string;
   expertId: string;
@@ -1012,6 +1037,7 @@ export interface SurveyResponse extends BaseEntity {
   answers: SurveyAnswer[];
   submittedAt: string;
   metadata?: SurveyResponseMetadata; // Auto-collected metadata from request
+  validation?: SurveyResponseValidation; // Email validation status
 }
 
 // Discussion Related Types

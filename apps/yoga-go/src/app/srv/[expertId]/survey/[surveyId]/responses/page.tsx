@@ -20,6 +20,16 @@ interface SurveyResponseMetadata {
   language?: string;
 }
 
+interface SurveyResponseValidation {
+  status: 'pending' | 'valid' | 'invalid' | 'skipped';
+  reason?: string;
+  checkedAt?: string;
+  emailDomain?: string;
+  mxRecordFound?: boolean;
+  verificationEmailSent?: boolean;
+  previousResponseCount?: number;
+}
+
 interface SurveyResponseData {
   id: string;
   surveyId: string;
@@ -38,6 +48,7 @@ interface SurveyResponseData {
   }>;
   submittedAt: string;
   metadata?: SurveyResponseMetadata;
+  validation?: SurveyResponseValidation;
 }
 
 interface ResponsesData {
@@ -391,6 +402,9 @@ export default function SurveyResponsesPage() {
                     Contact Info
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Responses
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -404,7 +418,7 @@ export default function SurveyResponsesPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredResponses.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
                       No responses found
                       {hasFilters && ' with the selected filters'}
                     </td>
@@ -439,6 +453,76 @@ export default function SurveyResponsesPage() {
                               <span className="text-gray-400 italic">Anonymous</span>
                             )}
                         </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        {response.validation ? (
+                          <div className="text-sm">
+                            {response.validation.status === 'valid' && (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-100 text-green-700">
+                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                                Valid
+                              </span>
+                            )}
+                            {response.validation.status === 'invalid' && (
+                              <div>
+                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-red-100 text-red-700">
+                                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                    <path
+                                      fillRule="evenodd"
+                                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                      clipRule="evenodd"
+                                    />
+                                  </svg>
+                                  Invalid
+                                </span>
+                                {response.validation.reason && (
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    {response.validation.reason === 'duplicate_email' &&
+                                      `Duplicate (${response.validation.previousResponseCount} responses)`}
+                                    {response.validation.reason === 'disposable_email' &&
+                                      'Disposable email'}
+                                    {response.validation.reason === 'no_mx_record' &&
+                                      'No mail server'}
+                                    {response.validation.reason === 'email_bounced' &&
+                                      'Email bounced'}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {response.validation.status === 'pending' && (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-100 text-yellow-700">
+                                <svg
+                                  className="w-3 h-3 animate-spin"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <circle
+                                    className="opacity-25"
+                                    cx="12"
+                                    cy="12"
+                                    r="10"
+                                    stroke="currentColor"
+                                    strokeWidth="4"
+                                  />
+                                  <path
+                                    className="opacity-75"
+                                    fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                  />
+                                </svg>
+                                Pending
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-sm italic">—</span>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <div className="space-y-2">

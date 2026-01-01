@@ -100,7 +100,10 @@
       "Bash(\"src/app/srv/\\\\[expertId\\\\]/blog/\\\\[postId\\\\]/edit/page.tsx\" )",
       "WebFetch(domain:aws.amazon.com)",
       "Bash(bash -c 'START_TIME=$\\(\\($\\(date +%s\\) - 600\\)\\)000 && AWS_PROFILE=myg aws logs filter-log-events --log-group-name /aws/lambda/yoga-go-email-forwarder --start-time $START_TIME --region us-west-2 2>&1 | jq -r \"\".events[].message\"\" 2>/dev/null || cat')",
-      "Bash(npx tsx scripts/create-template.ts classic-dark)"
+      "Bash(npx tsx scripts/create-template.ts classic-dark)",
+      "Bash(AWS_PROFILE=myg npx cdk synth:*)",
+      "WebFetch(domain:developers.debounce.io)",
+      "WebFetch(domain:developers.debounce.com)"
     ],
     "deny": [],
     "ask": []
