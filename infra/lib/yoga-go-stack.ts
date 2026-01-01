@@ -355,10 +355,22 @@ The MyYoga.Guru Team`,
       projectionType: dynamodb.ProjectionType.ALL,
     });
 
+    // Users table - dedicated table for user accounts (separate from core)
+    const usersTable = new dynamodb.Table(this, "UsersTable", {
+      tableName: "yoga-go-users",
+      partitionKey: { name: "PK", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "SK", type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      pointInTimeRecovery: false,
+      // Enable DynamoDB Streams for welcome email trigger
+      stream: dynamodb.StreamViewType.NEW_IMAGE,
+    });
+
     // ========================================
     // User Welcome Stream Lambda (DynamoDB Streams)
     // ========================================
-    // Triggered when new USER records are created in yoga-go-core
+    // Triggered when new USER records are created in yoga-go-users
     // Sends appropriate welcome email based on user type (expert/learner)
     const userWelcomeStreamLambda = new nodejsLambda.NodejsFunction(
       this,
@@ -372,6 +384,7 @@ The MyYoga.Guru Team`,
         memorySize: 256,
         environment: {
           DYNAMODB_TABLE: coreTable.tableName,
+          USERS_TABLE: usersTable.tableName,
           ANALYTICS_TABLE: "yoga-go-analytics",
           SES_FROM_EMAIL: `hi@${appDomain}`,
           APP_DOMAIN: appDomain,
@@ -382,8 +395,9 @@ The MyYoga.Guru Team`,
       },
     );
 
-    // Grant DynamoDB read access for looking up expert data
+    // Grant DynamoDB read access for looking up expert/user data
     coreTable.grantReadData(userWelcomeStreamLambda);
+    usersTable.grantReadData(userWelcomeStreamLambda);
 
     // Grant SES email sending permissions
     userWelcomeStreamLambda.addToRolePolicy(
@@ -401,32 +415,41 @@ The MyYoga.Guru Team`,
       }),
     );
 
-    // Add DynamoDB Stream as event source
-    // Filter to process USER and TENANT INSERT events
-    // - USER: send learner welcome (skip if expert role)
-    // - TENANT: send expert welcome with subdomain info
+    // Add DynamoDB Stream event sources
+    // - Users table: USER records for learner welcome emails
+    // - Core table: TENANT records for expert welcome emails
+
+    // Users table stream - USER records (PK={cognitoSub}, SK=PROFILE)
+    userWelcomeStreamLambda.addEventSource(
+      new lambdaEventSources.DynamoEventSource(usersTable, {
+        startingPosition: lambda.StartingPosition.LATEST,
+        batchSize: 10,
+        retryAttempts: 2,
+        filters: [
+          lambda.FilterCriteria.filter({
+            eventName: lambda.FilterRule.isEqual("INSERT"),
+            dynamodb: {
+              Keys: {
+                SK: { S: lambda.FilterRule.isEqual("PROFILE") },
+              },
+            },
+          }),
+        ],
+      }),
+    );
+
+    // Core table stream - TENANT records for expert welcome emails
     userWelcomeStreamLambda.addEventSource(
       new lambdaEventSources.DynamoEventSource(coreTable, {
         startingPosition: lambda.StartingPosition.LATEST,
         batchSize: 10,
         retryAttempts: 2,
-        // Multiple filters are OR'd together
         filters: [
-          // USER records
           lambda.FilterCriteria.filter({
             eventName: lambda.FilterRule.isEqual("INSERT"),
             dynamodb: {
-              Keys: {
-                PK: { S: lambda.FilterRule.isEqual("USER") },
-              },
-            },
-          }),
-          // TENANT records
-          lambda.FilterCriteria.filter({
-            eventName: lambda.FilterRule.isEqual("INSERT"),
-            dynamodb: {
-              Keys: {
-                PK: { S: lambda.FilterRule.isEqual("TENANT") },
+              NewImage: {
+                entityType: { S: lambda.FilterRule.isEqual("TENANT") },
               },
             },
           }),

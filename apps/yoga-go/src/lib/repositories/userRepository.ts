@@ -1,9 +1,9 @@
 /**
  * User Repository - DynamoDB Operations
  *
- * Single-table design:
- * - PK: "USER"
- * - SK: cognitoSub (which is also the user id)
+ * Dedicated users table (yoga-go-users):
+ * - PK: cognitoSub (user id)
+ * - SK: PROFILE
  */
 
 import {
@@ -11,9 +11,10 @@ import {
   PutCommand,
   UpdateCommand,
   DeleteCommand,
-  QueryCommand,
+  ScanCommand,
 } from '@aws-sdk/lib-dynamodb';
-import { docClient, Tables, EntityType } from '../dynamodb';
+import { docClient, Tables, UsersPK, EntityType } from '../dynamodb';
+import { adminGetUserBySub } from '../cognito-auth';
 import type { User, UserRole, MembershipType } from '@/types';
 
 // Type for creating a new user
@@ -26,18 +27,19 @@ export interface CreateUserInput {
   signupExperts?: string[]; // Expert IDs where user signed up (from subdomains)
 }
 
-// Type for DynamoDB User item (includes PK/SK)
+// Type for DynamoDB User item (includes PK/SK and entityType)
 interface DynamoDBUserItem extends User {
   PK: string;
   SK: string;
+  entityType?: string;
 }
 
 /**
- * Convert DynamoDB item to User type (removes PK/SK)
+ * Convert DynamoDB item to User type (removes PK/SK/entityType)
  */
 function toUser(item: DynamoDBUserItem): User {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { PK, SK, ...user } = item;
+  const { PK, SK, entityType, ...user } = item;
   return user as User;
 }
 
@@ -49,10 +51,10 @@ export async function getUserById(cognitoSub: string): Promise<User | null> {
 
   const result = await docClient.send(
     new GetCommand({
-      TableName: Tables.CORE,
+      TableName: Tables.USERS,
       Key: {
-        PK: EntityType.USER,
-        SK: cognitoSub,
+        PK: UsersPK.USER(cognitoSub),
+        SK: UsersPK.PROFILE,
       },
     })
   );
@@ -73,16 +75,17 @@ export const getUserByCognitoSub = getUserById;
 
 /**
  * Get all users (for admin)
+ * Uses Scan since each user has their own PK
  */
 export async function getAllUsers(): Promise<User[]> {
   console.log('[DBG][userRepository] Getting all users');
 
   const result = await docClient.send(
-    new QueryCommand({
-      TableName: Tables.CORE,
-      KeyConditionExpression: 'PK = :pk',
+    new ScanCommand({
+      TableName: Tables.USERS,
+      FilterExpression: 'SK = :sk',
       ExpressionAttributeValues: {
-        ':pk': EntityType.USER,
+        ':sk': UsersPK.PROFILE,
       },
     })
   );
@@ -95,17 +98,17 @@ export async function getAllUsers(): Promise<User[]> {
 /**
  * Get users who signed up via an expert's space
  * Filters users whose signupExperts array contains the expertId
+ * Uses Scan since each user has their own PK
  */
 export async function getUsersByExpertId(expertId: string): Promise<User[]> {
   console.log('[DBG][userRepository] Getting users for expert:', expertId);
 
   const result = await docClient.send(
-    new QueryCommand({
-      TableName: Tables.CORE,
-      KeyConditionExpression: 'PK = :pk',
-      FilterExpression: 'contains(signupExperts, :expertId)',
+    new ScanCommand({
+      TableName: Tables.USERS,
+      FilterExpression: 'SK = :sk AND contains(signupExperts, :expertId)',
       ExpressionAttributeValues: {
-        ':pk': EntityType.USER,
+        ':sk': UsersPK.PROFILE,
         ':expertId': expertId,
       },
     })
@@ -136,8 +139,9 @@ export async function createUser(input: CreateUserInput): Promise<User> {
   );
 
   const user: DynamoDBUserItem = {
-    PK: EntityType.USER,
-    SK: cognitoSub,
+    PK: UsersPK.USER(cognitoSub),
+    SK: UsersPK.PROFILE,
+    entityType: EntityType.USER,
     id: cognitoSub, // cognitoSub is now the user id
     role: userRoles,
     signupExperts: signupExperts || [],
@@ -199,7 +203,7 @@ export async function createUser(input: CreateUserInput): Promise<User> {
 
   await docClient.send(
     new PutCommand({
-      TableName: Tables.CORE,
+      TableName: Tables.USERS,
       Item: user,
       ConditionExpression: 'attribute_not_exists(PK)', // Prevent overwriting existing user
     })
@@ -266,8 +270,18 @@ export async function getOrCreateUser(
     return user;
   }
 
-  // Create new user
+  // Create new user - first verify Cognito user exists
   console.log('[DBG][userRepository] Creating new user');
+
+  const cognitoUserExists = await adminGetUserBySub(cognitoUser.sub);
+  if (!cognitoUserExists) {
+    console.error(
+      '[DBG][userRepository] Cognito user not found, refusing to create DynamoDB record:',
+      cognitoUser.sub
+    );
+    throw new Error(`Cannot create user: Cognito user not found for sub ${cognitoUser.sub}`);
+  }
+
   return createUser({
     cognitoSub: cognitoUser.sub,
     email: cognitoUser.email,
@@ -287,10 +301,10 @@ export async function addSignupExperts(cognitoSub: string, expertIds: string[]):
 
   const result = await docClient.send(
     new UpdateCommand({
-      TableName: Tables.CORE,
+      TableName: Tables.USERS,
       Key: {
-        PK: EntityType.USER,
-        SK: cognitoSub,
+        PK: UsersPK.USER(cognitoSub),
+        SK: UsersPK.PROFILE,
       },
       UpdateExpression:
         'SET signupExperts = list_append(if_not_exists(signupExperts, :empty), :experts), updatedAt = :updatedAt',
@@ -336,10 +350,10 @@ export async function updateUser(cognitoSub: string, updates: Partial<User>): Pr
 
   const result = await docClient.send(
     new UpdateCommand({
-      TableName: Tables.CORE,
+      TableName: Tables.USERS,
       Key: {
-        PK: EntityType.USER,
-        SK: cognitoSub,
+        PK: UsersPK.USER(cognitoSub),
+        SK: UsersPK.PROFILE,
       },
       UpdateExpression: `SET ${updateParts.join(', ')}`,
       ExpressionAttributeNames: exprAttrNames,
@@ -360,10 +374,10 @@ export async function deleteUser(cognitoSub: string): Promise<void> {
 
   await docClient.send(
     new DeleteCommand({
-      TableName: Tables.CORE,
+      TableName: Tables.USERS,
       Key: {
-        PK: EntityType.USER,
-        SK: cognitoSub,
+        PK: UsersPK.USER(cognitoSub),
+        SK: UsersPK.PROFILE,
       },
     })
   );
@@ -396,10 +410,10 @@ export async function addEnrolledCourse(
 
   const result = await docClient.send(
     new UpdateCommand({
-      TableName: Tables.CORE,
+      TableName: Tables.USERS,
       Key: {
-        PK: EntityType.USER,
-        SK: cognitoSub,
+        PK: UsersPK.USER(cognitoSub),
+        SK: UsersPK.PROFILE,
       },
       UpdateExpression:
         'SET enrolledCourses = list_append(if_not_exists(enrolledCourses, :empty), :course), updatedAt = :updatedAt',
@@ -508,13 +522,18 @@ export async function deleteUserCompletely(cognitoSub: string): Promise<DeleteUs
   // Get data needed for cleanup queries
   const courseIds = (user.enrolledCourses || []).map(c => c.courseId);
   const expertIds = user.signupExperts || [];
+  // Get unique tenantIds from enrolled courses (instructor = tenantId) and signupExperts
+  const courseTenantIds = (user.enrolledCourses || []).map(c => c.instructor);
+  const allTenantIds = [...new Set([...expertIds, ...courseTenantIds])];
 
   console.log(
     '[DBG][userRepository] User has',
     courseIds.length,
     'courses,',
     expertIds.length,
-    'signup experts'
+    'signup experts,',
+    allTenantIds.length,
+    'tenants'
   );
 
   // Import all repositories dynamically to avoid circular dependencies
@@ -615,9 +634,12 @@ export async function deleteUserCompletely(cognitoSub: string): Promise<DeleteUs
     console.error('[DBG][userRepository] Error deleting webinar registrations:', error);
   }
 
-  // 11. Delete course progress
+  // 11. Delete course progress (iterate through all tenants)
   try {
-    deletedCounts.courseProgress = await deleteProgress(cognitoSub);
+    for (const tenantId of allTenantIds) {
+      const count = await deleteProgress(tenantId, cognitoSub);
+      deletedCounts.courseProgress += count;
+    }
     console.log('[DBG][userRepository] Deleted course progress:', deletedCounts.courseProgress);
   } catch (error) {
     console.error('[DBG][userRepository] Error deleting course progress:', error);

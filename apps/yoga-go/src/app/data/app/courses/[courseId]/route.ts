@@ -40,8 +40,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
       return NextResponse.json(response, { status: 403 });
     }
 
-    // Fetch course from DynamoDB
-    const courseDoc = await courseRepository.getCourseById(courseId);
+    // Fetch course from DynamoDB (cross-tenant lookup)
+    const courseDoc = await courseRepository.getCourseByIdOnly(courseId);
     if (!courseDoc) {
       const response: ApiResponse<null> = {
         success: false,
@@ -49,12 +49,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
       };
       return NextResponse.json(response, { status: 404 });
     }
+    const tenantId = courseDoc.instructor.id;
 
-    // Get progress from MongoDB
-    const progress = await getCourseProgress(user.id, courseId);
+    // Get progress from DynamoDB
+    const progress = await getCourseProgress(tenantId, user.id, courseId);
 
     // Fetch all lessons for this course from DynamoDB
-    const lessonDocs = await lessonRepository.getLessonsByCourseId(courseId);
+    const lessonDocs = await lessonRepository.getLessonsByCourseId(tenantId, courseId);
     const lessons: Lesson[] = lessonDocs;
 
     // Build curriculum with actual lessons

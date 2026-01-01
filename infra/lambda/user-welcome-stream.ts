@@ -1,7 +1,9 @@
 /**
  * DynamoDB Stream Lambda for User Welcome Emails & Analytics
  *
- * Triggered when new USER or TENANT records are created in yoga-go-core table.
+ * Triggered by two tables:
+ * - yoga-go-users: USER records (PK={cognitoSub}, SK=PROFILE)
+ * - yoga-go-core: TENANT records (entityType=TENANT)
  *
  * For USER records:
  * - Expert: Skipped (handled by TENANT creation)
@@ -33,6 +35,7 @@ const ses = new SESClient({ region: "us-west-2" });
 const dynamodb = new DynamoDBClient({ region: "ap-southeast-2" });
 
 const TABLE_NAME = process.env.DYNAMODB_TABLE || "yoga-go-core";
+const USERS_TABLE = process.env.USERS_TABLE || "yoga-go-users";
 const ANALYTICS_TABLE = process.env.ANALYTICS_TABLE || "yoga-go-analytics";
 const FROM_EMAIL = process.env.SES_FROM_EMAIL || "hi@myyoga.guru";
 const CONFIG_SET = process.env.SES_CONFIG_SET;
@@ -401,7 +404,9 @@ async function sendGenericLearnerWelcomeEmail(user: UserRecord): Promise<void> {
 async function trackUserCreatedEvent(
   userData: Record<string, unknown>,
 ): Promise<void> {
-  const userId = (userData.id as string) || (userData.SK as string);
+  // For new structure: id is the cognitoSub, or extract from PK
+  const userId =
+    (userData.id as string) || (userData.PK as string) || "unknown";
   const timestamp = new Date().toISOString();
   const profile = userData.profile as Record<string, unknown> | undefined;
   const roles = Array.isArray(userData.role) ? userData.role : [userData.role];
@@ -480,16 +485,50 @@ async function processUserRecord(item: Record<string, unknown>): Promise<void> {
   // Track analytics event for admin dashboard (always, for all user types)
   await trackUserCreatedEvent(item);
 
-  // DISABLED: Welcome emails are no longer sent automatically
-  // The app handles user experience without automatic welcome emails
-  console.log(
-    `[user-welcome-stream] Welcome emails disabled - skipping email for user: ${email}`,
-  );
+  // Skip welcome email if no email address
+  if (!email) {
+    console.log(`[user-welcome-stream] No email address - skipping welcome email`);
+    return;
+  }
+
+  // Skip welcome email for experts (they get welcome via TENANT trigger)
+  if (isExpert) {
+    console.log(`[user-welcome-stream] User is expert - skipping learner welcome email`);
+    return;
+  }
+
+  // Send welcome email to learner
+  const user: UserRecord = {
+    id: (item.id as string) || (item.PK as string) || "unknown",
+    email,
+    name,
+    role: item.role as string | string[],
+    signupExpertId,
+  };
+
+  try {
+    if (signupExpertId) {
+      // Learner signed up via expert subdomain - send branded email
+      const expert = await getExpert(signupExpertId);
+      if (expert) {
+        await sendBrandedLearnerWelcomeEmail(user, expert);
+      } else {
+        // Expert not found, send generic welcome
+        await sendGenericLearnerWelcomeEmail(user);
+      }
+    } else {
+      // Learner signed up on main site - send generic welcome
+      await sendGenericLearnerWelcomeEmail(user);
+    }
+  } catch (error) {
+    console.error(`[user-welcome-stream] Error sending welcome email:`, error);
+    // Don't throw - email is nice to have, not critical
+  }
 }
 
 /**
  * Get USER record by userId (cognitoSub) to retrieve email for welcome email
- * The userId is stored directly on the TENANT record, so no scanning is needed.
+ * Users are now stored in yoga-go-users table with PK={cognitoSub}, SK=PROFILE
  */
 async function getUserById(
   userId: string,
@@ -499,10 +538,10 @@ async function getUserById(
   try {
     const result = await dynamodb.send(
       new GetItemCommand({
-        TableName: TABLE_NAME,
+        TableName: USERS_TABLE,
         Key: {
-          PK: { S: "USER" },
-          SK: { S: userId },
+          PK: { S: userId },
+          SK: { S: "PROFILE" },
         },
         ProjectionExpression: "id, #p",
         ExpressionAttributeNames: {
@@ -540,7 +579,11 @@ async function getUserById(
 async function trackTenantCreatedEvent(
   tenantData: Record<string, unknown>,
 ): Promise<void> {
-  const tenantId = tenantData.SK as string;
+  // Extract tenantId from item.id (preferred) or from PK (TENANT#{tenantId})
+  const tenantId =
+    (tenantData.id as string) ||
+    (tenantData.PK as string)?.replace("TENANT#", "") ||
+    "unknown";
   const timestamp = new Date().toISOString();
 
   console.log(
@@ -593,11 +636,16 @@ async function trackTenantCreatedEvent(
 /**
  * Process a TENANT record - send expert welcome email and track analytics
  * The TENANT record contains userId (cognitoSub) which links to the USER record.
+ * New structure: PK=TENANT#{tenantId}, SK=META
  */
 async function processTenantRecord(
   item: Record<string, unknown>,
 ): Promise<void> {
-  const tenantId = item.SK as string;
+  // Extract tenantId from item.id (preferred) or from PK (TENANT#{tenantId})
+  const tenantId =
+    (item.id as string) ||
+    (item.PK as string)?.replace("TENANT#", "") ||
+    "unknown";
   const userId = item.userId as string | undefined;
   const displayName = item.name as string | undefined;
 
@@ -610,15 +658,36 @@ async function processTenantRecord(
   // Track analytics event for admin dashboard (always, regardless of email)
   await trackTenantCreatedEvent(item);
 
-  // DISABLED: Welcome emails are no longer sent automatically
-  // The app handles user experience without automatic welcome emails
-  console.log(
-    `[user-welcome-stream] Welcome emails disabled - skipping email for tenant: ${tenantId}`,
-  );
+  // Send expert welcome email if we have a userId to look up email
+  if (!userId) {
+    console.log(`[user-welcome-stream] No userId on tenant - skipping welcome email`);
+    return;
+  }
+
+  try {
+    // Look up user to get their email address
+    const userInfo = await getUserById(userId);
+    if (!userInfo?.email) {
+      console.log(`[user-welcome-stream] Could not find user email for tenant: ${tenantId}`);
+      return;
+    }
+
+    const user: UserRecord = {
+      id: userId,
+      email: userInfo.email,
+      name: userInfo.name || displayName,
+    };
+
+    await sendExpertWelcomeEmail(user, tenantId);
+  } catch (error) {
+    console.error(`[user-welcome-stream] Error sending expert welcome email:`, error);
+    // Don't throw - email is nice to have, not critical
+  }
 }
 
 /**
  * Process a single DynamoDB stream record
+ * Handles records from both yoga-go-users table (USER) and yoga-go-core table (TENANT)
  */
 async function processRecord(record: DynamoDBRecord): Promise<void> {
   // Only process INSERT events (new records)
@@ -633,11 +702,15 @@ async function processRecord(record: DynamoDBRecord): Promise<void> {
 
   // Unmarshall the DynamoDB record
   const item = unmarshall(newImage as Record<string, AttributeValue>);
-  const pk = item.PK as string;
+  const sk = item.SK as string;
+  const entityType = item.entityType as string | undefined;
 
-  if (pk === "USER") {
+  // USER records from yoga-go-users table: PK={cognitoSub}, SK=PROFILE
+  if (sk === "PROFILE") {
     await processUserRecord(item);
-  } else if (pk === "TENANT") {
+  }
+  // TENANT records from yoga-go-core table: entityType=TENANT
+  else if (entityType === "TENANT") {
     await processTenantRecord(item);
   }
 }

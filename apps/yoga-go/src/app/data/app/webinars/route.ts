@@ -50,7 +50,7 @@ export async function GET(): Promise<NextResponse<ApiResponse<WebinarWithRegistr
     const webinarsWithRegistration: WebinarWithRegistration[] = [];
 
     for (const registration of registrations) {
-      const webinar = await webinarRepository.getWebinarById(registration.webinarId);
+      const webinar = await webinarRepository.getWebinarByIdOnly(registration.webinarId);
       if (webinar) {
         // Get expert info
         const expert = await expertRepository.getExpertById(webinar.expertId);

@@ -59,9 +59,8 @@ export async function POST(request: Request, { params }: { params: Promise<Param
     }
 
     // Create survey response using repository
-    const surveyResponse = await surveyResponseRepository.createSurveyResponse({
+    const surveyResponse = await surveyResponseRepository.createSurveyResponse(expertId, {
       surveyId,
-      expertId,
       userId,
       contactInfo,
       answers,

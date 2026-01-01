@@ -47,7 +47,7 @@ export async function POST(_request: Request, { params }: RouteParams) {
       );
     }
 
-    const webinar = await webinarRepository.getWebinarById(webinarId);
+    const webinar = await webinarRepository.getWebinarByIdOnly(webinarId);
 
     if (!webinar) {
       return NextResponse.json<ApiResponse<ZoomGenerationResult>>(
@@ -95,7 +95,7 @@ export async function POST(_request: Request, { params }: RouteParams) {
     const results = await createZoomMeetingsForWebinar(user.expertProfile, webinarId);
 
     // Refresh webinar to get updated data
-    const updatedWebinar = await webinarRepository.getWebinarById(webinarId);
+    const updatedWebinar = await webinarRepository.getWebinarByIdOnly(webinarId);
 
     if (!updatedWebinar) {
       throw new Error('Failed to refresh webinar data');

@@ -67,8 +67,10 @@ export async function GET() {
         if (courseIds.length > 0) {
           const uniqueUserIds = new Set<string>();
           for (const courseId of courseIds) {
-            const progressRecords =
-              await courseProgressRepository.getCourseProgressByCourseId(courseId);
+            const progressRecords = await courseProgressRepository.getCourseProgressByCourseId(
+              expertId,
+              courseId
+            );
             progressRecords.forEach(p => uniqueUserIds.add(p.userId));
           }
           totalStudents = uniqueUserIds.size;

@@ -1,16 +1,16 @@
 /**
  * Waitlist Repository - DynamoDB Operations
  *
- * Single-table design (CORE table):
+ * SYSTEM tenant (CORE table):
  *
  * Pending verification:
- * - PK: "WAITLIST_PENDING#{email}"
- * - SK: "PIN"
+ * - PK: "TENANT#SYSTEM"
+ * - SK: "WAITLIST_PENDING#{email}"
  * - TTL: 10 minutes from creation
  *
  * Verified signups:
- * - PK: "WAITLIST"
- * - SK: "{createdAt}#{email}"
+ * - PK: "TENANT#SYSTEM"
+ * - SK: "WAITLIST#{createdAt}#{email}"
  */
 
 import { GetCommand, PutCommand, DeleteCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
@@ -67,8 +67,8 @@ export async function createPendingVerification(email: string): Promise<string> 
   console.log('[DBG][waitlistRepository] Creating pending verification for:', normalizedEmail);
 
   const item: DynamoDBPendingItem = {
-    PK: CorePK.WAITLIST_PENDING(normalizedEmail),
-    SK: 'PIN',
+    PK: CorePK.SYSTEM,
+    SK: CorePK.WAITLIST_PENDING_SK(normalizedEmail),
     entityType: EntityType.WAITLIST_PENDING,
     email: normalizedEmail,
     pin,
@@ -99,8 +99,8 @@ export async function getPendingVerification(email: string): Promise<WaitlistPen
     new GetCommand({
       TableName: Tables.CORE,
       Key: {
-        PK: CorePK.WAITLIST_PENDING(normalizedEmail),
-        SK: 'PIN',
+        PK: CorePK.SYSTEM,
+        SK: CorePK.WAITLIST_PENDING_SK(normalizedEmail),
       },
     })
   );
@@ -138,8 +138,8 @@ export async function deletePendingVerification(email: string): Promise<void> {
     new DeleteCommand({
       TableName: Tables.CORE,
       Key: {
-        PK: CorePK.WAITLIST_PENDING(normalizedEmail),
-        SK: 'PIN',
+        PK: CorePK.SYSTEM,
+        SK: CorePK.WAITLIST_PENDING_SK(normalizedEmail),
       },
     })
   );
@@ -169,8 +169,8 @@ export async function createWaitlistSignup(
   };
 
   const item: DynamoDBSignupItem = {
-    PK: CorePK.WAITLIST,
-    SK: `${now}#${normalizedEmail}`,
+    PK: CorePK.SYSTEM,
+    SK: CorePK.WAITLIST_SK(now, normalizedEmail),
     entityType: EntityType.WAITLIST,
     ...signup,
   };
@@ -197,10 +197,11 @@ export async function isEmailOnWaitlist(email: string): Promise<boolean> {
   const result = await docClient.send(
     new QueryCommand({
       TableName: Tables.CORE,
-      KeyConditionExpression: 'PK = :pk',
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
       FilterExpression: 'email = :email',
       ExpressionAttributeValues: {
-        ':pk': CorePK.WAITLIST,
+        ':pk': CorePK.SYSTEM,
+        ':skPrefix': 'WAITLIST#',
         ':email': normalizedEmail,
       },
       Limit: 1,
@@ -221,9 +222,10 @@ export async function getAllWaitlistSignups(): Promise<WaitlistSignup[]> {
   const result = await docClient.send(
     new QueryCommand({
       TableName: Tables.CORE,
-      KeyConditionExpression: 'PK = :pk',
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
       ExpressionAttributeValues: {
-        ':pk': CorePK.WAITLIST,
+        ':pk': CorePK.SYSTEM,
+        ':skPrefix': 'WAITLIST#',
       },
       ScanIndexForward: false, // Most recent first
     })

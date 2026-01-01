@@ -2,13 +2,14 @@
  * Survey repository for DynamoDB operations
  * Handles CRUD operations for surveys
  *
- * PK: SURVEY
- * SK: {expertId}#{surveyId}
+ * Tenant-partitioned design:
+ * - PK: TENANT#{tenantId}
+ * - SK: SURVEY#{surveyId}
  *
  * Status: draft | active | closed | archived
  */
 
-import { docClient, Tables, EntityType } from '../dynamodb';
+import { docClient, Tables, CorePK } from '../dynamodb';
 import {
   PutCommand,
   GetCommand,
@@ -18,23 +19,21 @@ import {
 } from '@aws-sdk/lib-dynamodb';
 import type { Survey, SurveyStatus } from '@/types';
 
-// Helper to generate survey SK
-const generateSK = (expertId: string, surveyId: string) => `${expertId}#${surveyId}`;
-
 // Helper to generate a unique survey ID
 const generateSurveyId = () => `survey_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
-// Helper to generate GSI2SK based on status
-const generateGSI2SK = (status: SurveyStatus, timestamp: string) =>
-  `${status.toUpperCase()}#${timestamp}`;
-
 /**
  * Create a new survey (status defaults to 'draft')
+ * @param tenantId - The tenant ID
+ * @param input - Survey input (excluding id, createdAt, updatedAt)
  */
 export async function createSurvey(
-  input: Omit<Survey, 'id' | 'createdAt' | 'updatedAt' | 'status'> & { status?: SurveyStatus }
+  tenantId: string,
+  input: Omit<Survey, 'id' | 'expertId' | 'createdAt' | 'updatedAt' | 'status'> & {
+    status?: SurveyStatus;
+  }
 ): Promise<Survey> {
-  console.log('[DBG][surveyRepository] Creating survey for expert:', input.expertId);
+  console.log('[DBG][surveyRepository] Creating survey for tenant:', tenantId);
 
   const now = new Date().toISOString();
   const surveyId = generateSurveyId();
@@ -43,21 +42,18 @@ export async function createSurvey(
   const survey: Survey = {
     ...input,
     id: surveyId,
+    expertId: tenantId, // tenantId is expertId
     status,
     createdAt: now,
     updatedAt: now,
   };
 
   const item = {
-    PK: EntityType.SURVEY,
-    SK: generateSK(input.expertId, surveyId),
-    entityType: EntityType.SURVEY,
-    // GSI for querying by surveyId alone
+    PK: CorePK.TENANT(tenantId),
+    SK: CorePK.SURVEY(surveyId),
+    // GSI for querying by surveyId alone (cross-tenant for public survey access)
     GSI1PK: `SURVEYID#${surveyId}`,
-    GSI1SK: EntityType.SURVEY,
-    // GSI for querying surveys by expert and status
-    GSI2PK: `EXPERT#${input.expertId}`,
-    GSI2SK: generateGSI2SK(status, now),
+    GSI1SK: 'SURVEY',
     ...survey,
   };
 
@@ -73,17 +69,19 @@ export async function createSurvey(
 }
 
 /**
- * Get a survey by ID (requires expertId for direct lookup)
+ * Get a survey by ID
+ * @param tenantId - The tenant ID
+ * @param surveyId - The survey ID
  */
-export async function getSurveyById(expertId: string, surveyId: string): Promise<Survey | null> {
-  console.log('[DBG][surveyRepository] Getting survey:', surveyId);
+export async function getSurveyById(tenantId: string, surveyId: string): Promise<Survey | null> {
+  console.log('[DBG][surveyRepository] Getting survey:', surveyId, 'tenant:', tenantId);
 
   const result = await docClient.send(
     new GetCommand({
       TableName: Tables.CORE,
       Key: {
-        PK: EntityType.SURVEY,
-        SK: generateSK(expertId, surveyId),
+        PK: CorePK.TENANT(tenantId),
+        SK: CorePK.SURVEY(surveyId),
       },
     })
   );
@@ -97,7 +95,9 @@ export async function getSurveyById(expertId: string, surveyId: string): Promise
 }
 
 /**
- * Get a survey by ID only (uses GSI1)
+ * Get a survey by ID only (uses GSI1 for cross-tenant lookup)
+ * Used for public survey access
+ * @param surveyId - The survey ID
  */
 export async function getSurveyByIdOnly(surveyId: string): Promise<Survey | null> {
   console.log('[DBG][surveyRepository] Getting survey by ID only:', surveyId);
@@ -123,21 +123,23 @@ export async function getSurveyByIdOnly(surveyId: string): Promise<Survey | null
 }
 
 /**
- * Get all surveys for an expert (excludes archived by default)
+ * Get all surveys for a tenant (excludes archived by default)
+ * @param tenantId - The tenant ID
+ * @param includeArchived - Whether to include archived surveys
  */
-export async function getSurveysByExpert(
-  expertId: string,
+export async function getTenantSurveys(
+  tenantId: string,
   includeArchived: boolean = false
 ): Promise<Survey[]> {
-  console.log('[DBG][surveyRepository] Getting surveys for expert:', expertId);
+  console.log('[DBG][surveyRepository] Getting surveys for tenant:', tenantId);
 
   const result = await docClient.send(
     new QueryCommand({
       TableName: Tables.CORE,
       KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
       ExpressionAttributeValues: {
-        ':pk': EntityType.SURVEY,
-        ':skPrefix': `${expertId}#`,
+        ':pk': CorePK.TENANT(tenantId),
+        ':skPrefix': 'SURVEY#',
       },
       ScanIndexForward: false,
     })
@@ -155,24 +157,30 @@ export async function getSurveysByExpert(
 }
 
 /**
- * Get surveys by status for an expert
+ * Get surveys by status for a tenant
+ * @param tenantId - The tenant ID
+ * @param status - The survey status to filter by
  */
-export async function getSurveysByExpertByStatus(
-  expertId: string,
+export async function getTenantSurveysByStatus(
+  tenantId: string,
   status: SurveyStatus
 ): Promise<Survey[]> {
-  console.log('[DBG][surveyRepository] Getting', status, 'surveys for expert:', expertId);
+  console.log('[DBG][surveyRepository] Getting', status, 'surveys for tenant:', tenantId);
 
   const result = await docClient.send(
     new QueryCommand({
       TableName: Tables.CORE,
-      IndexName: 'GSI2',
-      KeyConditionExpression: 'GSI2PK = :gsi2pk AND begins_with(GSI2SK, :gsi2skPrefix)',
-      ExpressionAttributeValues: {
-        ':gsi2pk': `EXPERT#${expertId}`,
-        ':gsi2skPrefix': `${status.toUpperCase()}#`,
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
+      FilterExpression: '#status = :status',
+      ExpressionAttributeNames: {
+        '#status': 'status',
       },
-      ScanIndexForward: false, // Most recent first
+      ExpressionAttributeValues: {
+        ':pk': CorePK.TENANT(tenantId),
+        ':skPrefix': 'SURVEY#',
+        ':status': status,
+      },
+      ScanIndexForward: false,
     })
   );
 
@@ -182,32 +190,37 @@ export async function getSurveysByExpertByStatus(
 }
 
 /**
- * Get all active surveys for an expert (can have multiple)
+ * Get all active surveys for a tenant
+ * @param tenantId - The tenant ID
  */
-export async function getActiveSurveysByExpert(expertId: string): Promise<Survey[]> {
-  return getSurveysByExpertByStatus(expertId, 'active');
+export async function getActiveSurveys(tenantId: string): Promise<Survey[]> {
+  return getTenantSurveysByStatus(tenantId, 'active');
 }
 
 /**
- * Get single active survey for an expert (for backward compatibility)
- * @deprecated Use getActiveSurveysByExpert instead
+ * Get single active survey for a tenant (for backward compatibility)
+ * @deprecated Use getActiveSurveys instead
+ * @param tenantId - The tenant ID
  */
-export async function getActiveSurveyByExpert(expertId: string): Promise<Survey | null> {
-  const surveys = await getActiveSurveysByExpert(expertId);
+export async function getActiveSurvey(tenantId: string): Promise<Survey | null> {
+  const surveys = await getActiveSurveys(tenantId);
   return surveys.length > 0 ? surveys[0] : null;
 }
 
 /**
  * Update a survey
+ * @param tenantId - The tenant ID
+ * @param surveyId - The survey ID
+ * @param updates - Partial survey updates
  */
 export async function updateSurvey(
-  expertId: string,
+  tenantId: string,
   surveyId: string,
   updates: Partial<
     Pick<Survey, 'title' | 'description' | 'contactInfo' | 'questions' | 'status' | 'responseCount'>
   >
 ): Promise<Survey | null> {
-  console.log('[DBG][surveyRepository] Updating survey:', surveyId);
+  console.log('[DBG][surveyRepository] Updating survey:', surveyId, 'tenant:', tenantId);
 
   const now = new Date().toISOString();
   const updateExpressions: string[] = ['#updatedAt = :updatedAt'];
@@ -241,11 +254,8 @@ export async function updateSurvey(
   }
   if (updates.status !== undefined) {
     updateExpressions.push('#status = :status');
-    updateExpressions.push('#GSI2SK = :gsi2sk');
     expressionAttributeNames['#status'] = 'status';
-    expressionAttributeNames['#GSI2SK'] = 'GSI2SK';
     expressionAttributeValues[':status'] = updates.status;
-    expressionAttributeValues[':gsi2sk'] = generateGSI2SK(updates.status, now);
 
     // Set closedAt if closing
     if (updates.status === 'closed') {
@@ -265,8 +275,8 @@ export async function updateSurvey(
     new UpdateCommand({
       TableName: Tables.CORE,
       Key: {
-        PK: EntityType.SURVEY,
-        SK: generateSK(expertId, surveyId),
+        PK: CorePK.TENANT(tenantId),
+        SK: CorePK.SURVEY(surveyId),
       },
       UpdateExpression: `SET ${updateExpressions.join(', ')}`,
       ExpressionAttributeNames: expressionAttributeNames,
@@ -286,41 +296,51 @@ export async function updateSurvey(
 
 /**
  * Publish a survey (draft -> active)
+ * @param tenantId - The tenant ID
+ * @param surveyId - The survey ID
  */
-export async function publishSurvey(expertId: string, surveyId: string): Promise<Survey | null> {
+export async function publishSurvey(tenantId: string, surveyId: string): Promise<Survey | null> {
   console.log('[DBG][surveyRepository] Publishing survey:', surveyId);
-  return updateSurvey(expertId, surveyId, { status: 'active' });
+  return updateSurvey(tenantId, surveyId, { status: 'active' });
 }
 
 /**
  * Close a survey (active -> closed)
+ * @param tenantId - The tenant ID
+ * @param surveyId - The survey ID
  */
-export async function closeSurvey(expertId: string, surveyId: string): Promise<Survey | null> {
+export async function closeSurvey(tenantId: string, surveyId: string): Promise<Survey | null> {
   console.log('[DBG][surveyRepository] Closing survey:', surveyId);
-  return updateSurvey(expertId, surveyId, { status: 'closed' });
+  return updateSurvey(tenantId, surveyId, { status: 'closed' });
 }
 
 /**
  * Reopen a survey (closed -> active)
+ * @param tenantId - The tenant ID
+ * @param surveyId - The survey ID
  */
-export async function reopenSurvey(expertId: string, surveyId: string): Promise<Survey | null> {
+export async function reopenSurvey(tenantId: string, surveyId: string): Promise<Survey | null> {
   console.log('[DBG][surveyRepository] Reopening survey:', surveyId);
-  return updateSurvey(expertId, surveyId, { status: 'active' });
+  return updateSurvey(tenantId, surveyId, { status: 'active' });
 }
 
 /**
  * Archive a survey (soft delete)
+ * @param tenantId - The tenant ID
+ * @param surveyId - The survey ID
  */
-export async function archiveSurvey(expertId: string, surveyId: string): Promise<Survey | null> {
+export async function archiveSurvey(tenantId: string, surveyId: string): Promise<Survey | null> {
   console.log('[DBG][surveyRepository] Archiving survey:', surveyId);
-  return updateSurvey(expertId, surveyId, { status: 'archived' });
+  return updateSurvey(tenantId, surveyId, { status: 'archived' });
 }
 
 /**
  * Increment response count for a survey
+ * @param tenantId - The tenant ID
+ * @param surveyId - The survey ID
  */
 export async function incrementResponseCount(
-  expertId: string,
+  tenantId: string,
   surveyId: string
 ): Promise<Survey | null> {
   console.log('[DBG][surveyRepository] Incrementing response count for survey:', surveyId);
@@ -331,8 +351,8 @@ export async function incrementResponseCount(
     new UpdateCommand({
       TableName: Tables.CORE,
       Key: {
-        PK: EntityType.SURVEY,
-        SK: generateSK(expertId, surveyId),
+        PK: CorePK.TENANT(tenantId),
+        SK: CorePK.SURVEY(surveyId),
       },
       UpdateExpression:
         'SET #responseCount = if_not_exists(#responseCount, :zero) + :inc, #updatedAt = :updatedAt',
@@ -358,22 +378,46 @@ export async function incrementResponseCount(
 
 /**
  * Delete a survey (hard delete - use archiveSurvey for soft delete)
+ * @param tenantId - The tenant ID
+ * @param surveyId - The survey ID
  */
-export async function deleteSurvey(expertId: string, surveyId: string): Promise<boolean> {
-  console.log('[DBG][surveyRepository] Deleting survey:', surveyId);
+export async function deleteSurvey(tenantId: string, surveyId: string): Promise<boolean> {
+  console.log('[DBG][surveyRepository] Deleting survey:', surveyId, 'tenant:', tenantId);
 
   await docClient.send(
     new DeleteCommand({
       TableName: Tables.CORE,
       Key: {
-        PK: EntityType.SURVEY,
-        SK: generateSK(expertId, surveyId),
+        PK: CorePK.TENANT(tenantId),
+        SK: CorePK.SURVEY(surveyId),
       },
     })
   );
 
   console.log('[DBG][surveyRepository] Survey deleted:', surveyId);
   return true;
+}
+
+/**
+ * Delete all surveys for a tenant
+ * @param tenantId - The tenant ID
+ */
+export async function deleteAllTenantSurveys(tenantId: string): Promise<number> {
+  console.log('[DBG][surveyRepository] Deleting all surveys for tenant:', tenantId);
+
+  const surveys = await getTenantSurveys(tenantId, true); // Include archived
+
+  if (surveys.length === 0) {
+    console.log('[DBG][surveyRepository] No surveys to delete');
+    return 0;
+  }
+
+  for (const survey of surveys) {
+    await deleteSurvey(tenantId, survey.id);
+  }
+
+  console.log('[DBG][surveyRepository] Deleted', surveys.length, 'surveys');
+  return surveys.length;
 }
 
 /**
@@ -400,4 +444,46 @@ function mapToSurvey(item: Record<string, unknown>): Survey {
     createdAt: item.createdAt as string,
     updatedAt: item.updatedAt as string,
   };
+}
+
+// ===================================================================
+// BACKWARD COMPATIBILITY ALIASES
+// ===================================================================
+
+/** @deprecated Use getTenantSurveys(tenantId) instead */
+export async function getSurveysByExpert(
+  expertId: string,
+  includeArchived: boolean = false
+): Promise<Survey[]> {
+  console.warn(
+    '[DBG][surveyRepository] getSurveysByExpert() is deprecated - use getTenantSurveys(tenantId)'
+  );
+  return getTenantSurveys(expertId, includeArchived);
+}
+
+/** @deprecated Use getTenantSurveysByStatus(tenantId, status) instead */
+export async function getSurveysByExpertByStatus(
+  expertId: string,
+  status: SurveyStatus
+): Promise<Survey[]> {
+  console.warn(
+    '[DBG][surveyRepository] getSurveysByExpertByStatus() is deprecated - use getTenantSurveysByStatus(tenantId, status)'
+  );
+  return getTenantSurveysByStatus(expertId, status);
+}
+
+/** @deprecated Use getActiveSurveys(tenantId) instead */
+export async function getActiveSurveysByExpert(expertId: string): Promise<Survey[]> {
+  console.warn(
+    '[DBG][surveyRepository] getActiveSurveysByExpert() is deprecated - use getActiveSurveys(tenantId)'
+  );
+  return getActiveSurveys(expertId);
+}
+
+/** @deprecated Use getActiveSurvey(tenantId) instead */
+export async function getActiveSurveyByExpert(expertId: string): Promise<Survey | null> {
+  console.warn(
+    '[DBG][surveyRepository] getActiveSurveyByExpert() is deprecated - use getActiveSurvey(tenantId)'
+  );
+  return getActiveSurvey(expertId);
 }

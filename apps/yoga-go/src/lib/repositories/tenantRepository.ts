@@ -4,9 +4,9 @@
  * Consolidated entity for Expert/Tenant data (merged).
  * All expert profile data and tenant/domain configuration is stored in TENANT entity.
  *
- * Storage pattern:
- * - Primary: PK="TENANT", SK={tenantId}
- * - Domain lookup: PK="TENANT#DOMAIN#{domain}", SK={domain}
+ * Storage pattern (tenant-partitioned design):
+ * - Primary: PK="TENANT#{tenantId}", SK="META"
+ * - Domain lookup: PK="TENANT#SYSTEM", SK="DOMAIN#{domain}" -> tenantId
  *
  * Domain lookup uses dual-write pattern for O(1) domain resolution.
  */
@@ -17,9 +17,10 @@ import {
   UpdateCommand,
   DeleteCommand,
   QueryCommand,
+  ScanCommand,
   BatchWriteCommand,
 } from '@aws-sdk/lib-dynamodb';
-import { docClient, Tables, EntityType, CorePK } from '../dynamodb';
+import { docClient, Tables, CorePK } from '../dynamodb';
 import type { Tenant, TenantStatus, StripeConnectDetails } from '@/types';
 import { getSubdomainHost, getExpertEmail } from '@/config/env';
 
@@ -35,6 +36,9 @@ interface DynamoDBDomainItem {
   SK: string;
   tenantId: string;
   domain: string;
+  entityType: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Type for creating a new tenant/expert
@@ -85,6 +89,7 @@ function toTenant(item: DynamoDBTenantItem): Tenant {
 
 /**
  * Get tenant by ID
+ * New PK: TENANT#{tenantId}, SK: META
  */
 export async function getTenantById(tenantId: string): Promise<Tenant | null> {
   console.log('[DBG][tenantRepository] Getting tenant by id:', tenantId);
@@ -93,8 +98,8 @@ export async function getTenantById(tenantId: string): Promise<Tenant | null> {
     new GetCommand({
       TableName: Tables.CORE,
       Key: {
-        PK: EntityType.TENANT,
-        SK: tenantId,
+        PK: CorePK.TENANT(tenantId),
+        SK: CorePK.TENANT_META,
       },
     })
   );
@@ -110,16 +115,19 @@ export async function getTenantById(tenantId: string): Promise<Tenant | null> {
 
 /**
  * Get all tenants
+ * Note: Uses Scan since tenants are now in separate partitions
+ * This should only be used for admin operations, not for user-facing queries
  */
 export async function getAllTenants(): Promise<Tenant[]> {
   console.log('[DBG][tenantRepository] Getting all tenants');
 
   const result = await docClient.send(
-    new QueryCommand({
+    new ScanCommand({
       TableName: Tables.CORE,
-      KeyConditionExpression: 'PK = :pk',
+      FilterExpression: 'begins_with(PK, :pkPrefix) AND SK = :sk',
       ExpressionAttributeValues: {
-        ':pk': EntityType.TENANT,
+        ':pkPrefix': 'TENANT#',
+        ':sk': CorePK.TENANT_META,
       },
     })
   );
@@ -131,18 +139,19 @@ export async function getAllTenants(): Promise<Tenant[]> {
 
 /**
  * Get tenant by user ID (cognitoSub)
+ * Note: Uses Scan since we can't query by userId without a GSI
+ * This should be called rarely (only during auth flows)
  */
 export async function getTenantByUserId(userId: string): Promise<Tenant | null> {
   console.log('[DBG][tenantRepository] Getting tenant by userId:', userId);
 
-  // Query all tenants and filter by userId (no GSI)
   const result = await docClient.send(
-    new QueryCommand({
+    new ScanCommand({
       TableName: Tables.CORE,
-      KeyConditionExpression: 'PK = :pk',
-      FilterExpression: 'userId = :userId',
+      FilterExpression: 'begins_with(PK, :pkPrefix) AND SK = :sk AND userId = :userId',
       ExpressionAttributeValues: {
-        ':pk': EntityType.TENANT,
+        ':pkPrefix': 'TENANT#',
+        ':sk': CorePK.TENANT_META,
         ':userId': userId,
       },
     })
@@ -160,6 +169,7 @@ export async function getTenantByUserId(userId: string): Promise<Tenant | null> 
 /**
  * Get tenant by domain (uses dual-write domain lookup)
  * This is the primary method for middleware domain resolution
+ * PK=TENANT#SYSTEM, SK=DOMAIN#{domain}
  */
 export async function getTenantByDomain(domain: string): Promise<Tenant | null> {
   console.log('[DBG][tenantRepository] Getting tenant by domain:', domain);
@@ -167,13 +177,13 @@ export async function getTenantByDomain(domain: string): Promise<Tenant | null> 
   // Normalize domain (lowercase, remove port)
   const normalizedDomain = domain.toLowerCase().split(':')[0];
 
-  // Look up domain reference
+  // Look up domain reference in SYSTEM partition
   const domainResult = await docClient.send(
     new GetCommand({
       TableName: Tables.CORE,
       Key: {
-        PK: CorePK.TENANT_DOMAIN(normalizedDomain),
-        SK: normalizedDomain,
+        PK: CorePK.SYSTEM,
+        SK: CorePK.DOMAIN_SK(normalizedDomain),
       },
     })
   );
@@ -191,6 +201,8 @@ export async function getTenantByDomain(domain: string): Promise<Tenant | null> 
 
 /**
  * Create a new tenant/expert
+ * Tenant: PK=TENANT#{id}, SK=META
+ * Domain: PK=TENANT#SYSTEM, SK=DOMAIN#{domain}
  */
 export async function createTenant(input: CreateTenantInput): Promise<Tenant> {
   const now = new Date().toISOString();
@@ -201,8 +213,8 @@ export async function createTenant(input: CreateTenantInput): Promise<Tenant> {
   const primaryDomain = input.primaryDomain || getSubdomainHost(input.id);
 
   const tenant: DynamoDBTenantItem = {
-    PK: EntityType.TENANT,
-    SK: input.id,
+    PK: CorePK.TENANT(input.id),
+    SK: CorePK.TENANT_META,
     id: input.id,
     userId: input.userId,
     name: input.name,
@@ -237,14 +249,17 @@ export async function createTenant(input: CreateTenantInput): Promise<Tenant> {
   // Collect all domains for reference items
   const allDomains = [tenant.primaryDomain, ...(tenant.additionalDomains || [])].filter(Boolean);
 
-  // Create domain reference items
+  // Create domain reference items (stored in SYSTEM partition)
   const domainItems = allDomains.map(domain => ({
     PutRequest: {
       Item: {
-        PK: CorePK.TENANT_DOMAIN(domain as string),
-        SK: domain,
+        PK: CorePK.SYSTEM,
+        SK: CorePK.DOMAIN_SK(domain as string),
         tenantId: input.id,
         domain,
+        entityType: 'DOMAIN',
+        createdAt: now,
+        updatedAt: now,
       },
     },
   }));
@@ -283,6 +298,7 @@ export async function createTenant(input: CreateTenantInput): Promise<Tenant> {
 
 /**
  * Update tenant - partial update using UpdateCommand
+ * New PK: TENANT#{tenantId}, SK: META
  */
 export async function updateTenant(tenantId: string, updates: Partial<Tenant>): Promise<Tenant> {
   console.log('[DBG][tenantRepository] Updating tenant:', tenantId);
@@ -312,8 +328,8 @@ export async function updateTenant(tenantId: string, updates: Partial<Tenant>): 
     new UpdateCommand({
       TableName: Tables.CORE,
       Key: {
-        PK: EntityType.TENANT,
-        SK: tenantId,
+        PK: CorePK.TENANT(tenantId),
+        SK: CorePK.TENANT_META,
       },
       UpdateExpression: `SET ${updateParts.join(', ')}`,
       ExpressionAttributeNames: exprAttrNames,
@@ -328,6 +344,7 @@ export async function updateTenant(tenantId: string, updates: Partial<Tenant>): 
 
 /**
  * Delete tenant and all domain references
+ * Also deletes all items in the tenant partition
  */
 export async function deleteTenant(tenantId: string): Promise<void> {
   console.log('[DBG][tenantRepository] Deleting tenant:', tenantId);
@@ -342,29 +359,42 @@ export async function deleteTenant(tenantId: string): Promise<void> {
   // Collect all domains
   const allDomains = [tenant.primaryDomain, ...(tenant.additionalDomains || [])].filter(Boolean);
 
-  // Create delete requests for all domain references
-  const deleteRequests = allDomains.map(domain => ({
+  // Query all items in the tenant partition
+  const tenantItemsResult = await docClient.send(
+    new QueryCommand({
+      TableName: Tables.CORE,
+      KeyConditionExpression: 'PK = :pk',
+      ExpressionAttributeValues: {
+        ':pk': CorePK.TENANT(tenantId),
+      },
+    })
+  );
+
+  // Create delete requests for all tenant items
+  const tenantDeleteRequests = (tenantItemsResult.Items || []).map(item => ({
     DeleteRequest: {
       Key: {
-        PK: CorePK.TENANT_DOMAIN(domain as string),
-        SK: domain,
+        PK: (item as { PK: string }).PK,
+        SK: (item as { SK: string }).SK,
       },
     },
   }));
 
-  // Add tenant delete request
-  deleteRequests.push({
+  // Create delete requests for all domain references (in SYSTEM partition)
+  const domainDeleteRequests = allDomains.map(domain => ({
     DeleteRequest: {
       Key: {
-        PK: EntityType.TENANT,
-        SK: tenantId,
+        PK: CorePK.SYSTEM,
+        SK: CorePK.DOMAIN_SK(domain as string),
       },
     },
-  });
+  }));
+
+  const allDeleteRequests = [...tenantDeleteRequests, ...domainDeleteRequests];
 
   // Batch delete
-  for (let i = 0; i < deleteRequests.length; i += 25) {
-    const batch = deleteRequests.slice(i, i + 25);
+  for (let i = 0; i < allDeleteRequests.length; i += 25) {
+    const batch = allDeleteRequests.slice(i, i + 25);
     await docClient.send(
       new BatchWriteCommand({
         RequestItems: {
@@ -374,7 +404,13 @@ export async function deleteTenant(tenantId: string): Promise<void> {
     );
   }
 
-  console.log('[DBG][tenantRepository] Deleted tenant and', allDomains.length, 'domain references');
+  console.log(
+    '[DBG][tenantRepository] Deleted tenant with',
+    tenantDeleteRequests.length,
+    'items and',
+    allDomains.length,
+    'domain references'
+  );
 }
 
 // ===================================================================
@@ -383,11 +419,13 @@ export async function deleteTenant(tenantId: string): Promise<void> {
 
 /**
  * Add a domain to a tenant
+ * PK=TENANT#SYSTEM, SK=DOMAIN#{domain}
  */
 export async function addDomainToTenant(tenantId: string, domain: string): Promise<Tenant> {
   console.log('[DBG][tenantRepository] Adding domain to tenant:', tenantId, domain);
 
   const normalizedDomain = domain.toLowerCase();
+  const now = new Date().toISOString();
 
   // Get current tenant
   const tenant = await getTenantById(tenantId);
@@ -410,15 +448,18 @@ export async function addDomainToTenant(tenantId: string, domain: string): Promi
     throw new Error('Unable to add domain. This domain is already in use.');
   }
 
-  // Add domain reference
+  // Add domain reference (in SYSTEM partition)
   await docClient.send(
     new PutCommand({
       TableName: Tables.CORE,
       Item: {
-        PK: CorePK.TENANT_DOMAIN(normalizedDomain),
-        SK: normalizedDomain,
+        PK: CorePK.SYSTEM,
+        SK: CorePK.DOMAIN_SK(normalizedDomain),
         tenantId,
         domain: normalizedDomain,
+        entityType: 'DOMAIN',
+        createdAt: now,
+        updatedAt: now,
       },
     })
   );
@@ -430,13 +471,13 @@ export async function addDomainToTenant(tenantId: string, domain: string): Promi
     new UpdateCommand({
       TableName: Tables.CORE,
       Key: {
-        PK: EntityType.TENANT,
-        SK: tenantId,
+        PK: CorePK.TENANT(tenantId),
+        SK: CorePK.TENANT_META,
       },
       UpdateExpression: 'SET additionalDomains = :domains, updatedAt = :updatedAt',
       ExpressionAttributeValues: {
         ':domains': updatedDomains,
-        ':updatedAt': new Date().toISOString(),
+        ':updatedAt': now,
       },
       ReturnValues: 'ALL_NEW',
     })
@@ -465,13 +506,13 @@ export async function removeDomainFromTenant(tenantId: string, domain: string): 
     throw new Error('Cannot remove primary domain');
   }
 
-  // Delete domain reference
+  // Delete domain reference (from SYSTEM partition)
   await docClient.send(
     new DeleteCommand({
       TableName: Tables.CORE,
       Key: {
-        PK: CorePK.TENANT_DOMAIN(normalizedDomain),
-        SK: normalizedDomain,
+        PK: CorePK.SYSTEM,
+        SK: CorePK.DOMAIN_SK(normalizedDomain),
       },
     })
   );
@@ -483,8 +524,8 @@ export async function removeDomainFromTenant(tenantId: string, domain: string): 
     new UpdateCommand({
       TableName: Tables.CORE,
       Key: {
-        PK: EntityType.TENANT,
-        SK: tenantId,
+        PK: CorePK.TENANT(tenantId),
+        SK: CorePK.TENANT_META,
       },
       UpdateExpression: 'SET additionalDomains = :domains, updatedAt = :updatedAt',
       ExpressionAttributeValues: {
@@ -637,17 +678,18 @@ export async function setFeatured(tenantId: string, featured: boolean): Promise<
 
 /**
  * Get featured tenants
+ * Note: Uses Scan since tenants are now in separate partitions
  */
 export async function getFeaturedTenants(): Promise<Tenant[]> {
   console.log('[DBG][tenantRepository] Getting featured tenants');
 
   const result = await docClient.send(
-    new QueryCommand({
+    new ScanCommand({
       TableName: Tables.CORE,
-      KeyConditionExpression: 'PK = :pk',
-      FilterExpression: 'featured = :featured',
+      FilterExpression: 'begins_with(PK, :pkPrefix) AND SK = :sk AND featured = :featured',
       ExpressionAttributeValues: {
-        ':pk': EntityType.TENANT,
+        ':pkPrefix': 'TENANT#',
+        ':sk': CorePK.TENANT_META,
         ':featured': true,
       },
     })

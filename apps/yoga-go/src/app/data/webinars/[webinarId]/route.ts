@@ -18,7 +18,7 @@ export async function GET(request: Request, { params }: RouteParams) {
   console.log('[DBG][webinars/[webinarId]/route.ts] GET webinar:', webinarId);
 
   try {
-    const webinar = await webinarRepository.getWebinarById(webinarId);
+    const webinar = await webinarRepository.getWebinarByIdOnly(webinarId);
 
     if (!webinar) {
       console.log('[DBG][webinars/[webinarId]/route.ts] Webinar not found:', webinarId);

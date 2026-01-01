@@ -88,10 +88,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get course if specified
+    // Get course if specified (cross-tenant lookup)
     let course = null;
     if (courseId) {
-      course = await courseRepository.getCourseById(courseId);
+      course = await courseRepository.getCourseByIdOnly(courseId);
       if (!course) {
         return NextResponse.json(
           { success: false, error: 'Course not found' } as ApiResponse<GenerateResponse>,

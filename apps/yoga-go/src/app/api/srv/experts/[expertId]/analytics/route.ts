@@ -146,9 +146,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ expe
     const avgPaymentSuccessRate =
       totalPaymentInitiated > 0 ? (totalEnrollments / totalPaymentInitiated) * 100 : 0;
 
-    // Get engagement data from DynamoDB
+    // Get engagement data from DynamoDB (expertId is tenantId)
     const courseProgressPromises = courseIds.map(id =>
-      courseProgressRepository.getCourseProgressByCourseIdAfterDate(id, startDateStr)
+      courseProgressRepository.getCourseProgressByCourseIdAfterDate(expertId, id, startDateStr)
     );
     const courseProgressArrays = await Promise.all(courseProgressPromises);
     const courseProgressData = courseProgressArrays.flat();

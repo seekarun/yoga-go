@@ -13,12 +13,42 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import * as webinarRepository from '@/lib/repositories/webinarRepository';
 import * as webinarRegistrationRepository from '@/lib/repositories/webinarRegistrationRepository';
-import { getTenantById } from '@/lib/repositories/tenantRepository';
+import { getTenantById, getAllTenants } from '@/lib/repositories/tenantRepository';
 import {
   sendWebinarReminderEmail,
   getFromEmailForExpert,
   sendExpertNotificationEmail,
 } from '@/lib/email';
+import type { Webinar } from '@/types';
+
+/**
+ * Cross-tenant helper to get all webinars with sessions in a time range
+ * Used by cron jobs that need to process reminders across all tenants
+ */
+async function getAllWebinarsWithSessionsInRange(
+  startFrom: string,
+  startTo: string
+): Promise<Webinar[]> {
+  console.log('[DBG][cron-webinar-reminders] Getting webinars across all tenants');
+  const tenants = await getAllTenants();
+  const allWebinars: Webinar[] = [];
+
+  for (const tenant of tenants) {
+    const webinars = await webinarRepository.getWebinarsWithSessionsInRange(
+      tenant.id,
+      startFrom,
+      startTo
+    );
+    allWebinars.push(...webinars);
+  }
+
+  console.log(
+    '[DBG][cron-webinar-reminders] Found',
+    allWebinars.length,
+    'webinars across all tenants'
+  );
+  return allWebinars;
+}
 
 interface ReminderResult {
   webinarId: string;
@@ -56,10 +86,7 @@ export async function GET(request: NextRequest) {
       dayBeforeEnd
     );
 
-    const dayBeforeWebinars = await webinarRepository.getWebinarsWithSessionsInRange(
-      dayBeforeStart,
-      dayBeforeEnd
-    );
+    const dayBeforeWebinars = await getAllWebinarsWithSessionsInRange(dayBeforeStart, dayBeforeEnd);
 
     for (const webinar of dayBeforeWebinars) {
       const sessionsInRange =
@@ -90,7 +117,7 @@ export async function GET(request: NextRequest) {
       hourBeforeEnd
     );
 
-    const hourBeforeWebinars = await webinarRepository.getWebinarsWithSessionsInRange(
+    const hourBeforeWebinars = await getAllWebinarsWithSessionsInRange(
       hourBeforeStart,
       hourBeforeEnd
     );
@@ -178,8 +205,9 @@ async function sendRemindersForSession(
   };
 
   try {
-    // Get registrations that need this reminder
+    // Get registrations that need this reminder (expertId is tenantId)
     const registrations = await webinarRegistrationRepository.getRegistrationsNeedingReminder(
+      expertId,
       webinarId,
       reminderType
     );
@@ -235,8 +263,9 @@ async function sendRemindersForSession(
             : undefined,
         });
 
-        // Mark reminder as sent
+        // Mark reminder as sent (expertId is tenantId)
         await webinarRegistrationRepository.markReminderSent(
+          expertId,
           webinarId,
           registration.userId,
           registration.id,

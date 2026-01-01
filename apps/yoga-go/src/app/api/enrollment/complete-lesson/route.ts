@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession, getUserByAuth0Id } from '@/lib/auth';
 import { updateLessonProgress } from '@/lib/enrollment';
+import * as courseRepository from '@/lib/repositories/courseRepository';
 import type { ApiResponse } from '@/types';
 
 export async function POST(request: Request) {
@@ -44,14 +45,24 @@ export async function POST(request: Request) {
       );
     }
 
+    // Get course to find tenantId (instructor.id)
+    const course = await courseRepository.getCourseByIdOnly(courseId);
+    if (!course) {
+      return NextResponse.json({ success: false, error: 'Course not found' }, { status: 404 });
+    }
+
+    const tenantId = course.instructor.id;
+
     console.log('[DBG][complete-lesson/route.ts] Marking lesson complete:', {
       userId: user.id,
       courseId,
       lessonId,
+      tenantId,
     });
 
-    // Update lesson progress
+    // Update lesson progress (tenantId is instructor.id)
     const result = await updateLessonProgress(
+      tenantId,
       user.id,
       courseId,
       lessonId,

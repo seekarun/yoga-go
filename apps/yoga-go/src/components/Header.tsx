@@ -457,8 +457,7 @@ export default function Header() {
           ) : authLoading ? (
             // Don't show anything while auth is loading
             <div style={{ width: '36px', height: '36px' }} />
-          ) : expertMode.isExpertMode ? // Users will be prompted to login when they sign up for a course or live session // On expert subdomain: don't show sign in button
-          null : (
+          ) : expertMode.isExpertMode ? null : ( // Users will be prompted to login when they sign up for a course or live session // On expert subdomain: don't show sign in button
             // On main domain: show sign in button
             <a
               href="/auth/signin"

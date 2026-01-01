@@ -114,6 +114,7 @@ export async function GET(request: Request) {
         // Calculate actual student count from course progress (enrolled users)
         try {
           const progressRecords = await courseProgressRepository.getCourseProgressByCourseId(
+            doc.instructor.id,
             doc.id
           );
           course.totalStudents = progressRecords.length;
@@ -222,7 +223,7 @@ export async function POST(request: Request) {
       : [];
 
     // Create course in DynamoDB
-    const createdCourse = await courseRepository.createCourse({
+    const createdCourse = await courseRepository.createCourse(body.instructor.id, {
       id: courseId,
       title: body.title,
       description: body.description,

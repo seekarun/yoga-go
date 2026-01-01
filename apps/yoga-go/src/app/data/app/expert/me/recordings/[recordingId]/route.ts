@@ -6,7 +6,8 @@
  * DELETE /data/app/expert/me/recordings/[recordingId]
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import type { ApiResponse, Recording } from '@/types';
 import { getSessionFromCookies, getUserByCognitoSub } from '@/lib/auth';
 import * as recordingRepository from '@/lib/repositories/recordingRepository';

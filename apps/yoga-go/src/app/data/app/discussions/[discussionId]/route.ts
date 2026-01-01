@@ -142,8 +142,8 @@ export async function DELETE(
       ? user.role.includes('expert')
       : user.role === 'expert';
     if (!canDelete && isExpert && user.expertProfile) {
-      const course = await courseRepository.getCourseById(discussionDoc.courseId);
-      if (course && course.instructor?.id === user.expertProfile) {
+      const course = await courseRepository.getCourseByIdOnly(discussionDoc.courseId);
+      if (course && course.instructor.id === user.expertProfile) {
         canDelete = true;
       }
     }

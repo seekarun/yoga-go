@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { PAYMENT_CONFIG } from '@/config/payment';
 import * as paymentRepository from '@/lib/repositories/paymentRepository';
-import * as userRepository from '@/lib/repositories/userRepository';
+import * as tenantUserRepository from '@/lib/repositories/tenantUserRepository';
 import * as courseRepository from '@/lib/repositories/courseRepository';
 import * as webinarRepository from '@/lib/repositories/webinarRepository';
 import {
@@ -108,9 +108,16 @@ export async function POST(request: Request) {
       // The boost status will be updated by the confirm-payment endpoint
       console.log(`[DBG][stripe] Boost payment verified for boost ${itemId}`);
     } else if (type === 'course') {
+      // Get course to find tenantId
+      const course = await courseRepository.getCourseByIdOnly(itemId);
+      if (!course) {
+        return NextResponse.json({ success: false, error: 'Course not found' }, { status: 404 });
+      }
+      const tenantId = course.instructor.id;
+
       // Enroll user in course
       const { enrollUserInCourse } = await import('@/lib/enrollment');
-      const enrollResult = await enrollUserInCourse(userId, itemId, paymentIntentId);
+      const enrollResult = await enrollUserInCourse(tenantId, userId, itemId, paymentIntentId);
 
       if (!enrollResult.success) {
         console.error('[DBG][stripe] Enrollment failed:', enrollResult.error);
@@ -123,15 +130,33 @@ export async function POST(request: Request) {
         );
       }
 
-      console.log(`[DBG][stripe] Enrolled user ${userId} in course ${itemId}`);
-
-      // Get the course to track the expert
-      const course = await courseRepository.getCourseById(itemId);
-      expertIdForTracking = course?.instructor?.id || null;
+      console.log(
+        `[DBG][stripe] Enrolled user ${userId} in course ${itemId} for tenant ${tenantId}`
+      );
+      expertIdForTracking = tenantId;
     } else if (type === 'webinar') {
+      // Get webinar to find tenantId
+      const webinar = await webinarRepository.getWebinarByIdOnly(itemId);
+      if (!webinar) {
+        return NextResponse.json({ success: false, error: 'Webinar not found' }, { status: 404 });
+      }
+      const tenantId = webinar.expertId;
+
+      // Get user info from tenant for registration
+      const user = await tenantUserRepository.getTenantUser(tenantId, userId);
+      const userName = user?.name || 'Guest';
+      const userEmail = user?.email || '';
+
       // Register user for webinar
       const { registerUserForWebinar } = await import('@/lib/enrollment');
-      const registrationResult = await registerUserForWebinar(userId, itemId, paymentIntentId);
+      const registrationResult = await registerUserForWebinar(
+        tenantId,
+        userId,
+        itemId,
+        userName,
+        userEmail,
+        paymentIntentId
+      );
 
       if (!registrationResult.success) {
         console.error('[DBG][stripe] Webinar registration failed:', registrationResult.error);
@@ -144,41 +169,28 @@ export async function POST(request: Request) {
         );
       }
 
-      console.log(`[DBG][stripe] Registered user ${userId} for webinar ${itemId}`);
-
-      // Get the webinar to track the expert
-      const webinar = await webinarRepository.getWebinarById(itemId);
-      expertIdForTracking = webinar?.expertId || null;
+      console.log(
+        `[DBG][stripe] Registered user ${userId} for webinar ${itemId} in tenant ${tenantId}`
+      );
+      expertIdForTracking = tenantId;
     }
 
-    // Track user-expert relationship for expert dashboard visibility
-    if (expertIdForTracking) {
-      try {
-        const user = await userRepository.getUserById(userId);
-        if (user) {
-          const existingExperts = user.signupExperts || [];
-          if (!existingExperts.includes(expertIdForTracking)) {
-            await userRepository.addSignupExperts(userId, [expertIdForTracking]);
-            console.log(
-              `[DBG][stripe] Added expert ${expertIdForTracking} to user ${userId} signupExperts`
-            );
-          }
-        }
-      } catch (trackingError) {
-        // Log but don't fail - tracking is not critical
-        console.error('[DBG][stripe] Failed to update signupExperts:', trackingError);
-      }
-    }
+    // Note: User-expert tracking is now implicit via tenantUser records
 
     // Send invoice/confirmation email
     try {
-      const [user, course, webinar] = await Promise.all([
-        userRepository.getUserById(userId),
-        type === 'course' ? courseRepository.getCourseById(itemId) : null,
-        type === 'webinar' ? webinarRepository.getWebinarById(itemId) : null,
-      ]);
+      // Use cross-tenant lookups for course/webinar
+      const course = type === 'course' ? await courseRepository.getCourseByIdOnly(itemId) : null;
+      const webinar =
+        type === 'webinar' ? await webinarRepository.getWebinarByIdOnly(itemId) : null;
 
-      if (user?.profile?.email) {
+      // Get tenantId from course/webinar to look up user
+      const tenantIdForEmail = course?.instructor?.id || webinar?.expertId || null;
+      const user = tenantIdForEmail
+        ? await tenantUserRepository.getTenantUser(tenantIdForEmail, userId)
+        : null;
+
+      if (user?.email) {
         const amount = paymentIntent.amount / 100; // Convert from cents
         const currency = paymentIntent.currency.toUpperCase();
 
@@ -191,9 +203,9 @@ export async function POST(request: Request) {
         if (type === 'webinar' && webinar) {
           // Send webinar registration confirmation email
           await sendWebinarRegistrationEmail({
-            to: user.profile.email,
+            to: user.email,
             from: fromEmail,
-            customerName: user.profile.name || 'Valued Customer',
+            customerName: user.name || 'Valued Customer',
             webinarTitle: webinar.title,
             webinarDescription: webinar.description?.slice(0, 200) || '',
             sessions: webinar.sessions.map(s => ({
@@ -206,7 +218,7 @@ export async function POST(request: Request) {
             transactionId: paymentIntentId,
           });
           console.log(
-            `[DBG][stripe] Webinar registration email sent to ${user.profile.email} from ${fromEmail}`
+            `[DBG][stripe] Webinar registration email sent to ${user.email} from ${fromEmail}`
           );
         } else {
           // Send branded course invoice email
@@ -214,8 +226,8 @@ export async function POST(request: Request) {
             const tenant = await getTenantById(expertId);
             if (tenant) {
               await sendBrandedInvoiceEmail({
-                to: user.profile.email,
-                customerName: user.profile.name || 'Valued Customer',
+                to: user.email,
+                customerName: user.name || 'Valued Customer',
                 orderId: paymentIntentId.slice(-8).toUpperCase(),
                 orderDate: new Date().toLocaleDateString('en-AU', {
                   year: 'numeric',
@@ -238,7 +250,7 @@ export async function POST(request: Request) {
                 },
               });
               console.log(
-                `[DBG][stripe] Branded invoice email sent to ${user.profile.email} for expert ${expertId}`
+                `[DBG][stripe] Branded invoice email sent to ${user.email} for expert ${expertId}`
               );
             } else {
               console.warn(

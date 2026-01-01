@@ -78,9 +78,9 @@ export async function POST(
       return NextResponse.json(response, { status: 404 });
     }
 
-    // Verify user is the course instructor
-    const course = await courseRepository.getCourseById(discussionDoc.courseId);
-    if (!course || course.instructor?.id !== user.expertProfile) {
+    // Verify user is the course instructor (cross-tenant lookup)
+    const course = await courseRepository.getCourseByIdOnly(discussionDoc.courseId);
+    if (!course || course.instructor.id !== user.expertProfile) {
       const response: ApiResponse<null> = {
         success: false,
         error: 'You can only moderate discussions in your own courses',

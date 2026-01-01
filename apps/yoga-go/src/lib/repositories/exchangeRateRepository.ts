@@ -2,8 +2,8 @@
  * Exchange Rate Repository for DynamoDB operations
  * Handles caching of exchange rates from Open Exchange Rates API
  *
- * CORE Table Access Patterns:
- * - Exchange rates: PK=EXCHANGE_RATE, SK={baseCurrency}
+ * CORE Table Access Patterns (SYSTEM tenant):
+ * - Exchange rates: PK=TENANT#SYSTEM, SK=EXCHANGERATE#{baseCurrency}
  */
 
 import { docClient, Tables, CorePK, EntityType } from '../dynamodb';
@@ -25,8 +25,8 @@ export async function getExchangeRates(baseCurrency: string): Promise<ExchangeRa
       new GetCommand({
         TableName: Tables.CORE,
         Key: {
-          PK: CorePK.EXCHANGE_RATE,
-          SK: baseCurrency.toUpperCase(),
+          PK: CorePK.SYSTEM,
+          SK: CorePK.EXCHANGE_RATE_SK(baseCurrency.toUpperCase()),
         },
       })
     );
@@ -79,8 +79,8 @@ export async function saveExchangeRates(
       new PutCommand({
         TableName: Tables.CORE,
         Item: {
-          PK: CorePK.EXCHANGE_RATE,
-          SK: baseCurrency.toUpperCase(),
+          PK: CorePK.SYSTEM,
+          SK: CorePK.EXCHANGE_RATE_SK(baseCurrency.toUpperCase()),
           entityType: EntityType.EXCHANGE_RATE,
           ...cache,
         },

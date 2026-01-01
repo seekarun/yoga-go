@@ -1,9 +1,9 @@
 /**
  * Lesson Repository - DynamoDB Operations
  *
- * Single-table design:
- * - PK: "LESSON"
- * - SK: {courseId}#{lessonId}
+ * Tenant-partitioned design:
+ * - PK: "TENANT#{tenantId}"
+ * - SK: "LESSON#{courseId}#{lessonId}"
  */
 
 import {
@@ -14,7 +14,7 @@ import {
   QueryCommand,
   BatchWriteCommand,
 } from '@aws-sdk/lib-dynamodb';
-import { docClient, Tables, EntityType } from '../dynamodb';
+import { docClient, Tables, CorePK } from '../dynamodb';
 import type { Lesson } from '@/types';
 
 // Extended Lesson type with courseId for storage
@@ -47,13 +47,6 @@ export interface CreateLessonInput {
 }
 
 /**
- * Build sort key for lesson
- */
-function buildSK(courseId: string, lessonId: string): string {
-  return `${courseId}#${lessonId}`;
-}
-
-/**
  * Convert DynamoDB item to Lesson type with courseId
  */
 function toLesson(item: DynamoDBLessonItem): LessonWithCourseId {
@@ -64,19 +57,30 @@ function toLesson(item: DynamoDBLessonItem): LessonWithCourseId {
 
 /**
  * Get lesson by courseId and lessonId
+ * @param tenantId - The tenant ID (expertId)
+ * @param courseId - The course ID
+ * @param lessonId - The lesson ID
  */
 export async function getLessonById(
+  tenantId: string,
   courseId: string,
   lessonId: string
 ): Promise<LessonWithCourseId | null> {
-  console.log('[DBG][lessonRepository] Getting lesson:', lessonId, 'for course:', courseId);
+  console.log(
+    '[DBG][lessonRepository] Getting lesson:',
+    lessonId,
+    'for course:',
+    courseId,
+    'tenant:',
+    tenantId
+  );
 
   const result = await docClient.send(
     new GetCommand({
       TableName: Tables.CORE,
       Key: {
-        PK: EntityType.LESSON,
-        SK: buildSK(courseId, lessonId),
+        PK: CorePK.TENANT(tenantId),
+        SK: CorePK.LESSON(courseId, lessonId),
       },
     })
   );
@@ -92,18 +96,23 @@ export async function getLessonById(
 
 /**
  * Get all lessons for a course
+ * @param tenantId - The tenant ID (expertId)
+ * @param courseId - The course ID
  */
-export async function getLessonsByCourseId(courseId: string): Promise<LessonWithCourseId[]> {
-  console.log('[DBG][lessonRepository] Getting lessons for course:', courseId);
+export async function getLessonsByCourseId(
+  tenantId: string,
+  courseId: string
+): Promise<LessonWithCourseId[]> {
+  console.log('[DBG][lessonRepository] Getting lessons for course:', courseId, 'tenant:', tenantId);
 
-  // Query lessons where SK begins with courseId#
+  // Query lessons where SK begins with LESSON#{courseId}#
   const result = await docClient.send(
     new QueryCommand({
       TableName: Tables.CORE,
       KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
       ExpressionAttributeValues: {
-        ':pk': EntityType.LESSON,
-        ':skPrefix': `${courseId}#`,
+        ':pk': CorePK.TENANT(tenantId),
+        ':skPrefix': `LESSON#${courseId}#`,
       },
     })
   );
@@ -114,17 +123,19 @@ export async function getLessonsByCourseId(courseId: string): Promise<LessonWith
 }
 
 /**
- * Get all lessons (across all courses)
+ * Get all lessons for a tenant (across all courses)
+ * @param tenantId - The tenant ID (expertId)
  */
-export async function getAllLessons(): Promise<LessonWithCourseId[]> {
-  console.log('[DBG][lessonRepository] Getting all lessons');
+export async function getTenantLessons(tenantId: string): Promise<LessonWithCourseId[]> {
+  console.log('[DBG][lessonRepository] Getting all lessons for tenant:', tenantId);
 
   const result = await docClient.send(
     new QueryCommand({
       TableName: Tables.CORE,
-      KeyConditionExpression: 'PK = :pk',
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
       ExpressionAttributeValues: {
-        ':pk': EntityType.LESSON,
+        ':pk': CorePK.TENANT(tenantId),
+        ':skPrefix': 'LESSON#',
       },
     })
   );
@@ -136,15 +147,27 @@ export async function getAllLessons(): Promise<LessonWithCourseId[]> {
 
 /**
  * Create a new lesson
+ * @param tenantId - The tenant ID (expertId)
+ * @param input - Lesson creation input
  */
-export async function createLesson(input: CreateLessonInput): Promise<LessonWithCourseId> {
+export async function createLesson(
+  tenantId: string,
+  input: CreateLessonInput
+): Promise<LessonWithCourseId> {
   const now = new Date().toISOString();
 
-  console.log('[DBG][lessonRepository] Creating lesson:', input.id, 'for course:', input.courseId);
+  console.log(
+    '[DBG][lessonRepository] Creating lesson:',
+    input.id,
+    'for course:',
+    input.courseId,
+    'tenant:',
+    tenantId
+  );
 
   const lesson: DynamoDBLessonItem = {
-    PK: EntityType.LESSON,
-    SK: buildSK(input.courseId, input.id),
+    PK: CorePK.TENANT(tenantId),
+    SK: CorePK.LESSON(input.courseId, input.id),
     id: input.id,
     courseId: input.courseId,
     title: input.title,
@@ -175,13 +198,25 @@ export async function createLesson(input: CreateLessonInput): Promise<LessonWith
 
 /**
  * Update lesson - partial update
+ * @param tenantId - The tenant ID (expertId)
+ * @param courseId - The course ID
+ * @param lessonId - The lesson ID
+ * @param updates - Partial lesson updates
  */
 export async function updateLesson(
+  tenantId: string,
   courseId: string,
   lessonId: string,
   updates: Partial<Lesson>
 ): Promise<LessonWithCourseId> {
-  console.log('[DBG][lessonRepository] Updating lesson:', lessonId, 'for course:', courseId);
+  console.log(
+    '[DBG][lessonRepository] Updating lesson:',
+    lessonId,
+    'for course:',
+    courseId,
+    'tenant:',
+    tenantId
+  );
 
   // Build update expression dynamically
   const updateParts: string[] = [];
@@ -207,8 +242,8 @@ export async function updateLesson(
     new UpdateCommand({
       TableName: Tables.CORE,
       Key: {
-        PK: EntityType.LESSON,
-        SK: buildSK(courseId, lessonId),
+        PK: CorePK.TENANT(tenantId),
+        SK: CorePK.LESSON(courseId, lessonId),
       },
       UpdateExpression: `SET ${updateParts.join(', ')}`,
       ExpressionAttributeNames: exprAttrNames,
@@ -223,16 +258,30 @@ export async function updateLesson(
 
 /**
  * Delete a lesson
+ * @param tenantId - The tenant ID (expertId)
+ * @param courseId - The course ID
+ * @param lessonId - The lesson ID
  */
-export async function deleteLesson(courseId: string, lessonId: string): Promise<void> {
-  console.log('[DBG][lessonRepository] Deleting lesson:', lessonId, 'from course:', courseId);
+export async function deleteLesson(
+  tenantId: string,
+  courseId: string,
+  lessonId: string
+): Promise<void> {
+  console.log(
+    '[DBG][lessonRepository] Deleting lesson:',
+    lessonId,
+    'from course:',
+    courseId,
+    'tenant:',
+    tenantId
+  );
 
   await docClient.send(
     new DeleteCommand({
       TableName: Tables.CORE,
       Key: {
-        PK: EntityType.LESSON,
-        SK: buildSK(courseId, lessonId),
+        PK: CorePK.TENANT(tenantId),
+        SK: CorePK.LESSON(courseId, lessonId),
       },
     })
   );
@@ -242,12 +291,19 @@ export async function deleteLesson(courseId: string, lessonId: string): Promise<
 
 /**
  * Delete all lessons for a course (batch delete)
+ * @param tenantId - The tenant ID (expertId)
+ * @param courseId - The course ID
  */
-export async function deleteLessonsByCourseId(courseId: string): Promise<number> {
-  console.log('[DBG][lessonRepository] Deleting all lessons for course:', courseId);
+export async function deleteLessonsByCourseId(tenantId: string, courseId: string): Promise<number> {
+  console.log(
+    '[DBG][lessonRepository] Deleting all lessons for course:',
+    courseId,
+    'tenant:',
+    tenantId
+  );
 
   // First, get all lessons for the course
-  const lessons = await getLessonsByCourseId(courseId);
+  const lessons = await getLessonsByCourseId(tenantId, courseId);
 
   if (lessons.length === 0) {
     console.log('[DBG][lessonRepository] No lessons found for course:', courseId);
@@ -264,8 +320,8 @@ export async function deleteLessonsByCourseId(courseId: string): Promise<number>
     const deleteRequests = batch.map(lesson => ({
       DeleteRequest: {
         Key: {
-          PK: EntityType.LESSON,
-          SK: buildSK(courseId, lesson.id),
+          PK: CorePK.TENANT(tenantId),
+          SK: CorePK.LESSON(courseId, lesson.id),
         },
       },
     }));
@@ -287,17 +343,29 @@ export async function deleteLessonsByCourseId(courseId: string): Promise<number>
 
 /**
  * Count lessons for a course
+ * @param tenantId - The tenant ID (expertId)
+ * @param courseId - The course ID
  */
-export async function countLessonsByCourseId(courseId: string): Promise<number> {
-  const lessons = await getLessonsByCourseId(courseId);
+export async function countLessonsByCourseId(tenantId: string, courseId: string): Promise<number> {
+  const lessons = await getLessonsByCourseId(tenantId, courseId);
   return lessons.length;
 }
 
 /**
  * Get free lessons for a course
+ * @param tenantId - The tenant ID (expertId)
+ * @param courseId - The course ID
  */
-export async function getFreeLessonsByCourseId(courseId: string): Promise<LessonWithCourseId[]> {
-  console.log('[DBG][lessonRepository] Getting free lessons for course:', courseId);
+export async function getFreeLessonsByCourseId(
+  tenantId: string,
+  courseId: string
+): Promise<LessonWithCourseId[]> {
+  console.log(
+    '[DBG][lessonRepository] Getting free lessons for course:',
+    courseId,
+    'tenant:',
+    tenantId
+  );
 
   const result = await docClient.send(
     new QueryCommand({
@@ -305,8 +373,8 @@ export async function getFreeLessonsByCourseId(courseId: string): Promise<Lesson
       KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
       FilterExpression: 'isFree = :isFree',
       ExpressionAttributeValues: {
-        ':pk': EntityType.LESSON,
-        ':skPrefix': `${courseId}#`,
+        ':pk': CorePK.TENANT(tenantId),
+        ':skPrefix': `LESSON#${courseId}#`,
         ':isFree': true,
       },
     })
@@ -319,8 +387,14 @@ export async function getFreeLessonsByCourseId(courseId: string): Promise<Lesson
 
 /**
  * Update lesson video status (for Cloudflare video processing)
+ * @param tenantId - The tenant ID (expertId)
+ * @param courseId - The course ID
+ * @param lessonId - The lesson ID
+ * @param status - Video status
+ * @param cloudflareVideoId - Optional video ID
  */
 export async function updateLessonVideoStatus(
+  tenantId: string,
   courseId: string,
   lessonId: string,
   status: 'uploading' | 'processing' | 'ready' | 'error',
@@ -333,14 +407,19 @@ export async function updateLessonVideoStatus(
     updates.cloudflareVideoId = cloudflareVideoId;
   }
 
-  return updateLesson(courseId, lessonId, updates);
+  return updateLesson(tenantId, courseId, lessonId, updates);
 }
 
 /**
  * Mark lesson as completed for a user
  * Note: This updates the lesson itself - for user-specific progress, use a separate progress table
+ * @param tenantId - The tenant ID (expertId)
+ * @param courseId - The course ID
+ * @param lessonId - The lesson ID
+ * @param completed - Completion flag
  */
 export async function markLessonCompleted(
+  tenantId: string,
   courseId: string,
   lessonId: string,
   completed: boolean = true
@@ -352,5 +431,17 @@ export async function markLessonCompleted(
     completedAt: completed ? new Date().toISOString() : undefined,
   };
 
-  return updateLesson(courseId, lessonId, updates);
+  return updateLesson(tenantId, courseId, lessonId, updates);
+}
+
+// ===================================================================
+// BACKWARD COMPATIBILITY ALIASES
+// ===================================================================
+
+/** @deprecated Use getTenantLessons(tenantId) instead */
+export async function getAllLessons(): Promise<LessonWithCourseId[]> {
+  console.warn(
+    '[DBG][lessonRepository] getAllLessons() is deprecated - use getTenantLessons(tenantId)'
+  );
+  return [];
 }

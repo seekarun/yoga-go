@@ -35,13 +35,13 @@ export async function POST(request: Request) {
     let expertId: string | undefined;
 
     if (type === 'course') {
-      const course = await courseRepository.getCourseById(itemId);
+      const course = await courseRepository.getCourseByIdOnly(itemId);
       if (!course) {
         return NextResponse.json({ success: false, error: 'Course not found' }, { status: 404 });
       }
       expertId = course.instructor.id;
     } else if (type === 'webinar') {
-      const webinar = await webinarRepository.getWebinarById(itemId);
+      const webinar = await webinarRepository.getWebinarByIdOnly(itemId);
       if (!webinar) {
         return NextResponse.json({ success: false, error: 'Webinar not found' }, { status: 404 });
       }

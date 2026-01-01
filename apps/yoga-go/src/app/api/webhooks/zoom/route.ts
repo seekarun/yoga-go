@@ -8,7 +8,8 @@
  * Docs: https://developers.zoom.us/docs/api/webhooks/
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 import * as expertZoomAuthRepository from '@/lib/repositories/expertZoomAuthRepository';
@@ -124,8 +125,8 @@ async function handleRecordingCompleted(payload: ZoomRecordingObject): Promise<v
   console.log('[DBG][zoom-webhook] Topic:', payload.topic);
   console.log('[DBG][zoom-webhook] Recording files:', payload.recording_files?.length);
 
-  // Find the expert by their Zoom email
-  const zoomAuth = await expertZoomAuthRepository.getExpertZoomAuthByEmail(payload.host_email);
+  // Find the expert by their Zoom email (uses ZOOM_EMAIL lookup)
+  const zoomAuth = await expertZoomAuthRepository.getZoomAuthByEmail(payload.host_email);
 
   if (!zoomAuth) {
     console.log('[DBG][zoom-webhook] No expert found for Zoom email:', payload.host_email);

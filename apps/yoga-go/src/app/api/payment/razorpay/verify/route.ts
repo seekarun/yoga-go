@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { PAYMENT_CONFIG } from '@/config/payment';
-import * as userRepository from '@/lib/repositories/userRepository';
+import * as tenantUserRepository from '@/lib/repositories/tenantUserRepository';
 import * as courseRepository from '@/lib/repositories/courseRepository';
 import * as webinarRepository from '@/lib/repositories/webinarRepository';
 import {
@@ -48,9 +48,16 @@ export async function POST(request: Request) {
       // The boost status will be updated by the confirm-payment endpoint
       console.log(`[Razorpay] Boost payment verified for boost ${itemId}`);
     } else if (type === 'course') {
+      // Get course to find tenantId
+      const course = await courseRepository.getCourseByIdOnly(itemId);
+      if (!course) {
+        return NextResponse.json({ success: false, error: 'Course not found' }, { status: 404 });
+      }
+      const tenantId = course.instructor.id;
+
       // Enroll user in course
       const { enrollUserInCourse } = await import('@/lib/enrollment');
-      const enrollResult = await enrollUserInCourse(userId, itemId, paymentId);
+      const enrollResult = await enrollUserInCourse(tenantId, userId, itemId, paymentId);
 
       if (!enrollResult.success) {
         console.error('[Razorpay] Enrollment failed:', enrollResult.error);
@@ -63,11 +70,30 @@ export async function POST(request: Request) {
         );
       }
 
-      console.log(`[Razorpay] Enrolled user ${userId} in course ${itemId}`);
+      console.log(`[Razorpay] Enrolled user ${userId} in course ${itemId} for tenant ${tenantId}`);
     } else if (type === 'webinar') {
+      // Get webinar to find tenantId
+      const webinar = await webinarRepository.getWebinarByIdOnly(itemId);
+      if (!webinar) {
+        return NextResponse.json({ success: false, error: 'Webinar not found' }, { status: 404 });
+      }
+      const tenantId = webinar.expertId;
+
+      // Get user info from tenant for registration
+      const user = await tenantUserRepository.getTenantUser(tenantId, userId);
+      const userName = user?.name || 'Guest';
+      const userEmail = user?.email || '';
+
       // Register user for webinar
       const { registerUserForWebinar } = await import('@/lib/enrollment');
-      const registrationResult = await registerUserForWebinar(userId, itemId, paymentId);
+      const registrationResult = await registerUserForWebinar(
+        tenantId,
+        userId,
+        itemId,
+        userName,
+        userEmail,
+        paymentId
+      );
 
       if (!registrationResult.success) {
         console.error('[Razorpay] Webinar registration failed:', registrationResult.error);
@@ -80,18 +106,25 @@ export async function POST(request: Request) {
         );
       }
 
-      console.log(`[Razorpay] Registered user ${userId} for webinar ${itemId}`);
+      console.log(
+        `[Razorpay] Registered user ${userId} for webinar ${itemId} in tenant ${tenantId}`
+      );
     }
 
     // Send invoice/confirmation email
     try {
-      const [user, course, webinar] = await Promise.all([
-        userRepository.getUserById(userId),
-        type === 'course' ? courseRepository.getCourseById(itemId) : null,
-        type === 'webinar' ? webinarRepository.getWebinarById(itemId) : null,
-      ]);
+      // Use cross-tenant lookups for course/webinar
+      const course = type === 'course' ? await courseRepository.getCourseByIdOnly(itemId) : null;
+      const webinar =
+        type === 'webinar' ? await webinarRepository.getWebinarByIdOnly(itemId) : null;
 
-      if (user?.profile?.email) {
+      // Get tenantId from course/webinar to look up user
+      const tenantIdForEmail = course?.instructor?.id || webinar?.expertId || null;
+      const user = tenantIdForEmail
+        ? await tenantUserRepository.getTenantUser(tenantIdForEmail, userId)
+        : null;
+
+      if (user?.email) {
         // Amount from Razorpay is in paise (smallest unit)
         const amountValue = amount ? amount / 100 : 0;
         const currencySymbol = getCurrencySymbol((currency || 'INR') as SupportedCurrency);
@@ -104,9 +137,9 @@ export async function POST(request: Request) {
         if (type === 'webinar' && webinar) {
           // Send webinar registration confirmation email
           await sendWebinarRegistrationEmail({
-            to: user.profile.email,
+            to: user.email,
             from: fromEmail,
-            customerName: user.profile.name || 'Valued Customer',
+            customerName: user.name || 'Valued Customer',
             webinarTitle: webinar.title,
             webinarDescription: webinar.description?.slice(0, 200) || '',
             sessions: webinar.sessions.map(s => ({
@@ -119,7 +152,7 @@ export async function POST(request: Request) {
             transactionId: paymentId,
           });
           console.log(
-            `[Razorpay] Webinar registration email sent to ${user.profile.email} from ${fromEmail}`
+            `[Razorpay] Webinar registration email sent to ${user.email} from ${fromEmail}`
           );
         } else {
           // Send branded course invoice email
@@ -127,8 +160,8 @@ export async function POST(request: Request) {
             const tenant = await getTenantById(expertId);
             if (tenant) {
               await sendBrandedInvoiceEmail({
-                to: user.profile.email,
-                customerName: user.profile.name || 'Valued Customer',
+                to: user.email,
+                customerName: user.name || 'Valued Customer',
                 orderId: orderId.slice(-8).toUpperCase(),
                 orderDate: new Date().toLocaleDateString('en-IN', {
                   year: 'numeric',
@@ -151,7 +184,7 @@ export async function POST(request: Request) {
                 },
               });
               console.log(
-                `[Razorpay] Branded invoice email sent to ${user.profile.email} for expert ${expertId}`
+                `[Razorpay] Branded invoice email sent to ${user.email} for expert ${expertId}`
               );
             } else {
               console.warn(`[Razorpay] Tenant not found for expertId: ${expertId}, skipping email`);

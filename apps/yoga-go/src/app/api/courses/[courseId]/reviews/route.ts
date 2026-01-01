@@ -94,8 +94,17 @@ export async function POST(
       updatedAt: now,
     };
 
-    // Add review to course in DynamoDB
-    await courseRepository.addReview(courseId, newReview);
+    // Get course to find tenantId (instructor.id)
+    const course = await courseRepository.getCourseByIdOnly(courseId);
+    if (!course) {
+      return NextResponse.json<ApiResponse<null>>(
+        { success: false, error: 'Course not found' },
+        { status: 404 }
+      );
+    }
+
+    // Add review to course in DynamoDB (tenantId is instructor.id)
+    await courseRepository.addReview(course.instructor.id, courseId, newReview);
 
     console.log('[DBG][review-api] Review submitted successfully:', {
       reviewId: newReview.id,
@@ -133,7 +142,8 @@ export async function GET(
   try {
     const { courseId } = await params;
 
-    const course = await courseRepository.getCourseById(courseId);
+    // Use cross-tenant lookup for public access
+    const course = await courseRepository.getCourseByIdOnly(courseId);
     if (!course) {
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: 'Course not found' },

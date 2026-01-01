@@ -50,9 +50,9 @@ export async function GET() {
       user.enrolledCourses.map(ec => ({ courseId: ec.courseId, title: ec.title }))
     );
 
-    // Fetch all enrolled courses at once from DynamoDB
+    // Fetch all enrolled courses at once from DynamoDB (cross-tenant lookup)
     const enrolledCourseIds = user.enrolledCourses.map(ec => ec.courseId);
-    const coursePromises = enrolledCourseIds.map(id => courseRepository.getCourseById(id));
+    const coursePromises = enrolledCourseIds.map(id => courseRepository.getCourseByIdOnly(id));
     const courseResults = await Promise.all(coursePromises);
     const courseDocs = courseResults.filter((c): c is Course => c !== null);
 
@@ -94,6 +94,7 @@ export async function GET() {
 
       // Use course directly since it's already typed as Course
       const course: Course = { ...courseDoc };
+      const tenantId = courseDoc.instructor.id;
 
       // Populate instructor avatar from expert data (use Cloudflare URLs)
       if (courseDoc.instructor?.id && expertMap.has(courseDoc.instructor.id)) {
@@ -105,7 +106,7 @@ export async function GET() {
       }
 
       // Get progress from DynamoDB
-      const progress = await getCourseProgress(user.id, enrolledCourse.courseId);
+      const progress = await getCourseProgress(tenantId, user.id, enrolledCourse.courseId);
 
       const userCourse = {
         ...course,

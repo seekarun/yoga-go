@@ -2,55 +2,67 @@
  * SurveyResponse repository for DynamoDB operations
  * Handles CRUD operations for survey responses
  *
- * PK: SURVEY_RESPONSE
- * SK: {surveyId}#{responseId}
+ * Tenant-partitioned design:
+ * - PK: TENANT#{tenantId}
+ * - SK: SURVEYRESP#{surveyId}#{responseId}
  */
 
-import { docClient, Tables, EntityType } from '../dynamodb';
+import { docClient, Tables, CorePK } from '../dynamodb';
 import { PutCommand, GetCommand, QueryCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
 import type { SurveyResponse } from '@/types';
-
-// Helper to generate response SK
-const generateSK = (surveyId: string, responseId: string) => `${surveyId}#${responseId}`;
 
 // Helper to generate a unique response ID
 const generateResponseId = () => `resp_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
+// Input type for creating a survey response
+export interface CreateSurveyResponseInput {
+  surveyId: string;
+  userId?: string;
+  contactInfo?: SurveyResponse['contactInfo'];
+  answers: SurveyResponse['answers'];
+  submittedAt?: string;
+}
+
 /**
  * Create a new survey response
+ * @param tenantId - The tenant ID
+ * @param input - Survey response input
  */
 export async function createSurveyResponse(
-  input: Omit<SurveyResponse, 'id' | 'createdAt' | 'updatedAt'>
+  tenantId: string,
+  input: CreateSurveyResponseInput
 ): Promise<SurveyResponse> {
   console.log(
     '[DBG][surveyResponseRepository] Creating survey response for survey:',
-    input.surveyId
+    input.surveyId,
+    'tenant:',
+    tenantId
   );
 
   const now = new Date().toISOString();
   const responseId = generateResponseId();
 
   const response: SurveyResponse = {
-    ...input,
     id: responseId,
+    surveyId: input.surveyId,
+    expertId: tenantId, // tenantId is expertId
+    userId: input.userId,
+    contactInfo: input.contactInfo,
+    answers: input.answers,
     submittedAt: input.submittedAt || now,
     createdAt: now,
     updatedAt: now,
   };
 
   const item = {
-    PK: EntityType.SURVEY_RESPONSE,
-    SK: generateSK(input.surveyId, responseId),
-    entityType: EntityType.SURVEY_RESPONSE,
-    // GSI for querying by expertId
-    GSI1PK: `EXPERT#${input.expertId}`,
-    GSI1SK: `RESPONSE#${now}`,
-    // GSI for querying by userId (if logged in)
+    PK: CorePK.TENANT(tenantId),
+    SK: CorePK.SURVEY_RESPONSE(input.surveyId, responseId),
+    // GSI for querying by responseId alone (for direct lookup)
+    GSI1PK: `RESPONSEID#${responseId}`,
+    GSI1SK: 'SURVEYRESP',
+    // GSI for querying by userId (cross-tenant for user's responses)
     GSI2PK: input.userId ? `USER#${input.userId}` : `ANONYMOUS#${input.surveyId}`,
     GSI2SK: `RESPONSE#${now}`,
-    // GSI for querying by responseId alone
-    GSI3PK: `RESPONSEID#${responseId}`,
-    GSI3SK: EntityType.SURVEY_RESPONSE,
     ...response,
   };
 
@@ -66,20 +78,29 @@ export async function createSurveyResponse(
 }
 
 /**
- * Get a survey response by ID (requires surveyId for direct lookup)
+ * Get a survey response by ID
+ * @param tenantId - The tenant ID
+ * @param surveyId - The survey ID
+ * @param responseId - The response ID
  */
 export async function getSurveyResponseById(
+  tenantId: string,
   surveyId: string,
   responseId: string
 ): Promise<SurveyResponse | null> {
-  console.log('[DBG][surveyResponseRepository] Getting survey response:', responseId);
+  console.log(
+    '[DBG][surveyResponseRepository] Getting survey response:',
+    responseId,
+    'tenant:',
+    tenantId
+  );
 
   const result = await docClient.send(
     new GetCommand({
       TableName: Tables.CORE,
       Key: {
-        PK: EntityType.SURVEY_RESPONSE,
-        SK: generateSK(surveyId, responseId),
+        PK: CorePK.TENANT(tenantId),
+        SK: CorePK.SURVEY_RESPONSE(surveyId, responseId),
       },
     })
   );
@@ -93,7 +114,8 @@ export async function getSurveyResponseById(
 }
 
 /**
- * Get a survey response by ID only (uses GSI3)
+ * Get a survey response by ID only (uses GSI1 for cross-tenant lookup)
+ * @param responseId - The response ID
  */
 export async function getSurveyResponseByIdOnly(
   responseId: string
@@ -103,10 +125,10 @@ export async function getSurveyResponseByIdOnly(
   const result = await docClient.send(
     new QueryCommand({
       TableName: Tables.CORE,
-      IndexName: 'GSI3',
-      KeyConditionExpression: 'GSI3PK = :gsi3pk',
+      IndexName: 'GSI1',
+      KeyConditionExpression: 'GSI1PK = :gsi1pk',
       ExpressionAttributeValues: {
-        ':gsi3pk': `RESPONSEID#${responseId}`,
+        ':gsi1pk': `RESPONSEID#${responseId}`,
       },
       Limit: 1,
     })
@@ -122,17 +144,27 @@ export async function getSurveyResponseByIdOnly(
 
 /**
  * Get all responses for a survey
+ * @param tenantId - The tenant ID
+ * @param surveyId - The survey ID
  */
-export async function getResponsesBySurvey(surveyId: string): Promise<SurveyResponse[]> {
-  console.log('[DBG][surveyResponseRepository] Getting responses for survey:', surveyId);
+export async function getResponsesBySurvey(
+  tenantId: string,
+  surveyId: string
+): Promise<SurveyResponse[]> {
+  console.log(
+    '[DBG][surveyResponseRepository] Getting responses for survey:',
+    surveyId,
+    'tenant:',
+    tenantId
+  );
 
   const result = await docClient.send(
     new QueryCommand({
       TableName: Tables.CORE,
       KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
       ExpressionAttributeValues: {
-        ':pk': EntityType.SURVEY_RESPONSE,
-        ':skPrefix': `${surveyId}#`,
+        ':pk': CorePK.TENANT(tenantId),
+        ':skPrefix': `SURVEYRESP#${surveyId}#`,
       },
       ScanIndexForward: false, // Most recent first
     })
@@ -144,31 +176,32 @@ export async function getResponsesBySurvey(surveyId: string): Promise<SurveyResp
 }
 
 /**
- * Get all responses for an expert (across all their surveys)
+ * Get all responses for a tenant (across all their surveys)
+ * @param tenantId - The tenant ID
  */
-export async function getResponsesByExpert(expertId: string): Promise<SurveyResponse[]> {
-  console.log('[DBG][surveyResponseRepository] Getting responses for expert:', expertId);
+export async function getTenantResponses(tenantId: string): Promise<SurveyResponse[]> {
+  console.log('[DBG][surveyResponseRepository] Getting all responses for tenant:', tenantId);
 
   const result = await docClient.send(
     new QueryCommand({
       TableName: Tables.CORE,
-      IndexName: 'GSI1',
-      KeyConditionExpression: 'GSI1PK = :gsi1pk AND begins_with(GSI1SK, :gsi1skPrefix)',
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
       ExpressionAttributeValues: {
-        ':gsi1pk': `EXPERT#${expertId}`,
-        ':gsi1skPrefix': 'RESPONSE#',
+        ':pk': CorePK.TENANT(tenantId),
+        ':skPrefix': 'SURVEYRESP#',
       },
       ScanIndexForward: false, // Most recent first
     })
   );
 
   const responses = (result.Items || []).map(mapToSurveyResponse);
-  console.log('[DBG][surveyResponseRepository] Found', responses.length, 'responses for expert');
+  console.log('[DBG][surveyResponseRepository] Found', responses.length, 'responses for tenant');
   return responses;
 }
 
 /**
- * Get all responses by a user
+ * Get all responses by a user (cross-tenant via GSI2)
+ * @param userId - The user ID
  */
 export async function getResponsesByUser(userId: string): Promise<SurveyResponse[]> {
   console.log('[DBG][surveyResponseRepository] Getting responses by user:', userId);
@@ -193,15 +226,24 @@ export async function getResponsesByUser(userId: string): Promise<SurveyResponse
 
 /**
  * Check if user has already responded to a survey
+ * @param tenantId - The tenant ID
+ * @param surveyId - The survey ID
+ * @param userId - The user ID
  */
-export async function hasUserResponded(surveyId: string, userId: string): Promise<boolean> {
+export async function hasUserResponded(
+  tenantId: string,
+  surveyId: string,
+  userId: string
+): Promise<boolean> {
   console.log('[DBG][surveyResponseRepository] Checking if user has responded:', {
     surveyId,
     userId,
+    tenantId,
   });
 
-  const responses = await getResponsesByUser(userId);
-  const hasResponded = responses.some(r => r.surveyId === surveyId);
+  // Query responses for this survey and filter by userId
+  const responses = await getResponsesBySurvey(tenantId, surveyId);
+  const hasResponded = responses.some(r => r.userId === userId);
 
   console.log('[DBG][surveyResponseRepository] User has responded:', hasResponded);
   return hasResponded;
@@ -209,22 +251,108 @@ export async function hasUserResponded(surveyId: string, userId: string): Promis
 
 /**
  * Delete a survey response
+ * @param tenantId - The tenant ID
+ * @param surveyId - The survey ID
+ * @param responseId - The response ID
  */
-export async function deleteSurveyResponse(surveyId: string, responseId: string): Promise<boolean> {
-  console.log('[DBG][surveyResponseRepository] Deleting survey response:', responseId);
+export async function deleteSurveyResponse(
+  tenantId: string,
+  surveyId: string,
+  responseId: string
+): Promise<boolean> {
+  console.log(
+    '[DBG][surveyResponseRepository] Deleting survey response:',
+    responseId,
+    'tenant:',
+    tenantId
+  );
 
   await docClient.send(
     new DeleteCommand({
       TableName: Tables.CORE,
       Key: {
-        PK: EntityType.SURVEY_RESPONSE,
-        SK: generateSK(surveyId, responseId),
+        PK: CorePK.TENANT(tenantId),
+        SK: CorePK.SURVEY_RESPONSE(surveyId, responseId),
       },
     })
   );
 
   console.log('[DBG][surveyResponseRepository] Survey response deleted:', responseId);
   return true;
+}
+
+/**
+ * Delete all responses for a survey
+ * @param tenantId - The tenant ID
+ * @param surveyId - The survey ID
+ */
+export async function deleteAllBySurvey(tenantId: string, surveyId: string): Promise<number> {
+  console.log(
+    '[DBG][surveyResponseRepository] Deleting all responses for survey:',
+    surveyId,
+    'tenant:',
+    tenantId
+  );
+
+  const responses = await getResponsesBySurvey(tenantId, surveyId);
+
+  if (responses.length === 0) {
+    console.log('[DBG][surveyResponseRepository] No responses to delete');
+    return 0;
+  }
+
+  for (const response of responses) {
+    await deleteSurveyResponse(tenantId, surveyId, response.id);
+  }
+
+  console.log('[DBG][surveyResponseRepository] Deleted', responses.length, 'responses');
+  return responses.length;
+}
+
+/**
+ * Delete all survey responses for a user (cross-tenant)
+ * Returns the count of deleted responses
+ * @param userId - The user ID
+ */
+export async function deleteAllByUser(userId: string): Promise<number> {
+  console.log('[DBG][surveyResponseRepository] Deleting all responses for user:', userId);
+
+  const responses = await getResponsesByUser(userId);
+
+  if (responses.length === 0) {
+    console.log('[DBG][surveyResponseRepository] No responses to delete');
+    return 0;
+  }
+
+  // Delete each response
+  for (const response of responses) {
+    await deleteSurveyResponse(response.expertId, response.surveyId, response.id);
+  }
+
+  console.log('[DBG][surveyResponseRepository] Deleted', responses.length, 'responses');
+  return responses.length;
+}
+
+/**
+ * Delete all responses for a tenant
+ * @param tenantId - The tenant ID
+ */
+export async function deleteAllTenantResponses(tenantId: string): Promise<number> {
+  console.log('[DBG][surveyResponseRepository] Deleting all responses for tenant:', tenantId);
+
+  const responses = await getTenantResponses(tenantId);
+
+  if (responses.length === 0) {
+    console.log('[DBG][surveyResponseRepository] No responses to delete');
+    return 0;
+  }
+
+  for (const response of responses) {
+    await deleteSurveyResponse(tenantId, response.surveyId, response.id);
+  }
+
+  console.log('[DBG][surveyResponseRepository] Deleted', responses.length, 'responses');
+  return responses.length;
 }
 
 /**
@@ -244,25 +372,14 @@ function mapToSurveyResponse(item: Record<string, unknown>): SurveyResponse {
   };
 }
 
-/**
- * Delete all survey responses for a user
- * Returns the count of deleted responses
- */
-export async function deleteAllByUser(userId: string): Promise<number> {
-  console.log('[DBG][surveyResponseRepository] Deleting all responses for user:', userId);
+// ===================================================================
+// BACKWARD COMPATIBILITY ALIASES
+// ===================================================================
 
-  const responses = await getResponsesByUser(userId);
-
-  if (responses.length === 0) {
-    console.log('[DBG][surveyResponseRepository] No responses to delete');
-    return 0;
-  }
-
-  // Delete each response
-  for (const response of responses) {
-    await deleteSurveyResponse(response.surveyId, response.id);
-  }
-
-  console.log('[DBG][surveyResponseRepository] Deleted', responses.length, 'responses');
-  return responses.length;
+/** @deprecated Use getTenantResponses(tenantId) instead */
+export async function getResponsesByExpert(expertId: string): Promise<SurveyResponse[]> {
+  console.warn(
+    '[DBG][surveyResponseRepository] getResponsesByExpert() is deprecated - use getTenantResponses(tenantId)'
+  );
+  return getTenantResponses(expertId);
 }

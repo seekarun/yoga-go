@@ -32,9 +32,8 @@ export async function POST(
     }
 
     // Create survey response using repository
-    const surveyResponse = await surveyResponseRepository.createSurveyResponse({
+    const surveyResponse = await surveyResponseRepository.createSurveyResponse(expertId, {
       surveyId,
-      expertId,
       userId,
       contactInfo,
       answers,

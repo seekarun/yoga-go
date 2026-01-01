@@ -5,7 +5,8 @@
  * Query params: source, status, search, limit, lastKey
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import type { ApiResponse, Recording, RecordingListResult, RecordingFilters } from '@/types';
 import { getSessionFromCookies, getUserByCognitoSub } from '@/lib/auth';
 import * as recordingRepository from '@/lib/repositories/recordingRepository';

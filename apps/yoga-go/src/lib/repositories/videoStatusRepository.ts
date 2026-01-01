@@ -5,7 +5,7 @@
  */
 
 import { getAllLessons, updateLesson } from './lessonRepository';
-import { getAllCourses, updateCourse } from './courseRepository';
+import { getAllCourses, updateCourse, getCourseByIdOnly } from './courseRepository';
 import { getAllExperts, updateExpert } from './expertRepository';
 import type { Lesson, Course, Expert } from '@/types';
 
@@ -25,7 +25,8 @@ export interface ProcessingVideo {
 export interface VideoStatusUpdate {
   entityType: 'lesson' | 'course' | 'expert';
   entityId: string;
-  parentId?: string;
+  parentId?: string; // courseId for lessons
+  tenantId?: string; // Optional - will lookup if not provided
   status: VideoStatus;
   duration?: number;
   errorReason?: string;
@@ -107,21 +108,41 @@ export async function updateVideoStatus(update: VideoStatusUpdate): Promise<void
   console.log('[DBG][videoStatusRepository] Updating video status:', update);
 
   switch (update.entityType) {
-    case 'lesson':
+    case 'lesson': {
       if (!update.parentId) {
         throw new Error('parentId (courseId) is required for lesson updates');
       }
-      await updateLesson(update.parentId, update.entityId, {
+      // Get tenantId - lookup from course if not provided
+      let tenantId = update.tenantId;
+      if (!tenantId) {
+        const course = await getCourseByIdOnly(update.parentId);
+        if (!course) {
+          throw new Error(`Course not found: ${update.parentId}`);
+        }
+        tenantId = course.instructor.id;
+      }
+      await updateLesson(tenantId, update.parentId, update.entityId, {
         cloudflareVideoStatus: update.status,
         ...(update.duration ? { duration: formatDuration(update.duration) } : {}),
       });
       break;
+    }
 
-    case 'course':
-      await updateCourse(update.entityId, {
+    case 'course': {
+      // Get tenantId - lookup from course if not provided
+      let tenantId = update.tenantId;
+      if (!tenantId) {
+        const course = await getCourseByIdOnly(update.entityId);
+        if (!course) {
+          throw new Error(`Course not found: ${update.entityId}`);
+        }
+        tenantId = course.instructor.id;
+      }
+      await updateCourse(tenantId, update.entityId, {
         promoVideoStatus: update.status,
       });
       break;
+    }
 
     case 'expert':
       await updateExpert(update.entityId, {

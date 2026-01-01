@@ -1,4 +1,4 @@
-import * as userRepository from './repositories/userRepository';
+import * as tenantUserRepository from './repositories/tenantUserRepository';
 import * as courseRepository from './repositories/courseRepository';
 import * as courseProgressRepository from './repositories/courseProgressRepository';
 import * as webinarRepository from './repositories/webinarRepository';
@@ -6,7 +6,7 @@ import * as webinarRegistrationRepository from './repositories/webinarRegistrati
 import type {
   EnrolledCourse,
   Achievement,
-  User,
+  TenantUser,
   CourseProgress,
   WebinarRegistration,
 } from '@/types';
@@ -14,19 +14,32 @@ import type {
 /**
  * Enroll a user in a course
  * Creates enrollment record and initializes progress tracking
+ *
+ * @param tenantId - The tenant ID (instructor's expertId)
+ * @param userId - The user's cognitoSub
+ * @param courseId - The course ID
+ * @param paymentId - Optional payment ID
  */
 export async function enrollUserInCourse(
+  tenantId: string,
   userId: string,
   courseId: string,
   paymentId?: string
 ): Promise<{ success: boolean; error?: string }> {
-  console.log('[DBG][enrollment] Enrolling user', userId, 'in course', courseId);
+  console.log(
+    '[DBG][enrollment] Enrolling user',
+    userId,
+    'in course',
+    courseId,
+    'tenant',
+    tenantId
+  );
 
   try {
-    // Get user from DynamoDB
-    const user = await userRepository.getUserById(userId);
+    // Get or create tenant user in DynamoDB
+    const user = await tenantUserRepository.getTenantUser(tenantId, userId);
     if (!user) {
-      return { success: false, error: 'User not found' };
+      return { success: false, error: 'User not found in tenant' };
     }
 
     // Check if already enrolled
@@ -39,7 +52,7 @@ export async function enrollUserInCourse(
     }
 
     // Get course details from DynamoDB
-    const course = await courseRepository.getCourseById(courseId);
+    const course = await courseRepository.getCourseById(tenantId, courseId);
 
     if (!course) {
       return { success: false, error: 'Course not found' };
@@ -57,7 +70,7 @@ export async function enrollUserInCourse(
       enrolledAt: now,
     };
 
-    const updates: Partial<User> = {};
+    const updates: Partial<TenantUser> = {};
 
     // Add to enrolled courses
     const newEnrolledCourses = [...user.enrolledCourses, enrolledCourse];
@@ -108,11 +121,11 @@ export async function enrollUserInCourse(
 
     // Update user in DynamoDB
     console.log('[DBG][enrollment] Updating user in DynamoDB...');
-    await userRepository.updateUser(userId, updates);
+    await tenantUserRepository.updateTenantUser(tenantId, userId, updates);
     console.log('[DBG][enrollment] User updated successfully!');
 
     // Create course progress record in DynamoDB
-    const courseProgress = await courseProgressRepository.createCourseProgress({
+    const courseProgress = await courseProgressRepository.createCourseProgress(tenantId, {
       userId,
       courseId,
       totalLessons: course.totalLessons,
@@ -131,8 +144,17 @@ export async function enrollUserInCourse(
 
 /**
  * Update lesson completion status
+ *
+ * @param tenantId - The tenant ID (instructor's expertId)
+ * @param userId - The user's cognitoSub
+ * @param courseId - The course ID
+ * @param lessonId - The lesson ID
+ * @param completed - Whether the lesson is completed
+ * @param timeSpent - Optional time spent on the lesson
+ * @param notes - Optional notes
  */
 export async function updateLessonProgress(
+  tenantId: string,
   userId: string,
   courseId: string,
   lessonId: string,
@@ -141,6 +163,7 @@ export async function updateLessonProgress(
   notes?: string
 ): Promise<{ success: boolean; error?: string }> {
   console.log('[DBG][enrollment] Updating lesson progress:', {
+    tenantId,
     userId,
     courseId,
     lessonId,
@@ -149,7 +172,7 @@ export async function updateLessonProgress(
 
   try {
     // Get current progress from DynamoDB
-    const progress = await courseProgressRepository.getCourseProgress(userId, courseId);
+    const progress = await courseProgressRepository.getCourseProgress(tenantId, userId, courseId);
 
     if (!progress) {
       return { success: false, error: 'Course progress not found' };
@@ -157,6 +180,7 @@ export async function updateLessonProgress(
 
     // Update lesson progress using repository
     const updatedProgress = await courseProgressRepository.updateLessonProgress(
+      tenantId,
       userId,
       courseId,
       lessonId,
@@ -172,9 +196,9 @@ export async function updateLessonProgress(
       const now = new Date().toISOString();
 
       // Update user statistics in DynamoDB
-      const user = await userRepository.getUserById(userId);
+      const user = await tenantUserRepository.getTenantUser(tenantId, userId);
       if (user) {
-        const updates: Partial<User> = {};
+        const updates: Partial<TenantUser> = {};
 
         // Update statistics
         updates.statistics = {
@@ -203,7 +227,7 @@ export async function updateLessonProgress(
         };
         updates.achievements = [...user.achievements, completionAchievement];
 
-        await userRepository.updateUser(userId, updates);
+        await tenantUserRepository.updateTenantUser(tenantId, userId, updates);
       }
     }
 
@@ -220,19 +244,32 @@ export async function updateLessonProgress(
 
 /**
  * Get user's progress for a course
+ *
+ * @param tenantId - The tenant ID (instructor's expertId)
+ * @param userId - The user's cognitoSub
+ * @param courseId - The course ID
  */
 export async function getCourseProgress(
+  tenantId: string,
   userId: string,
   courseId: string
 ): Promise<CourseProgress | null> {
-  return courseProgressRepository.getCourseProgress(userId, courseId);
+  return courseProgressRepository.getCourseProgress(tenantId, userId, courseId);
 }
 
 /**
  * Check if user is enrolled in a course
+ *
+ * @param tenantId - The tenant ID (instructor's expertId)
+ * @param userId - The user's cognitoSub
+ * @param courseId - The course ID
  */
-export async function isUserEnrolled(userId: string, courseId: string): Promise<boolean> {
-  const user = await userRepository.getUserById(userId);
+export async function isUserEnrolled(
+  tenantId: string,
+  userId: string,
+  courseId: string
+): Promise<boolean> {
+  const user = await tenantUserRepository.getTenantUser(tenantId, userId);
   if (!user) return false;
 
   return user.enrolledCourses.some((ec: EnrolledCourse) => ec.courseId === courseId);
@@ -241,23 +278,34 @@ export async function isUserEnrolled(userId: string, courseId: string): Promise<
 /**
  * Register a user for a webinar
  * Creates registration record and updates webinar registration count
+ *
+ * @param tenantId - The tenant ID (webinar's expertId)
+ * @param userId - The user's cognitoSub
+ * @param webinarId - The webinar ID
+ * @param userName - The user's name
+ * @param userEmail - The user's email
+ * @param paymentId - Optional payment ID
  */
 export async function registerUserForWebinar(
+  tenantId: string,
   userId: string,
   webinarId: string,
+  userName: string,
+  userEmail: string,
   paymentId?: string
 ): Promise<{ success: boolean; registration?: WebinarRegistration; error?: string }> {
-  console.log('[DBG][enrollment] Registering user', userId, 'for webinar', webinarId);
+  console.log(
+    '[DBG][enrollment] Registering user',
+    userId,
+    'for webinar',
+    webinarId,
+    'tenant',
+    tenantId
+  );
 
   try {
-    // Get user from DynamoDB
-    const user = await userRepository.getUserById(userId);
-    if (!user) {
-      return { success: false, error: 'User not found' };
-    }
-
     // Get webinar details from DynamoDB
-    const webinar = await webinarRepository.getWebinarById(webinarId);
+    const webinar = await webinarRepository.getWebinarById(tenantId, webinarId);
     if (!webinar) {
       return { success: false, error: 'Webinar not found' };
     }
@@ -269,6 +317,7 @@ export async function registerUserForWebinar(
 
     // Check if already registered
     const existingRegistration = await webinarRegistrationRepository.getRegistration(
+      tenantId,
       webinarId,
       userId
     );
@@ -278,7 +327,7 @@ export async function registerUserForWebinar(
     }
 
     // Check capacity
-    const hasCapacity = await webinarRepository.hasCapacity(webinarId);
+    const hasCapacity = await webinarRepository.hasCapacity(tenantId, webinarId);
     if (!hasCapacity) {
       return { success: false, error: 'Webinar is at full capacity' };
     }
@@ -287,18 +336,17 @@ export async function registerUserForWebinar(
     const registrationId = `reg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
     // Create registration record
-    const registration = await webinarRegistrationRepository.createRegistration({
+    const registration = await webinarRegistrationRepository.createRegistration(tenantId, {
       id: registrationId,
       webinarId,
       userId,
-      expertId: webinar.expertId,
-      userName: user.profile.name,
-      userEmail: user.profile.email,
+      userName,
+      userEmail,
       paymentId,
     });
 
     // Increment webinar registration count
-    await webinarRepository.incrementRegistrations(webinarId);
+    await webinarRepository.incrementRegistrations(tenantId, webinarId);
 
     console.log('[DBG][enrollment] Webinar registration successful:', registrationId);
     return { success: true, registration };
@@ -313,16 +361,24 @@ export async function registerUserForWebinar(
 
 /**
  * Check if user is registered for a webinar
+ *
+ * @param tenantId - The tenant ID (webinar's expertId)
+ * @param userId - The user's cognitoSub
+ * @param webinarId - The webinar ID
  */
 export async function isUserRegisteredForWebinar(
+  tenantId: string,
   userId: string,
   webinarId: string
 ): Promise<boolean> {
-  return webinarRegistrationRepository.isUserRegistered(webinarId, userId);
+  return webinarRegistrationRepository.isUserRegistered(tenantId, webinarId, userId);
 }
 
 /**
- * Get user's webinar registrations
+ * Get user's webinar registrations (cross-tenant)
+ * This looks up registrations across all tenants for a user
+ *
+ * @param userId - The user's cognitoSub
  */
 export async function getUserWebinarRegistrations(userId: string): Promise<WebinarRegistration[]> {
   return webinarRegistrationRepository.getRegistrationsByUserId(userId);

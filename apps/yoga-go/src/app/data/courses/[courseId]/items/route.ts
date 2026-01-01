@@ -17,8 +17,19 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
   );
 
   try {
+    // Get course first to find tenantId (cross-tenant lookup)
+    const course = await courseRepository.getCourseByIdOnly(courseId);
+    if (!course) {
+      const errorResponse: ApiResponse<never> = {
+        success: false,
+        error: 'Course not found',
+      };
+      return NextResponse.json(errorResponse, { status: 404 });
+    }
+    const tenantId = course.instructor.id;
+
     // Fetch lessons for this course from DynamoDB
-    const lessonDocs = await lessonRepository.getLessonsByCourseId(courseId);
+    const lessonDocs = await lessonRepository.getLessonsByCourseId(tenantId, courseId);
 
     if (!lessonDocs || lessonDocs.length === 0) {
       const errorResponse: ApiResponse<never> = {
@@ -61,8 +72,8 @@ export async function POST(
   );
 
   try {
-    // Check if course exists in DynamoDB
-    const course = await courseRepository.getCourseById(courseId);
+    // Check if course exists in DynamoDB (cross-tenant lookup)
+    const course = await courseRepository.getCourseByIdOnly(courseId);
     if (!course) {
       return NextResponse.json(
         {
@@ -72,6 +83,7 @@ export async function POST(
         { status: 404 }
       );
     }
+    const tenantId = course.instructor.id;
 
     // Parse request body
     const body = await request.json();
@@ -94,7 +106,7 @@ export async function POST(
     const lessonId = generateLessonId(courseId);
 
     // Create lesson in DynamoDB
-    const createdLesson = await lessonRepository.createLesson({
+    const createdLesson = await lessonRepository.createLesson(tenantId, {
       id: lessonId,
       courseId,
       title: body.title,
@@ -131,7 +143,7 @@ export async function POST(
 
         // Update course in DynamoDB
         // Cast curriculum through unknown since storage format differs from API format
-        await courseRepository.updateCourse(courseId, {
+        await courseRepository.updateCourse(tenantId, courseId, {
           curriculum: curriculum as unknown as typeof course.curriculum,
           totalLessons: (course.totalLessons || 0) + 1,
         });

@@ -52,8 +52,8 @@ export async function GET(
     const questionId = searchParams.get('questionId');
     const answer = searchParams.get('answer');
 
-    // Fetch responses for this survey
-    let responses = await surveyResponseRepository.getResponsesBySurvey(survey.id);
+    // Fetch responses for this survey (expertId is tenantId)
+    let responses = await surveyResponseRepository.getResponsesBySurvey(expertId, survey.id);
 
     // Apply filters if provided
     if (questionId && answer) {

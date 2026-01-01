@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import * as courseProgressRepository from '@/lib/repositories/courseProgressRepository';
 import * as courseAnalyticsEventRepository from '@/lib/repositories/courseAnalyticsEventRepository';
 import * as paymentRepository from '@/lib/repositories/paymentRepository';
+import * as courseRepository from '@/lib/repositories/courseRepository';
 import type { ApiResponse } from '@/types';
 
 /**
@@ -16,6 +17,17 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
   console.log('[DBG][srv/analytics] GET request for course:', courseId);
 
   try {
+    // Get course to find tenantId
+    const course = await courseRepository.getCourseByIdOnly(courseId);
+    if (!course) {
+      const response: ApiResponse<null> = {
+        success: false,
+        error: 'Course not found',
+      };
+      return NextResponse.json(response, { status: 404 });
+    }
+    const tenantId = course.instructor.id;
+
     // Parse query params
     const url = new URL(request.url);
     const period = url.searchParams.get('period') || '30d';
@@ -113,6 +125,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
 
     // Get engagement data from CourseProgress (DynamoDB)
     const courseProgressData = await courseProgressRepository.getCourseProgressByCourseIdAfterDate(
+      tenantId,
       courseId,
       startDateStr
     );

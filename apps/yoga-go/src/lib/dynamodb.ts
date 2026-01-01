@@ -1,31 +1,34 @@
 /**
  * DynamoDB Client Configuration
  *
- * 8-table design:
+ * 9-table design:
  *
  * 1. CORE TABLE - Main business entities
- *    - User, Expert, Course, Lesson, CourseProgress
+ *    - Expert, Course, Lesson, CourseProgress
  *    - Asset, Survey, SurveyResponse
  *
- * 2. ORDERS TABLE - Payments
+ * 2. USERS TABLE - User accounts (separate from core)
+ *    - User profiles, enrollments, achievements
+ *
+ * 3. ORDERS TABLE - Payments
  *    - Payment (dual-write for user lookup and intent lookup)
  *
- * 3. ANALYTICS TABLE - Course analytics events
+ * 4. ANALYTICS TABLE - Course analytics events
  *    - CourseAnalyticsEvent
  *
- * 4. DISCUSSIONS TABLE - Discussions and votes
+ * 5. DISCUSSIONS TABLE - Discussions and votes
  *    - Discussion, DiscussionVote (dual-write for efficient lookups)
  *
- * 5. BLOG TABLE - Blog posts, comments, and likes
+ * 6. BLOG TABLE - Blog posts, comments, and likes
  *    - BlogPost, BlogComment, BlogLike
  *
- * 6. BOOST TABLE - Wallet and boost campaigns
+ * 7. BOOST TABLE - Wallet and boost campaigns
  *    - ExpertWallet, WalletTransaction, Boost
  *
- * 7. ASSETS TABLE - Cloudflare uploaded images/videos
+ * 8. ASSETS TABLE - Cloudflare uploaded images/videos
  *    - Asset metadata
  *
- * 8. EMAILS TABLE - Expert/Admin inboxes
+ * 9. EMAILS TABLE - Expert/Admin inboxes
  *    - Email, EmailThread (high-volume, separate table)
  */
 
@@ -51,6 +54,7 @@ export const docClient = DynamoDBDocumentClient.from(client, {
 // Table names - same for dev and prod
 export const Tables = {
   CORE: 'yoga-go-core',
+  USERS: 'yoga-go-users', // User accounts (separate from core)
   ORDERS: 'yoga-go-orders',
   ANALYTICS: 'yoga-go-analytics',
   DISCUSSIONS: 'yoga-go-discussions',
@@ -64,38 +68,143 @@ export const Tables = {
 export const TABLE_NAME = Tables.CORE;
 
 // ============================================
-// CORE TABLE - PK/SK Prefixes
+// CORE TABLE - Tenant-Partitioned Design
 // ============================================
+// All tenant-scoped entities use PK=TENANT#{tenantId}
+// SYSTEM tenant (TENANT#SYSTEM) for platform-wide data:
+//   - Domain lookups, Zoom email lookups, Exchange rates, Waitlist
+// GSI1 for reverse lookups (entity → tenant)
+
 export const CorePK = {
-  USER: 'USER',
-  EXPERT: 'TENANT', // Consolidated into TENANT
-  COURSE: 'COURSE',
-  LESSON: (courseId: string) => `LESSON#${courseId}`,
-  PROGRESS: (userId: string) => `PROGRESS#${userId}`,
-  DISCUSSION: (courseId: string) => `DISC#${courseId}`,
-  VOTE: (discussionId: string) => `VOTE#${discussionId}`,
-  ASSET: 'ASSET',
-  SURVEY: (expertId: string) => `SURVEY#${expertId}`,
-  SURVEY_RESPONSE: (surveyId: string) => `RESP#${surveyId}`,
-  // GSI1 for courses by instructor
-  INSTRUCTOR: (instructorId: string) => `INSTRUCTOR#${instructorId}`,
-  // Tenant (multi-tenancy)
-  TENANT: 'TENANT',
+  // ============================================
+  // TENANT PARTITION KEY (PK = TENANT#{tenantId})
+  // ============================================
+  TENANT: (tenantId: string) => `TENANT#${tenantId}`,
+
+  // ============================================
+  // SORT KEYS FOR TENANT-SCOPED ENTITIES
+  // ============================================
+  // Tenant metadata: PK=TENANT#{tenantId}, SK=META
+  TENANT_META: 'META',
+
+  // Course: PK=TENANT#{tenantId}, SK=COURSE#{courseId}
+  COURSE: (courseId: string) => `COURSE#${courseId}`,
+
+  // Lesson: PK=TENANT#{tenantId}, SK=LESSON#{courseId}#{lessonId}
+  LESSON: (courseId: string, lessonId: string) => `LESSON#${courseId}#${lessonId}`,
+
+  // Webinar: PK=TENANT#{tenantId}, SK=WEBINAR#{webinarId}
+  WEBINAR: (webinarId: string) => `WEBINAR#${webinarId}`,
+
+  // TenantUser: PK=TENANT#{tenantId}, SK=USER#{cognitoSub}
+  TENANT_USER: (cognitoSub: string) => `USER#${cognitoSub}`,
+
+  // Progress: PK=TENANT#{tenantId}, SK=PROGRESS#{userId}#{courseId}
+  PROGRESS: (userId: string, courseId: string) => `PROGRESS#${userId}#${courseId}`,
+
+  // Survey: PK=TENANT#{tenantId}, SK=SURVEY#{surveyId}
+  SURVEY: (surveyId: string) => `SURVEY#${surveyId}`,
+
+  // SurveyResponse: PK=TENANT#{tenantId}, SK=SURVEYRESP#{surveyId}#{responseId}
+  SURVEY_RESPONSE: (surveyId: string, responseId: string) => `SURVEYRESP#${surveyId}#${responseId}`,
+
+  // WebinarRegistration: PK=TENANT#{tenantId}, SK=WEBREG#{webinarId}#{registrationId}
+  WEBINAR_REGISTRATION_SK: (webinarId: string, registrationId: string) =>
+    `WEBREG#${webinarId}#${registrationId}`,
+
+  // Recording: PK=TENANT#{tenantId}, SK=RECORDING#{recordingId}
+  RECORDING: (recordingId: string) => `RECORDING#${recordingId}`,
+
+  // OAuth tokens: PK=TENANT#{tenantId}, SK=GOOGLE_AUTH or ZOOM_AUTH
+  GOOGLE_AUTH: 'GOOGLE_AUTH',
+  ZOOM_AUTH: 'ZOOM_AUTH',
+
+  // ============================================
+  // SYSTEM TENANT (Platform-wide data)
+  // PK=TENANT#SYSTEM
+  // ============================================
+  SYSTEM: 'TENANT#SYSTEM',
+
+  // Exchange rate: PK=TENANT#SYSTEM, SK=EXCHANGERATE#{currency}
+  EXCHANGE_RATE_SK: (currency: string) => `EXCHANGERATE#${currency}`,
+
+  // Waitlist: PK=TENANT#SYSTEM, SK=WAITLIST#{timestamp}#{email}
+  WAITLIST_SK: (timestamp: string, email: string) => `WAITLIST#${timestamp}#${email}`,
+
+  // Waitlist pending: PK=TENANT#SYSTEM, SK=WAITLIST_PENDING#{email}
+  WAITLIST_PENDING_SK: (email: string) => `WAITLIST_PENDING#${email.toLowerCase()}`,
+
+  // Domain lookup: PK=TENANT#SYSTEM, SK=DOMAIN#{domain}
+  // Maps custom domain to tenantId for routing
+  DOMAIN_SK: (domain: string) => `DOMAIN#${domain.toLowerCase()}`,
+
+  // Zoom email lookup: PK=TENANT#SYSTEM, SK=ZOOM_EMAIL#{email}
+  // Maps Zoom account email to tenantId for webhook routing
+  ZOOM_EMAIL_SK: (email: string) => `ZOOM_EMAIL#${email.toLowerCase()}`,
+
+  // ============================================
+  // BACKWARD COMPATIBILITY ALIASES
+  // These maintain the old API while we migrate repositories
+  // TODO: Remove these after all repositories are updated
+  // ============================================
+
+  /** @deprecated Use DOMAIN(domain) instead */
   TENANT_DOMAIN: (domain: string) => `TENANT#DOMAIN#${domain}`,
-  // Webinar entities
-  WEBINAR: 'WEBINAR',
+
+  /** @deprecated Use TENANT(tenantId) + TENANT_USER(cognitoSub) */
+  USER: 'USER',
+
+  /** @deprecated Use TENANT(tenantId) + PROGRESS(userId, courseId) */
+  PROGRESS_LEGACY: (userId: string) => `PROGRESS#${userId}`,
+
+  /** @deprecated Use TENANT(tenantId) + LESSON(courseId, lessonId) */
+  LESSON_LEGACY: (courseId: string) => `LESSON#${courseId}`,
+
+  /** @deprecated Use TENANT(tenantId) + SURVEY(surveyId) */
+  SURVEY_LEGACY: (expertId: string) => `SURVEY#${expertId}`,
+
+  /** @deprecated Use TENANT(tenantId) + SURVEY_RESPONSE(surveyId, responseId) */
+  SURVEY_RESPONSE_LEGACY: (surveyId: string) => `RESP#${surveyId}`,
+
+  /** @deprecated Use TENANT(tenantId) + WEBINAR_REGISTRATION_SK(webinarId, regId) */
   WEBINAR_REGISTRATION: (webinarId: string) => `REG#${webinarId}`,
+
+  /** @deprecated Use TENANT(tenantId) + ... */
   WEBINAR_BY_EXPERT: (expertId: string) => `WEBINAR#EXPERT#${expertId}`,
   USER_REGISTRATIONS: (userId: string) => `USERREG#${userId}`,
-  // Expert Google OAuth
-  GOOGLE_AUTH: 'GOOGLE_AUTH',
-  // Expert Zoom OAuth
-  ZOOM_AUTH: 'ZOOM_AUTH',
-  // Waitlist signups
+
+  /** @deprecated For instructor lookup - will be removed */
+  INSTRUCTOR: (instructorId: string) => `INSTRUCTOR#${instructorId}`,
+
+  // Old static PK values - used by existing code until migrated
+  /** @deprecated Use TENANT(tenantId) + TENANT_META */
+  TENANT_STATIC: 'TENANT',
+  /** @deprecated Use TENANT(tenantId) + TENANT_META - alias for backward compat */
+  EXPERT: 'TENANT',
+  /** @deprecated Use TENANT(tenantId) + COURSE(courseId) */
+  COURSE_STATIC: 'COURSE',
+  /** @deprecated Use TENANT(tenantId) + WEBINAR(webinarId) */
+  WEBINAR_STATIC: 'WEBINAR',
+  /** @deprecated Use SYSTEM + WAITLIST_SK(timestamp, email) - old static key */
   WAITLIST: 'WAITLIST',
+  /** @deprecated Use SYSTEM + WAITLIST_PENDING_SK(email) - old function */
   WAITLIST_PENDING: (email: string) => `WAITLIST_PENDING#${email.toLowerCase()}`,
-  // Exchange rate cache
+  /** @deprecated Use SYSTEM + EXCHANGE_RATE_SK(currency) - old static key */
   EXCHANGE_RATE: 'EXCHANGE_RATE',
+  /** @deprecated Use TENANT(tenantId) + GOOGLE_AUTH - old static key */
+  GOOGLE_AUTH_STATIC: 'GOOGLE_AUTH',
+  /** @deprecated Use TENANT(tenantId) + ZOOM_AUTH - old static key */
+  ZOOM_AUTH_STATIC: 'ZOOM_AUTH',
+  /** @deprecated Use TENANT(tenantId) + LESSON(courseId, lessonId) - old function */
+  LESSON_STATIC: (courseId: string) => `LESSON#${courseId}`,
+  /** @deprecated Use TENANT(tenantId) + PROGRESS(userId, courseId) - old function */
+  PROGRESS_STATIC: (userId: string) => `PROGRESS#${userId}`,
+  /** @deprecated Discussion - kept for reference */
+  DISCUSSION: (courseId: string) => `DISC#${courseId}`,
+  /** @deprecated Vote - kept for reference */
+  VOTE: (discussionId: string) => `VOTE#${discussionId}`,
+  /** @deprecated Asset - kept for reference */
+  ASSET: 'ASSET',
 } as const;
 
 // ============================================
@@ -110,6 +219,16 @@ export const EmailsPK = {
   THREAD: (threadId: string) => `THREAD#${threadId}`,
   // GSI1 for unread filtering (optional optimization)
   // GSI1PK: INBOX#{ownerId}#UNREAD, GSI1SK: {receivedAt}
+} as const;
+
+// ============================================
+// USERS TABLE - PK/SK Prefixes
+// Separate table for user accounts
+// ============================================
+export const UsersPK = {
+  // User profile: PK={cognitoSub}, SK=PROFILE
+  USER: (cognitoSub: string) => cognitoSub,
+  PROFILE: 'PROFILE',
 } as const;
 
 // ============================================

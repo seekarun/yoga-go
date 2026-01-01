@@ -2,23 +2,31 @@
  * Expert Zoom Auth Repository - DynamoDB Operations
  *
  * Stores OAuth tokens for experts to create Zoom meeting links
- * PK: "ZOOM_AUTH", SK: expertId
+ * PK: TENANT#{tenantId}, SK: ZOOM_AUTH
+ *
+ * Also maintains a lookup index for webhooks:
+ * PK: ZOOM_EMAIL#{email}, SK: META -> tenantId
  */
 
-import {
-  GetCommand,
-  PutCommand,
-  UpdateCommand,
-  DeleteCommand,
-  QueryCommand,
-} from '@aws-sdk/lib-dynamodb';
-import { docClient, Tables, EntityType } from '../dynamodb';
+import { GetCommand, PutCommand, UpdateCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
+import { docClient, Tables, CorePK, EntityType } from '../dynamodb';
 import type { ExpertZoomAuth } from '@/types';
 
 // Type for DynamoDB item (includes PK/SK)
 interface DynamoDBZoomAuthItem extends ExpertZoomAuth {
   PK: string;
   SK: string;
+}
+
+// Type for email lookup item
+interface ZoomEmailLookupItem {
+  PK: string;
+  SK: string;
+  tenantId: string;
+  email: string;
+  entityType: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 /**
@@ -31,17 +39,18 @@ function toZoomAuth(item: DynamoDBZoomAuthItem): ExpertZoomAuth {
 }
 
 /**
- * Get Zoom auth tokens for an expert
+ * Get Zoom auth tokens for a tenant
+ * @param tenantId - The tenant ID (same as expertId)
  */
-export async function getZoomAuth(expertId: string): Promise<ExpertZoomAuth | null> {
-  console.log('[DBG][expertZoomAuthRepo] Getting Zoom auth for expert:', expertId);
+export async function getZoomAuth(tenantId: string): Promise<ExpertZoomAuth | null> {
+  console.log('[DBG][expertZoomAuthRepo] Getting Zoom auth for tenant:', tenantId);
 
   const result = await docClient.send(
     new GetCommand({
       TableName: Tables.CORE,
       Key: {
-        PK: EntityType.ZOOM_AUTH,
-        SK: expertId,
+        PK: CorePK.TENANT(tenantId),
+        SK: CorePK.ZOOM_AUTH,
       },
     })
   );
@@ -56,46 +65,60 @@ export async function getZoomAuth(expertId: string): Promise<ExpertZoomAuth | nu
 }
 
 /**
- * Get Zoom auth by email address (for webhook processing)
- * Queries all ZOOM_AUTH records and filters by email
+ * Get tenant ID by Zoom email (for webhook processing)
+ * Uses the ZOOM_EMAIL lookup index
  */
-export async function getExpertZoomAuthByEmail(email: string): Promise<ExpertZoomAuth | null> {
-  console.log('[DBG][expertZoomAuthRepo] Getting Zoom auth by email:', email);
+export async function getTenantIdByZoomEmail(email: string): Promise<string | null> {
+  const normalizedEmail = email.toLowerCase().trim();
+  console.log('[DBG][expertZoomAuthRepo] Looking up tenant by Zoom email:', normalizedEmail);
 
   const result = await docClient.send(
-    new QueryCommand({
+    new GetCommand({
       TableName: Tables.CORE,
-      KeyConditionExpression: 'PK = :pk',
-      FilterExpression: 'email = :email',
-      ExpressionAttributeValues: {
-        ':pk': EntityType.ZOOM_AUTH,
-        ':email': email,
+      Key: {
+        PK: CorePK.SYSTEM,
+        SK: CorePK.ZOOM_EMAIL_SK(normalizedEmail),
       },
     })
   );
 
-  if (!result.Items || result.Items.length === 0) {
-    console.log('[DBG][expertZoomAuthRepo] Zoom auth not found for email');
+  if (!result.Item) {
+    console.log('[DBG][expertZoomAuthRepo] No tenant found for Zoom email');
     return null;
   }
 
-  console.log('[DBG][expertZoomAuthRepo] Found Zoom auth for email');
-  return toZoomAuth(result.Items[0] as DynamoDBZoomAuthItem);
+  const tenantId = (result.Item as ZoomEmailLookupItem).tenantId;
+  console.log('[DBG][expertZoomAuthRepo] Found tenant for Zoom email:', tenantId);
+  return tenantId;
 }
 
 /**
- * Save Zoom auth tokens for an expert
+ * Get Zoom auth by email (for webhook processing)
+ * First looks up tenantId by email, then fetches the full auth record
+ */
+export async function getZoomAuthByEmail(email: string): Promise<ExpertZoomAuth | null> {
+  const tenantId = await getTenantIdByZoomEmail(email);
+  if (!tenantId) {
+    return null;
+  }
+  return getZoomAuth(tenantId);
+}
+
+/**
+ * Save Zoom auth tokens for a tenant
+ * Also creates a ZOOM_EMAIL lookup for webhook processing
  */
 export async function saveZoomAuth(auth: ExpertZoomAuth): Promise<ExpertZoomAuth> {
   const now = new Date().toISOString();
+  const tenantId = auth.expertId; // expertId is the tenantId
 
-  console.log('[DBG][expertZoomAuthRepo] Saving Zoom auth for expert:', auth.expertId);
+  console.log('[DBG][expertZoomAuthRepo] Saving Zoom auth for tenant:', tenantId);
 
   const item: DynamoDBZoomAuthItem = {
-    PK: EntityType.ZOOM_AUTH,
-    SK: auth.expertId,
+    PK: CorePK.TENANT(tenantId),
+    SK: CorePK.ZOOM_AUTH,
     ...auth,
-    id: auth.expertId, // Use expertId as the id
+    id: tenantId,
     createdAt: auth.createdAt || now,
     updatedAt: now,
   };
@@ -107,18 +130,40 @@ export async function saveZoomAuth(auth: ExpertZoomAuth): Promise<ExpertZoomAuth
     })
   );
 
+  // Also save email lookup for webhook processing (in SYSTEM partition)
+  if (auth.email) {
+    const emailLookupItem: ZoomEmailLookupItem = {
+      PK: CorePK.SYSTEM,
+      SK: CorePK.ZOOM_EMAIL_SK(auth.email.toLowerCase()),
+      tenantId,
+      email: auth.email.toLowerCase(),
+      entityType: EntityType.ZOOM_AUTH,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await docClient.send(
+      new PutCommand({
+        TableName: Tables.CORE,
+        Item: emailLookupItem,
+      })
+    );
+    console.log('[DBG][expertZoomAuthRepo] Saved Zoom email lookup');
+  }
+
   console.log('[DBG][expertZoomAuthRepo] Saved Zoom auth');
   return toZoomAuth(item);
 }
 
 /**
  * Update Zoom auth tokens (e.g., after token refresh)
+ * @param tenantId - The tenant ID (same as expertId)
  */
 export async function updateZoomAuth(
-  expertId: string,
+  tenantId: string,
   updates: Partial<ExpertZoomAuth>
 ): Promise<ExpertZoomAuth> {
-  console.log('[DBG][expertZoomAuthRepo] Updating Zoom auth for expert:', expertId);
+  console.log('[DBG][expertZoomAuthRepo] Updating Zoom auth for tenant:', tenantId);
 
   // Build update expression dynamically
   const updateParts: string[] = [];
@@ -144,8 +189,8 @@ export async function updateZoomAuth(
     new UpdateCommand({
       TableName: Tables.CORE,
       Key: {
-        PK: EntityType.ZOOM_AUTH,
-        SK: expertId,
+        PK: CorePK.TENANT(tenantId),
+        SK: CorePK.ZOOM_AUTH,
       },
       UpdateExpression: `SET ${updateParts.join(', ')}`,
       ExpressionAttributeNames: exprAttrNames,
@@ -160,28 +205,48 @@ export async function updateZoomAuth(
 
 /**
  * Delete Zoom auth tokens (disconnect Zoom account)
+ * @param tenantId - The tenant ID (same as expertId)
  */
-export async function deleteZoomAuth(expertId: string): Promise<void> {
-  console.log('[DBG][expertZoomAuthRepo] Deleting Zoom auth for expert:', expertId);
+export async function deleteZoomAuth(tenantId: string): Promise<void> {
+  console.log('[DBG][expertZoomAuthRepo] Deleting Zoom auth for tenant:', tenantId);
 
+  // First get the auth to find the email for cleanup
+  const auth = await getZoomAuth(tenantId);
+
+  // Delete the main auth record
   await docClient.send(
     new DeleteCommand({
       TableName: Tables.CORE,
       Key: {
-        PK: EntityType.ZOOM_AUTH,
-        SK: expertId,
+        PK: CorePK.TENANT(tenantId),
+        SK: CorePK.ZOOM_AUTH,
       },
     })
   );
+
+  // Delete the email lookup if it exists (from SYSTEM partition)
+  if (auth?.email) {
+    await docClient.send(
+      new DeleteCommand({
+        TableName: Tables.CORE,
+        Key: {
+          PK: CorePK.SYSTEM,
+          SK: CorePK.ZOOM_EMAIL_SK(auth.email.toLowerCase()),
+        },
+      })
+    );
+    console.log('[DBG][expertZoomAuthRepo] Deleted Zoom email lookup');
+  }
 
   console.log('[DBG][expertZoomAuthRepo] Deleted Zoom auth');
 }
 
 /**
- * Check if expert has connected Zoom account
+ * Check if tenant has connected Zoom account
+ * @param tenantId - The tenant ID (same as expertId)
  */
-export async function isZoomConnected(expertId: string): Promise<boolean> {
-  const auth = await getZoomAuth(expertId);
+export async function isZoomConnected(tenantId: string): Promise<boolean> {
+  const auth = await getZoomAuth(tenantId);
   return auth !== null;
 }
 

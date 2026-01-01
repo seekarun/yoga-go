@@ -45,7 +45,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
       );
     }
 
-    const webinar = await webinarRepository.getWebinarById(webinarId);
+    const webinar = await webinarRepository.getWebinarByIdOnly(webinarId);
 
     if (!webinar) {
       return NextResponse.json<ApiResponse<Webinar>>(
@@ -112,7 +112,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       );
     }
 
-    const webinar = await webinarRepository.getWebinarById(webinarId);
+    const webinar = await webinarRepository.getWebinarByIdOnly(webinarId);
 
     if (!webinar) {
       return NextResponse.json<ApiResponse<Webinar>>(
@@ -155,7 +155,11 @@ export async function PUT(request: Request, { params }: RouteParams) {
       ...allowedUpdates
     } = body;
 
-    let updatedWebinar = await webinarRepository.updateWebinar(webinarId, allowedUpdates);
+    let updatedWebinar = await webinarRepository.updateWebinar(
+      webinar.expertId,
+      webinarId,
+      allowedUpdates
+    );
 
     // If publishing (DRAFT -> SCHEDULED), try to create video conference links based on platform
     const isPublishing = oldStatus === 'DRAFT' && newStatus === 'SCHEDULED';
@@ -181,7 +185,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
               );
 
               // Refresh webinar to get updated session data with Zoom links
-              const refreshed = await webinarRepository.getWebinarById(webinarId);
+              const refreshed = await webinarRepository.getWebinarByIdOnly(webinarId);
               if (refreshed) {
                 updatedWebinar = refreshed;
               }
@@ -207,7 +211,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
               );
 
               // Refresh webinar to get updated session data with Meet links
-              const refreshed = await webinarRepository.getWebinarById(webinarId);
+              const refreshed = await webinarRepository.getWebinarByIdOnly(webinarId);
               if (refreshed) {
                 updatedWebinar = refreshed;
               }
@@ -265,7 +269,7 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
       );
     }
 
-    const webinar = await webinarRepository.getWebinarById(webinarId);
+    const webinar = await webinarRepository.getWebinarByIdOnly(webinarId);
 
     if (!webinar) {
       return NextResponse.json<ApiResponse<null>>(
@@ -295,7 +299,7 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
       );
     }
 
-    await webinarRepository.deleteWebinar(webinarId);
+    await webinarRepository.deleteWebinar(webinar.expertId, webinarId);
 
     return NextResponse.json<ApiResponse<null>>({
       success: true,

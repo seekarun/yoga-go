@@ -47,13 +47,17 @@ export async function GET(
     const userId = session.user.cognitoSub;
 
     // Get webinar
-    const webinar = await webinarRepository.getWebinarById(webinarId);
+    const webinar = await webinarRepository.getWebinarByIdOnly(webinarId);
     if (!webinar) {
       return NextResponse.json({ success: false, error: 'Webinar not found' }, { status: 404 });
     }
 
     // Check if user is registered
-    const registration = await webinarRegistrationRepository.getRegistration(webinarId, userId);
+    const registration = await webinarRegistrationRepository.getRegistration(
+      webinar.expertId,
+      webinarId,
+      userId
+    );
     if (!registration || registration.status === 'cancelled') {
       return NextResponse.json(
         { success: false, error: 'Not registered for this webinar' },

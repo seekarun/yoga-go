@@ -176,7 +176,8 @@ export async function createMeetEventsForWebinar(
 ): Promise<{ sessionId: string; meetLink: string; eventId: string }[]> {
   console.log('[DBG][google-meet] Creating Meet events for webinar:', webinarId);
 
-  const webinar = await webinarRepository.getWebinarById(webinarId);
+  // expertId IS the tenantId
+  const webinar = await webinarRepository.getWebinarById(expertId, webinarId);
   if (!webinar) {
     throw new Error('Webinar not found');
   }
@@ -212,7 +213,7 @@ export async function createMeetEventsForWebinar(
         googleEventId: result.eventId,
       };
 
-      await webinarRepository.updateSession(webinarId, session.id, updatedSession);
+      await webinarRepository.updateSession(expertId, webinarId, session.id, updatedSession);
 
       results.push({
         sessionId: session.id,

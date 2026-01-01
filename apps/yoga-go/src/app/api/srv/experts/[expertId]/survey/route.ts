@@ -98,9 +98,8 @@ export async function POST(
       );
     }
 
-    // Create new survey
-    const survey = await surveyRepository.createSurvey({
-      expertId,
+    // Create new survey (expertId is tenantId)
+    const survey = await surveyRepository.createSurvey(expertId, {
       title: title.trim(),
       description: description?.trim(),
       contactInfo,

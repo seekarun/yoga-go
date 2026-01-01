@@ -612,6 +612,60 @@ export interface User extends BaseEntity {
   defaultMeetingPlatform?: 'zoom' | 'google-meet' | 'other';
 }
 
+/**
+ * TenantUser - User data within a specific tenant context
+ *
+ * Storage: PK=TENANT#{tenantId}, SK=USER#{cognitoSub}
+ *
+ * This represents a user's relationship and data within a single tenant.
+ * A user can exist in multiple tenants with separate TenantUser records.
+ * Core identity (email, password) is managed by Cognito.
+ */
+export interface TenantUser extends BaseEntity {
+  // Identity - links to Cognito
+  cognitoSub: string; // Cognito user ID (also the id field from BaseEntity)
+  tenantId: string; // Which tenant this user record belongs to
+  email: string; // Synced from Cognito
+
+  // Profile - tenant-specific
+  name?: string;
+  avatar?: string;
+  bio?: string;
+  phoneNumber?: string;
+
+  // Tenant membership
+  role: UserRole[]; // Roles within this tenant: ['learner'], ['learner', 'expert']
+  membership: Membership; // Membership status within this tenant
+  joinedTenantAt: string; // When user joined this tenant
+  lastActiveAt?: string; // Last activity in this tenant
+
+  // Learning data within this tenant
+  enrolledCourses: EnrolledCourse[];
+  statistics: UserStatistics;
+  achievements: Achievement[];
+
+  // Preferences - can be tenant-specific
+  preferences: UserPreferences;
+
+  // Billing - tenant-specific payment info
+  billing?: Billing;
+
+  // Saved items within this tenant
+  savedItems?: SavedItem;
+}
+
+/**
+ * Input type for creating a new TenantUser
+ */
+export interface CreateTenantUserInput {
+  cognitoSub: string;
+  tenantId: string;
+  email: string;
+  name?: string;
+  avatar?: string;
+  role?: UserRole[];
+}
+
 // Progress Related Types
 export interface LessonProgress {
   lessonId: string;

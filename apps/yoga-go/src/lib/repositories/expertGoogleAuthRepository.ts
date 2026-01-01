@@ -2,11 +2,11 @@
  * Expert Google Auth Repository - DynamoDB Operations
  *
  * Stores OAuth tokens for experts to create Google Meet links
- * PK: "GOOGLE_AUTH", SK: expertId
+ * PK: TENANT#{tenantId}, SK: GOOGLE_AUTH
  */
 
 import { GetCommand, PutCommand, UpdateCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
-import { docClient, Tables, EntityType } from '../dynamodb';
+import { docClient, Tables, CorePK, EntityType } from '../dynamodb';
 import type { ExpertGoogleAuth } from '@/types';
 
 // Type for DynamoDB item (includes PK/SK)
@@ -25,17 +25,18 @@ function toGoogleAuth(item: DynamoDBGoogleAuthItem): ExpertGoogleAuth {
 }
 
 /**
- * Get Google auth tokens for an expert
+ * Get Google auth tokens for a tenant
+ * @param tenantId - The tenant ID (same as expertId)
  */
-export async function getGoogleAuth(expertId: string): Promise<ExpertGoogleAuth | null> {
-  console.log('[DBG][expertGoogleAuthRepo] Getting Google auth for expert:', expertId);
+export async function getGoogleAuth(tenantId: string): Promise<ExpertGoogleAuth | null> {
+  console.log('[DBG][expertGoogleAuthRepo] Getting Google auth for tenant:', tenantId);
 
   const result = await docClient.send(
     new GetCommand({
       TableName: Tables.CORE,
       Key: {
-        PK: EntityType.GOOGLE_AUTH,
-        SK: expertId,
+        PK: CorePK.TENANT(tenantId),
+        SK: CorePK.GOOGLE_AUTH,
       },
     })
   );
@@ -50,18 +51,19 @@ export async function getGoogleAuth(expertId: string): Promise<ExpertGoogleAuth 
 }
 
 /**
- * Save Google auth tokens for an expert
+ * Save Google auth tokens for a tenant
  */
 export async function saveGoogleAuth(auth: ExpertGoogleAuth): Promise<ExpertGoogleAuth> {
   const now = new Date().toISOString();
+  const tenantId = auth.expertId; // expertId is the tenantId
 
-  console.log('[DBG][expertGoogleAuthRepo] Saving Google auth for expert:', auth.expertId);
+  console.log('[DBG][expertGoogleAuthRepo] Saving Google auth for tenant:', tenantId);
 
   const item: DynamoDBGoogleAuthItem = {
-    PK: EntityType.GOOGLE_AUTH,
-    SK: auth.expertId,
+    PK: CorePK.TENANT(tenantId),
+    SK: CorePK.GOOGLE_AUTH,
     ...auth,
-    id: auth.expertId, // Use expertId as the id
+    id: tenantId,
     createdAt: auth.createdAt || now,
     updatedAt: now,
   };
@@ -79,12 +81,13 @@ export async function saveGoogleAuth(auth: ExpertGoogleAuth): Promise<ExpertGoog
 
 /**
  * Update Google auth tokens (e.g., after token refresh)
+ * @param tenantId - The tenant ID (same as expertId)
  */
 export async function updateGoogleAuth(
-  expertId: string,
+  tenantId: string,
   updates: Partial<ExpertGoogleAuth>
 ): Promise<ExpertGoogleAuth> {
-  console.log('[DBG][expertGoogleAuthRepo] Updating Google auth for expert:', expertId);
+  console.log('[DBG][expertGoogleAuthRepo] Updating Google auth for tenant:', tenantId);
 
   // Build update expression dynamically
   const updateParts: string[] = [];
@@ -110,8 +113,8 @@ export async function updateGoogleAuth(
     new UpdateCommand({
       TableName: Tables.CORE,
       Key: {
-        PK: EntityType.GOOGLE_AUTH,
-        SK: expertId,
+        PK: CorePK.TENANT(tenantId),
+        SK: CorePK.GOOGLE_AUTH,
       },
       UpdateExpression: `SET ${updateParts.join(', ')}`,
       ExpressionAttributeNames: exprAttrNames,
@@ -126,16 +129,17 @@ export async function updateGoogleAuth(
 
 /**
  * Delete Google auth tokens (disconnect Google account)
+ * @param tenantId - The tenant ID (same as expertId)
  */
-export async function deleteGoogleAuth(expertId: string): Promise<void> {
-  console.log('[DBG][expertGoogleAuthRepo] Deleting Google auth for expert:', expertId);
+export async function deleteGoogleAuth(tenantId: string): Promise<void> {
+  console.log('[DBG][expertGoogleAuthRepo] Deleting Google auth for tenant:', tenantId);
 
   await docClient.send(
     new DeleteCommand({
       TableName: Tables.CORE,
       Key: {
-        PK: EntityType.GOOGLE_AUTH,
-        SK: expertId,
+        PK: CorePK.TENANT(tenantId),
+        SK: CorePK.GOOGLE_AUTH,
       },
     })
   );
@@ -144,10 +148,11 @@ export async function deleteGoogleAuth(expertId: string): Promise<void> {
 }
 
 /**
- * Check if expert has connected Google account
+ * Check if tenant has connected Google account
+ * @param tenantId - The tenant ID (same as expertId)
  */
-export async function isGoogleConnected(expertId: string): Promise<boolean> {
-  const auth = await getGoogleAuth(expertId);
+export async function isGoogleConnected(tenantId: string): Promise<boolean> {
+  const auth = await getGoogleAuth(tenantId);
   return auth !== null;
 }
 

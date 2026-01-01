@@ -307,7 +307,8 @@ export async function requireCourseOwnership(courseId: string): Promise<UserType
   }
 
   // Check if course exists and belongs to this expert
-  const course = await courseRepository.getCourseById(courseId);
+  // The expertProfile IS the tenantId
+  const course = await courseRepository.getCourseById(user.expertProfile, courseId);
 
   if (!course) {
     throw new Error('Course not found');

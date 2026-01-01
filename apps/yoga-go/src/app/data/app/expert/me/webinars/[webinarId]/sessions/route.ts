@@ -46,7 +46,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       );
     }
 
-    const webinar = await webinarRepository.getWebinarById(webinarId);
+    const webinar = await webinarRepository.getWebinarByIdOnly(webinarId);
 
     if (!webinar) {
       return NextResponse.json<ApiResponse<Webinar>>(
@@ -160,7 +160,11 @@ export async function POST(request: Request, { params }: RouteParams) {
       }
     }
 
-    const updatedWebinar = await webinarRepository.addSession(webinarId, newSession);
+    const updatedWebinar = await webinarRepository.addSession(
+      webinar.expertId,
+      webinarId,
+      newSession
+    );
 
     return NextResponse.json<ApiResponse<Webinar>>({
       success: true,
@@ -201,7 +205,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       );
     }
 
-    const webinar = await webinarRepository.getWebinarById(webinarId);
+    const webinar = await webinarRepository.getWebinarByIdOnly(webinarId);
 
     if (!webinar) {
       return NextResponse.json<ApiResponse<Webinar>>(
@@ -235,7 +239,12 @@ export async function PUT(request: Request, { params }: RouteParams) {
       updates.duration = Math.round((endDate.getTime() - startDate.getTime()) / 60000);
     }
 
-    const updatedWebinar = await webinarRepository.updateSession(webinarId, sessionId, updates);
+    const updatedWebinar = await webinarRepository.updateSession(
+      webinar.expertId,
+      webinarId,
+      sessionId,
+      updates
+    );
 
     return NextResponse.json<ApiResponse<Webinar>>({
       success: true,
@@ -279,7 +288,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       );
     }
 
-    const webinar = await webinarRepository.getWebinarById(webinarId);
+    const webinar = await webinarRepository.getWebinarByIdOnly(webinarId);
 
     if (!webinar) {
       return NextResponse.json<ApiResponse<Webinar>>(
@@ -306,7 +315,11 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       );
     }
 
-    const updatedWebinar = await webinarRepository.deleteSession(webinarId, sessionId);
+    const updatedWebinar = await webinarRepository.deleteSession(
+      webinar.expertId,
+      webinarId,
+      sessionId
+    );
 
     return NextResponse.json<ApiResponse<Webinar>>({
       success: true,

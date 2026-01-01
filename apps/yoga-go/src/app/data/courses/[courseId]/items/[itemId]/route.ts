@@ -13,8 +13,15 @@ export async function GET(
   );
 
   try {
+    // Get course first to find tenantId (cross-tenant lookup)
+    const course = await courseRepository.getCourseByIdOnly(courseId);
+    if (!course) {
+      return NextResponse.json({ success: false, error: 'Course not found' }, { status: 404 });
+    }
+    const tenantId = course.instructor.id;
+
     // Fetch specific lesson from DynamoDB
-    const lessonDoc = await lessonRepository.getLessonById(courseId, itemId);
+    const lessonDoc = await lessonRepository.getLessonById(tenantId, courseId, itemId);
 
     if (!lessonDoc) {
       const errorResponse: ApiResponse<never> = {
@@ -56,8 +63,15 @@ export async function PUT(
   );
 
   try {
+    // Get course first to find tenantId (cross-tenant lookup)
+    const course = await courseRepository.getCourseByIdOnly(courseId);
+    if (!course) {
+      return NextResponse.json({ success: false, error: 'Course not found' }, { status: 404 });
+    }
+    const tenantId = course.instructor.id;
+
     // Check if lesson exists
-    const existingLesson = await lessonRepository.getLessonById(courseId, itemId);
+    const existingLesson = await lessonRepository.getLessonById(tenantId, courseId, itemId);
     if (!existingLesson) {
       return NextResponse.json(
         {
@@ -89,7 +103,12 @@ export async function PUT(
     if (body.locked !== undefined) updateData.locked = body.locked;
 
     // Update lesson in DynamoDB
-    const updatedLesson = await lessonRepository.updateLesson(courseId, itemId, updateData);
+    const updatedLesson = await lessonRepository.updateLesson(
+      tenantId,
+      courseId,
+      itemId,
+      updateData
+    );
 
     console.log(`[DBG][courses/[courseId]/items/[itemId]/route.ts] ✓ Updated lesson: ${itemId}`);
 
@@ -126,8 +145,15 @@ export async function DELETE(
   );
 
   try {
+    // Get course first to find tenantId (cross-tenant lookup)
+    const course = await courseRepository.getCourseByIdOnly(courseId);
+    if (!course) {
+      return NextResponse.json({ success: false, error: 'Course not found' }, { status: 404 });
+    }
+    const tenantId = course.instructor.id;
+
     // Check if lesson exists
-    const existingLesson = await lessonRepository.getLessonById(courseId, itemId);
+    const existingLesson = await lessonRepository.getLessonById(tenantId, courseId, itemId);
     if (!existingLesson) {
       return NextResponse.json(
         {
@@ -139,43 +165,40 @@ export async function DELETE(
     }
 
     // Delete the lesson from DynamoDB
-    await lessonRepository.deleteLesson(courseId, itemId);
+    await lessonRepository.deleteLesson(tenantId, courseId, itemId);
     console.log(`[DBG][courses/[courseId]/items/[itemId]/route.ts] ✓ Deleted lesson: ${itemId}`);
 
-    // Remove lesson from course curriculum in DynamoDB
-    const course = await courseRepository.getCourseById(courseId);
-    if (course) {
-      // Access curriculum with lessonIds property
-      const curriculum = (course.curriculum || []).map(w => ({
-        week: w.week,
-        title: w.title,
-        lessonIds: (w as { lessonIds?: string[] }).lessonIds || [],
-      }));
-      let lessonRemoved = false;
+    // Remove lesson from course curriculum
+    // Access curriculum with lessonIds property
+    const curriculum = (course.curriculum || []).map(w => ({
+      week: w.week,
+      title: w.title,
+      lessonIds: (w as { lessonIds?: string[] }).lessonIds || [],
+    }));
+    let lessonRemoved = false;
 
-      // Remove lesson ID from all weeks in curriculum
-      const updatedCurriculum = curriculum.map(week => {
-        if (week.lessonIds && week.lessonIds.includes(itemId)) {
-          lessonRemoved = true;
-          return {
-            ...week,
-            lessonIds: week.lessonIds.filter(id => id !== itemId),
-          };
-        }
-        return week;
-      });
-
-      // Update course if lesson was removed from curriculum
-      if (lessonRemoved) {
-        // Cast curriculum through unknown since storage format differs from API format
-        await courseRepository.updateCourse(courseId, {
-          curriculum: updatedCurriculum as unknown as typeof course.curriculum,
-          totalLessons: Math.max(0, (course.totalLessons || 0) - 1),
-        });
-        console.log(
-          `[DBG][courses/[courseId]/items/[itemId]/route.ts] ✓ Removed lesson from course curriculum`
-        );
+    // Remove lesson ID from all weeks in curriculum
+    const updatedCurriculum = curriculum.map(week => {
+      if (week.lessonIds && week.lessonIds.includes(itemId)) {
+        lessonRemoved = true;
+        return {
+          ...week,
+          lessonIds: week.lessonIds.filter(id => id !== itemId),
+        };
       }
+      return week;
+    });
+
+    // Update course if lesson was removed from curriculum
+    if (lessonRemoved) {
+      // Cast curriculum through unknown since storage format differs from API format
+      await courseRepository.updateCourse(tenantId, courseId, {
+        curriculum: updatedCurriculum as unknown as typeof course.curriculum,
+        totalLessons: Math.max(0, (course.totalLessons || 0) - 1),
+      });
+      console.log(
+        `[DBG][courses/[courseId]/items/[itemId]/route.ts] ✓ Removed lesson from course curriculum`
+      );
     }
 
     const response: ApiResponse<{ deletedLesson: string }> = {

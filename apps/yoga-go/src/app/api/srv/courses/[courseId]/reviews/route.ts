@@ -21,8 +21,8 @@ export async function GET(
 
     const { courseId } = await params;
 
-    // Get course from DynamoDB
-    const course = await courseRepository.getCourseById(courseId);
+    // Get course from DynamoDB (cross-tenant lookup)
+    const course = await courseRepository.getCourseByIdOnly(courseId);
     if (!course) {
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: 'Course not found' },
@@ -31,7 +31,7 @@ export async function GET(
     }
 
     // Verify expert owns this course
-    if (course.instructor?.id !== user.expertProfile) {
+    if (course.instructor.id !== user.expertProfile) {
       console.log('[DBG][expert-review-api] Expert does not own this course');
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: 'Forbidden - You do not own this course' },

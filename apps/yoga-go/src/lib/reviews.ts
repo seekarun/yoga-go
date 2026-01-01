@@ -1,4 +1,4 @@
-import * as userRepository from './repositories/userRepository';
+import * as tenantUserRepository from './repositories/tenantUserRepository';
 import * as courseRepository from './repositories/courseRepository';
 import * as courseProgressRepository from './repositories/courseProgressRepository';
 import type { CourseReview } from '@/types';
@@ -21,8 +21,15 @@ export async function canUserReview(
   console.log('[DBG][reviews] Checking if user can review', { userId, courseId });
 
   try {
-    // Check if user is enrolled (from DynamoDB)
-    const user = await userRepository.getUserById(userId);
+    // Get course first to find tenantId (instructor.id)
+    const course = await courseRepository.getCourseByIdOnly(courseId);
+    if (!course) {
+      return { canReview: false, reason: 'Course not found' };
+    }
+    const tenantId = course.instructor.id;
+
+    // Check if user is enrolled (from DynamoDB tenantUser)
+    const user = await tenantUserRepository.getTenantUser(tenantId, userId);
     if (!user) {
       return { canReview: false, reason: 'User not found' };
     }
@@ -33,7 +40,11 @@ export async function canUserReview(
     }
 
     // Get course progress from DynamoDB
-    const courseProgress = await courseProgressRepository.getCourseProgress(userId, courseId);
+    const courseProgress = await courseProgressRepository.getCourseProgress(
+      tenantId,
+      userId,
+      courseId
+    );
 
     if (!courseProgress) {
       return { canReview: false, reason: 'Course progress not found' };
@@ -48,12 +59,6 @@ export async function canUserReview(
         reason: `You need to complete at least 25% of the course to review it. Current progress: ${percentComplete}%`,
         progress: percentComplete,
       };
-    }
-
-    // Check if user has already reviewed this course (from DynamoDB)
-    const course = await courseRepository.getCourseById(courseId);
-    if (!course) {
-      return { canReview: false, reason: 'Course not found' };
     }
 
     const existingReview = course.reviews?.find((review: CourseReview) => review.userId === userId);
@@ -79,7 +84,18 @@ export async function getUserCourseProgress(userId: string, courseId: string): P
   console.log('[DBG][reviews] Getting user course progress', { userId, courseId });
 
   try {
-    const courseProgress = await courseProgressRepository.getCourseProgress(userId, courseId);
+    // Get course first to find tenantId
+    const course = await courseRepository.getCourseByIdOnly(courseId);
+    if (!course) {
+      return 0;
+    }
+    const tenantId = course.instructor.id;
+
+    const courseProgress = await courseProgressRepository.getCourseProgress(
+      tenantId,
+      userId,
+      courseId
+    );
     return courseProgress?.percentComplete || 0;
   } catch (error) {
     console.error('[DBG][reviews] Error getting course progress:', error);
@@ -89,18 +105,20 @@ export async function getUserCourseProgress(userId: string, courseId: string): P
 
 /**
  * Calculate average rating from published reviews
+ * Returns the course along with rating info so caller can use tenantId
  */
 export async function calculateCourseRating(courseId: string): Promise<{
   averageRating: number;
   totalRatings: number;
+  tenantId: string | null;
 }> {
   console.log('[DBG][reviews] Calculating course rating for', courseId);
 
   try {
-    const course = await courseRepository.getCourseById(courseId);
+    const course = await courseRepository.getCourseByIdOnly(courseId);
     if (!course) {
       console.error('[DBG][reviews] Course not found');
-      return { averageRating: 0, totalRatings: 0 };
+      return { averageRating: 0, totalRatings: 0, tenantId: null };
     }
 
     // Only count published reviews
@@ -108,7 +126,7 @@ export async function calculateCourseRating(courseId: string): Promise<{
       course.reviews?.filter((review: CourseReview) => review.status === 'published') || [];
 
     if (publishedReviews.length === 0) {
-      return { averageRating: 0, totalRatings: 0 };
+      return { averageRating: 0, totalRatings: 0, tenantId: course.instructor.id };
     }
 
     const totalRating = publishedReviews.reduce(
@@ -125,10 +143,11 @@ export async function calculateCourseRating(courseId: string): Promise<{
     return {
       averageRating,
       totalRatings: publishedReviews.length,
+      tenantId: course.instructor.id,
     };
   } catch (error) {
     console.error('[DBG][reviews] Error calculating rating:', error);
-    return { averageRating: 0, totalRatings: 0 };
+    return { averageRating: 0, totalRatings: 0, tenantId: null };
   }
 }
 
@@ -142,9 +161,13 @@ export async function updateCourseRatings(courseId: string): Promise<{
   console.log('[DBG][reviews] Updating course ratings for', courseId);
 
   try {
-    const { averageRating, totalRatings } = await calculateCourseRating(courseId);
+    const { averageRating, totalRatings, tenantId } = await calculateCourseRating(courseId);
 
-    await courseRepository.updateCourseStats(courseId, {
+    if (!tenantId) {
+      return { success: false, error: 'Course not found' };
+    }
+
+    await courseRepository.updateCourseStats(tenantId, courseId, {
       rating: averageRating,
       totalRatings,
     });
@@ -164,7 +187,7 @@ export async function hasUserReviewedCourse(userId: string, courseId: string): P
   console.log('[DBG][reviews] Checking if user has reviewed course', { userId, courseId });
 
   try {
-    const course = await courseRepository.getCourseById(courseId);
+    const course = await courseRepository.getCourseByIdOnly(courseId);
     if (!course) {
       return false;
     }

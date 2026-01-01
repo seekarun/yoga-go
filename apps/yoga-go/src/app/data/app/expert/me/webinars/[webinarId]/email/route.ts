@@ -52,7 +52,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       );
     }
 
-    const webinar = await webinarRepository.getWebinarById(webinarId);
+    const webinar = await webinarRepository.getWebinarByIdOnly(webinarId);
 
     if (!webinar) {
       return NextResponse.json<ApiResponse<EmailResponse>>(
@@ -90,8 +90,11 @@ export async function POST(request: Request, { params }: RouteParams) {
       : 'upcoming';
     const subject = `Update: your upcoming webinar (${sessionDate})`;
 
-    // Get registrations
-    let registrations = await webinarRegistrationRepository.getRegistrationsByWebinarId(webinarId);
+    // Get registrations (webinar.expertId is tenantId)
+    let registrations = await webinarRegistrationRepository.getRegistrationsByWebinarId(
+      webinar.expertId,
+      webinarId
+    );
 
     // Filter to only active registrations
     registrations = registrations.filter(r => r.status === 'registered' || r.status === 'attended');

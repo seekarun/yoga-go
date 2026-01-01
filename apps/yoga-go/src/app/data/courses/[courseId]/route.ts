@@ -9,8 +9,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
   console.log(`[DBG][courses/[courseId]/route.ts] GET /data/courses/${courseId} called`);
 
   try {
-    // Fetch course from DynamoDB
-    const courseDoc = await courseRepository.getCourseById(courseId);
+    // Fetch course from DynamoDB (cross-tenant lookup)
+    const courseDoc = await courseRepository.getCourseByIdOnly(courseId);
 
     if (!courseDoc) {
       const errorResponse: ApiResponse<never> = {
@@ -19,9 +19,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ cour
       };
       return NextResponse.json(errorResponse, { status: 404 });
     }
+    const tenantId = courseDoc.instructor.id;
 
     // Fetch all lessons for this course from DynamoDB
-    const allLessons = await lessonRepository.getLessonsByCourseId(courseId);
+    const allLessons = await lessonRepository.getLessonsByCourseId(tenantId, courseId);
 
     // Create a map for quick lookup
     const lessonMap = new Map(allLessons.map(l => [l.id, l]));
@@ -86,8 +87,8 @@ export async function PUT(request: Request, { params }: { params: Promise<{ cour
   console.log(`[DBG][courses/[courseId]/route.ts] PUT /data/courses/${courseId} called`);
 
   try {
-    // Check if course exists in DynamoDB
-    const existingCourse = await courseRepository.getCourseById(courseId);
+    // Check if course exists in DynamoDB (cross-tenant lookup)
+    const existingCourse = await courseRepository.getCourseByIdOnly(courseId);
     if (!existingCourse) {
       return NextResponse.json(
         {
@@ -97,6 +98,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ cour
         { status: 404 }
       );
     }
+    const tenantId = existingCourse.instructor.id;
 
     // Parse request body
     const body = await request.json();
@@ -136,7 +138,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ cour
     }
 
     // Update course in DynamoDB
-    const updatedCourse = await courseRepository.updateCourse(courseId, updateData);
+    const updatedCourse = await courseRepository.updateCourse(tenantId, courseId, updateData);
 
     console.log(`[DBG][courses/[courseId]/route.ts] ✓ Updated course: ${courseId}`);
 
@@ -165,8 +167,8 @@ export async function DELETE(
   console.log(`[DBG][courses/[courseId]/route.ts] DELETE /data/courses/${courseId} called`);
 
   try {
-    // Check if course exists in DynamoDB
-    const existingCourse = await courseRepository.getCourseById(courseId);
+    // Check if course exists in DynamoDB (cross-tenant lookup)
+    const existingCourse = await courseRepository.getCourseByIdOnly(courseId);
     if (!existingCourse) {
       return NextResponse.json(
         {
@@ -176,13 +178,14 @@ export async function DELETE(
         { status: 404 }
       );
     }
+    const tenantId = existingCourse.instructor.id;
 
     // Delete all lessons associated with this course from DynamoDB
-    const deletedCount = await lessonRepository.deleteLessonsByCourseId(courseId);
+    const deletedCount = await lessonRepository.deleteLessonsByCourseId(tenantId, courseId);
     console.log(`[DBG][courses/[courseId]/route.ts] ✓ Deleted ${deletedCount} lessons`);
 
     // Delete the course from DynamoDB
-    await courseRepository.deleteCourse(courseId);
+    await courseRepository.deleteCourse(tenantId, courseId);
     console.log(`[DBG][courses/[courseId]/route.ts] ✓ Deleted course: ${courseId}`);
 
     const response: ApiResponse<{ deletedCourse: string; deletedLessons: number }> = {

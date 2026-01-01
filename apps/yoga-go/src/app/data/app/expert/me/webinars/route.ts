@@ -127,7 +127,7 @@ export async function POST(request: Request) {
     }
     console.log('[DBG][expert/me/webinars] Webinar currency:', webinarCurrency);
 
-    let webinar = await webinarRepository.createWebinar({
+    let webinar = await webinarRepository.createWebinar(user.expertProfile, {
       id: webinarId,
       expertId: user.expertProfile,
       title: body.title,
@@ -163,7 +163,7 @@ export async function POST(request: Request) {
             const results = await createZoomMeetingsForWebinar(user.expertProfile, webinarId);
             console.log('[DBG][expert/me/webinars] Created', results.length, 'Zoom meetings');
             // Refresh webinar data
-            const refreshed = await webinarRepository.getWebinarById(webinarId);
+            const refreshed = await webinarRepository.getWebinarByIdOnly(webinarId);
             if (refreshed) webinar = refreshed;
           } catch (zoomError) {
             console.error('[DBG][expert/me/webinars] Failed to create Zoom links:', zoomError);
@@ -177,7 +177,7 @@ export async function POST(request: Request) {
             const results = await createMeetEventsForWebinar(user.expertProfile, webinarId);
             console.log('[DBG][expert/me/webinars] Created', results.length, 'Meet events');
             // Refresh webinar data
-            const refreshed = await webinarRepository.getWebinarById(webinarId);
+            const refreshed = await webinarRepository.getWebinarByIdOnly(webinarId);
             if (refreshed) webinar = refreshed;
           } catch (meetError) {
             console.error('[DBG][expert/me/webinars] Failed to create Meet links:', meetError);

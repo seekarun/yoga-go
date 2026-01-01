@@ -22,17 +22,18 @@ export async function PATCH(
 
     const { courseId, reviewId } = await params;
 
-    // Get course from DynamoDB
-    const course = await courseRepository.getCourseById(courseId);
+    // Get course from DynamoDB (cross-tenant lookup)
+    const course = await courseRepository.getCourseByIdOnly(courseId);
     if (!course) {
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: 'Course not found' },
         { status: 404 }
       );
     }
+    const tenantId = course.instructor.id;
 
     // Verify expert owns this course
-    if (course.instructor?.id !== user.expertProfile) {
+    if (tenantId !== user.expertProfile) {
       console.log('[DBG][expert-review-approve-api] Expert does not own this course');
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: 'Forbidden - You do not own this course' },
@@ -71,7 +72,12 @@ export async function PATCH(
     };
 
     // Update the review in DynamoDB
-    const updatedCourse = await courseRepository.updateReview(courseId, reviewId, updatedReview);
+    const updatedCourse = await courseRepository.updateReview(
+      tenantId,
+      courseId,
+      reviewId,
+      updatedReview
+    );
 
     console.log('[DBG][expert-review-approve-api] Review status updated:', {
       reviewId,

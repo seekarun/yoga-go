@@ -1,9 +1,9 @@
 /**
  * Course Repository - DynamoDB Operations
  *
- * Single-table design:
- * - PK: "COURSE"
- * - SK: courseId
+ * Tenant-partitioned design:
+ * - PK: "TENANT#{tenantId}"
+ * - SK: "COURSE#{courseId}"
  */
 
 import {
@@ -13,7 +13,7 @@ import {
   DeleteCommand,
   QueryCommand,
 } from '@aws-sdk/lib-dynamodb';
-import { docClient, Tables, EntityType } from '../dynamodb';
+import { docClient, Tables, CorePK } from '../dynamodb';
 import type {
   Course,
   Instructor,
@@ -23,10 +23,12 @@ import type {
   SupportedCurrency,
 } from '@/types';
 
-// Type for DynamoDB Course item (includes PK/SK)
+// Type for DynamoDB Course item (includes PK/SK and GSI)
 interface DynamoDBCourseItem extends Course {
   PK: string;
   SK: string;
+  GSI1PK?: string; // COURSEID#{courseId} for cross-tenant lookup
+  GSI1SK?: string;
 }
 
 // Type for creating a new course
@@ -61,26 +63,28 @@ export interface CreateCourseInput {
 }
 
 /**
- * Convert DynamoDB item to Course type (removes PK/SK)
+ * Convert DynamoDB item to Course type (removes PK/SK/GSI attributes)
  */
 function toCourse(item: DynamoDBCourseItem): Course {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { PK, SK, ...course } = item;
+  const { PK, SK, GSI1PK, GSI1SK, ...course } = item;
   return course as Course;
 }
 
 /**
  * Get course by ID
+ * @param tenantId - The tenant ID (expertId)
+ * @param courseId - The course ID
  */
-export async function getCourseById(courseId: string): Promise<Course | null> {
-  console.log('[DBG][courseRepository] Getting course by id:', courseId);
+export async function getCourseById(tenantId: string, courseId: string): Promise<Course | null> {
+  console.log('[DBG][courseRepository] Getting course by id:', courseId, 'for tenant:', tenantId);
 
   const result = await docClient.send(
     new GetCommand({
       TableName: Tables.CORE,
       Key: {
-        PK: EntityType.COURSE,
-        SK: courseId,
+        PK: CorePK.TENANT(tenantId),
+        SK: CorePK.COURSE(courseId),
       },
     })
   );
@@ -95,17 +99,48 @@ export async function getCourseById(courseId: string): Promise<Course | null> {
 }
 
 /**
- * Get all courses
+ * Get course by ID only (cross-tenant lookup using GSI1)
+ * Used for public access when tenantId is not known
+ * @param courseId - The course ID
  */
-export async function getAllCourses(): Promise<Course[]> {
-  console.log('[DBG][courseRepository] Getting all courses');
+export async function getCourseByIdOnly(courseId: string): Promise<Course | null> {
+  console.log('[DBG][courseRepository] Getting course by ID only (cross-tenant):', courseId);
 
   const result = await docClient.send(
     new QueryCommand({
       TableName: Tables.CORE,
-      KeyConditionExpression: 'PK = :pk',
+      IndexName: 'GSI1',
+      KeyConditionExpression: 'GSI1PK = :gsi1pk',
       ExpressionAttributeValues: {
-        ':pk': EntityType.COURSE,
+        ':gsi1pk': `COURSEID#${courseId}`,
+      },
+      Limit: 1,
+    })
+  );
+
+  if (!result.Items || result.Items.length === 0) {
+    console.log('[DBG][courseRepository] Course not found (cross-tenant):', courseId);
+    return null;
+  }
+
+  console.log('[DBG][courseRepository] Found course (cross-tenant):', courseId);
+  return toCourse(result.Items[0] as DynamoDBCourseItem);
+}
+
+/**
+ * Get all courses for a tenant
+ * @param tenantId - The tenant ID (expertId)
+ */
+export async function getTenantCourses(tenantId: string): Promise<Course[]> {
+  console.log('[DBG][courseRepository] Getting all courses for tenant:', tenantId);
+
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: Tables.CORE,
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
+      ExpressionAttributeValues: {
+        ':pk': CorePK.TENANT(tenantId),
+        ':skPrefix': 'COURSE#',
       },
     })
   );
@@ -116,78 +151,51 @@ export async function getAllCourses(): Promise<Course[]> {
 }
 
 /**
- * Get courses by instructor ID
+ * Get published courses for a tenant
+ * @param tenantId - The tenant ID (expertId)
  */
-export async function getCoursesByInstructorId(instructorId: string): Promise<Course[]> {
-  console.log('[DBG][courseRepository] Getting courses by instructorId:', instructorId);
-
-  // Query all courses and filter by instructor.id (no GSI)
-  const result = await docClient.send(
-    new QueryCommand({
-      TableName: Tables.CORE,
-      KeyConditionExpression: 'PK = :pk',
-      FilterExpression: '#instructor.#id = :instructorId',
-      ExpressionAttributeNames: {
-        '#instructor': 'instructor',
-        '#id': 'id',
-      },
-      ExpressionAttributeValues: {
-        ':pk': EntityType.COURSE,
-        ':instructorId': instructorId,
-      },
-    })
-  );
-
-  const courses = (result.Items || []).map(item => toCourse(item as DynamoDBCourseItem));
-  console.log('[DBG][courseRepository] Found', courses.length, 'courses for instructor');
-  return courses;
-}
-
-/**
- * Get published courses by instructor ID
- */
-export async function getPublishedCoursesByInstructorId(instructorId: string): Promise<Course[]> {
-  console.log('[DBG][courseRepository] Getting published courses by instructorId:', instructorId);
+export async function getPublishedTenantCourses(tenantId: string): Promise<Course[]> {
+  console.log('[DBG][courseRepository] Getting published courses for tenant:', tenantId);
 
   const result = await docClient.send(
     new QueryCommand({
       TableName: Tables.CORE,
-      KeyConditionExpression: 'PK = :pk',
-      FilterExpression: '#instructor.#id = :instructorId AND #status = :status',
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
+      FilterExpression: '#status = :status',
       ExpressionAttributeNames: {
-        '#instructor': 'instructor',
-        '#id': 'id',
         '#status': 'status',
       },
       ExpressionAttributeValues: {
-        ':pk': EntityType.COURSE,
-        ':instructorId': instructorId,
+        ':pk': CorePK.TENANT(tenantId),
+        ':skPrefix': 'COURSE#',
         ':status': 'PUBLISHED',
       },
     })
   );
 
   const courses = (result.Items || []).map(item => toCourse(item as DynamoDBCourseItem));
-  console.log('[DBG][courseRepository] Found', courses.length, 'published courses for instructor');
+  console.log('[DBG][courseRepository] Found', courses.length, 'published courses');
   return courses;
 }
 
 /**
- * Get featured courses
+ * Get featured courses for a tenant
+ * @param tenantId - The tenant ID (expertId)
  */
-export async function getFeaturedCourses(): Promise<Course[]> {
-  console.log('[DBG][courseRepository] Getting featured courses');
+export async function getFeaturedTenantCourses(tenantId: string): Promise<Course[]> {
+  console.log('[DBG][courseRepository] Getting featured courses for tenant:', tenantId);
 
   const result = await docClient.send(
     new QueryCommand({
       TableName: Tables.CORE,
-      KeyConditionExpression: 'PK = :pk',
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
       FilterExpression: 'featured = :featured AND #status = :status',
       ExpressionAttributeNames: {
         '#status': 'status',
       },
       ExpressionAttributeValues: {
-        ':pk': EntityType.COURSE,
+        ':pk': CorePK.TENANT(tenantId),
+        ':skPrefix': 'COURSE#',
         ':featured': true,
         ':status': 'PUBLISHED',
       },
@@ -200,21 +208,32 @@ export async function getFeaturedCourses(): Promise<Course[]> {
 }
 
 /**
- * Get courses by status
+ * Get courses by status for a tenant
+ * @param tenantId - The tenant ID (expertId)
+ * @param status - Course status to filter by
  */
-export async function getCoursesByStatus(status: CourseStatus): Promise<Course[]> {
-  console.log('[DBG][courseRepository] Getting courses by status:', status);
+export async function getTenantCoursesByStatus(
+  tenantId: string,
+  status: CourseStatus
+): Promise<Course[]> {
+  console.log(
+    '[DBG][courseRepository] Getting courses by status:',
+    status,
+    'for tenant:',
+    tenantId
+  );
 
   const result = await docClient.send(
     new QueryCommand({
       TableName: Tables.CORE,
-      KeyConditionExpression: 'PK = :pk',
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
       FilterExpression: '#status = :status',
       ExpressionAttributeNames: {
         '#status': 'status',
       },
       ExpressionAttributeValues: {
-        ':pk': EntityType.COURSE,
+        ':pk': CorePK.TENANT(tenantId),
+        ':skPrefix': 'COURSE#',
         ':status': status,
       },
     })
@@ -226,21 +245,32 @@ export async function getCoursesByStatus(status: CourseStatus): Promise<Course[]
 }
 
 /**
- * Get courses by category
+ * Get courses by category for a tenant
+ * @param tenantId - The tenant ID (expertId)
+ * @param category - Category to filter by
  */
-export async function getCoursesByCategory(category: string): Promise<Course[]> {
-  console.log('[DBG][courseRepository] Getting courses by category:', category);
+export async function getTenantCoursesByCategory(
+  tenantId: string,
+  category: string
+): Promise<Course[]> {
+  console.log(
+    '[DBG][courseRepository] Getting courses by category:',
+    category,
+    'for tenant:',
+    tenantId
+  );
 
   const result = await docClient.send(
     new QueryCommand({
       TableName: Tables.CORE,
-      KeyConditionExpression: 'PK = :pk',
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
       FilterExpression: 'category = :category AND #status = :status',
       ExpressionAttributeNames: {
         '#status': 'status',
       },
       ExpressionAttributeValues: {
-        ':pk': EntityType.COURSE,
+        ':pk': CorePK.TENANT(tenantId),
+        ':skPrefix': 'COURSE#',
         ':category': category,
         ':status': 'PUBLISHED',
       },
@@ -254,15 +284,20 @@ export async function getCoursesByCategory(category: string): Promise<Course[]> 
 
 /**
  * Create a new course in DynamoDB
+ * @param tenantId - The tenant ID (expertId)
+ * @param input - Course creation input
  */
-export async function createCourse(input: CreateCourseInput): Promise<Course> {
+export async function createCourse(tenantId: string, input: CreateCourseInput): Promise<Course> {
   const now = new Date().toISOString();
 
-  console.log('[DBG][courseRepository] Creating course:', input.id, 'title:', input.title);
+  console.log('[DBG][courseRepository] Creating course:', input.id, 'for tenant:', tenantId);
 
   const course: DynamoDBCourseItem = {
-    PK: EntityType.COURSE,
-    SK: input.id,
+    PK: CorePK.TENANT(tenantId),
+    SK: CorePK.COURSE(input.id),
+    // GSI1 for cross-tenant lookup by courseId
+    GSI1PK: `COURSEID#${input.id}`,
+    GSI1SK: 'COURSE',
     id: input.id,
     title: input.title,
     description: input.description,
@@ -308,9 +343,16 @@ export async function createCourse(input: CreateCourseInput): Promise<Course> {
 
 /**
  * Update course - partial update using UpdateCommand
+ * @param tenantId - The tenant ID (expertId)
+ * @param courseId - The course ID
+ * @param updates - Partial course updates
  */
-export async function updateCourse(courseId: string, updates: Partial<Course>): Promise<Course> {
-  console.log('[DBG][courseRepository] Updating course:', courseId);
+export async function updateCourse(
+  tenantId: string,
+  courseId: string,
+  updates: Partial<Course>
+): Promise<Course> {
+  console.log('[DBG][courseRepository] Updating course:', courseId, 'for tenant:', tenantId);
 
   // Build update expression dynamically
   const updateParts: string[] = [];
@@ -336,8 +378,8 @@ export async function updateCourse(courseId: string, updates: Partial<Course>): 
     new UpdateCommand({
       TableName: Tables.CORE,
       Key: {
-        PK: EntityType.COURSE,
-        SK: courseId,
+        PK: CorePK.TENANT(tenantId),
+        SK: CorePK.COURSE(courseId),
       },
       UpdateExpression: `SET ${updateParts.join(', ')}`,
       ExpressionAttributeNames: exprAttrNames,
@@ -352,16 +394,18 @@ export async function updateCourse(courseId: string, updates: Partial<Course>): 
 
 /**
  * Delete course
+ * @param tenantId - The tenant ID (expertId)
+ * @param courseId - The course ID
  */
-export async function deleteCourse(courseId: string): Promise<void> {
-  console.log('[DBG][courseRepository] Deleting course:', courseId);
+export async function deleteCourse(tenantId: string, courseId: string): Promise<void> {
+  console.log('[DBG][courseRepository] Deleting course:', courseId, 'for tenant:', tenantId);
 
   await docClient.send(
     new DeleteCommand({
       TableName: Tables.CORE,
       Key: {
-        PK: EntityType.COURSE,
-        SK: courseId,
+        PK: CorePK.TENANT(tenantId),
+        SK: CorePK.COURSE(courseId),
       },
     })
   );
@@ -371,39 +415,64 @@ export async function deleteCourse(courseId: string): Promise<void> {
 
 /**
  * Update course status
+ * @param tenantId - The tenant ID (expertId)
+ * @param courseId - The course ID
+ * @param status - New status
  */
-export async function updateCourseStatus(courseId: string, status: CourseStatus): Promise<Course> {
+export async function updateCourseStatus(
+  tenantId: string,
+  courseId: string,
+  status: CourseStatus
+): Promise<Course> {
   console.log('[DBG][courseRepository] Updating course status:', courseId, status);
-  return updateCourse(courseId, { status });
+  return updateCourse(tenantId, courseId, { status });
 }
 
 /**
  * Update course statistics (totalStudents, rating, totalRatings)
+ * @param tenantId - The tenant ID (expertId)
+ * @param courseId - The course ID
+ * @param stats - Stats to update
  */
 export async function updateCourseStats(
+  tenantId: string,
   courseId: string,
   stats: { totalStudents?: number; rating?: number; totalRatings?: number }
 ): Promise<Course> {
   console.log('[DBG][courseRepository] Updating course stats:', courseId, stats);
-  return updateCourse(courseId, stats);
+  return updateCourse(tenantId, courseId, stats);
 }
 
 /**
  * Set course as featured
+ * @param tenantId - The tenant ID (expertId)
+ * @param courseId - The course ID
+ * @param featured - Featured flag
  */
-export async function setFeatured(courseId: string, featured: boolean): Promise<Course> {
+export async function setFeatured(
+  tenantId: string,
+  courseId: string,
+  featured: boolean
+): Promise<Course> {
   console.log('[DBG][courseRepository] Setting course featured:', courseId, featured);
-  return updateCourse(courseId, { featured });
+  return updateCourse(tenantId, courseId, { featured });
 }
 
 /**
  * Add a review to a course
+ * @param tenantId - The tenant ID (expertId)
+ * @param courseId - The course ID
+ * @param review - Review to add
  */
-export async function addReview(courseId: string, review: CourseReview): Promise<Course> {
+export async function addReview(
+  tenantId: string,
+  courseId: string,
+  review: CourseReview
+): Promise<Course> {
   console.log('[DBG][courseRepository] Adding review to course:', courseId);
 
   // Get current course to append review
-  const course = await getCourseById(courseId);
+  const course = await getCourseById(tenantId, courseId);
   if (!course) {
     throw new Error('Course not found');
   }
@@ -414,7 +483,7 @@ export async function addReview(courseId: string, review: CourseReview): Promise
   const totalRatings = reviews.length;
   const averageRating = reviews.reduce((sum, r) => sum + r.rating, 0) / totalRatings;
 
-  return updateCourse(courseId, {
+  return updateCourse(tenantId, courseId, {
     reviews,
     rating: Math.round(averageRating * 10) / 10, // Round to 1 decimal
     totalRatings,
@@ -423,15 +492,20 @@ export async function addReview(courseId: string, review: CourseReview): Promise
 
 /**
  * Update a review in a course
+ * @param tenantId - The tenant ID (expertId)
+ * @param courseId - The course ID
+ * @param reviewId - Review ID
+ * @param updates - Review updates
  */
 export async function updateReview(
+  tenantId: string,
   courseId: string,
   reviewId: string,
   updates: Partial<CourseReview>
 ): Promise<Course> {
   console.log('[DBG][courseRepository] Updating review:', reviewId, 'in course:', courseId);
 
-  const course = await getCourseById(courseId);
+  const course = await getCourseById(tenantId, courseId);
   if (!course) {
     throw new Error('Course not found');
   }
@@ -443,16 +517,23 @@ export async function updateReview(
     return r;
   });
 
-  return updateCourse(courseId, { reviews });
+  return updateCourse(tenantId, courseId, { reviews });
 }
 
 /**
  * Delete a review from a course
+ * @param tenantId - The tenant ID (expertId)
+ * @param courseId - The course ID
+ * @param reviewId - Review ID to delete
  */
-export async function deleteReview(courseId: string, reviewId: string): Promise<Course> {
+export async function deleteReview(
+  tenantId: string,
+  courseId: string,
+  reviewId: string
+): Promise<Course> {
   console.log('[DBG][courseRepository] Deleting review:', reviewId, 'from course:', courseId);
 
-  const course = await getCourseById(courseId);
+  const course = await getCourseById(tenantId, courseId);
   if (!course) {
     throw new Error('Course not found');
   }
@@ -464,7 +545,7 @@ export async function deleteReview(courseId: string, reviewId: string): Promise<
   const averageRating =
     totalRatings > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / totalRatings : 0;
 
-  return updateCourse(courseId, {
+  return updateCourse(tenantId, courseId, {
     reviews,
     rating: Math.round(averageRating * 10) / 10,
     totalRatings,
@@ -473,49 +554,124 @@ export async function deleteReview(courseId: string, reviewId: string): Promise<
 
 /**
  * Update course curriculum
+ * @param tenantId - The tenant ID (expertId)
+ * @param courseId - The course ID
+ * @param curriculum - New curriculum
  */
 export async function updateCurriculum(
+  tenantId: string,
   courseId: string,
   curriculum: Curriculum[]
 ): Promise<Course> {
   console.log('[DBG][courseRepository] Updating curriculum for course:', courseId);
-  return updateCourse(courseId, { curriculum });
+  return updateCourse(tenantId, courseId, { curriculum });
 }
 
 /**
  * Increment total students count
+ * @param tenantId - The tenant ID (expertId)
+ * @param courseId - The course ID
  */
-export async function incrementTotalStudents(courseId: string): Promise<Course> {
+export async function incrementTotalStudents(tenantId: string, courseId: string): Promise<Course> {
   console.log('[DBG][courseRepository] Incrementing total students for course:', courseId);
 
-  const course = await getCourseById(courseId);
+  const course = await getCourseById(tenantId, courseId);
   if (!course) {
     throw new Error('Course not found');
   }
 
-  return updateCourse(courseId, { totalStudents: (course.totalStudents || 0) + 1 });
+  return updateCourse(tenantId, courseId, { totalStudents: (course.totalStudents || 0) + 1 });
 }
 
 /**
- * Count courses by instructor ID
+ * Count courses for a tenant
+ * @param tenantId - The tenant ID (expertId)
  */
-export async function countCoursesByInstructorId(instructorId: string): Promise<number> {
-  const courses = await getCoursesByInstructorId(instructorId);
+export async function countTenantCourses(tenantId: string): Promise<number> {
+  const courses = await getTenantCourses(tenantId);
   return courses.length;
 }
 
 /**
- * Count published courses by instructor ID
+ * Count published courses for a tenant
+ * @param tenantId - The tenant ID (expertId)
  */
-export async function countPublishedCoursesByInstructorId(instructorId: string): Promise<number> {
-  const courses = await getPublishedCoursesByInstructorId(instructorId);
+export async function countPublishedTenantCourses(tenantId: string): Promise<number> {
+  const courses = await getPublishedTenantCourses(tenantId);
   return courses.length;
 }
 
 /**
- * Get total students across all courses by instructor ID
+ * Get total students across all courses for a tenant
+ * @param tenantId - The tenant ID (expertId)
  */
-export async function getTotalStudentsByInstructorId(instructorId: string): Promise<number> {
-  const courses = await getCoursesByInstructorId(instructorId);
+export async function getTotalStudents(tenantId: string): Promise<number> {
+  const courses = await getTenantCourses(tenantId);
   return courses.reduce((sum, course) => sum + (course.totalStudents || 0), 0);
+}
+
+// ===================================================================
+// BACKWARD COMPATIBILITY ALIASES
+// These maintain the old API signatures during migration
+// ===================================================================
+
+/** @deprecated Use getCourseById(tenantId, courseId) instead */
+export async function getAllCourses(): Promise<Course[]> {
+  console.warn(
+    '[DBG][courseRepository] getAllCourses() is deprecated - use getTenantCourses(tenantId)'
+  );
+  return [];
+}
+
+/** @deprecated Use getTenantCourses(tenantId) instead */
+export async function getCoursesByInstructorId(instructorId: string): Promise<Course[]> {
+  console.log('[DBG][courseRepository] getCoursesByInstructorId - using as getTenantCourses');
+  return getTenantCourses(instructorId);
+}
+
+/** @deprecated Use getPublishedTenantCourses(tenantId) instead */
+export async function getPublishedCoursesByInstructorId(instructorId: string): Promise<Course[]> {
+  console.log(
+    '[DBG][courseRepository] getPublishedCoursesByInstructorId - using as getPublishedTenantCourses'
+  );
+  return getPublishedTenantCourses(instructorId);
+}
+
+/** @deprecated Use getFeaturedTenantCourses(tenantId) instead */
+export async function getFeaturedCourses(): Promise<Course[]> {
+  console.warn(
+    '[DBG][courseRepository] getFeaturedCourses() is deprecated - use getFeaturedTenantCourses(tenantId)'
+  );
+  return [];
+}
+
+/** @deprecated Use countTenantCourses(tenantId) instead */
+export async function countCoursesByInstructorId(instructorId: string): Promise<number> {
+  return countTenantCourses(instructorId);
+}
+
+/** @deprecated Use countPublishedTenantCourses(tenantId) instead */
+export async function countPublishedCoursesByInstructorId(instructorId: string): Promise<number> {
+  return countPublishedTenantCourses(instructorId);
+}
+
+/** @deprecated Use getTotalStudents(tenantId) instead */
+export async function getTotalStudentsByInstructorId(instructorId: string): Promise<number> {
+  return getTotalStudents(instructorId);
+}
+
+/** @deprecated Use getTenantCoursesByStatus(tenantId, status) instead */
+export async function getCoursesByStatus(status: CourseStatus): Promise<Course[]> {
+  console.warn(
+    '[DBG][courseRepository] getCoursesByStatus() is deprecated - use getTenantCoursesByStatus(tenantId, status)'
+  );
+  return [];
+}
+
+/** @deprecated Use getTenantCoursesByCategory(tenantId, category) instead */
+export async function getCoursesByCategory(category: string): Promise<Course[]> {
+  console.warn(
+    '[DBG][courseRepository] getCoursesByCategory() is deprecated - use getTenantCoursesByCategory(tenantId, category)'
+  );
+  return [];
 }

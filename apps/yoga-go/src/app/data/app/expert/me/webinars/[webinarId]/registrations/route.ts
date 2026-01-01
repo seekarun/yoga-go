@@ -51,7 +51,7 @@ export async function GET(request: Request, { params }: RouteParams) {
       );
     }
 
-    const webinar = await webinarRepository.getWebinarById(webinarId);
+    const webinar = await webinarRepository.getWebinarByIdOnly(webinarId);
 
     if (!webinar) {
       return NextResponse.json<ApiResponse<RegistrationsResponse>>(
@@ -76,11 +76,15 @@ export async function GET(request: Request, { params }: RouteParams) {
 
     if (statusFilter && ['registered', 'cancelled', 'attended', 'no_show'].includes(statusFilter)) {
       registrations = await webinarRegistrationRepository.getRegistrationsByStatus(
+        webinar.expertId,
         webinarId,
         statusFilter as WebinarRegistration['status']
       );
     } else {
-      registrations = await webinarRegistrationRepository.getRegistrationsByWebinarId(webinarId);
+      registrations = await webinarRegistrationRepository.getRegistrationsByWebinarId(
+        webinar.expertId,
+        webinarId
+      );
     }
 
     // Sort by registration date (newest first)

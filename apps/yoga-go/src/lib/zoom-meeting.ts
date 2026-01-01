@@ -216,7 +216,7 @@ export async function createZoomMeetingsForWebinar(
 ): Promise<{ sessionId: string; meetingId: string; joinUrl: string }[]> {
   console.log('[DBG][zoom-meeting] Creating Zoom meetings for webinar:', webinarId);
 
-  const webinar = await webinarRepository.getWebinarById(webinarId);
+  const webinar = await webinarRepository.getWebinarById(expertId, webinarId);
   if (!webinar) {
     throw new Error('Webinar not found');
   }
@@ -256,7 +256,7 @@ export async function createZoomMeetingsForWebinar(
         zoomPassword: result.password,
       };
 
-      await webinarRepository.updateSession(webinarId, session.id, updatedSession);
+      await webinarRepository.updateSession(expertId, webinarId, session.id, updatedSession);
 
       results.push({
         sessionId: session.id,

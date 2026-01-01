@@ -46,8 +46,21 @@ export async function POST(request: Request, { params }: RouteParams) {
       );
     }
 
+    // Fetch webinar first to get tenantId
+    const webinar = await webinarRepository.getWebinarByIdOnly(webinarId);
+    if (!webinar) {
+      return NextResponse.json<ApiResponse<null>>(
+        { success: false, error: 'Webinar not found' },
+        { status: 404 }
+      );
+    }
+
     // Check if user is registered for this webinar
-    const registration = await webinarRegistrationRepository.getRegistration(webinarId, user.id);
+    const registration = await webinarRegistrationRepository.getRegistration(
+      webinar.expertId,
+      webinarId,
+      user.id
+    );
 
     if (!registration) {
       return NextResponse.json<ApiResponse<null>>(
@@ -61,14 +74,6 @@ export async function POST(request: Request, { params }: RouteParams) {
       return NextResponse.json<ApiResponse<null>>(
         { success: false, error: 'You have already submitted feedback for this webinar' },
         { status: 400 }
-      );
-    }
-
-    const webinar = await webinarRepository.getWebinarById(webinarId);
-    if (!webinar) {
-      return NextResponse.json<ApiResponse<null>>(
-        { success: false, error: 'Webinar not found' },
-        { status: 404 }
       );
     }
 
@@ -101,10 +106,19 @@ export async function POST(request: Request, { params }: RouteParams) {
     };
 
     // Add feedback to webinar
-    const updatedWebinar = await webinarRepository.addFeedback(webinarId, feedback);
+    const updatedWebinar = await webinarRepository.addFeedback(
+      webinar.expertId,
+      webinarId,
+      feedback
+    );
 
     // Mark feedback as submitted in registration
-    await webinarRegistrationRepository.markFeedbackSubmitted(webinarId, user.id, registration.id);
+    await webinarRegistrationRepository.markFeedbackSubmitted(
+      webinar.expertId,
+      webinarId,
+      user.id,
+      registration.id
+    );
 
     console.log('[DBG][webinar-feedback] Feedback submitted for webinar:', webinarId);
 

@@ -1,9 +1,9 @@
 /**
  * Webinar Repository - DynamoDB Operations
  *
- * Single-table design:
- * - PK: "WEBINAR"
- * - SK: webinarId
+ * Tenant-partitioned design:
+ * - PK: "TENANT#{tenantId}"
+ * - SK: "WEBINAR#{webinarId}"
  */
 
 import {
@@ -13,7 +13,7 @@ import {
   DeleteCommand,
   QueryCommand,
 } from '@aws-sdk/lib-dynamodb';
-import { docClient, Tables, EntityType } from '../dynamodb';
+import { docClient, Tables, CorePK } from '../dynamodb';
 import type {
   Webinar,
   WebinarSession,
@@ -24,10 +24,12 @@ import type {
   SupportedCurrency,
 } from '@/types';
 
-// Type for DynamoDB Webinar item (includes PK/SK)
+// Type for DynamoDB Webinar item (includes PK/SK and GSI)
 interface DynamoDBWebinarItem extends Webinar {
   PK: string;
   SK: string;
+  GSI1PK?: string; // WEBINARID#{webinarId} for cross-tenant lookup
+  GSI1SK?: string;
 }
 
 // Type for creating a new webinar
@@ -54,26 +56,33 @@ export interface CreateWebinarInput {
 }
 
 /**
- * Convert DynamoDB item to Webinar type (removes PK/SK)
+ * Convert DynamoDB item to Webinar type (removes PK/SK/GSI)
  */
 function toWebinar(item: DynamoDBWebinarItem): Webinar {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { PK, SK, ...webinar } = item;
+  const { PK, SK, GSI1PK, GSI1SK, ...webinar } = item;
   return webinar as Webinar;
 }
 
 /**
  * Get webinar by ID
+ * @param tenantId - The tenant ID (expertId)
+ * @param webinarId - The webinar ID
  */
-export async function getWebinarById(webinarId: string): Promise<Webinar | null> {
-  console.log('[DBG][webinarRepository] Getting webinar by id:', webinarId);
+export async function getWebinarById(tenantId: string, webinarId: string): Promise<Webinar | null> {
+  console.log(
+    '[DBG][webinarRepository] Getting webinar by id:',
+    webinarId,
+    'for tenant:',
+    tenantId
+  );
 
   const result = await docClient.send(
     new GetCommand({
       TableName: Tables.CORE,
       Key: {
-        PK: EntityType.WEBINAR,
-        SK: webinarId,
+        PK: CorePK.TENANT(tenantId),
+        SK: CorePK.WEBINAR(webinarId),
       },
     })
   );
@@ -88,17 +97,48 @@ export async function getWebinarById(webinarId: string): Promise<Webinar | null>
 }
 
 /**
- * Get all webinars
+ * Get webinar by ID only (cross-tenant lookup using GSI1)
+ * Used for public access when tenantId is not known
+ * @param webinarId - The webinar ID
  */
-export async function getAllWebinars(): Promise<Webinar[]> {
-  console.log('[DBG][webinarRepository] Getting all webinars');
+export async function getWebinarByIdOnly(webinarId: string): Promise<Webinar | null> {
+  console.log('[DBG][webinarRepository] Getting webinar by ID only (cross-tenant):', webinarId);
 
   const result = await docClient.send(
     new QueryCommand({
       TableName: Tables.CORE,
-      KeyConditionExpression: 'PK = :pk',
+      IndexName: 'GSI1',
+      KeyConditionExpression: 'GSI1PK = :gsi1pk',
       ExpressionAttributeValues: {
-        ':pk': EntityType.WEBINAR,
+        ':gsi1pk': `WEBINARID#${webinarId}`,
+      },
+      Limit: 1,
+    })
+  );
+
+  if (!result.Items || result.Items.length === 0) {
+    console.log('[DBG][webinarRepository] Webinar not found (cross-tenant):', webinarId);
+    return null;
+  }
+
+  console.log('[DBG][webinarRepository] Found webinar (cross-tenant):', webinarId);
+  return toWebinar(result.Items[0] as DynamoDBWebinarItem);
+}
+
+/**
+ * Get all webinars for a tenant
+ * @param tenantId - The tenant ID (expertId)
+ */
+export async function getTenantWebinars(tenantId: string): Promise<Webinar[]> {
+  console.log('[DBG][webinarRepository] Getting all webinars for tenant:', tenantId);
+
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: Tables.CORE,
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
+      ExpressionAttributeValues: {
+        ':pk': CorePK.TENANT(tenantId),
+        ':skPrefix': 'WEBINAR#',
       },
     })
   );
@@ -109,45 +149,23 @@ export async function getAllWebinars(): Promise<Webinar[]> {
 }
 
 /**
- * Get webinars by expert ID
+ * Get published/scheduled webinars for a tenant
+ * @param tenantId - The tenant ID (expertId)
  */
-export async function getWebinarsByExpertId(expertId: string): Promise<Webinar[]> {
-  console.log('[DBG][webinarRepository] Getting webinars by expertId:', expertId);
+export async function getPublishedTenantWebinars(tenantId: string): Promise<Webinar[]> {
+  console.log('[DBG][webinarRepository] Getting published webinars for tenant:', tenantId);
 
   const result = await docClient.send(
     new QueryCommand({
       TableName: Tables.CORE,
-      KeyConditionExpression: 'PK = :pk',
-      FilterExpression: 'expertId = :expertId',
-      ExpressionAttributeValues: {
-        ':pk': EntityType.WEBINAR,
-        ':expertId': expertId,
-      },
-    })
-  );
-
-  const webinars = (result.Items || []).map(item => toWebinar(item as DynamoDBWebinarItem));
-  console.log('[DBG][webinarRepository] Found', webinars.length, 'webinars for expert');
-  return webinars;
-}
-
-/**
- * Get published/scheduled webinars by expert ID
- */
-export async function getPublishedWebinarsByExpertId(expertId: string): Promise<Webinar[]> {
-  console.log('[DBG][webinarRepository] Getting published webinars by expertId:', expertId);
-
-  const result = await docClient.send(
-    new QueryCommand({
-      TableName: Tables.CORE,
-      KeyConditionExpression: 'PK = :pk',
-      FilterExpression: 'expertId = :expertId AND #status IN (:scheduled, :live)',
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
+      FilterExpression: '#status IN (:scheduled, :live)',
       ExpressionAttributeNames: {
         '#status': 'status',
       },
       ExpressionAttributeValues: {
-        ':pk': EntityType.WEBINAR,
-        ':expertId': expertId,
+        ':pk': CorePK.TENANT(tenantId),
+        ':skPrefix': 'WEBINAR#',
         ':scheduled': 'SCHEDULED',
         ':live': 'LIVE',
       },
@@ -155,26 +173,37 @@ export async function getPublishedWebinarsByExpertId(expertId: string): Promise<
   );
 
   const webinars = (result.Items || []).map(item => toWebinar(item as DynamoDBWebinarItem));
-  console.log('[DBG][webinarRepository] Found', webinars.length, 'published webinars for expert');
+  console.log('[DBG][webinarRepository] Found', webinars.length, 'published webinars');
   return webinars;
 }
 
 /**
- * Get webinars by status
+ * Get webinars by status for a tenant
+ * @param tenantId - The tenant ID (expertId)
+ * @param status - Webinar status to filter by
  */
-export async function getWebinarsByStatus(status: WebinarStatus): Promise<Webinar[]> {
-  console.log('[DBG][webinarRepository] Getting webinars by status:', status);
+export async function getTenantWebinarsByStatus(
+  tenantId: string,
+  status: WebinarStatus
+): Promise<Webinar[]> {
+  console.log(
+    '[DBG][webinarRepository] Getting webinars by status:',
+    status,
+    'for tenant:',
+    tenantId
+  );
 
   const result = await docClient.send(
     new QueryCommand({
       TableName: Tables.CORE,
-      KeyConditionExpression: 'PK = :pk',
+      KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
       FilterExpression: '#status = :status',
       ExpressionAttributeNames: {
         '#status': 'status',
       },
       ExpressionAttributeValues: {
-        ':pk': EntityType.WEBINAR,
+        ':pk': CorePK.TENANT(tenantId),
+        ':skPrefix': 'WEBINAR#',
         ':status': status,
       },
     })
@@ -186,27 +215,13 @@ export async function getWebinarsByStatus(status: WebinarStatus): Promise<Webina
 }
 
 /**
- * Get upcoming webinars (SCHEDULED status, sorted by first session start time)
+ * Get upcoming webinars for a tenant (SCHEDULED status, sorted by first session start time)
+ * @param tenantId - The tenant ID (expertId)
  */
-export async function getUpcomingWebinars(): Promise<Webinar[]> {
-  console.log('[DBG][webinarRepository] Getting upcoming webinars');
+export async function getUpcomingTenantWebinars(tenantId: string): Promise<Webinar[]> {
+  console.log('[DBG][webinarRepository] Getting upcoming webinars for tenant:', tenantId);
 
-  const result = await docClient.send(
-    new QueryCommand({
-      TableName: Tables.CORE,
-      KeyConditionExpression: 'PK = :pk',
-      FilterExpression: '#status = :scheduled',
-      ExpressionAttributeNames: {
-        '#status': 'status',
-      },
-      ExpressionAttributeValues: {
-        ':pk': EntityType.WEBINAR,
-        ':scheduled': 'SCHEDULED',
-      },
-    })
-  );
-
-  const webinars = (result.Items || []).map(item => toWebinar(item as DynamoDBWebinarItem));
+  const webinars = await getTenantWebinarsByStatus(tenantId, 'SCHEDULED');
 
   // Sort by first session start time
   const now = new Date().toISOString();
@@ -227,15 +242,20 @@ export async function getUpcomingWebinars(): Promise<Webinar[]> {
 
 /**
  * Create a new webinar
+ * @param tenantId - The tenant ID (expertId)
+ * @param input - Webinar creation input
  */
-export async function createWebinar(input: CreateWebinarInput): Promise<Webinar> {
+export async function createWebinar(tenantId: string, input: CreateWebinarInput): Promise<Webinar> {
   const now = new Date().toISOString();
 
-  console.log('[DBG][webinarRepository] Creating webinar:', input.id, 'title:', input.title);
+  console.log('[DBG][webinarRepository] Creating webinar:', input.id, 'for tenant:', tenantId);
 
   const webinar: DynamoDBWebinarItem = {
-    PK: EntityType.WEBINAR,
-    SK: input.id,
+    PK: CorePK.TENANT(tenantId),
+    SK: CorePK.WEBINAR(input.id),
+    // GSI1 for cross-tenant lookup by webinarId
+    GSI1PK: `WEBINARID#${input.id}`,
+    GSI1SK: 'WEBINAR',
     id: input.id,
     expertId: input.expertId,
     title: input.title,
@@ -277,12 +297,16 @@ export async function createWebinar(input: CreateWebinarInput): Promise<Webinar>
 
 /**
  * Update webinar - partial update using UpdateCommand
+ * @param tenantId - The tenant ID (expertId)
+ * @param webinarId - The webinar ID
+ * @param updates - Partial webinar updates
  */
 export async function updateWebinar(
+  tenantId: string,
   webinarId: string,
   updates: Partial<Webinar>
 ): Promise<Webinar> {
-  console.log('[DBG][webinarRepository] Updating webinar:', webinarId);
+  console.log('[DBG][webinarRepository] Updating webinar:', webinarId, 'for tenant:', tenantId);
 
   // Build update expression dynamically
   const updateParts: string[] = [];
@@ -308,8 +332,8 @@ export async function updateWebinar(
     new UpdateCommand({
       TableName: Tables.CORE,
       Key: {
-        PK: EntityType.WEBINAR,
-        SK: webinarId,
+        PK: CorePK.TENANT(tenantId),
+        SK: CorePK.WEBINAR(webinarId),
       },
       UpdateExpression: `SET ${updateParts.join(', ')}`,
       ExpressionAttributeNames: exprAttrNames,
@@ -324,16 +348,18 @@ export async function updateWebinar(
 
 /**
  * Delete webinar
+ * @param tenantId - The tenant ID (expertId)
+ * @param webinarId - The webinar ID
  */
-export async function deleteWebinar(webinarId: string): Promise<void> {
-  console.log('[DBG][webinarRepository] Deleting webinar:', webinarId);
+export async function deleteWebinar(tenantId: string, webinarId: string): Promise<void> {
+  console.log('[DBG][webinarRepository] Deleting webinar:', webinarId, 'for tenant:', tenantId);
 
   await docClient.send(
     new DeleteCommand({
       TableName: Tables.CORE,
       Key: {
-        PK: EntityType.WEBINAR,
-        SK: webinarId,
+        PK: CorePK.TENANT(tenantId),
+        SK: CorePK.WEBINAR(webinarId),
       },
     })
   );
@@ -343,41 +369,57 @@ export async function deleteWebinar(webinarId: string): Promise<void> {
 
 /**
  * Update webinar status
+ * @param tenantId - The tenant ID (expertId)
+ * @param webinarId - The webinar ID
+ * @param status - New status
  */
 export async function updateWebinarStatus(
+  tenantId: string,
   webinarId: string,
   status: WebinarStatus
 ): Promise<Webinar> {
   console.log('[DBG][webinarRepository] Updating webinar status:', webinarId, status);
-  return updateWebinar(webinarId, { status });
+  return updateWebinar(tenantId, webinarId, { status });
 }
 
 /**
  * Add a session to a webinar
+ * @param tenantId - The tenant ID (expertId)
+ * @param webinarId - The webinar ID
+ * @param session - Session to add
  */
-export async function addSession(webinarId: string, session: WebinarSession): Promise<Webinar> {
+export async function addSession(
+  tenantId: string,
+  webinarId: string,
+  session: WebinarSession
+): Promise<Webinar> {
   console.log('[DBG][webinarRepository] Adding session to webinar:', webinarId);
 
-  const webinar = await getWebinarById(webinarId);
+  const webinar = await getWebinarById(tenantId, webinarId);
   if (!webinar) {
     throw new Error('Webinar not found');
   }
 
   const sessions = [...(webinar.sessions || []), session];
-  return updateWebinar(webinarId, { sessions });
+  return updateWebinar(tenantId, webinarId, { sessions });
 }
 
 /**
  * Update a session in a webinar
+ * @param tenantId - The tenant ID (expertId)
+ * @param webinarId - The webinar ID
+ * @param sessionId - Session ID to update
+ * @param updates - Partial session updates
  */
 export async function updateSession(
+  tenantId: string,
   webinarId: string,
   sessionId: string,
   updates: Partial<WebinarSession>
 ): Promise<Webinar> {
   console.log('[DBG][webinarRepository] Updating session:', sessionId, 'in webinar:', webinarId);
 
-  const webinar = await getWebinarById(webinarId);
+  const webinar = await getWebinarById(tenantId, webinarId);
   if (!webinar) {
     throw new Error('Webinar not found');
   }
@@ -389,31 +431,45 @@ export async function updateSession(
     return s;
   });
 
-  return updateWebinar(webinarId, { sessions });
+  return updateWebinar(tenantId, webinarId, { sessions });
 }
 
 /**
  * Delete a session from a webinar
+ * @param tenantId - The tenant ID (expertId)
+ * @param webinarId - The webinar ID
+ * @param sessionId - Session ID to delete
  */
-export async function deleteSession(webinarId: string, sessionId: string): Promise<Webinar> {
+export async function deleteSession(
+  tenantId: string,
+  webinarId: string,
+  sessionId: string
+): Promise<Webinar> {
   console.log('[DBG][webinarRepository] Deleting session:', sessionId, 'from webinar:', webinarId);
 
-  const webinar = await getWebinarById(webinarId);
+  const webinar = await getWebinarById(tenantId, webinarId);
   if (!webinar) {
     throw new Error('Webinar not found');
   }
 
   const sessions = (webinar.sessions || []).filter(s => s.id !== sessionId);
-  return updateWebinar(webinarId, { sessions });
+  return updateWebinar(tenantId, webinarId, { sessions });
 }
 
 /**
  * Add feedback to a webinar
+ * @param tenantId - The tenant ID (expertId)
+ * @param webinarId - The webinar ID
+ * @param feedback - Feedback to add
  */
-export async function addFeedback(webinarId: string, feedback: WebinarFeedback): Promise<Webinar> {
+export async function addFeedback(
+  tenantId: string,
+  webinarId: string,
+  feedback: WebinarFeedback
+): Promise<Webinar> {
   console.log('[DBG][webinarRepository] Adding feedback to webinar:', webinarId);
 
-  const webinar = await getWebinarById(webinarId);
+  const webinar = await getWebinarById(tenantId, webinarId);
   if (!webinar) {
     throw new Error('Webinar not found');
   }
@@ -424,7 +480,7 @@ export async function addFeedback(webinarId: string, feedback: WebinarFeedback):
   const totalRatings = feedbackList.length;
   const averageRating = feedbackList.reduce((sum, f) => sum + f.rating, 0) / totalRatings;
 
-  return updateWebinar(webinarId, {
+  return updateWebinar(tenantId, webinarId, {
     feedback: feedbackList,
     rating: Math.round(averageRating * 10) / 10, // Round to 1 decimal
     totalRatings,
@@ -433,38 +489,52 @@ export async function addFeedback(webinarId: string, feedback: WebinarFeedback):
 
 /**
  * Increment total registrations
+ * @param tenantId - The tenant ID (expertId)
+ * @param webinarId - The webinar ID
  */
-export async function incrementRegistrations(webinarId: string): Promise<Webinar> {
+export async function incrementRegistrations(
+  tenantId: string,
+  webinarId: string
+): Promise<Webinar> {
   console.log('[DBG][webinarRepository] Incrementing registrations for webinar:', webinarId);
 
-  const webinar = await getWebinarById(webinarId);
+  const webinar = await getWebinarById(tenantId, webinarId);
   if (!webinar) {
     throw new Error('Webinar not found');
   }
 
-  return updateWebinar(webinarId, { totalRegistrations: (webinar.totalRegistrations || 0) + 1 });
+  return updateWebinar(tenantId, webinarId, {
+    totalRegistrations: (webinar.totalRegistrations || 0) + 1,
+  });
 }
 
 /**
  * Decrement total registrations (for cancellations)
+ * @param tenantId - The tenant ID (expertId)
+ * @param webinarId - The webinar ID
  */
-export async function decrementRegistrations(webinarId: string): Promise<Webinar> {
+export async function decrementRegistrations(
+  tenantId: string,
+  webinarId: string
+): Promise<Webinar> {
   console.log('[DBG][webinarRepository] Decrementing registrations for webinar:', webinarId);
 
-  const webinar = await getWebinarById(webinarId);
+  const webinar = await getWebinarById(tenantId, webinarId);
   if (!webinar) {
     throw new Error('Webinar not found');
   }
 
   const newCount = Math.max(0, (webinar.totalRegistrations || 0) - 1);
-  return updateWebinar(webinarId, { totalRegistrations: newCount });
+  return updateWebinar(tenantId, webinarId, { totalRegistrations: newCount });
 }
 
 /**
  * Check if webinar has capacity available
+ * @param tenantId - The tenant ID (expertId)
+ * @param webinarId - The webinar ID
  */
-export async function hasCapacity(webinarId: string): Promise<boolean> {
-  const webinar = await getWebinarById(webinarId);
+export async function hasCapacity(tenantId: string, webinarId: string): Promise<boolean> {
+  const webinar = await getWebinarById(tenantId, webinarId);
   if (!webinar) {
     return false;
   }
@@ -479,8 +549,12 @@ export async function hasCapacity(webinarId: string): Promise<boolean> {
 
 /**
  * Get webinars with sessions starting within a time range (for reminders)
+ * @param tenantId - The tenant ID (expertId)
+ * @param startFrom - Start time range
+ * @param startTo - End time range
  */
 export async function getWebinarsWithSessionsInRange(
+  tenantId: string,
   startFrom: string,
   startTo: string
 ): Promise<Webinar[]> {
@@ -492,7 +566,7 @@ export async function getWebinarsWithSessionsInRange(
   );
 
   // Get all scheduled webinars and filter by session times
-  const webinars = await getWebinarsByStatus('SCHEDULED');
+  const webinars = await getTenantWebinarsByStatus(tenantId, 'SCHEDULED');
 
   const matchingWebinars = webinars.filter(w => {
     return w.sessions?.some(s => s.startTime >= startFrom && s.startTime <= startTo);
@@ -507,9 +581,57 @@ export async function getWebinarsWithSessionsInRange(
 }
 
 /**
- * Count webinars by expert ID
+ * Count webinars for a tenant
+ * @param tenantId - The tenant ID (expertId)
  */
-export async function countWebinarsByExpertId(expertId: string): Promise<number> {
-  const webinars = await getWebinarsByExpertId(expertId);
+export async function countTenantWebinars(tenantId: string): Promise<number> {
+  const webinars = await getTenantWebinars(tenantId);
   return webinars.length;
+}
+
+// ===================================================================
+// BACKWARD COMPATIBILITY ALIASES
+// ===================================================================
+
+/** @deprecated Use getTenantWebinars(tenantId) instead */
+export async function getAllWebinars(): Promise<Webinar[]> {
+  console.warn(
+    '[DBG][webinarRepository] getAllWebinars() is deprecated - use getTenantWebinars(tenantId)'
+  );
+  return [];
+}
+
+/** @deprecated Use getTenantWebinars(tenantId) instead */
+export async function getWebinarsByExpertId(expertId: string): Promise<Webinar[]> {
+  console.log('[DBG][webinarRepository] getWebinarsByExpertId - using as getTenantWebinars');
+  return getTenantWebinars(expertId);
+}
+
+/** @deprecated Use getPublishedTenantWebinars(tenantId) instead */
+export async function getPublishedWebinarsByExpertId(expertId: string): Promise<Webinar[]> {
+  console.log(
+    '[DBG][webinarRepository] getPublishedWebinarsByExpertId - using as getPublishedTenantWebinars'
+  );
+  return getPublishedTenantWebinars(expertId);
+}
+
+/** @deprecated Use getTenantWebinarsByStatus(tenantId, status) instead */
+export async function getWebinarsByStatus(status: WebinarStatus): Promise<Webinar[]> {
+  console.warn(
+    '[DBG][webinarRepository] getWebinarsByStatus() is deprecated - use getTenantWebinarsByStatus(tenantId, status)'
+  );
+  return [];
+}
+
+/** @deprecated Use getUpcomingTenantWebinars(tenantId) instead */
+export async function getUpcomingWebinars(): Promise<Webinar[]> {
+  console.warn(
+    '[DBG][webinarRepository] getUpcomingWebinars() is deprecated - use getUpcomingTenantWebinars(tenantId)'
+  );
+  return [];
+}
+
+/** @deprecated Use countTenantWebinars(tenantId) instead */
+export async function countWebinarsByExpertId(expertId: string): Promise<number> {
+  return countTenantWebinars(expertId);
 }

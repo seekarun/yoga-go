@@ -37,7 +37,7 @@ export async function POST(
     const userId = session.user.cognitoSub;
 
     // Get webinar to check if it's free
-    const webinar = await webinarRepository.getWebinarById(webinarId);
+    const webinar = await webinarRepository.getWebinarByIdOnly(webinarId);
     if (!webinar) {
       return NextResponse.json({ success: false, error: 'Webinar not found' }, { status: 404 });
     }
@@ -53,8 +53,17 @@ export async function POST(
       );
     }
 
+    const userEmail = session.user.email || '';
+    const userName = session.user.name || 'Yoga Enthusiast';
+
     // Register user
-    const result = await registerUserForWebinar(userId, webinarId);
+    const result = await registerUserForWebinar(
+      webinar.expertId,
+      userId,
+      webinarId,
+      userName,
+      userEmail
+    );
 
     if (!result.success) {
       return NextResponse.json(
@@ -65,9 +74,6 @@ export async function POST(
 
     // Send registration confirmation email
     try {
-      const userEmail = session.user.email;
-      const userName = session.user.name || 'Yoga Enthusiast';
-
       if (userEmail) {
         const referer = request.headers.get('referer');
         const fromEmail = getContextualFromEmail(webinar.expertId, referer);
