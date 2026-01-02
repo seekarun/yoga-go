@@ -1,58 +1,29 @@
 /**
- * Expert Blog Management API Route
- * GET /data/app/expert/me/blog - List all expert's blog posts (drafts + published)
- * POST /data/app/expert/me/blog - Create a new blog post (auto-generates excerpt and tags via AI)
+ * Expert Post Management API Route
+ * GET /data/app/expert/me/blog - List all expert's posts (drafts + published)
+ * POST /data/app/expert/me/blog - Create a new post
+ *
+ * Supports dual auth: cookies (web) or Bearer token (mobile)
  */
 
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import type { ApiResponse, BlogPost } from '@/types';
-import { requireExpertAuth } from '@/lib/auth';
-import {
-  getBlogPostsByExpert,
-  createBlogPost,
-  type CreateBlogPostInput,
-} from '@/lib/repositories/blogPostRepository';
+import type { ApiResponse, Post, PostMedia, PostStatus } from '@/types';
+import { requireExpertAuthDual } from '@/lib/auth';
+import { getPostsByExpert, createPost } from '@/lib/repositories/postRepository';
 
-/**
- * Call OpenAI to extract excerpt and tags from blog content
- */
-async function extractBlogMetadata(
-  title: string,
-  content: string
-): Promise<{ excerpt: string; tags: string[] }> {
-  try {
-    // Use internal API call - this will work in both dev and production
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3111';
-    const response = await fetch(`${baseUrl}/api/ai/extract-blog-metadata`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, content }),
-    });
-
-    const result = await response.json();
-    if (result.success && result.data) {
-      return result.data;
-    }
-  } catch (error) {
-    console.error('[DBG][expert/me/blog] Failed to extract metadata via AI:', error);
-  }
-
-  // Fallback: Create basic excerpt from content
-  const plainText = content
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  return {
-    excerpt: plainText.substring(0, 160) + (plainText.length > 160 ? '...' : ''),
-    tags: [],
-  };
+interface CreatePostBody {
+  content: string;
+  media?: PostMedia[];
+  status?: PostStatus;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     console.log('[DBG][expert/me/blog] GET request');
 
-    const { user } = await requireExpertAuth();
+    const { user, session } = await requireExpertAuthDual(request);
+    console.log('[DBG][expert/me/blog] Authenticated via', session.authType);
 
     if (!user.expertProfile) {
       return NextResponse.json(
@@ -62,9 +33,9 @@ export async function GET() {
     }
 
     // Get all posts including drafts for the expert
-    const posts = await getBlogPostsByExpert(user.expertProfile, true);
+    const posts = await getPostsByExpert(user.expertProfile, true);
 
-    const response: ApiResponse<BlogPost[]> = {
+    const response: ApiResponse<Post[]> = {
       success: true,
       data: posts,
       total: posts.length,
@@ -83,18 +54,16 @@ export async function GET() {
       }
     }
 
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch blog posts' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Failed to fetch posts' }, { status: 500 });
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     console.log('[DBG][expert/me/blog] POST request');
 
-    const { user } = await requireExpertAuth();
+    const { user, session } = await requireExpertAuthDual(request);
+    console.log('[DBG][expert/me/blog] Authenticated via', session.authType);
 
     if (!user.expertProfile) {
       return NextResponse.json(
@@ -103,35 +72,36 @@ export async function POST(request: Request) {
       );
     }
 
-    const body = await request.json();
+    const body: CreatePostBody = await request.json();
 
-    // Validate required fields
-    if (!body.title || !body.content) {
+    // Validate content (required, max 500 chars)
+    if (!body.content || body.content.trim().length === 0) {
+      return NextResponse.json({ success: false, error: 'Content is required' }, { status: 400 });
+    }
+
+    if (body.content.length > 500) {
       return NextResponse.json(
-        { success: false, error: 'Title and content are required' },
+        { success: false, error: 'Content must be 500 characters or less' },
         { status: 400 }
       );
     }
 
-    // Auto-generate excerpt and tags using AI
-    console.log('[DBG][expert/me/blog] Extracting metadata via AI...');
-    const metadata = await extractBlogMetadata(body.title, body.content);
-    console.log('[DBG][expert/me/blog] AI metadata:', metadata);
+    // Validate media (max 10 items)
+    if (body.media && body.media.length > 10) {
+      return NextResponse.json(
+        { success: false, error: 'Maximum 10 media items allowed' },
+        { status: 400 }
+      );
+    }
 
-    const input: CreateBlogPostInput = {
+    const post = await createPost({
       expertId: user.expertProfile,
-      title: body.title,
-      content: body.content,
-      coverImage: body.coverImage,
+      content: body.content.trim(),
+      media: body.media,
       status: body.status || 'draft',
-      tags: metadata.tags, // Auto-generated by AI
-      attachments: body.attachments,
-      excerpt: metadata.excerpt, // Auto-generated by AI
-    };
+    });
 
-    const post = await createBlogPost(input);
-
-    const response: ApiResponse<BlogPost> = {
+    const response: ApiResponse<Post> = {
       success: true,
       data: post,
     };
@@ -149,9 +119,6 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json(
-      { success: false, error: 'Failed to create blog post' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: 'Failed to create post' }, { status: 500 });
   }
 }

@@ -1,11 +1,13 @@
 /**
  * Expert Inbox API Routes
  * GET /data/app/expert/me/inbox - List emails with pagination and filters
+ *
+ * Supports dual auth: cookies (web) or Bearer token (mobile)
  */
 
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { getSessionFromCookies } from '@/lib/auth';
-import { getUserByCognitoSub } from '@/lib/repositories/userRepository';
+import { requireExpertAuthDual } from '@/lib/auth';
 import { getEmailsByExpert, getUnreadCount } from '@/lib/repositories/emailRepository';
 import type { ApiResponse, EmailListResult, EmailFilters, Email, EmailWithThread } from '@/types';
 
@@ -71,38 +73,19 @@ function groupEmailsByThread(emails: Email[]): EmailWithThread[] {
   return result;
 }
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
     console.log('[DBG][expert/me/inbox] GET called');
 
-    // Get session from cookies
-    const session = await getSessionFromCookies();
-    if (!session?.user?.cognitoSub) {
-      console.log('[DBG][expert/me/inbox] No session found');
-      return NextResponse.json({ success: false, error: 'Unauthorized' } as ApiResponse<null>, {
-        status: 401,
-      });
-    }
+    // Require expert authentication (supports both cookies and Bearer token)
+    const { user, session } = await requireExpertAuthDual(request);
+    console.log('[DBG][expert/me/inbox] Authenticated via', session.authType);
 
-    // Get user from database
-    const user = await getUserByCognitoSub(session.user.cognitoSub);
-    if (!user) {
-      console.log('[DBG][expert/me/inbox] User not found');
-      return NextResponse.json({ success: false, error: 'User not found' } as ApiResponse<null>, {
-        status: 404,
-      });
-    }
-
-    // Check if user is an expert
-    const isExpert = Array.isArray(user.role)
-      ? user.role.includes('expert')
-      : user.role === 'expert';
-
-    if (!isExpert || !user.expertProfile) {
-      console.log('[DBG][expert/me/inbox] User is not an expert');
+    if (!user.expertProfile) {
+      console.log('[DBG][expert/me/inbox] Expert profile not found');
       return NextResponse.json(
         { success: false, error: 'Expert profile not found' } as ApiResponse<null>,
-        { status: 403 }
+        { status: 404 }
       );
     }
 
@@ -149,9 +132,14 @@ export async function GET(request: Request) {
     } as ApiResponse<EmailListResult>);
   } catch (error) {
     console.error('[DBG][expert/me/inbox] Error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch inbox' } as ApiResponse<null>,
-      { status: 500 }
-    );
+
+    // Handle auth errors with appropriate status
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch inbox';
+    const status =
+      errorMessage === 'Unauthorized' ? 401 : errorMessage.includes('Forbidden') ? 403 : 500;
+
+    return NextResponse.json({ success: false, error: errorMessage } as ApiResponse<null>, {
+      status,
+    });
   }
 }

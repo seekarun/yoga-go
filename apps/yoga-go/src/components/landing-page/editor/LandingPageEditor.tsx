@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import type { CustomLandingPageConfig, Expert } from '@/types';
+import type { CustomLandingPageConfig, Expert, Post } from '@/types';
 import { DEFAULT_SECTION_ORDER, type SectionType } from '../sections';
 import PreviewPane from './PreviewPane';
 import EditPane from './EditPane';
@@ -49,6 +49,7 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
 
   // Expert data
   const [expert, setExpert] = useState<Expert | null>(null);
+  const [latestBlogPost, setLatestBlogPost] = useState<Post | null>(null);
 
   // Publish state
   const [isPublished, setIsPublished] = useState(false);
@@ -155,6 +156,20 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
         setTimeout(() => {
           isInitialLoadRef.current = false;
         }, 100);
+
+        // Fetch latest blog post for blog section preview
+        try {
+          console.log('[DBG][LandingPageEditor] Fetching latest blog post');
+          const blogResponse = await fetch(`/data/experts/${expertId}/blog?limit=1`);
+          const blogResult = await blogResponse.json();
+          if (blogResult.success && blogResult.data && blogResult.data.length > 0) {
+            console.log('[DBG][LandingPageEditor] Latest blog post loaded:', blogResult.data[0].id);
+            setLatestBlogPost(blogResult.data[0]);
+          }
+        } catch (blogErr) {
+          console.error('[DBG][LandingPageEditor] Error loading blog posts:', blogErr);
+          // Non-critical, don't block the editor
+        }
       } catch (err) {
         console.error('[DBG][LandingPageEditor] Error loading expert:', err);
         setError(err instanceof Error ? err.message : 'Failed to load expert');
@@ -638,6 +653,7 @@ export default function LandingPageEditor({ expertId }: LandingPageEditorProps) 
           disabledSections={disabledSections}
           selectedSection={selectedSection}
           expert={{ ...expert, id: expertId }}
+          latestBlogPost={latestBlogPost || undefined}
           onSelectSection={handleSelectSection}
           onChange={handleDataChange}
           renderLayout={(header, preview) => (

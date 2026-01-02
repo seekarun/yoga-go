@@ -60,13 +60,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('[DBG][cloudflare-upload-url] Upload URL generated:', data.result.uid);
+    const uid = data.result.uid;
+    console.log('[DBG][cloudflare-upload-url] Upload URL generated:', uid);
+
+    // Construct the video playback URL using CF subdomain
+    const cfSubdomain = process.env.NEXT_PUBLIC_CF_SUBDOMAIN || 'iq7mgkvtb3bwxqf5';
+    const videoUrl = `https://customer-${cfSubdomain}.cloudflarestream.com/${uid}/iframe`;
 
     return NextResponse.json({
       success: true,
       data: {
         uploadURL: data.result.uploadURL,
-        uid: data.result.uid,
+        uid,
+        videoUrl,
       },
     });
   } catch (error) {

@@ -3,7 +3,8 @@
 import CourseCard from '@/components/CourseCard';
 import { LandingPageThemeProvider } from '@/components/landing-page/ThemeProvider';
 import { useAuth } from '@/contexts/AuthContext';
-import type { BlogPost, Course, Expert, UserCourseData, Webinar, WebinarSession } from '@/types';
+import type { Post, Course, Expert, UserCourseData, Webinar, WebinarSession } from '@/types';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import ThemeBridge from './ThemeBridge';
@@ -58,7 +59,7 @@ export default function ExpertDashboard({ expertId }: ExpertDashboardProps) {
   const [enrolledCourses, setEnrolledCourses] = useState<UserCourseData[]>([]);
   const [availableCourses, setAvailableCourses] = useState<Course[]>([]);
   const [webinars, setWebinars] = useState<WebinarWithRegistration[]>([]);
-  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
+  const [blogPosts, setBlogPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const carouselRef = useRef<HTMLDivElement>(null);
 
@@ -618,40 +619,31 @@ export default function ExpertDashboard({ expertId }: ExpertDashboardProps) {
                           transition: 'transform 0.2s, box-shadow 0.2s',
                         }}
                       >
-                        {post.coverImage && (
-                          <div
-                            style={{
-                              height: '160px',
-                              backgroundImage: `url(${post.coverImage})`,
-                              backgroundSize: 'cover',
-                              backgroundPosition: 'center',
-                            }}
-                          />
+                        {post.media && post.media.length > 0 && post.media[0].type === 'image' && (
+                          <div style={{ position: 'relative', height: '160px' }}>
+                            <Image
+                              src={post.media[0].url}
+                              alt="Post media"
+                              fill
+                              style={{ objectFit: 'cover' }}
+                            />
+                          </div>
                         )}
-                        <div style={{ padding: '20px' }}>
-                          <h3
-                            style={{
-                              fontSize: '16px',
-                              fontWeight: '600',
-                              marginBottom: '8px',
-                              lineHeight: '1.4',
-                            }}
-                          >
-                            {post.title}
-                          </h3>
-                          {post.excerpt && (
+                        <div style={{ padding: '16px' }}>
+                          {post.content && (
                             <p
                               style={{
                                 fontSize: '14px',
-                                color: '#666',
+                                color: '#333',
                                 lineHeight: '1.5',
                                 display: '-webkit-box',
-                                WebkitLineClamp: 2,
+                                WebkitLineClamp: 3,
                                 WebkitBoxOrient: 'vertical',
                                 overflow: 'hidden',
+                                whiteSpace: 'pre-wrap',
                               }}
                             >
-                              {post.excerpt}
+                              {post.content}
                             </p>
                           )}
                           <p style={{ fontSize: '12px', color: '#999', marginTop: '12px' }}>

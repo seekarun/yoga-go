@@ -1,45 +1,28 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import type { ApiResponse, ExpertWallet } from '@/types';
-import { getSessionFromCookies, getUserByCognitoSub } from '@/lib/auth';
+import { requireExpertAuthDual } from '@/lib/auth';
 import * as walletRepository from '@/lib/repositories/walletRepository';
 
 /**
  * GET /data/app/expert/me/wallet
  * Get current expert's wallet balance
+ *
+ * Supports dual auth: cookies (web) or Bearer token (mobile)
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   console.log('[DBG][wallet/route.ts] GET /data/app/expert/me/wallet called');
 
   try {
-    // Require authentication
-    const session = await getSessionFromCookies();
-    if (!session?.user?.cognitoSub) {
-      console.log('[DBG][wallet/route.ts] Unauthorized - no session');
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' } as ApiResponse<ExpertWallet>,
-        { status: 401 }
-      );
-    }
+    // Require expert authentication (supports both cookies and Bearer token)
+    const { user, session } = await requireExpertAuthDual(request);
+    console.log('[DBG][wallet/route.ts] Authenticated via', session.authType);
 
-    // Get user from DynamoDB
-    const user = await getUserByCognitoSub(session.user.cognitoSub);
-    if (!user) {
-      console.log('[DBG][wallet/route.ts] User not found');
+    if (!user.expertProfile) {
+      console.log('[DBG][wallet/route.ts] Expert profile not found');
       return NextResponse.json(
-        { success: false, error: 'User not found' } as ApiResponse<ExpertWallet>,
+        { success: false, error: 'Expert profile not found' } as ApiResponse<ExpertWallet>,
         { status: 404 }
-      );
-    }
-
-    // Check if user is an expert
-    const isExpert = Array.isArray(user.role)
-      ? user.role.includes('expert')
-      : user.role === 'expert';
-    if (!isExpert || !user.expertProfile) {
-      console.log('[DBG][wallet/route.ts] User is not an expert');
-      return NextResponse.json(
-        { success: false, error: 'User is not an expert' } as ApiResponse<ExpertWallet>,
-        { status: 403 }
       );
     }
 
@@ -52,13 +35,15 @@ export async function GET() {
     return NextResponse.json({ success: true, data: wallet } as ApiResponse<ExpertWallet>);
   } catch (error) {
     console.error('[DBG][wallet/route.ts] Error fetching wallet:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to fetch wallet',
-      } as ApiResponse<ExpertWallet>,
-      { status: 500 }
-    );
+
+    // Handle auth errors with appropriate status
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch wallet';
+    const status =
+      errorMessage === 'Unauthorized' ? 401 : errorMessage.includes('Forbidden') ? 403 : 500;
+
+    return NextResponse.json({ success: false, error: errorMessage } as ApiResponse<ExpertWallet>, {
+      status,
+    });
   }
 }
 
@@ -66,40 +51,22 @@ export async function GET() {
  * POST /data/app/expert/me/wallet
  * Initialize wallet with preferred currency
  * Body: { currency: 'USD' | 'INR' }
+ *
+ * Supports dual auth: cookies (web) or Bearer token (mobile)
  */
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   console.log('[DBG][wallet/route.ts] POST /data/app/expert/me/wallet called');
 
   try {
-    // Require authentication
-    const session = await getSessionFromCookies();
-    if (!session?.user?.cognitoSub) {
-      console.log('[DBG][wallet/route.ts] Unauthorized - no session');
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' } as ApiResponse<ExpertWallet>,
-        { status: 401 }
-      );
-    }
+    // Require expert authentication (supports both cookies and Bearer token)
+    const { user, session } = await requireExpertAuthDual(request);
+    console.log('[DBG][wallet/route.ts] Authenticated via', session.authType);
 
-    // Get user from DynamoDB
-    const user = await getUserByCognitoSub(session.user.cognitoSub);
-    if (!user) {
-      console.log('[DBG][wallet/route.ts] User not found');
+    if (!user.expertProfile) {
+      console.log('[DBG][wallet/route.ts] Expert profile not found');
       return NextResponse.json(
-        { success: false, error: 'User not found' } as ApiResponse<ExpertWallet>,
+        { success: false, error: 'Expert profile not found' } as ApiResponse<ExpertWallet>,
         { status: 404 }
-      );
-    }
-
-    // Check if user is an expert
-    const isExpert = Array.isArray(user.role)
-      ? user.role.includes('expert')
-      : user.role === 'expert';
-    if (!isExpert || !user.expertProfile) {
-      console.log('[DBG][wallet/route.ts] User is not an expert');
-      return NextResponse.json(
-        { success: false, error: 'User is not an expert' } as ApiResponse<ExpertWallet>,
-        { status: 403 }
       );
     }
 
@@ -126,12 +93,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, data: wallet } as ApiResponse<ExpertWallet>);
   } catch (error) {
     console.error('[DBG][wallet/route.ts] Error creating wallet:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to create wallet',
-      } as ApiResponse<ExpertWallet>,
-      { status: 500 }
-    );
+
+    // Handle auth errors with appropriate status
+    const errorMessage = error instanceof Error ? error.message : 'Failed to create wallet';
+    const status =
+      errorMessage === 'Unauthorized' ? 401 : errorMessage.includes('Forbidden') ? 403 : 500;
+
+    return NextResponse.json({ success: false, error: errorMessage } as ApiResponse<ExpertWallet>, {
+      status,
+    });
   }
 }

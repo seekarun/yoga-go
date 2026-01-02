@@ -1,4 +1,4 @@
-import type { Course, Webinar, BlogPost, Expert, ColorPalette, Lesson, Survey } from '@/types';
+import type { Course, Webinar, Post, Expert, ColorPalette, Lesson, Survey } from '@/types';
 
 // ===== Section Types =====
 export type SectionType =
@@ -120,7 +120,7 @@ export interface PhotoGallerySectionProps {
 export interface BlogSectionProps {
   title?: string;
   description?: string;
-  latestPost?: BlogPost;
+  latestPost?: Post;
 }
 
 // Act (CTA) Section
@@ -163,7 +163,7 @@ export interface LandingPageData {
   expert: Expert;
   courses: Course[];
   webinars: Webinar[];
-  latestBlogPost?: BlogPost;
+  latestBlogPost?: Post;
 }
 
 // Configuration passed to templates (display settings)
@@ -220,13 +220,13 @@ export interface CourseDetailPageProps {
 
 // Blog List Page Props
 export interface BlogListPageProps {
-  posts: BlogPost[];
+  posts: Post[];
   expert: Expert;
 }
 
 // Blog Post Page Props
 export interface BlogPostPageProps {
-  post: BlogPost;
+  post: Post;
   expert: Expert;
 }
 

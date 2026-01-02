@@ -1,12 +1,12 @@
 /**
- * Public Blog Comments API Route
- * GET /data/experts/[expertId]/blog/[postId]/comments - List comments for a blog post
+ * Public Post Comments API Route
+ * GET /data/experts/[expertId]/blog/[postId]/comments - List comments for a post
  */
 
 import { NextResponse } from 'next/server';
-import type { ApiResponse, BlogComment } from '@/types';
+import type { ApiResponse, PostComment } from '@/types';
 import { getCommentsByPost } from '@/lib/repositories/blogCommentRepository';
-import { getBlogPostById } from '@/lib/repositories/blogPostRepository';
+import { getPostById } from '@/lib/repositories/postRepository';
 
 export async function GET(
   request: Request,
@@ -17,14 +17,14 @@ export async function GET(
     console.log('[DBG][blog/comments/route] GET request for post:', postId);
 
     // Verify the post exists and is published
-    const post = await getBlogPostById(postId);
+    const post = await getPostById(postId);
     if (!post || post.expertId !== expertId || post.status !== 'published') {
-      return NextResponse.json({ success: false, error: 'Blog post not found' }, { status: 404 });
+      return NextResponse.json({ success: false, error: 'Post not found' }, { status: 404 });
     }
 
     const comments = await getCommentsByPost(postId);
 
-    const response: ApiResponse<BlogComment[]> = {
+    const response: ApiResponse<PostComment[]> = {
       success: true,
       data: comments,
       total: comments.length,

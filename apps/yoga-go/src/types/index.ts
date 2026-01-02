@@ -1165,34 +1165,28 @@ export interface PaymentTransaction extends BaseEntity {
   metadata?: PaymentMetadata;
 }
 
-// Blog Related Types
-export type BlogPostStatus = 'draft' | 'published';
+// Post Related Types (Instagram/Twitter style posts)
+export type PostStatus = 'draft' | 'published';
 
-export interface BlogPostAttachment {
-  id: string;
-  filename: string;
+export interface PostMedia {
+  type: 'image' | 'video';
   url: string;
-  size: number;
-  mimeType: string;
+  thumbnailUrl?: string; // For videos
+  width?: number;
+  height?: number;
 }
 
-export interface BlogPost extends BaseEntity {
+export interface Post extends BaseEntity {
   expertId: string;
-  title: string;
-  slug: string;
-  excerpt: string;
-  content: string; // Tiptap JSON content stored as string
-  coverImage?: string;
-  status: BlogPostStatus;
+  content: string; // Plain text, max 500 chars
+  media?: PostMedia[]; // Array of images/videos (max 10)
+  status: PostStatus;
   publishedAt?: string;
-  readTimeMinutes: number;
-  tags?: string[];
-  attachments?: BlogPostAttachment[];
   likeCount: number;
   commentCount: number;
 }
 
-export interface BlogComment extends BaseEntity {
+export interface PostComment extends BaseEntity {
   postId: string;
   expertId: string;
   userId: string;
@@ -1202,11 +1196,17 @@ export interface BlogComment extends BaseEntity {
   editedAt?: string;
 }
 
-export interface BlogLike {
+export interface PostLike {
   postId: string;
   userId: string;
   createdAt: string;
 }
+
+// Legacy aliases for backward compatibility during migration
+export type BlogPostStatus = PostStatus;
+export type BlogPost = Post;
+export type BlogComment = PostComment;
+export type BlogLike = PostLike;
 
 // ============================================
 // Webinar Related Types

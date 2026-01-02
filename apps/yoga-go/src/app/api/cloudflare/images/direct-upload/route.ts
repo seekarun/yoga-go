@@ -4,11 +4,14 @@
  *
  * Simple upload endpoint that doesn't require tenantId or store in asset repository.
  * Used for user profile pictures and other non-tenant-specific images.
+ *
+ * Supports dual auth: cookies (web) or Bearer token (mobile)
  */
 
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import type { ApiResponse } from '@/types';
-import { getSessionFromCookies } from '@/lib/auth';
+import { getSessionDual } from '@/lib/auth';
 
 const CF_ACCOUNT_ID = process.env.CF_ACCOUNT_ID;
 const CF_TOKEN = process.env.CF_TOKEN;
@@ -18,18 +21,19 @@ interface DirectUploadResult {
   url: string;
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   console.log('[DBG][cloudflare/images/direct-upload] POST called');
 
   try {
-    // Verify authentication
-    const session = await getSessionFromCookies();
+    // Verify authentication (supports both cookies and Bearer token)
+    const session = await getSessionDual(request);
     if (!session?.user?.cognitoSub) {
       return NextResponse.json<ApiResponse<DirectUploadResult>>(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
       );
     }
+    console.log('[DBG][cloudflare/images/direct-upload] Authenticated via', session.authType);
 
     if (!CF_ACCOUNT_ID || !CF_TOKEN) {
       throw new Error('Cloudflare credentials not configured');

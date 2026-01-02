@@ -1,0 +1,246 @@
+{
+  "info": {
+    "name": "Yoga Go API",
+    "description": "API collection for Yoga Go mobile and web authentication",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3111",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Mobile Auth",
+      "description": "Mobile authentication endpoints using Cognito access tokens",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"expert@example.com\",\n  \"password\": \"YourPassword123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/mobile/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "mobile", "login"]
+            },
+            "description": "Login for mobile clients. Returns Cognito access token and refresh token.\n\nResponse:\n- accessToken: Use in Authorization header for subsequent requests\n- refreshToken: Use to get new access token when expired\n- expiresIn: Token expiry in seconds (typically 3600)"
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "description": "Current access token (can be expired)"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/mobile/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "mobile", "refresh"]
+            },
+            "description": "Refresh access token using refresh token.\n\nNote: Include the old access token in Authorization header (even if expired) to identify the user, OR include cognitoSub in body."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/mobile/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "mobile", "me"]
+            },
+            "description": "Get current authenticated user's profile.\n\nRequires: Valid Cognito access token in Authorization header."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Expert Dashboard (Dual Auth)",
+      "description": "Expert endpoints that support both cookie (web) and Bearer token (mobile) auth",
+      "item": [
+        {
+          "name": "Get Expert Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me"]
+            },
+            "description": "Get current expert's profile.\n\nAuth: Cookie (web) OR Bearer token (mobile)"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Expert Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bio\": \"Updated bio text\",\n  \"title\": \"Yoga Instructor\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me"]
+            },
+            "description": "Update expert profile.\n\nAuth: Cookie (web) OR Bearer token (mobile)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Expert Tenant",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/tenant",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "tenant"]
+            },
+            "description": "Get expert's tenant (custom domain) info.\n\nAuth: Cookie (web) OR Bearer token (mobile)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Expert Inbox",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/inbox?limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "inbox"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "unreadOnly",
+                  "value": "false",
+                  "disabled": true
+                },
+                {
+                  "key": "starredOnly",
+                  "value": "false",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get expert's email inbox with pagination.\n\nAuth: Cookie (web) OR Bearer token (mobile)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Expert Wallet",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/wallet",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "wallet"]
+            },
+            "description": "Get expert's wallet balance and transaction summary.\n\nAuth: Cookie (web) OR Bearer token (mobile)\n\nResponse:\n- balance: Current balance in cents\n- currency: USD or INR\n- totalDeposited: Lifetime deposits\n- totalSpent: Lifetime spend"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Expert Surveys",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/surveys",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "surveys"]
+            },
+            "description": "Get all surveys for the current expert (excludes archived).\n\nAuth: Cookie (web) OR Bearer token (mobile)\n\nResponse:\n- Array of Survey objects with id, title, status, responseCount, etc."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

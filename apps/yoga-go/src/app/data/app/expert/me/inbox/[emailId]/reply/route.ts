@@ -1,11 +1,13 @@
 /**
  * Expert Inbox Reply API
  * POST /data/app/expert/me/inbox/[emailId]/reply - Send reply to an email
+ *
+ * Supports dual auth: cookies (web) or Bearer token (mobile)
  */
 
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { getSessionFromCookies } from '@/lib/auth';
-import { getUserByCognitoSub } from '@/lib/repositories/userRepository';
+import { requireExpertAuthDual } from '@/lib/auth';
 import {
   findEmailById,
   createEmail,
@@ -20,38 +22,22 @@ interface RouteParams {
 
 interface ReplyRequestBody {
   subject?: string;
-  text: string;
+  text?: string;
+  body?: string; // Alternative field name for mobile
   html?: string;
   attachmentLinks?: string[];
 }
 
-export async function POST(request: Request, { params }: RouteParams) {
+export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     const { emailId } = await params;
     console.log('[DBG][inbox/reply] POST called for email:', emailId);
 
-    // Get session from cookies
-    const session = await getSessionFromCookies();
-    if (!session?.user?.cognitoSub) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' } as ApiResponse<null>, {
-        status: 401,
-      });
-    }
+    // Require expert authentication (supports both cookies and Bearer token)
+    const { user, session } = await requireExpertAuthDual(request);
+    console.log('[DBG][inbox/reply] Authenticated via', session.authType);
 
-    // Get user from database
-    const user = await getUserByCognitoSub(session.user.cognitoSub);
-    if (!user) {
-      return NextResponse.json({ success: false, error: 'User not found' } as ApiResponse<null>, {
-        status: 404,
-      });
-    }
-
-    // Check if user is an expert
-    const isExpert = Array.isArray(user.role)
-      ? user.role.includes('expert')
-      : user.role === 'expert';
-
-    if (!isExpert || !user.expertProfile) {
+    if (!user.expertProfile) {
       return NextResponse.json(
         { success: false, error: 'Expert profile not found' } as ApiResponse<null>,
         { status: 403 }
@@ -74,9 +60,12 @@ export async function POST(request: Request, { params }: RouteParams) {
     }
 
     // Parse request body
-    const body: ReplyRequestBody = await request.json();
+    const reqBody: ReplyRequestBody = await request.json();
 
-    if (!body.text || body.text.trim() === '') {
+    // Support both 'text' and 'body' field names
+    const replyText = reqBody.text || reqBody.body;
+
+    if (!replyText || replyText.trim() === '') {
       return NextResponse.json(
         { success: false, error: 'Reply text is required' } as ApiResponse<null>,
         { status: 400 }
@@ -85,7 +74,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     // Build reply subject
     const replySubject =
-      body.subject ||
+      reqBody.subject ||
       (originalEmail.subject.startsWith('Re: ')
         ? originalEmail.subject
         : `Re: ${originalEmail.subject}`);
@@ -97,10 +86,10 @@ export async function POST(request: Request, { params }: RouteParams) {
       expertId: user.expertProfile,
       to: originalEmail.from.email,
       subject: replySubject,
-      text: body.text,
-      html: body.html,
+      text: replyText,
+      html: reqBody.html,
       inReplyTo: originalEmail.messageId,
-      attachmentLinks: body.attachmentLinks,
+      attachmentLinks: reqBody.attachmentLinks,
     });
 
     console.log('[DBG][inbox/reply] Reply sent, messageId:', messageId);
@@ -129,8 +118,8 @@ export async function POST(request: Request, { params }: RouteParams) {
       },
       to: [originalEmail.from],
       subject: replySubject,
-      bodyText: body.text,
-      bodyHtml: body.html,
+      bodyText: replyText,
+      bodyHtml: reqBody.html,
       attachments: [], // Attachment links are in the body, not stored separately
       receivedAt: now,
       isOutgoing: true,

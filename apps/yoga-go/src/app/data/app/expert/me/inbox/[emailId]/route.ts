@@ -2,11 +2,13 @@
  * Expert Inbox Email Detail API Routes
  * GET /data/app/expert/me/inbox/[emailId] - Get single email
  * PATCH /data/app/expert/me/inbox/[emailId] - Update read/starred status
+ *
+ * Supports dual auth: cookies (web) or Bearer token (mobile)
  */
 
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
-import { getSessionFromCookies } from '@/lib/auth';
-import { getUserByCognitoSub } from '@/lib/repositories/userRepository';
+import { requireExpertAuthDual } from '@/lib/auth';
 import {
   findEmailById,
   updateEmailStatus,
@@ -19,36 +21,19 @@ interface RouteParams {
   params: Promise<{ emailId: string }>;
 }
 
-export async function GET(request: Request, { params }: RouteParams) {
+export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { emailId } = await params;
     console.log('[DBG][expert/me/inbox/[emailId]] GET called:', emailId);
 
-    // Get session from cookies
-    const session = await getSessionFromCookies();
-    if (!session?.user?.cognitoSub) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' } as ApiResponse<null>, {
-        status: 401,
-      });
-    }
+    // Require expert authentication (supports both cookies and Bearer token)
+    const { user, session } = await requireExpertAuthDual(request);
+    console.log('[DBG][expert/me/inbox/[emailId]] Authenticated via', session.authType);
 
-    // Get user from database
-    const user = await getUserByCognitoSub(session.user.cognitoSub);
-    if (!user) {
-      return NextResponse.json({ success: false, error: 'User not found' } as ApiResponse<null>, {
-        status: 404,
-      });
-    }
-
-    // Check if user is an expert
-    const isExpert = Array.isArray(user.role)
-      ? user.role.includes('expert')
-      : user.role === 'expert';
-
-    if (!isExpert || !user.expertProfile) {
+    if (!user.expertProfile) {
       return NextResponse.json(
         { success: false, error: 'Expert profile not found' } as ApiResponse<null>,
-        { status: 403 }
+        { status: 404 }
       );
     }
 
@@ -59,14 +44,6 @@ export async function GET(request: Request, { params }: RouteParams) {
       console.log('[DBG][expert/me/inbox/[emailId]] Email not found:', emailId);
       return NextResponse.json({ success: false, error: 'Email not found' } as ApiResponse<null>, {
         status: 404,
-      });
-    }
-
-    // Verify ownership
-    if (email.expertId !== user.expertProfile) {
-      console.log('[DBG][expert/me/inbox/[emailId]] Unauthorized access attempt');
-      return NextResponse.json({ success: false, error: 'Unauthorized' } as ApiResponse<null>, {
-        status: 403,
       });
     }
 
@@ -109,51 +86,28 @@ export async function GET(request: Request, { params }: RouteParams) {
   }
 }
 
-export async function PATCH(request: Request, { params }: RouteParams) {
+export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     const { emailId } = await params;
     console.log('[DBG][expert/me/inbox/[emailId]] PATCH called:', emailId);
 
-    // Get session from cookies
-    const session = await getSessionFromCookies();
-    if (!session?.user?.cognitoSub) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' } as ApiResponse<null>, {
-        status: 401,
-      });
-    }
+    // Require expert authentication (supports both cookies and Bearer token)
+    const { user, session } = await requireExpertAuthDual(request);
+    console.log('[DBG][expert/me/inbox/[emailId]] Authenticated via', session.authType);
 
-    // Get user from database
-    const user = await getUserByCognitoSub(session.user.cognitoSub);
-    if (!user) {
-      return NextResponse.json({ success: false, error: 'User not found' } as ApiResponse<null>, {
-        status: 404,
-      });
-    }
-
-    // Check if user is an expert
-    const isExpert = Array.isArray(user.role)
-      ? user.role.includes('expert')
-      : user.role === 'expert';
-
-    if (!isExpert || !user.expertProfile) {
+    if (!user.expertProfile) {
       return NextResponse.json(
         { success: false, error: 'Expert profile not found' } as ApiResponse<null>,
-        { status: 403 }
+        { status: 404 }
       );
     }
 
-    // Get existing email to verify ownership and get receivedAt
+    // Get existing email to get receivedAt
     const existingEmail = await findEmailById(emailId, user.expertProfile);
 
     if (!existingEmail) {
       return NextResponse.json({ success: false, error: 'Email not found' } as ApiResponse<null>, {
         status: 404,
-      });
-    }
-
-    if (existingEmail.expertId !== user.expertProfile) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' } as ApiResponse<null>, {
-        status: 403,
       });
     }
 
@@ -207,51 +161,28 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   }
 }
 
-export async function DELETE(_request: Request, { params }: RouteParams) {
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { emailId } = await params;
     console.log('[DBG][expert/me/inbox/[emailId]] DELETE called:', emailId);
 
-    // Get session from cookies
-    const session = await getSessionFromCookies();
-    if (!session?.user?.cognitoSub) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' } as ApiResponse<null>, {
-        status: 401,
-      });
-    }
+    // Require expert authentication (supports both cookies and Bearer token)
+    const { user, session } = await requireExpertAuthDual(request);
+    console.log('[DBG][expert/me/inbox/[emailId]] Authenticated via', session.authType);
 
-    // Get user from database
-    const user = await getUserByCognitoSub(session.user.cognitoSub);
-    if (!user) {
-      return NextResponse.json({ success: false, error: 'User not found' } as ApiResponse<null>, {
-        status: 404,
-      });
-    }
-
-    // Check if user is an expert
-    const isExpert = Array.isArray(user.role)
-      ? user.role.includes('expert')
-      : user.role === 'expert';
-
-    if (!isExpert || !user.expertProfile) {
+    if (!user.expertProfile) {
       return NextResponse.json(
         { success: false, error: 'Expert profile not found' } as ApiResponse<null>,
-        { status: 403 }
+        { status: 404 }
       );
     }
 
-    // Get existing email to verify ownership and get receivedAt
+    // Get existing email to get receivedAt
     const existingEmail = await findEmailById(emailId, user.expertProfile);
 
     if (!existingEmail) {
       return NextResponse.json({ success: false, error: 'Email not found' } as ApiResponse<null>, {
         status: 404,
-      });
-    }
-
-    if (existingEmail.expertId !== user.expertProfile) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' } as ApiResponse<null>, {
-        status: 403,
       });
     }
 

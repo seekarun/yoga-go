@@ -1,6 +1,29 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { SECTION_MAX_WIDTH } from '../../shared';
 import type { BlogSectionProps } from '../../types';
+
+const CF_SUBDOMAIN = process.env.NEXT_PUBLIC_CF_SUBDOMAIN || 'iq7mgkvtb3bwxqf5';
+
+// Check if URL is a Cloudflare video ID (32 char hex)
+const isCloudflareVideoId = (url: string) => /^[a-f0-9]{32}$/.test(url);
+
+// Get Cloudflare iframe URL from video ID
+const getCloudflareVideoUrl = (videoId: string) =>
+  `https://customer-${CF_SUBDOMAIN}.cloudflarestream.com/${videoId}/iframe`;
+
+function formatRelativeTime(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffInSeconds < 60) return 'just now';
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+  if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
 
 export default function BlogSection({ title, description, latestPost }: BlogSectionProps) {
   return (
@@ -23,7 +46,7 @@ export default function BlogSection({ title, description, latestPost }: BlogSect
               letterSpacing: '-0.02em',
             }}
           >
-            {title || 'From the Blog'}
+            {title || 'Latest Posts'}
           </h2>
           <p
             style={{
@@ -32,105 +55,95 @@ export default function BlogSection({ title, description, latestPost }: BlogSect
               lineHeight: '1.6',
             }}
           >
-            {description || 'Insights, tips, and articles from our expert'}
+            {description || 'Updates and insights from our expert'}
           </p>
         </div>
 
         {/* Featured Post Card */}
         {latestPost && (
-          <Link
-            href={`/blog/${latestPost.id}`}
-            style={{
-              display: 'block',
-              background: 'rgba(255,255,255,0.03)',
-              borderRadius: '24px',
-              overflow: 'hidden',
-              marginBottom: '32px',
-              border: '1px solid rgba(255,255,255,0.08)',
-              textDecoration: 'none',
-              color: 'inherit',
-              transition: 'transform 0.3s, box-shadow 0.3s',
-            }}
-          >
-            {latestPost.coverImage && (
-              <div
-                style={{
-                  width: '100%',
-                  height: '280px',
-                  background: `url(${latestPost.coverImage}) center/cover`,
-                  position: 'relative',
-                }}
-              >
-                {/* Gradient overlay */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    height: '50%',
-                    background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)',
-                  }}
-                />
+          <div style={{ maxWidth: '500px', margin: '0 auto 32px' }}>
+            <Link
+              href={`/blog/${latestPost.id}`}
+              style={{
+                display: 'block',
+                background: 'rgba(255,255,255,0.03)',
+                borderRadius: '16px',
+                overflow: 'hidden',
+                border: '1px solid rgba(255,255,255,0.08)',
+                textDecoration: 'none',
+                color: 'inherit',
+              }}
+            >
+              {latestPost.media && latestPost.media.length > 0 && (
+                <div style={{ position: 'relative', width: '100%', aspectRatio: '1' }}>
+                  {latestPost.media[0].type === 'image' ? (
+                    <Image
+                      src={latestPost.media[0].url}
+                      alt="Post media"
+                      fill
+                      style={{ objectFit: 'cover' }}
+                    />
+                  ) : latestPost.media[0].type === 'video' ? (
+                    isCloudflareVideoId(latestPost.media[0].url) ||
+                    latestPost.media[0].url.includes('cloudflarestream.com') ? (
+                      <iframe
+                        src={
+                          isCloudflareVideoId(latestPost.media[0].url)
+                            ? getCloudflareVideoUrl(latestPost.media[0].url)
+                            : latestPost.media[0].url
+                        }
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: '100%',
+                          height: '100%',
+                          border: 'none',
+                        }}
+                        allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
+                        allowFullScreen
+                      />
+                    ) : latestPost.media[0].thumbnailUrl ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={latestPost.media[0].thumbnailUrl}
+                        alt="Video thumbnail"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                        }}
+                      />
+                    ) : null
+                  ) : null}
+                </div>
+              )}
+
+              <div style={{ padding: '20px' }}>
+                {latestPost.content && (
+                  <p
+                    style={{
+                      fontSize: '15px',
+                      color: 'rgba(255,255,255,0.85)',
+                      lineHeight: '1.6',
+                      marginBottom: '12px',
+                      display: '-webkit-box',
+                      WebkitLineClamp: 3,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                      whiteSpace: 'pre-wrap',
+                    }}
+                  >
+                    {latestPost.content}
+                  </p>
+                )}
+
+                <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>
+                  {formatRelativeTime(latestPost.publishedAt || latestPost.createdAt || '')}
+                </p>
               </div>
-            )}
-
-            <div style={{ padding: '32px' }}>
-              {/* Category/Tag */}
-              <span
-                style={{
-                  display: 'inline-block',
-                  padding: '6px 12px',
-                  background: 'var(--brand-100)',
-                  color: 'var(--brand-700)',
-                  borderRadius: '6px',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  marginBottom: '16px',
-                  textTransform: 'uppercase',
-                }}
-              >
-                Featured
-              </span>
-
-              <h3
-                style={{
-                  fontSize: '24px',
-                  fontWeight: '700',
-                  color: '#fff',
-                  marginBottom: '12px',
-                  lineHeight: '1.3',
-                }}
-              >
-                {latestPost.title}
-              </h3>
-
-              <p
-                style={{
-                  fontSize: '16px',
-                  color: 'rgba(255,255,255,0.6)',
-                  lineHeight: '1.7',
-                  marginBottom: '20px',
-                }}
-              >
-                {latestPost.excerpt}
-              </p>
-
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  color: 'var(--brand-400)',
-                  fontSize: '15px',
-                  fontWeight: '600',
-                }}
-              >
-                Read article
-                <span style={{ fontSize: '18px' }}>→</span>
-              </div>
-            </div>
-          </Link>
+            </Link>
+          </div>
         )}
 
         {/* View All Posts Button */}
@@ -152,7 +165,6 @@ export default function BlogSection({ title, description, latestPost }: BlogSect
             }}
           >
             View All Posts
-            <span style={{ fontSize: '18px' }}>→</span>
           </Link>
         </div>
       </div>

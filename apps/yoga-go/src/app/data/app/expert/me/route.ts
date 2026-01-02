@@ -1,48 +1,22 @@
+import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import type { ApiResponse, Expert } from '@/types';
-import { getSessionFromCookies, getUserByCognitoSub } from '@/lib/auth';
+import { requireExpertAuthDual } from '@/lib/auth';
 import * as expertRepository from '@/lib/repositories/expertRepository';
 
 /**
  * GET /data/app/expert/me
  * Get current user's expert profile
  *
- * Uses getSessionFromCookies() for Vercel compatibility
+ * Supports dual auth: cookies (web) or Bearer token (mobile)
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   console.log('[DBG][expert/me/route.ts] GET /data/app/expert/me called');
 
   try {
-    // Require authentication - use cookie-based session for Vercel
-    const session = await getSessionFromCookies();
-    if (!session || !session.user || !session.user.cognitoSub) {
-      console.log('[DBG][expert/me/route.ts] Unauthorized - no session');
-      return NextResponse.json({ success: false, error: 'Unauthorized' } as ApiResponse<Expert>, {
-        status: 401,
-      });
-    }
-
-    // Get user from DynamoDB
-    const user = await getUserByCognitoSub(session.user.cognitoSub);
-
-    if (!user) {
-      console.log('[DBG][expert/me/route.ts] User not found');
-      return NextResponse.json({ success: false, error: 'User not found' } as ApiResponse<Expert>, {
-        status: 404,
-      });
-    }
-
-    // Check if user is an expert (role is now an array)
-    const isExpert = Array.isArray(user.role)
-      ? user.role.includes('expert')
-      : user.role === 'expert';
-    if (!isExpert) {
-      console.log('[DBG][expert/me/route.ts] User is not an expert');
-      return NextResponse.json(
-        { success: false, error: 'User is not an expert' } as ApiResponse<Expert>,
-        { status: 403 }
-      );
-    }
+    // Require expert authentication (supports both cookies and Bearer token)
+    const { user, session } = await requireExpertAuthDual(request);
+    console.log('[DBG][expert/me/route.ts] Authenticated via', session.authType);
 
     // Get expert profile if it exists
     if (!user.expertProfile) {
@@ -68,13 +42,15 @@ export async function GET() {
     return NextResponse.json({ success: true, data: expert } as ApiResponse<Expert>);
   } catch (error) {
     console.error('[DBG][expert/me/route.ts] Error fetching expert profile:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to fetch expert profile',
-      } as ApiResponse<Expert>,
-      { status: 500 }
-    );
+
+    // Handle auth errors with appropriate status
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch expert profile';
+    const status =
+      errorMessage === 'Unauthorized' ? 401 : errorMessage.includes('Forbidden') ? 403 : 500;
+
+    return NextResponse.json({ success: false, error: errorMessage } as ApiResponse<Expert>, {
+      status,
+    });
   }
 }
 
@@ -82,45 +58,18 @@ export async function GET() {
  * PATCH /data/app/expert/me
  * Update current user's expert profile
  *
- * Uses getSessionFromCookies() for Vercel compatibility
+ * Supports dual auth: cookies (web) or Bearer token (mobile)
  */
-export async function PATCH(request: Request) {
+export async function PATCH(request: NextRequest) {
   console.log('[DBG][expert/me/route.ts] PATCH /data/app/expert/me called');
 
   try {
-    // Require authentication - use cookie-based session for Vercel
-    const session = await getSessionFromCookies();
-    if (!session || !session.user || !session.user.cognitoSub) {
-      console.log('[DBG][expert/me/route.ts] Unauthorized - no session');
-      return NextResponse.json({ success: false, error: 'Unauthorized' } as ApiResponse<Expert>, {
-        status: 401,
-      });
-    }
+    // Require expert authentication (supports both cookies and Bearer token)
+    const { user, session } = await requireExpertAuthDual(request);
+    console.log('[DBG][expert/me/route.ts] Authenticated via', session.authType);
 
     const updates = await request.json();
     console.log('[DBG][expert/me/route.ts] Received updates:', Object.keys(updates));
-
-    // Get user from DynamoDB
-    const user = await getUserByCognitoSub(session.user.cognitoSub);
-
-    if (!user) {
-      console.log('[DBG][expert/me/route.ts] User not found');
-      return NextResponse.json({ success: false, error: 'User not found' } as ApiResponse<Expert>, {
-        status: 404,
-      });
-    }
-
-    // Check if user is an expert (role is now an array)
-    const isExpertPatch = Array.isArray(user.role)
-      ? user.role.includes('expert')
-      : user.role === 'expert';
-    if (!isExpertPatch) {
-      console.log('[DBG][expert/me/route.ts] User is not an expert');
-      return NextResponse.json(
-        { success: false, error: 'User is not an expert' } as ApiResponse<Expert>,
-        { status: 403 }
-      );
-    }
 
     if (!user.expertProfile) {
       console.log('[DBG][expert/me/route.ts] Expert profile not found');
@@ -152,12 +101,14 @@ export async function PATCH(request: Request) {
     } as ApiResponse<Expert>);
   } catch (error) {
     console.error('[DBG][expert/me/route.ts] Error updating expert profile:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to update expert profile',
-      } as ApiResponse<Expert>,
-      { status: 500 }
-    );
+
+    // Handle auth errors with appropriate status
+    const errorMessage = error instanceof Error ? error.message : 'Failed to update expert profile';
+    const status =
+      errorMessage === 'Unauthorized' ? 401 : errorMessage.includes('Forbidden') ? 403 : 500;
+
+    return NextResponse.json({ success: false, error: errorMessage } as ApiResponse<Expert>, {
+      status,
+    });
   }
 }

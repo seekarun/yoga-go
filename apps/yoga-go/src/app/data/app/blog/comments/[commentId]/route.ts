@@ -1,13 +1,13 @@
 /**
- * Single Blog Comment API Route (Authenticated)
+ * Single Post Comment API Route (Authenticated)
  * PUT /data/app/blog/comments/[commentId] - Edit own comment
  * DELETE /data/app/blog/comments/[commentId] - Delete own comment (or expert can delete)
  */
 
 import { NextResponse } from 'next/server';
-import type { ApiResponse, BlogComment } from '@/types';
+import type { ApiResponse, PostComment } from '@/types';
 import { getSession, getUserByCognitoSub } from '@/lib/auth';
-import { getBlogPostById } from '@/lib/repositories/blogPostRepository';
+import { getPostById } from '@/lib/repositories/postRepository';
 import {
   getCommentById,
   updateBlogComment,
@@ -71,7 +71,7 @@ export async function PUT(
       );
     }
 
-    const response: ApiResponse<BlogComment> = {
+    const response: ApiResponse<PostComment> = {
       success: true,
       data: updatedComment,
     };
@@ -123,7 +123,7 @@ export async function DELETE(
     }
 
     // Get the post to check if user is the expert
-    const post = await getBlogPostById(postId);
+    const post = await getPostById(postId);
 
     // Allow deletion if user is comment author OR expert who owns the post
     const isCommentAuthor = comment.userId === user.id;

@@ -1,13 +1,13 @@
 /**
- * Blog Like API Route (Authenticated)
+ * Post Like API Route (Authenticated)
  * GET /data/app/blog/[postId]/like - Get user's like status for a post
- * POST /data/app/blog/[postId]/like - Toggle like on a blog post
+ * POST /data/app/blog/[postId]/like - Toggle like on a post
  */
 
 import { NextResponse } from 'next/server';
 import type { ApiResponse } from '@/types';
 import { getSession, getUserByCognitoSub } from '@/lib/auth';
-import { getBlogPostById } from '@/lib/repositories/blogPostRepository';
+import { getPostById } from '@/lib/repositories/postRepository';
 import { getLikeStatus, toggleLike } from '@/lib/repositories/blogLikeRepository';
 
 export async function GET(request: Request, { params }: { params: Promise<{ postId: string }> }) {
@@ -27,9 +27,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ post
     }
 
     // Verify the post exists
-    const post = await getBlogPostById(postId);
+    const post = await getPostById(postId);
     if (!post || post.status !== 'published') {
-      return NextResponse.json({ success: false, error: 'Blog post not found' }, { status: 404 });
+      return NextResponse.json({ success: false, error: 'Post not found' }, { status: 404 });
     }
 
     const liked = await getLikeStatus(postId, user.id);
@@ -69,15 +69,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ pos
     }
 
     // Verify the post exists and is published
-    const post = await getBlogPostById(postId);
+    const post = await getPostById(postId);
     if (!post || post.status !== 'published') {
-      return NextResponse.json({ success: false, error: 'Blog post not found' }, { status: 404 });
+      return NextResponse.json({ success: false, error: 'Post not found' }, { status: 404 });
     }
 
     const result = await toggleLike(postId, user.id);
 
     // Get updated like count
-    const updatedPost = await getBlogPostById(postId);
+    const updatedPost = await getPostById(postId);
 
     const response: ApiResponse<{ liked: boolean; likeCount: number }> = {
       success: true,

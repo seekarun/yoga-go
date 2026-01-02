@@ -12,7 +12,7 @@
 import { GetCommand, BatchWriteCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { docClient, Tables, BlogPK, EntityType } from '../dynamodb';
 import type { BlogLike } from '@/types';
-import { incrementLikeCount } from './blogPostRepository';
+import { incrementLikeCount } from './postRepository';
 
 /**
  * Toggle like status for a user on a post

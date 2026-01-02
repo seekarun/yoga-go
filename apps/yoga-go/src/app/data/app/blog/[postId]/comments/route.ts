@@ -1,12 +1,12 @@
 /**
- * Blog Comments API Route (Authenticated)
- * POST /data/app/blog/[postId]/comments - Add a comment to a blog post
+ * Post Comments API Route (Authenticated)
+ * POST /data/app/blog/[postId]/comments - Add a comment to a post
  */
 
 import { NextResponse } from 'next/server';
-import type { ApiResponse, BlogComment } from '@/types';
+import type { ApiResponse, PostComment } from '@/types';
 import { getSession, getUserByCognitoSub } from '@/lib/auth';
-import { getBlogPostById } from '@/lib/repositories/blogPostRepository';
+import { getPostById } from '@/lib/repositories/postRepository';
 import { createBlogComment } from '@/lib/repositories/blogCommentRepository';
 
 export async function POST(request: Request, { params }: { params: Promise<{ postId: string }> }) {
@@ -26,9 +26,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ pos
     }
 
     // Verify the post exists and is published
-    const post = await getBlogPostById(postId);
+    const post = await getPostById(postId);
     if (!post || post.status !== 'published') {
-      return NextResponse.json({ success: false, error: 'Blog post not found' }, { status: 404 });
+      return NextResponse.json({ success: false, error: 'Post not found' }, { status: 404 });
     }
 
     const body = await request.json();
@@ -50,7 +50,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ pos
       content: body.content.trim(),
     });
 
-    const response: ApiResponse<BlogComment> = {
+    const response: ApiResponse<PostComment> = {
       success: true,
       data: comment,
     };

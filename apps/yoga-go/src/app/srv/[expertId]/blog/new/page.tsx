@@ -3,33 +3,31 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import type { User, BlogPostStatus, BlogPostAttachment, Expert } from '@/types';
-import { BlogPostEditor } from '@/components/blog';
+import type { User, PostMedia, PostStatus } from '@/types';
+import PostComposer from '@/components/PostComposer';
 import NotificationOverlay from '@/components/NotificationOverlay';
 
-export default function NewBlogPostPage() {
+export default function NewPostPage() {
   const params = useParams();
   const router = useRouter();
   const expertId = params.expertId as string;
 
   const [authChecking, setAuthChecking] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [heroImage, setHeroImage] = useState<string | undefined>(undefined);
   const [notification, setNotification] = useState<{
     message: string;
     type: 'error';
   } | null>(null);
 
-  // Check authorization and fetch hero image
+  // Check authorization
   useEffect(() => {
     checkAuthorization();
-    fetchHeroImage();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [expertId]);
 
   const checkAuthorization = async () => {
     try {
-      console.log('[DBG][new-blog-post] Checking authorization');
+      console.log('[DBG][new-post] Checking authorization');
 
       const response = await fetch('/api/auth/me');
       const data = await response.json();
@@ -51,43 +49,15 @@ export default function NewBlogPostPage() {
 
       setAuthChecking(false);
     } catch (err) {
-      console.error('[DBG][new-blog-post] Error:', err);
+      console.error('[DBG][new-post] Error:', err);
       router.push('/');
     }
   };
 
-  // Fetch expert's hero image from landing page config
-  const fetchHeroImage = async () => {
-    try {
-      const response = await fetch(`/data/experts/${expertId}`);
-      const data = await response.json();
-
-      if (data.success && data.data) {
-        const expert: Expert = data.data;
-        // Try published landing page first, then draft
-        const heroImg =
-          expert.customLandingPage?.hero?.heroImage || expert.draftLandingPage?.hero?.heroImage;
-        if (heroImg) {
-          console.log('[DBG][new-blog-post] Using hero image as default cover:', heroImg);
-          setHeroImage(heroImg);
-        }
-      }
-    } catch (err) {
-      console.log('[DBG][new-blog-post] Could not fetch hero image:', err);
-    }
-  };
-
-  const handleSave = async (post: {
-    title: string;
-    content: string;
-    coverImage?: string;
-    status: BlogPostStatus;
-    tags: string[];
-    attachments: BlogPostAttachment[];
-  }) => {
+  const handleSave = async (data: { content: string; media: PostMedia[]; status: PostStatus }) => {
     setIsSaving(true);
     try {
-      console.log('[DBG][new-blog-post] Creating post:', post.title);
+      console.log('[DBG][new-post] Creating post');
 
       const response = await fetch('/data/app/expert/me/blog', {
         method: 'POST',
@@ -95,19 +65,19 @@ export default function NewBlogPostPage() {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify(post),
+        body: JSON.stringify(data),
       });
 
-      const data = await response.json();
+      const result = await response.json();
 
-      if (data.success) {
-        console.log('[DBG][new-blog-post] Post created:', data.data.id);
+      if (result.success) {
+        console.log('[DBG][new-post] Post created:', result.data.id);
         router.push(`/srv/${expertId}/blog`);
       } else {
-        setNotification({ message: data.error || 'Failed to create post', type: 'error' });
+        setNotification({ message: result.error || 'Failed to create post', type: 'error' });
       }
     } catch (err) {
-      console.error('[DBG][new-blog-post] Error:', err);
+      console.error('[DBG][new-post] Error:', err);
       setNotification({ message: 'Failed to create post', type: 'error' });
     } finally {
       setIsSaving(false);
@@ -120,57 +90,37 @@ export default function NewBlogPostPage() {
 
   if (authChecking) {
     return (
-      <div style={{ paddingTop: '64px', minHeight: '100vh', background: '#f8f8f8' }}>
-        <div
-          className="container"
-          style={{ maxWidth: '800px', margin: '0 auto', padding: '40px 20px' }}
-        >
-          <div style={{ textAlign: 'center', padding: '60px' }}>
-            <div style={{ fontSize: '16px', color: '#666' }}>Loading...</div>
-          </div>
+      <div className="min-h-screen bg-gray-50 pt-16">
+        <div className="max-w-2xl mx-auto px-4 py-10">
+          <div className="text-center text-gray-500">Loading...</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{ paddingTop: '64px', minHeight: '100vh', background: '#f8f8f8' }}>
+    <div className="min-h-screen bg-gray-50 pt-16">
       {/* Header */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #eee' }}>
-        <div
-          className="container"
-          style={{ maxWidth: '800px', margin: '0 auto', padding: '24px 20px' }}
-        >
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-2xl mx-auto px-4 py-6">
           <Link
             href={`/srv/${expertId}/blog`}
-            style={{
-              color: '#666',
-              fontSize: '14px',
-              textDecoration: 'none',
-              marginBottom: '8px',
-              display: 'inline-block',
-            }}
+            className="text-gray-500 text-sm hover:text-gray-700 mb-2 inline-block"
           >
-            ← Back to Blog Management
+            ← Back to Posts
           </Link>
-          <h1 style={{ fontSize: '28px', fontWeight: '700', color: '#111' }}>New Blog Post</h1>
+          <h1 className="text-2xl font-bold text-gray-900">New Post</h1>
         </div>
       </div>
 
       {/* Editor */}
-      <div
-        className="container"
-        style={{ maxWidth: '800px', margin: '0 auto', padding: '40px 20px' }}
-      >
-        <div style={{ background: '#fff', borderRadius: '12px', padding: '32px' }}>
-          <BlogPostEditor
-            expertId={expertId}
-            defaultCoverImage={heroImage}
-            onSave={handleSave}
-            onCancel={handleCancel}
-            isSaving={isSaving}
-          />
-        </div>
+      <div className="max-w-2xl mx-auto px-4 py-8">
+        <PostComposer
+          expertId={expertId}
+          onSave={handleSave}
+          onCancel={handleCancel}
+          isSaving={isSaving}
+        />
       </div>
 
       {/* Notification Overlay */}

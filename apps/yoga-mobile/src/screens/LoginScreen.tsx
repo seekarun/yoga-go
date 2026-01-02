@@ -66,8 +66,17 @@ export default function LoginScreen() {
     try {
       const response = await login(email.trim().toLowerCase(), password);
 
-      if (response.success && response.user) {
-        await signIn(response.user, response.user.id);
+      if (
+        response.success &&
+        response.user &&
+        response.accessToken &&
+        response.refreshToken
+      ) {
+        await signIn(
+          response.user,
+          response.accessToken,
+          response.refreshToken,
+        );
       } else {
         setError(response.message || "Invalid credentials");
       }

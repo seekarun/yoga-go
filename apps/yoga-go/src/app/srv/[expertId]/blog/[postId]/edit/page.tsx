@@ -3,17 +3,17 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import type { User, BlogPost, BlogPostStatus, BlogPostAttachment } from '@/types';
-import { BlogPostEditor } from '@/components/blog';
+import type { User, Post, PostMedia, PostStatus } from '@/types';
+import PostComposer from '@/components/PostComposer';
 import NotificationOverlay from '@/components/NotificationOverlay';
 
-export default function EditBlogPostPage() {
+export default function EditPostPage() {
   const params = useParams();
   const router = useRouter();
   const expertId = params.expertId as string;
   const postId = params.postId as string;
 
-  const [post, setPost] = useState<BlogPost | null>(null);
+  const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
   const [authChecking, setAuthChecking] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -39,7 +39,7 @@ export default function EditBlogPostPage() {
 
   const checkAuthorization = async () => {
     try {
-      console.log('[DBG][edit-blog-post] Checking authorization');
+      console.log('[DBG][edit-post] Checking authorization');
 
       const response = await fetch('/api/auth/me');
       const data = await response.json();
@@ -61,14 +61,14 @@ export default function EditBlogPostPage() {
 
       setAuthChecking(false);
     } catch (err) {
-      console.error('[DBG][edit-blog-post] Error:', err);
+      console.error('[DBG][edit-post] Error:', err);
       router.push('/');
     }
   };
 
   const fetchPost = async () => {
     try {
-      console.log('[DBG][edit-blog-post] Fetching post:', postId);
+      console.log('[DBG][edit-post] Fetching post:', postId);
 
       const response = await fetch(`/data/app/expert/me/blog/${postId}`, {
         credentials: 'include',
@@ -77,29 +77,22 @@ export default function EditBlogPostPage() {
 
       if (data.success) {
         setPost(data.data);
-        console.log('[DBG][edit-blog-post] Post loaded:', data.data.title);
+        console.log('[DBG][edit-post] Post loaded');
       } else {
         setError(data.error || 'Failed to load post');
       }
     } catch (err) {
-      console.error('[DBG][edit-blog-post] Error:', err);
+      console.error('[DBG][edit-post] Error:', err);
       setError('Failed to load post');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSave = async (postData: {
-    title: string;
-    content: string;
-    coverImage?: string;
-    status: BlogPostStatus;
-    tags: string[];
-    attachments: BlogPostAttachment[];
-  }) => {
+  const handleSave = async (data: { content: string; media: PostMedia[]; status: PostStatus }) => {
     setIsSaving(true);
     try {
-      console.log('[DBG][edit-blog-post] Updating post:', postId);
+      console.log('[DBG][edit-post] Updating post:', postId);
 
       const response = await fetch(`/data/app/expert/me/blog/${postId}`, {
         method: 'PUT',
@@ -107,19 +100,19 @@ export default function EditBlogPostPage() {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify(postData),
+        body: JSON.stringify(data),
       });
 
-      const data = await response.json();
+      const result = await response.json();
 
-      if (data.success) {
-        console.log('[DBG][edit-blog-post] Post updated');
+      if (result.success) {
+        console.log('[DBG][edit-post] Post updated');
         router.push(`/srv/${expertId}/blog`);
       } else {
-        setNotification({ message: data.error || 'Failed to update post', type: 'error' });
+        setNotification({ message: result.error || 'Failed to update post', type: 'error' });
       }
     } catch (err) {
-      console.error('[DBG][edit-blog-post] Error:', err);
+      console.error('[DBG][edit-post] Error:', err);
       setNotification({ message: 'Failed to update post', type: 'error' });
     } finally {
       setIsSaving(false);
@@ -132,14 +125,9 @@ export default function EditBlogPostPage() {
 
   if (authChecking || loading) {
     return (
-      <div style={{ paddingTop: '64px', minHeight: '100vh', background: '#f8f8f8' }}>
-        <div
-          className="container"
-          style={{ maxWidth: '800px', margin: '0 auto', padding: '40px 20px' }}
-        >
-          <div style={{ textAlign: 'center', padding: '60px' }}>
-            <div style={{ fontSize: '16px', color: '#666' }}>Loading...</div>
-          </div>
+      <div className="min-h-screen bg-gray-50 pt-16">
+        <div className="max-w-2xl mx-auto px-4 py-10">
+          <div className="text-center text-gray-500">Loading...</div>
         </div>
       </div>
     );
@@ -147,24 +135,12 @@ export default function EditBlogPostPage() {
 
   if (error || !post) {
     return (
-      <div style={{ paddingTop: '64px', minHeight: '100vh', background: '#f8f8f8' }}>
-        <div
-          className="container"
-          style={{ maxWidth: '800px', margin: '0 auto', padding: '40px 20px' }}
-        >
-          <div
-            style={{
-              textAlign: 'center',
-              padding: '60px',
-              background: '#fff',
-              borderRadius: '16px',
-            }}
-          >
-            <h2 style={{ fontSize: '24px', marginBottom: '16px', color: '#dc2626' }}>
-              {error || 'Post not found'}
-            </h2>
-            <Link href={`/srv/${expertId}/blog`} style={{ color: 'var(--color-primary)' }}>
-              ← Back to Blog Management
+      <div className="min-h-screen bg-gray-50 pt-16">
+        <div className="max-w-2xl mx-auto px-4 py-10">
+          <div className="text-center py-16 bg-white rounded-xl">
+            <h2 className="text-xl font-semibold text-red-600 mb-4">{error || 'Post not found'}</h2>
+            <Link href={`/srv/${expertId}/blog`} className="text-primary hover:underline">
+              Back to Posts
             </Link>
           </div>
         </div>
@@ -173,43 +149,29 @@ export default function EditBlogPostPage() {
   }
 
   return (
-    <div style={{ paddingTop: '64px', minHeight: '100vh', background: '#f8f8f8' }}>
+    <div className="min-h-screen bg-gray-50 pt-16">
       {/* Header */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #eee' }}>
-        <div
-          className="container"
-          style={{ maxWidth: '800px', margin: '0 auto', padding: '24px 20px' }}
-        >
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-2xl mx-auto px-4 py-6">
           <Link
             href={`/srv/${expertId}/blog`}
-            style={{
-              color: '#666',
-              fontSize: '14px',
-              textDecoration: 'none',
-              marginBottom: '8px',
-              display: 'inline-block',
-            }}
+            className="text-gray-500 text-sm hover:text-gray-700 mb-2 inline-block"
           >
-            ← Back to Blog Management
+            Back to Posts
           </Link>
-          <h1 style={{ fontSize: '28px', fontWeight: '700', color: '#111' }}>Edit Blog Post</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Edit Post</h1>
         </div>
       </div>
 
       {/* Editor */}
-      <div
-        className="container"
-        style={{ maxWidth: '800px', margin: '0 auto', padding: '40px 20px' }}
-      >
-        <div style={{ background: '#fff', borderRadius: '12px', padding: '32px' }}>
-          <BlogPostEditor
-            expertId={expertId}
-            initialPost={post}
-            onSave={handleSave}
-            onCancel={handleCancel}
-            isSaving={isSaving}
-          />
-        </div>
+      <div className="max-w-2xl mx-auto px-4 py-8">
+        <PostComposer
+          expertId={expertId}
+          initialPost={post}
+          onSave={handleSave}
+          onCancel={handleCancel}
+          isSaving={isSaving}
+        />
       </div>
 
       {/* Notification Overlay */}

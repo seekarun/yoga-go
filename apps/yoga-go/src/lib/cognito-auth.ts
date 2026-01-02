@@ -312,6 +312,61 @@ export function isCognitoError(error: unknown, errorName: string): boolean {
   );
 }
 
+export interface RefreshTokenParams {
+  refreshToken: string;
+  cognitoSub: string;
+}
+
+export interface RefreshTokenResult {
+  success: boolean;
+  accessToken?: string;
+  idToken?: string;
+  expiresIn?: number;
+  message: string;
+}
+
+/**
+ * Refresh access token using refresh token
+ * Note: Cognito refresh does NOT return a new refresh token
+ */
+export async function refreshTokens(params: RefreshTokenParams): Promise<RefreshTokenResult> {
+  const { refreshToken, cognitoSub } = params;
+
+  try {
+    console.log('[DBG][cognito-auth] Refreshing tokens for user:', cognitoSub);
+
+    const command = new InitiateAuthCommand({
+      ClientId: cognitoConfig.clientId,
+      AuthFlow: 'REFRESH_TOKEN_AUTH',
+      AuthParameters: {
+        REFRESH_TOKEN: refreshToken,
+        SECRET_HASH: calculateSecretHash(cognitoSub),
+      },
+    });
+
+    const response = await client.send(command);
+
+    if (response.AuthenticationResult) {
+      console.log('[DBG][cognito-auth] Token refresh successful');
+      return {
+        success: true,
+        accessToken: response.AuthenticationResult.AccessToken,
+        idToken: response.AuthenticationResult.IdToken,
+        expiresIn: response.AuthenticationResult.ExpiresIn,
+        message: 'Token refreshed successfully.',
+      };
+    }
+
+    return {
+      success: false,
+      message: 'Token refresh failed.',
+    };
+  } catch (error) {
+    console.error('[DBG][cognito-auth] refreshTokens error:', error);
+    throw error;
+  }
+}
+
 /**
  * Check if a user exists in Cognito by their cognitoSub (username)
  * Uses AdminGetUser which requires IAM permissions

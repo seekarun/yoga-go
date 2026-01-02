@@ -1,20 +1,14 @@
 /**
  * GET /api/auth/mobile/me
  * Get current user for mobile clients using Authorization header
- * Expects: Authorization: Bearer <token>
+ * Expects: Authorization: Bearer <cognito-access-token>
+ *
+ * Verifies the Cognito access token against Cognito's JWKS
  */
 import { NextResponse } from 'next/server';
-import { jwtVerify } from 'jose';
 import { getUserByCognitoSub } from '@/lib/auth';
+import { getAccessTokenVerifier } from '@/lib/cognito';
 import type { ApiResponse, User } from '@/types';
-
-interface MobileTokenPayload {
-  sub: string;
-  email: string;
-  name?: string;
-  platform: string;
-  aud: string;
-}
 
 export async function GET(request: Request) {
   console.log('[DBG][mobile/me] GET /api/auth/mobile/me called');
@@ -34,15 +28,23 @@ export async function GET(request: Request) {
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
 
-    // Verify and decode the token
-    const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET);
+    // Verify Cognito access token
+    const verifier = getAccessTokenVerifier();
 
-    let payload: MobileTokenPayload;
+    if (!verifier) {
+      console.error('[DBG][mobile/me] Access token verifier not available');
+      const response: ApiResponse<null> = {
+        success: false,
+        error: 'Authentication service unavailable',
+      };
+      return NextResponse.json(response, { status: 500 });
+    }
+
+    let cognitoSub: string;
     try {
-      const verified = await jwtVerify(token, secret, {
-        audience: 'yoga-mobile',
-      });
-      payload = verified.payload as unknown as MobileTokenPayload;
+      const payload = await verifier.verify(token);
+      cognitoSub = payload.sub;
+      console.log('[DBG][mobile/me] Cognito token verified for sub:', cognitoSub);
     } catch (jwtError) {
       console.error('[DBG][mobile/me] Token verification failed:', jwtError);
       const response: ApiResponse<null> = {
@@ -52,17 +54,6 @@ export async function GET(request: Request) {
       return NextResponse.json(response, { status: 401 });
     }
 
-    // Verify this is a mobile token
-    if (payload.platform !== 'mobile') {
-      console.log('[DBG][mobile/me] Token is not a mobile token');
-      const response: ApiResponse<null> = {
-        success: false,
-        error: 'Invalid token type',
-      };
-      return NextResponse.json(response, { status: 401 });
-    }
-
-    const cognitoSub = payload.sub;
     if (!cognitoSub) {
       console.log('[DBG][mobile/me] No sub in token');
       const response: ApiResponse<null> = {
@@ -71,8 +62,6 @@ export async function GET(request: Request) {
       };
       return NextResponse.json(response, { status: 401 });
     }
-
-    console.log('[DBG][mobile/me] Token valid for cognitoSub:', cognitoSub);
 
     // Get user from DynamoDB
     const user = await getUserByCognitoSub(cognitoSub);

@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import type { SectionEditorProps } from '../types';
-import type { BlogPost } from '@/types';
+import type { Post } from '@/types';
 
 export default function BlogEditor({ data, onChange, expertId }: SectionEditorProps) {
   const blog = data.blog || {};
-  const [latestPost, setLatestPost] = useState<BlogPost | null>(null);
+  const [latestPost, setLatestPost] = useState<Post | null>(null);
   const [postCount, setPostCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
@@ -42,6 +42,13 @@ export default function BlogEditor({ data, onChange, expertId }: SectionEditorPr
     });
   };
 
+  // Truncate content for preview
+  const getPostPreview = (post: Post): string => {
+    const text = post.content || '';
+    if (text.length <= 40) return text;
+    return text.substring(0, 40) + '...';
+  };
+
   return (
     <div className="space-y-6">
       {/* Info Box */}
@@ -62,8 +69,8 @@ export default function BlogEditor({ data, onChange, expertId }: SectionEditorPr
           </svg>
           <div>
             <p className="text-sm text-blue-800">
-              This section automatically displays your latest blog post. Create blog posts from the
-              Blog Management page.
+              This section automatically displays your latest post. Create posts from the Posts
+              page.
             </p>
           </div>
         </div>
@@ -71,7 +78,7 @@ export default function BlogEditor({ data, onChange, expertId }: SectionEditorPr
 
       {/* Blog Stats */}
       <div className="bg-gray-50 rounded-lg p-4">
-        <h4 className="text-sm font-medium text-gray-700 mb-3">Blog Status</h4>
+        <h4 className="text-sm font-medium text-gray-700 mb-3">Posts Status</h4>
         {loading ? (
           <p className="text-sm text-gray-500">Loading...</p>
         ) : (
@@ -84,7 +91,7 @@ export default function BlogEditor({ data, onChange, expertId }: SectionEditorPr
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Latest Post</span>
                 <span className="text-sm font-medium text-gray-900 truncate max-w-[200px]">
-                  {latestPost.title}
+                  {getPostPreview(latestPost)}
                 </span>
               </div>
             )}
@@ -105,7 +112,7 @@ export default function BlogEditor({ data, onChange, expertId }: SectionEditorPr
                 d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
               />
             </svg>
-            Manage Blog Posts
+            Manage Posts
           </Link>
         </div>
       </div>
@@ -121,7 +128,7 @@ export default function BlogEditor({ data, onChange, expertId }: SectionEditorPr
             type="text"
             value={blog.title || ''}
             onChange={e => handleChange('title', e.target.value)}
-            placeholder="From the Blog"
+            placeholder="Latest Posts"
             className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
           />
         </div>
@@ -133,7 +140,7 @@ export default function BlogEditor({ data, onChange, expertId }: SectionEditorPr
             type="text"
             value={blog.description || ''}
             onChange={e => handleChange('description', e.target.value)}
-            placeholder="Insights, tips, and articles from our expert"
+            placeholder="Updates and insights from our expert"
             className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
           />
         </div>
@@ -157,9 +164,9 @@ export default function BlogEditor({ data, onChange, expertId }: SectionEditorPr
               />
             </svg>
             <div>
-              <p className="text-sm text-amber-800 font-medium">No blog posts yet</p>
+              <p className="text-sm text-amber-800 font-medium">No posts yet</p>
               <p className="text-sm text-amber-700 mt-1">
-                Create your first blog post to show this section on your landing page.
+                Create your first post to show this section on your landing page.
               </p>
               <Link
                 href={`/srv/${expertId}/blog/new`}

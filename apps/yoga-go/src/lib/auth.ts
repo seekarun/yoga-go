@@ -4,6 +4,7 @@ import { decode } from 'next-auth/jwt';
 import type { User as UserType, UserRole } from '@/types';
 import * as userRepository from './repositories/userRepository';
 import * as courseRepository from './repositories/courseRepository';
+import { getAccessTokenVerifier } from './cognito';
 
 interface DecodedToken {
   cognitoSub?: string;
@@ -366,3 +367,129 @@ export async function requireAdminAuth(): Promise<{
  * Backward compatible alias for getUserByCognitoSub
  */
 export const getUserByAuth0Id = getUserByCognitoSub;
+
+/**
+ * Dual auth session result - includes auth type for debugging/logging
+ */
+interface DualAuthSession {
+  user: {
+    cognitoSub: string;
+    email?: string;
+    name?: string;
+  };
+  authType: 'cookie' | 'bearer';
+}
+
+/**
+ * Get session from either cookies (web) or Bearer token (mobile)
+ * Tries cookie-based auth first, then falls back to Bearer token
+ *
+ * @param request - NextRequest object to extract auth from
+ * @returns Session object with auth type, or null if not authenticated
+ */
+export async function getSessionDual(request: NextRequest): Promise<DualAuthSession | null> {
+  // 1. Try cookie-based auth first (web)
+  const cookieSession = await getSessionFromRequest(request);
+  if (cookieSession?.user?.cognitoSub) {
+    return {
+      user: {
+        cognitoSub: cookieSession.user.cognitoSub,
+        email: cookieSession.user.email,
+        name: cookieSession.user.name,
+      },
+      authType: 'cookie',
+    };
+  }
+
+  // 2. Try Bearer token (mobile - Cognito access token)
+  const authHeader = request.headers.get('Authorization');
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    const verifier = getAccessTokenVerifier();
+
+    if (!verifier) {
+      console.error('[DBG][auth] Access token verifier not available');
+      return null;
+    }
+
+    try {
+      const payload = await verifier.verify(token);
+      console.log('[DBG][auth] Bearer token verified for sub:', payload.sub);
+
+      return {
+        user: {
+          cognitoSub: payload.sub,
+          // Note: Access tokens don't contain email/name - fetch from DB if needed
+        },
+        authType: 'bearer',
+      };
+    } catch (error) {
+      console.error('[DBG][auth] Bearer token verification failed:', error);
+      return null;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Require expert authentication with dual auth support (cookies or Bearer token)
+ * Use this in API routes that need to support both web and mobile
+ *
+ * @param request - NextRequest object to extract auth from
+ * @returns Session and user object
+ * @throws Error if not authenticated or not an expert
+ */
+export async function requireExpertAuthDual(request: NextRequest): Promise<{
+  session: DualAuthSession;
+  user: UserType;
+}> {
+  const session = await getSessionDual(request);
+
+  if (!session?.user?.cognitoSub) {
+    throw new Error('Unauthorized');
+  }
+
+  const user = await getUserByCognitoSub(session.user.cognitoSub);
+
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  if (!hasRole(user, 'expert')) {
+    throw new Error('Forbidden - Expert access required');
+  }
+
+  console.log('[DBG][auth] Expert auth passed via', session.authType, 'for user:', user.id);
+
+  return { session, user };
+}
+
+/**
+ * Require authentication with dual auth support (cookies or Bearer token)
+ * Use this in API routes that need to support both web and mobile
+ *
+ * @param request - NextRequest object to extract auth from
+ * @returns Session and user object
+ * @throws Error if not authenticated
+ */
+export async function requireAuthDual(request: NextRequest): Promise<{
+  session: DualAuthSession;
+  user: UserType;
+}> {
+  const session = await getSessionDual(request);
+
+  if (!session?.user?.cognitoSub) {
+    throw new Error('Unauthorized');
+  }
+
+  const user = await getUserByCognitoSub(session.user.cognitoSub);
+
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  console.log('[DBG][auth] Auth passed via', session.authType, 'for user:', user.id);
+
+  return { session, user };
+}

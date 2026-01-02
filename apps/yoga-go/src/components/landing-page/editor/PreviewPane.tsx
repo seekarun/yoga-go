@@ -3,7 +3,7 @@
 import { generatePalette, hexToHsl, hslToHex } from '@/lib/colorPalette';
 import { DEFAULT_FONT, WEB_FONTS } from '@/lib/webFonts';
 import type {
-  BlogPost,
+  Post,
   Course,
   CustomLandingPageConfig,
   Expert,
@@ -80,7 +80,7 @@ interface PreviewPaneProps {
   // Data for sections that display real content
   courses?: Course[];
   webinars?: Webinar[];
-  latestBlogPost?: BlogPost;
+  latestBlogPost?: Post;
   onSelectSection: (sectionId: SectionType | null) => void;
   onChange: (updates: Partial<CustomLandingPageConfig>) => void;
   // Optional render layout function for custom layouts

@@ -1,20 +1,21 @@
 /**
  * POST /api/auth/mobile/login
- * Mobile-specific login endpoint that returns a JWT token in the response body
+ * Mobile-specific login endpoint that returns Cognito tokens in the response body
  * (instead of setting a cookie like the web version)
+ *
+ * Returns:
+ * - accessToken: Cognito access token (use in Authorization: Bearer header)
+ * - refreshToken: Cognito refresh token (use to get new access token)
+ * - expiresIn: Access token expiry in seconds (typically 3600 = 1 hour)
  */
 import { NextResponse } from 'next/server';
 import { signIn, getUserInfo, getCognitoErrorMessage, isCognitoError } from '@/lib/cognito-auth';
 import { getOrCreateUser } from '@/lib/auth';
-import { SignJWT } from 'jose';
 
 interface LoginRequestBody {
   email: string;
   password: string;
 }
-
-// Mobile token expiry (7 days - shorter than web for security)
-const MOBILE_TOKEN_EXPIRY = '7d';
 
 export async function POST(request: Request) {
   console.log('[DBG][mobile/login] ========== MOBILE LOGIN ATTEMPT ==========');
@@ -65,34 +66,21 @@ export async function POST(request: Request) {
 
     console.log('[DBG][mobile/login] User from DynamoDB:', user.id, 'role:', user.role);
 
-    // Create a signed JWT token for mobile
-    const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET);
-
-    const token = await new SignJWT({
-      sub: userInfo.sub,
-      email: userInfo.email,
-      name: userInfo.name,
-      platform: 'mobile',
-    })
-      .setProtectedHeader({ alg: 'HS256' })
-      .setIssuedAt()
-      .setExpirationTime(MOBILE_TOKEN_EXPIRY)
-      .setAudience('yoga-mobile')
-      .sign(secret);
-
-    console.log('[DBG][mobile/login] Mobile token created for user:', user.id);
-
-    // Return token in response body (no cookie)
+    // Return Cognito tokens directly (no custom JWT)
     return NextResponse.json({
       success: true,
       message: 'Login successful.',
-      token,
+      accessToken: signInResult.accessToken,
+      refreshToken: signInResult.refreshToken,
+      expiresIn: signInResult.expiresIn || 3600,
       user: {
         id: user.id,
+        cognitoSub: userInfo.sub,
         email: user.profile.email,
         name: user.profile.name,
         role: user.role,
         avatar: user.profile.avatar,
+        expertProfile: user.expertProfile,
       },
     });
   } catch (error) {

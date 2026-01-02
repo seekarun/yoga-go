@@ -11,7 +11,7 @@
 import { PutCommand, QueryCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb';
 import { docClient, Tables, BlogPK, EntityType } from '../dynamodb';
 import type { BlogComment } from '@/types';
-import { incrementCommentCount } from './blogPostRepository';
+import { incrementCommentCount } from './postRepository';
 
 // Helper to generate a unique comment ID
 const generateCommentId = () => `cmt_${Date.now()}_${Math.random().toString(36).substring(7)}`;

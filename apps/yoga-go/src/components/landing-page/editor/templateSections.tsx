@@ -6,7 +6,7 @@
  * This ensures 100% visual consistency between editor preview and actual domain.
  */
 
-import type { CustomLandingPageConfig, Course, Webinar, BlogPost, Expert } from '@/types';
+import type { CustomLandingPageConfig, Course, Webinar, Post, Expert } from '@/types';
 import type { TemplateId, SectionType } from '@/templates/types';
 
 // Import Classic template sections
@@ -94,7 +94,7 @@ export interface EditorRenderContext {
   expertId: string;
   courses: Course[];
   webinars: Webinar[];
-  latestBlogPost?: BlogPost;
+  latestBlogPost?: Post;
 }
 
 // Default CTA link resolver for editor preview

@@ -14,7 +14,7 @@ export const cognitoConfig = {
   region: process.env.AWS_REGION || 'ap-southeast-2',
 };
 
-// JWT Verifier for validating Cognito tokens (used for API routes if needed)
+// JWT Verifier for validating Cognito ID tokens (used for API routes if needed)
 let jwtVerifier: ReturnType<typeof CognitoJwtVerifier.create> | null = null;
 
 export function getJwtVerifier() {
@@ -26,6 +26,20 @@ export function getJwtVerifier() {
     });
   }
   return jwtVerifier;
+}
+
+// JWT Verifier for validating Cognito Access tokens (used for mobile Bearer auth)
+let accessTokenVerifier: ReturnType<typeof CognitoJwtVerifier.create> | null = null;
+
+export function getAccessTokenVerifier() {
+  if (!accessTokenVerifier && cognitoConfig.userPoolId && cognitoConfig.clientId) {
+    accessTokenVerifier = CognitoJwtVerifier.create({
+      userPoolId: cognitoConfig.userPoolId,
+      tokenUse: 'access',
+      clientId: cognitoConfig.clientId,
+    });
+  }
+  return accessTokenVerifier;
 }
 
 // Cognito Hosted UI URLs

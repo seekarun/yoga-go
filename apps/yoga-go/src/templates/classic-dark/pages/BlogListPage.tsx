@@ -1,138 +1,189 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import type { BlogListPageProps } from '../../types';
+
+function formatRelativeTime(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffInSeconds < 60) return 'just now';
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+  if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
 
 export default function BlogListPage({ posts, expert }: BlogListPageProps) {
   return (
-    <div style={{ paddingTop: '64px', minHeight: '100vh', background: '#f8f8f8' }}>
+    <div style={{ paddingTop: '64px', minHeight: '100vh', background: '#0a0a0a' }}>
       {/* Header */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #eee' }}>
+      <div
+        style={{
+          background: 'rgba(255,255,255,0.03)',
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
+        }}
+      >
         <div
           className="container"
-          style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}
+          style={{ maxWidth: '600px', margin: '0 auto', padding: '32px 20px' }}
         >
           <Link
             href="/"
             style={{
-              color: '#666',
+              color: 'rgba(255,255,255,0.5)',
               fontSize: '14px',
               textDecoration: 'none',
-              marginBottom: '16px',
+              marginBottom: '12px',
               display: 'inline-block',
             }}
           >
-            ← Back to {expert.name}
+            Back to {expert.name}
           </Link>
-          <h1 style={{ fontSize: '36px', fontWeight: '700', color: '#111', marginBottom: '8px' }}>
-            Blog
-          </h1>
-          <p style={{ fontSize: '18px', color: '#666' }}>
-            Insights and articles from {expert.name}
-          </p>
+          <h1 style={{ fontSize: '28px', fontWeight: '700', color: '#fff' }}>Posts</h1>
         </div>
       </div>
 
-      {/* Blog Posts Grid */}
-      <section style={{ padding: '40px 20px' }}>
-        <div className="container" style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      {/* Posts Feed */}
+      <section style={{ padding: '24px 20px' }}>
+        <div className="container" style={{ maxWidth: '600px', margin: '0 auto' }}>
           {posts.length > 0 ? (
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
-                gap: '32px',
-              }}
-            >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {posts.map(post => (
                 <Link
                   key={post.id}
                   href={`/blog/${post.id}`}
                   style={{
                     display: 'block',
-                    background: '#fff',
+                    background: 'rgba(255,255,255,0.03)',
                     borderRadius: '12px',
                     overflow: 'hidden',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                    border: '1px solid rgba(255,255,255,0.08)',
                     textDecoration: 'none',
-                    transition: 'transform 0.2s, box-shadow 0.2s',
                   }}
                 >
-                  {post.coverImage && (
-                    <div
-                      style={{
-                        width: '100%',
-                        height: '200px',
-                        background: `url(${post.coverImage}) center/cover`,
-                      }}
-                    />
-                  )}
-                  <div style={{ padding: '20px' }}>
-                    {/* Tags */}
-                    {post.tags && post.tags.length > 0 && (
+                  {/* Header */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '16px',
+                    }}
+                  >
+                    {expert.avatar ? (
+                      <img
+                        src={expert.avatar}
+                        alt={expert.name}
+                        style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '50%',
+                          objectFit: 'cover',
+                          border: '2px solid rgba(255,255,255,0.1)',
+                        }}
+                      />
+                    ) : (
                       <div
                         style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '50%',
+                          background: 'var(--brand-500)',
                           display: 'flex',
-                          flexWrap: 'wrap',
-                          gap: '6px',
-                          marginBottom: '12px',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: '600',
+                          color: 'var(--brand-500-contrast)',
                         }}
                       >
-                        {post.tags.slice(0, 2).map(tag => (
-                          <span
-                            key={tag}
-                            style={{
-                              padding: '4px 8px',
-                              background: '#f3f4f6',
-                              color: '#4b5563',
-                              borderRadius: '4px',
-                              fontSize: '12px',
-                            }}
-                          >
-                            {tag}
-                          </span>
-                        ))}
+                        {expert.name.charAt(0)}
                       </div>
                     )}
-                    <h3
+                    <div>
+                      <div style={{ fontWeight: '600', color: '#fff', fontSize: '14px' }}>
+                        {expert.name}
+                      </div>
+                      <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)' }}>
+                        {formatRelativeTime(post.publishedAt || post.createdAt || '')}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Content */}
+                  {post.content && (
+                    <div
                       style={{
-                        fontSize: '18px',
-                        fontWeight: '600',
-                        color: '#111',
-                        marginBottom: '8px',
-                        lineHeight: '1.4',
-                      }}
-                    >
-                      {post.title}
-                    </h3>
-                    <p
-                      style={{
-                        fontSize: '14px',
-                        color: '#666',
+                        padding: '0 16px 12px',
+                        color: 'rgba(255,255,255,0.85)',
+                        fontSize: '15px',
                         lineHeight: '1.5',
-                        marginBottom: '12px',
+                        whiteSpace: 'pre-wrap',
                         display: '-webkit-box',
-                        WebkitLineClamp: 3,
+                        WebkitLineClamp: 4,
                         WebkitBoxOrient: 'vertical',
                         overflow: 'hidden',
                       }}
                     >
-                      {post.excerpt}
-                    </p>
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                      }}
-                    >
-                      <span style={{ fontSize: '13px', color: '#999' }}>
-                        {post.readTimeMinutes} min read
-                      </span>
-                      <span style={{ color: '#2563eb', fontSize: '14px', fontWeight: '500' }}>
-                        Read more →
-                      </span>
+                      {post.content}
                     </div>
+                  )}
+
+                  {/* First Media Preview */}
+                  {post.media && post.media.length > 0 && (
+                    <div style={{ position: 'relative' }}>
+                      {post.media[0].type === 'image' ? (
+                        <div style={{ position: 'relative', width: '100%', aspectRatio: '1' }}>
+                          <Image
+                            src={post.media[0].url}
+                            alt="Post media"
+                            fill
+                            style={{ objectFit: 'cover' }}
+                          />
+                        </div>
+                      ) : (
+                        <video
+                          src={post.media[0].url}
+                          style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover' }}
+                        />
+                      )}
+                      {post.media.length > 1 && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: '8px',
+                            right: '8px',
+                            background: 'rgba(0,0,0,0.7)',
+                            padding: '4px 8px',
+                            borderRadius: '8px',
+                            color: '#fff',
+                            fontSize: '12px',
+                          }}
+                        >
+                          +{post.media.length - 1}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Footer */}
+                  <div
+                    style={{
+                      padding: '12px 16px',
+                      display: 'flex',
+                      gap: '16px',
+                      borderTop: '1px solid rgba(255,255,255,0.06)',
+                    }}
+                  >
+                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px' }}>
+                      {post.likeCount} likes
+                    </span>
+                    <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px' }}>
+                      {post.commentCount} comments
+                    </span>
                   </div>
                 </Link>
               ))}
@@ -141,14 +192,14 @@ export default function BlogListPage({ posts, expert }: BlogListPageProps) {
             <div
               style={{
                 textAlign: 'center',
-                padding: '60px',
-                background: '#fff',
-                borderRadius: '16px',
+                padding: '60px 24px',
+                background: 'rgba(255,255,255,0.03)',
+                borderRadius: '12px',
+                border: '1px solid rgba(255,255,255,0.08)',
               }}
             >
-              <span style={{ fontSize: '48px', marginBottom: '16px', display: 'block' }}>📝</span>
-              <h2 style={{ fontSize: '24px', marginBottom: '16px' }}>No blog posts yet</h2>
-              <p style={{ color: '#666' }}>Check back later for new articles and insights.</p>
+              <h2 style={{ fontSize: '24px', marginBottom: '8px', color: '#fff' }}>No posts yet</h2>
+              <p style={{ color: 'rgba(255,255,255,0.6)' }}>Check back later for new posts.</p>
             </div>
           )}
         </div>
