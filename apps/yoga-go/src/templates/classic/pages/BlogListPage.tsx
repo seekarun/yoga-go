@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import type { BlogListPageProps } from '../../types';
+import { BlogLikeButton } from '@/components/blog';
 
 const CF_SUBDOMAIN = process.env.NEXT_PUBLIC_CF_SUBDOMAIN || 'iq7mgkvtb3bwxqf5';
 
@@ -61,232 +62,255 @@ export default function BlogListPage({ posts, expert }: BlogListPageProps) {
           {posts.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {posts.map(post => (
-                <Link
+                <div
                   key={post.id}
-                  href={`/blog/${post.id}`}
                   style={{
-                    display: 'block',
                     background: '#fff',
                     borderRadius: '12px',
                     overflow: 'hidden',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                    textDecoration: 'none',
                   }}
                 >
-                  {/* Header */}
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      padding: '16px',
-                    }}
+                  <Link
+                    href={`/blog/${post.id}`}
+                    style={{ display: 'block', textDecoration: 'none' }}
                   >
-                    {expert.avatar ? (
-                      <img
-                        src={expert.avatar}
-                        alt={expert.name}
-                        style={{
-                          width: '40px',
-                          height: '40px',
-                          borderRadius: '50%',
-                          objectFit: 'cover',
-                        }}
-                      />
-                    ) : (
-                      <div
-                        style={{
-                          width: '40px',
-                          height: '40px',
-                          borderRadius: '50%',
-                          background: '#e5e7eb',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontWeight: '600',
-                        }}
-                      >
-                        {expert.name.charAt(0)}
-                      </div>
-                    )}
-                    <div>
-                      <div style={{ fontWeight: '600', color: '#111', fontSize: '14px' }}>
-                        {expert.name}
-                      </div>
-                      <div style={{ fontSize: '13px', color: '#666' }}>
-                        {formatRelativeTime(post.publishedAt || post.createdAt || '')}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Content */}
-                  {post.content && (
+                    {/* Header */}
                     <div
                       style={{
-                        padding: '0 16px 12px',
-                        color: '#333',
-                        fontSize: '15px',
-                        lineHeight: '1.5',
-                        whiteSpace: 'pre-wrap',
-                        display: '-webkit-box',
-                        WebkitLineClamp: 4,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        padding: '16px',
                       }}
                     >
-                      {post.content}
-                    </div>
-                  )}
-
-                  {/* First Media Preview */}
-                  {post.media && post.media.length > 0 && (
-                    <div style={{ position: 'relative' }}>
-                      {post.media[0].type === 'image' ? (
-                        <div style={{ position: 'relative', width: '100%', aspectRatio: '1' }}>
-                          <Image
-                            src={post.media[0].url}
-                            alt="Post media"
-                            fill
-                            style={{ objectFit: 'cover' }}
-                          />
-                        </div>
-                      ) : post.media[0].type === 'video' ? (
-                        <div style={{ position: 'relative', width: '100%', aspectRatio: '1' }}>
-                          {/* Show video thumbnail with play icon overlay */}
-                          {isCloudflareVideoId(post.media[0].url) ? (
-                            <>
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={getCloudflareThumbnailUrl(post.media[0].url)}
-                                alt="Video thumbnail"
-                                style={{
-                                  width: '100%',
-                                  height: '100%',
-                                  objectFit: 'cover',
-                                }}
-                              />
-                              {/* Play icon overlay */}
-                              <div
-                                style={{
-                                  position: 'absolute',
-                                  top: '50%',
-                                  left: '50%',
-                                  transform: 'translate(-50%, -50%)',
-                                  width: '60px',
-                                  height: '60px',
-                                  background: 'rgba(0,0,0,0.6)',
-                                  borderRadius: '50%',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                }}
-                              >
-                                <svg
-                                  width="24"
-                                  height="24"
-                                  viewBox="0 0 24 24"
-                                  fill="white"
-                                  style={{ marginLeft: '3px' }}
-                                >
-                                  <path d="M8 5v14l11-7z" />
-                                </svg>
-                              </div>
-                            </>
-                          ) : post.media[0].thumbnailUrl ? (
-                            <>
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={post.media[0].thumbnailUrl}
-                                alt="Video thumbnail"
-                                style={{
-                                  width: '100%',
-                                  height: '100%',
-                                  objectFit: 'cover',
-                                }}
-                              />
-                              <div
-                                style={{
-                                  position: 'absolute',
-                                  top: '50%',
-                                  left: '50%',
-                                  transform: 'translate(-50%, -50%)',
-                                  width: '60px',
-                                  height: '60px',
-                                  background: 'rgba(0,0,0,0.6)',
-                                  borderRadius: '50%',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                }}
-                              >
-                                <svg
-                                  width="24"
-                                  height="24"
-                                  viewBox="0 0 24 24"
-                                  fill="white"
-                                  style={{ marginLeft: '3px' }}
-                                >
-                                  <path d="M8 5v14l11-7z" />
-                                </svg>
-                              </div>
-                            </>
-                          ) : (
-                            <div
-                              style={{
-                                width: '100%',
-                                height: '100%',
-                                background: '#1a1a1a',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                              }}
-                            >
-                              <svg
-                                width="48"
-                                height="48"
-                                viewBox="0 0 24 24"
-                                fill="rgba(255,255,255,0.5)"
-                              >
-                                <path d="M8 5v14l11-7z" />
-                              </svg>
-                            </div>
-                          )}
-                        </div>
-                      ) : null}
-                      {post.media.length > 1 && (
+                      {expert.avatar ? (
+                        <img
+                          src={expert.avatar}
+                          alt={expert.name}
+                          style={{
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '50%',
+                            objectFit: 'cover',
+                          }}
+                        />
+                      ) : (
                         <div
                           style={{
-                            position: 'absolute',
-                            top: '8px',
-                            right: '8px',
-                            background: 'rgba(0,0,0,0.7)',
-                            padding: '4px 8px',
-                            borderRadius: '8px',
-                            color: '#fff',
-                            fontSize: '12px',
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '50%',
+                            background: '#e5e7eb',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: '600',
                           }}
                         >
-                          +{post.media.length - 1}
+                          {expert.name.charAt(0)}
                         </div>
                       )}
+                      <div>
+                        <div style={{ fontWeight: '600', color: '#111', fontSize: '14px' }}>
+                          {expert.name}
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#666' }}>
+                          {formatRelativeTime(post.publishedAt || post.createdAt || '')}
+                        </div>
+                      </div>
                     </div>
-                  )}
 
-                  {/* Footer */}
+                    {/* Content */}
+                    {post.content && (
+                      <div
+                        style={{
+                          padding: '0 16px 12px',
+                          color: '#333',
+                          fontSize: '15px',
+                          lineHeight: '1.5',
+                          whiteSpace: 'pre-wrap',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 4,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        {post.content}
+                      </div>
+                    )}
+
+                    {/* First Media Preview */}
+                    {post.media && post.media.length > 0 && (
+                      <div style={{ position: 'relative' }}>
+                        {post.media[0].type === 'image' ? (
+                          <div style={{ position: 'relative', width: '100%', aspectRatio: '1' }}>
+                            <Image
+                              src={post.media[0].url}
+                              alt="Post media"
+                              fill
+                              style={{ objectFit: 'cover' }}
+                            />
+                          </div>
+                        ) : post.media[0].type === 'video' ? (
+                          <div style={{ position: 'relative', width: '100%', aspectRatio: '1' }}>
+                            {/* Show video thumbnail with play icon overlay */}
+                            {isCloudflareVideoId(post.media[0].url) ? (
+                              <>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={getCloudflareThumbnailUrl(post.media[0].url)}
+                                  alt="Video thumbnail"
+                                  style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'cover',
+                                  }}
+                                />
+                                {/* Play icon overlay */}
+                                <div
+                                  style={{
+                                    position: 'absolute',
+                                    top: '50%',
+                                    left: '50%',
+                                    transform: 'translate(-50%, -50%)',
+                                    width: '60px',
+                                    height: '60px',
+                                    background: 'rgba(0,0,0,0.6)',
+                                    borderRadius: '50%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                  }}
+                                >
+                                  <svg
+                                    width="24"
+                                    height="24"
+                                    viewBox="0 0 24 24"
+                                    fill="white"
+                                    style={{ marginLeft: '3px' }}
+                                  >
+                                    <path d="M8 5v14l11-7z" />
+                                  </svg>
+                                </div>
+                              </>
+                            ) : post.media[0].thumbnailUrl ? (
+                              <>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={post.media[0].thumbnailUrl}
+                                  alt="Video thumbnail"
+                                  style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'cover',
+                                  }}
+                                />
+                                <div
+                                  style={{
+                                    position: 'absolute',
+                                    top: '50%',
+                                    left: '50%',
+                                    transform: 'translate(-50%, -50%)',
+                                    width: '60px',
+                                    height: '60px',
+                                    background: 'rgba(0,0,0,0.6)',
+                                    borderRadius: '50%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                  }}
+                                >
+                                  <svg
+                                    width="24"
+                                    height="24"
+                                    viewBox="0 0 24 24"
+                                    fill="white"
+                                    style={{ marginLeft: '3px' }}
+                                  >
+                                    <path d="M8 5v14l11-7z" />
+                                  </svg>
+                                </div>
+                              </>
+                            ) : (
+                              <div
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  background: '#1a1a1a',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                              >
+                                <svg
+                                  width="48"
+                                  height="48"
+                                  viewBox="0 0 24 24"
+                                  fill="rgba(255,255,255,0.5)"
+                                >
+                                  <path d="M8 5v14l11-7z" />
+                                </svg>
+                              </div>
+                            )}
+                          </div>
+                        ) : null}
+                        {post.media.length > 1 && (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              top: '8px',
+                              right: '8px',
+                              background: 'rgba(0,0,0,0.7)',
+                              padding: '4px 8px',
+                              borderRadius: '8px',
+                              color: '#fff',
+                              fontSize: '12px',
+                            }}
+                          >
+                            +{post.media.length - 1}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </Link>
+
+                  {/* Footer - outside Link so like button is clickable */}
                   <div
                     style={{
                       padding: '12px 16px',
                       display: 'flex',
+                      alignItems: 'center',
                       gap: '16px',
                       borderTop: '1px solid #eee',
                     }}
                   >
-                    <span style={{ color: '#666', fontSize: '13px' }}>{post.likeCount} likes</span>
-                    <span style={{ color: '#666', fontSize: '13px' }}>
-                      {post.commentCount} comments
-                    </span>
+                    <BlogLikeButton postId={post.id} initialLikeCount={post.likeCount} />
+                    <Link
+                      href={`/blog/${post.id}#comments`}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        color: '#666',
+                        fontSize: '13px',
+                        textDecoration: 'none',
+                      }}
+                    >
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                      >
+                        <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                      </svg>
+                      {post.commentCount}
+                    </Link>
                   </div>
-                </Link>
+                </div>
               ))}
             </div>
           ) : (
