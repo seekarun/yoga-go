@@ -726,7 +726,7 @@ The MyYoga.Guru Team`,
     // Notification Stream Lambda (DynamoDB Streams)
     // ========================================
     // Triggered when new emails are received (INSERT events on emails table)
-    // Creates notifications in the core table and pushes to Firebase RTDB
+    // Creates notifications in the discussions table and pushes to Firebase RTDB
     const notificationStreamLambda = new nodejsLambda.NodejsFunction(
       this,
       "NotificationStreamLambda",
@@ -738,7 +738,7 @@ The MyYoga.Guru Team`,
         timeout: cdk.Duration.seconds(30),
         memorySize: 256,
         environment: {
-          DYNAMODB_TABLE: coreTable.tableName,
+          DYNAMODB_TABLE: discussionsTable.tableName,
           EMAILS_TABLE: emailsTable.tableName,
           APP_DOMAIN: appDomain,
         },
@@ -746,8 +746,8 @@ The MyYoga.Guru Team`,
       },
     );
 
-    // Grant DynamoDB read/write for creating notifications in core table
-    coreTable.grantReadWriteData(notificationStreamLambda);
+    // Grant DynamoDB read/write for creating notifications in discussions table
+    discussionsTable.grantReadWriteData(notificationStreamLambda);
     emailsTable.grantReadData(notificationStreamLambda);
 
     // Grant access to secrets for Firebase credentials
