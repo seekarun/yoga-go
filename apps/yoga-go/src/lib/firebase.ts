@@ -33,13 +33,25 @@ export const isFirebaseConfigured =
 // Initialize Firebase (only once, only if configured)
 let database: ReturnType<typeof getDatabase> | null = null;
 
-if (isFirebaseConfigured && typeof window !== 'undefined') {
-  try {
-    const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-    database = getDatabase(app);
-    console.log('[DBG][firebase] Firebase initialized successfully');
-  } catch (error) {
-    console.error('[DBG][firebase] Failed to initialize Firebase:', error);
+if (typeof window !== 'undefined') {
+  console.log(
+    '[DBG][firebase] Config check - apiKey:',
+    !!firebaseConfig.apiKey,
+    'databaseURL:',
+    !!firebaseConfig.databaseURL,
+    'projectId:',
+    !!firebaseConfig.projectId
+  );
+  console.log('[DBG][firebase] isFirebaseConfigured:', isFirebaseConfigured);
+
+  if (isFirebaseConfigured) {
+    try {
+      const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+      database = getDatabase(app);
+      console.log('[DBG][firebase] Firebase initialized successfully');
+    } catch (error) {
+      console.error('[DBG][firebase] Failed to initialize Firebase:', error);
+    }
   }
 }
 

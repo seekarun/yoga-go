@@ -119,6 +119,14 @@ export function useNotifications(expertId: string | null): UseNotificationsResul
       return;
     }
 
+    console.log('[DBG][useNotifications] Setting up for expertId:', expertId);
+    console.log(
+      '[DBG][useNotifications] Firebase configured:',
+      isFirebaseConfigured,
+      'database:',
+      !!database
+    );
+
     // Initial fetch from API (source of truth)
     fetchNotifications();
 
@@ -126,13 +134,24 @@ export function useNotifications(expertId: string | null): UseNotificationsResul
     if (isFirebaseConfigured && database) {
       try {
         const notificationsRef = ref(database, `notifications/${expertId}`);
+        console.log(
+          '[DBG][useNotifications] Subscribing to Firebase path: notifications/' + expertId
+        );
 
         const unsubscribe = onValue(
           notificationsRef,
           snapshot => {
+            console.log(
+              '[DBG][useNotifications] Firebase snapshot received, exists:',
+              snapshot.exists()
+            );
             if (snapshot.exists()) {
               const data = snapshot.val();
               const firebaseNotifications: Notification[] = Object.values(data || {});
+              console.log(
+                '[DBG][useNotifications] Firebase notifications count:',
+                firebaseNotifications.length
+              );
 
               // Sort by createdAt descending
               firebaseNotifications.sort((a, b) => {
@@ -148,7 +167,7 @@ export function useNotifications(expertId: string | null): UseNotificationsResul
 
                 if (newNotifications.length > 0) {
                   console.log(
-                    '[DBG][useNotifications] Firebase: received',
+                    '[DBG][useNotifications] Firebase: adding',
                     newNotifications.length,
                     'new notifications'
                   );
@@ -164,8 +183,9 @@ export function useNotifications(expertId: string | null): UseNotificationsResul
                 return prev;
               });
 
-              // Update unread count
+              // Update unread count from Firebase data
               const unread = firebaseNotifications.filter(n => !n.isRead).length;
+              console.log('[DBG][useNotifications] Firebase unread count:', unread);
               setUnreadCount(prev => Math.max(prev, unread));
             }
             setIsLoading(false);
@@ -184,13 +204,13 @@ export function useNotifications(expertId: string | null): UseNotificationsResul
         console.error('[DBG][useNotifications] Failed to setup Firebase:', err);
         setIsRealtime(false);
       }
+    } else {
+      console.log('[DBG][useNotifications] Firebase not available, using polling only');
     }
 
-    // Fallback: Setup polling if Firebase not available
-    if (!isFirebaseConfigured || !database) {
-      console.log('[DBG][useNotifications] Using polling fallback');
-      pollIntervalRef.current = setInterval(fetchNotifications, POLL_INTERVAL);
-    }
+    // Always setup polling as backup (every 30 seconds)
+    console.log('[DBG][useNotifications] Setting up polling backup');
+    pollIntervalRef.current = setInterval(fetchNotifications, POLL_INTERVAL);
 
     return () => {
       // Cleanup Firebase subscription

@@ -754,19 +754,30 @@ The MyYoga.Guru Team`,
 
     // Add DynamoDB Stream event source for incoming emails
     // Filter: Only INSERT events for incoming emails (not outgoing)
+    // Multiple filters act as OR - match when isOutgoing is false OR doesn't exist
     notificationStreamLambda.addEventSource(
       new lambdaEventSources.DynamoEventSource(emailsTable, {
         startingPosition: lambda.StartingPosition.LATEST,
         batchSize: 10,
         retryAttempts: 2,
         filters: [
+          // Filter 1: isOutgoing is explicitly false
           lambda.FilterCriteria.filter({
             eventName: lambda.FilterRule.isEqual("INSERT"),
             dynamodb: {
               NewImage: {
                 isOutgoing: {
-                  BOOL: lambda.FilterRule.notExists(),
+                  BOOL: lambda.FilterRule.isEqual(false),
                 },
+              },
+            },
+          }),
+          // Filter 2: isOutgoing field doesn't exist at all
+          lambda.FilterCriteria.filter({
+            eventName: lambda.FilterRule.isEqual("INSERT"),
+            dynamodb: {
+              NewImage: {
+                isOutgoing: lambda.FilterRule.notExists(),
               },
             },
           }),
