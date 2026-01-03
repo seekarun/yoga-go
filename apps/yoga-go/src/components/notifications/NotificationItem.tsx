@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { Notification } from '@/types';
 
 interface NotificationItemProps {
@@ -49,11 +49,19 @@ export default function NotificationItem({
   onMarkAsRead,
   onClose,
 }: NotificationItemProps) {
+  const router = useRouter();
+
   const handleClick = () => {
+    // Mark as read first
     if (!notification.isRead) {
       onMarkAsRead(notification.id);
     }
+    // Close the dropdown
     onClose();
+    // Navigate to the link if it exists
+    if (notification.link) {
+      router.push(notification.link);
+    }
   };
 
   const content = (
@@ -144,14 +152,6 @@ export default function NotificationItem({
       )}
     </div>
   );
-
-  if (notification.link) {
-    return (
-      <Link href={notification.link} onClick={handleClick} style={{ textDecoration: 'none' }}>
-        {content}
-      </Link>
-    );
-  }
 
   return <div onClick={handleClick}>{content}</div>;
 }
