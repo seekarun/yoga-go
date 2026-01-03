@@ -617,6 +617,7 @@ The MyYoga.Guru Team`,
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
       pointInTimeRecovery: false,
+      timeToLiveAttribute: "ttl", // Auto-delete read notifications after 14 days
     });
 
     discussionsTable.addGlobalSecondaryIndex({

@@ -5,7 +5,7 @@
  *
  * This Lambda:
  * 1. Receives new email events from DynamoDB stream
- * 2. Creates notification records in yoga-go-core table
+ * 2. Creates notification records in yoga-go-discussions table
  * 3. Pushes to Firebase RTDB for real-time delivery
  *
  * Extends to other events:
@@ -30,7 +30,7 @@ import * as admin from "firebase-admin";
 const dynamodb = new DynamoDBClient({ region: "ap-southeast-2" });
 const secretsManager = new SecretsManagerClient({ region: "ap-southeast-2" });
 
-const TABLE_NAME = process.env.DYNAMODB_TABLE || "yoga-go-core";
+const TABLE_NAME = process.env.DYNAMODB_TABLE || "yoga-go-discussions";
 
 // Firebase Admin initialization (lazy loaded)
 let firebaseInitialized = false;

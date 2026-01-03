@@ -4,7 +4,7 @@
  * Handles CRUD operations for real-time notifications.
  * Uses DynamoDB for persistent storage and Firebase RTDB for real-time delivery.
  *
- * Storage: CORE table
+ * Storage: DISCUSSIONS table (yoga-go-discussions)
  * PK: TENANT#{recipientId}
  * SK: NOTIF#{createdAt}#{notificationId}
  */
@@ -71,7 +71,7 @@ export async function createNotification(input: CreateNotificationInput): Promis
   await docClient.send(
     new BatchWriteCommand({
       RequestItems: {
-        [Tables.CORE]: [
+        [Tables.DISCUSSIONS]: [
           {
             PutRequest: {
               Item: item,
@@ -113,7 +113,7 @@ export async function getNotificationsByRecipient(
 
   const result = await docClient.send(
     new QueryCommand({
-      TableName: Tables.CORE,
+      TableName: Tables.DISCUSSIONS,
       KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
       FilterExpression: filterExpression,
       ExpressionAttributeValues: expressionAttributeValues,
@@ -145,7 +145,7 @@ export async function getNotificationsByRecipient(
 export async function getUnreadCount(recipientId: string): Promise<number> {
   const result = await docClient.send(
     new QueryCommand({
-      TableName: Tables.CORE,
+      TableName: Tables.DISCUSSIONS,
       KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
       FilterExpression: 'isRead = :isRead',
       ExpressionAttributeValues: {
@@ -165,9 +165,10 @@ export async function getUnreadCount(recipientId: string): Promise<number> {
  */
 export async function markAsRead(recipientId: string, notificationId: string): Promise<boolean> {
   // First, find the notification to get its SK
+  // Note: No Limit here because FilterExpression is applied AFTER Limit in DynamoDB
   const result = await docClient.send(
     new QueryCommand({
-      TableName: Tables.CORE,
+      TableName: Tables.DISCUSSIONS,
       KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
       FilterExpression: 'id = :id',
       ExpressionAttributeValues: {
@@ -175,7 +176,6 @@ export async function markAsRead(recipientId: string, notificationId: string): P
         ':skPrefix': NotificationPK.NOTIFICATION_PREFIX,
         ':id': notificationId,
       },
-      Limit: 1,
     })
   );
 
@@ -186,23 +186,29 @@ export async function markAsRead(recipientId: string, notificationId: string): P
 
   const item = result.Items[0];
   const now = new Date().toISOString();
+  // TTL: 14 days from now (Unix epoch in seconds)
+  const ttl = Math.floor(Date.now() / 1000) + 14 * 24 * 60 * 60;
 
   await docClient.send(
     new UpdateCommand({
-      TableName: Tables.CORE,
+      TableName: Tables.DISCUSSIONS,
       Key: {
         PK: item.PK,
         SK: item.SK,
       },
-      UpdateExpression: 'SET isRead = :isRead, updatedAt = :updatedAt',
+      UpdateExpression: 'SET isRead = :isRead, updatedAt = :updatedAt, #ttl = :ttl',
+      ExpressionAttributeNames: {
+        '#ttl': 'ttl',
+      },
       ExpressionAttributeValues: {
         ':isRead': true,
         ':updatedAt': now,
+        ':ttl': ttl,
       },
     })
   );
 
-  console.log('[DBG][notificationRepo] Marked notification as read:', notificationId);
+  console.log('[DBG][notificationRepo] Marked notification as read with TTL:', notificationId);
   return true;
 }
 
@@ -213,7 +219,7 @@ export async function markAllAsRead(recipientId: string): Promise<number> {
   // Get all unread notifications
   const result = await docClient.send(
     new QueryCommand({
-      TableName: Tables.CORE,
+      TableName: Tables.DISCUSSIONS,
       KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
       FilterExpression: 'isRead = :isRead',
       ExpressionAttributeValues: {
@@ -229,20 +235,26 @@ export async function markAllAsRead(recipientId: string): Promise<number> {
   }
 
   const now = new Date().toISOString();
+  // TTL: 14 days from now (Unix epoch in seconds)
+  const ttl = Math.floor(Date.now() / 1000) + 14 * 24 * 60 * 60;
 
   // Update each notification
   const updatePromises = result.Items.map(item =>
     docClient.send(
       new UpdateCommand({
-        TableName: Tables.CORE,
+        TableName: Tables.DISCUSSIONS,
         Key: {
           PK: item.PK,
           SK: item.SK,
         },
-        UpdateExpression: 'SET isRead = :isRead, updatedAt = :updatedAt',
+        UpdateExpression: 'SET isRead = :isRead, updatedAt = :updatedAt, #ttl = :ttl',
+        ExpressionAttributeNames: {
+          '#ttl': 'ttl',
+        },
         ExpressionAttributeValues: {
           ':isRead': true,
           ':updatedAt': now,
+          ':ttl': ttl,
         },
       })
     )
@@ -253,7 +265,7 @@ export async function markAllAsRead(recipientId: string): Promise<number> {
   console.log(
     '[DBG][notificationRepo] Marked',
     result.Items.length,
-    'notifications as read for:',
+    'notifications as read with TTL for:',
     recipientId
   );
   return result.Items.length;
@@ -263,6 +275,18 @@ export async function markAllAsRead(recipientId: string): Promise<number> {
  * Map DynamoDB item to Notification type
  */
 function mapToNotification(item: Record<string, unknown>): Notification {
+  // Parse metadata if it's a JSON string (stored by lambda)
+  let metadata: Record<string, unknown> | undefined;
+  if (typeof item.metadata === 'string') {
+    try {
+      metadata = JSON.parse(item.metadata);
+    } catch {
+      metadata = undefined;
+    }
+  } else {
+    metadata = item.metadata as Record<string, unknown> | undefined;
+  }
+
   return {
     id: item.id as string,
     recipientId: item.recipientId as string,
@@ -272,7 +296,7 @@ function mapToNotification(item: Record<string, unknown>): Notification {
     message: item.message as string,
     link: item.link as string | undefined,
     isRead: item.isRead as boolean,
-    metadata: item.metadata as Record<string, unknown> | undefined,
+    metadata,
     createdAt: item.createdAt as string,
     updatedAt: item.updatedAt as string,
   };

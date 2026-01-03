@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { useNotificationContextOptional } from '@/contexts/NotificationContext';
 
 interface ExpertSidebarProps {
   expertId: string;
@@ -22,29 +23,17 @@ const SIDEBAR_COLLAPSED_KEY = 'expert-sidebar-collapsed';
 export default function ExpertSidebar({ expertId }: ExpertSidebarProps) {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [pendingHref, setPendingHref] = useState<string | null>(null);
+
+  // Use global notification context for real-time email notification count (optional during initial load)
+  const notificationContext = useNotificationContextOptional();
+  const unreadEmailCount = notificationContext?.unreadEmailCount ?? 0;
 
   // Clear pending state when pathname changes (navigation completed)
   useEffect(() => {
     setPendingHref(null);
   }, [pathname]);
-
-  // Fetch unread email count
-  const fetchUnreadCount = useCallback(async () => {
-    try {
-      const response = await fetch('/data/app/expert/me/inbox?limit=1');
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.data) {
-          setUnreadCount(data.data.unreadCount || 0);
-        }
-      }
-    } catch (error) {
-      console.log('[DBG][ExpertSidebar] Failed to fetch unread count:', error);
-    }
-  }, []);
 
   // Fetch unread forum messages count
   const fetchUnreadMessagesCount = useCallback(async () => {
@@ -63,16 +52,12 @@ export default function ExpertSidebar({ expertId }: ExpertSidebarProps) {
     }
   }, []);
 
-  // Fetch unread counts on mount and periodically
+  // Fetch unread messages count on mount and periodically
   useEffect(() => {
-    fetchUnreadCount();
     fetchUnreadMessagesCount();
-    const interval = setInterval(() => {
-      fetchUnreadCount();
-      fetchUnreadMessagesCount();
-    }, 60000); // Refresh every minute
+    const interval = setInterval(fetchUnreadMessagesCount, 60000); // Refresh every minute
     return () => clearInterval(interval);
-  }, [fetchUnreadCount, fetchUnreadMessagesCount]);
+  }, [fetchUnreadMessagesCount]);
 
   // Load collapsed state from localStorage on mount
   useEffect(() => {
@@ -197,7 +182,7 @@ export default function ExpertSidebar({ expertId }: ExpertSidebarProps) {
           />
         </svg>
       ),
-      badge: unreadCount,
+      badge: unreadEmailCount,
     },
     {
       id: 'messages',

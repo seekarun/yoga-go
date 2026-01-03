@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useNotificationContextOptional } from '@/contexts/NotificationContext';
 import { useNotifications } from '@/hooks/useNotifications';
 import NotificationDropdown from './NotificationDropdown';
 
@@ -17,8 +18,15 @@ export default function NotificationBell({
 }: NotificationBellProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Try to use global context first (when inside expert dashboard)
+  const contextValue = useNotificationContextOptional();
+  // Fall back to direct hook (when outside expert dashboard)
+  const hookValue = useNotifications(contextValue ? null : expertId);
+
+  // Use context if available, otherwise use hook
   const { notifications, unreadCount, isLoading, markAsRead, markAllAsRead } =
-    useNotifications(expertId);
+    contextValue || hookValue;
 
   // Close dropdown when clicking outside
   useEffect(() => {

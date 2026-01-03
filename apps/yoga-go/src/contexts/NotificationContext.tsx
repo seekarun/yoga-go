@@ -1,32 +1,36 @@
+'use client';
+
 /**
- * useNotifications Hook
+ * NotificationContext
  *
- * Provides real-time notification state for expert dashboard.
- * Uses Firebase RTDB for real-time updates with API fallback.
- *
- * Features:
- * - Real-time subscription via Firebase RTDB
- * - Falls back to polling if Firebase not configured
- * - Tracks unread count
- * - Mark as read (single or all)
+ * Global context for real-time notifications.
+ * Provides notification state to all components (header, sidebar, pages).
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import type { Notification } from '@/types';
 import { database, ref, onValue, off, isFirebaseConfigured } from '@/lib/firebase';
 
-export interface UseNotificationsResult {
+interface NotificationContextValue {
   notifications: Notification[];
   unreadCount: number;
+  unreadEmailCount: number;
   isLoading: boolean;
   error: string | null;
+  isRealtime: boolean;
   markAsRead: (notificationId: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   refresh: () => Promise<void>;
-  isRealtime: boolean;
 }
 
-export function useNotifications(expertId: string | null): UseNotificationsResult {
+const NotificationContext = createContext<NotificationContextValue | null>(null);
+
+interface NotificationProviderProps {
+  children: React.ReactNode;
+  expertId: string | null;
+}
+
+export function NotificationProvider({ children, expertId }: NotificationProviderProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,17 +38,22 @@ export function useNotifications(expertId: string | null): UseNotificationsResul
   const [isRealtime, setIsRealtime] = useState(false);
   const firebaseUnsubscribeRef = useRef<(() => void) | null>(null);
 
-  // Track IDs of notifications we've marked as read locally (to ignore stale Firebase data)
+  // Track IDs of notifications we've marked as read locally
   const markedAsReadIdsRef = useRef<Set<string>>(new Set());
   // Track current notification IDs for Firebase comparison
   const notificationIdsRef = useRef<Set<string>>(new Set());
   // Cooldown to prevent refetch right after marking as read
   const lastMarkAsReadRef = useRef<number>(0);
 
-  // Keep notificationIdsRef in sync with notifications state
+  // Keep notificationIdsRef in sync
   useEffect(() => {
     notificationIdsRef.current = new Set(notifications.map(n => n.id));
   }, [notifications]);
+
+  // Calculate unread email count
+  const unreadEmailCount = notifications.filter(
+    n => n.type === 'email_received' && !n.isRead
+  ).length;
 
   // Fetch notifications from API
   const fetchNotifications = useCallback(async () => {
@@ -56,31 +65,25 @@ export function useNotifications(expertId: string | null): UseNotificationsResul
     }
 
     // Skip fetch if we just marked something as read (within last 2 seconds)
-    // This prevents stale API data from overwriting optimistic updates
     const timeSinceMarkAsRead = Date.now() - lastMarkAsReadRef.current;
     if (timeSinceMarkAsRead < 2000) {
-      console.log(
-        '[DBG][useNotifications] Skipping fetch - recent markAsRead (',
-        timeSinceMarkAsRead,
-        'ms ago)'
-      );
+      console.log('[DBG][NotificationContext] Skipping fetch - recent markAsRead');
       setIsLoading(false);
       return;
     }
 
     try {
-      const response = await fetch('/data/app/expert/me/notifications?limit=20');
+      const response = await fetch('/data/app/expert/me/notifications?limit=50');
       const data = await response.json();
 
       if (data.success && data.data) {
-        // Apply locally marked-as-read status to fetched notifications
+        // Apply locally marked-as-read status
         const fetchedNotifications = (data.data.notifications || []).map(
           (n: { id: string; isRead: boolean }) => ({
             ...n,
             isRead: markedAsReadIdsRef.current.has(n.id) ? true : n.isRead,
           })
         );
-        // Recalculate unread count respecting local marks
         const actualUnreadCount = fetchedNotifications.filter(
           (n: { id: string; isRead: boolean }) => !n.isRead
         ).length;
@@ -92,7 +95,7 @@ export function useNotifications(expertId: string | null): UseNotificationsResul
         setError(data.error || 'Failed to fetch notifications');
       }
     } catch (err) {
-      console.error('[DBG][useNotifications] Error fetching notifications:', err);
+      console.error('[DBG][NotificationContext] Error fetching:', err);
       setError('Failed to fetch notifications');
     } finally {
       setIsLoading(false);
@@ -102,17 +105,14 @@ export function useNotifications(expertId: string | null): UseNotificationsResul
   // Mark single notification as read
   const markAsRead = useCallback(
     async (notificationId: string) => {
-      if (!expertId) {
-        console.log('[DBG][useNotifications] markAsRead: No expertId, returning');
-        return;
-      }
+      if (!expertId) return;
 
-      console.log('[DBG][useNotifications] markAsRead: Starting for notification:', notificationId);
+      console.log('[DBG][NotificationContext] markAsRead:', notificationId);
 
-      // Set cooldown to prevent refetch from overwriting optimistic update
+      // Set cooldown
       lastMarkAsReadRef.current = Date.now();
 
-      // Immediately update local state for instant UI feedback
+      // Optimistic update
       markedAsReadIdsRef.current.add(notificationId);
       setNotifications(prev =>
         prev.map(n => (n.id === notificationId ? { ...n, isRead: true } : n))
@@ -124,11 +124,9 @@ export function useNotifications(expertId: string | null): UseNotificationsResul
           method: 'POST',
         });
         const data = await response.json();
-        console.log('[DBG][useNotifications] markAsRead: API response:', data);
 
         if (!data.success) {
-          console.error('[DBG][useNotifications] markAsRead: API returned error:', data.error);
-          // Rollback on error
+          // Rollback
           markedAsReadIdsRef.current.delete(notificationId);
           setNotifications(prev =>
             prev.map(n => (n.id === notificationId ? { ...n, isRead: false } : n))
@@ -136,8 +134,8 @@ export function useNotifications(expertId: string | null): UseNotificationsResul
           setUnreadCount(prev => prev + 1);
         }
       } catch (err) {
-        console.error('[DBG][useNotifications] Error marking as read:', err);
-        // Rollback on error
+        console.error('[DBG][NotificationContext] Error marking as read:', err);
+        // Rollback
         markedAsReadIdsRef.current.delete(notificationId);
         setNotifications(prev =>
           prev.map(n => (n.id === notificationId ? { ...n, isRead: false } : n))
@@ -159,16 +157,15 @@ export function useNotifications(expertId: string | null): UseNotificationsResul
       const data = await response.json();
 
       if (data.success) {
-        // Update local state
         setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
         setUnreadCount(0);
       }
     } catch (err) {
-      console.error('[DBG][useNotifications] Error marking all as read:', err);
+      console.error('[DBG][NotificationContext] Error marking all as read:', err);
     }
   }, [expertId]);
 
-  // Setup Firebase real-time subscription
+  // Setup Firebase subscription
   useEffect(() => {
     if (!expertId) {
       setNotifications([]);
@@ -177,102 +174,57 @@ export function useNotifications(expertId: string | null): UseNotificationsResul
       return;
     }
 
-    console.log('[DBG][useNotifications] Setting up for expertId:', expertId);
-    console.log(
-      '[DBG][useNotifications] Firebase configured:',
-      isFirebaseConfigured,
-      'database:',
-      !!database
-    );
+    console.log('[DBG][NotificationContext] Setting up for expertId:', expertId);
 
-    // Initial fetch from API (source of truth)
+    // Initial fetch
     fetchNotifications();
 
-    // Try to setup Firebase real-time subscription
+    // Firebase real-time subscription
     if (isFirebaseConfigured && database) {
       try {
         const notificationsRef = ref(database, `notifications/${expertId}`);
-        console.log(
-          '[DBG][useNotifications] Subscribing to Firebase path: notifications/' + expertId
-        );
 
         const unsubscribe = onValue(
           notificationsRef,
           snapshot => {
-            console.log(
-              '[DBG][useNotifications] Firebase snapshot received, exists:',
-              snapshot.exists()
-            );
             if (snapshot.exists()) {
               const data = snapshot.val();
               const firebaseNotifications: Notification[] = Object.values(data || {});
-              console.log(
-                '[DBG][useNotifications] Firebase notifications count:',
-                firebaseNotifications.length
-              );
 
-              // Only consider VERY RECENT notifications from Firebase (within last 2 minutes)
-              // This prevents stale Firebase data from overriding the API source of truth
+              // Only consider recent notifications (within 2 minutes)
               const twoMinutesAgo = Date.now() - 2 * 60 * 1000;
-              const recentFirebaseNotifications = firebaseNotifications.filter(n => {
+              const recentNotifications = firebaseNotifications.filter(n => {
                 const createdAt = new Date(n.createdAt || '').getTime();
                 return createdAt > twoMinutesAgo;
               });
 
-              console.log(
-                '[DBG][useNotifications] Recent Firebase notifications:',
-                recentFirebaseNotifications.length
-              );
-
-              if (recentFirebaseNotifications.length === 0) {
-                setIsLoading(false);
-                return;
-              }
-
-              // Sort by createdAt descending
-              recentFirebaseNotifications.sort((a, b) => {
-                const dateA = new Date(a.createdAt || '').getTime();
-                const dateB = new Date(b.createdAt || '').getTime();
-                return dateB - dateA;
-              });
-
-              // Check if there are truly new notifications from Firebase
-              const newNotifications = recentFirebaseNotifications.filter(
+              // Check for truly new notifications
+              const newNotifications = recentNotifications.filter(
                 n => !notificationIdsRef.current.has(n.id) && !markedAsReadIdsRef.current.has(n.id)
               );
 
               if (newNotifications.length > 0) {
-                console.log(
-                  '[DBG][useNotifications] Firebase: detected',
-                  newNotifications.length,
-                  'new notifications, refetching from API'
-                );
-                // Refetch from API to get accurate count (API is source of truth)
+                console.log('[DBG][NotificationContext] New notifications detected, refetching');
                 fetchNotifications();
               }
             }
             setIsLoading(false);
           },
           error => {
-            console.error('[DBG][useNotifications] Firebase error:', error);
-            // Fall back to polling on error
+            console.error('[DBG][NotificationContext] Firebase error:', error);
             setIsRealtime(false);
           }
         );
 
         firebaseUnsubscribeRef.current = () => off(notificationsRef);
         setIsRealtime(true);
-        console.log('[DBG][useNotifications] Firebase real-time subscription active');
       } catch (err) {
-        console.error('[DBG][useNotifications] Failed to setup Firebase:', err);
+        console.error('[DBG][NotificationContext] Failed to setup Firebase:', err);
         setIsRealtime(false);
       }
-    } else {
-      console.log('[DBG][useNotifications] Firebase not available');
     }
 
     return () => {
-      // Cleanup Firebase subscription
       if (firebaseUnsubscribeRef.current) {
         firebaseUnsubscribeRef.current();
         firebaseUnsubscribeRef.current = null;
@@ -280,14 +232,30 @@ export function useNotifications(expertId: string | null): UseNotificationsResul
     };
   }, [expertId, fetchNotifications]);
 
-  return {
+  const value: NotificationContextValue = {
     notifications,
     unreadCount,
+    unreadEmailCount,
     isLoading,
     error,
+    isRealtime,
     markAsRead,
     markAllAsRead,
     refresh: fetchNotifications,
-    isRealtime,
   };
+
+  return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>;
+}
+
+export function useNotificationContext() {
+  const context = useContext(NotificationContext);
+  if (!context) {
+    throw new Error('useNotificationContext must be used within NotificationProvider');
+  }
+  return context;
+}
+
+// Optional hook that returns null if not in provider (for components that may be outside)
+export function useNotificationContextOptional() {
+  return useContext(NotificationContext);
 }

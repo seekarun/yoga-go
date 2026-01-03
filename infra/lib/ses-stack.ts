@@ -43,7 +43,8 @@ export class SesStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: SesStackProps) {
     super(scope, id, props);
 
-    const { coreTableArn, coreTableName, emailsTableArn, emailsTableName } = props;
+    const { coreTableArn, coreTableName, emailsTableArn, emailsTableName } =
+      props;
 
     // ========================================
     // Domain Configuration
@@ -195,7 +196,7 @@ The MyYoga.Guru Team`,
     // ========================================
     // Platform admin emails - emails to hi@, contact@, privacy@ will be forwarded to these addresses
     // Comma-separated list of email addresses
-    const platformAdminEmails = "hi@arun.au,srinathm097@gmail.com";
+    const platformAdminEmails = "hi@arun.au";
 
     const emailForwarderLambda = new nodejsLambda.NodejsFunction(
       this,

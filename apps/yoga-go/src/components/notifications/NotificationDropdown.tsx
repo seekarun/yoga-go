@@ -20,6 +20,9 @@ export default function NotificationDropdown({
   onMarkAllAsRead,
   onClose,
 }: NotificationDropdownProps) {
+  // Only show unread notifications
+  const unreadNotifications = notifications.filter(n => !n.isRead);
+
   return (
     <div
       style={{
@@ -114,7 +117,7 @@ export default function NotificationDropdown({
           >
             Loading...
           </div>
-        ) : notifications.length === 0 ? (
+        ) : unreadNotifications.length === 0 ? (
           <div
             style={{
               display: 'flex',
@@ -145,7 +148,7 @@ export default function NotificationDropdown({
                 marginTop: '12px',
               }}
             >
-              No notifications yet
+              No new notifications
             </span>
             <span
               style={{
@@ -154,11 +157,11 @@ export default function NotificationDropdown({
                 marginTop: '4px',
               }}
             >
-              We&apos;ll notify you when something arrives
+              You&apos;re all caught up!
             </span>
           </div>
         ) : (
-          notifications.map(notification => (
+          unreadNotifications.map(notification => (
             <NotificationItem
               key={notification.id}
               notification={notification}

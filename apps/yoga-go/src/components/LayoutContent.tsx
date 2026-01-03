@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 import Footer from './Footer';
 import Header from './Header';
 import { getClientExpertContext } from '@/lib/domainContext';
+import { NotificationProvider } from '@/contexts/NotificationContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Routes that should not show header/footer (they render their own)
 const MINIMAL_LAYOUT_ROUTES = ['/', '/auth/signin', '/auth/signup'];
@@ -21,6 +23,11 @@ const NO_FOOTER_PREFIXES = ['/srv/', '/app/', '/admn'];
 export default function LayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [isExpertDomain, setIsExpertDomain] = useState(false);
+  const { user } = useAuth();
+
+  // Get expertId for notification context
+  const expertId = user?.expertProfile || null;
+  const isExpertDashboard = pathname.startsWith('/srv/');
 
   useEffect(() => {
     const { isExpertMode } = getClientExpertContext();
@@ -42,11 +49,18 @@ export default function LayoutContent({ children }: { children: React.ReactNode 
     return <main className="flex-1">{children}</main>;
   }
 
-  return (
+  // Wrap with NotificationProvider for expert dashboard routes
+  const content = (
     <>
       <Header />
       <main className="flex-1">{children}</main>
       {!hideFooter && <Footer />}
     </>
   );
+
+  if (isExpertDashboard && expertId) {
+    return <NotificationProvider expertId={expertId}>{content}</NotificationProvider>;
+  }
+
+  return content;
 }

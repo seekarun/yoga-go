@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import DOMPurify from 'dompurify';
 import type { EmailAttachment, EmailWithThread } from '@/types';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import { useNotificationContextOptional as useNotificationContext } from '@/contexts/NotificationContext';
 
 export default function EmailDetailPage() {
   const params = useParams();
@@ -23,6 +24,30 @@ export default function EmailDetailPage() {
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [sendSuccess, setSendSuccess] = useState(false);
+
+  // Use notification context to mark email notification as read (optional during initial load)
+  const notificationContext = useNotificationContext();
+  const hasMarkedNotificationRef = useRef(false);
+
+  // Mark the notification for this email as read
+  useEffect(() => {
+    if (hasMarkedNotificationRef.current || !emailId || !notificationContext) return;
+
+    const { notifications, markAsRead } = notificationContext;
+
+    // Find the notification for this email
+    const emailNotification = notifications.find(
+      n =>
+        n.type === 'email_received' &&
+        (n.metadata as { emailId?: string })?.emailId === emailId &&
+        !n.isRead
+    );
+
+    if (emailNotification) {
+      hasMarkedNotificationRef.current = true;
+      markAsRead(emailNotification.id);
+    }
+  }, [emailId, notificationContext]);
 
   const fetchEmail = useCallback(async () => {
     try {

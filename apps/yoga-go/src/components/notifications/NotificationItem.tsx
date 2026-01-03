@@ -70,7 +70,7 @@ export default function NotificationItem({
     return notification.link || null;
   };
 
-  const handleClick = async () => {
+  const handleClick = () => {
     console.log(
       '[DBG][NotificationItem] Click - notification:',
       notification.id,
@@ -81,13 +81,10 @@ export default function NotificationItem({
     // Get the link before any state changes
     const link = getNavigationLink();
 
-    // Mark as read first and wait for it to complete
+    // Mark as read (optimistic update - state updates immediately)
     if (!notification.isRead) {
       console.log('[DBG][NotificationItem] Marking as read...');
-      await onMarkAsRead(notification.id);
-      // Small delay to allow React to flush state updates to DOM
-      await new Promise(resolve => setTimeout(resolve, 50));
-      console.log('[DBG][NotificationItem] Mark as read complete');
+      onMarkAsRead(notification.id); // Fire and forget - state updates immediately
     }
 
     // Close the dropdown

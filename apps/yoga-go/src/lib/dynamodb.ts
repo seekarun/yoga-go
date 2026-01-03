@@ -16,8 +16,9 @@
  * 4. ANALYTICS TABLE - Course analytics events
  *    - CourseAnalyticsEvent
  *
- * 5. DISCUSSIONS TABLE - Discussions and votes
+ * 5. DISCUSSIONS TABLE - Discussions, votes, and notifications
  *    - Discussion, DiscussionVote (dual-write for efficient lookups)
+ *    - Notification (real-time notifications)
  *
  * 6. BLOG TABLE - Blog posts, comments, and likes
  *    - BlogPost, BlogComment, BlogLike
@@ -308,7 +309,7 @@ export const ForumPK = {
 } as const;
 
 // ============================================
-// NOTIFICATIONS - PK/SK Prefixes (uses CORE table)
+// NOTIFICATIONS - PK/SK Prefixes (uses DISCUSSIONS table)
 // Real-time notification system with tenant isolation
 // ============================================
 export const NotificationPK = {
