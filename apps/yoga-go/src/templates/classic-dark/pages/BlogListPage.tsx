@@ -74,9 +74,9 @@ export default function BlogListPage({ posts, expert }: BlogListPageProps) {
                       padding: '16px',
                     }}
                   >
-                    {expert.avatar ? (
+                    {expert.profilePic ? (
                       <img
-                        src={expert.avatar}
+                        src={expert.profilePic}
                         alt={expert.name}
                         style={{
                           width: '40px',

@@ -1454,6 +1454,69 @@ export interface RecordingFilters {
 }
 
 // ========================================
+// Forum Types (Slack-like Discussion System)
+// ========================================
+
+export type ForumContextVisibility = 'private' | 'public';
+export type ForumContextType = 'course' | 'blog' | 'webinar' | 'community';
+export type ForumAccessLevel = 'none' | 'view' | 'participate';
+
+// Base message type (used for both threads and replies)
+export interface ForumMessage extends BaseEntity {
+  context: string; // e.g., "blog.post.{postId}", "course.{courseId}.lesson.{lessonId}"
+  contextType: ForumContextType;
+  contextVisibility: ForumContextVisibility;
+  expertId: string; // Owner tenant
+
+  userId: string;
+  userRole: UserRole;
+  userName: string;
+  userAvatar?: string;
+
+  content: string;
+  likeCount: number;
+  editedAt?: string;
+
+  sourceTitle?: string; // For aggregated views (e.g., "Blog Post - Happy New Year")
+  sourceUrl?: string; // For aggregated views (e.g., "/blog/post_123")
+}
+
+// Thread = top-level message
+export interface ForumThread extends ForumMessage {
+  replyCount: number;
+  expertLastReadAt?: string; // When expert last read this thread
+}
+
+// Reply = message within a thread (flat, no nesting)
+export interface ForumReply extends ForumMessage {
+  threadId: string; // Parent thread ID
+}
+
+// Like tracking
+export interface ForumLike {
+  visitorId: string; // visitorId or visitorId
+  likedAt: string;
+}
+
+// Reply with like status (for display)
+export interface ForumReplyWithLike extends ForumReply {
+  userLiked: boolean;
+}
+
+// Thread with its replies (for display)
+export interface ForumThreadWithReplies extends ForumThread {
+  replies: ForumReplyWithLike[];
+  userLiked: boolean; // Current user has liked this thread
+}
+
+// Thread for expert dashboard (with unread indicators)
+export interface ForumThreadForDashboard extends ForumThreadWithReplies {
+  isNew: boolean; // Thread created after last read
+  hasNewReplies: boolean; // Has replies created after last read
+  newReplyCount: number; // Number of new replies
+}
+
+// ========================================
 // Discoverability Boost Types
 // ========================================
 

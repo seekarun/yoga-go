@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import type { BlogPostPageProps } from '../../types';
-import { BlogPostContent, BlogLikeButton, BlogCommentList } from '@/components/blog';
+import { BlogPostContent, BlogLikeButton } from '@/components/blog';
+import { ForumContainer } from '@/components/forum';
 
 function formatRelativeTime(dateString: string): string {
   const date = new Date(dateString);
@@ -63,9 +64,9 @@ export default function BlogPostPage({ post, expert }: BlogPostPageProps) {
 
           {/* Author Header */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-            {expert.avatar ? (
+            {expert.profilePic ? (
               <img
-                src={expert.avatar}
+                src={expert.profilePic}
                 alt={expert.name}
                 style={{
                   width: '48px',
@@ -125,7 +126,14 @@ export default function BlogPostPage({ post, expert }: BlogPostPageProps) {
               paddingTop: '24px',
             }}
           >
-            <BlogCommentList postId={post.id} expertId={expert.id} />
+            <ForumContainer
+              context={`blog.post.${post.id}`}
+              contextType="blog"
+              contextVisibility="public"
+              expertId={expert.id}
+              sourceTitle={post.content.substring(0, 50)}
+              sourceUrl={`/blog/${post.id}`}
+            />
           </div>
         </div>
       </article>

@@ -23,6 +23,7 @@ export default function ExpertSidebar({ expertId }: ExpertSidebarProps) {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [pendingHref, setPendingHref] = useState<string | null>(null);
 
   // Clear pending state when pathname changes (navigation completed)
@@ -45,12 +46,33 @@ export default function ExpertSidebar({ expertId }: ExpertSidebarProps) {
     }
   }, []);
 
-  // Fetch unread count on mount and periodically
+  // Fetch unread forum messages count
+  const fetchUnreadMessagesCount = useCallback(async () => {
+    try {
+      const response = await fetch('/data/app/expert/me/forum?limit=1');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.stats) {
+          setUnreadMessagesCount(
+            (data.stats.newThreads || 0) + (data.stats.threadsWithNewReplies || 0)
+          );
+        }
+      }
+    } catch (error) {
+      console.log('[DBG][ExpertSidebar] Failed to fetch unread messages count:', error);
+    }
+  }, []);
+
+  // Fetch unread counts on mount and periodically
   useEffect(() => {
     fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 60000); // Refresh every minute
+    fetchUnreadMessagesCount();
+    const interval = setInterval(() => {
+      fetchUnreadCount();
+      fetchUnreadMessagesCount();
+    }, 60000); // Refresh every minute
     return () => clearInterval(interval);
-  }, [fetchUnreadCount]);
+  }, [fetchUnreadCount, fetchUnreadMessagesCount]);
 
   // Load collapsed state from localStorage on mount
   useEffect(() => {
@@ -176,6 +198,22 @@ export default function ExpertSidebar({ expertId }: ExpertSidebarProps) {
         </svg>
       ),
       badge: unreadCount,
+    },
+    {
+      id: 'messages',
+      label: 'Messages',
+      href: `/srv/${expertId}/messages`,
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+          />
+        </svg>
+      ),
+      badge: unreadMessagesCount,
     },
     {
       id: 'assets',

@@ -626,6 +626,14 @@ The MyYoga.Guru Team`,
       projectionType: dynamodb.ProjectionType.ALL,
     });
 
+    // GSI2 for public thread aggregation by expert
+    discussionsTable.addGlobalSecondaryIndex({
+      indexName: "GSI2",
+      partitionKey: { name: "GSI2PK", type: dynamodb.AttributeType.STRING },
+      sortKey: { name: "GSI2SK", type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
     const blogTable = new dynamodb.Table(this, "BlogTable", {
       tableName: "yoga-go-blog",
       partitionKey: { name: "PK", type: dynamodb.AttributeType.STRING },

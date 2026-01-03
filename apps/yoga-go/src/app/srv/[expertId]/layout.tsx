@@ -28,6 +28,7 @@ const getHeaderInfo = (
   const headers: Record<string, { title: string; subtitle?: string }> = {
     '/': { title: 'Dashboard', subtitle: 'Overview of your expert space' },
     '/inbox': { title: 'Inbox', subtitle: 'Messages from students' },
+    '/messages': { title: 'Messages', subtitle: 'All forum discussions' },
     '/users': { title: 'Users', subtitle: 'Users signed up via your space' },
     '/courses': { title: 'My Courses', subtitle: 'Manage your courses' },
     '/webinars': { title: 'Live Sessions', subtitle: 'Manage your live sessions' },

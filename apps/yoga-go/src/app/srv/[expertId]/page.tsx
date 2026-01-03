@@ -2,10 +2,17 @@
 
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { formatPrice } from '@/lib/currency/currencyService';
-import type { Course, Email, SupportedCurrency } from '@/types';
+import type {
+  Course,
+  Email,
+  SupportedCurrency,
+  ForumThreadForDashboard,
+  ApiResponse,
+} from '@/types';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { ForumPostForm } from '@/components/forum';
 
 interface StripeBalanceData {
   connected: boolean;
@@ -34,6 +41,18 @@ export default function ExpertDashboard() {
   const [emailsHasMore, setEmailsHasMore] = useState(false);
   const [loadingMoreEmails, setLoadingMoreEmails] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  // Forum/Messages state
+  const [forumThreads, setForumThreads] = useState<ForumThreadForDashboard[]>([]);
+  const [loadingForum, setLoadingForum] = useState(true);
+  const [forumStats, setForumStats] = useState({
+    totalThreads: 0,
+    newThreads: 0,
+    threadsWithNewReplies: 0,
+  });
+  const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [submittingReply, setSubmittingReply] = useState(false);
 
   const fetchExpertCourses = useCallback(async () => {
     try {
@@ -115,6 +134,27 @@ export default function ExpertDashboard() {
     }
   }, []);
 
+  const fetchForumThreads = useCallback(async () => {
+    try {
+      setLoadingForum(true);
+      console.log('[DBG][expert-dashboard] Fetching forum threads');
+
+      const response = await fetch('/data/app/expert/me/forum?limit=50');
+      const data = await response.json();
+
+      if (data.success) {
+        setForumThreads(data.data || []);
+        if (data.stats) {
+          setForumStats(data.stats);
+        }
+      }
+    } catch (err) {
+      console.error('[DBG][expert-dashboard] Error fetching forum threads:', err);
+    } finally {
+      setLoadingForum(false);
+    }
+  }, []);
+
   const handleEmailClick = async (email: Email) => {
     // Mark as read if not already read
     if (!email.isRead) {
@@ -149,11 +189,203 @@ export default function ExpertDashboard() {
     }
   };
 
+  const formatForumDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+
+    if (diffMins < 1) return 'just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
+    if (diffMins < 10080) return `${Math.floor(diffMins / 1440)}d ago`;
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  };
+
+  const formatContextLabel = (thread: ForumThreadForDashboard) => {
+    if (thread.sourceTitle) return thread.sourceTitle;
+
+    // Parse context string like "blog.post.{postId}" or "course.{courseId}.lesson.{lessonId}"
+    const parts = thread.context.split('.');
+    if (parts[0] === 'blog') return 'Blog Post';
+    if (parts[0] === 'course') {
+      if (parts.length >= 4 && parts[2] === 'lesson') {
+        return `Course Lesson`;
+      }
+      return 'Course';
+    }
+    if (parts[0] === 'community') return 'Community';
+    return thread.contextType || 'Discussion';
+  };
+
+  const toggleThreadExpanded = (threadId: string) => {
+    setExpandedThreads(prev => {
+      const next = new Set(prev);
+      if (next.has(threadId)) {
+        next.delete(threadId);
+      } else {
+        next.add(threadId);
+      }
+      return next;
+    });
+  };
+
+  const handleMarkThreadAsRead = async (threadId: string) => {
+    try {
+      const response = await fetch('/data/app/expert/me/forum', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ threadId }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        // Update local state
+        setForumThreads(prev =>
+          prev.map(t =>
+            t.id === threadId ? { ...t, isNew: false, hasNewReplies: false, newReplyCount: 0 } : t
+          )
+        );
+        // Update stats
+        setForumStats(prev => ({
+          ...prev,
+          newThreads: Math.max(
+            0,
+            prev.newThreads - (forumThreads.find(t => t.id === threadId)?.isNew ? 1 : 0)
+          ),
+          threadsWithNewReplies: Math.max(
+            0,
+            prev.threadsWithNewReplies -
+              (forumThreads.find(t => t.id === threadId)?.hasNewReplies &&
+              !forumThreads.find(t => t.id === threadId)?.isNew
+                ? 1
+                : 0)
+          ),
+        }));
+      }
+    } catch (err) {
+      console.error('[DBG][expert-dashboard] Error marking thread as read:', err);
+    }
+  };
+
+  const handleReplySubmit = async (threadId: string, content: string) => {
+    try {
+      setSubmittingReply(true);
+      const response = await fetch(`/data/forum/threads/${threadId}/reply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content, expertId }),
+      });
+      const data = await response.json();
+      if (data.success && data.data) {
+        // Add reply to local state
+        setForumThreads(prev =>
+          prev.map(t =>
+            t.id === threadId
+              ? {
+                  ...t,
+                  replies: [...t.replies, data.data],
+                  replyCount: t.replyCount + 1,
+                }
+              : t
+          )
+        );
+        setReplyingTo(null);
+      }
+    } catch (err) {
+      console.error('[DBG][expert-dashboard] Error submitting reply:', err);
+    } finally {
+      setSubmittingReply(false);
+    }
+  };
+
+  const handleLike = async (messageId: string, isLiked: boolean, threadId?: string) => {
+    try {
+      const response = await fetch(`/data/forum/threads/${messageId}/like`, {
+        method: isLiked ? 'DELETE' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ expertId }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        // Update local state
+        setForumThreads(prev =>
+          prev.map(t => {
+            // If liking/unliking the thread itself
+            if (t.id === messageId) {
+              return {
+                ...t,
+                userLiked: !isLiked,
+                likeCount: isLiked ? t.likeCount - 1 : t.likeCount + 1,
+              };
+            }
+            // If liking/unliking a reply within a thread
+            if (threadId && t.id === threadId) {
+              return {
+                ...t,
+                replies: t.replies.map(r =>
+                  r.id === messageId
+                    ? {
+                        ...r,
+                        userLiked: !isLiked,
+                        likeCount: isLiked ? r.likeCount - 1 : r.likeCount + 1,
+                      }
+                    : r
+                ),
+              };
+            }
+            return t;
+          })
+        );
+      }
+    } catch (err) {
+      console.error('[DBG][expert-dashboard] Error toggling like:', err);
+    }
+  };
+
+  const getContextIcon = (contextType: string) => {
+    switch (contextType) {
+      case 'blog':
+        return (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"
+            />
+          </svg>
+        );
+      case 'course':
+        return (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+            />
+          </svg>
+        );
+      default:
+        return (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+            />
+          </svg>
+        );
+    }
+  };
+
   useEffect(() => {
     fetchExpertCourses();
     fetchStripeBalance();
     fetchEmails();
-  }, [fetchExpertCourses, fetchStripeBalance, fetchEmails]);
+    fetchForumThreads();
+  }, [fetchExpertCourses, fetchStripeBalance, fetchEmails, fetchForumThreads]);
 
   // Format currency amount (from cents to dollars)
   const formatAmount = (amount: number, currency: string) => {
@@ -353,52 +585,38 @@ export default function ExpertDashboard() {
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Link
-          href={`/srv/${expertId}/courses`}
-          className="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow group"
-        >
-          <div className="flex items-center gap-4">
-            <div
-              className="w-12 h-12 rounded-lg flex items-center justify-center"
-              style={{ background: 'color-mix(in srgb, var(--color-primary) 10%, white)' }}
-            >
-              <svg
-                className="w-6 h-6"
-                style={{ color: 'var(--color-primary)' }}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+      {/* Unread Messages / Forum Threads */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-bold text-gray-900">Unread Messages</h2>
+            {forumStats.newThreads + forumStats.threadsWithNewReplies > 0 && (
+              <span
+                className="px-2.5 py-0.5 text-xs font-medium text-white rounded-full"
+                style={{ background: 'var(--color-primary)' }}
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                />
-              </svg>
-            </div>
-            <div>
-              <p className="font-semibold text-gray-900 group-hover:text-blue-600">Courses</p>
-              <p className="text-sm text-gray-500">Manage your courses</p>
-            </div>
+                {forumStats.newThreads + forumStats.threadsWithNewReplies} unread
+              </span>
+            )}
           </div>
-        </Link>
+          <Link
+            href={`/srv/${expertId}/messages`}
+            className="text-sm font-medium hover:underline"
+            style={{ color: 'var(--color-primary)' }}
+          >
+            View all messages →
+          </Link>
+        </div>
 
-        <Link
-          href={`/srv/${expertId}/analytics`}
-          className="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow group"
-        >
-          <div className="flex items-center gap-4">
-            <div
-              className="w-12 h-12 rounded-lg flex items-center justify-center"
-              style={{ background: 'color-mix(in srgb, var(--color-primary) 10%, white)' }}
-            >
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          {loadingForum ? (
+            <div className="p-8 text-center">
+              <LoadingSpinner size="md" message="Loading messages..." />
+            </div>
+          ) : forumThreads.filter(t => t.isNew || t.hasNewReplies).length === 0 ? (
+            <div className="p-8 text-center">
               <svg
-                className="w-6 h-6"
-                style={{ color: 'var(--color-primary)' }}
+                className="w-12 h-12 mx-auto mb-3 text-gray-300"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -406,79 +624,227 @@ export default function ExpertDashboard() {
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                  strokeWidth={1.5}
+                  d="M5 13l4 4L19 7"
                 />
               </svg>
+              <p className="text-gray-500">All caught up!</p>
+              <p className="text-sm text-gray-400 mt-1">No unread messages at the moment</p>
             </div>
-            <div>
-              <p className="font-semibold text-gray-900 group-hover:text-blue-600">Analytics</p>
-              <p className="text-sm text-gray-500">View performance data</p>
-            </div>
-          </div>
-        </Link>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {forumThreads
+                .filter(t => t.isNew || t.hasNewReplies)
+                .map(thread => {
+                  const isExpanded = expandedThreads.has(thread.id);
 
-        <Link
-          href={`/srv/${expertId}/webinars`}
-          className="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow group"
-        >
-          <div className="flex items-center gap-4">
-            <div
-              className="w-12 h-12 rounded-lg flex items-center justify-center"
-              style={{ background: 'color-mix(in srgb, var(--color-primary) 10%, white)' }}
-            >
-              <svg
-                className="w-6 h-6"
-                style={{ color: 'var(--color-primary)' }}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-                />
-              </svg>
-            </div>
-            <div>
-              <p className="font-semibold text-gray-900 group-hover:text-blue-600">Live Sessions</p>
-              <p className="text-sm text-gray-500">Manage webinars</p>
-            </div>
-          </div>
-        </Link>
+                  return (
+                    <div key={thread.id} className="bg-blue-50/30">
+                      {/* Thread header */}
+                      <div className="px-4 py-3">
+                        <div className="flex items-start gap-3">
+                          {/* Unread indicator */}
+                          <div className="flex-shrink-0 pt-1.5">
+                            <div
+                              className="w-2 h-2 rounded-full"
+                              style={{ background: 'var(--color-primary)' }}
+                            />
+                          </div>
 
-        <Link
-          href={`/srv/${expertId}/landing-page`}
-          className="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow group"
-        >
-          <div className="flex items-center gap-4">
-            <div
-              className="w-12 h-12 rounded-lg flex items-center justify-center"
-              style={{ background: 'color-mix(in srgb, var(--color-primary) 10%, white)' }}
-            >
-              <svg
-                className="w-6 h-6"
-                style={{ color: 'var(--color-primary)' }}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"
-                />
-              </svg>
+                          <div className="flex-shrink-0 mt-0.5 text-gray-400">
+                            {getContextIcon(thread.contextType)}
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            {/* Context badge and indicators */}
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs font-medium px-2 py-0.5 rounded bg-gray-100 text-gray-600">
+                                {formatContextLabel(thread)}
+                              </span>
+                              {thread.isNew && (
+                                <span
+                                  className="text-xs px-2 py-0.5 rounded text-white"
+                                  style={{ background: 'var(--color-primary)' }}
+                                >
+                                  New
+                                </span>
+                              )}
+                              {thread.hasNewReplies && !thread.isNew && (
+                                <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700">
+                                  {thread.newReplyCount} new{' '}
+                                  {thread.newReplyCount === 1 ? 'reply' : 'replies'}
+                                </span>
+                              )}
+                              {thread.contextVisibility === 'private' && (
+                                <span className="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-700">
+                                  Private
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Thread content */}
+                            <p className="text-sm text-gray-900">{thread.content}</p>
+
+                            {/* Thread metadata */}
+                            <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
+                              <span className="font-medium">{thread.userName}</span>
+                              <span>-</span>
+                              <span>{formatForumDate(thread.createdAt || '')}</span>
+                              <span className="text-gray-400">
+                                {thread.likeCount} {thread.likeCount === 1 ? 'like' : 'likes'}
+                              </span>
+                            </div>
+
+                            {/* Actions bar */}
+                            <div className="flex items-center gap-3 mt-2">
+                              {/* Expand/collapse replies button */}
+                              {thread.replyCount > 0 && (
+                                <button
+                                  onClick={() => toggleThreadExpanded(thread.id)}
+                                  className="text-xs font-medium text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                                >
+                                  <svg
+                                    className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M9 5l7 7-7 7"
+                                    />
+                                  </svg>
+                                  {thread.replyCount}{' '}
+                                  {thread.replyCount === 1 ? 'reply' : 'replies'}
+                                </button>
+                              )}
+
+                              {/* Reply button */}
+                              <button
+                                onClick={() =>
+                                  setReplyingTo(replyingTo === thread.id ? null : thread.id)
+                                }
+                                className="text-xs font-medium text-gray-500 hover:text-gray-700"
+                              >
+                                Reply
+                              </button>
+
+                              {/* Like button */}
+                              <button
+                                onClick={() => handleLike(thread.id, thread.userLiked)}
+                                className={`text-xs font-medium flex items-center gap-1 ${
+                                  thread.userLiked
+                                    ? 'text-red-500 hover:text-red-600'
+                                    : 'text-gray-500 hover:text-gray-700'
+                                }`}
+                              >
+                                <svg
+                                  className="w-3.5 h-3.5"
+                                  fill={thread.userLiked ? 'currentColor' : 'none'}
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                                  />
+                                </svg>
+                                {thread.userLiked ? 'Liked' : 'Like'}
+                              </button>
+
+                              {/* Mark as read button */}
+                              <button
+                                onClick={() => handleMarkThreadAsRead(thread.id)}
+                                className="text-xs font-medium text-gray-500 hover:text-gray-700"
+                              >
+                                Mark as read
+                              </button>
+
+                              {/* View in context link */}
+                              {thread.sourceUrl && (
+                                <Link
+                                  href={thread.sourceUrl}
+                                  className="text-xs font-medium text-gray-500 hover:text-gray-700 ml-auto"
+                                >
+                                  View in context →
+                                </Link>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Replies section (collapsible) */}
+                      {isExpanded && thread.replies.length > 0 && (
+                        <div className="pl-12 pr-4 pb-3 space-y-2">
+                          {thread.replies.map(reply => (
+                            <div key={reply.id} className="pl-4 border-l-2 border-gray-200">
+                              <p className="text-sm text-gray-800">{reply.content}</p>
+                              <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+                                <span
+                                  className={`font-medium ${reply.userRole === 'expert' ? 'text-blue-600' : ''}`}
+                                >
+                                  {reply.userName}
+                                  {reply.userRole === 'expert' && ' (You)'}
+                                </span>
+                                <span>-</span>
+                                <span>{formatForumDate(reply.createdAt || '')}</span>
+                                <span className="text-gray-400">
+                                  {reply.likeCount} {reply.likeCount === 1 ? 'like' : 'likes'}
+                                </span>
+                                <button
+                                  onClick={() => handleLike(reply.id, reply.userLiked, thread.id)}
+                                  className={`font-medium flex items-center gap-1 ${
+                                    reply.userLiked
+                                      ? 'text-red-500 hover:text-red-600'
+                                      : 'text-gray-400 hover:text-gray-600'
+                                  }`}
+                                >
+                                  <svg
+                                    className="w-3 h-3"
+                                    fill={reply.userLiked ? 'currentColor' : 'none'}
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                                    />
+                                  </svg>
+                                  {reply.userLiked ? 'Liked' : 'Like'}
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Reply form */}
+                      {replyingTo === thread.id && (
+                        <div className="pl-12 pr-4 pb-4">
+                          <ForumPostForm
+                            placeholder="Write a reply..."
+                            submitLabel="Reply"
+                            onSubmit={async content => {
+                              await handleReplySubmit(thread.id, content);
+                            }}
+                            disabled={submittingReply}
+                            autoFocus
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
             </div>
-            <div>
-              <p className="font-semibold text-gray-900 group-hover:text-blue-600">Landing Page</p>
-              <p className="text-sm text-gray-500">Customize your page</p>
-            </div>
-          </div>
-        </Link>
+          )}
+        </div>
       </div>
 
       {/* Inbox Section */}

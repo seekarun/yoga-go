@@ -277,6 +277,37 @@ export const BlogPK = {
 } as const;
 
 // ============================================
+// FORUM - PK/SK Prefixes (uses DISCUSSIONS table)
+// Slack-like discussion system with tenant isolation
+// ============================================
+export const ForumPK = {
+  // All items share tenant partition: PK=TENANT#{expertId}
+  TENANT: (expertId: string) => `TENANT#${expertId}`,
+
+  // Thread: SK=CTX#{context}#THREAD#{createdAt}#{threadId}
+  THREAD_SK: (context: string, createdAt: string, threadId: string) =>
+    `CTX#${context}#THREAD#${createdAt}#${threadId}`,
+
+  // Reply: SK=CTX#{context}#THREAD#{threadId}#REPLY#{createdAt}#{replyId}
+  REPLY_SK: (context: string, threadId: string, createdAt: string, replyId: string) =>
+    `CTX#${context}#THREAD#${threadId}#REPLY#${createdAt}#${replyId}`,
+
+  // Like: SK=CTX#{context}#LIKE#{msgId}#{visitorId}
+  LIKE_SK: (context: string, msgId: string, visitorId: string) =>
+    `CTX#${context}#LIKE#${msgId}#${visitorId}`,
+
+  // Query prefixes
+  CTX_PREFIX: (context: string) => `CTX#${context}#`,
+  THREAD_PREFIX: (context: string) => `CTX#${context}#THREAD#`,
+  THREAD_WITH_REPLIES_PREFIX: (context: string, threadId: string) =>
+    `CTX#${context}#THREAD#${threadId}`,
+  LIKE_PREFIX: (context: string, msgId: string) => `CTX#${context}#LIKE#${msgId}#`,
+
+  // GSI1 for tenant-wide date sorting: GSI1PK=TENANT#{expertId}, GSI1SK={createdAt}#{msgId}
+  GSI1_SK: (createdAt: string, msgId: string) => `${createdAt}#${msgId}`,
+} as const;
+
+// ============================================
 // BOOST TABLE - PK/SK Prefixes
 // Wallet and boost campaign management
 // ============================================
@@ -328,6 +359,10 @@ export const EntityType = {
   BOOST: 'BOOST',
   // Currency entities
   EXCHANGE_RATE: 'EXCHANGE_RATE',
+  // Forum entities (Slack-like)
+  FORUM_THREAD: 'FORUM_THREAD',
+  FORUM_REPLY: 'FORUM_REPLY',
+  FORUM_LIKE: 'FORUM_LIKE',
 } as const;
 
 export type EntityTypeValue = (typeof EntityType)[keyof typeof EntityType];

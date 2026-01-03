@@ -1,10 +1,12 @@
 import type { NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
 import { decode } from 'next-auth/jwt';
-import type { User as UserType, UserRole } from '@/types';
+import type { User as UserType, UserRole, ForumAccessLevel, ForumContextVisibility } from '@/types';
 import * as userRepository from './repositories/userRepository';
 import * as courseRepository from './repositories/courseRepository';
 import { getAccessTokenVerifier } from './cognito';
+import * as enrollment from './enrollment';
+import * as webinarRegistrationRepository from './repositories/webinarRegistrationRepository';
 
 interface DecodedToken {
   cognitoSub?: string;
@@ -492,4 +494,187 @@ export async function requireAuthDual(request: NextRequest): Promise<{
   console.log('[DBG][auth] Auth passed via', session.authType, 'for user:', user.id);
 
   return { session, user };
+}
+
+/**
+ * Get the forum access level for a user in a given context
+ *
+ * Access Control Matrix:
+ * | User Type                  | Private Threads | Public Threads |
+ * |----------------------------|-----------------|----------------|
+ * | Guest (not logged in)      | none            | view           |
+ * | Logged-in (no access)      | none            | participate    |
+ * | Logged-in (has access)     | participate     | participate    |
+ *
+ * "Has access" means:
+ * - For course contexts: User is enrolled in the course OR is the expert owner
+ * - For blog/community contexts: User is the expert owner (always public, so all logged-in can participate)
+ * - For webinar contexts: User is registered for the webinar OR is the expert owner
+ *
+ * @param contextVisibility - Whether the context is public or private
+ * @param expertId - The expert/tenant ID that owns the content
+ * @param cognitoSub - The user's cognitoSub (null if guest)
+ * @param contextType - The type of context (course, blog, webinar, community)
+ * @param contextId - Optional context-specific ID (courseId, webinarId, etc.)
+ * @param lessonId - Optional lesson ID for course contexts
+ * @returns The access level: 'none', 'view', or 'participate'
+ */
+export async function getForumAccessLevel(
+  contextVisibility: ForumContextVisibility,
+  expertId: string,
+  cognitoSub: string | null,
+  contextType: 'course' | 'blog' | 'webinar' | 'community',
+  contextId?: string,
+  lessonId?: string
+): Promise<ForumAccessLevel> {
+  console.log('[DBG][auth] Getting forum access level:', {
+    contextVisibility,
+    expertId,
+    cognitoSub: cognitoSub ? 'present' : 'guest',
+    contextType,
+    contextId,
+    lessonId,
+  });
+
+  // Guest users
+  if (!cognitoSub) {
+    // Private contexts: no access
+    if (contextVisibility === 'private') {
+      console.log('[DBG][auth] Guest user, private context - access: none');
+      return 'none';
+    }
+    // Public contexts: view only
+    console.log('[DBG][auth] Guest user, public context - access: view');
+    return 'view';
+  }
+
+  // Logged-in users - check if they're the expert owner
+  const user = await getUserByCognitoSub(cognitoSub);
+  if (!user) {
+    console.log('[DBG][auth] User not found in DB - treating as guest');
+    return contextVisibility === 'private' ? 'none' : 'view';
+  }
+
+  // Expert owner always has full access
+  if (hasRole(user, 'expert') && user.expertProfile === expertId) {
+    console.log('[DBG][auth] User is expert owner - access: participate');
+    return 'participate';
+  }
+
+  // For private contexts, check specific access
+  if (contextVisibility === 'private') {
+    let hasAccess = false;
+
+    // Course context: check enrollment
+    if (contextType === 'course' && contextId) {
+      // Parse courseId from context if needed
+      const courseId = lessonId ? contextId : contextId;
+      hasAccess = await enrollment.isUserEnrolled(expertId, cognitoSub, courseId);
+      console.log('[DBG][auth] Course enrollment check:', hasAccess);
+    }
+    // Webinar context: check registration
+    else if (contextType === 'webinar' && contextId) {
+      hasAccess = await webinarRegistrationRepository.isUserRegistered(
+        expertId,
+        contextId,
+        cognitoSub
+      );
+      console.log('[DBG][auth] Webinar registration check:', hasAccess);
+    }
+
+    if (hasAccess) {
+      console.log('[DBG][auth] User has access to private context - access: participate');
+      return 'participate';
+    }
+
+    console.log('[DBG][auth] User does not have access to private context - access: none');
+    return 'none';
+  }
+
+  // Public contexts: all logged-in users can participate
+  console.log('[DBG][auth] Logged-in user, public context - access: participate');
+  return 'participate';
+}
+
+/**
+ * Parse a forum context string to extract type and IDs
+ *
+ * Context string formats:
+ * - course.{courseId}.lesson.{lessonId}
+ * - blog.post.{postId}
+ * - webinar.{webinarId}
+ * - community.{expertId}
+ *
+ * @param context - The context string
+ * @returns Parsed context information
+ */
+export function parseForumContext(context: string): {
+  contextType: 'course' | 'blog' | 'webinar' | 'community';
+  courseId?: string;
+  lessonId?: string;
+  postId?: string;
+  webinarId?: string;
+  communityExpertId?: string;
+} {
+  const parts = context.split('.');
+
+  if (parts[0] === 'course' && parts.length >= 4 && parts[2] === 'lesson') {
+    return {
+      contextType: 'course',
+      courseId: parts[1],
+      lessonId: parts[3],
+    };
+  }
+
+  if (parts[0] === 'blog' && parts[1] === 'post' && parts.length >= 3) {
+    return {
+      contextType: 'blog',
+      postId: parts[2],
+    };
+  }
+
+  if (parts[0] === 'webinar' && parts.length >= 2) {
+    return {
+      contextType: 'webinar',
+      webinarId: parts[1],
+    };
+  }
+
+  if (parts[0] === 'community' && parts.length >= 2) {
+    return {
+      contextType: 'community',
+      communityExpertId: parts[1],
+    };
+  }
+
+  // Default to community type for unknown formats
+  return { contextType: 'community' };
+}
+
+/**
+ * Get forum access level from a context string
+ * Convenience function that parses context and determines access
+ *
+ * @param context - The context string (e.g., "blog.post.123")
+ * @param contextVisibility - Whether the context is public or private
+ * @param expertId - The expert/tenant ID that owns the content
+ * @param cognitoSub - The user's cognitoSub (null if guest)
+ * @returns The access level: 'none', 'view', or 'participate'
+ */
+export async function getForumAccessLevelFromContext(
+  context: string,
+  contextVisibility: ForumContextVisibility,
+  expertId: string,
+  cognitoSub: string | null
+): Promise<ForumAccessLevel> {
+  const parsed = parseForumContext(context);
+
+  return getForumAccessLevel(
+    contextVisibility,
+    expertId,
+    cognitoSub,
+    parsed.contextType,
+    parsed.courseId || parsed.webinarId || parsed.postId,
+    parsed.lessonId
+  );
 }
