@@ -5,7 +5,7 @@ import type { Notification } from '@/types';
 
 interface NotificationItemProps {
   notification: Notification;
-  onMarkAsRead: (id: string) => void;
+  onMarkAsRead: (id: string) => Promise<void>;
   onClose: () => void;
 }
 
@@ -51,16 +51,48 @@ export default function NotificationItem({
 }: NotificationItemProps) {
   const router = useRouter();
 
-  const handleClick = () => {
-    // Mark as read first
-    if (!notification.isRead) {
-      onMarkAsRead(notification.id);
+  // Get the correct navigation link - handles both old and new notification formats
+  const getNavigationLink = (): string | null => {
+    // For email notifications, ensure we link to the specific email
+    if (notification.type === 'email_received') {
+      // Check if metadata contains emailId (for both old and new formats)
+      const metadata = notification.metadata as { emailId?: string } | undefined;
+      if (metadata?.emailId) {
+        // Extract expertId from the link or recipientId
+        const linkMatch = notification.link?.match(/\/srv\/([^/]+)\/inbox/);
+        const expertId = linkMatch?.[1] || notification.recipientId;
+        if (expertId) {
+          return `/srv/${expertId}/inbox/${metadata.emailId}`;
+        }
+      }
     }
+    // Fall back to the stored link for other notification types
+    return notification.link || null;
+  };
+
+  const handleClick = async () => {
+    console.log(
+      '[DBG][NotificationItem] Click - notification:',
+      notification.id,
+      'isRead:',
+      notification.isRead
+    );
+
+    // Mark as read first and wait for it to complete
+    if (!notification.isRead) {
+      console.log('[DBG][NotificationItem] Marking as read...');
+      await onMarkAsRead(notification.id);
+      console.log('[DBG][NotificationItem] Mark as read complete');
+    }
+
     // Close the dropdown
     onClose();
-    // Navigate to the link if it exists
-    if (notification.link) {
-      router.push(notification.link);
+
+    // Navigate to the correct link
+    const link = getNavigationLink();
+    console.log('[DBG][NotificationItem] Navigating to:', link);
+    if (link) {
+      router.push(link);
     }
   };
 

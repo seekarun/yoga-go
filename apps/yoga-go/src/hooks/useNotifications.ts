@@ -68,20 +68,39 @@ export function useNotifications(expertId: string | null): UseNotificationsResul
   // Mark single notification as read
   const markAsRead = useCallback(
     async (notificationId: string) => {
-      if (!expertId) return;
+      if (!expertId) {
+        console.log('[DBG][useNotifications] markAsRead: No expertId, returning');
+        return;
+      }
+
+      console.log('[DBG][useNotifications] markAsRead: Starting for notification:', notificationId);
 
       try {
         const response = await fetch(`/data/app/expert/me/notifications/${notificationId}/read`, {
           method: 'POST',
         });
         const data = await response.json();
+        console.log('[DBG][useNotifications] markAsRead: API response:', data);
 
         if (data.success) {
-          // Update local state
-          setNotifications(prev =>
-            prev.map(n => (n.id === notificationId ? { ...n, isRead: true } : n))
-          );
-          setUnreadCount(prev => Math.max(0, prev - 1));
+          // Update local state - mark as read and decrement count
+          setNotifications(prev => {
+            const updated = prev.map(n => (n.id === notificationId ? { ...n, isRead: true } : n));
+            console.log('[DBG][useNotifications] markAsRead: Updated notifications state');
+            return updated;
+          });
+          setUnreadCount(prev => {
+            const newCount = Math.max(0, prev - 1);
+            console.log(
+              '[DBG][useNotifications] markAsRead: Updated unread count from',
+              prev,
+              'to',
+              newCount
+            );
+            return newCount;
+          });
+        } else {
+          console.error('[DBG][useNotifications] markAsRead: API returned error:', data.error);
         }
       } catch (err) {
         console.error('[DBG][useNotifications] Error marking as read:', err);
@@ -161,6 +180,8 @@ export function useNotifications(expertId: string | null): UseNotificationsResul
               });
 
               // Merge with existing notifications (Firebase may have newer ones)
+              // Only add NEW notifications from Firebase, don't update isRead status
+              // The local state is the source of truth for read status
               setNotifications(prev => {
                 const existingIds = new Set(prev.map(n => n.id));
                 const newNotifications = firebaseNotifications.filter(n => !existingIds.has(n.id));
@@ -171,22 +192,25 @@ export function useNotifications(expertId: string | null): UseNotificationsResul
                     newNotifications.length,
                     'new notifications'
                   );
-                  // Merge and sort
+                  // Merge and sort - new notifications keep their isRead from Firebase
                   const merged = [...newNotifications, ...prev];
                   merged.sort((a, b) => {
                     const dateA = new Date(a.createdAt || '').getTime();
                     const dateB = new Date(b.createdAt || '').getTime();
                     return dateB - dateA;
                   });
+
+                  // Update unread count only for truly new notifications
+                  const newUnreadCount = newNotifications.filter(n => !n.isRead).length;
+                  if (newUnreadCount > 0) {
+                    console.log('[DBG][useNotifications] Adding new unread count:', newUnreadCount);
+                    setUnreadCount(prevCount => prevCount + newUnreadCount);
+                  }
+
                   return merged.slice(0, 50); // Keep max 50
                 }
                 return prev;
               });
-
-              // Update unread count from Firebase data
-              const unread = firebaseNotifications.filter(n => !n.isRead).length;
-              console.log('[DBG][useNotifications] Firebase unread count:', unread);
-              setUnreadCount(prev => Math.max(prev, unread));
             }
             setIsLoading(false);
           },

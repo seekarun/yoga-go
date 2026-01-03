@@ -7,8 +7,8 @@ interface NotificationDropdownProps {
   notifications: Notification[];
   unreadCount: number;
   isLoading: boolean;
-  onMarkAsRead: (id: string) => void;
-  onMarkAllAsRead: () => void;
+  onMarkAsRead: (id: string) => Promise<void>;
+  onMarkAllAsRead: () => Promise<void>;
   onClose: () => void;
 }
 

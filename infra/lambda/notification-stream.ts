@@ -225,14 +225,14 @@ async function handleNewEmail(email: EmailRecord): Promise<void> {
   const senderName = email.from.name || email.from.email;
   const senderEmail = email.from.email;
 
-  // Create notification
+  // Create notification with direct link to the email
   await createNotification({
     recipientId: email.expertId,
     recipientType: "expert",
     type: "email_received",
     title: `New email from ${senderName}`,
     message: email.subject || "(No subject)",
-    link: `/srv/${email.expertId}/inbox`,
+    link: `/srv/${email.expertId}/inbox/${email.id}`,
     metadata: {
       emailId: email.id,
       fromEmail: senderEmail,
