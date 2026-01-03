@@ -172,19 +172,37 @@ export function useNotifications(expertId: string | null): UseNotificationsResul
                 firebaseNotifications.length
               );
 
+              // Only consider VERY RECENT notifications from Firebase (within last 2 minutes)
+              // This prevents stale Firebase data from overriding the API source of truth
+              const twoMinutesAgo = Date.now() - 2 * 60 * 1000;
+              const recentFirebaseNotifications = firebaseNotifications.filter(n => {
+                const createdAt = new Date(n.createdAt || '').getTime();
+                return createdAt > twoMinutesAgo;
+              });
+
+              console.log(
+                '[DBG][useNotifications] Recent Firebase notifications:',
+                recentFirebaseNotifications.length
+              );
+
+              if (recentFirebaseNotifications.length === 0) {
+                setIsLoading(false);
+                return;
+              }
+
               // Sort by createdAt descending
-              firebaseNotifications.sort((a, b) => {
+              recentFirebaseNotifications.sort((a, b) => {
                 const dateA = new Date(a.createdAt || '').getTime();
                 const dateB = new Date(b.createdAt || '').getTime();
                 return dateB - dateA;
               });
 
-              // Merge with existing notifications (Firebase may have newer ones)
-              // Only add NEW notifications from Firebase, don't update isRead status
-              // The local state is the source of truth for read status
+              // Merge with existing notifications - only add truly NEW ones
               setNotifications(prev => {
                 const existingIds = new Set(prev.map(n => n.id));
-                const newNotifications = firebaseNotifications.filter(n => !existingIds.has(n.id));
+                const newNotifications = recentFirebaseNotifications.filter(
+                  n => !existingIds.has(n.id)
+                );
 
                 if (newNotifications.length > 0) {
                   console.log(
@@ -192,7 +210,7 @@ export function useNotifications(expertId: string | null): UseNotificationsResul
                     newNotifications.length,
                     'new notifications'
                   );
-                  // Merge and sort - new notifications keep their isRead from Firebase
+                  // Merge and sort
                   const merged = [...newNotifications, ...prev];
                   merged.sort((a, b) => {
                     const dateA = new Date(a.createdAt || '').getTime();

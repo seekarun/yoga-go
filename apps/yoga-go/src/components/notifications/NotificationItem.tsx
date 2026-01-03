@@ -78,10 +78,15 @@ export default function NotificationItem({
       notification.isRead
     );
 
+    // Get the link before any state changes
+    const link = getNavigationLink();
+
     // Mark as read first and wait for it to complete
     if (!notification.isRead) {
       console.log('[DBG][NotificationItem] Marking as read...');
       await onMarkAsRead(notification.id);
+      // Small delay to allow React to flush state updates to DOM
+      await new Promise(resolve => setTimeout(resolve, 50));
       console.log('[DBG][NotificationItem] Mark as read complete');
     }
 
@@ -89,7 +94,6 @@ export default function NotificationItem({
     onClose();
 
     // Navigate to the correct link
-    const link = getNavigationLink();
     console.log('[DBG][NotificationItem] Navigating to:', link);
     if (link) {
       router.push(link);
