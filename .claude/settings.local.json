@@ -104,7 +104,10 @@
       "Bash(AWS_PROFILE=myg npx cdk synth:*)",
       "WebFetch(domain:developers.debounce.io)",
       "WebFetch(domain:developers.debounce.com)",
-      "Bash(AWS_PROFILE=myg aws cloudformation describe-stacks:*)"
+      "Bash(AWS_PROFILE=myg aws cloudformation describe-stacks:*)",
+      "Bash(AWS_PROFILE=myg aws dynamodb describe-table:*)",
+      "Bash(AWS_PROFILE=myg aws lambda list-event-source-mappings:*)",
+      "Bash(bash -c 'START_TIME=$\\(\\($\\(date +%s\\) - 3600\\)\\)000 && AWS_PROFILE=myg aws logs filter-log-events --log-group-name /aws/lambda/yoga-go-notification-stream --start-time \"\"$START_TIME\"\" --region ap-southeast-2 2>&1 | head -100')"
     ],
     "deny": [],
     "ask": []

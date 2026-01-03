@@ -6,6 +6,7 @@ import { getClientExpertContext } from '@/lib/domainContext';
 import type { Expert } from '@/types';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import NotificationBell from '@/components/notifications/NotificationBell';
 
 export default function Header() {
   const {
@@ -313,147 +314,159 @@ export default function Header() {
           }}
         >
           {isAuthenticated ? (
-            <div ref={userMenuRef} style={{ position: 'relative' }}>
-              <button
-                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '50%',
-                  background: avatarUrl ? `url(${avatarUrl}) center/cover no-repeat` : '#000',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow:
-                    expertMode.isExpertMode && scrollOpacity < 0.5
-                      ? '0 2px 8px rgba(0,0,0,0.3)'
-                      : 'none',
-                }}
-              >
-                {!avatarUrl && (
-                  <svg width="20" height="20" fill="#fff" viewBox="0 0 24 24">
-                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                  </svg>
-                )}
-              </button>
-
-              {isUserMenuOpen && (
-                <div
+            <>
+              {/* Notification Bell - Show for experts */}
+              {isExpert && (
+                <NotificationBell
+                  expertId={user?.expertProfile || null}
+                  scrollOpacity={scrollOpacity}
+                  isExpertMode={expertMode.isExpertMode}
+                />
+              )}
+              <div ref={userMenuRef} style={{ position: 'relative' }}>
+                <button
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                   style={{
-                    position: 'absolute',
-                    top: '44px',
-                    right: 0,
-                    background: 'var(--color-surface)',
-                    borderRadius: '12px',
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-                    minWidth: '200px',
-                    padding: '8px 0',
-                    border: '1px solid var(--color-border)',
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '50%',
+                    background: avatarUrl ? `url(${avatarUrl}) center/cover no-repeat` : '#000',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow:
+                      expertMode.isExpertMode && scrollOpacity < 0.5
+                        ? '0 2px 8px rgba(0,0,0,0.3)'
+                        : 'none',
                   }}
                 >
+                  {!avatarUrl && (
+                    <svg width="20" height="20" fill="#fff" viewBox="0 0 24 24">
+                      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                    </svg>
+                  )}
+                </button>
+
+                {isUserMenuOpen && (
                   <div
                     style={{
-                      padding: '12px 20px',
-                      borderBottom: '1px solid var(--color-border)',
+                      position: 'absolute',
+                      top: '44px',
+                      right: 0,
+                      background: 'var(--color-surface)',
+                      borderRadius: '12px',
+                      boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+                      minWidth: '200px',
+                      padding: '8px 0',
+                      border: '1px solid var(--color-border)',
                     }}
                   >
-                    <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-main)' }}>
-                      {user?.profile?.name || 'User'}
+                    <div
+                      style={{
+                        padding: '12px 20px',
+                        borderBottom: '1px solid var(--color-border)',
+                      }}
+                    >
+                      <div
+                        style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-main)' }}
+                      >
+                        {user?.profile?.name || 'User'}
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                        {user?.profile?.email || 'user@example.com'}
+                      </div>
                     </div>
-                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                      {user?.profile?.email || 'user@example.com'}
-                    </div>
+
+                    {/* Role-specific menu items */}
+                    {isExpert ? (
+                      /* Expert menu items */
+                      <>
+                        <Link
+                          href="/srv"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          style={{
+                            display: 'block',
+                            padding: '12px 20px',
+                            textDecoration: 'none',
+                            color: 'var(--text-body)',
+                            fontSize: '14px',
+                          }}
+                        >
+                          Dashboard
+                        </Link>
+                        <Link
+                          href={`/srv/${user?.expertProfile}/edit`}
+                          onClick={() => setIsUserMenuOpen(false)}
+                          style={{
+                            display: 'block',
+                            padding: '12px 20px',
+                            textDecoration: 'none',
+                            color: 'var(--text-body)',
+                            fontSize: '14px',
+                          }}
+                        >
+                          Edit Profile
+                        </Link>
+                      </>
+                    ) : (
+                      /* Learner menu items */
+                      <>
+                        <Link
+                          href="/app/profile"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          style={{
+                            display: 'block',
+                            padding: '12px 20px',
+                            textDecoration: 'none',
+                            color: 'var(--text-body)',
+                            fontSize: '14px',
+                          }}
+                        >
+                          My Profile
+                        </Link>
+                        <Link
+                          href="/app/purchases"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          style={{
+                            display: 'block',
+                            padding: '12px 20px',
+                            textDecoration: 'none',
+                            color: 'var(--text-body)',
+                            fontSize: '14px',
+                          }}
+                        >
+                          My Purchases
+                        </Link>
+                      </>
+                    )}
+
+                    <div style={{ borderTop: '1px solid var(--color-border)', margin: '4px 0' }} />
+
+                    <button
+                      onClick={() => {
+                        handleLogout();
+                        setIsUserMenuOpen(false);
+                      }}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        padding: '12px 20px',
+                        textAlign: 'left',
+                        background: 'none',
+                        border: 'none',
+                        color: '#ff3333',
+                        fontSize: '14px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Sign Out
+                    </button>
                   </div>
-
-                  {/* Role-specific menu items */}
-                  {isExpert ? (
-                    /* Expert menu items */
-                    <>
-                      <Link
-                        href="/srv"
-                        onClick={() => setIsUserMenuOpen(false)}
-                        style={{
-                          display: 'block',
-                          padding: '12px 20px',
-                          textDecoration: 'none',
-                          color: 'var(--text-body)',
-                          fontSize: '14px',
-                        }}
-                      >
-                        Dashboard
-                      </Link>
-                      <Link
-                        href={`/srv/${user?.expertProfile}/edit`}
-                        onClick={() => setIsUserMenuOpen(false)}
-                        style={{
-                          display: 'block',
-                          padding: '12px 20px',
-                          textDecoration: 'none',
-                          color: 'var(--text-body)',
-                          fontSize: '14px',
-                        }}
-                      >
-                        Edit Profile
-                      </Link>
-                    </>
-                  ) : (
-                    /* Learner menu items */
-                    <>
-                      <Link
-                        href="/app/profile"
-                        onClick={() => setIsUserMenuOpen(false)}
-                        style={{
-                          display: 'block',
-                          padding: '12px 20px',
-                          textDecoration: 'none',
-                          color: 'var(--text-body)',
-                          fontSize: '14px',
-                        }}
-                      >
-                        My Profile
-                      </Link>
-                      <Link
-                        href="/app/purchases"
-                        onClick={() => setIsUserMenuOpen(false)}
-                        style={{
-                          display: 'block',
-                          padding: '12px 20px',
-                          textDecoration: 'none',
-                          color: 'var(--text-body)',
-                          fontSize: '14px',
-                        }}
-                      >
-                        My Purchases
-                      </Link>
-                    </>
-                  )}
-
-                  <div style={{ borderTop: '1px solid var(--color-border)', margin: '4px 0' }} />
-
-                  <button
-                    onClick={() => {
-                      handleLogout();
-                      setIsUserMenuOpen(false);
-                    }}
-                    style={{
-                      display: 'block',
-                      width: '100%',
-                      padding: '12px 20px',
-                      textAlign: 'left',
-                      background: 'none',
-                      border: 'none',
-                      color: '#ff3333',
-                      fontSize: '14px',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Sign Out
-                  </button>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            </>
           ) : authLoading ? (
             // Don't show anything while auth is loading
             <div style={{ width: '36px', height: '36px' }} />

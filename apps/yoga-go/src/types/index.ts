@@ -1517,6 +1517,30 @@ export interface ForumThreadForDashboard extends ForumThreadWithReplies {
 }
 
 // ========================================
+// Notification Types
+// ========================================
+
+export type NotificationType =
+  | 'email_received'
+  | 'forum_comment'
+  | 'forum_reply'
+  | 'payment_received'
+  | 'new_signup'
+  | 'course_enrollment'
+  | 'system';
+
+export interface Notification extends BaseEntity {
+  recipientId: string; // expertId or userId
+  recipientType: 'user' | 'expert';
+  type: NotificationType;
+  title: string;
+  message: string;
+  link?: string;
+  isRead: boolean;
+  metadata?: Record<string, unknown>;
+}
+
+// ========================================
 // Discoverability Boost Types
 // ========================================
 

@@ -2813,6 +2813,72 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "List Notifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/notifications?limit=20&unreadOnly=false",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "notifications"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "description": "Max notifications to return"
+                },
+                {
+                  "key": "unreadOnly",
+                  "value": "false",
+                  "description": "Filter to unread only"
+                }
+              ]
+            },
+            "description": "Get notifications for the authenticated expert. Returns list with unread count."
+          },
+          "response": []
+        },
+        {
+          "name": "Mark Notification as Read",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/notifications/:notificationId/read",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "notifications", ":notificationId", "read"],
+              "variable": [
+                {
+                  "key": "notificationId",
+                  "value": "notification-id-here",
+                  "description": "The notification ID to mark as read"
+                }
+              ]
+            },
+            "description": "Mark a single notification as read."
+          },
+          "response": []
+        },
+        {
+          "name": "Mark All Notifications as Read",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/notifications/read-all",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "notifications", "read-all"]
+            },
+            "description": "Mark all notifications as read for the authenticated expert."
+          },
+          "response": []
+        }
+      ]
     }
   ],
   "variable": [

@@ -705,6 +705,8 @@ The MyYoga.Guru Team`,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
       pointInTimeRecovery: false,
       timeToLiveAttribute: "ttl", // Auto-delete soft-deleted emails after 90 days
+      // Enable DynamoDB Streams for notification triggers
+      stream: dynamodb.StreamViewType.NEW_IMAGE,
     });
 
     // GSI1: Query unread emails efficiently
@@ -718,6 +720,59 @@ The MyYoga.Guru Team`,
     // Grant email validation lambdas access to emails table for blocklist
     emailsTable.grantReadData(surveyResponseValidatorLambda);
     emailsTable.grantReadWriteData(sesBounceHandlerLambda);
+
+    // ========================================
+    // Notification Stream Lambda (DynamoDB Streams)
+    // ========================================
+    // Triggered when new emails are received (INSERT events on emails table)
+    // Creates notifications in the core table and pushes to Firebase RTDB
+    const notificationStreamLambda = new nodejsLambda.NodejsFunction(
+      this,
+      "NotificationStreamLambda",
+      {
+        functionName: "yoga-go-notification-stream",
+        runtime: lambda.Runtime.NODEJS_22_X,
+        handler: "handler",
+        entry: path.join(__dirname, "../lambda/notification-stream.ts"),
+        timeout: cdk.Duration.seconds(30),
+        memorySize: 256,
+        environment: {
+          DYNAMODB_TABLE: coreTable.tableName,
+          EMAILS_TABLE: emailsTable.tableName,
+          APP_DOMAIN: appDomain,
+        },
+        bundling: { minify: true, sourceMap: false },
+      },
+    );
+
+    // Grant DynamoDB read/write for creating notifications in core table
+    coreTable.grantReadWriteData(notificationStreamLambda);
+    emailsTable.grantReadData(notificationStreamLambda);
+
+    // Grant access to secrets for Firebase credentials
+    appSecret.grantRead(notificationStreamLambda);
+
+    // Add DynamoDB Stream event source for incoming emails
+    // Filter: Only INSERT events for incoming emails (not outgoing)
+    notificationStreamLambda.addEventSource(
+      new lambdaEventSources.DynamoEventSource(emailsTable, {
+        startingPosition: lambda.StartingPosition.LATEST,
+        batchSize: 10,
+        retryAttempts: 2,
+        filters: [
+          lambda.FilterCriteria.filter({
+            eventName: lambda.FilterRule.isEqual("INSERT"),
+            dynamodb: {
+              NewImage: {
+                isOutgoing: {
+                  BOOL: lambda.FilterRule.notExists(),
+                },
+              },
+            },
+          }),
+        ],
+      }),
+    );
 
     // ========================================
     // Recording Processor Queue (SQS)

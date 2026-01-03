@@ -308,6 +308,17 @@ export const ForumPK = {
 } as const;
 
 // ============================================
+// NOTIFICATIONS - PK/SK Prefixes (uses CORE table)
+// Real-time notification system with tenant isolation
+// ============================================
+export const NotificationPK = {
+  // Notifications by recipient: PK=TENANT#{recipientId}, SK=NOTIF#{createdAt}#{notificationId}
+  RECIPIENT: (recipientId: string) => `TENANT#${recipientId}`,
+  NOTIFICATION_SK: (createdAt: string, id: string) => `NOTIF#${createdAt}#${id}`,
+  NOTIFICATION_PREFIX: 'NOTIF#',
+} as const;
+
+// ============================================
 // BOOST TABLE - PK/SK Prefixes
 // Wallet and boost campaign management
 // ============================================
@@ -363,6 +374,8 @@ export const EntityType = {
   FORUM_THREAD: 'FORUM_THREAD',
   FORUM_REPLY: 'FORUM_REPLY',
   FORUM_LIKE: 'FORUM_LIKE',
+  // Notification entities
+  NOTIFICATION: 'NOTIFICATION',
 } as const;
 
 export type EntityTypeValue = (typeof EntityType)[keyof typeof EntityType];
