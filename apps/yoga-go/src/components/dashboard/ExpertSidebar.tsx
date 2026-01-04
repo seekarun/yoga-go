@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNotificationContextOptional } from '@/contexts/NotificationContext';
 
 interface ExpertSidebarProps {
@@ -23,41 +23,17 @@ const SIDEBAR_COLLAPSED_KEY = 'expert-sidebar-collapsed';
 export default function ExpertSidebar({ expertId }: ExpertSidebarProps) {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   const [pendingHref, setPendingHref] = useState<string | null>(null);
 
-  // Use global notification context for real-time email notification count (optional during initial load)
+  // Use global notification context for real-time notification counts (optional during initial load)
   const notificationContext = useNotificationContextOptional();
   const unreadEmailCount = notificationContext?.unreadEmailCount ?? 0;
+  const unreadMessageCount = notificationContext?.unreadMessageCount ?? 0;
 
   // Clear pending state when pathname changes (navigation completed)
   useEffect(() => {
     setPendingHref(null);
   }, [pathname]);
-
-  // Fetch unread forum messages count
-  const fetchUnreadMessagesCount = useCallback(async () => {
-    try {
-      const response = await fetch('/data/app/expert/me/forum?limit=1');
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.stats) {
-          setUnreadMessagesCount(
-            (data.stats.newThreads || 0) + (data.stats.threadsWithNewReplies || 0)
-          );
-        }
-      }
-    } catch (error) {
-      console.log('[DBG][ExpertSidebar] Failed to fetch unread messages count:', error);
-    }
-  }, []);
-
-  // Fetch unread messages count on mount and periodically
-  useEffect(() => {
-    fetchUnreadMessagesCount();
-    const interval = setInterval(fetchUnreadMessagesCount, 60000); // Refresh every minute
-    return () => clearInterval(interval);
-  }, [fetchUnreadMessagesCount]);
 
   // Load collapsed state from localStorage on mount
   useEffect(() => {
@@ -198,7 +174,7 @@ export default function ExpertSidebar({ expertId }: ExpertSidebarProps) {
           />
         </svg>
       ),
-      badge: unreadMessagesCount,
+      badge: unreadMessageCount,
     },
     {
       id: 'assets',
@@ -421,7 +397,10 @@ export default function ExpertSidebar({ expertId }: ExpertSidebarProps) {
               >
                 {item.icon}
                 {item.badge !== undefined && item.badge > 0 && isCollapsed && (
-                  <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  <span
+                    className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 text-white text-[10px] font-bold rounded-full flex items-center justify-center"
+                    style={{ background: 'var(--color-highlight)' }}
+                  >
                     {item.badge > 99 ? '99+' : item.badge}
                   </span>
                 )}
@@ -430,7 +409,10 @@ export default function ExpertSidebar({ expertId }: ExpertSidebarProps) {
                 <>
                   <span className="font-medium text-sm truncate flex-1">{item.label}</span>
                   {item.badge !== undefined && item.badge > 0 && (
-                    <span className="min-w-[20px] h-5 px-1.5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                    <span
+                      className="min-w-[20px] h-5 px-1.5 text-white text-xs font-bold rounded-full flex items-center justify-center"
+                      style={{ background: 'var(--color-highlight)' }}
+                    >
                       {item.badge > 99 ? '99+' : item.badge}
                     </span>
                   )}

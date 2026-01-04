@@ -618,6 +618,7 @@ The MyYoga.Guru Team`,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
       pointInTimeRecovery: false,
       timeToLiveAttribute: "ttl", // Auto-delete read notifications after 14 days
+      stream: dynamodb.StreamViewType.NEW_IMAGE, // Enable stream for forum notifications
     });
 
     discussionsTable.addGlobalSecondaryIndex({
@@ -779,6 +780,40 @@ The MyYoga.Guru Team`,
             dynamodb: {
               NewImage: {
                 isOutgoing: lambda.FilterRule.notExists(),
+              },
+            },
+          }),
+        ],
+      }),
+    );
+
+    // Add DynamoDB Stream event source for forum threads/replies
+    // Filter: Only INSERT events for FORUM_THREAD or FORUM_REPLY entity types
+    notificationStreamLambda.addEventSource(
+      new lambdaEventSources.DynamoEventSource(discussionsTable, {
+        startingPosition: lambda.StartingPosition.LATEST,
+        batchSize: 10,
+        retryAttempts: 2,
+        filters: [
+          // Filter for FORUM_THREAD inserts
+          lambda.FilterCriteria.filter({
+            eventName: lambda.FilterRule.isEqual("INSERT"),
+            dynamodb: {
+              NewImage: {
+                entityType: {
+                  S: lambda.FilterRule.isEqual("FORUM_THREAD"),
+                },
+              },
+            },
+          }),
+          // Filter for FORUM_REPLY inserts
+          lambda.FilterCriteria.filter({
+            eventName: lambda.FilterRule.isEqual("INSERT"),
+            dynamodb: {
+              NewImage: {
+                entityType: {
+                  S: lambda.FilterRule.isEqual("FORUM_REPLY"),
+                },
               },
             },
           }),

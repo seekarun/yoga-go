@@ -1522,6 +1522,7 @@ export interface ForumThreadForDashboard extends ForumThreadWithReplies {
 
 export type NotificationType =
   | 'email_received'
+  | 'forum_thread'
   | 'forum_comment'
   | 'forum_reply'
   | 'payment_received'

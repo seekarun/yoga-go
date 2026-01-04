@@ -15,6 +15,7 @@ interface NotificationContextValue {
   notifications: Notification[];
   unreadCount: number;
   unreadEmailCount: number;
+  unreadMessageCount: number;
   isLoading: boolean;
   error: string | null;
   isRealtime: boolean;
@@ -53,6 +54,11 @@ export function NotificationProvider({ children, expertId }: NotificationProvide
   // Calculate unread email count
   const unreadEmailCount = notifications.filter(
     n => n.type === 'email_received' && !n.isRead
+  ).length;
+
+  // Calculate unread message count (forum threads and replies)
+  const unreadMessageCount = notifications.filter(
+    n => (n.type === 'forum_thread' || n.type === 'forum_reply') && !n.isRead
   ).length;
 
   // Fetch notifications from API
@@ -236,6 +242,7 @@ export function NotificationProvider({ children, expertId }: NotificationProvide
     notifications,
     unreadCount,
     unreadEmailCount,
+    unreadMessageCount,
     isLoading,
     error,
     isRealtime,

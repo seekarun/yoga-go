@@ -11,8 +11,9 @@ import type {
 } from '@/types';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { ForumPostForm } from '@/components/forum';
+import { useNotificationContextOptional } from '@/contexts/NotificationContext';
 
 interface StripeBalanceData {
   connected: boolean;
@@ -41,6 +42,10 @@ export default function ExpertDashboard() {
   const [emailsHasMore, setEmailsHasMore] = useState(false);
   const [loadingMoreEmails, setLoadingMoreEmails] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  // Listen for new email notifications to auto-refresh
+  const notificationContext = useNotificationContextOptional();
+  const emailNotificationCountRef = useRef(0);
 
   // Forum/Messages state
   const [forumThreads, setForumThreads] = useState<ForumThreadForDashboard[]>([]);
@@ -386,6 +391,24 @@ export default function ExpertDashboard() {
     fetchEmails();
     fetchForumThreads();
   }, [fetchExpertCourses, fetchStripeBalance, fetchEmails, fetchForumThreads]);
+
+  // Auto-refresh emails when new email notifications arrive
+  useEffect(() => {
+    if (!notificationContext) return;
+
+    const emailNotifications = notificationContext.notifications.filter(
+      n => n.type === 'email_received'
+    );
+    const currentCount = emailNotifications.length;
+
+    // Only refresh if count increased (new email arrived)
+    if (currentCount > emailNotificationCountRef.current && emailNotificationCountRef.current > 0) {
+      console.log('[DBG][expert-dashboard] New email notification detected, refreshing emails');
+      fetchEmails();
+    }
+
+    emailNotificationCountRef.current = currentCount;
+  }, [notificationContext, fetchEmails]);
 
   // Format currency amount (from cents to dollars)
   const formatAmount = (amount: number, currency: string) => {

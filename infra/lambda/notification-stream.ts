@@ -1,18 +1,19 @@
 /**
  * DynamoDB Stream Lambda for Real-Time Notifications
  *
- * Triggered by: yoga-go-emails table (INSERT events for incoming emails)
+ * Triggered by:
+ * - yoga-go-emails table (INSERT events for incoming emails)
+ * - yoga-go-discussions table (INSERT events for forum threads/replies)
  *
  * This Lambda:
- * 1. Receives new email events from DynamoDB stream
+ * 1. Receives events from DynamoDB streams
  * 2. Creates notification records in yoga-go-discussions table
  * 3. Pushes to Firebase RTDB for real-time delivery
  *
- * Extends to other events:
- * - Forum comments/replies
- * - Payment received
- * - New signups
- * - Course enrollments
+ * Notification types:
+ * - email_received: New email in expert inbox
+ * - forum_thread: New forum thread created
+ * - forum_reply: New reply to a forum thread
  */
 
 import { DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb";
@@ -47,6 +48,33 @@ interface EmailRecord {
   subject: string;
   receivedAt: string;
   isOutgoing?: boolean;
+}
+
+interface ForumThreadRecord {
+  id: string;
+  expertId: string;
+  context: string;
+  contextType: string;
+  userId: string;
+  userRole: string;
+  userName: string;
+  content: string;
+  entityType: string;
+  createdAt: string;
+}
+
+interface ForumReplyRecord {
+  id: string;
+  threadId: string;
+  expertId: string;
+  context: string;
+  contextType: string;
+  userId: string;
+  userRole: string;
+  userName: string;
+  content: string;
+  entityType: string;
+  createdAt: string;
 }
 
 interface NotificationInput {
@@ -244,6 +272,83 @@ async function handleNewEmail(email: EmailRecord): Promise<void> {
 }
 
 /**
+ * Handle new forum thread event - create notification for expert
+ */
+async function handleNewForumThread(thread: ForumThreadRecord): Promise<void> {
+  console.log(
+    `[notification-stream] Processing new forum thread for expert: ${thread.expertId}`
+  );
+
+  // Don't notify if the expert created the thread themselves
+  if (thread.userRole === "expert") {
+    console.log("[notification-stream] Skipping notification - expert created the thread");
+    return;
+  }
+
+  // Truncate content for notification message
+  const messagePreview = thread.content.length > 100
+    ? thread.content.substring(0, 100) + "..."
+    : thread.content;
+
+  // Create notification with direct link to messages
+  await createNotification({
+    recipientId: thread.expertId,
+    recipientType: "expert",
+    type: "forum_thread",
+    title: `New message from ${thread.userName}`,
+    message: messagePreview,
+    link: `/srv/${thread.expertId}/messages`,
+    metadata: {
+      threadId: thread.id,
+      userId: thread.userId,
+      userName: thread.userName,
+      context: thread.context,
+      contextType: thread.contextType,
+      createdAt: thread.createdAt,
+    },
+  });
+}
+
+/**
+ * Handle new forum reply event - create notification for expert
+ */
+async function handleNewForumReply(reply: ForumReplyRecord): Promise<void> {
+  console.log(
+    `[notification-stream] Processing new forum reply for expert: ${reply.expertId}`
+  );
+
+  // Don't notify if the expert created the reply themselves
+  if (reply.userRole === "expert") {
+    console.log("[notification-stream] Skipping notification - expert created the reply");
+    return;
+  }
+
+  // Truncate content for notification message
+  const messagePreview = reply.content.length > 100
+    ? reply.content.substring(0, 100) + "..."
+    : reply.content;
+
+  // Create notification with direct link to messages
+  await createNotification({
+    recipientId: reply.expertId,
+    recipientType: "expert",
+    type: "forum_reply",
+    title: `${reply.userName} replied to a thread`,
+    message: messagePreview,
+    link: `/srv/${reply.expertId}/messages`,
+    metadata: {
+      replyId: reply.id,
+      threadId: reply.threadId,
+      userId: reply.userId,
+      userName: reply.userName,
+      context: reply.context,
+      contextType: reply.contextType,
+      createdAt: reply.createdAt,
+    },
+  });
+}
+
+/**
  * Process a single DynamoDB stream record
  */
 async function processRecord(record: DynamoDBRecord): Promise<void> {
@@ -285,10 +390,40 @@ async function processRecord(record: DynamoDBRecord): Promise<void> {
 
     await handleNewEmail(email);
   }
-  // Future: Add handlers for other event sources
-  // else if (eventSourceARN.includes("yoga-go-discussions")) {
-  //   await handleNewForumMessage(newImage);
-  // }
+  // Check if this is from the discussions table (forum threads/replies)
+  else if (eventSourceARN.includes("yoga-go-discussions")) {
+    const entityType = newImage.entityType as string;
+
+    if (entityType === "FORUM_THREAD") {
+      const thread = newImage as ForumThreadRecord;
+
+      // Validate required fields
+      if (!thread.expertId || !thread.userId || !thread.userName) {
+        console.log(
+          "[notification-stream] Missing required thread fields, skipping"
+        );
+        return;
+      }
+
+      await handleNewForumThread(thread);
+    } else if (entityType === "FORUM_REPLY") {
+      const reply = newImage as ForumReplyRecord;
+
+      // Validate required fields
+      if (!reply.expertId || !reply.userId || !reply.userName || !reply.threadId) {
+        console.log(
+          "[notification-stream] Missing required reply fields, skipping"
+        );
+        return;
+      }
+
+      await handleNewForumReply(reply);
+    } else {
+      console.log(
+        `[notification-stream] Unknown entity type from discussions: ${entityType}, skipping`
+      );
+    }
+  }
 }
 
 /**

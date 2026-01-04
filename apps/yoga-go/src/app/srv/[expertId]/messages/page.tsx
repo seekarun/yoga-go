@@ -4,8 +4,9 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import type { ForumThreadForDashboard } from '@/types';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { ForumPostForm } from '@/components/forum';
+import { useNotificationContextOptional } from '@/contexts/NotificationContext';
 
 export default function MessagesPage() {
   const params = useParams();
@@ -21,6 +22,10 @@ export default function MessagesPage() {
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [submittingReply, setSubmittingReply] = useState(false);
+
+  // Listen for new message notifications to auto-refresh
+  const notificationContext = useNotificationContextOptional();
+  const messageNotificationCountRef = useRef(0);
 
   const fetchForumThreads = useCallback(async () => {
     try {
@@ -46,6 +51,27 @@ export default function MessagesPage() {
   useEffect(() => {
     fetchForumThreads();
   }, [fetchForumThreads]);
+
+  // Auto-refresh when new message notifications arrive
+  useEffect(() => {
+    if (!notificationContext) return;
+
+    const messageNotifications = notificationContext.notifications.filter(
+      n => n.type === 'forum_thread' || n.type === 'forum_reply'
+    );
+    const currentCount = messageNotifications.length;
+
+    // Only refresh if count increased (new message arrived)
+    if (
+      currentCount > messageNotificationCountRef.current &&
+      messageNotificationCountRef.current > 0
+    ) {
+      console.log('[DBG][messages] New message notification detected, refreshing threads');
+      fetchForumThreads();
+    }
+
+    messageNotificationCountRef.current = currentCount;
+  }, [notificationContext, fetchForumThreads]);
 
   const formatForumDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -349,7 +375,7 @@ export default function MessagesPage() {
                         {/* Actions bar */}
                         <div className="flex items-center gap-3 mt-2">
                           {/* Expand/collapse replies button */}
-                          {thread.replyCount > 0 && (
+                          {(thread.replies.length > 0 || thread.replyCount > 0) && (
                             <button
                               onClick={() => toggleThreadExpanded(thread.id)}
                               className="text-xs font-medium text-blue-600 hover:text-blue-800 flex items-center gap-1"
@@ -367,7 +393,10 @@ export default function MessagesPage() {
                                   d="M9 5l7 7-7 7"
                                 />
                               </svg>
-                              {thread.replyCount} {thread.replyCount === 1 ? 'reply' : 'replies'}
+                              {Math.max(thread.replies.length, thread.replyCount)}{' '}
+                              {Math.max(thread.replies.length, thread.replyCount) === 1
+                                ? 'reply'
+                                : 'replies'}
                             </button>
                           )}
 

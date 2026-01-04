@@ -123,7 +123,7 @@ export default function NotificationBell({
               minWidth: '18px',
               height: '18px',
               borderRadius: '9px',
-              background: '#ef4444',
+              background: 'var(--color-highlight)',
               color: '#ffffff',
               fontSize: '11px',
               fontWeight: '600',

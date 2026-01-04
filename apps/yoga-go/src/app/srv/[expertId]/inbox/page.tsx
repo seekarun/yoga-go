@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import type { EmailWithThread } from '@/types';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import { useNotificationContext } from '@/contexts/NotificationContext';
+import { useNotificationContextOptional } from '@/contexts/NotificationContext';
 
 type FilterType = 'all' | 'unread' | 'starred';
 
@@ -23,7 +23,7 @@ export default function InboxPage() {
   const [loadingMore, setLoadingMore] = useState(false);
 
   // Listen for new email notifications to auto-refresh
-  const { notifications } = useNotificationContext();
+  const notificationContext = useNotificationContextOptional();
   const emailNotificationCountRef = useRef(0);
 
   const fetchEmails = useCallback(
@@ -88,7 +88,11 @@ export default function InboxPage() {
 
   // Auto-refresh when new email notifications arrive
   useEffect(() => {
-    const emailNotifications = notifications.filter(n => n.type === 'email_received');
+    if (!notificationContext) return;
+
+    const emailNotifications = notificationContext.notifications.filter(
+      n => n.type === 'email_received'
+    );
     const currentCount = emailNotifications.length;
 
     // Only refresh if count increased (new email arrived)
@@ -99,7 +103,7 @@ export default function InboxPage() {
     }
 
     emailNotificationCountRef.current = currentCount;
-  }, [notifications, fetchEmails]);
+  }, [notificationContext, fetchEmails]);
 
   const handleEmailClick = async (email: EmailWithThread) => {
     // Mark as read if not already read (and not outgoing)
@@ -214,7 +218,10 @@ export default function InboxPage() {
                     >
                       {f === 'all' ? 'All' : f === 'unread' ? 'Unread' : 'Starred'}
                       {f === 'unread' && unreadCount > 0 && (
-                        <span className="ml-2 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full">
+                        <span
+                          className="ml-2 px-1.5 py-0.5 text-white text-xs rounded-full"
+                          style={{ background: 'var(--color-highlight)' }}
+                        >
                           {unreadCount}
                         </span>
                       )}
