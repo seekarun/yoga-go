@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import type { EmailWithThread } from '@/types';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import { useNotificationContext } from '@/contexts/NotificationContext';
 
 type FilterType = 'all' | 'unread' | 'starred';
 
@@ -20,6 +21,10 @@ export default function InboxPage() {
   const [lastKey, setLastKey] = useState<string | undefined>(undefined);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+
+  // Listen for new email notifications to auto-refresh
+  const { notifications } = useNotificationContext();
+  const emailNotificationCountRef = useRef(0);
 
   const fetchEmails = useCallback(
     async (append = false) => {
@@ -80,6 +85,21 @@ export default function InboxPage() {
     fetchEmails(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter, searchQuery]);
+
+  // Auto-refresh when new email notifications arrive
+  useEffect(() => {
+    const emailNotifications = notifications.filter(n => n.type === 'email_received');
+    const currentCount = emailNotifications.length;
+
+    // Only refresh if count increased (new email arrived)
+    if (currentCount > emailNotificationCountRef.current && emailNotificationCountRef.current > 0) {
+      console.log('[DBG][inbox] New email notification detected, refreshing inbox');
+      setLastKey(undefined);
+      fetchEmails(false);
+    }
+
+    emailNotificationCountRef.current = currentCount;
+  }, [notifications, fetchEmails]);
 
   const handleEmailClick = async (email: EmailWithThread) => {
     // Mark as read if not already read (and not outgoing)
