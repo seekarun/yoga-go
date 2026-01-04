@@ -2,17 +2,10 @@
 
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { formatPrice } from '@/lib/currency/currencyService';
-import type {
-  Course,
-  Email,
-  SupportedCurrency,
-  ForumThreadForDashboard,
-  ApiResponse,
-} from '@/types';
+import type { Course, Email, SupportedCurrency, ForumThreadForDashboard } from '@/types';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState, useRef } from 'react';
-import { ForumPostForm } from '@/components/forum';
 import { useNotificationContextOptional } from '@/contexts/NotificationContext';
 
 interface StripeBalanceData {
@@ -56,9 +49,6 @@ export default function ExpertDashboard() {
     newThreads: 0,
     threadsWithNewReplies: 0,
   });
-  const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
-  const [replyingTo, setReplyingTo] = useState<string | null>(null);
-  const [submittingReply, setSubmittingReply] = useState(false);
 
   const fetchExpertCourses = useCallback(async () => {
     try {
@@ -208,169 +198,6 @@ export default function ExpertDashboard() {
     return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
   };
 
-  const formatContextLabel = (thread: ForumThreadForDashboard) => {
-    if (thread.sourceTitle) return thread.sourceTitle;
-
-    // Parse context string like "blog.post.{postId}" or "course.{courseId}.lesson.{lessonId}"
-    const parts = thread.context.split('.');
-    if (parts[0] === 'blog') return 'Blog Post';
-    if (parts[0] === 'course') {
-      if (parts.length >= 4 && parts[2] === 'lesson') {
-        return `Course Lesson`;
-      }
-      return 'Course';
-    }
-    if (parts[0] === 'community') return 'Community';
-    return thread.contextType || 'Discussion';
-  };
-
-  const toggleThreadExpanded = (threadId: string) => {
-    setExpandedThreads(prev => {
-      const next = new Set(prev);
-      if (next.has(threadId)) {
-        next.delete(threadId);
-      } else {
-        next.add(threadId);
-      }
-      return next;
-    });
-  };
-
-  const handleMarkThreadAsRead = async (threadId: string) => {
-    try {
-      const response = await fetch('/data/app/expert/me/forum', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ threadId }),
-      });
-      const data = await response.json();
-      if (data.success) {
-        // Update local state
-        setForumThreads(prev =>
-          prev.map(t =>
-            t.id === threadId ? { ...t, isNew: false, hasNewReplies: false, newReplyCount: 0 } : t
-          )
-        );
-        // Update stats
-        setForumStats(prev => ({
-          ...prev,
-          newThreads: Math.max(
-            0,
-            prev.newThreads - (forumThreads.find(t => t.id === threadId)?.isNew ? 1 : 0)
-          ),
-          threadsWithNewReplies: Math.max(
-            0,
-            prev.threadsWithNewReplies -
-              (forumThreads.find(t => t.id === threadId)?.hasNewReplies &&
-              !forumThreads.find(t => t.id === threadId)?.isNew
-                ? 1
-                : 0)
-          ),
-        }));
-
-        // Clear related notifications
-        if (notificationContext) {
-          const relatedNotifications = notificationContext.notifications.filter(n => {
-            if (n.type !== 'forum_thread' && n.type !== 'forum_reply') return false;
-            const metadata = n.metadata as { threadId?: string; replyId?: string } | undefined;
-            return metadata?.threadId === threadId || n.metadata?.threadId === threadId;
-          });
-          for (const notification of relatedNotifications) {
-            if (!notification.isRead) {
-              notificationContext.markAsRead(notification.id);
-            }
-          }
-        }
-      }
-    } catch (err) {
-      console.error('[DBG][expert-dashboard] Error marking thread as read:', err);
-    }
-  };
-
-  const handleReplySubmit = async (threadId: string, content: string) => {
-    try {
-      setSubmittingReply(true);
-      const response = await fetch(`/data/forum/threads/${threadId}/reply`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content, expertId }),
-      });
-      const data = await response.json();
-      if (data.success && data.data) {
-        // Add reply to local state
-        setForumThreads(prev =>
-          prev.map(t =>
-            t.id === threadId
-              ? {
-                  ...t,
-                  replies: [...t.replies, data.data],
-                  replyCount: t.replyCount + 1,
-                }
-              : t
-          )
-        );
-        setReplyingTo(null);
-      }
-    } catch (err) {
-      console.error('[DBG][expert-dashboard] Error submitting reply:', err);
-    } finally {
-      setSubmittingReply(false);
-    }
-  };
-
-  const handleLike = async (messageId: string, isLiked: boolean, threadId?: string) => {
-    // Determine the actual thread ID (messageId if liking thread, threadId if liking reply)
-    const actualThreadId = threadId || messageId;
-
-    // Check if thread has unread status and mark as read
-    const thread = forumThreads.find(t => t.id === actualThreadId);
-    if (thread && (thread.isNew || thread.hasNewReplies)) {
-      handleMarkThreadAsRead(actualThreadId);
-    }
-
-    try {
-      const response = await fetch(`/data/forum/threads/${messageId}/like`, {
-        method: isLiked ? 'DELETE' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ expertId }),
-      });
-      const data = await response.json();
-      if (data.success) {
-        // Update local state
-        setForumThreads(prev =>
-          prev.map(t => {
-            // If liking/unliking the thread itself
-            if (t.id === messageId) {
-              return {
-                ...t,
-                userLiked: !isLiked,
-                likeCount: isLiked ? t.likeCount - 1 : t.likeCount + 1,
-              };
-            }
-            // If liking/unliking a reply within a thread
-            if (threadId && t.id === threadId) {
-              return {
-                ...t,
-                replies: t.replies.map(r =>
-                  r.id === messageId
-                    ? {
-                        ...r,
-                        userLiked: !isLiked,
-                        likeCount: isLiked ? r.likeCount - 1 : r.likeCount + 1,
-                      }
-                    : r
-                ),
-              };
-            }
-            return t;
-          })
-        );
-      }
-    } catch (err) {
-      console.error('[DBG][expert-dashboard] Error toggling like:', err);
-    }
-  };
-
   const getContextIcon = (contextType: string) => {
     switch (contextType) {
       case 'blog':
@@ -406,6 +233,46 @@ export default function ExpertDashboard() {
             />
           </svg>
         );
+    }
+  };
+
+  // Format context type for display (e.g., "blog" -> "blog post")
+  const formatContextType = (contextType: string) => {
+    switch (contextType) {
+      case 'blog':
+        return 'blog post';
+      case 'course':
+        return 'course';
+      default:
+        return contextType;
+    }
+  };
+
+  // Generate one-liner message for unread thread
+  const getUnreadMessageSummary = (thread: ForumThreadForDashboard) => {
+    const contextType = formatContextType(thread.contextType);
+    const title = thread.sourceTitle ? `"${thread.sourceTitle}"` : '';
+
+    if (thread.hasNewReplies && !thread.isNew) {
+      // It's a reply to existing thread
+      return (
+        <>
+          <span className="font-medium">{thread.userName}</span>
+          {' replied to a comment on '}
+          {contextType}
+          {title && <> {title}</>}
+        </>
+      );
+    } else {
+      // It's a new comment
+      return (
+        <>
+          <span className="font-medium">{thread.userName}</span>
+          {' added a comment to '}
+          {contextType}
+          {title && <> {title}</>}
+        </>
+      );
     }
   };
 
@@ -703,224 +570,53 @@ export default function ExpertDashboard() {
             <div className="divide-y divide-gray-100">
               {forumThreads
                 .filter(t => t.isNew || t.hasNewReplies)
-                .map(thread => {
-                  const isExpanded = expandedThreads.has(thread.id);
+                .map(thread => (
+                  <div
+                    key={thread.id}
+                    className="px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors flex items-center gap-3"
+                    onClick={() => {
+                      if (thread.sourceUrl) {
+                        router.push(`${thread.sourceUrl}?highlightThread=${thread.id}`);
+                      }
+                    }}
+                  >
+                    {/* Unread indicator */}
+                    <div
+                      className="w-2 h-2 rounded-full flex-shrink-0"
+                      style={{ background: 'var(--color-primary)' }}
+                    />
 
-                  return (
-                    <div key={thread.id} className="bg-blue-50/30">
-                      {/* Thread header - clickable to navigate to context */}
-                      <div
-                        className="px-4 py-3 cursor-pointer hover:bg-blue-50/50 transition-colors"
-                        onClick={() => {
-                          if (thread.sourceUrl) {
-                            // Navigate to context page with thread highlight param
-                            router.push(`${thread.sourceUrl}?highlightThread=${thread.id}`);
-                          }
-                        }}
-                      >
-                        <div className="flex items-start gap-3">
-                          {/* Unread indicator */}
-                          <div className="flex-shrink-0 pt-1.5">
-                            <div
-                              className="w-2 h-2 rounded-full"
-                              style={{ background: 'var(--color-primary)' }}
-                            />
-                          </div>
-
-                          <div className="flex-shrink-0 mt-0.5 text-gray-400">
-                            {getContextIcon(thread.contextType)}
-                          </div>
-
-                          <div className="flex-1 min-w-0">
-                            {/* Context badge and indicators */}
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-xs font-medium px-2 py-0.5 rounded bg-gray-100 text-gray-600">
-                                {formatContextLabel(thread)}
-                              </span>
-                              {thread.isNew && (
-                                <span
-                                  className="text-xs px-2 py-0.5 rounded text-white"
-                                  style={{ background: 'var(--color-primary)' }}
-                                >
-                                  New
-                                </span>
-                              )}
-                              {thread.hasNewReplies && !thread.isNew && (
-                                <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700">
-                                  {thread.newReplyCount} new{' '}
-                                  {thread.newReplyCount === 1 ? 'reply' : 'replies'}
-                                </span>
-                              )}
-                              {thread.contextVisibility === 'private' && (
-                                <span className="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-700">
-                                  Private
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Thread content */}
-                            <p className="text-sm text-gray-900">{thread.content}</p>
-
-                            {/* Thread metadata */}
-                            <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
-                              <span className="font-medium">{thread.userName}</span>
-                              <span>-</span>
-                              <span>{formatForumDate(thread.createdAt || '')}</span>
-                              <span className="text-gray-400">
-                                {thread.likeCount} {thread.likeCount === 1 ? 'like' : 'likes'}
-                              </span>
-                            </div>
-
-                            {/* Actions bar - stop propagation to prevent row click */}
-                            <div
-                              className="flex items-center gap-3 mt-2"
-                              onClick={e => e.stopPropagation()}
-                            >
-                              {/* Expand/collapse replies button */}
-                              {thread.replyCount > 0 && (
-                                <button
-                                  onClick={() => toggleThreadExpanded(thread.id)}
-                                  className="text-xs font-medium text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                                >
-                                  <svg
-                                    className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M9 5l7 7-7 7"
-                                    />
-                                  </svg>
-                                  {thread.replyCount}{' '}
-                                  {thread.replyCount === 1 ? 'reply' : 'replies'}
-                                </button>
-                              )}
-
-                              {/* Reply button */}
-                              <button
-                                onClick={() =>
-                                  setReplyingTo(replyingTo === thread.id ? null : thread.id)
-                                }
-                                className="text-xs font-medium text-gray-500 hover:text-gray-700"
-                              >
-                                Reply
-                              </button>
-
-                              {/* Like button */}
-                              <button
-                                onClick={() => handleLike(thread.id, thread.userLiked)}
-                                className={`text-xs font-medium flex items-center gap-1 ${
-                                  thread.userLiked
-                                    ? 'text-red-500 hover:text-red-600'
-                                    : 'text-gray-500 hover:text-gray-700'
-                                }`}
-                              >
-                                <svg
-                                  className="w-3.5 h-3.5"
-                                  fill={thread.userLiked ? 'currentColor' : 'none'}
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                                  />
-                                </svg>
-                                {thread.userLiked ? 'Liked' : 'Like'}
-                              </button>
-
-                              {/* Mark as read button */}
-                              <button
-                                onClick={() => handleMarkThreadAsRead(thread.id)}
-                                className="text-xs font-medium text-gray-500 hover:text-gray-700"
-                              >
-                                Mark as read
-                              </button>
-
-                              {/* View in context link */}
-                              {thread.sourceUrl && (
-                                <Link
-                                  href={thread.sourceUrl}
-                                  className="text-xs font-medium text-gray-500 hover:text-gray-700 ml-auto"
-                                >
-                                  View in context →
-                                </Link>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Replies section (collapsible) */}
-                      {isExpanded && thread.replies.length > 0 && (
-                        <div className="pl-12 pr-4 pb-3 space-y-2">
-                          {thread.replies.map(reply => (
-                            <div key={reply.id} className="pl-4 border-l-2 border-gray-200">
-                              <p className="text-sm text-gray-800">{reply.content}</p>
-                              <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
-                                <span
-                                  className={`font-medium ${reply.userRole === 'expert' ? 'text-blue-600' : ''}`}
-                                >
-                                  {reply.userName}
-                                  {reply.userRole === 'expert' && ' (You)'}
-                                </span>
-                                <span>-</span>
-                                <span>{formatForumDate(reply.createdAt || '')}</span>
-                                <span className="text-gray-400">
-                                  {reply.likeCount} {reply.likeCount === 1 ? 'like' : 'likes'}
-                                </span>
-                                <button
-                                  onClick={() => handleLike(reply.id, reply.userLiked, thread.id)}
-                                  className={`font-medium flex items-center gap-1 ${
-                                    reply.userLiked
-                                      ? 'text-red-500 hover:text-red-600'
-                                      : 'text-gray-400 hover:text-gray-600'
-                                  }`}
-                                >
-                                  <svg
-                                    className="w-3 h-3"
-                                    fill={reply.userLiked ? 'currentColor' : 'none'}
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                                    />
-                                  </svg>
-                                  {reply.userLiked ? 'Liked' : 'Like'}
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Reply form */}
-                      {replyingTo === thread.id && (
-                        <div className="pl-12 pr-4 pb-4">
-                          <ForumPostForm
-                            placeholder="Write a reply..."
-                            submitLabel="Reply"
-                            onSubmit={async content => {
-                              await handleReplySubmit(thread.id, content);
-                            }}
-                            disabled={submittingReply}
-                            autoFocus
-                          />
-                        </div>
-                      )}
+                    {/* Context icon */}
+                    <div className="flex-shrink-0 text-gray-400">
+                      {getContextIcon(thread.contextType)}
                     </div>
-                  );
-                })}
+
+                    {/* One-liner message */}
+                    <p className="text-sm text-gray-700 flex-1 truncate">
+                      {getUnreadMessageSummary(thread)}
+                    </p>
+
+                    {/* Time */}
+                    <span className="text-xs text-gray-400 flex-shrink-0">
+                      {formatForumDate(thread.createdAt || '')}
+                    </span>
+
+                    {/* Arrow */}
+                    <svg
+                      className="w-4 h-4 text-gray-400 flex-shrink-0"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </div>
+                ))}
             </div>
           )}
         </div>
