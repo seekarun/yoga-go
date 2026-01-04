@@ -228,6 +228,7 @@ export interface BlogListPageProps {
 export interface BlogPostPageProps {
   post: Post;
   expert: Expert;
+  highlightThreadId?: string;
 }
 
 // Survey List Page Props

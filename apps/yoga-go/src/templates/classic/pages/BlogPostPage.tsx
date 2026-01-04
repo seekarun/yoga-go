@@ -18,7 +18,7 @@ function formatRelativeTime(dateString: string): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-export default function BlogPostPage({ post, expert }: BlogPostPageProps) {
+export default function BlogPostPage({ post, expert, highlightThreadId }: BlogPostPageProps) {
   return (
     <div style={{ paddingTop: '64px', minHeight: '100vh', background: '#f8f8f8' }}>
       {/* Article Content */}
@@ -96,6 +96,7 @@ export default function BlogPostPage({ post, expert }: BlogPostPageProps) {
               expertId={expert.id}
               sourceTitle={post.content.substring(0, 50)}
               sourceUrl={`/blog/${post.id}`}
+              highlightThreadId={highlightThreadId}
             />
           </div>
         </div>

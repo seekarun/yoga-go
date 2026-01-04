@@ -151,6 +151,18 @@ export default function MessagesPage() {
     });
   };
 
+  // Handle clicking on a thread row - expand and mark as read
+  const handleThreadClick = (thread: ForumThreadForDashboard) => {
+    // Expand if not already expanded
+    if (!expandedThreads.has(thread.id)) {
+      setExpandedThreads(prev => new Set(prev).add(thread.id));
+    }
+    // Mark as read if unread
+    if (thread.isNew || thread.hasNewReplies) {
+      handleMarkThreadAsRead(thread.id);
+    }
+  };
+
   const handleMarkThreadAsRead = async (threadId: string) => {
     try {
       const response = await fetch('/data/app/expert/me/forum', {
@@ -180,6 +192,20 @@ export default function MessagesPage() {
                 : 0)
           ),
         }));
+
+        // Clear related notifications
+        if (notificationContext) {
+          const relatedNotifications = notificationContext.notifications.filter(n => {
+            if (n.type !== 'forum_thread' && n.type !== 'forum_reply') return false;
+            const metadata = n.metadata as { threadId?: string; replyId?: string } | undefined;
+            return metadata?.threadId === threadId || n.metadata?.threadId === threadId;
+          });
+          for (const notification of relatedNotifications) {
+            if (!notification.isRead) {
+              notificationContext.markAsRead(notification.id);
+            }
+          }
+        }
       }
     } catch (err) {
       console.error('[DBG][messages] Error marking thread as read:', err);
@@ -217,6 +243,15 @@ export default function MessagesPage() {
   };
 
   const handleLike = async (messageId: string, isLiked: boolean, threadId?: string) => {
+    // Determine the actual thread ID (messageId if liking thread, threadId if liking reply)
+    const actualThreadId = threadId || messageId;
+
+    // Check if thread has unread status and mark as read
+    const thread = forumThreads.find(t => t.id === actualThreadId);
+    if (thread && (thread.isNew || thread.hasNewReplies)) {
+      handleMarkThreadAsRead(actualThreadId);
+    }
+
     try {
       const response = await fetch(`/data/forum/threads/${messageId}/like`, {
         method: isLiked ? 'DELETE' : 'POST',
@@ -313,8 +348,11 @@ export default function MessagesPage() {
 
               return (
                 <div key={thread.id} className={hasUnread ? 'bg-blue-50/30' : ''}>
-                  {/* Thread header */}
-                  <div className="px-4 py-3">
+                  {/* Thread header - clickable */}
+                  <div
+                    className="px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors"
+                    onClick={() => handleThreadClick(thread)}
+                  >
                     <div className="flex items-start gap-3">
                       {/* Unread indicator */}
                       <div className="flex-shrink-0 pt-1.5">
@@ -372,8 +410,11 @@ export default function MessagesPage() {
                           </span>
                         </div>
 
-                        {/* Actions bar */}
-                        <div className="flex items-center gap-3 mt-2">
+                        {/* Actions bar - stop propagation to prevent row click */}
+                        <div
+                          className="flex items-center gap-3 mt-2"
+                          onClick={e => e.stopPropagation()}
+                        >
                           {/* Expand/collapse replies button */}
                           {(thread.replies.length > 0 || thread.replyCount > 0) && (
                             <button

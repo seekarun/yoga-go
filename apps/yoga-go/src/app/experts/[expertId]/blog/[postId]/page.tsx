@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useExpert } from '@/contexts/ExpertContext';
 import { BlogPostPage as ModernBlogPostPage } from '@/templates/modern/pages';
@@ -10,7 +10,9 @@ import type { BlogPost } from '@/types';
 
 export default function ExpertBlogPostPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const postId = params.postId as string;
+  const highlightThreadId = searchParams.get('highlightThread') || undefined;
   const { expert, expertId, template, loading: expertLoading, error: expertError } = useExpert();
 
   const [post, setPost] = useState<BlogPost | null>(null);
@@ -72,5 +74,5 @@ export default function ExpertBlogPostPage() {
   // Select the appropriate template component
   const BlogPostPage = template === 'modern' ? ModernBlogPostPage : ClassicBlogPostPage;
 
-  return <BlogPostPage post={post} expert={expert} />;
+  return <BlogPostPage post={post} expert={expert} highlightThreadId={highlightThreadId} />;
 }

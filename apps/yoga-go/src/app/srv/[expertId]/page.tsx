@@ -43,9 +43,10 @@ export default function ExpertDashboard() {
   const [loadingMoreEmails, setLoadingMoreEmails] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // Listen for new email notifications to auto-refresh
+  // Listen for new notifications to auto-refresh
   const notificationContext = useNotificationContextOptional();
   const emailNotificationCountRef = useRef(0);
+  const messageNotificationCountRef = useRef(0);
 
   // Forum/Messages state
   const [forumThreads, setForumThreads] = useState<ForumThreadForDashboard[]>([]);
@@ -266,6 +267,20 @@ export default function ExpertDashboard() {
                 : 0)
           ),
         }));
+
+        // Clear related notifications
+        if (notificationContext) {
+          const relatedNotifications = notificationContext.notifications.filter(n => {
+            if (n.type !== 'forum_thread' && n.type !== 'forum_reply') return false;
+            const metadata = n.metadata as { threadId?: string; replyId?: string } | undefined;
+            return metadata?.threadId === threadId || n.metadata?.threadId === threadId;
+          });
+          for (const notification of relatedNotifications) {
+            if (!notification.isRead) {
+              notificationContext.markAsRead(notification.id);
+            }
+          }
+        }
       }
     } catch (err) {
       console.error('[DBG][expert-dashboard] Error marking thread as read:', err);
@@ -304,6 +319,15 @@ export default function ExpertDashboard() {
   };
 
   const handleLike = async (messageId: string, isLiked: boolean, threadId?: string) => {
+    // Determine the actual thread ID (messageId if liking thread, threadId if liking reply)
+    const actualThreadId = threadId || messageId;
+
+    // Check if thread has unread status and mark as read
+    const thread = forumThreads.find(t => t.id === actualThreadId);
+    if (thread && (thread.isNew || thread.hasNewReplies)) {
+      handleMarkThreadAsRead(actualThreadId);
+    }
+
     try {
       const response = await fetch(`/data/forum/threads/${messageId}/like`, {
         method: isLiked ? 'DELETE' : 'POST',
@@ -409,6 +433,27 @@ export default function ExpertDashboard() {
 
     emailNotificationCountRef.current = currentCount;
   }, [notificationContext, fetchEmails]);
+
+  // Auto-refresh forum threads when new message notifications arrive
+  useEffect(() => {
+    if (!notificationContext) return;
+
+    const messageNotifications = notificationContext.notifications.filter(
+      n => n.type === 'forum_thread' || n.type === 'forum_reply'
+    );
+    const currentCount = messageNotifications.length;
+
+    // Only refresh if count increased (new message arrived)
+    if (
+      currentCount > messageNotificationCountRef.current &&
+      messageNotificationCountRef.current > 0
+    ) {
+      console.log('[DBG][expert-dashboard] New message notification detected, refreshing threads');
+      fetchForumThreads();
+    }
+
+    messageNotificationCountRef.current = currentCount;
+  }, [notificationContext, fetchForumThreads]);
 
   // Format currency amount (from cents to dollars)
   const formatAmount = (amount: number, currency: string) => {
@@ -663,8 +708,16 @@ export default function ExpertDashboard() {
 
                   return (
                     <div key={thread.id} className="bg-blue-50/30">
-                      {/* Thread header */}
-                      <div className="px-4 py-3">
+                      {/* Thread header - clickable to navigate to context */}
+                      <div
+                        className="px-4 py-3 cursor-pointer hover:bg-blue-50/50 transition-colors"
+                        onClick={() => {
+                          if (thread.sourceUrl) {
+                            // Navigate to context page with thread highlight param
+                            router.push(`${thread.sourceUrl}?highlightThread=${thread.id}`);
+                          }
+                        }}
+                      >
                         <div className="flex items-start gap-3">
                           {/* Unread indicator */}
                           <div className="flex-shrink-0 pt-1.5">
@@ -718,8 +771,11 @@ export default function ExpertDashboard() {
                               </span>
                             </div>
 
-                            {/* Actions bar */}
-                            <div className="flex items-center gap-3 mt-2">
+                            {/* Actions bar - stop propagation to prevent row click */}
+                            <div
+                              className="flex items-center gap-3 mt-2"
+                              onClick={e => e.stopPropagation()}
+                            >
                               {/* Expand/collapse replies button */}
                               {thread.replyCount > 0 && (
                                 <button

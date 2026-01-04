@@ -13,11 +13,14 @@ interface ForumThreadItemProps {
   isExpert: boolean;
   accessLevel: ForumAccessLevel;
   showContextBadge?: boolean;
+  isHighlighted?: boolean;
+  defaultExpanded?: boolean;
   onLike: (messageId: string) => Promise<void>;
   onUnlike: (messageId: string) => Promise<void>;
   onReply: (threadId: string, content: string) => Promise<void>;
   onEdit: (messageId: string, content: string) => Promise<void>;
   onDelete: (messageId: string) => Promise<void>;
+  onThreadClick?: (threadId: string) => void;
 }
 
 export default function ForumThreadItem({
@@ -26,17 +29,21 @@ export default function ForumThreadItem({
   isExpert,
   accessLevel,
   showContextBadge = false,
+  isHighlighted = false,
+  defaultExpanded = false,
   onLike,
   onUnlike,
   onReply,
   onEdit,
   onDelete,
+  onThreadClick,
 }: ForumThreadItemProps) {
   const [isReplying, setIsReplying] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(thread.content);
   const [isSaving, setIsSaving] = useState(false);
-  const [showReplies, setShowReplies] = useState(true);
+  const [showReplies, setShowReplies] = useState(defaultExpanded);
+  const [wasClicked, setWasClicked] = useState(false);
 
   const isOwnPost = thread.userId === currentUserId;
   const isExpertPost = thread.userRole === 'expert';
@@ -75,15 +82,33 @@ export default function ForumThreadItem({
     }
   };
 
+  const shouldHighlight = isHighlighted && !wasClicked;
+
+  const handleThreadClick = () => {
+    if (shouldHighlight && onThreadClick) {
+      setWasClicked(true);
+      onThreadClick(thread.id);
+    }
+    // Expand replies when clicking
+    if (!showReplies && hasReplies) {
+      setShowReplies(true);
+    }
+  };
+
   return (
     <div style={{ marginBottom: '16px' }}>
       {/* Main Thread */}
       <div
+        onClick={handleThreadClick}
         style={{
           padding: '16px',
-          background: 'rgba(128,128,128,0.08)',
-          border: '1px solid rgba(128,128,128,0.2)',
+          background: shouldHighlight ? 'rgba(59, 130, 246, 0.1)' : 'rgba(128,128,128,0.08)',
+          border: shouldHighlight
+            ? '2px solid var(--color-primary, #3b82f6)'
+            : '1px solid rgba(128,128,128,0.2)',
           borderRadius: '8px',
+          cursor: shouldHighlight ? 'pointer' : 'default',
+          transition: 'all 0.2s ease',
         }}
       >
         {/* Header */}

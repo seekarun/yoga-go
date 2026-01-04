@@ -1,6 +1,7 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotificationContextOptional } from '@/contexts/NotificationContext';
 import type {
   ApiResponse,
   ForumAccessLevel,
@@ -20,6 +21,7 @@ interface ForumContainerProps {
   sourceTitle?: string;
   sourceUrl?: string;
   showContextBadge?: boolean;
+  highlightThreadId?: string;
 }
 
 export default function ForumContainer({
@@ -30,8 +32,10 @@ export default function ForumContainer({
   sourceTitle,
   sourceUrl,
   showContextBadge = false,
+  highlightThreadId,
 }: ForumContainerProps) {
   const { user, isAuthenticated, isExpert } = useAuth();
+  const notificationContext = useNotificationContextOptional();
   const [threads, setThreads] = useState<ForumThreadWithReplies[]>([]);
   const [accessLevel, setAccessLevel] = useState<ForumAccessLevel>('none');
   const [isLoading, setIsLoading] = useState(true);
@@ -195,6 +199,22 @@ export default function ForumContainer({
     }
   };
 
+  // Handle thread click - clear related notifications
+  const handleThreadClick = (threadId: string) => {
+    if (notificationContext) {
+      const relatedNotifications = notificationContext.notifications.filter(n => {
+        if (n.type !== 'forum_thread' && n.type !== 'forum_reply') return false;
+        const metadata = n.metadata as { threadId?: string } | undefined;
+        return metadata?.threadId === threadId;
+      });
+      for (const notification of relatedNotifications) {
+        if (!notification.isRead) {
+          notificationContext.markAsRead(notification.id);
+        }
+      }
+    }
+  };
+
   // Guest view for public contexts (view only)
   if (!isAuthenticated && contextVisibility === 'public') {
     return (
@@ -329,11 +349,14 @@ export default function ForumContainer({
               isExpert={isExpertOwner}
               accessLevel={accessLevel}
               showContextBadge={showContextBadge}
+              isHighlighted={thread.id === highlightThreadId}
+              defaultExpanded={thread.id === highlightThreadId}
               onLike={handleLike}
               onUnlike={handleUnlike}
               onReply={handleReply}
               onEdit={handleEdit}
               onDelete={handleDelete}
+              onThreadClick={handleThreadClick}
             />
           ))}
         </div>
