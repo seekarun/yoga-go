@@ -248,6 +248,12 @@ export default function ExpertDashboard() {
     }
   };
 
+  // Convert public sourceUrl to expert dashboard URL
+  const getExpertDashboardUrl = (sourceUrl: string) => {
+    // sourceUrl is like "/blog/{postId}" - convert to "/srv/{expertId}/blog/{postId}"
+    return `/srv/${expertId}${sourceUrl}`;
+  };
+
   // Generate one-liner message for unread thread
   const getUnreadMessageSummary = (thread: ForumThreadForDashboard) => {
     const contextType = formatContextType(thread.contextType);
@@ -576,7 +582,9 @@ export default function ExpertDashboard() {
                     className="px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors flex items-center gap-3"
                     onClick={() => {
                       if (thread.sourceUrl) {
-                        router.push(`${thread.sourceUrl}?highlightThread=${thread.id}`);
+                        router.push(
+                          `${getExpertDashboardUrl(thread.sourceUrl)}?highlightThread=${thread.id}`
+                        );
                       }
                     }}
                   >
