@@ -232,7 +232,7 @@ export default function CreateEventModal({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} maxWidth="max-w-lg">
-      <ModalHeader title="Create Event" onClose={onClose} />
+      <ModalHeader onClose={onClose}>Create Event</ModalHeader>
 
       <form onSubmit={handleSubmit}>
         <div className="p-6 space-y-4">

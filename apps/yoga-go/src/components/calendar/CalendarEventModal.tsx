@@ -185,7 +185,7 @@ export default function CalendarEventModal({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} maxWidth="max-w-md">
-      <ModalHeader title={isEditing ? 'Edit Event' : 'Event Details'} onClose={onClose} />
+      <ModalHeader onClose={onClose}>{isEditing ? 'Edit Event' : 'Event Details'}</ModalHeader>
 
       <div className="p-6 space-y-4">
         {/* Event Type Badge */}
