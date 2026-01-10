@@ -116,6 +116,11 @@ export const CorePK = {
   // Recording: PK=TENANT#{tenantId}, SK=RECORDING#{recordingId}
   RECORDING: (recordingId: string) => `RECORDING#${recordingId}`,
 
+  // CalendarEvent: PK=TENANT#{tenantId}, SK=CALEVENT#{date}#{eventId}
+  // Date format: YYYY-MM-DD for efficient date range queries
+  CALENDAR_EVENT: (date: string, eventId: string) => `CALEVENT#${date}#${eventId}`,
+  CALENDAR_EVENT_PREFIX: 'CALEVENT#',
+
   // OAuth tokens: PK=TENANT#{tenantId}, SK=GOOGLE_AUTH or ZOOM_AUTH
   GOOGLE_AUTH: 'GOOGLE_AUTH',
   ZOOM_AUTH: 'ZOOM_AUTH',
@@ -377,6 +382,8 @@ export const EntityType = {
   FORUM_LIKE: 'FORUM_LIKE',
   // Notification entities
   NOTIFICATION: 'NOTIFICATION',
+  // Calendar entities
+  CALENDAR_EVENT: 'CALENDAR_EVENT',
 } as const;
 
 export type EntityTypeValue = (typeof EntityType)[keyof typeof EntityType];

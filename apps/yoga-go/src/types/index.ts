@@ -1673,3 +1673,66 @@ export interface BoostListResult {
   activeCount: number;
   lastKey?: string;
 }
+
+// ============================================
+// Calendar Event Types
+// ============================================
+
+export type CalendarEventType = 'general' | 'live_session';
+export type CalendarEventStatus = 'scheduled' | 'cancelled' | 'completed';
+
+export interface CalendarEvent extends BaseEntity {
+  expertId: string;
+  title: string;
+  description?: string;
+  date: string; // YYYY-MM-DD for DynamoDB SK sorting
+  startTime: string; // ISO timestamp
+  endTime: string; // ISO timestamp
+  duration: number; // in minutes
+  type: CalendarEventType;
+  status: CalendarEventStatus;
+  // For live_session type - links to webinar
+  webinarId?: string;
+  sessionId?: string;
+  meetingLink?: string;
+  // For general events
+  location?: string;
+  isAllDay?: boolean;
+  color?: string; // Custom color for display
+  notes?: string;
+}
+
+// Input type for creating calendar events
+export interface CreateCalendarEventInput {
+  title: string;
+  description?: string;
+  startTime: string;
+  endTime: string;
+  type: CalendarEventType;
+  webinarId?: string;
+  sessionId?: string;
+  meetingLink?: string;
+  location?: string;
+  isAllDay?: boolean;
+  color?: string;
+  notes?: string;
+}
+
+// Combined calendar item for FullCalendar display
+export interface CalendarItem {
+  id: string;
+  title: string;
+  start: string; // ISO timestamp
+  end: string; // ISO timestamp
+  allDay?: boolean;
+  type: 'event' | 'live_session';
+  color?: string;
+  extendedProps: {
+    description?: string;
+    webinarId?: string;
+    sessionId?: string;
+    meetingLink?: string;
+    location?: string;
+    status?: CalendarEventStatus | WebinarStatus;
+  };
+}

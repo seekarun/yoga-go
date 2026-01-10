@@ -1,6 +1,7 @@
 'use client';
 
 import LoadingSpinner from '@/components/LoadingSpinner';
+import CalendarWidget from '@/components/calendar/CalendarWidget';
 import { formatPrice } from '@/lib/currency/currencyService';
 import type { Course, Email, SupportedCurrency, ForumThreadForDashboard } from '@/types';
 import Link from 'next/link';
@@ -526,107 +527,115 @@ export default function ExpertDashboard() {
         </div>
       </div>
 
-      {/* Unread Messages / Forum Threads */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <h2 className="text-xl font-bold text-gray-900">Unread Messages</h2>
-            {forumStats.newThreads + forumStats.threadsWithNewReplies > 0 && (
-              <span
-                className="px-2.5 py-0.5 text-xs font-medium text-white rounded-full"
-                style={{ background: 'var(--color-primary)' }}
-              >
-                {forumStats.newThreads + forumStats.threadsWithNewReplies} unread
-              </span>
+      {/* Main Content Grid: Messages + Calendar Widget */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        {/* Unread Messages / Forum Threads - Takes 2 columns */}
+        <div className="lg:col-span-2">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl font-bold text-gray-900">Unread Messages</h2>
+              {forumStats.newThreads + forumStats.threadsWithNewReplies > 0 && (
+                <span
+                  className="px-2.5 py-0.5 text-xs font-medium text-white rounded-full"
+                  style={{ background: 'var(--color-primary)' }}
+                >
+                  {forumStats.newThreads + forumStats.threadsWithNewReplies} unread
+                </span>
+              )}
+            </div>
+            <Link
+              href={`/srv/${expertId}/messages`}
+              className="text-sm font-medium hover:underline"
+              style={{ color: 'var(--color-primary)' }}
+            >
+              View all messages →
+            </Link>
+          </div>
+
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            {loadingForum ? (
+              <div className="p-8 text-center">
+                <LoadingSpinner size="md" message="Loading messages..." />
+              </div>
+            ) : forumThreads.filter(t => t.isNew || t.hasNewReplies).length === 0 ? (
+              <div className="p-8 text-center">
+                <svg
+                  className="w-12 h-12 mx-auto mb-3 text-gray-300"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+                <p className="text-gray-500">All caught up!</p>
+                <p className="text-sm text-gray-400 mt-1">No unread messages at the moment</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-100">
+                {forumThreads
+                  .filter(t => t.isNew || t.hasNewReplies)
+                  .map(thread => (
+                    <div
+                      key={thread.id}
+                      className="px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors flex items-center gap-3"
+                      onClick={() => {
+                        if (thread.sourceUrl) {
+                          router.push(
+                            `${getExpertDashboardUrl(thread.sourceUrl)}?highlightThread=${thread.id}`
+                          );
+                        }
+                      }}
+                    >
+                      {/* Unread indicator */}
+                      <div
+                        className="w-2 h-2 rounded-full flex-shrink-0"
+                        style={{ background: 'var(--color-primary)' }}
+                      />
+
+                      {/* Context icon */}
+                      <div className="flex-shrink-0 text-gray-400">
+                        {getContextIcon(thread.contextType)}
+                      </div>
+
+                      {/* One-liner message */}
+                      <p className="text-sm text-gray-700 flex-1 truncate">
+                        {getUnreadMessageSummary(thread)}
+                      </p>
+
+                      {/* Time */}
+                      <span className="text-xs text-gray-400 flex-shrink-0">
+                        {formatForumDate(thread.createdAt || '')}
+                      </span>
+
+                      {/* Arrow */}
+                      <svg
+                        className="w-4 h-4 text-gray-400 flex-shrink-0"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                    </div>
+                  ))}
+              </div>
             )}
           </div>
-          <Link
-            href={`/srv/${expertId}/messages`}
-            className="text-sm font-medium hover:underline"
-            style={{ color: 'var(--color-primary)' }}
-          >
-            View all messages →
-          </Link>
         </div>
 
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          {loadingForum ? (
-            <div className="p-8 text-center">
-              <LoadingSpinner size="md" message="Loading messages..." />
-            </div>
-          ) : forumThreads.filter(t => t.isNew || t.hasNewReplies).length === 0 ? (
-            <div className="p-8 text-center">
-              <svg
-                className="w-12 h-12 mx-auto mb-3 text-gray-300"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-              <p className="text-gray-500">All caught up!</p>
-              <p className="text-sm text-gray-400 mt-1">No unread messages at the moment</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-100">
-              {forumThreads
-                .filter(t => t.isNew || t.hasNewReplies)
-                .map(thread => (
-                  <div
-                    key={thread.id}
-                    className="px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors flex items-center gap-3"
-                    onClick={() => {
-                      if (thread.sourceUrl) {
-                        router.push(
-                          `${getExpertDashboardUrl(thread.sourceUrl)}?highlightThread=${thread.id}`
-                        );
-                      }
-                    }}
-                  >
-                    {/* Unread indicator */}
-                    <div
-                      className="w-2 h-2 rounded-full flex-shrink-0"
-                      style={{ background: 'var(--color-primary)' }}
-                    />
-
-                    {/* Context icon */}
-                    <div className="flex-shrink-0 text-gray-400">
-                      {getContextIcon(thread.contextType)}
-                    </div>
-
-                    {/* One-liner message */}
-                    <p className="text-sm text-gray-700 flex-1 truncate">
-                      {getUnreadMessageSummary(thread)}
-                    </p>
-
-                    {/* Time */}
-                    <span className="text-xs text-gray-400 flex-shrink-0">
-                      {formatForumDate(thread.createdAt || '')}
-                    </span>
-
-                    {/* Arrow */}
-                    <svg
-                      className="w-4 h-4 text-gray-400 flex-shrink-0"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
-                  </div>
-                ))}
-            </div>
-          )}
+        {/* Calendar Widget - Takes 1 column */}
+        <div className="lg:col-span-1">
+          <CalendarWidget expertId={expertId} />
         </div>
       </div>
 

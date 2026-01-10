@@ -239,6 +239,145 @@
             "description": "Get all surveys for the current expert (excludes archived).\n\nAuth: Cookie (web) OR Bearer token (mobile)\n\nResponse:\n- Array of Survey objects with id, title, status, responseCount, etc."
           },
           "response": []
+        },
+        {
+          "name": "Get Expert Calendar",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/calendar?start=2024-01-01T00:00:00Z&end=2024-01-31T23:59:59Z",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "calendar"],
+              "query": [
+                {
+                  "key": "start",
+                  "value": "2024-01-01T00:00:00Z"
+                },
+                {
+                  "key": "end",
+                  "value": "2024-01-31T23:59:59Z"
+                }
+              ]
+            },
+            "description": "Get combined calendar data (events + webinar sessions) for a date range.\n\nAuth: Cookie (web) OR Bearer token (mobile)\n\nQuery params:\n- start: ISO date (required)\n- end: ISO date (required)\n- type: 'all' | 'events' | 'sessions' (default: 'all')\n\nResponse: Array of CalendarItem objects"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Calendar Event",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Team Meeting\",\n  \"description\": \"Weekly sync meeting\",\n  \"startTime\": \"2024-01-15T10:00:00Z\",\n  \"endTime\": \"2024-01-15T11:00:00Z\",\n  \"type\": \"general\",\n  \"location\": \"Zoom\",\n  \"color\": \"#a35638\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/calendar",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "calendar"]
+            },
+            "description": "Create a new calendar event.\n\nAuth: Cookie (web) OR Bearer token (mobile)\n\nBody:\n- title: Event title (required)\n- startTime: ISO timestamp (required)\n- endTime: ISO timestamp (required)\n- type: 'general' | 'live_session' (required)\n- description: Optional description\n- location: Optional location\n- color: Optional hex color\n- isAllDay: Optional boolean\n\nResponse: Created CalendarEvent object"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Calendar Event",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/calendar/events/:eventId",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "calendar", "events", ":eventId"],
+              "variable": [
+                {
+                  "key": "eventId",
+                  "value": "evt_123"
+                }
+              ]
+            },
+            "description": "Get a single calendar event by ID.\n\nAuth: Cookie (web) OR Bearer token (mobile)\n\nResponse: CalendarEvent object"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Calendar Event",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Meeting Title\",\n  \"description\": \"Updated description\",\n  \"location\": \"Google Meet\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/calendar/events/:eventId",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "calendar", "events", ":eventId"],
+              "variable": [
+                {
+                  "key": "eventId",
+                  "value": "evt_123"
+                }
+              ]
+            },
+            "description": "Update a calendar event.\n\nAuth: Cookie (web) OR Bearer token (mobile)\n\nBody: Partial CalendarEvent fields to update\n\nResponse: Updated CalendarEvent object"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Calendar Event",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/data/app/expert/me/calendar/events/:eventId",
+              "host": ["{{baseUrl}}"],
+              "path": ["data", "app", "expert", "me", "calendar", "events", ":eventId"],
+              "variable": [
+                {
+                  "key": "eventId",
+                  "value": "evt_123"
+                }
+              ]
+            },
+            "description": "Delete a calendar event.\n\nAuth: Cookie (web) OR Bearer token (mobile)\n\nResponse: { deleted: true }"
+          },
+          "response": []
         }
       ]
     }
