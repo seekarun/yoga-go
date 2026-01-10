@@ -192,43 +192,57 @@ export default function CalendarPage() {
           padding: '24px',
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
           minHeight: '700px',
+          position: 'relative',
         }}
       >
-        {loading && events.length === 0 ? (
-          <div className="flex justify-center items-center py-20">
+        {loading && (
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(255,255,255,0.8)',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              zIndex: 10,
+              borderRadius: '12px',
+            }}
+          >
             <LoadingSpinner />
           </div>
-        ) : (
-          <FullCalendar
-            ref={calendarRef}
-            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-            initialView="dayGridMonth"
-            headerToolbar={{
-              left: 'prev,next today',
-              center: 'title',
-              right: 'dayGridMonth,timeGridWeek,timeGridDay',
-            }}
-            events={fullCalendarEvents}
-            datesSet={handleDatesSet}
-            dateClick={handleDateClick}
-            eventClick={handleEventClick}
-            editable={false}
-            selectable={true}
-            selectMirror={true}
-            dayMaxEvents={3}
-            weekends={true}
-            nowIndicator={true}
-            height="auto"
-            eventTimeFormat={{
-              hour: 'numeric',
-              minute: '2-digit',
-              meridiem: 'short',
-            }}
-            slotMinTime="06:00:00"
-            slotMaxTime="22:00:00"
-            eventDisplay="block"
-          />
         )}
+        <FullCalendar
+          ref={calendarRef}
+          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+          initialView="dayGridMonth"
+          headerToolbar={{
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay',
+          }}
+          events={fullCalendarEvents}
+          datesSet={handleDatesSet}
+          dateClick={handleDateClick}
+          eventClick={handleEventClick}
+          editable={false}
+          selectable={true}
+          selectMirror={true}
+          dayMaxEvents={3}
+          weekends={true}
+          nowIndicator={true}
+          height="auto"
+          eventTimeFormat={{
+            hour: 'numeric',
+            minute: '2-digit',
+            meridiem: 'short',
+          }}
+          slotMinTime="06:00:00"
+          slotMaxTime="22:00:00"
+          eventDisplay="block"
+        />
       </div>
 
       {/* Create Event Modal */}
