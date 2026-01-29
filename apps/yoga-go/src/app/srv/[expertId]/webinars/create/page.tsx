@@ -369,6 +369,49 @@ export default function CreateWebinarPage() {
               <label
                 style={{
                   display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '12px',
+                  padding: '12px 16px',
+                  border: `2px solid ${videoPlatform === '100ms' ? 'var(--color-primary)' : '#e5e7eb'}`,
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  background:
+                    videoPlatform === '100ms' ? 'var(--color-primary-light, #f0f9ff)' : '#fff',
+                }}
+              >
+                <input
+                  type="radio"
+                  name="videoPlatform"
+                  value="100ms"
+                  checked={videoPlatform === '100ms'}
+                  onChange={e => setVideoPlatform(e.target.value as VideoPlatform)}
+                  style={{ width: '18px', height: '18px', marginTop: '2px' }}
+                />
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontWeight: '500' }}>Built-in Video</span>
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        padding: '2px 8px',
+                        background: 'var(--color-primary)',
+                        color: '#fff',
+                        borderRadius: '9999px',
+                        fontWeight: '500',
+                      }}
+                    >
+                      Recommended
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '13px', color: '#6b7280', margin: '2px 0 0 0' }}>
+                    Video conferencing built right into the platform. No setup needed!
+                  </p>
+                </div>
+              </label>
+
+              <label
+                style={{
+                  display: 'flex',
                   alignItems: 'center',
                   gap: '12px',
                   padding: '12px 16px',

@@ -28,6 +28,7 @@ export default function EditWebinarPage() {
   const [videoPlatform, setVideoPlatform] = useState<VideoPlatform>('none');
   const [googleConnected, setGoogleConnected] = useState(false);
   const [zoomConnected, setZoomConnected] = useState(false);
+  const [hmsConfigured, setHmsConfigured] = useState(false);
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -59,6 +60,7 @@ export default function EditWebinarPage() {
           setVideoPlatform(w.videoPlatform || 'none');
           setGoogleConnected(w.googleConnected || false);
           setZoomConnected(w.zoomConnected || false);
+          setHmsConfigured(w.hmsConfigured || false);
         } else {
           setError(data.error || 'Failed to load webinar');
         }
@@ -564,6 +566,7 @@ export default function EditWebinarPage() {
               background: '#fff',
             }}
           >
+            <option value="100ms">Built-in Video (Recommended)</option>
             <option value="none">None</option>
             <option value="google_meet">Google Meet</option>
             <option value="zoom">Zoom</option>
@@ -585,6 +588,16 @@ export default function EditWebinarPage() {
               <a href={`/srv/${expertId}/settings/zoom`} style={{ color: 'var(--color-primary)' }}>
                 Connect now
               </a>
+            </p>
+          )}
+          {videoPlatform === '100ms' && !hmsConfigured && (
+            <p style={{ fontSize: '13px', color: '#dc2626', marginTop: '8px' }}>
+              Built-in video is not available. Please contact support.
+            </p>
+          )}
+          {videoPlatform === '100ms' && hmsConfigured && (
+            <p style={{ fontSize: '13px', color: '#16a34a', marginTop: '8px' }}>
+              Video rooms will be created automatically when you publish.
             </p>
           )}
         </div>
@@ -748,7 +761,28 @@ export default function EditWebinarPage() {
                   </div>
                 </div>
                 {/* Video conference link */}
-                {session.zoomMeetingLink ? (
+                {session.hmsRoomId ? (
+                  <Link
+                    href={`/app/live/${webinar.id}/${session.id}`}
+                    style={{
+                      padding: '6px 12px',
+                      background: 'var(--color-primary)',
+                      color: '#fff',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: '500',
+                      textDecoration: 'none',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                      <path d="M4.5 5.25a.75.75 0 0 0-.75.75v12a.75.75 0 0 0 .75.75h10.5a.75.75 0 0 0 .75-.75v-3.75l4.5 3.75V6l-4.5 3.75V6a.75.75 0 0 0-.75-.75H4.5z" />
+                    </svg>
+                    Start Session
+                  </Link>
+                ) : session.zoomMeetingLink ? (
                   <a
                     href={session.zoomMeetingLink}
                     target="_blank"

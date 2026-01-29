@@ -13,6 +13,8 @@ import { isGoogleConnected } from '@/lib/google-auth';
 import { createMeetEventsForWebinar } from '@/lib/google-meet';
 import { isZoomConnected } from '@/lib/zoom-auth';
 import { createZoomMeetingsForWebinar } from '@/lib/zoom-meeting';
+import { is100msConfigured } from '@/lib/100ms-auth';
+import { createHmsRoomsForWebinar } from '@/lib/100ms-meeting';
 
 interface RouteParams {
   params: Promise<{
@@ -62,20 +64,24 @@ export async function GET(_request: Request, { params }: RouteParams) {
       );
     }
 
-    // Check if video platforms are connected
+    // Check if video platforms are connected/configured
     const [googleConnected, zoomConnected] = await Promise.all([
       isGoogleConnected(user.expertProfile),
       isZoomConnected(user.expertProfile),
     ]);
+    const hmsConfigured = is100msConfigured();
 
     return NextResponse.json<
-      ApiResponse<Webinar & { googleConnected: boolean; zoomConnected: boolean }>
+      ApiResponse<
+        Webinar & { googleConnected: boolean; zoomConnected: boolean; hmsConfigured: boolean }
+      >
     >({
       success: true,
       data: {
         ...webinar,
         googleConnected,
         zoomConnected,
+        hmsConfigured,
       },
     });
   } catch (error) {
@@ -219,6 +225,33 @@ export async function PUT(request: Request, { params }: RouteParams) {
               console.error(
                 '[DBG][expert/me/webinars/[id]] Failed to create Meet links:',
                 meetError
+              );
+              // Don't fail the update, just log the error
+            }
+          }
+        } else if (videoPlatform === '100ms') {
+          // Create 100ms rooms
+          if (is100msConfigured()) {
+            console.log(
+              '[DBG][expert/me/webinars/[id]] Creating 100ms rooms for published webinar'
+            );
+            try {
+              const hmsResults = await createHmsRoomsForWebinar(user.expertProfile, webinarId);
+              console.log(
+                '[DBG][expert/me/webinars/[id]] Created',
+                hmsResults.length,
+                '100ms rooms'
+              );
+
+              // Refresh webinar to get updated session data with 100ms rooms
+              const refreshed = await webinarRepository.getWebinarByIdOnly(webinarId);
+              if (refreshed) {
+                updatedWebinar = refreshed;
+              }
+            } catch (hmsError) {
+              console.error(
+                '[DBG][expert/me/webinars/[id]] Failed to create 100ms rooms:',
+                hmsError
               );
               // Don't fail the update, just log the error
             }

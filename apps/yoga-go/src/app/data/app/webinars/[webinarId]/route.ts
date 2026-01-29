@@ -4,7 +4,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth';
+import { getSession, getUserByCognitoSub } from '@/lib/auth';
 import * as webinarRepository from '@/lib/repositories/webinarRepository';
 import * as webinarRegistrationRepository from '@/lib/repositories/webinarRegistrationRepository';
 import * as expertRepository from '@/lib/repositories/expertRepository';
@@ -46,21 +46,47 @@ export async function GET(
 
     const userId = session.user.cognitoSub;
 
+    // Get user to check if they're the expert
+    const user = await getUserByCognitoSub(userId);
+
     // Get webinar
     const webinar = await webinarRepository.getWebinarByIdOnly(webinarId);
     if (!webinar) {
       return NextResponse.json({ success: false, error: 'Webinar not found' }, { status: 404 });
     }
 
-    // Check if user is registered
-    const registration = await webinarRegistrationRepository.getRegistration(
-      webinar.expertId,
-      webinarId,
-      userId
-    );
-    if (!registration || registration.status === 'cancelled') {
+    // Check if user is the expert (owner)
+    const isExpert = user?.expertProfile === webinar.expertId;
+
+    // Check if user is registered (or is the expert)
+    let registration: WebinarRegistration | null =
+      await webinarRegistrationRepository.getRegistration(webinar.expertId, webinarId, userId);
+
+    if (!isExpert && (!registration || registration.status === 'cancelled')) {
       return NextResponse.json(
         { success: false, error: 'Not registered for this webinar' },
+        { status: 403 }
+      );
+    }
+
+    // If expert is accessing, create a mock registration object
+    if (isExpert && !registration) {
+      registration = {
+        id: `expert-${userId}`,
+        expertId: webinar.expertId,
+        webinarId,
+        userId,
+        status: 'registered',
+        remindersSent: {},
+        registeredAt: new Date().toISOString(),
+        feedbackSubmitted: false,
+      };
+    }
+
+    // At this point, registration is guaranteed to exist
+    if (!registration) {
+      return NextResponse.json(
+        { success: false, error: 'Registration not found' },
         { status: 403 }
       );
     }

@@ -14,6 +14,8 @@ import { isGoogleConnected } from '@/lib/google-auth';
 import { createMeetEvent } from '@/lib/google-meet';
 import { isZoomConnected } from '@/lib/zoom-auth';
 import { createZoomMeeting } from '@/lib/zoom-meeting';
+import { is100msConfigured } from '@/lib/100ms-auth';
+import { createHmsRoomForSession } from '@/lib/100ms-meeting';
 
 interface RouteParams {
   params: Promise<{
@@ -155,6 +157,34 @@ export async function POST(request: Request, { params }: RouteParams) {
               meetError
             );
             // Don't fail, just continue without Meet link
+          }
+        }
+      } else if (videoPlatform === '100ms') {
+        // Create 100ms room
+        if (is100msConfigured()) {
+          console.log(
+            '[DBG][expert/me/webinars/[id]/sessions] Creating 100ms room for new session'
+          );
+          try {
+            const hmsResult = await createHmsRoomForSession(
+              user.expertProfile,
+              webinarId,
+              sessionId,
+              `${webinar.title} - ${body.title}`
+            );
+
+            newSession.hmsRoomId = hmsResult.roomId;
+            newSession.hmsTemplateId = hmsResult.templateId;
+            console.log(
+              '[DBG][expert/me/webinars/[id]/sessions] Created 100ms room:',
+              hmsResult.roomId
+            );
+          } catch (hmsError) {
+            console.error(
+              '[DBG][expert/me/webinars/[id]/sessions] Failed to create 100ms room:',
+              hmsError
+            );
+            // Don't fail, just continue without 100ms room
           }
         }
       }

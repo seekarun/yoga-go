@@ -1215,7 +1215,7 @@ export type BlogLike = PostLike;
 export type WebinarStatus = 'DRAFT' | 'SCHEDULED' | 'LIVE' | 'COMPLETED' | 'CANCELLED';
 
 // Video platform for webinar sessions
-export type VideoPlatform = 'google_meet' | 'zoom' | 'none';
+export type VideoPlatform = 'google_meet' | 'zoom' | '100ms' | 'none';
 
 export type RecordingStatus = 'pending' | 'uploading' | 'processing' | 'ready' | 'error';
 
@@ -1238,6 +1238,9 @@ export interface WebinarSession {
   // Recording fields
   recordingCloudflareId?: string; // Cloudflare Stream video ID for recording
   recordingStatus?: RecordingStatus;
+  // 100ms fields
+  hmsRoomId?: string; // 100ms room ID
+  hmsTemplateId?: string; // 100ms template used
 }
 
 export interface WebinarFeedback {

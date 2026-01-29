@@ -385,7 +385,25 @@ export default function WebinarAccessPage({ params }: PageProps) {
                         </div>
                       )}
 
-                      {isLive && session.googleMeetLink && (
+                      {isLive && session.hmsRoomId && (
+                        <Link
+                          href={`/app/live/${webinar.id}/${session.id}`}
+                          style={{
+                            display: 'inline-block',
+                            padding: '12px 24px',
+                            background: '#ef4444',
+                            color: '#fff',
+                            borderRadius: '8px',
+                            textDecoration: 'none',
+                            fontWeight: '600',
+                            fontSize: '14px',
+                          }}
+                        >
+                          Join Live Session
+                        </Link>
+                      )}
+
+                      {isLive && !session.hmsRoomId && session.googleMeetLink && (
                         <a
                           href={session.googleMeetLink}
                           target="_blank"
@@ -405,7 +423,21 @@ export default function WebinarAccessPage({ params }: PageProps) {
                         </a>
                       )}
 
-                      {!isLive && !isCompleted && session.googleMeetLink && (
+                      {!isLive && !isCompleted && session.hmsRoomId && (
+                        <div
+                          style={{
+                            padding: '10px 16px',
+                            background: '#dcfce7',
+                            borderRadius: '8px',
+                            color: '#166534',
+                            fontSize: '13px',
+                          }}
+                        >
+                          Video room ready
+                        </div>
+                      )}
+
+                      {!isLive && !isCompleted && !session.hmsRoomId && session.googleMeetLink && (
                         <div
                           style={{
                             padding: '10px 16px',

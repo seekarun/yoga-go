@@ -22,6 +22,7 @@ import type {
   CourseCategory,
   CourseLevel,
   SupportedCurrency,
+  VideoPlatform,
 } from '@/types';
 
 // Type for DynamoDB Webinar item (includes PK/SK and GSI)
@@ -46,7 +47,7 @@ export interface CreateWebinarInput {
   currency: SupportedCurrency; // Currency for the webinar price (expert's preferred currency)
   maxParticipants?: number;
   status?: WebinarStatus;
-  videoPlatform?: 'google_meet' | 'zoom' | 'none';
+  videoPlatform?: VideoPlatform;
   sessions?: WebinarSession[];
   tags?: string[];
   category?: CourseCategory;
