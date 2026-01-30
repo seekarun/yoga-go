@@ -18,7 +18,7 @@ import type { Webinar, WebinarSession } from '@/types';
 interface JoinSessionResponse {
   authToken: string;
   roomId: string;
-  role: 'host' | 'participant';
+  role: 'host' | 'guest';
   userName: string;
 }
 

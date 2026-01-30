@@ -18,8 +18,9 @@ const HMS_TEMPLATE_ID = process.env.HMS_TEMPLATE_ID;
 const MANAGEMENT_TOKEN_EXPIRY = '24h';
 const AUTH_TOKEN_EXPIRY = '24h';
 
-// 100ms roles
-export type HmsRole = 'host' | 'participant';
+// 100ms roles - must match template configuration
+// Common defaults: 'host' and 'guest' (not 'participant')
+export type HmsRole = 'host' | 'guest';
 
 /**
  * Check if 100ms is configured
@@ -125,5 +126,5 @@ export async function generateAuthToken(
  * @param isExpert - Whether the user is the expert/host
  */
 export function determineRole(isExpert: boolean): HmsRole {
-  return isExpert ? 'host' : 'participant';
+  return isExpert ? 'host' : 'guest';
 }

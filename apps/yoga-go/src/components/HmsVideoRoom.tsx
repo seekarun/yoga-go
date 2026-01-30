@@ -7,10 +7,11 @@
  * Handles video/audio toggle, peer grid, and leave functionality
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   useHMSActions,
   useHMSStore,
+  useHMSNotifications,
   selectIsConnectedToRoom,
   selectLocalPeer,
   selectPeers,
@@ -19,6 +20,7 @@ import {
   selectHMSMessages,
   selectRoomState,
   HMSRoomState,
+  HMSNotificationTypes,
 } from '@100mslive/react-sdk';
 
 interface HmsVideoRoomProps {
@@ -36,36 +38,73 @@ export default function HmsVideoRoom({ authToken, userName, onLeave }: HmsVideoR
   const isLocalVideoEnabled = useHMSStore(selectIsLocalVideoEnabled);
   const messages = useHMSStore(selectHMSMessages);
   const roomState = useHMSStore(selectRoomState);
+  const notification = useHMSNotifications();
 
-  const [isJoining, setIsJoining] = useState(false);
+  const [isJoining, setIsJoining] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasAttemptedJoin, setHasAttemptedJoin] = useState(false);
+
+  // Handle 100ms notifications (errors, etc.)
+  useEffect(() => {
+    if (!notification) return;
+
+    // Clone data to avoid "object is not extensible" error with Next.js console
+    const notificationData = notification.data ? { ...notification.data } : null;
+    console.log('[DBG][HmsVideoRoom] Notification:', notification.type, notificationData);
+
+    if (notification.type === HMSNotificationTypes.ERROR) {
+      const errorData = notificationData as { message?: string; description?: string } | null;
+      const errorMessage = errorData?.message || errorData?.description || 'An error occurred';
+      console.error('[DBG][HmsVideoRoom] HMS Error:', errorMessage);
+      setError(errorMessage);
+      setIsJoining(false);
+    }
+  }, [notification]);
+
+  // Track room state changes
+  useEffect(() => {
+    console.log('[DBG][HmsVideoRoom] Room state changed:', roomState, 'isConnected:', isConnected);
+
+    if (roomState === HMSRoomState.Connected) {
+      console.log('[DBG][HmsVideoRoom] Successfully connected to room');
+      setIsJoining(false);
+      setError(null);
+    } else if (roomState === HMSRoomState.Failed) {
+      console.error('[DBG][HmsVideoRoom] Room connection failed');
+      setError('Failed to connect to room');
+      setIsJoining(false);
+    }
+  }, [roomState, isConnected]);
+
+  // Join room function
+  const joinRoom = useCallback(async () => {
+    if (hasAttemptedJoin) return;
+
+    console.log('[DBG][HmsVideoRoom] Joining room with token...', authToken?.slice(0, 20) + '...');
+    setIsJoining(true);
+    setError(null);
+    setHasAttemptedJoin(true);
+
+    try {
+      await hmsActions.join({
+        authToken,
+        userName,
+        settings: {
+          isAudioMuted: false,
+          isVideoMuted: false,
+        },
+      });
+      console.log('[DBG][HmsVideoRoom] Join call completed');
+    } catch (err) {
+      console.error('[DBG][HmsVideoRoom] Failed to join room:', err);
+      setError(err instanceof Error ? err.message : 'Failed to join room');
+      setIsJoining(false);
+    }
+  }, [authToken, userName, hmsActions, hasAttemptedJoin]);
 
   // Join room on mount
   useEffect(() => {
-    const joinRoom = async () => {
-      console.log('[DBG][HmsVideoRoom] Joining room...');
-      setIsJoining(true);
-      setError(null);
-
-      try {
-        await hmsActions.join({
-          authToken,
-          userName,
-          settings: {
-            isAudioMuted: false,
-            isVideoMuted: false,
-          },
-        });
-        console.log('[DBG][HmsVideoRoom] Joined room successfully');
-      } catch (err) {
-        console.error('[DBG][HmsVideoRoom] Failed to join room:', err);
-        setError(err instanceof Error ? err.message : 'Failed to join room');
-      } finally {
-        setIsJoining(false);
-      }
-    };
-
-    if (authToken && !isConnected && roomState === HMSRoomState.Disconnected) {
+    if (authToken && !isConnected && !hasAttemptedJoin) {
       joinRoom();
     }
 
@@ -77,7 +116,22 @@ export default function HmsVideoRoom({ authToken, userName, onLeave }: HmsVideoR
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authToken, userName]);
+  }, [authToken]);
+
+  // Timeout for connection
+  useEffect(() => {
+    if (!isJoining || isConnected || error) return;
+
+    const timeout = setTimeout(() => {
+      if (!isConnected && isJoining) {
+        console.error('[DBG][HmsVideoRoom] Connection timeout');
+        setError('Connection timeout. Please check your internet connection and try again.');
+        setIsJoining(false);
+      }
+    }, 30000); // 30 second timeout
+
+    return () => clearTimeout(timeout);
+  }, [isJoining, isConnected, error]);
 
   const handleLeave = async () => {
     console.log('[DBG][HmsVideoRoom] Leaving room');
@@ -86,11 +140,41 @@ export default function HmsVideoRoom({ authToken, userName, onLeave }: HmsVideoR
   };
 
   const toggleAudio = async () => {
-    await hmsActions.setLocalAudioEnabled(!isLocalAudioEnabled);
+    console.log('[DBG][HmsVideoRoom] Toggle audio, current state:', isLocalAudioEnabled);
+    try {
+      await hmsActions.setLocalAudioEnabled(!isLocalAudioEnabled);
+      console.log('[DBG][HmsVideoRoom] Audio toggled successfully');
+    } catch (err) {
+      console.error('[DBG][HmsVideoRoom] Failed to toggle audio:', err);
+      // Try to get device permissions if toggle fails
+      if (!isLocalAudioEnabled) {
+        try {
+          await navigator.mediaDevices.getUserMedia({ audio: true });
+          await hmsActions.setLocalAudioEnabled(true);
+        } catch (permErr) {
+          console.error('[DBG][HmsVideoRoom] Microphone permission error:', permErr);
+        }
+      }
+    }
   };
 
   const toggleVideo = async () => {
-    await hmsActions.setLocalVideoEnabled(!isLocalVideoEnabled);
+    console.log('[DBG][HmsVideoRoom] Toggle video, current state:', isLocalVideoEnabled);
+    try {
+      await hmsActions.setLocalVideoEnabled(!isLocalVideoEnabled);
+      console.log('[DBG][HmsVideoRoom] Video toggled successfully');
+    } catch (err) {
+      console.error('[DBG][HmsVideoRoom] Failed to toggle video:', err);
+      // Try to get device permissions if toggle fails
+      if (!isLocalVideoEnabled) {
+        try {
+          await navigator.mediaDevices.getUserMedia({ video: true });
+          await hmsActions.setLocalVideoEnabled(true);
+        } catch (permErr) {
+          console.error('[DBG][HmsVideoRoom] Camera permission error:', permErr);
+        }
+      }
+    }
   };
 
   if (isJoining) {
@@ -171,7 +255,21 @@ export default function HmsVideoRoom({ authToken, userName, onLeave }: HmsVideoR
           borderRadius: '12px',
         }}
       >
-        <p style={{ color: '#fff' }}>Connecting...</p>
+        <div
+          style={{
+            width: '40px',
+            height: '40px',
+            border: '3px solid #333',
+            borderTop: '3px solid var(--color-primary)',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+          }}
+        />
+        <p style={{ color: '#fff', marginTop: '16px' }}>Connecting to room...</p>
+        <p style={{ color: '#6b7280', fontSize: '13px', marginTop: '8px' }}>
+          Room state: {roomState}
+        </p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
