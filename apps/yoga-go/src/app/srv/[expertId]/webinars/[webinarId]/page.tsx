@@ -29,6 +29,7 @@ export default function EditWebinarPage() {
   const [googleConnected, setGoogleConnected] = useState(false);
   const [zoomConnected, setZoomConnected] = useState(false);
   const [hmsConfigured, setHmsConfigured] = useState(false);
+  const [isOpenSession, setIsOpenSession] = useState(false);
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [cancelling, setCancelling] = useState(false);
@@ -61,6 +62,7 @@ export default function EditWebinarPage() {
           setGoogleConnected(w.googleConnected || false);
           setZoomConnected(w.zoomConnected || false);
           setHmsConfigured(w.hmsConfigured || false);
+          setIsOpenSession(w.isOpen || false);
         } else {
           setError(data.error || 'Failed to load webinar');
         }
@@ -113,6 +115,7 @@ export default function EditWebinarPage() {
           price: parseFloat(price) || 0,
           maxParticipants: maxParticipants ? parseInt(maxParticipants) : undefined,
           videoPlatform,
+          isOpen: isOpenSession,
         }),
       });
 
@@ -172,6 +175,7 @@ export default function EditWebinarPage() {
           price: parseFloat(price) || 0,
           maxParticipants: maxParticipants ? parseInt(maxParticipants) : undefined,
           videoPlatform,
+          isOpen: isOpenSession,
           status: 'SCHEDULED',
         }),
       });
@@ -600,6 +604,46 @@ export default function EditWebinarPage() {
               Video rooms will be created automatically when you publish.
             </p>
           )}
+        </div>
+
+        {/* Open Session Toggle */}
+        <div
+          style={{
+            marginTop: '20px',
+            padding: '16px',
+            background: '#f9fafb',
+            borderRadius: '8px',
+            border: '1px solid #e5e7eb',
+          }}
+        >
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '12px',
+              cursor: 'pointer',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={isOpenSession}
+              onChange={e => setIsOpenSession(e.target.checked)}
+              style={{
+                width: '20px',
+                height: '20px',
+                marginTop: '2px',
+                cursor: 'pointer',
+              }}
+            />
+            <div>
+              <span style={{ fontWeight: '500', fontSize: '14px' }}>Open Session</span>
+              <p style={{ color: '#6b7280', fontSize: '13px', margin: '4px 0 0' }}>
+                {isOpenSession
+                  ? 'Any logged-in user can join without registration'
+                  : 'Only registered users can join this session'}
+              </p>
+            </div>
+          </label>
         </div>
       </div>
 

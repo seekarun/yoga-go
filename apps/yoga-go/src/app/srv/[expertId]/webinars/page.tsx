@@ -77,6 +77,9 @@ export default function ExpertWebinarsPage() {
   const [creatingInstant, setCreatingInstant] = useState(false);
   const [instantSession, setInstantSession] = useState<InstantSessionData | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showDurationPicker, setShowDurationPicker] = useState(false);
+  const [selectedDuration, setSelectedDuration] = useState(30); // Default 30 minutes
+  const [isOpenSession, setIsOpenSession] = useState(true); // Default open for instant sessions
 
   useEffect(() => {
     const fetchWebinars = async () => {
@@ -125,7 +128,12 @@ export default function ExpertWebinarsPage() {
     }
   };
 
+  const handleShowDurationPicker = () => {
+    setShowDurationPicker(true);
+  };
+
   const handleCreateInstantSession = async () => {
+    setShowDurationPicker(false);
     setCreatingInstant(true);
     setError('');
 
@@ -133,6 +141,7 @@ export default function ExpertWebinarsPage() {
       const response = await fetch('/data/app/expert/me/webinars/instant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ duration: selectedDuration, isOpen: isOpenSession }),
       });
       const data = await response.json();
 
@@ -185,7 +194,7 @@ export default function ExpertWebinarsPage() {
         {/* Action Buttons */}
         <div className="flex justify-end gap-3 mb-6">
           <button
-            onClick={handleCreateInstantSession}
+            onClick={handleShowDurationPicker}
             disabled={creatingInstant}
             className="px-6 py-2.5 text-white text-sm font-semibold rounded-lg flex items-center gap-2"
             style={{
@@ -465,6 +474,198 @@ export default function ExpertWebinarsPage() {
         confirmText="Delete"
         cancelText="Cancel"
       />
+
+      {/* Duration Picker Modal */}
+      {showDurationPicker && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+          onClick={() => setShowDurationPicker(false)}
+        >
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: '16px',
+              padding: '32px',
+              width: '100%',
+              maxWidth: '400px',
+              margin: '20px',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+              <div
+                style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '50%',
+                  background: '#dcfce7',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 16px',
+                }}
+              >
+                <svg
+                  style={{ width: '32px', height: '32px', color: '#16a34a' }}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                  />
+                </svg>
+              </div>
+              <h2 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '8px' }}>
+                Start Instant Session
+              </h2>
+              <p style={{ color: '#6b7280', fontSize: '14px' }}>
+                Create a live session that starts immediately
+              </p>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label
+                style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  marginBottom: '8px',
+                }}
+              >
+                Session Duration
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                {[15, 30, 45, 60, 90, 120].map(mins => (
+                  <button
+                    key={mins}
+                    onClick={() => setSelectedDuration(mins)}
+                    style={{
+                      padding: '12px',
+                      border: `2px solid ${selectedDuration === mins ? 'var(--color-primary)' : '#e5e7eb'}`,
+                      borderRadius: '8px',
+                      background:
+                        selectedDuration === mins ? 'var(--color-primary-light, #f0f9ff)' : '#fff',
+                      color: selectedDuration === mins ? 'var(--color-primary)' : '#374151',
+                      fontWeight: selectedDuration === mins ? '600' : '400',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                    }}
+                  >
+                    {mins < 60 ? `${mins} min` : `${mins / 60} hr${mins > 60 ? 's' : ''}`}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Open Session Toggle */}
+            <div
+              style={{
+                marginBottom: '24px',
+                padding: '16px',
+                background: '#f9fafb',
+                borderRadius: '8px',
+              }}
+            >
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '12px',
+                  cursor: 'pointer',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={isOpenSession}
+                  onChange={e => setIsOpenSession(e.target.checked)}
+                  style={{
+                    width: '20px',
+                    height: '20px',
+                    marginTop: '2px',
+                    cursor: 'pointer',
+                  }}
+                />
+                <div>
+                  <span style={{ fontWeight: '500', fontSize: '14px' }}>Open Session</span>
+                  <p style={{ color: '#6b7280', fontSize: '13px', margin: '4px 0 0' }}>
+                    {isOpenSession
+                      ? 'Any logged-in user can join without registration'
+                      : 'Only registered users can join this session'}
+                  </p>
+                </div>
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => setShowDurationPicker(false)}
+                style={{
+                  flex: 1,
+                  padding: '12px 24px',
+                  background: '#f3f4f6',
+                  color: '#374151',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateInstantSession}
+                style={{
+                  flex: 1,
+                  padding: '12px 24px',
+                  background: '#10b981',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                }}
+              >
+                <svg
+                  style={{ width: '20px', height: '20px' }}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                  />
+                </svg>
+                Start Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Instant Session Modal */}
       {instantSession && (

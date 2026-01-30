@@ -147,6 +147,7 @@ export async function POST(request: Request) {
       level: body.level,
       requirements: body.requirements || [],
       whatYouWillLearn: body.whatYouWillLearn || [],
+      isOpen: body.isOpen,
     });
 
     console.log('[DBG][expert/me/webinars] Created webinar:', webinarId);

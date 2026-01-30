@@ -88,6 +88,7 @@ export default function CreateWebinarPage() {
       duration: 60,
     },
   ]);
+  const [isOpenSession, setIsOpenSession] = useState(false); // Default false for scheduled sessions
   const [submitting, setSubmitting] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState('');
@@ -186,6 +187,7 @@ export default function CreateWebinarPage() {
           currency: expertCurrency,
           maxParticipants: maxParticipants ? parseInt(maxParticipants) : undefined,
           videoPlatform,
+          isOpen: isOpenSession,
           status: shouldPublish ? 'SCHEDULED' : 'DRAFT',
           sessions: formattedSessions,
         }),
@@ -588,6 +590,46 @@ export default function CreateWebinarPage() {
                 </div>
               </label>
             </div>
+          </div>
+
+          {/* Open Session Toggle */}
+          <div
+            style={{
+              marginTop: '20px',
+              padding: '16px',
+              background: '#f9fafb',
+              borderRadius: '8px',
+              border: '1px solid #e5e7eb',
+            }}
+          >
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '12px',
+                cursor: 'pointer',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={isOpenSession}
+                onChange={e => setIsOpenSession(e.target.checked)}
+                style={{
+                  width: '20px',
+                  height: '20px',
+                  marginTop: '2px',
+                  cursor: 'pointer',
+                }}
+              />
+              <div>
+                <span style={{ fontWeight: '500', fontSize: '14px' }}>Open Session</span>
+                <p style={{ color: '#6b7280', fontSize: '13px', margin: '4px 0 0' }}>
+                  {isOpenSession
+                    ? 'Any logged-in user can join without registration'
+                    : 'Only registered users can join this session (default)'}
+                </p>
+              </div>
+            </label>
           </div>
         </div>
 

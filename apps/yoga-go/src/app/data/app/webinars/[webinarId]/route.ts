@@ -58,21 +58,28 @@ export async function GET(
     // Check if user is the expert (owner)
     const isExpert = user?.expertProfile === webinar.expertId;
 
-    // Check if user is registered (or is the expert)
+    // Check if this is an open session (any logged-in user can join)
+    // Uses isOpen field, with fallback to tags for backward compatibility
+    const isOpenSession =
+      webinar.isOpen === true ||
+      webinar.tags?.includes('instant') ||
+      webinar.tags?.includes('open');
+
+    // Check if user is registered (or is the expert or instant session)
     let registration: WebinarRegistration | null =
       await webinarRegistrationRepository.getRegistration(webinar.expertId, webinarId, userId);
 
-    if (!isExpert && (!registration || registration.status === 'cancelled')) {
+    if (!isExpert && !isOpenSession && (!registration || registration.status === 'cancelled')) {
       return NextResponse.json(
         { success: false, error: 'Not registered for this webinar' },
         { status: 403 }
       );
     }
 
-    // If expert is accessing, create a mock registration object
-    if (isExpert && !registration) {
+    // If expert or instant session user without registration, create a mock registration object
+    if ((isExpert || isOpenSession) && !registration) {
       registration = {
-        id: `expert-${userId}`,
+        id: isExpert ? `expert-${userId}` : `instant-${userId}`,
         expertId: webinar.expertId,
         webinarId,
         userId,

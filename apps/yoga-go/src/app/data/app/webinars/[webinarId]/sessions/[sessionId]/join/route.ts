@@ -80,8 +80,15 @@ export async function POST(
     // Check if user is the expert (host)
     const isExpert = user?.expertProfile === webinar.expertId;
 
-    // If not expert, check registration
-    if (!isExpert) {
+    // Check if this is an open session (any logged-in user can join)
+    // Uses isOpen field, with fallback to tags for backward compatibility
+    const isOpenSession =
+      webinar.isOpen === true ||
+      webinar.tags?.includes('instant') ||
+      webinar.tags?.includes('open');
+
+    // If not expert and not instant session, check registration
+    if (!isExpert && !isOpenSession) {
       const registration = await webinarRegistrationRepository.getRegistration(
         webinar.expertId,
         webinarId,
@@ -97,6 +104,11 @@ export async function POST(
           );
         }
       }
+    }
+
+    // For instant sessions, log that we're allowing open access
+    if (isOpenSession && !isExpert) {
+      console.log('[DBG][sessions/join] Allowing open access for instant session');
     }
 
     // Determine role

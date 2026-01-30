@@ -54,6 +54,7 @@ export interface CreateWebinarInput {
   level?: CourseLevel;
   requirements?: string[];
   whatYouWillLearn?: string[];
+  isOpen?: boolean; // If true, any logged-in user can join without registration
 }
 
 /**
@@ -280,6 +281,7 @@ export async function createWebinar(tenantId: string, input: CreateWebinarInput)
     requirements: input.requirements || [],
     whatYouWillLearn: input.whatYouWillLearn || [],
     feedback: [],
+    isOpen: input.isOpen,
     createdAt: now,
     updatedAt: now,
   };

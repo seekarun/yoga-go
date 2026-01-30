@@ -1277,6 +1277,7 @@ export interface Webinar extends BaseEntity {
   requirements?: string[];
   whatYouWillLearn?: string[];
   feedback?: WebinarFeedback[]; // Embedded for simplicity
+  isOpen?: boolean; // If true, any logged-in user can join without registration
 }
 
 export type WebinarRegistrationStatus = 'registered' | 'cancelled' | 'attended' | 'no_show';

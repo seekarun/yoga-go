@@ -3,6 +3,7 @@
  * POST /data/app/expert/me/webinars/instant - Create an instant live session
  *
  * Creates a webinar with a single session that starts immediately using 100ms
+ * Instant sessions are open - any logged in user can join without registration
  */
 
 import { NextResponse } from 'next/server';
@@ -13,7 +14,10 @@ import * as webinarRepository from '@/lib/repositories/webinarRepository';
 import * as expertRepository from '@/lib/repositories/expertRepository';
 import { is100msConfigured } from '@/lib/100ms-auth';
 import { createHmsRoomForSession } from '@/lib/100ms-meeting';
+import { isGoogleConnected, getOAuth2ClientForExpert } from '@/lib/google-auth';
+import { google } from 'googleapis';
 import { DEFAULT_CURRENCY } from '@/config/currencies';
+import { getSubdomainUrl } from '@/config/env';
 
 interface InstantSessionResponse {
   webinarId: string;
@@ -25,7 +29,9 @@ interface InstantSessionResponse {
  * POST /data/app/expert/me/webinars/instant
  * Create an instant live session with 100ms
  */
-export async function POST(): Promise<NextResponse<ApiResponse<InstantSessionResponse>>> {
+export async function POST(
+  request: Request
+): Promise<NextResponse<ApiResponse<InstantSessionResponse>>> {
   console.log('[DBG][instant-session] POST called');
 
   try {
@@ -50,6 +56,11 @@ export async function POST(): Promise<NextResponse<ApiResponse<InstantSessionRes
       );
     }
 
+    // Parse request body for duration and isOpen
+    const body = await request.json().catch(() => ({}));
+    const durationMinutes = body.duration || 30; // Default 30 minutes
+    const isOpen = body.isOpen !== false; // Default true for instant sessions
+
     const expertId = user.expertProfile;
 
     // Get expert info for title
@@ -62,11 +73,11 @@ export async function POST(): Promise<NextResponse<ApiResponse<InstantSessionRes
     const webinarId = uuidv4();
     const sessionId = uuidv4();
 
-    // Create session times (start now, 2 hour duration)
+    // Create session times with specified duration
     const now = new Date();
-    const endTime = new Date(now.getTime() + 2 * 60 * 60 * 1000); // 2 hours from now
+    const endTime = new Date(now.getTime() + durationMinutes * 60 * 1000);
 
-    const title = `Instant Session - ${now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+    const title = `Instant Session - ${now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ${now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
     const sessionTitle = 'Live Session';
 
     console.log('[DBG][instant-session] Creating webinar:', webinarId, 'session:', sessionId);
@@ -93,32 +104,82 @@ export async function POST(): Promise<NextResponse<ApiResponse<InstantSessionRes
       );
     }
 
+    // Build the join URL for calendar event
+    const joinUrl = `${getSubdomainUrl(expertId)}/app/live/${webinarId}/${sessionId}`;
+
     // Create the webinar with session
+    const sessionDescription = isOpen
+      ? 'Instant live session - open to all logged in users'
+      : 'Instant live session - registration required';
+    const webinarDescription = isOpen
+      ? `Instant live session started by ${expertName}. Open session - any logged in user can join.`
+      : `Instant live session started by ${expertName}. Registration required to join.`;
+    const tags = isOpen ? ['instant', 'live', 'open'] : ['instant', 'live'];
+
     const webinar = await webinarRepository.createWebinar(expertId, {
       id: webinarId,
       expertId,
       title,
-      description: `Instant live session started by ${expertName}`,
+      description: webinarDescription,
       price: 0, // Free for instant sessions
       currency: expertCurrency,
       status: 'LIVE', // Start as live immediately
       videoPlatform: '100ms',
+      isOpen, // Open session flag
       sessions: [
         {
           id: sessionId,
           title: sessionTitle,
-          description: 'Instant live session',
+          description: sessionDescription,
           startTime: now.toISOString(),
           endTime: endTime.toISOString(),
-          duration: 120, // 2 hours
+          duration: durationMinutes,
           hmsRoomId,
           hmsTemplateId,
         },
       ],
-      tags: ['instant', 'live'],
+      tags,
     });
 
     console.log('[DBG][instant-session] Created instant session webinar:', webinar.id);
+
+    // Try to create a calendar event if Google is connected
+    try {
+      const googleConnected = await isGoogleConnected(expertId);
+      if (googleConnected) {
+        console.log('[DBG][instant-session] Creating calendar event');
+        const oauth2Client = await getOAuth2ClientForExpert(expertId);
+        const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+
+        const calendarDescription = isOpen
+          ? `Instant live session\n\nJoin URL: ${joinUrl}\n\nThis is an open session - any logged in user can join.`
+          : `Instant live session\n\nJoin URL: ${joinUrl}\n\nRegistration required to join.`;
+
+        await calendar.events.insert({
+          calendarId: 'primary',
+          requestBody: {
+            summary: `${title} - ${expertName}`,
+            description: calendarDescription,
+            start: {
+              dateTime: now.toISOString(),
+              timeZone: 'UTC',
+            },
+            end: {
+              dateTime: endTime.toISOString(),
+              timeZone: 'UTC',
+            },
+            reminders: {
+              useDefault: false,
+              overrides: [],
+            },
+          },
+        });
+        console.log('[DBG][instant-session] Calendar event created');
+      }
+    } catch (calendarError) {
+      // Don't fail if calendar event creation fails
+      console.error('[DBG][instant-session] Failed to create calendar event:', calendarError);
+    }
 
     return NextResponse.json({
       success: true,
