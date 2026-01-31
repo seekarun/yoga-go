@@ -17,6 +17,9 @@ import {
   selectPeers,
   selectIsLocalAudioEnabled,
   selectIsLocalVideoEnabled,
+  selectIsLocalScreenShared,
+  selectPeersScreenSharing,
+  selectScreenShareByPeerID,
   selectHMSMessages,
   selectRoomState,
   HMSRoomState,
@@ -36,6 +39,8 @@ export default function HmsVideoRoom({ authToken, userName, onLeave }: HmsVideoR
   const peers = useHMSStore(selectPeers);
   const isLocalAudioEnabled = useHMSStore(selectIsLocalAudioEnabled);
   const isLocalVideoEnabled = useHMSStore(selectIsLocalVideoEnabled);
+  const isLocalScreenShared = useHMSStore(selectIsLocalScreenShared);
+  const peersSharing = useHMSStore(selectPeersScreenSharing);
   const messages = useHMSStore(selectHMSMessages);
   const roomState = useHMSStore(selectRoomState);
   const notification = useHMSNotifications();
@@ -174,6 +179,21 @@ export default function HmsVideoRoom({ authToken, userName, onLeave }: HmsVideoR
           console.error('[DBG][HmsVideoRoom] Camera permission error:', permErr);
         }
       }
+    }
+  };
+
+  const toggleScreenShare = async () => {
+    console.log('[DBG][HmsVideoRoom] Toggle screen share, current state:', isLocalScreenShared);
+    try {
+      if (isLocalScreenShared) {
+        await hmsActions.setScreenShareEnabled(false);
+        console.log('[DBG][HmsVideoRoom] Screen share stopped');
+      } else {
+        await hmsActions.setScreenShareEnabled(true);
+        console.log('[DBG][HmsVideoRoom] Screen share started');
+      }
+    } catch (err) {
+      console.error('[DBG][HmsVideoRoom] Failed to toggle screen share:', err);
     }
   };
 
@@ -319,90 +339,120 @@ export default function HmsVideoRoom({ authToken, userName, onLeave }: HmsVideoR
       <div
         style={{
           flex: 1,
-          display: 'grid',
-          gridTemplateColumns:
-            peers.length === 1 ? '1fr' : peers.length <= 4 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)',
+          display: 'flex',
+          flexDirection: 'column',
           gap: '8px',
           padding: '8px',
           overflow: 'auto',
         }}
       >
-        {peers.map(peer => (
-          <div
-            key={peer.id}
-            style={{
-              position: 'relative',
-              background: '#262626',
-              borderRadius: '8px',
-              overflow: 'hidden',
-              aspectRatio: '16/9',
-              minHeight: '120px',
-            }}
-          >
-            {peer.videoTrack ? (
-              <video
-                autoPlay
-                playsInline
-                muted={peer.isLocal}
-                ref={el => {
-                  if (el && peer.videoTrack) {
-                    hmsActions.attachVideo(peer.videoTrack, el);
-                  }
-                }}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  transform: peer.isLocal ? 'scaleX(-1)' : 'none',
-                }}
+        {/* Screen Share Section - shown prominently at top when someone is sharing */}
+        {peersSharing.length > 0 && (
+          <div style={{ width: '100%' }}>
+            {peersSharing.map(peer => (
+              <ScreenShareTile
+                key={`screen-${peer.id}`}
+                peerId={peer.id}
+                peerName={peer.name || 'Unknown'}
+                hmsActions={hmsActions}
               />
-            ) : (
-              <div
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
+            ))}
+          </div>
+        )}
+
+        {/* Participant Videos */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns:
+              peersSharing.length > 0
+                ? 'repeat(auto-fill, minmax(150px, 1fr))'
+                : peers.length === 1
+                  ? '1fr'
+                  : peers.length <= 4
+                    ? 'repeat(2, 1fr)'
+                    : 'repeat(3, 1fr)',
+            gap: '8px',
+            flex: peersSharing.length > 0 ? '0 0 auto' : 1,
+          }}
+        >
+          {peers.map(peer => (
+            <div
+              key={peer.id}
+              style={{
+                position: 'relative',
+                background: '#262626',
+                borderRadius: '8px',
+                overflow: 'hidden',
+                aspectRatio: '16/9',
+                minHeight: '120px',
+              }}
+            >
+              {peer.videoTrack ? (
+                <video
+                  autoPlay
+                  playsInline
+                  muted={peer.isLocal}
+                  ref={el => {
+                    if (el && peer.videoTrack) {
+                      hmsActions.attachVideo(peer.videoTrack, el);
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    transform: peer.isLocal ? 'scaleX(-1)' : 'none',
+                  }}
+                />
+              ) : (
                 <div
                   style={{
-                    width: '64px',
-                    height: '64px',
-                    borderRadius: '50%',
-                    background: 'var(--color-primary)',
+                    width: '100%',
+                    height: '100%',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: '24px',
-                    color: '#fff',
-                    fontWeight: '600',
                   }}
                 >
-                  {(peer.name || 'U').charAt(0).toUpperCase()}
+                  <div
+                    style={{
+                      width: '64px',
+                      height: '64px',
+                      borderRadius: '50%',
+                      background: 'var(--color-primary)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '24px',
+                      color: '#fff',
+                      fontWeight: '600',
+                    }}
+                  >
+                    {(peer.name || 'U').charAt(0).toUpperCase()}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Name badge */}
-            <div
-              style={{
-                position: 'absolute',
-                bottom: '8px',
-                left: '8px',
-                padding: '4px 8px',
-                background: 'rgba(0,0,0,0.6)',
-                borderRadius: '4px',
-                color: '#fff',
-                fontSize: '12px',
-              }}
-            >
-              {peer.name || 'Unknown'} {peer.isLocal && '(You)'}
-              {!peer.audioTrack && ' (muted)'}
+              {/* Name badge */}
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: '8px',
+                  left: '8px',
+                  padding: '4px 8px',
+                  background: 'rgba(0,0,0,0.6)',
+                  borderRadius: '4px',
+                  color: '#fff',
+                  fontSize: '12px',
+                }}
+              >
+                {peer.name || 'Unknown'} {peer.isLocal && '(You)'}
+                {!peer.audioTrack && ' (muted)'}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       {/* Controls */}
@@ -472,6 +522,33 @@ export default function HmsVideoRoom({ authToken, userName, onLeave }: HmsVideoR
         </button>
 
         <button
+          onClick={toggleScreenShare}
+          style={{
+            width: '48px',
+            height: '48px',
+            borderRadius: '50%',
+            border: 'none',
+            background: isLocalScreenShared ? '#16a34a' : '#374151',
+            color: '#fff',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          title={isLocalScreenShared ? 'Stop sharing' : 'Share screen'}
+        >
+          {isLocalScreenShared ? (
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+              <path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14zM9.41 15.95L12 13.36l2.59 2.59L16 14.54l-2.59-2.59L16 9.36l-1.41-1.41L12 10.54 9.41 7.95 8 9.36l2.59 2.59L8 14.54z" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+              <path d="M20 18c1.1 0 1.99-.9 1.99-2L22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 6h16v10H4V6z" />
+            </svg>
+          )}
+        </button>
+
+        <button
           onClick={handleLeave}
           style={{
             width: '48px',
@@ -512,6 +589,72 @@ export default function HmsVideoRoom({ authToken, userName, onLeave }: HmsVideoR
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// Screen Share Tile Component
+interface ScreenShareTileProps {
+  peerId: string;
+  peerName: string;
+  hmsActions: ReturnType<typeof useHMSActions>;
+}
+
+function ScreenShareTile({ peerId, peerName, hmsActions }: ScreenShareTileProps) {
+  const screenShareTrack = useHMSStore(selectScreenShareByPeerID(peerId));
+
+  if (!screenShareTrack) {
+    return null;
+  }
+
+  return (
+    <div
+      style={{
+        position: 'relative',
+        background: '#000',
+        borderRadius: '8px',
+        overflow: 'hidden',
+        width: '100%',
+        aspectRatio: '16/9',
+        minHeight: '300px',
+      }}
+    >
+      <video
+        autoPlay
+        playsInline
+        ref={el => {
+          if (el && screenShareTrack) {
+            hmsActions.attachVideo(screenShareTrack.id, el);
+          }
+        }}
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'contain',
+        }}
+      />
+      {/* Screen share badge */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '8px',
+          left: '8px',
+          padding: '4px 12px',
+          background: '#16a34a',
+          borderRadius: '4px',
+          color: '#fff',
+          fontSize: '12px',
+          fontWeight: '500',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+        }}
+      >
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+          <path d="M20 18c1.1 0 1.99-.9 1.99-2L22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 6h16v10H4V6z" />
+        </svg>
+        {peerName}&apos;s screen
+      </div>
     </div>
   );
 }

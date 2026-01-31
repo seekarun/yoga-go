@@ -199,7 +199,7 @@ export default function LiveSessionPage({ params }: PageProps) {
   return (
     <div
       style={{
-        minHeight: '100vh',
+        minHeight: 'calc(100vh - 64px)',
         background: '#1a1a1a',
         display: 'flex',
         flexDirection: 'column',
