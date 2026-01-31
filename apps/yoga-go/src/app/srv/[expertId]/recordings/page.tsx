@@ -38,6 +38,7 @@ function getSourceBadge(source: RecordingSource) {
     zoom: { bg: '#dbeafe', text: '#1d4ed8', label: 'Zoom' },
     google_meet: { bg: '#dcfce7', text: '#16a34a', label: 'Google Meet' },
     upload: { bg: '#f3e8ff', text: '#9333ea', label: 'Upload' },
+    live: { bg: '#fef3c7', text: '#d97706', label: 'Live Session' },
   };
 
   const style = styles[source] || styles.upload;
@@ -95,6 +96,8 @@ export default function ExpertRecordingsPage() {
   const [error, setError] = useState('');
   const [recordingToDelete, setRecordingToDelete] = useState<Recording | null>(null);
   const [selectedRecording, setSelectedRecording] = useState<Recording | null>(null);
+  const [presignedUrl, setPresignedUrl] = useState<string | null>(null);
+  const [loadingVideo, setLoadingVideo] = useState(false);
   const [filterSource, setFilterSource] = useState<RecordingSource | ''>('');
   const [filterStatus, setFilterStatus] = useState<RecordingImportStatus | ''>('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -142,7 +145,14 @@ export default function ExpertRecordingsPage() {
     if (!recordingToDelete) return;
 
     try {
-      const response = await fetch(`/data/app/expert/me/recordings/${recordingToDelete.id}`, {
+      // For live (100ms) recordings, use hmsAssetId and pass source param
+      const recordingId =
+        recordingToDelete.source === 'live' && recordingToDelete.hmsAssetId
+          ? recordingToDelete.hmsAssetId
+          : recordingToDelete.id;
+      const sourceParam = recordingToDelete.source === 'live' ? '?source=live' : '';
+
+      const response = await fetch(`/data/app/expert/me/recordings/${recordingId}${sourceParam}`, {
         method: 'DELETE',
       });
       const data = await response.json();
@@ -159,10 +169,41 @@ export default function ExpertRecordingsPage() {
     }
   };
 
-  const handleRecordingClick = (recording: Recording) => {
-    if (recording.status === 'ready' && recording.cloudflarePlaybackUrl) {
+  const handleRecordingClick = async (recording: Recording) => {
+    if (recording.status !== 'ready') return;
+
+    // For live (100ms) recordings, fetch presigned URL
+    if (recording.source === 'live' && recording.hmsAssetId) {
+      setLoadingVideo(true);
       setSelectedRecording(recording);
+      try {
+        const response = await fetch(
+          `/data/app/expert/me/recordings/${recording.hmsAssetId}/presigned-url`
+        );
+        const data = await response.json();
+        if (data.success && data.data?.url) {
+          setPresignedUrl(data.data.url);
+        } else {
+          setError('Failed to load video URL');
+          setSelectedRecording(null);
+        }
+      } catch (err) {
+        console.error('[DBG][expert-recordings] Error getting presigned URL:', err);
+        setError('Failed to load video');
+        setSelectedRecording(null);
+      } finally {
+        setLoadingVideo(false);
+      }
+    } else if (recording.cloudflarePlaybackUrl || recording.cloudflareStreamId) {
+      // For Cloudflare recordings
+      setSelectedRecording(recording);
+      setPresignedUrl(null);
     }
+  };
+
+  const handleClosePlayer = () => {
+    setSelectedRecording(null);
+    setPresignedUrl(null);
   };
 
   if (loading) {
@@ -251,6 +292,7 @@ export default function ExpertRecordingsPage() {
             }}
           >
             <option value="">All Sources</option>
+            <option value="live">Live Sessions</option>
             <option value="zoom">Zoom</option>
             <option value="google_meet">Google Meet</option>
             <option value="upload">Upload</option>
@@ -312,8 +354,8 @@ export default function ExpertRecordingsPage() {
                 margin: '0 auto',
               }}
             >
-              Your Zoom meeting recordings will automatically appear here once you connect your Zoom
-              account and complete a recording.
+              Your live session recordings will automatically appear here when you record a session.
+              Start a live session and click the record button to create your first recording.
             </p>
           </div>
         ) : (
@@ -469,7 +511,7 @@ export default function ExpertRecordingsPage() {
                   >
                     {recording.status === 'ready' && (
                       <button
-                        onClick={() => setSelectedRecording(recording)}
+                        onClick={() => handleRecordingClick(recording)}
                         style={{
                           flex: 1,
                           padding: '8px 12px',
@@ -520,7 +562,7 @@ export default function ExpertRecordingsPage() {
             justifyContent: 'center',
             zIndex: 50,
           }}
-          onClick={() => setSelectedRecording(null)}
+          onClick={handleClosePlayer}
         >
           <div
             style={{
@@ -541,11 +583,14 @@ export default function ExpertRecordingsPage() {
                 background: '#111',
               }}
             >
-              <h3 style={{ color: '#fff', fontSize: '16px', fontWeight: '600' }}>
-                {selectedRecording.title}
-              </h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <h3 style={{ color: '#fff', fontSize: '16px', fontWeight: '600' }}>
+                  {selectedRecording.title}
+                </h3>
+                {getSourceBadge(selectedRecording.source)}
+              </div>
               <button
-                onClick={() => setSelectedRecording(null)}
+                onClick={handleClosePlayer}
                 style={{
                   background: 'transparent',
                   border: 'none',
@@ -570,7 +615,27 @@ export default function ExpertRecordingsPage() {
               </button>
             </div>
             <div style={{ aspectRatio: '16/9' }}>
-              {selectedRecording.cloudflareStreamId ? (
+              {loadingVideo ? (
+                <div
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#fff',
+                  }}
+                >
+                  <LoadingSpinner size="md" />
+                </div>
+              ) : selectedRecording.source === 'live' && presignedUrl ? (
+                <video
+                  src={presignedUrl}
+                  controls
+                  autoPlay
+                  style={{ width: '100%', height: '100%', background: '#000' }}
+                />
+              ) : selectedRecording.cloudflareStreamId ? (
                 <iframe
                   src={`https://customer-${process.env.NEXT_PUBLIC_CF_ACCOUNT_ID || ''}.cloudflarestream.com/${selectedRecording.cloudflareStreamId}/iframe`}
                   style={{ width: '100%', height: '100%', border: 'none' }}
@@ -600,7 +665,7 @@ export default function ExpertRecordingsPage() {
       <NotificationOverlay
         isOpen={!!recordingToDelete}
         onClose={() => setRecordingToDelete(null)}
-        message={`Are you sure you want to delete "${recordingToDelete?.title}"? This will also remove it from Cloudflare Stream.`}
+        message={`Are you sure you want to delete "${recordingToDelete?.title}"? This action cannot be undone.`}
         type="warning"
         onConfirm={handleDeleteConfirm}
         confirmText="Delete"

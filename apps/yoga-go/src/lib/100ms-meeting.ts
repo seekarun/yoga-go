@@ -194,3 +194,224 @@ export async function isRoomReady(roomId: string): Promise<boolean> {
     return false;
   }
 }
+
+// ========================================
+// Recording Management
+// ========================================
+
+export interface HmsRecordingAsset {
+  id: string;
+  job_id: string;
+  room_id: string;
+  session_id: string;
+  type: 'room-composite' | 'room-vod' | 'chat' | 'transcript' | 'summary';
+  path: string;
+  size: number;
+  duration: number;
+  created_at: string;
+  status: 'completed' | 'failed';
+  presigned_url?: string;
+  thumbnails?: string[];
+  metadata?: {
+    resolution?: { width: number; height: number };
+    num_layers?: number;
+  };
+}
+
+export interface HmsRecordingAssetsResponse {
+  data: HmsRecordingAsset[];
+  limit: number;
+  total: number;
+  last?: string;
+}
+
+export interface HmsSession {
+  id: string;
+  room_id: string;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+  peers?: {
+    joined: number;
+    left: number;
+  };
+}
+
+export interface HmsSessionsResponse {
+  data: HmsSession[];
+  limit: number;
+  last?: string;
+}
+
+/**
+ * Get all recording assets from 100ms
+ * Can filter by room_id to get recordings for a specific room
+ */
+export async function getHmsRecordings(
+  roomId?: string,
+  limit = 20,
+  start?: string
+): Promise<HmsRecordingAssetsResponse> {
+  console.log('[DBG][100ms-meeting] Fetching recordings', roomId ? `for room: ${roomId}` : '');
+
+  if (!is100msConfigured()) {
+    throw new Error('100ms is not configured');
+  }
+
+  const managementToken = await generateManagementToken();
+
+  const params = new URLSearchParams();
+  if (roomId) params.set('room_id', roomId);
+  params.set('limit', String(limit));
+  if (start) params.set('start', start);
+  // Only get completed video recordings
+  params.set('status', 'completed');
+  params.set('type', 'room-composite');
+
+  const response = await fetch(`${HMS_API_BASE}/recording-assets?${params.toString()}`, {
+    headers: {
+      Authorization: `Bearer ${managementToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('[DBG][100ms-meeting] Failed to fetch recordings:', errorText);
+    throw new Error(`Failed to fetch 100ms recordings: ${errorText}`);
+  }
+
+  const data: HmsRecordingAssetsResponse = await response.json();
+  console.log('[DBG][100ms-meeting] Fetched', data.data?.length || 0, 'recordings');
+
+  return data;
+}
+
+/**
+ * Get a single recording asset with presigned URL for playback
+ */
+export async function getHmsRecordingAsset(assetId: string): Promise<HmsRecordingAsset | null> {
+  console.log('[DBG][100ms-meeting] Getting recording asset:', assetId);
+
+  if (!is100msConfigured()) {
+    throw new Error('100ms is not configured');
+  }
+
+  const managementToken = await generateManagementToken();
+
+  const response = await fetch(`${HMS_API_BASE}/recording-assets/${assetId}`, {
+    headers: {
+      Authorization: `Bearer ${managementToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      return null;
+    }
+    const errorText = await response.text();
+    console.error('[DBG][100ms-meeting] Failed to get recording:', errorText);
+    throw new Error(`Failed to get 100ms recording: ${errorText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Get presigned URL for a recording asset (valid for limited time)
+ */
+export async function getHmsRecordingPresignedUrl(assetId: string): Promise<string | null> {
+  console.log('[DBG][100ms-meeting] Getting presigned URL for:', assetId);
+
+  if (!is100msConfigured()) {
+    throw new Error('100ms is not configured');
+  }
+
+  const managementToken = await generateManagementToken();
+
+  const response = await fetch(`${HMS_API_BASE}/recording-assets/${assetId}/presigned-url`, {
+    headers: {
+      Authorization: `Bearer ${managementToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      return null;
+    }
+    const errorText = await response.text();
+    console.error('[DBG][100ms-meeting] Failed to get presigned URL:', errorText);
+    throw new Error(`Failed to get presigned URL: ${errorText}`);
+  }
+
+  const data = await response.json();
+  return data.url || null;
+}
+
+/**
+ * Get sessions for a room (to match recordings to sessions)
+ */
+export async function getHmsSessions(
+  roomId: string,
+  limit = 20,
+  start?: string
+): Promise<HmsSessionsResponse> {
+  console.log('[DBG][100ms-meeting] Fetching sessions for room:', roomId);
+
+  if (!is100msConfigured()) {
+    throw new Error('100ms is not configured');
+  }
+
+  const managementToken = await generateManagementToken();
+
+  const params = new URLSearchParams();
+  params.set('room_id', roomId);
+  params.set('limit', String(limit));
+  if (start) params.set('start', start);
+
+  const response = await fetch(`${HMS_API_BASE}/sessions?${params.toString()}`, {
+    headers: {
+      Authorization: `Bearer ${managementToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('[DBG][100ms-meeting] Failed to fetch sessions:', errorText);
+    throw new Error(`Failed to fetch sessions: ${errorText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Delete a recording asset from 100ms
+ */
+export async function deleteHmsRecordingAsset(assetId: string): Promise<boolean> {
+  console.log('[DBG][100ms-meeting] Deleting recording asset:', assetId);
+
+  if (!is100msConfigured()) {
+    throw new Error('100ms is not configured');
+  }
+
+  const managementToken = await generateManagementToken();
+
+  const response = await fetch(`${HMS_API_BASE}/recording-assets/${assetId}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${managementToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      console.log('[DBG][100ms-meeting] Recording asset not found (already deleted?):', assetId);
+      return true; // Consider it deleted if not found
+    }
+    const errorText = await response.text();
+    console.error('[DBG][100ms-meeting] Failed to delete recording asset:', errorText);
+    throw new Error(`Failed to delete recording asset: ${errorText}`);
+  }
+
+  console.log('[DBG][100ms-meeting] Recording asset deleted:', assetId);
+  return true;
+}

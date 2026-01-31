@@ -12,6 +12,7 @@ import {
   useHMSActions,
   useHMSStore,
   useHMSNotifications,
+  useRecordingStreaming,
   selectIsConnectedToRoom,
   selectLocalPeer,
   selectPeers,
@@ -59,6 +60,17 @@ export default function HmsVideoRoom({ authToken, userName, onLeave }: HmsVideoR
   const [showBlurSlider, setShowBlurSlider] = useState(false);
   const blurPluginRef = useRef<BlurBackgroundPlugin | null>(null);
 
+  // Recording state
+  const { isRecordingOn } = useRecordingStreaming();
+  const [isRecordingLoading, setIsRecordingLoading] = useState(false);
+  const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null);
+  const [recordingDuration, setRecordingDuration] = useState('00:00');
+
+  // Original host tracking (for recording controls)
+  const [originalHostId, setOriginalHostId] = useState<string | null>(null);
+  const [showParticipantsMenu, setShowParticipantsMenu] = useState(false);
+  const [promotingPeerId, setPromotingPeerId] = useState<string | null>(null);
+
   // Handle 100ms notifications (errors, etc.)
   useEffect(() => {
     if (!notification) return;
@@ -90,6 +102,14 @@ export default function HmsVideoRoom({ authToken, userName, onLeave }: HmsVideoR
       setIsJoining(false);
     }
   }, [roomState, isConnected]);
+
+  // Track original host - set once when local peer joins as host
+  useEffect(() => {
+    if (localPeer && localPeer.roleName === 'host' && !originalHostId) {
+      setOriginalHostId(localPeer.id);
+      console.log('[DBG][HmsVideoRoom] Original host set:', localPeer.id);
+    }
+  }, [localPeer, originalHostId]);
 
   // Join room function
   const joinRoom = useCallback(async () => {
@@ -300,6 +320,109 @@ export default function HmsVideoRoom({ authToken, userName, onLeave }: HmsVideoR
     }
   };
 
+  // Recording duration timer
+  useEffect(() => {
+    if (isRecordingOn && !recordingStartTime) {
+      setRecordingStartTime(Date.now());
+    } else if (!isRecordingOn && recordingStartTime) {
+      setRecordingStartTime(null);
+      setRecordingDuration('00:00');
+    }
+  }, [isRecordingOn, recordingStartTime]);
+
+  useEffect(() => {
+    if (!recordingStartTime) return;
+
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+      const minutes = Math.floor(elapsed / 60)
+        .toString()
+        .padStart(2, '0');
+      const seconds = (elapsed % 60).toString().padStart(2, '0');
+      setRecordingDuration(`${minutes}:${seconds}`);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [recordingStartTime]);
+
+  // Check if current user is the original host (can control recording)
+  const isOriginalHost = localPeer?.id === originalHostId;
+
+  // Promote a guest to host role
+  const promoteToHost = async (peerId: string) => {
+    if (!isOriginalHost) {
+      console.log('[DBG][HmsVideoRoom] Only original host can promote others');
+      return;
+    }
+
+    setPromotingPeerId(peerId);
+    console.log('[DBG][HmsVideoRoom] Promoting peer to host:', peerId);
+
+    try {
+      await hmsActions.changeRoleOfPeer(peerId, 'host', true);
+      console.log('[DBG][HmsVideoRoom] Peer promoted to host:', peerId);
+    } catch (err) {
+      console.error('[DBG][HmsVideoRoom] Failed to promote peer:', err);
+    } finally {
+      setPromotingPeerId(null);
+    }
+  };
+
+  // Demote a host back to guest role
+  const demoteToGuest = async (peerId: string) => {
+    if (!isOriginalHost) {
+      console.log('[DBG][HmsVideoRoom] Only original host can demote others');
+      return;
+    }
+
+    // Cannot demote the original host
+    if (peerId === originalHostId) {
+      console.log('[DBG][HmsVideoRoom] Cannot demote the original host');
+      return;
+    }
+
+    setPromotingPeerId(peerId);
+    console.log('[DBG][HmsVideoRoom] Demoting peer to guest:', peerId);
+
+    try {
+      await hmsActions.changeRoleOfPeer(peerId, 'guest', true);
+      console.log('[DBG][HmsVideoRoom] Peer demoted to guest:', peerId);
+    } catch (err) {
+      console.error('[DBG][HmsVideoRoom] Failed to demote peer:', err);
+    } finally {
+      setPromotingPeerId(null);
+    }
+  };
+
+  const toggleRecording = async () => {
+    // Only original host can control recording
+    if (!isOriginalHost) {
+      console.log('[DBG][HmsVideoRoom] Only original host can control recording');
+      return;
+    }
+
+    if (isRecordingLoading) return;
+
+    console.log('[DBG][HmsVideoRoom] Toggle recording, current state:', isRecordingOn);
+    setIsRecordingLoading(true);
+
+    try {
+      if (isRecordingOn) {
+        await hmsActions.stopRTMPAndRecording();
+        console.log('[DBG][HmsVideoRoom] Recording stopped');
+      } else {
+        await hmsActions.startRTMPOrRecording({
+          record: true,
+        });
+        console.log('[DBG][HmsVideoRoom] Recording started');
+      }
+    } catch (err) {
+      console.error('[DBG][HmsVideoRoom] Failed to toggle recording:', err);
+    } finally {
+      setIsRecordingLoading(false);
+    }
+  };
+
   if (isJoining) {
     return (
       <div
@@ -325,7 +448,7 @@ export default function HmsVideoRoom({ authToken, userName, onLeave }: HmsVideoR
           }}
         />
         <p style={{ color: '#fff', marginTop: '16px' }}>Joining session...</p>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } } @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }`}</style>
       </div>
     );
   }
@@ -392,7 +515,7 @@ export default function HmsVideoRoom({ authToken, userName, onLeave }: HmsVideoR
         <p style={{ color: '#6b7280', fontSize: '13px', marginTop: '8px' }}>
           Room state: {roomState}
         </p>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } } @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }`}</style>
       </div>
     );
   }
@@ -651,6 +774,96 @@ export default function HmsVideoRoom({ authToken, userName, onLeave }: HmsVideoR
           )}
         </button>
 
+        {/* Recording Button - only show for original host */}
+        {isOriginalHost && (
+          <button
+            onClick={toggleRecording}
+            disabled={isRecordingLoading}
+            style={{
+              width: '48px',
+              height: '48px',
+              borderRadius: '50%',
+              border: 'none',
+              background: isRecordingOn ? '#ef4444' : '#374151',
+              color: '#fff',
+              cursor: isRecordingLoading ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: isRecordingLoading ? 0.6 : 1,
+              position: 'relative',
+            }}
+            title={isRecordingOn ? `Recording ${recordingDuration}` : 'Start recording'}
+          >
+            {isRecordingLoading ? (
+              <div
+                style={{
+                  width: '20px',
+                  height: '20px',
+                  border: '2px solid #666',
+                  borderTop: '2px solid #fff',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite',
+                }}
+              />
+            ) : isRecordingOn ? (
+              <>
+                {/* Stop recording icon (square) */}
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                  <rect x="6" y="6" width="12" height="12" rx="2" />
+                </svg>
+                {/* Pulsing red dot indicator */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '2px',
+                    right: '2px',
+                    width: '10px',
+                    height: '10px',
+                    borderRadius: '50%',
+                    background: '#fff',
+                    border: '2px solid #ef4444',
+                    animation: 'pulse 1.5s ease-in-out infinite',
+                  }}
+                />
+              </>
+            ) : (
+              /* Record icon (circle) */
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                <circle cx="12" cy="12" r="8" />
+              </svg>
+            )}
+          </button>
+        )}
+
+        {/* Recording indicator for non-original hosts */}
+        {!isOriginalHost && isRecordingOn && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 12px',
+              background: '#ef4444',
+              borderRadius: '20px',
+              color: '#fff',
+              fontSize: '12px',
+              fontWeight: '500',
+            }}
+          >
+            <div
+              style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: '#fff',
+                animation: 'pulse 1.5s ease-in-out infinite',
+              }}
+            />
+            REC {recordingDuration}
+          </div>
+        )}
+
         {/* Blur Background Button with Slider - only show if potentially supported */}
         {isBlurSupported !== false && (
           <div style={{ position: 'relative' }}>
@@ -771,7 +984,16 @@ export default function HmsVideoRoom({ authToken, userName, onLeave }: HmsVideoR
                 />
               ) : (
                 <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
-                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
+                  {/* Frame/border */}
+                  <path d="M3 3h4v2H5v2H3V3zm14 0h4v4h-2V5h-2V3zM3 17v4h4v-2H5v-2H3zm18 0v4h-4v-2h2v-2h2z" />
+                  {/* Person silhouette */}
+                  <circle cx="12" cy="8" r="2.5" />
+                  <path d="M12 12c-2.5 0-4.5 1.5-4.5 3.5V17h9v-1.5c0-2-2-3.5-4.5-3.5z" />
+                  {/* Blur effect dots */}
+                  <circle cx="6" cy="10" r="1" opacity="0.5" />
+                  <circle cx="18" cy="10" r="1" opacity="0.5" />
+                  <circle cx="7" cy="14" r="0.8" opacity="0.4" />
+                  <circle cx="17" cy="14" r="0.8" opacity="0.4" />
                 </svg>
               )}
               {/* Small indicator dot when blur is active */}
@@ -817,6 +1039,207 @@ export default function HmsVideoRoom({ authToken, userName, onLeave }: HmsVideoR
                 </svg>
               </button>
             )}
+          </div>
+        )}
+
+        {/* Participants Button - only show for original host */}
+        {isOriginalHost && (
+          <div style={{ position: 'relative' }}>
+            {/* Participants menu */}
+            {showParticipantsMenu && (
+              <>
+                {/* Backdrop to close on outside click */}
+                <div
+                  onClick={() => setShowParticipantsMenu(false)}
+                  style={{
+                    position: 'fixed',
+                    inset: 0,
+                    zIndex: 10,
+                  }}
+                />
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: '60px',
+                    right: 0,
+                    background: '#1f1f1f',
+                    borderRadius: '12px',
+                    padding: '12px',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+                    minWidth: '220px',
+                    maxHeight: '300px',
+                    overflowY: 'auto',
+                    zIndex: 11,
+                  }}
+                >
+                  {/* Close button */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      marginBottom: '12px',
+                      paddingBottom: '8px',
+                      borderBottom: '1px solid #333',
+                    }}
+                  >
+                    <span style={{ color: '#fff', fontSize: '14px', fontWeight: '600' }}>
+                      Participants ({peers.length})
+                    </span>
+                    <button
+                      onClick={() => setShowParticipantsMenu(false)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#6b7280',
+                        cursor: 'pointer',
+                        padding: '4px',
+                      }}
+                    >
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Participants list */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {peers.map(peer => (
+                      <div
+                        key={peer.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '8px',
+                          background: '#262626',
+                          borderRadius: '8px',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div
+                            style={{
+                              width: '32px',
+                              height: '32px',
+                              borderRadius: '50%',
+                              background:
+                                peer.id === originalHostId ? 'var(--color-primary)' : '#374151',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: '#fff',
+                              fontSize: '12px',
+                              fontWeight: '600',
+                            }}
+                          >
+                            {(peer.name || 'U').charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div style={{ color: '#fff', fontSize: '13px', fontWeight: '500' }}>
+                              {peer.name || 'Unknown'}
+                              {peer.isLocal && ' (You)'}
+                            </div>
+                            <div style={{ color: '#9ca3af', fontSize: '11px' }}>
+                              {peer.id === originalHostId
+                                ? 'Host (owner)'
+                                : peer.roleName === 'host'
+                                  ? 'Co-host'
+                                  : 'Guest'}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Promote/Demote button - don't show for original host or self */}
+                        {peer.id !== originalHostId && !peer.isLocal && (
+                          <button
+                            onClick={() =>
+                              peer.roleName === 'host'
+                                ? demoteToGuest(peer.id)
+                                : promoteToHost(peer.id)
+                            }
+                            disabled={promotingPeerId === peer.id}
+                            style={{
+                              padding: '4px 8px',
+                              background: peer.roleName === 'host' ? '#374151' : '#16a34a',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: '500',
+                              cursor: promotingPeerId === peer.id ? 'not-allowed' : 'pointer',
+                              opacity: promotingPeerId === peer.id ? 0.6 : 1,
+                            }}
+                          >
+                            {promotingPeerId === peer.id
+                              ? '...'
+                              : peer.roleName === 'host'
+                                ? 'Demote'
+                                : 'Make Co-host'}
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: '12px',
+                      paddingTop: '8px',
+                      borderTop: '1px solid #333',
+                      color: '#6b7280',
+                      fontSize: '11px',
+                    }}
+                  >
+                    Co-hosts can share their screen
+                  </div>
+                </div>
+              </>
+            )}
+
+            <button
+              onClick={() => setShowParticipantsMenu(!showParticipantsMenu)}
+              style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: '50%',
+                border: 'none',
+                background: showParticipantsMenu ? '#8b5cf6' : '#374151',
+                color: '#fff',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative',
+              }}
+              title="Manage participants"
+            >
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
+              </svg>
+              {/* Badge showing number of guests that can be promoted */}
+              {peers.filter(p => p.roleName === 'guest' && !p.isLocal).length > 0 && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '0',
+                    right: '0',
+                    width: '18px',
+                    height: '18px',
+                    borderRadius: '50%',
+                    background: '#16a34a',
+                    color: '#fff',
+                    fontSize: '10px',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '2px solid #262626',
+                  }}
+                >
+                  {peers.filter(p => p.roleName === 'guest' && !p.isLocal).length}
+                </div>
+              )}
+            </button>
           </div>
         )}
 

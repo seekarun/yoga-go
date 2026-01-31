@@ -12,6 +12,7 @@ import type { ApiResponse, Recording } from '@/types';
 import { getSessionFromCookies, getUserByCognitoSub } from '@/lib/auth';
 import * as recordingRepository from '@/lib/repositories/recordingRepository';
 import * as cloudflareStream from '@/lib/cloudflare-stream';
+import { deleteHmsRecordingAsset } from '@/lib/100ms-meeting';
 
 interface RouteParams {
   params: Promise<{ recordingId: string }>;
@@ -221,7 +222,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
 /**
  * DELETE /data/app/expert/me/recordings/[recordingId]
- * Delete a recording (also deletes from Cloudflare Stream)
+ * Delete a recording (also deletes from Cloudflare Stream or 100ms)
  */
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   const { recordingId } = await params;
@@ -257,14 +258,53 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     const expertId = user.expertProfile;
 
-    // Get recording first to get Cloudflare Stream ID
+    // Check if this is a 100ms recording (not stored in DynamoDB)
+    // 100ms asset IDs are UUIDs, check URL param for hms asset
+    const url = new URL(request.url);
+    const isHmsRecording = url.searchParams.get('source') === 'live';
+
+    if (isHmsRecording) {
+      // Delete from 100ms directly
+      try {
+        await deleteHmsRecordingAsset(recordingId);
+        console.log('[DBG][recordings/[recordingId]/route.ts] Deleted from 100ms:', recordingId);
+        return NextResponse.json({
+          success: true,
+          data: null,
+        } as ApiResponse<null>);
+      } catch (hmsError) {
+        console.error('[DBG][recordings/[recordingId]/route.ts] 100ms delete error:', hmsError);
+        return NextResponse.json(
+          {
+            success: false,
+            error: hmsError instanceof Error ? hmsError.message : 'Failed to delete recording',
+          } as ApiResponse<null>,
+          { status: 500 }
+        );
+      }
+    }
+
+    // Get recording first to get Cloudflare Stream ID (for DB-stored recordings)
     const recording = await recordingRepository.getRecordingById(recordingId, expertId);
 
     if (!recording) {
-      return NextResponse.json(
-        { success: false, error: 'Recording not found' } as ApiResponse<null>,
-        { status: 404 }
-      );
+      // If not found in DB, try to delete from 100ms as fallback
+      try {
+        await deleteHmsRecordingAsset(recordingId);
+        console.log(
+          '[DBG][recordings/[recordingId]/route.ts] Deleted from 100ms (fallback):',
+          recordingId
+        );
+        return NextResponse.json({
+          success: true,
+          data: null,
+        } as ApiResponse<null>);
+      } catch {
+        return NextResponse.json(
+          { success: false, error: 'Recording not found' } as ApiResponse<null>,
+          { status: 404 }
+        );
+      }
     }
 
     // Delete from Cloudflare Stream if exists
@@ -278,6 +318,20 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       } catch (cfError) {
         console.error('[DBG][recordings/[recordingId]/route.ts] Cloudflare delete error:', cfError);
         // Continue with DynamoDB deletion even if Cloudflare fails
+      }
+    }
+
+    // Delete from 100ms if it's a live recording with hmsAssetId
+    if (recording.hmsAssetId) {
+      try {
+        await deleteHmsRecordingAsset(recording.hmsAssetId);
+        console.log(
+          '[DBG][recordings/[recordingId]/route.ts] Deleted from 100ms:',
+          recording.hmsAssetId
+        );
+      } catch (hmsError) {
+        console.error('[DBG][recordings/[recordingId]/route.ts] 100ms delete error:', hmsError);
+        // Continue with DynamoDB deletion even if 100ms fails
       }
     }
 

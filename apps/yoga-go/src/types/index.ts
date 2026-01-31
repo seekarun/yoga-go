@@ -1399,7 +1399,7 @@ export interface EmailFilters {
 // Recording Types (Auto-imported from Zoom/Meet)
 // ========================================
 
-export type RecordingSource = 'zoom' | 'google_meet' | 'upload';
+export type RecordingSource = 'zoom' | 'google_meet' | 'upload' | 'live';
 export type RecordingImportStatus =
   | 'pending'
   | 'downloading'
@@ -1440,6 +1440,11 @@ export interface Recording extends BaseEntity {
   recordedAt?: string; // When the original meeting happened
   importedAt?: string; // When we started importing
   processedAt?: string; // When upload to CF completed
+
+  // 100ms recording fields (for source='live')
+  hmsAssetId?: string;
+  hmsRoomId?: string;
+  hmsSessionId?: string;
 }
 
 export interface RecordingListResult {
