@@ -7,7 +7,7 @@
  * Handles video/audio toggle, peer grid, and leave functionality
  */
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   useHMSActions,
   useHMSStore,
@@ -25,6 +25,8 @@ import {
   HMSRoomState,
   HMSNotificationTypes,
 } from '@100mslive/react-sdk';
+import type { BlurBackgroundPlugin } from '@/lib/blur-background-plugin';
+import { getBlurPlugin, disposeBlurPlugin } from '@/lib/blur-background-plugin';
 
 interface HmsVideoRoomProps {
   authToken: string;
@@ -48,6 +50,14 @@ export default function HmsVideoRoom({ authToken, userName, onLeave }: HmsVideoR
   const [isJoining, setIsJoining] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasAttemptedJoin, setHasAttemptedJoin] = useState(false);
+
+  // Blur background state
+  const [isBlurEnabled, setIsBlurEnabled] = useState(false);
+  const [isBlurSupported, setIsBlurSupported] = useState<boolean | null>(null);
+  const [isBlurLoading, setIsBlurLoading] = useState(false);
+  const [blurAmount, setBlurAmount] = useState(20); // Default blur intensity (0-30)
+  const [showBlurSlider, setShowBlurSlider] = useState(false);
+  const blurPluginRef = useRef<BlurBackgroundPlugin | null>(null);
 
   // Handle 100ms notifications (errors, etc.)
   useEffect(() => {
@@ -194,6 +204,99 @@ export default function HmsVideoRoom({ authToken, userName, onLeave }: HmsVideoR
       }
     } catch (err) {
       console.error('[DBG][HmsVideoRoom] Failed to toggle screen share:', err);
+    }
+  };
+
+  // Check blur support on mount
+  useEffect(() => {
+    const checkBlurSupport = async () => {
+      try {
+        const plugin = await getBlurPlugin(blurAmount);
+        if (plugin) {
+          const support = plugin.checkSupport();
+          setIsBlurSupported(support.isSupported);
+          blurPluginRef.current = plugin;
+          console.log('[DBG][HmsVideoRoom] Blur support:', support.isSupported);
+        } else {
+          setIsBlurSupported(false);
+        }
+      } catch (err) {
+        console.error('[DBG][HmsVideoRoom] Blur support check failed:', err);
+        setIsBlurSupported(false);
+      }
+    };
+
+    if (isConnected && typeof window !== 'undefined') {
+      checkBlurSupport();
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (blurPluginRef.current && isBlurEnabled) {
+        try {
+          hmsActions.removePluginFromVideoTrack(blurPluginRef.current);
+        } catch (e) {
+          // Ignore cleanup errors
+        }
+      }
+      disposeBlurPlugin();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected]);
+
+  // Handle blur amount change
+  const handleBlurAmountChange = (newAmount: number) => {
+    setBlurAmount(newAmount);
+    if (blurPluginRef.current) {
+      blurPluginRef.current.setBlurAmount(newAmount);
+      console.log('[DBG][HmsVideoRoom] Blur amount changed to:', newAmount);
+    }
+  };
+
+  const toggleBlurBackground = async () => {
+    if (!isBlurSupported || isBlurLoading) return;
+
+    console.log('[DBG][HmsVideoRoom] Toggle blur, current state:', isBlurEnabled);
+    setIsBlurLoading(true);
+
+    try {
+      if (isBlurEnabled) {
+        // Disable blur
+        if (blurPluginRef.current) {
+          await hmsActions.removePluginFromVideoTrack(blurPluginRef.current);
+          console.log('[DBG][HmsVideoRoom] Blur disabled');
+        }
+        setIsBlurEnabled(false);
+        setShowBlurSlider(false);
+      } else {
+        // Enable blur
+        const plugin = blurPluginRef.current || (await getBlurPlugin(blurAmount));
+        if (!plugin) {
+          console.error('[DBG][HmsVideoRoom] Failed to get blur plugin');
+          setIsBlurSupported(false);
+          return;
+        }
+
+        blurPluginRef.current = plugin;
+        // Set the current blur amount
+        plugin.setBlurAmount(blurAmount);
+
+        // Validate plugin support with HMS
+        const validation = hmsActions.validateVideoPluginSupport(plugin);
+        if (!validation.isSupported) {
+          console.error('[DBG][HmsVideoRoom] HMS validation failed:', validation);
+          setIsBlurSupported(false);
+          return;
+        }
+
+        await hmsActions.addPluginToVideoTrack(plugin);
+        setIsBlurEnabled(true);
+        console.log('[DBG][HmsVideoRoom] Blur enabled with amount:', blurAmount);
+      }
+    } catch (err) {
+      console.error('[DBG][HmsVideoRoom] Failed to toggle blur:', err);
+    } finally {
+      setIsBlurLoading(false);
     }
   };
 
@@ -547,6 +650,175 @@ export default function HmsVideoRoom({ authToken, userName, onLeave }: HmsVideoR
             </svg>
           )}
         </button>
+
+        {/* Blur Background Button with Slider - only show if potentially supported */}
+        {isBlurSupported !== false && (
+          <div style={{ position: 'relative' }}>
+            {/* Blur intensity slider - shows when blur is enabled and slider is toggled */}
+            {isBlurEnabled && showBlurSlider && (
+              <>
+                {/* Backdrop to close on outside click */}
+                <div
+                  onClick={() => setShowBlurSlider(false)}
+                  style={{
+                    position: 'fixed',
+                    inset: 0,
+                    zIndex: 10,
+                  }}
+                />
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: '60px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    background: '#1f1f1f',
+                    borderRadius: '12px',
+                    padding: '12px 16px',
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '8px',
+                    minWidth: '140px',
+                    zIndex: 11,
+                  }}
+                >
+                  {/* Close button */}
+                  <button
+                    onClick={() => setShowBlurSlider(false)}
+                    style={{
+                      position: 'absolute',
+                      top: '6px',
+                      right: '6px',
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '50%',
+                      border: 'none',
+                      background: 'transparent',
+                      color: '#6b7280',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 0,
+                    }}
+                    title="Close"
+                  >
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                      <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
+                    </svg>
+                  </button>
+                  <span style={{ color: '#9ca3af', fontSize: '11px', textTransform: 'uppercase' }}>
+                    Blur Intensity
+                  </span>
+                  <input
+                    type="range"
+                    min="5"
+                    max="30"
+                    value={blurAmount}
+                    onChange={e => handleBlurAmountChange(Number(e.target.value))}
+                    style={{
+                      width: '100px',
+                      height: '6px',
+                      appearance: 'none',
+                      background: `linear-gradient(to right, #8b5cf6 0%, #8b5cf6 ${((blurAmount - 5) / 25) * 100}%, #374151 ${((blurAmount - 5) / 25) * 100}%, #374151 100%)`,
+                      borderRadius: '3px',
+                      cursor: 'pointer',
+                    }}
+                  />
+                  <span style={{ color: '#fff', fontSize: '13px', fontWeight: '500' }}>
+                    {blurAmount}
+                  </span>
+                </div>
+              </>
+            )}
+            <button
+              onClick={toggleBlurBackground}
+              onContextMenu={e => {
+                e.preventDefault();
+                if (isBlurEnabled) setShowBlurSlider(!showBlurSlider);
+              }}
+              disabled={isBlurLoading || isBlurSupported === null}
+              style={{
+                width: '48px',
+                height: '48px',
+                borderRadius: '50%',
+                border: 'none',
+                background: isBlurEnabled ? '#8b5cf6' : '#374151',
+                color: '#fff',
+                cursor: isBlurLoading || isBlurSupported === null ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: isBlurLoading || isBlurSupported === null ? 0.6 : 1,
+                position: 'relative',
+              }}
+              title={
+                isBlurEnabled ? 'Click to disable, right-click for intensity' : 'Blur background'
+              }
+            >
+              {isBlurLoading ? (
+                <div
+                  style={{
+                    width: '20px',
+                    height: '20px',
+                    border: '2px solid #666',
+                    borderTop: '2px solid #fff',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite',
+                  }}
+                />
+              ) : (
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
+                </svg>
+              )}
+              {/* Small indicator dot when blur is active */}
+              {isBlurEnabled && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '2px',
+                    right: '2px',
+                    width: '10px',
+                    height: '10px',
+                    borderRadius: '50%',
+                    background: '#22c55e',
+                    border: '2px solid #262626',
+                  }}
+                />
+              )}
+            </button>
+            {/* Settings button to toggle slider when blur is enabled */}
+            {isBlurEnabled && (
+              <button
+                onClick={() => setShowBlurSlider(!showBlurSlider)}
+                style={{
+                  position: 'absolute',
+                  bottom: '-8px',
+                  right: '-8px',
+                  width: '24px',
+                  height: '24px',
+                  borderRadius: '50%',
+                  border: '2px solid #262626',
+                  background: showBlurSlider ? '#8b5cf6' : '#374151',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: 0,
+                }}
+                title="Adjust blur intensity"
+              >
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                  <path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z" />
+                </svg>
+              </button>
+            )}
+          </div>
+        )}
 
         <button
           onClick={handleLeave}

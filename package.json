@@ -54,6 +54,7 @@
     "prettier": "^3.7.4"
   },
   "dependencies": {
+    "@100mslive/hms-virtual-background": "^1.14.1",
     "dompurify": "^3.3.1"
   }
 }
