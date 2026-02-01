@@ -3,17 +3,18 @@
   "version": "1.0.0",
   "private": true,
   "workspaces": [
+    "core/*",
     "apps/*",
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm run devH -w yoga-go",
-    "dev:yoga-go": "npm run dev -w yoga-go",
-    "build:yoga-go": "npm run build -w yoga-go",
-    "start:yoga-go": "npm run start -w yoga-go",
-    "lint:yoga-go": "npm run lint -w yoga-go",
-    "lint:fix:yoga-go": "npm run lint:fix -w yoga-go",
-    "format:yoga-go": "npm run format -w yoga-go",
+    "dev": "npm run devH -w yoga",
+    "dev:yoga": "npm run dev -w yoga",
+    "build:yoga": "npm run build -w yoga",
+    "start:yoga": "npm run start -w yoga",
+    "lint:yoga": "npm run lint -w yoga",
+    "lint:fix:yoga": "npm run lint:fix -w yoga",
+    "format:yoga": "npm run format -w yoga",
     "dev:app-two": "npm run dev -w app-two",
     "build:app-two": "npm run build -w app-two",
     "start:app-two": "npm run start -w app-two",
@@ -28,11 +29,11 @@
     "infra:build": "cd infra && npm run build",
     "infra:synth": "cd infra && npx cdk synth --profile myg",
     "infra:synth:shared": "cd infra && npx cdk synth SharedInfraStack --profile myg",
-    "infra:synth:yoga-go": "cd infra && npx cdk synth YogaGoStack --profile myg",
+    "infra:synth:yoga": "cd infra && npx cdk synth YogaGoStack --profile myg",
     "infra:synth:app-two": "cd infra && npx cdk synth AppTwoStack --profile myg",
     "infra:synth:calel": "cd infra && npx cdk synth CalelStack --profile myg",
     "infra:deploy:shared": "cd infra && npx cdk deploy SharedInfraStack --profile myg",
-    "infra:deploy:yoga-go": "cd infra && npx cdk deploy YogaGoStack --profile myg",
+    "infra:deploy:yoga": "cd infra && npx cdk deploy YogaGoStack --profile myg",
     "infra:deploy:app-two": "cd infra && npx cdk deploy AppTwoStack --profile myg",
     "infra:deploy:calel": "cd infra && npx cdk deploy CalelStack --profile myg",
     "infra:diff": "cd infra && npx cdk diff --profile myg",
@@ -44,6 +45,9 @@
   },
   "lint-staged": {
     "apps/**/*.{js,jsx,ts,tsx,json,css,md}": [
+      "prettier --write"
+    ],
+    "core/**/*.{js,jsx,ts,tsx,json,css,md}": [
       "prettier --write"
     ]
   },

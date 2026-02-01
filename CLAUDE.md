@@ -9,16 +9,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Development
 
-- `npm run dev` - Start development server on port 3111 (http://localhost:3111)
-- `npm run build` - Build production bundle
-- `npm run start` - Start production server
+- `npm run dev` - Start yoga dev server on port 3111 (network accessible at 0.0.0.0:3111)
+- `npm run dev:yoga` - Start yoga dev server on port 3111 (localhost only)
+- `npm run build:yoga` - Build yoga app production bundle
+- `npm run start:yoga` - Start yoga app production server
 
 ### Code Quality
 
-- `npm run lint` - Run ESLint
-- `npm run lint:fix` - Fix ESLint issues automatically
-- `npm run format` - Format all files with Prettier
-- `npm run format:check` - Check if files are formatted correctly
+- `npm run lint:yoga` - Run ESLint on yoga app
+- `npm run lint:fix:yoga` - Fix ESLint issues automatically
+- `npm run format:yoga` - Format yoga app files with Prettier
 
 ### Git Hooks
 
@@ -28,7 +28,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Important
 
 - After making changes do not start the application, let user start and verify changes
-- After every request iteration, if there are type changes, build the app with `npm run build` to confirm it works
+- After every request iteration, if there are type changes, build the app with `npm run build:yoga` to confirm it works
 - If pushing code to remote, always verify build succeeds before pushing code
 - Use logging extensively with `[DBG][$filename]` prefix to understand issues
 - Code is automatically formatted and linted on commit via pre-commit hook
@@ -51,18 +51,41 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture
 
-### Project Structure
+### Monorepo Structure
+
+This is a monorepo using npm workspaces with the following structure:
+
+```
+yoga-go/
+  core/                    # Generic feature packages
+    types/                 # Parameterized types for verticals
+    lib/                   # Utilities (DynamoDB, auth, etc.)
+    repositories/          # Base repository patterns
+    components/            # Reusable React components
+    contexts/              # Context utilities
+    hooks/                 # Custom React hooks
+
+  apps/
+    yoga/                  # Yoga vertical (Next.js 15)
+      src/
+        app/               # Next.js App Router
+        lib/               # App-specific utilities
+        components/        # App-specific components
+        types/vertical.ts  # Yoga-specific types
+```
+
+### App Structure (apps/yoga)
 
 This is a Next.js 15 application using the App Router with TypeScript and Tailwind CSS.
 
 **Key directories:**
 
-- `src/app/` - Next.js App Router pages and API routes
-- `src/app/data/` - API route handlers (guest and authenticated)
-- `src/data/` - Mock data storage (experts, courses, lessons)
-- `src/types/` - TypeScript type definitions
-- `src/components/` - Reusable React components
-- `docs/api/` - Postman collection for API testing
+- `apps/yoga/src/app/` - Next.js App Router pages and API routes
+- `apps/yoga/src/app/data/` - API route handlers (guest and authenticated)
+- `apps/yoga/src/data/` - Mock data storage (experts, courses, lessons)
+- `apps/yoga/src/types/` - TypeScript type definitions (imports from @core/types)
+- `apps/yoga/src/components/` - Reusable React components
+- `apps/yoga/docs/api/` - Postman collection for API testing
 
 ### Data Flow & API Architecture
 
