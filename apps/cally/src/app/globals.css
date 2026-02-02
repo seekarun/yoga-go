@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+/* Color Variables - Cally Brand */
+:root {
+  /* Brand Colors - Blue/Teal theme */
+  --color-primary: #2563eb; /* Blue (Buttons/CTAs) */
+  --color-primary-hover: #1d4ed8; /* Darker Blue */
+  --color-secondary: #06b6d4; /* Cyan (Accents) */
+  --color-highlight: #10b981; /* Green (Success indicators) */
+
+  /* Neutral Surfaces */
+  --color-bg-main: #f8fafc; /* Light gray background */
+  --color-surface: #ffffff; /* Card/Modal background */
+  --color-border: #e2e8f0; /* Subtle dividers */
+
+  /* Typography */
+  --text-main: #0f172a; /* Headings */
+  --text-body: #334155; /* Paragraphs */
+  --text-muted: #64748b; /* Labels/Captions */
+}
+
+body {
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+/* Custom animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.5s ease-out;
+}

@@ -19,6 +19,7 @@ Misc
 [ ] UI: add message in dashboard that dns changes takes time.
 [ ] UI: tell you they can set up their own domain after - all settings - change your preference anytime in settings.
 [ ] UI: disable the next button until the expertID is validated.
+[ ] TECH: separate domain name from expert ID (use ulid)
 [ ] TECH: remove excess fields in the user data (like membership)
 [ ] TECH: consider triggers for other tables for analytics.
 [ ] TECH: review currency conversion

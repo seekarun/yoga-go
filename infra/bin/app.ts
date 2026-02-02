@@ -4,6 +4,7 @@ import * as cdk from "aws-cdk-lib";
 import { YogaGoStack } from "../lib/yoga-go-stack";
 import { SesStack } from "../lib/ses-stack";
 import { CalelStack } from "../lib/calel-stack";
+import { CallyStack } from "../lib/cally-stack";
 import { CognitoCertStack } from "../lib/cognito-cert-stack";
 
 const app = new cdk.App();
@@ -88,6 +89,28 @@ new CalelStack(app, "CalelStack", {
   env: envSydney,
   tags: {
     Application: "Calel",
+    Environment: "production",
+    ManagedBy: "CDK",
+  },
+});
+
+// ========================================
+// Cally Stack (Landing Pages, Calendar, Sessions)
+// ========================================
+// Contains: Cognito User Pool (with Google OAuth), DynamoDB (cally-main), IAM User
+//
+// Prerequisites:
+// 1. Create Google OAuth credentials in Google Cloud Console
+// 2. Store in AWS Secrets Manager as "cally/production":
+//    { "GOOGLE_CLIENT_ID": "<id>", "GOOGLE_CLIENT_SECRET": "<secret>" }
+//
+// Deployment:
+// npm run infra:deploy:cally
+new CallyStack(app, "CallyStack", {
+  description: "Cally - Landing pages, calendar, live sessions",
+  env: envSydney,
+  tags: {
+    Application: "Cally",
     Environment: "production",
     ManagedBy: "CDK",
   },
