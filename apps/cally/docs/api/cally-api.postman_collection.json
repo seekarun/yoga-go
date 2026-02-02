@@ -1,0 +1,189 @@
+{
+  "info": {
+    "name": "Cally API",
+    "description": "API collection for Cally - Landing Pages and Calendar",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3113"
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Signup",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"Password123!\",\n  \"name\": \"Test User\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/cognito/signup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "cognito", "signup"]
+            },
+            "description": "Register a new user with Cognito. Creates a tenant with ULID."
+          }
+        },
+        {
+          "name": "Verify Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"code\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/cognito/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "cognito", "verify"]
+            },
+            "description": "Verify email with confirmation code from Cognito."
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/cognito/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "cognito", "login"]
+            },
+            "description": "Login with email and password."
+          }
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "me"]
+            },
+            "description": "Get the current authenticated user with tenant ID."
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "logout"]
+            },
+            "description": "Logout the current user."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tenant - Public",
+      "item": [
+        {
+          "name": "Get Tenant Landing Page",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/tenants/:tenantId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "tenants", ":tenantId"],
+              "variable": [
+                {
+                  "key": "tenantId",
+                  "value": "01HXYZ..."
+                }
+              ]
+            },
+            "description": "Get public tenant data with landing page config."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Landing Page - Authenticated",
+      "item": [
+        {
+          "name": "Get Landing Page Config",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/tenant/landing-page",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "tenant", "landing-page"]
+            },
+            "description": "Get the current user's landing page config (draft and published)."
+          }
+        },
+        {
+          "name": "Update Draft Landing Page",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hero\": {\n    \"headline\": \"Welcome to My Page\",\n    \"description\": \"Book a session with me!\",\n    \"ctaText\": \"Book Now\",\n    \"ctaLink\": \"#booking\"\n  },\n  \"sectionOrder\": [\"hero\", \"valuePropositions\", \"about\", \"photoGallery\", \"act\", \"footer\"],\n  \"disabledSections\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/tenant/landing-page",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "tenant", "landing-page"]
+            },
+            "description": "Update the draft landing page config. Auto-saves as draft."
+          }
+        },
+        {
+          "name": "Publish Landing Page",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/tenant/publish",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "tenant", "publish"]
+            },
+            "description": "Publish the draft landing page. Copies draft to published."
+          }
+        }
+      ]
+    }
+  ]
+}

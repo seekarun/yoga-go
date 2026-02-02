@@ -1,15 +1,13 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { decode } from "next-auth/jwt";
+import { getTenantByUserId } from "@/lib/repositories/tenantRepository";
 
 /**
  * API route to get the current authenticated user
- * For now, this is a placeholder - in production, you would:
  * 1. Decode the session token
- * 2. Look up the user in DynamoDB
- * 3. Return the user data
- *
- * Since cally shares infrastructure with yoga, we can use the same session.
+ * 2. Look up the tenant in DynamoDB by cognitoSub
+ * 3. Return the user data with real tenantId
  */
 export async function GET() {
   try {
@@ -37,8 +35,7 @@ export async function GET() {
       );
     }
 
-    // For now, return a minimal user object
-    // In production, you would fetch the full user from DynamoDB
+    // Get cognitoSub from token
     const cognitoSub =
       (decoded as { cognitoSub?: string; sub?: string }).cognitoSub ||
       (decoded as { sub?: string }).sub;
@@ -50,15 +47,35 @@ export async function GET() {
       );
     }
 
-    // TODO: Fetch user from DynamoDB using cognitoSub
-    // For now, return a mock user
+    console.log(
+      "[DBG][api/auth/me] Looking up tenant for cognitoSub:",
+      cognitoSub,
+    );
+
+    // Fetch tenant from DynamoDB using cognitoSub
+    const tenant = await getTenantByUserId(cognitoSub);
+
+    if (!tenant) {
+      console.log("[DBG][api/auth/me] No tenant found for user:", cognitoSub);
+      // User exists in Cognito but no tenant record
+      // This could happen if tenant creation failed during signup
+      return NextResponse.json(
+        { success: false, error: "Tenant not found" },
+        { status: 404 },
+      );
+    }
+
+    console.log("[DBG][api/auth/me] Found tenant:", tenant.id);
+
+    // Return user object with real tenant ID
     const user = {
       id: cognitoSub,
       role: ["expert"],
-      expertProfile: "demo", // This would come from DynamoDB
+      expertProfile: tenant.id,
       profile: {
-        name: (decoded as { name?: string }).name || "User",
-        email: (decoded as { email?: string }).email || "",
+        name: tenant.name || (decoded as { name?: string }).name || "User",
+        email: tenant.email || (decoded as { email?: string }).email || "",
+        avatar: tenant.avatar,
       },
     };
 

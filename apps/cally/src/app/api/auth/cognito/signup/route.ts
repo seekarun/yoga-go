@@ -1,14 +1,16 @@
 /**
  * POST /api/auth/cognito/signup
- * Register a new user with Cognito
+ * Register a new user with Cognito and create a tenant in DynamoDB
  */
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { ulid } from "ulid";
 import {
   signUp,
   getCognitoErrorMessage,
   isCognitoError,
 } from "@/lib/cognito-auth";
+import { createTenant } from "@/lib/repositories/tenantRepository";
 
 interface SignupRequestBody {
   email: string;
@@ -63,6 +65,26 @@ export async function POST(request: NextRequest) {
       userSub: result.userSub,
       requiresVerification: result.requiresVerification,
     });
+
+    // Create tenant in DynamoDB with ULID
+    if (result.userSub) {
+      const tenantId = ulid().toLowerCase();
+      console.log("[DBG][signup] Creating tenant with ID:", tenantId);
+
+      try {
+        await createTenant({
+          id: tenantId,
+          userId: result.userSub,
+          name: name.trim(),
+          email: email.toLowerCase().trim(),
+        });
+        console.log("[DBG][signup] Tenant created successfully:", tenantId);
+      } catch (tenantError) {
+        console.error("[DBG][signup] Error creating tenant:", tenantError);
+        // Note: We don't fail the signup if tenant creation fails
+        // The tenant can be created later or recovered
+      }
+    }
 
     return NextResponse.json({
       success: true,

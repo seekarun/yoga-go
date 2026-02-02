@@ -35,10 +35,12 @@
     "jsonwebtoken": "^9.0.2",
     "nanoid": "^5.1.6",
     "next": "15.5.7",
+    "pexels": "^1.4.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-easy-crop": "^5.5.3",
     "stripe": "^19.1.0",
+    "ulid": "^3.0.2",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
