@@ -36,6 +36,7 @@
     "jsonwebtoken": "^9.0.2",
     "nanoid": "^5.1.6",
     "next": "15.5.7",
+    "styled-jsx": "5.1.6",
     "pexels": "^1.4.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
