@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useMemo } from "react";
 import type {
   SimpleLandingPageConfig,
   TemplateId,
@@ -8,6 +9,7 @@ import type {
   AboutConfig,
   FeaturesConfig,
   FeatureCard,
+  TemplateImageConfig,
 } from "@/types/landing-page";
 import {
   TEMPLATES,
@@ -51,6 +53,12 @@ export default function SimpleLandingPageEditor({
   const [editingFeatureCardId, setEditingFeatureCardId] = useState<
     string | null
   >(null);
+
+  // Get current template's image configuration
+  const currentTemplateImageConfig: TemplateImageConfig = useMemo(() => {
+    const template = TEMPLATES.find((t) => t.id === config.template);
+    return template?.imageConfig || TEMPLATES[0].imageConfig;
+  }, [config.template]);
 
   // Auto-save refs
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -651,7 +659,7 @@ export default function SimpleLandingPageEditor({
         right) to change background.
       </div>
 
-      {/* Image Editor Overlay - Hero Background (16:9 landscape) */}
+      {/* Image Editor Overlay - Hero Background */}
       <ImageEditorOverlay
         isOpen={showImageEditor}
         onClose={() => setShowImageEditor(false)}
@@ -660,7 +668,7 @@ export default function SimpleLandingPageEditor({
         currentPosition={config.imagePosition}
         currentZoom={config.imageZoom}
         title="Edit Background Image"
-        aspectRatio="16/9"
+        aspectRatio={currentTemplateImageConfig.heroBackground}
         defaultSearchQuery="professional business"
       />
 
@@ -674,7 +682,7 @@ export default function SimpleLandingPageEditor({
         actions={BUTTON_ACTIONS}
       />
 
-      {/* About Image Editor Overlay (3:4 portrait for profile images) */}
+      {/* About Image Editor Overlay */}
       <ImageEditorOverlay
         isOpen={showAboutImageEditor}
         onClose={() => setShowAboutImageEditor(false)}
@@ -683,11 +691,11 @@ export default function SimpleLandingPageEditor({
         currentPosition={config.about?.imagePosition}
         currentZoom={config.about?.imageZoom}
         title="Edit About Image"
-        aspectRatio="3/4"
+        aspectRatio={currentTemplateImageConfig.aboutImage}
         defaultSearchQuery="portrait professional"
       />
 
-      {/* Feature Card Image Editor Overlay (16:9 for card images) */}
+      {/* Feature Card Image Editor Overlay */}
       <ImageEditorOverlay
         isOpen={showFeatureImageEditor}
         onClose={() => {
@@ -714,7 +722,7 @@ export default function SimpleLandingPageEditor({
             : undefined
         }
         title="Edit Feature Image"
-        aspectRatio="16/9"
+        aspectRatio={currentTemplateImageConfig.featureCardImage}
         defaultSearchQuery="business service"
       />
     </div>

@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { getTenantById } from "@/lib/repositories/tenantRepository";
 import { DEFAULT_LANDING_PAGE_CONFIG } from "@/types/landing-page";
 import LandingPageRenderer from "@/components/landing-page/LandingPageRenderer";
+import { ChatWidgetWrapper } from "@/components/ai";
 
 interface PageProps {
   params: Promise<{
@@ -69,14 +70,20 @@ export default async function TenantLandingPage({ params }: PageProps) {
   const landingPage = tenant.customLandingPage || DEFAULT_LANDING_PAGE_CONFIG;
 
   return (
-    <LandingPageRenderer
-      config={{
-        template: landingPage.template || "centered",
-        title: landingPage.title || "Welcome",
-        subtitle: landingPage.subtitle || "Book a session with me",
-        backgroundImage: landingPage.backgroundImage,
-      }}
-    />
+    <>
+      <LandingPageRenderer
+        config={{
+          template: landingPage.template || "centered",
+          title: landingPage.title || "Welcome",
+          subtitle: landingPage.subtitle || "Book a session with me",
+          backgroundImage: landingPage.backgroundImage,
+        }}
+      />
+      <ChatWidgetWrapper
+        tenantId={tenantId}
+        config={tenant.aiAssistantConfig}
+      />
+    </>
   );
 }
 

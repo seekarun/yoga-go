@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Cally API",
-    "description": "API collection for Cally - Landing Pages and Calendar",
+    "description": "API collection for Cally - Landing Pages, Calendar, Domain & Email, AI Assistant",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -129,6 +129,34 @@
             },
             "description": "Get public tenant data with landing page config."
           }
+        },
+        {
+          "name": "Public AI Chat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Hello, what services do you offer?\",\n  \"sessionMessages\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/tenants/:tenantId/ai/chat",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "tenants", ":tenantId", "ai", "chat"],
+              "variable": [
+                {
+                  "key": "tenantId",
+                  "value": "01HXYZ..."
+                }
+              ]
+            },
+            "description": "Public chat endpoint for visitors. Returns 403 if AI assistant is not enabled for the tenant."
+          }
         }
       ]
     },
@@ -181,6 +209,212 @@
               "path": ["api", "data", "app", "tenant", "publish"]
             },
             "description": "Publish the draft landing page. Copies draft to published."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Domain - Authenticated",
+      "description": "Domain management endpoints for BYOD (Bring Your Own Domain)",
+      "item": [
+        {
+          "name": "Get Domain Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/domain/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "domain", "status"]
+            },
+            "description": "Get current domain and email configuration status for the authenticated user."
+          }
+        },
+        {
+          "name": "Add Domain",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"domain\": \"mycoaching.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/domain/add",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "domain", "add"]
+            },
+            "description": "Add a domain to Vercel. Returns nameservers that need to be configured at the registrar."
+          }
+        },
+        {
+          "name": "Verify Domain",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/domain/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "domain", "verify"]
+            },
+            "description": "Trigger Vercel to re-check DNS and verify domain ownership."
+          }
+        },
+        {
+          "name": "Remove Domain",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/domain/remove",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "domain", "remove"]
+            },
+            "description": "Remove domain from Vercel and clear domain/email configuration."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Email - Authenticated",
+      "description": "Email setup endpoints for custom domain email via SES",
+      "item": [
+        {
+          "name": "Setup Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"emailPrefix\": \"hello\",\n  \"forwardToEmail\": \"your@gmail.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/domain/email/setup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "domain", "email", "setup"]
+            },
+            "description": "Create SES domain identity and setup email forwarding. Returns DKIM tokens and DNS records."
+          }
+        },
+        {
+          "name": "Verify Email DNS",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/domain/email/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "domain", "email", "verify"]
+            },
+            "description": "Check email DNS verification status (MX, SPF, DKIM records)."
+          }
+        },
+        {
+          "name": "Disable Email",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/domain/email/disable",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "domain", "email", "disable"]
+            },
+            "description": "Delete SES domain identity and clear email configuration."
+          }
+        }
+      ]
+    },
+    {
+      "name": "AI Assistant - Authenticated",
+      "description": "AI Assistant endpoints for chat widget configuration",
+      "item": [
+        {
+          "name": "Get AI Settings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/ai/settings",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "ai", "settings"]
+            },
+            "description": "Get AI assistant settings for the authenticated user."
+          }
+        },
+        {
+          "name": "Update AI Settings",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enabled\": true,\n  \"widgetPosition\": \"bottom-right\",\n  \"welcomeMessage\": \"Hi! How can I help you today?\",\n  \"placeholderText\": \"Type your message...\",\n  \"systemPrompt\": \"Always suggest booking a trial class.\",\n  \"businessInfo\": {\n    \"businessName\": \"Sunrise Yoga Studio\",\n    \"description\": \"A welcoming yoga studio for all levels\",\n    \"openingHours\": \"Mon-Fri 6am-8pm, Sat-Sun 8am-6pm\",\n    \"services\": \"Hatha Yoga, Vinyasa Flow, Private Sessions\",\n    \"location\": \"123 Main St, Sydney\",\n    \"contactInfo\": \"hello@sunriseyoga.com\",\n    \"additionalNotes\": \"We offer a free trial class for first-time visitors!\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/ai/settings",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "ai", "settings"]
+            },
+            "description": "Update AI assistant settings. Partial updates supported."
+          }
+        },
+        {
+          "name": "Demo Chat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Hello, tell me about your services.\",\n  \"sessionMessages\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/ai/chat",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "ai", "chat"]
+            },
+            "description": "Demo chat endpoint for testing AI in dashboard. Uses the tenant's custom system prompt if configured."
+          }
+        },
+        {
+          "name": "Business Setup Chat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messages\": [\n    { \"role\": \"assistant\", \"content\": \"Hi! I'd love to learn about your business. What's it called?\" },\n    { \"role\": \"user\", \"content\": \"Sunrise Yoga Studio\" }\n  ],\n  \"saveIfComplete\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/ai/setup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "ai", "setup"]
+            },
+            "description": "AI-driven business setup chat. Uses function calling to extract structured business info from conversation. Set saveIfComplete to true to auto-save when setup is complete."
           }
         }
       ]

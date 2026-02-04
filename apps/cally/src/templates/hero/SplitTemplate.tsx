@@ -53,14 +53,24 @@ export default function SplitTemplate({
 
   const imageSide: React.CSSProperties = {
     flex: 1,
+    position: "relative",
     backgroundColor: backgroundImage ? "#000" : undefined,
+    minHeight: "100vh",
+    overflow: "hidden",
+  };
+
+  const imageSideBackground: React.CSSProperties = {
+    position: "absolute",
+    inset: 0,
     backgroundImage: backgroundImage
       ? `url(${backgroundImage})`
       : "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
     backgroundPosition: imagePosition || "50% 50%",
-    backgroundSize: backgroundImage ? `${imageZoom || 100}%` : undefined,
+    backgroundSize: "cover",
     backgroundRepeat: "no-repeat",
-    minHeight: "100vh",
+    transform: backgroundImage
+      ? `scale(${(imageZoom || 100) / 100})`
+      : undefined,
   };
 
   const titleStyle: React.CSSProperties = {
@@ -137,12 +147,15 @@ export default function SplitTemplate({
     inset: 0,
     backgroundImage: about?.image ? `url(${about.image})` : undefined,
     backgroundPosition: about?.imagePosition || "50% 50%",
-    backgroundSize: about?.image ? `${about?.imageZoom || 100}%` : undefined,
+    backgroundSize: "cover",
     backgroundRepeat: "no-repeat",
     backgroundColor: about?.image ? undefined : "#e5e7eb",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+    transform: about?.image
+      ? `scale(${(about?.imageZoom || 100) / 100})`
+      : undefined,
   };
 
   const aboutParagraphStyle: React.CSSProperties = {
@@ -251,7 +264,9 @@ export default function SplitTemplate({
             </>
           )}
         </div>
-        <div style={imageSide} />
+        <div style={imageSide}>
+          <div style={imageSideBackground} />
+        </div>
       </div>
 
       {/* About Section */}

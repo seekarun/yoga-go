@@ -18,6 +18,18 @@ export type TemplateId =
   | "bold";
 
 /**
+ * Image aspect ratio configuration for a template
+ */
+export interface TemplateImageConfig {
+  /** Aspect ratio for hero background image (e.g., "16/9", "9/16") */
+  heroBackground: string;
+  /** Aspect ratio for about section image */
+  aboutImage: string;
+  /** Aspect ratio for feature card images */
+  featureCardImage: string;
+}
+
+/**
  * Template metadata for display in the editor
  */
 export interface TemplateInfo {
@@ -25,6 +37,8 @@ export interface TemplateInfo {
   name: string;
   description: string;
   previewImage?: string;
+  /** Image aspect ratio configuration for this template */
+  imageConfig: TemplateImageConfig;
 }
 
 /**
@@ -36,26 +50,51 @@ export const TEMPLATES: TemplateInfo[] = [
     name: "Centered",
     description:
       "Classic centered layout with title and subtitle over the background",
+    imageConfig: {
+      heroBackground: "16/9",
+      aboutImage: "1/1",
+      featureCardImage: "16/9",
+    },
   },
   {
     id: "left-aligned",
     name: "Left Aligned",
     description: "Content aligned to the left with a modern feel",
+    imageConfig: {
+      heroBackground: "16/9",
+      aboutImage: "4/5",
+      featureCardImage: "16/9",
+    },
   },
   {
     id: "split",
     name: "Split",
     description: "Half image, half content side-by-side layout",
+    imageConfig: {
+      heroBackground: "9/16",
+      aboutImage: "4/5",
+      featureCardImage: "16/9",
+    },
   },
   {
     id: "minimal",
     name: "Minimal",
     description: "Clean and simple with subtle background",
+    imageConfig: {
+      heroBackground: "16/9",
+      aboutImage: "1/1",
+      featureCardImage: "16/9",
+    },
   },
   {
     id: "bold",
     name: "Bold",
     description: "Large typography with strong visual impact",
+    imageConfig: {
+      heroBackground: "16/9",
+      aboutImage: "1/1",
+      featureCardImage: "16/9",
+    },
   },
 ];
 

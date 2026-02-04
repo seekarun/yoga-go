@@ -15,6 +15,8 @@ import {
 import { docClient, Tables, Indexes, TenantPK, EntityType } from "../dynamodb";
 import type { SimpleLandingPageConfig } from "@/types/landing-page";
 import { DEFAULT_LANDING_PAGE_CONFIG } from "@/types/landing-page";
+import type { DomainConfig, EmailConfig } from "@/types/domain";
+import type { AiAssistantConfig } from "@/types/ai-assistant";
 
 /**
  * Cally Tenant Entity
@@ -29,6 +31,9 @@ export interface CallyTenant {
   draftLandingPage?: SimpleLandingPageConfig;
   customLandingPage?: SimpleLandingPageConfig;
   isLandingPagePublished?: boolean;
+  domainConfig?: DomainConfig;
+  emailConfig?: EmailConfig;
+  aiAssistantConfig?: AiAssistantConfig;
   createdAt: string;
   updatedAt: string;
 }
@@ -284,6 +289,9 @@ export async function updateDraftLandingPage(
       draftLandingPage: draftLandingPage,
       customLandingPage: tenant.customLandingPage,
       isLandingPagePublished: tenant.isLandingPagePublished,
+      domainConfig: tenant.domainConfig,
+      emailConfig: tenant.emailConfig,
+      aiAssistantConfig: tenant.aiAssistantConfig,
       createdAt: tenant.createdAt,
       updatedAt: now,
     };
@@ -342,6 +350,9 @@ export async function publishLandingPage(
     draftLandingPage: tenant.draftLandingPage,
     customLandingPage: landingPageToPublish,
     isLandingPagePublished: true,
+    domainConfig: tenant.domainConfig,
+    emailConfig: tenant.emailConfig,
+    aiAssistantConfig: tenant.aiAssistantConfig,
     createdAt: tenant.createdAt,
     updatedAt: now,
   };
@@ -380,4 +391,86 @@ export async function discardDraftLandingPage(
   return updateTenant(tenantId, {
     draftLandingPage: tenant.customLandingPage || DEFAULT_LANDING_PAGE_CONFIG,
   });
+}
+
+// ===================================================================
+// DOMAIN & EMAIL OPERATIONS
+// ===================================================================
+
+/**
+ * Update domain configuration
+ */
+export async function updateDomainConfig(
+  tenantId: string,
+  domainConfig: DomainConfig | undefined,
+): Promise<CallyTenant> {
+  console.log("[DBG][tenantRepository] Updating domain config:", tenantId);
+
+  return updateTenant(tenantId, { domainConfig });
+}
+
+/**
+ * Update email configuration
+ */
+export async function updateEmailConfig(
+  tenantId: string,
+  emailConfig: EmailConfig | undefined,
+): Promise<CallyTenant> {
+  console.log("[DBG][tenantRepository] Updating email config:", tenantId);
+
+  return updateTenant(tenantId, { emailConfig });
+}
+
+/**
+ * Clear domain and email configuration (when removing domain)
+ */
+export async function clearDomainAndEmailConfig(
+  tenantId: string,
+): Promise<CallyTenant> {
+  console.log(
+    "[DBG][tenantRepository] Clearing domain and email config:",
+    tenantId,
+  );
+
+  // Fetch current tenant
+  const tenant = await getTenantById(tenantId);
+  if (!tenant) {
+    throw new Error("Tenant not found");
+  }
+
+  const now = new Date().toISOString();
+
+  // Create the full item without domain/email config
+  const updatedItem: DynamoDBTenantItem = {
+    PK: TenantPK.TENANT(tenantId),
+    SK: TenantPK.META,
+    GSI1PK: TenantPK.USER_GSI1PK(tenant.userId),
+    GSI1SK: TenantPK.TENANT_GSI1SK(tenantId),
+    entityType: EntityType.TENANT,
+    id: tenant.id,
+    userId: tenant.userId,
+    name: tenant.name,
+    email: tenant.email,
+    avatar: tenant.avatar,
+    draftLandingPage: tenant.draftLandingPage,
+    customLandingPage: tenant.customLandingPage,
+    isLandingPagePublished: tenant.isLandingPagePublished,
+    // Intentionally omit domainConfig and emailConfig
+    aiAssistantConfig: tenant.aiAssistantConfig,
+    createdAt: tenant.createdAt,
+    updatedAt: now,
+  };
+
+  await docClient.send(
+    new PutCommand({
+      TableName: Tables.CORE,
+      Item: updatedItem,
+    }),
+  );
+
+  console.log(
+    "[DBG][tenantRepository] Cleared domain/email config for tenant:",
+    tenantId,
+  );
+  return toTenant(updatedItem);
 }

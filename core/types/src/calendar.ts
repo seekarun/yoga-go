@@ -33,6 +33,10 @@ export interface CalendarEvent extends BaseEntity {
   isAllDay?: boolean;
   color?: string;
   notes?: string;
+  // 100ms Video conferencing
+  hasVideoConference?: boolean;
+  hmsRoomId?: string;
+  hmsTemplateId?: string;
 }
 
 /**
@@ -51,6 +55,10 @@ export interface CreateCalendarEventInput {
   isAllDay?: boolean;
   color?: string;
   notes?: string;
+  // 100ms Video conferencing
+  hasVideoConference?: boolean;
+  hmsRoomId?: string;
+  hmsTemplateId?: string;
 }
 
 /**
@@ -71,5 +79,9 @@ export interface CalendarItem {
     meetingLink?: string;
     location?: string;
     status?: CalendarEventStatus | WebinarStatus;
+    // 100ms Video conferencing
+    hasVideoConference?: boolean;
+    hmsRoomId?: string;
+    hmsTemplateId?: string;
   };
 }

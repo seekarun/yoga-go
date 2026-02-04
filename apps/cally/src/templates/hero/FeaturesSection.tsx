@@ -129,11 +129,12 @@ export default function FeaturesSection({
     inset: 0,
     backgroundImage: image ? `url(${image})` : undefined,
     backgroundPosition: position || "50% 50%",
-    backgroundSize: image ? `${zoom || 100}%` : undefined,
+    backgroundSize: "cover",
     backgroundRepeat: "no-repeat",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+    transform: image ? `scale(${(zoom || 100) / 100})` : undefined,
   });
 
   const cardContentStyle: React.CSSProperties = {

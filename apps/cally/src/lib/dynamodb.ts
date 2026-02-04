@@ -61,9 +61,15 @@ export const TenantPK = {
   // GSI1 for user lookup: GSI1PK=USER#{cognitoSub}, GSI1SK=TENANT#{tenantId}
   USER_GSI1PK: (cognitoSub: string) => `USER#${cognitoSub}`,
   TENANT_GSI1SK: (tenantId: string) => `TENANT#${tenantId}`,
+
+  // Calendar Events: PK=TENANT#{tenantId}, SK=CALEVENT#{date}#{eventId}
+  CALENDAR_EVENT: (date: string, eventId: string) =>
+    `CALEVENT#${date}#${eventId}`,
+  CALENDAR_EVENT_PREFIX: "CALEVENT#",
 } as const;
 
 // Entity type constants
 export const EntityType = {
   TENANT: "TENANT",
+  CALENDAR_EVENT: "CALENDAR_EVENT",
 } as const;

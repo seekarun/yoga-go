@@ -50,7 +50,7 @@ function getAspectRatioName(ratio: string): string {
  * ImageEditorOverlay - A reusable overlay component for image editing
  * Supports:
  * - Upload from file or Pexels
- * - Zoom control (100-200%)
+ * - Zoom control (100-300%)
  * - Drag to reposition
  * - Configurable aspect ratio preview
  */
@@ -383,8 +383,9 @@ export function ImageEditorOverlay({
                       inset: 0,
                       backgroundImage: `url(${imageUrl})`,
                       backgroundPosition: `${position.x}% ${position.y}%`,
-                      backgroundSize: `${zoom}%`,
+                      backgroundSize: "cover",
                       backgroundRepeat: "no-repeat",
+                      transform: `scale(${zoom / 100})`,
                     }}
                   />
                   {/* Position indicator */}
@@ -471,7 +472,7 @@ export function ImageEditorOverlay({
                 <input
                   type="range"
                   min="100"
-                  max="200"
+                  max="300"
                   value={zoom}
                   onChange={(e) => setZoom(parseInt(e.target.value))}
                   style={{
