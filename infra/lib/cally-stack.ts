@@ -151,11 +151,11 @@ export class CallyStack extends cdk.Stack {
         ],
         callbackUrls: [
           "http://localhost:3113/api/auth/google/callback",
-          // Add production URLs when deploying
+          "https://proj-cally.vercel.app/api/auth/google/callback",
         ],
         logoutUrls: [
           "http://localhost:3113",
-          // Add production URLs when deploying
+          "https://proj-cally.vercel.app",
         ],
       },
       supportedIdentityProviders: [
