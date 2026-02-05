@@ -7,8 +7,13 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { encode } from "next-auth/jwt";
+import { nanoid } from "nanoid";
 import { cognitoConfig } from "@/lib/cognito";
 import { BASE_URL, COOKIE_DOMAIN, IS_PRODUCTION } from "@/config/env";
+import {
+  getTenantByUserId,
+  createTenant,
+} from "@/lib/repositories/tenantRepository";
 
 export async function GET(request: NextRequest) {
   console.log("[DBG][auth/google/callback] Processing Google OAuth callback");
@@ -90,6 +95,28 @@ export async function GET(request: NextRequest) {
       email: payload.email,
       name: payload.name,
     });
+
+    // Check if tenant exists for this user, create if not
+    let tenant = await getTenantByUserId(payload.sub);
+    if (!tenant) {
+      console.log(
+        "[DBG][auth/google/callback] No tenant found, creating new tenant",
+      );
+      const tenantId = nanoid(12);
+      tenant = await createTenant({
+        id: tenantId,
+        userId: payload.sub,
+        name: payload.name || payload.email?.split("@")[0] || "User",
+        email: payload.email || "",
+        avatar: payload.picture,
+      });
+      console.log("[DBG][auth/google/callback] Created tenant:", tenant.id);
+    } else {
+      console.log(
+        "[DBG][auth/google/callback] Found existing tenant:",
+        tenant.id,
+      );
+    }
 
     // Create session token using NextAuth's encode function
     const sessionToken = await encode({
