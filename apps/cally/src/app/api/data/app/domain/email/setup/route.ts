@@ -9,6 +9,7 @@ import {
   updateEmailConfig,
 } from "@/lib/repositories/tenantRepository";
 import { createDomainIdentity, getDnsRecordsForDomain } from "@/lib/ses";
+import { addEmailDnsRecords } from "@/lib/vercel";
 import type { SetupEmailResponse } from "@/types/domain";
 
 export async function POST(request: Request) {
@@ -93,6 +94,28 @@ export async function POST(request: Request) {
     // Get DNS records that need to be added
     const dnsRecords = getDnsRecordsForDomain(domain, sesResult.dkimTokens);
 
+    // Automatically add DNS records to Vercel (since domain uses Vercel nameservers)
+    let dnsRecordsAdded = false;
+    let dnsAddErrors: string[] = [];
+    try {
+      console.log(
+        "[DBG][email/setup] Adding DNS records to Vercel for:",
+        domain,
+      );
+      const dnsResult = await addEmailDnsRecords(domain, sesResult.dkimTokens);
+      dnsRecordsAdded = dnsResult.success;
+      dnsAddErrors = dnsResult.errors;
+      console.log(
+        "[DBG][email/setup] DNS records result:",
+        dnsResult.addedRecords,
+        "errors:",
+        dnsResult.errors,
+      );
+    } catch (dnsError) {
+      console.error("[DBG][email/setup] Failed to add DNS records:", dnsError);
+      // Continue - user can add records manually
+    }
+
     // Save email config to tenant
     await updateEmailConfig(tenant.id, {
       domainEmail,
@@ -118,7 +141,7 @@ export async function POST(request: Request) {
     const response: SetupEmailResponse = {
       domainEmail,
       dkimTokens: sesResult.dkimTokens,
-      dnsRecordsAdded: false, // DNS records need to be added manually or via Vercel API
+      dnsRecordsAdded,
       verificationStatus: "pending",
     };
 
@@ -127,8 +150,10 @@ export async function POST(request: Request) {
       data: {
         ...response,
         dnsRecords,
-        instructions:
-          "Add the following DNS records to your domain. Once added, email verification will complete automatically.",
+        dnsAddErrors: dnsAddErrors.length > 0 ? dnsAddErrors : undefined,
+        instructions: dnsRecordsAdded
+          ? "DNS records have been added automatically. Verification will complete shortly."
+          : "Add the following DNS records to your domain. Once added, email verification will complete automatically.",
       },
     });
   } catch (error) {

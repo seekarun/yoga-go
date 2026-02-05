@@ -536,3 +536,130 @@ export async function listProjectDomains(): Promise<{
     return { success: false, error: "Failed to connect to Vercel API" };
   }
 }
+
+/**
+ * DNS Record type for Vercel API
+ */
+export interface VercelDnsRecord {
+  type: "A" | "AAAA" | "CNAME" | "MX" | "TXT" | "SRV" | "CAA";
+  name: string;
+  value: string;
+  ttl?: number;
+  mxPriority?: number;
+}
+
+/**
+ * Add a DNS record to a domain via Vercel API
+ */
+export async function addDnsRecord(
+  domain: string,
+  record: VercelDnsRecord,
+): Promise<{ success: boolean; id?: string; error?: string }> {
+  console.log(
+    "[DBG][vercel] Adding DNS record to",
+    domain,
+    ":",
+    record.type,
+    record.name,
+  );
+
+  try {
+    const body: Record<string, unknown> = {
+      name: record.name,
+      type: record.type,
+      value: record.value,
+      ttl: record.ttl || 60,
+    };
+
+    if (record.type === "MX" && record.mxPriority !== undefined) {
+      body.mxPriority = record.mxPriority;
+    }
+
+    const response = await fetch(
+      `${VERCEL_API_BASE}/v2/domains/${domain}/records?${getTeamParam()}`,
+      {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify(body),
+      },
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("[DBG][vercel] Failed to add DNS record:", data);
+      return {
+        success: false,
+        error: data.error?.message || "Failed to add DNS record",
+      };
+    }
+
+    console.log("[DBG][vercel] DNS record added:", data.uid);
+    return { success: true, id: data.uid };
+  } catch (error) {
+    console.error("[DBG][vercel] Error adding DNS record:", error);
+    return { success: false, error: "Failed to connect to Vercel API" };
+  }
+}
+
+/**
+ * Add multiple DNS records for email setup
+ */
+export async function addEmailDnsRecords(
+  domain: string,
+  dkimTokens: string[],
+): Promise<{ success: boolean; addedRecords: string[]; errors: string[] }> {
+  const addedRecords: string[] = [];
+  const errors: string[] = [];
+
+  // MX record for email receiving
+  const mxResult = await addDnsRecord(domain, {
+    type: "MX",
+    name: "@",
+    value: "inbound-smtp.us-west-2.amazonaws.com",
+    mxPriority: 10,
+  });
+  if (mxResult.success) {
+    addedRecords.push("MX");
+  } else {
+    errors.push(`MX: ${mxResult.error}`);
+  }
+
+  // SPF TXT record
+  const spfResult = await addDnsRecord(domain, {
+    type: "TXT",
+    name: "@",
+    value: "v=spf1 include:amazonses.com ~all",
+  });
+  if (spfResult.success) {
+    addedRecords.push("TXT (SPF)");
+  } else {
+    errors.push(`TXT (SPF): ${spfResult.error}`);
+  }
+
+  // DKIM CNAME records
+  for (let i = 0; i < dkimTokens.length; i++) {
+    const token = dkimTokens[i];
+    const dkimResult = await addDnsRecord(domain, {
+      type: "CNAME",
+      name: `${token}._domainkey`,
+      value: `${token}.dkim.amazonses.com`,
+    });
+    if (dkimResult.success) {
+      addedRecords.push(`DKIM ${i + 1}`);
+    } else {
+      errors.push(`DKIM ${i + 1}: ${dkimResult.error}`);
+    }
+  }
+
+  console.log("[DBG][vercel] Email DNS records result:", {
+    addedRecords,
+    errors,
+  });
+
+  return {
+    success: errors.length === 0,
+    addedRecords,
+    errors,
+  };
+}
