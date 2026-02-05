@@ -5,6 +5,12 @@
   "buildCommand": "cd ../.. && npm run build:cally",
   "installCommand": "cd ../.. && npm ci",
   "outputDirectory": ".next",
+  "crons": [
+    {
+      "path": "/api/cron/morning-briefing",
+      "schedule": "*/15 * * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",

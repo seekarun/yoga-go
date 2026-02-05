@@ -113,7 +113,10 @@
       "Bash(xargs:*)",
       "Bash(aws acm list-certificates:*)",
       "Bash(git push:*)",
-      "Bash(npm view:*)"
+      "Bash(npm view:*)",
+      "Bash(cdk deploy:*)",
+      "Bash(aws logs describe-log-groups:*)",
+      "Bash(aws logs tail:*)"
     ],
     "deny": [],
     "ask": []

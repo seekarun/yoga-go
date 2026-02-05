@@ -42,6 +42,7 @@
     "react-dom": "19.1.0",
     "react-easy-crop": "^5.5.3",
     "stripe": "^19.1.0",
+    "twilio": "^5.5.0",
     "ulid": "^3.0.2",
     "uuid": "^13.0.0"
   },

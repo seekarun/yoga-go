@@ -6,3 +6,4 @@ export * from "./vertical";
 export * from "./landing-page";
 export * from "./domain";
 export * from "./ai-assistant";
+export * from "./phone-calling";

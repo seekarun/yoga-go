@@ -2,6 +2,7 @@ import * as cdk from "aws-cdk-lib";
 import * as cognito from "aws-cdk-lib/aws-cognito";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as iam from "aws-cdk-lib/aws-iam";
+import * as s3 from "aws-cdk-lib/aws-s3";
 import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 import type { Construct } from "constructs";
 
@@ -26,6 +27,7 @@ import type { Construct } from "constructs";
  */
 export class CallyStack extends cdk.Stack {
   public readonly coreTable: dynamodb.Table;
+  public readonly audioBucket: s3.Bucket;
   public readonly userPool: cognito.UserPool;
   public readonly userPoolClient: cognito.UserPoolClient;
 
@@ -77,6 +79,48 @@ export class CallyStack extends cdk.Stack {
       sortKey: { name: "GSI2SK", type: dynamodb.AttributeType.STRING },
       projectionType: dynamodb.ProjectionType.ALL,
     });
+
+    // ========================================
+    // S3 Bucket for Audio Files (TTS)
+    // ========================================
+    // Used for storing generated TTS audio for phone calls
+    // Twilio needs public read access to fetch audio files
+    this.audioBucket = new s3.Bucket(this, "AudioBucket", {
+      bucketName: "cally-audio-files",
+      blockPublicAccess: new s3.BlockPublicAccess({
+        blockPublicAcls: false,
+        ignorePublicAcls: false,
+        blockPublicPolicy: false,
+        restrictPublicBuckets: false,
+      }),
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      // Auto-delete old audio files after 7 days to save costs
+      lifecycleRules: [
+        {
+          id: "DeleteOldBriefings",
+          prefix: "briefings/",
+          expiration: cdk.Duration.days(7),
+          enabled: true,
+        },
+      ],
+      cors: [
+        {
+          allowedMethods: [s3.HttpMethods.GET],
+          allowedOrigins: ["*"],
+          allowedHeaders: ["*"],
+        },
+      ],
+    });
+
+    // Allow public read access to briefings folder
+    this.audioBucket.addToResourcePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        principals: [new iam.AnyPrincipal()],
+        actions: ["s3:GetObject"],
+        resources: [`${this.audioBucket.bucketArn}/briefings/*`],
+      }),
+    );
 
     // ========================================
     // Cognito User Pool
@@ -243,10 +287,26 @@ export class CallyStack extends cdk.Stack {
       resources: ["arn:aws:ses:us-west-2:*:identity/*"],
     });
 
+    // S3 policy for audio file storage (TTS for phone calls)
+    const s3Policy = new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        "s3:PutObject",
+        "s3:PutObjectAcl",
+        "s3:GetObject",
+        "s3:DeleteObject",
+        "s3:ListBucket",
+      ],
+      resources: [
+        this.audioBucket.bucketArn,
+        `${this.audioBucket.bucketArn}/*`,
+      ],
+    });
+
     // Create managed policy and attach to user
     const vercelPolicy = new iam.ManagedPolicy(this, "VercelPolicy", {
       managedPolicyName: "cally-vercel-policy",
-      statements: [dynamoDbPolicy, cognitoPolicy, sesPolicy],
+      statements: [dynamoDbPolicy, cognitoPolicy, sesPolicy, s3Policy],
     });
 
     vercelUser.addManagedPolicy(vercelPolicy);
@@ -264,6 +324,12 @@ export class CallyStack extends cdk.Stack {
       value: this.coreTable.tableArn,
       description: "Cally Core DynamoDB Table ARN",
       exportName: "CallyCoreTableArn",
+    });
+
+    new cdk.CfnOutput(this, "AudioBucketName", {
+      value: this.audioBucket.bucketName,
+      description: "S3 Bucket for TTS audio files",
+      exportName: "CallyAudioBucketName",
     });
 
     new cdk.CfnOutput(this, "UserPoolId", {

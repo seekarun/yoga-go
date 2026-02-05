@@ -25,6 +25,7 @@ import type { SimpleLandingPageConfig } from "@/types/landing-page";
 import { DEFAULT_LANDING_PAGE_CONFIG } from "@/types/landing-page";
 import type { DomainConfig, EmailConfig } from "@/types/domain";
 import type { AiAssistantConfig } from "@/types/ai-assistant";
+import type { PhoneConfig } from "@/types/phone-calling";
 
 /**
  * Cally Tenant Entity
@@ -42,6 +43,7 @@ export interface CallyTenant {
   domainConfig?: DomainConfig;
   emailConfig?: EmailConfig;
   aiAssistantConfig?: AiAssistantConfig;
+  phoneConfig?: PhoneConfig;
   createdAt: string;
   updatedAt: string;
 }
@@ -300,6 +302,7 @@ export async function updateDraftLandingPage(
       domainConfig: tenant.domainConfig,
       emailConfig: tenant.emailConfig,
       aiAssistantConfig: tenant.aiAssistantConfig,
+      phoneConfig: tenant.phoneConfig,
       createdAt: tenant.createdAt,
       updatedAt: now,
     };
@@ -361,6 +364,7 @@ export async function publishLandingPage(
     domainConfig: tenant.domainConfig,
     emailConfig: tenant.emailConfig,
     aiAssistantConfig: tenant.aiAssistantConfig,
+    phoneConfig: tenant.phoneConfig,
     createdAt: tenant.createdAt,
     updatedAt: now,
   };
@@ -465,6 +469,7 @@ export async function clearDomainAndEmailConfig(
     isLandingPagePublished: tenant.isLandingPagePublished,
     // Intentionally omit domainConfig and emailConfig
     aiAssistantConfig: tenant.aiAssistantConfig,
+    phoneConfig: tenant.phoneConfig,
     createdAt: tenant.createdAt,
     updatedAt: now,
   };
