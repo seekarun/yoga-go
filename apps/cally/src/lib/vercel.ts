@@ -249,11 +249,40 @@ export async function removeDomainFromVercel(
 }
 
 /**
+ * Check if domain's NS records point to Vercel's nameservers
+ */
+async function checkNsRecords(domain: string): Promise<boolean> {
+  try {
+    // Use DNS-over-HTTPS to check NS records
+    const response = await fetch(
+      `https://dns.google/resolve?name=${domain}&type=NS`,
+    );
+    if (!response.ok) return false;
+
+    const data = await response.json();
+    const nsRecords = data.Answer?.map((a: { data: string }) =>
+      a.data.toLowerCase().replace(/\.$/, ""),
+    );
+
+    console.log("[DBG][vercel] NS records for domain:", nsRecords);
+
+    // Check if NS records point to Vercel
+    const vercelNs = ["ns1.vercel-dns.com", "ns2.vercel-dns.com"];
+    const hasVercelNs = vercelNs.every((ns) => nsRecords?.includes(ns));
+
+    return hasVercelNs;
+  } catch (error) {
+    console.error("[DBG][vercel] Error checking NS records:", error);
+    return false;
+  }
+}
+
+/**
  * Get domain configuration status from Vercel
  * This endpoint tells us if the domain's A/CNAME records point to Vercel
  */
 async function getDomainConfig(domain: string): Promise<{
-  configuredBy: "A" | "CNAME" | null;
+  configuredBy: "A" | "CNAME" | "NS" | null;
   misconfigured: boolean;
 }> {
   try {
@@ -267,6 +296,14 @@ async function getDomainConfig(domain: string): Promise<{
 
     if (!response.ok) {
       console.log("[DBG][vercel] Domain config check failed:", response.status);
+      // Check if NS records point to Vercel as fallback
+      const hasVercelNs = await checkNsRecords(domain);
+      if (hasVercelNs) {
+        console.log(
+          "[DBG][vercel] Domain has Vercel NS records, considering configured",
+        );
+        return { configuredBy: "NS", misconfigured: false };
+      }
       return { configuredBy: null, misconfigured: true };
     }
 
@@ -276,6 +313,17 @@ async function getDomainConfig(domain: string): Promise<{
       "[DBG][vercel] Domain config response:",
       JSON.stringify(data, null, 2),
     );
+
+    // If configuredBy is null, check NS records as fallback
+    if (!data.configuredBy) {
+      const hasVercelNs = await checkNsRecords(domain);
+      if (hasVercelNs) {
+        console.log(
+          "[DBG][vercel] Domain has Vercel NS records, considering configured",
+        );
+        return { configuredBy: "NS", misconfigured: false };
+      }
+    }
 
     return {
       configuredBy: data.configuredBy || null,
@@ -355,12 +403,16 @@ export async function getDomainStatus(domain: string): Promise<{
     // 1. DNS ownership is verified (data.verified === true)
     // 2. No configuration errors exist
     // 3. No pending verification requirements
-    // 4. Domain is configured to point to Vercel (configuredBy is 'A' or 'CNAME')
+    // 4. Domain is configured to point to Vercel (configuredBy is 'A', 'CNAME', or 'NS')
+    const isConfigured =
+      domainConfig.configuredBy === "A" ||
+      domainConfig.configuredBy === "CNAME" ||
+      domainConfig.configuredBy === "NS";
     const hasConfigError =
       !!data.error ||
       data.misconfigured === true ||
       domainConfig.misconfigured === true ||
-      domainConfig.configuredBy === null; // A/CNAME not pointing to Vercel
+      !isConfigured; // Not pointing to Vercel
     const hasPendingVerification = verification.length > 0;
     const isFullyVerified =
       data.verified === true && !hasConfigError && !hasPendingVerification;
