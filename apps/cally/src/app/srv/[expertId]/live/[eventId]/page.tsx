@@ -10,9 +10,46 @@
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { HMSRoomProvider } from "@100mslive/react-sdk";
-import HmsVideoRoom from "@/components/HmsVideoRoom";
+import dynamic from "next/dynamic";
 import type { CalendarEvent } from "@/types";
+
+// Dynamic import with SSR disabled to avoid React version conflicts
+// @100mslive/react-sdk requires React <19, but we use React 19
+const HmsVideoRoomWithProvider = dynamic(
+  () => import("@/components/HmsVideoRoomWrapper"),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+          minHeight: "400px",
+          background: "#1a1a1a",
+          borderRadius: "12px",
+        }}
+      >
+        <div
+          style={{
+            width: "40px",
+            height: "40px",
+            border: "3px solid #333",
+            borderTop: "3px solid var(--color-primary, #6366f1)",
+            borderRadius: "50%",
+            animation: "spin 1s linear infinite",
+          }}
+        />
+        <p style={{ color: "#fff", marginTop: "16px" }}>
+          Loading video room...
+        </p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    ),
+  },
+);
 
 interface JoinMeetingResponse {
   authToken: string;
@@ -327,13 +364,11 @@ export default function LiveMeetingPage({ params }: PageProps) {
           margin: "0 auto",
         }}
       >
-        <HMSRoomProvider>
-          <HmsVideoRoom
-            authToken={joinData.authToken}
-            userName={joinData.userName}
-            onLeave={handleLeave}
-          />
-        </HMSRoomProvider>
+        <HmsVideoRoomWithProvider
+          authToken={joinData.authToken}
+          userName={joinData.userName}
+          onLeave={handleLeave}
+        />
       </main>
     </div>
   );
