@@ -67,18 +67,14 @@ export default async function TenantLandingPage({ params }: PageProps) {
   }
 
   // Get landing page config - use published version, with defaults
-  const landingPage = tenant.customLandingPage || DEFAULT_LANDING_PAGE_CONFIG;
+  const landingPage = {
+    ...DEFAULT_LANDING_PAGE_CONFIG,
+    ...tenant.customLandingPage,
+  };
 
   return (
     <>
-      <LandingPageRenderer
-        config={{
-          template: landingPage.template || "centered",
-          title: landingPage.title || "Welcome",
-          subtitle: landingPage.subtitle || "Book a session with me",
-          backgroundImage: landingPage.backgroundImage,
-        }}
-      />
+      <LandingPageRenderer config={landingPage} />
       <ChatWidgetWrapper
         tenantId={tenantId}
         config={tenant.aiAssistantConfig}
