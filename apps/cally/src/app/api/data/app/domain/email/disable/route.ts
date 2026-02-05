@@ -7,6 +7,7 @@ import { auth } from "@/auth";
 import {
   getTenantByUserId,
   updateEmailConfig,
+  deleteDomainLookup,
 } from "@/lib/repositories/tenantRepository";
 import { deleteDomainIdentity } from "@/lib/ses";
 
@@ -53,6 +54,19 @@ export async function DELETE() {
         sesError,
       );
       // Continue to clear config even if SES deletion fails
+    }
+
+    // Delete domain lookup from yoga-go-core
+    // This stops the SES email-forwarder Lambda from routing emails to this tenant
+    try {
+      await deleteDomainLookup(domain);
+      console.log("[DBG][email/disable] Domain lookup deleted for:", domain);
+    } catch (lookupError) {
+      console.error(
+        "[DBG][email/disable] Failed to delete domain lookup:",
+        lookupError,
+      );
+      // Continue to clear config even if lookup deletion fails
     }
 
     // Clear email config from tenant

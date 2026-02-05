@@ -7,6 +7,7 @@ import { auth } from "@/auth";
 import {
   getTenantByUserId,
   updateEmailConfig,
+  createDomainLookup,
 } from "@/lib/repositories/tenantRepository";
 import { verifyAllDnsRecords } from "@/lib/ses";
 import type { EmailVerifyResponse } from "@/types/domain";
@@ -67,6 +68,26 @@ export async function GET() {
         ? new Date().toISOString()
         : undefined,
     });
+
+    // If verification succeeded, create domain lookup in yoga-go-core
+    // This allows the SES email-forwarder Lambda to route emails to this tenant
+    if (verification.allVerified) {
+      try {
+        await createDomainLookup(domain, tenant.id);
+        console.log(
+          "[DBG][email/verify] Created domain lookup for:",
+          domain,
+          "tenant:",
+          tenant.id,
+        );
+      } catch (lookupError) {
+        console.error(
+          "[DBG][email/verify] Failed to create domain lookup:",
+          lookupError,
+        );
+        // Continue - email is still verified, just lookup may need retry
+      }
+    }
 
     console.log(
       "[DBG][email/verify] Verification status for tenant:",

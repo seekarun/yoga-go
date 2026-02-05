@@ -11,8 +11,16 @@ import {
   PutCommand,
   UpdateCommand,
   QueryCommand,
+  DeleteCommand,
 } from "@aws-sdk/lib-dynamodb";
-import { docClient, Tables, Indexes, TenantPK, EntityType } from "../dynamodb";
+import {
+  docClient,
+  Tables,
+  Indexes,
+  TenantPK,
+  EntityType,
+  DomainLookupPK,
+} from "../dynamodb";
 import type { SimpleLandingPageConfig } from "@/types/landing-page";
 import { DEFAULT_LANDING_PAGE_CONFIG } from "@/types/landing-page";
 import type { DomainConfig, EmailConfig } from "@/types/domain";
@@ -473,4 +481,106 @@ export async function clearDomainAndEmailConfig(
     tenantId,
   );
   return toTenant(updatedItem);
+}
+
+// ===================================================================
+// DOMAIN LOOKUP OPERATIONS (yoga-go-core table for SES Lambda)
+// ===================================================================
+
+/**
+ * Create domain lookup record in yoga-go-core table
+ * This allows the SES email-forwarder Lambda to find cally tenants
+ * PK: TENANT#DOMAIN#{domain}, SK: {domain}
+ */
+export async function createDomainLookup(
+  domain: string,
+  tenantId: string,
+): Promise<void> {
+  const normalizedDomain = domain.toLowerCase();
+  console.log(
+    "[DBG][tenantRepository] Creating domain lookup:",
+    normalizedDomain,
+    "for tenant:",
+    tenantId,
+  );
+
+  await docClient.send(
+    new PutCommand({
+      TableName: Tables.YOGA_CORE,
+      Item: {
+        PK: DomainLookupPK.DOMAIN(normalizedDomain),
+        SK: normalizedDomain,
+        tenantId: tenantId,
+        expertId: tenantId, // SES Lambda uses expertId
+        domain: normalizedDomain,
+        app: "cally", // Identify as cally tenant
+        createdAt: new Date().toISOString(),
+      },
+    }),
+  );
+
+  console.log(
+    "[DBG][tenantRepository] Created domain lookup for:",
+    normalizedDomain,
+  );
+}
+
+/**
+ * Delete domain lookup record from yoga-go-core table
+ */
+export async function deleteDomainLookup(domain: string): Promise<void> {
+  const normalizedDomain = domain.toLowerCase();
+  console.log(
+    "[DBG][tenantRepository] Deleting domain lookup:",
+    normalizedDomain,
+  );
+
+  await docClient.send(
+    new DeleteCommand({
+      TableName: Tables.YOGA_CORE,
+      Key: {
+        PK: DomainLookupPK.DOMAIN(normalizedDomain),
+        SK: normalizedDomain,
+      },
+    }),
+  );
+
+  console.log(
+    "[DBG][tenantRepository] Deleted domain lookup for:",
+    normalizedDomain,
+  );
+}
+
+/**
+ * Get domain lookup record from yoga-go-core table
+ */
+export async function getDomainLookup(
+  domain: string,
+): Promise<{ tenantId: string; expertId: string } | null> {
+  const normalizedDomain = domain.toLowerCase();
+  console.log(
+    "[DBG][tenantRepository] Getting domain lookup:",
+    normalizedDomain,
+  );
+
+  const result = await docClient.send(
+    new GetCommand({
+      TableName: Tables.YOGA_CORE,
+      Key: {
+        PK: DomainLookupPK.DOMAIN(normalizedDomain),
+        SK: normalizedDomain,
+      },
+    }),
+  );
+
+  if (!result.Item) {
+    console.log("[DBG][tenantRepository] Domain lookup not found");
+    return null;
+  }
+
+  console.log("[DBG][tenantRepository] Found domain lookup:", normalizedDomain);
+  return {
+    tenantId: result.Item.tenantId as string,
+    expertId: result.Item.expertId as string,
+  };
 }

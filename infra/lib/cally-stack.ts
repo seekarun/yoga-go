@@ -169,13 +169,30 @@ export class CallyStack extends cdk.Stack {
     this.userPoolClient.node.addDependency(googleProvider);
 
     // ========================================
+    // Import Shared Tables (from yoga-go-core-stack)
+    // ========================================
+    // yoga-go-emails: Shared email storage for SES Lambda compatibility
+    const emailsTable = dynamodb.Table.fromTableName(
+      this,
+      "EmailsTable",
+      "yoga-go-emails",
+    );
+
+    // yoga-go-core: Domain lookups for SES email routing
+    const yogaCoreTable = dynamodb.Table.fromTableName(
+      this,
+      "YogaCoreTable",
+      "yoga-go-core",
+    );
+
+    // ========================================
     // IAM User for Vercel Deployment
     // ========================================
     const vercelUser = new iam.User(this, "VercelUser", {
       userName: "cally-vercel",
     });
 
-    // DynamoDB access policy
+    // DynamoDB access policy (cally-main + shared tables)
     const dynamoDbPolicy = new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
       actions: [
@@ -189,8 +206,15 @@ export class CallyStack extends cdk.Stack {
         "dynamodb:BatchWriteItem",
       ],
       resources: [
+        // cally-main table
         this.coreTable.tableArn,
         `${this.coreTable.tableArn}/index/*`,
+        // yoga-go-emails (shared for email storage)
+        emailsTable.tableArn,
+        `${emailsTable.tableArn}/index/*`,
+        // yoga-go-core (shared for domain lookups)
+        yogaCoreTable.tableArn,
+        `${yogaCoreTable.tableArn}/index/*`,
       ],
     });
 

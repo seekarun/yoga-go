@@ -1,0 +1,349 @@
+{
+  "info": {
+    "_postman_id": "cally-api-collection",
+    "name": "Cally API",
+    "description": "API collection for Cally app - Calendar and email features",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3113",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "me"]
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "logout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Inbox",
+      "item": [
+        {
+          "name": "List Emails",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/inbox?limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "inbox"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "unreadOnly",
+                  "value": "false",
+                  "disabled": true
+                },
+                {
+                  "key": "starredOnly",
+                  "value": "false",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "lastKey",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get list of emails for the authenticated user's tenant. Supports filtering by unread/starred and pagination."
+          }
+        },
+        {
+          "name": "Get Email by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/inbox/:emailId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "inbox", ":emailId"],
+              "variable": [
+                {
+                  "key": "emailId",
+                  "value": "email-id-here"
+                }
+              ]
+            },
+            "description": "Get a single email by ID. If the email is part of a thread, returns all thread messages."
+          }
+        },
+        {
+          "name": "Update Email Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isRead\": true,\n  \"isStarred\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/inbox/:emailId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "inbox", ":emailId"],
+              "variable": [
+                {
+                  "key": "emailId",
+                  "value": "email-id-here"
+                }
+              ]
+            },
+            "description": "Update email read/starred status."
+          }
+        },
+        {
+          "name": "Delete Email",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/inbox/:emailId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "inbox", ":emailId"],
+              "variable": [
+                {
+                  "key": "emailId",
+                  "value": "email-id-here"
+                }
+              ]
+            },
+            "description": "Soft delete an email (sets isDeleted flag and TTL for auto-cleanup after 90 days)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Domain & Email",
+      "item": [
+        {
+          "name": "Get Domain Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/domain/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "domain", "status"]
+            }
+          }
+        },
+        {
+          "name": "Add Domain",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"domain\": \"example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/domain/add",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "domain", "add"]
+            }
+          }
+        },
+        {
+          "name": "Verify Domain",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/domain/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "domain", "verify"]
+            }
+          }
+        },
+        {
+          "name": "Remove Domain",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/domain/remove",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "domain", "remove"]
+            }
+          }
+        },
+        {
+          "name": "Setup Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"emailPrefix\": \"hello\",\n  \"forwardToEmail\": \"user@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/domain/email/setup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "domain", "email", "setup"]
+            }
+          }
+        },
+        {
+          "name": "Verify Email Setup",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/domain/email/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "domain", "email", "verify"]
+            }
+          }
+        },
+        {
+          "name": "Disable Email",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/domain/email/disable",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "domain", "email", "disable"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Calendar",
+      "item": [
+        {
+          "name": "Get Calendar Events",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/calendar?from=2025-01-01&to=2025-12-31",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "calendar"],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2025-01-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2025-12-31"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Instant Meeting",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Quick Meeting\",\n  \"startTime\": \"2025-02-05T10:00:00.000Z\",\n  \"endTime\": \"2025-02-05T11:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/calendar/instant",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "calendar", "instant"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "AI Assistant",
+      "item": [
+        {
+          "name": "Get AI Settings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/ai/settings",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "ai", "settings"]
+            }
+          }
+        },
+        {
+          "name": "Setup AI Assistant",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enabled\": true,\n  \"welcomeMessage\": \"Hi! How can I help you today?\",\n  \"systemPrompt\": \"You are a helpful assistant.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/ai/setup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "ai", "setup"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

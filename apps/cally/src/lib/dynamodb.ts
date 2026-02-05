@@ -36,9 +36,13 @@ console.log(
   process.env.AWS_REGION || "ap-southeast-2",
 );
 
-// Table name
+// Table names
 export const Tables = {
   CORE: "cally-main",
+  // Use yoga-go-emails for email storage (shared with yoga for SES Lambda compatibility)
+  EMAILS: "yoga-go-emails",
+  // Use yoga-go-core for domain lookups (shared with yoga for SES Lambda compatibility)
+  YOGA_CORE: "yoga-go-core",
 } as const;
 
 console.log("[DBG][dynamodb] Tables:", Tables);
@@ -72,4 +76,26 @@ export const TenantPK = {
 export const EntityType = {
   TENANT: "TENANT",
   CALENDAR_EVENT: "CALENDAR_EVENT",
+  EMAIL: "EMAIL",
+} as const;
+
+// ============================================
+// Email PK/SK Prefixes (stored in yoga-go-emails for SES Lambda compatibility)
+// Uses same pattern as yoga app for seamless email receiving
+// ============================================
+export const EmailPK = {
+  // Inbox by owner: PK=INBOX#{ownerId}, SK={receivedAt}#{emailId}
+  // ownerId is tenantId for cally (matches expertId pattern in yoga)
+  INBOX: (ownerId: string) => `INBOX#${ownerId}`,
+  // Thread grouping: PK=THREAD#{threadId}, SK={emailId}
+  THREAD: (threadId: string) => `THREAD#${threadId}`,
+} as const;
+
+// ============================================
+// Domain lookup PK/SK Prefixes (stored in yoga-go-core for SES Lambda)
+// This allows the shared email forwarder Lambda to find cally tenants
+// ============================================
+export const DomainLookupPK = {
+  // Domain lookup: PK=TENANT#DOMAIN#{domain}, SK={domain}
+  DOMAIN: (domain: string) => `TENANT#DOMAIN#${domain.toLowerCase()}`,
 } as const;
