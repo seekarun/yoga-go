@@ -23,17 +23,15 @@ const AUDIO_BUCKET = process.env.S3_AUDIO_BUCKET || "cally-audio-files";
 
 /**
  * Get the base URL for the app (for webhook URLs)
+ * Note: We use BASE_URL or hardcoded prod URL instead of VERCEL_URL
+ * because VERCEL_URL points to preview deployments which have protection enabled
  */
 function getBaseUrl(): string {
-  // Use VERCEL_URL in production, localhost in development
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
-  }
-  // Check for custom BASE_URL
+  // Check for custom BASE_URL first (allows override in dev/staging)
   if (process.env.BASE_URL) {
     return process.env.BASE_URL;
   }
-  // Default to prod URL
+  // Default to prod URL - Twilio webhooks need the public production URL
   return "https://proj-cally.vercel.app";
 }
 
