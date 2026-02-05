@@ -111,7 +111,9 @@
       "Bash(npx next build)",
       "WebFetch(domain:www.100ms.live)",
       "Bash(xargs:*)",
-      "Bash(aws acm list-certificates:*)"
+      "Bash(aws acm list-certificates:*)",
+      "Bash(git push:*)",
+      "Bash(npm view:*)"
     ],
     "deny": [],
     "ask": []
