@@ -206,10 +206,23 @@ export class CallyStack extends cdk.Stack {
       resources: [this.userPool.userPoolArn],
     });
 
+    // SES policy for email identity management (us-west-2 for email receiving)
+    const sesPolicy = new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: [
+        "ses:CreateEmailIdentity",
+        "ses:DeleteEmailIdentity",
+        "ses:GetEmailIdentity",
+        "ses:PutEmailIdentityDkimAttributes",
+        "ses:PutEmailIdentityMailFromAttributes",
+      ],
+      resources: ["arn:aws:ses:us-west-2:*:identity/*"],
+    });
+
     // Create managed policy and attach to user
     const vercelPolicy = new iam.ManagedPolicy(this, "VercelPolicy", {
       managedPolicyName: "cally-vercel-policy",
-      statements: [dynamoDbPolicy, cognitoPolicy],
+      statements: [dynamoDbPolicy, cognitoPolicy, sesPolicy],
     });
 
     vercelUser.addManagedPolicy(vercelPolicy);
