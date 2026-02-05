@@ -488,15 +488,31 @@ export async function clearDomainAndEmailConfig(
 // ===================================================================
 
 /**
- * Create domain lookup record in yoga-go-core table
+ * Email config for domain lookup (subset needed by SES Lambda)
+ */
+interface DomainLookupEmailConfig {
+  domainEmail: string;
+  forwardToEmail?: string;
+  forwardingEnabled: boolean;
+  sesVerificationStatus: string;
+}
+
+/**
+ * Create domain lookup records in yoga-go-core table
  * This allows the SES email-forwarder Lambda to find cally tenants
- * PK: TENANT#DOMAIN#{domain}, SK: {domain}
+ *
+ * Creates two records:
+ * 1. Domain lookup: PK=TENANT#DOMAIN#{domain}, SK={domain} - for domain->tenant mapping
+ * 2. Tenant reference: PK=TENANT, SK={tenantId} - for tenant data with emailConfig
  */
 export async function createDomainLookup(
   domain: string,
   tenantId: string,
+  emailConfig?: DomainLookupEmailConfig,
 ): Promise<void> {
   const normalizedDomain = domain.toLowerCase();
+  const now = new Date().toISOString();
+
   console.log(
     "[DBG][tenantRepository] Creating domain lookup:",
     normalizedDomain,
@@ -504,6 +520,7 @@ export async function createDomainLookup(
     tenantId,
   );
 
+  // 1. Create domain lookup record (domain -> tenantId mapping)
   await docClient.send(
     new PutCommand({
       TableName: Tables.YOGA_CORE,
@@ -513,8 +530,8 @@ export async function createDomainLookup(
         tenantId: tenantId,
         expertId: tenantId, // SES Lambda uses expertId
         domain: normalizedDomain,
-        app: "cally", // Identify as cally tenant
-        createdAt: new Date().toISOString(),
+        app: "cally",
+        createdAt: now,
       },
     }),
   );
@@ -523,18 +540,54 @@ export async function createDomainLookup(
     "[DBG][tenantRepository] Created domain lookup for:",
     normalizedDomain,
   );
+
+  // 2. Create tenant reference record (for Lambda to get emailConfig)
+  // Lambda expects: PK=TENANT, SK=tenantId with emailConfig embedded
+  if (emailConfig) {
+    await docClient.send(
+      new PutCommand({
+        TableName: Tables.YOGA_CORE,
+        Item: {
+          PK: "TENANT",
+          SK: tenantId,
+          id: tenantId,
+          expertId: tenantId,
+          primaryDomain: normalizedDomain,
+          app: "cally",
+          emailConfig: {
+            domainEmail: emailConfig.domainEmail,
+            forwardToEmail: emailConfig.forwardToEmail,
+            forwardingEnabled: emailConfig.forwardingEnabled,
+            sesVerificationStatus: emailConfig.sesVerificationStatus,
+          },
+          createdAt: now,
+          updatedAt: now,
+        },
+      }),
+    );
+
+    console.log(
+      "[DBG][tenantRepository] Created tenant reference for:",
+      tenantId,
+    );
+  }
 }
 
 /**
- * Delete domain lookup record from yoga-go-core table
+ * Delete domain lookup records from yoga-go-core table
+ * Deletes both the domain lookup and the tenant reference
  */
-export async function deleteDomainLookup(domain: string): Promise<void> {
+export async function deleteDomainLookup(
+  domain: string,
+  tenantId?: string,
+): Promise<void> {
   const normalizedDomain = domain.toLowerCase();
   console.log(
     "[DBG][tenantRepository] Deleting domain lookup:",
     normalizedDomain,
   );
 
+  // 1. Delete domain lookup record
   await docClient.send(
     new DeleteCommand({
       TableName: Tables.YOGA_CORE,
@@ -549,6 +602,24 @@ export async function deleteDomainLookup(domain: string): Promise<void> {
     "[DBG][tenantRepository] Deleted domain lookup for:",
     normalizedDomain,
   );
+
+  // 2. Delete tenant reference record if tenantId provided
+  if (tenantId) {
+    await docClient.send(
+      new DeleteCommand({
+        TableName: Tables.YOGA_CORE,
+        Key: {
+          PK: "TENANT",
+          SK: tenantId,
+        },
+      }),
+    );
+
+    console.log(
+      "[DBG][tenantRepository] Deleted tenant reference for:",
+      tenantId,
+    );
+  }
 }
 
 /**

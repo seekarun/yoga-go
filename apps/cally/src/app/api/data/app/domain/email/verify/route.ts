@@ -73,7 +73,12 @@ export async function GET() {
     // This allows the SES email-forwarder Lambda to route emails to this tenant
     if (verification.allVerified) {
       try {
-        await createDomainLookup(domain, tenant.id);
+        await createDomainLookup(domain, tenant.id, {
+          domainEmail: tenant.emailConfig.domainEmail,
+          forwardToEmail: tenant.emailConfig.forwardToEmail,
+          forwardingEnabled: true,
+          sesVerificationStatus: "verified",
+        });
         console.log(
           "[DBG][email/verify] Created domain lookup for:",
           domain,

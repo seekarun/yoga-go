@@ -59,7 +59,7 @@ export async function DELETE() {
     // Delete domain lookup from yoga-go-core
     // This stops the SES email-forwarder Lambda from routing emails to this tenant
     try {
-      await deleteDomainLookup(domain);
+      await deleteDomainLookup(domain, tenant.id);
       console.log("[DBG][email/disable] Domain lookup deleted for:", domain);
     } catch (lookupError) {
       console.error(
