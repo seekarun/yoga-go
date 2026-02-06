@@ -74,7 +74,7 @@ export default async function TenantLandingPage({ params }: PageProps) {
 
   return (
     <>
-      <LandingPageRenderer config={landingPage} />
+      <LandingPageRenderer config={landingPage} tenantId={tenantId} />
       <ChatWidgetWrapper
         tenantId={tenantId}
         config={tenant.aiAssistantConfig}

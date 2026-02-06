@@ -26,6 +26,7 @@ import { DEFAULT_LANDING_PAGE_CONFIG } from "@/types/landing-page";
 import type { DomainConfig, EmailConfig } from "@/types/domain";
 import type { AiAssistantConfig } from "@/types/ai-assistant";
 import type { PhoneConfig } from "@/types/phone-calling";
+import type { BookingConfig } from "@/types/booking";
 
 /**
  * Cally Tenant Entity
@@ -44,6 +45,7 @@ export interface CallyTenant {
   emailConfig?: EmailConfig;
   aiAssistantConfig?: AiAssistantConfig;
   phoneConfig?: PhoneConfig;
+  bookingConfig?: BookingConfig;
   createdAt: string;
   updatedAt: string;
 }

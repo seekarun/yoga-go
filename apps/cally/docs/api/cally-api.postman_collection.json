@@ -131,6 +131,66 @@
           }
         },
         {
+          "name": "Get Booking Slots",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/tenants/:tenantId/booking/slots?date=2026-02-09",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "tenants",
+                ":tenantId",
+                "booking",
+                "slots"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2026-02-09"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "tenantId",
+                  "value": "01HXYZ..."
+                }
+              ]
+            },
+            "description": "Get available 30-minute booking slots for a date. Returns slots with availability status based on business hours and existing calendar events."
+          }
+        },
+        {
+          "name": "Create Booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"visitorName\": \"Jane Smith\",\n  \"visitorEmail\": \"jane@example.com\",\n  \"note\": \"First time visitor\",\n  \"startTime\": \"2026-02-09T22:00:00.000Z\",\n  \"endTime\": \"2026-02-09T22:30:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/tenants/:tenantId/booking",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "tenants", ":tenantId", "booking"],
+              "variable": [
+                {
+                  "key": "tenantId",
+                  "value": "01HXYZ..."
+                }
+              ]
+            },
+            "description": "Create a booking. Validates slot availability to prevent double-booking. Creates a calendar event with title 'Booking: {name}'."
+          }
+        },
+        {
           "name": "Public AI Chat",
           "request": {
             "method": "POST",

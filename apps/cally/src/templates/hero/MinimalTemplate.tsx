@@ -277,7 +277,11 @@ export default function MinimalTemplate({
               <div style={dividerStyle} />
               <p style={subtitleStyle}>{subtitle}</p>
               {button && (
-                <button type="button" style={buttonStyle}>
+                <button
+                  type="button"
+                  style={buttonStyle}
+                  onClick={onButtonClick}
+                >
                   {button.label}
                 </button>
               )}
