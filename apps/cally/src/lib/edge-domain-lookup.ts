@@ -4,12 +4,15 @@
  * Middleware runs in Edge Runtime which doesn't support the full DynamoDB
  * Document Client (Node.js APIs). This module uses the low-level
  * DynamoDBClient with FetchHttpHandler instead.
+ *
+ * Vercel strips AWS_* env vars from Edge functions, so we use EDGE_AWS_*
+ * prefixed vars and pass credentials explicitly.
  */
 import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb";
 import { FetchHttpHandler } from "@smithy/fetch-http-handler";
 
 const TABLE_NAME = "yoga-go-core";
-const REGION = process.env.AWS_REGION || "ap-southeast-2";
+const REGION = process.env.EDGE_AWS_REGION || "ap-southeast-2";
 
 // In-memory cache: domain → { tenantId, expiresAt }
 const cache = new Map<string, { tenantId: string; expiresAt: number }>();
@@ -19,8 +22,18 @@ let client: DynamoDBClient | null = null;
 
 function getClient(): DynamoDBClient {
   if (!client) {
+    const accessKeyId = process.env.EDGE_AWS_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.EDGE_AWS_SECRET_ACCESS_KEY;
+
+    if (!accessKeyId || !secretAccessKey) {
+      throw new Error(
+        "EDGE_AWS_ACCESS_KEY_ID and EDGE_AWS_SECRET_ACCESS_KEY must be set",
+      );
+    }
+
     client = new DynamoDBClient({
       region: REGION,
+      credentials: { accessKeyId, secretAccessKey },
       requestHandler: new FetchHttpHandler(),
     });
   }
