@@ -172,8 +172,14 @@ export async function PUT(request: Request, { params }: RouteParams) {
 
     console.log("[DBG][calendar/events/[eventId]] Updated event:", eventId);
 
-    // Send email when a pending booking is approved or declined
-    if (currentEvent.status === "pending") {
+    // Send booking emails on status transitions
+    const isBookingStatusChange =
+      (currentEvent.status === "pending" ||
+        currentEvent.status === "scheduled") &&
+      body.status &&
+      body.status !== currentEvent.status;
+
+    if (isBookingStatusChange) {
       const visitor = parseVisitorFromDescription(currentEvent.description);
       if (visitor) {
         if (body.status === "scheduled") {

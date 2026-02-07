@@ -89,6 +89,8 @@ export default function CalendarEventModal({
   const [isSaving, setIsSaving] = useState(false);
   const [isAccepting, setIsAccepting] = useState(false);
   const [isDeclining, setIsDeclining] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [showCancelForm, setShowCancelForm] = useState(false);
   const [error, setError] = useState("");
 
   // Check if event has video conferencing
@@ -113,6 +115,7 @@ export default function CalendarEventModal({
       setIsEditing(false);
       setIsDeleting(false);
       setIsSaving(false);
+      setShowCancelForm(false);
       setError("");
     }
   }, [event]);
@@ -183,14 +186,20 @@ export default function CalendarEventModal({
   };
 
   const isPending = event?.extendedProps?.status === "pending";
+  const isScheduled = event?.extendedProps?.status === "scheduled";
+  // A booking event has visitor info in the description
+  const isBooking = !!event?.title?.startsWith("Booking:");
 
   // Message to include in the email sent to the visitor
   const DEFAULT_ACCEPT_MESSAGE =
     "Thank you for your booking! I look forward to meeting with you.";
   const DEFAULT_DECLINE_MESSAGE =
     "I'm sorry, but I'm unable to accommodate this time. Please feel free to book another time that works for you.";
+  const DEFAULT_CANCEL_MESSAGE =
+    "I'm sorry, but I need to cancel our upcoming booking. I apologise for the inconvenience. Please feel free to book another time that works for you.";
 
   const [visitorMessage, setVisitorMessage] = useState(DEFAULT_ACCEPT_MESSAGE);
+  const [cancelMessage, setCancelMessage] = useState(DEFAULT_CANCEL_MESSAGE);
 
   const handleAccept = async () => {
     if (!event) return;
@@ -262,6 +271,40 @@ export default function CalendarEventModal({
       );
     } finally {
       setIsDeclining(false);
+    }
+  };
+
+  const handleCancelBooking = async () => {
+    if (!event) return;
+
+    setIsCancelling(true);
+    setError("");
+
+    try {
+      const response = await fetch(
+        `/api/data/app/calendar/events/${event.id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            status: "cancelled",
+            message: cancelMessage,
+          }),
+        },
+      );
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || "Failed to cancel booking");
+      }
+
+      console.log("[DBG][CalendarEventModal] Cancelled booking:", event.id);
+      onEventUpdated();
+    } catch (err) {
+      console.error("[DBG][CalendarEventModal] Error cancelling:", err);
+      setError(err instanceof Error ? err.message : "Failed to cancel booking");
+    } finally {
+      setIsCancelling(false);
     }
   };
 
@@ -479,6 +522,25 @@ export default function CalendarEventModal({
           </div>
         )}
 
+        {/* Cancel booking form (for confirmed booking events) */}
+        {showCancelForm && isScheduled && isBooking && !isEditing && (
+          <div>
+            <label className="block text-sm font-medium mb-1 text-gray-700">
+              Cancellation message to visitor
+            </label>
+            <textarea
+              value={cancelMessage}
+              onChange={(e) => setCancelMessage(e.target.value)}
+              rows={3}
+              placeholder="Add a personal message..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary,#6366f1)] focus:border-transparent resize-y"
+            />
+            <p className="mt-1 text-xs text-gray-400">
+              This message will be included in the cancellation email.
+            </p>
+          </div>
+        )}
+
         {/* Error message */}
         {error && (
           <div className="px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
@@ -528,15 +590,40 @@ export default function CalendarEventModal({
           <>
             <button
               onClick={handleDelete}
-              disabled={isDeleting}
+              disabled={isDeleting || isCancelling}
               className="px-4 py-2 rounded-lg border border-red-200 bg-white text-red-600 font-medium text-sm hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isDeleting ? "Deleting..." : "Delete"}
             </button>
-            <SecondaryButton onClick={() => setIsEditing(true)}>
-              Edit
-            </SecondaryButton>
-            <PrimaryButton onClick={onClose}>Close</PrimaryButton>
+            {isScheduled && isBooking && !showCancelForm && (
+              <button
+                onClick={() => setShowCancelForm(true)}
+                className="px-4 py-2 rounded-lg border border-orange-200 bg-white text-orange-600 font-medium text-sm hover:bg-orange-50"
+              >
+                Cancel Booking
+              </button>
+            )}
+            {showCancelForm && isScheduled && isBooking && (
+              <button
+                onClick={handleCancelBooking}
+                disabled={isCancelling}
+                className="px-4 py-2 rounded-lg border border-red-200 bg-red-600 text-white font-medium text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isCancelling ? "Cancelling..." : "Confirm Cancel"}
+              </button>
+            )}
+            {!showCancelForm && (
+              <SecondaryButton onClick={() => setIsEditing(true)}>
+                Edit
+              </SecondaryButton>
+            )}
+            <PrimaryButton
+              onClick={
+                showCancelForm ? () => setShowCancelForm(false) : onClose
+              }
+            >
+              {showCancelForm ? "Back" : "Close"}
+            </PrimaryButton>
           </>
         )}
       </ModalFooter>
