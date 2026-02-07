@@ -12,6 +12,7 @@ import { getTenantByUserId } from "@/lib/repositories/tenantRepository";
 import * as calendarEventRepository from "@/lib/repositories/calendarEventRepository";
 import {
   sendBookingConfirmedEmail,
+  sendBookingDeclinedEmail,
   parseVisitorFromDescription,
 } from "@/lib/email/bookingNotification";
 
@@ -171,21 +172,33 @@ export async function PUT(request: Request, { params }: RouteParams) {
 
     console.log("[DBG][calendar/events/[eventId]] Updated event:", eventId);
 
-    // Send confirmation email when a pending booking is approved (status → scheduled)
-    if (currentEvent.status === "pending" && body.status === "scheduled") {
+    // Send email when a pending booking is approved or declined
+    if (currentEvent.status === "pending") {
       const visitor = parseVisitorFromDescription(currentEvent.description);
       if (visitor) {
-        await sendBookingConfirmedEmail({
-          visitorName: visitor.visitorName,
-          visitorEmail: visitor.visitorEmail,
-          note: visitor.note,
-          startTime: updatedEvent.startTime,
-          endTime: updatedEvent.endTime,
-          tenant,
-        });
-      } else {
+        if (body.status === "scheduled") {
+          await sendBookingConfirmedEmail({
+            visitorName: visitor.visitorName,
+            visitorEmail: visitor.visitorEmail,
+            note: visitor.note,
+            startTime: updatedEvent.startTime,
+            endTime: updatedEvent.endTime,
+            tenant,
+            message: body.message,
+          });
+        } else if (body.status === "cancelled") {
+          await sendBookingDeclinedEmail({
+            visitorName: visitor.visitorName,
+            visitorEmail: visitor.visitorEmail,
+            startTime: updatedEvent.startTime,
+            endTime: updatedEvent.endTime,
+            tenant,
+            message: body.message,
+          });
+        }
+      } else if (body.status === "scheduled" || body.status === "cancelled") {
         console.warn(
-          "[DBG][calendar/events/[eventId]] Could not parse visitor info for confirmation email",
+          "[DBG][calendar/events/[eventId]] Could not parse visitor info for booking email",
         );
       }
     }

@@ -184,6 +184,14 @@ export default function CalendarEventModal({
 
   const isPending = event?.extendedProps?.status === "pending";
 
+  // Message to include in the email sent to the visitor
+  const DEFAULT_ACCEPT_MESSAGE =
+    "Thank you for your booking! I look forward to meeting with you.";
+  const DEFAULT_DECLINE_MESSAGE =
+    "I'm sorry, but I'm unable to accommodate this time. Please feel free to book another time that works for you.";
+
+  const [visitorMessage, setVisitorMessage] = useState(DEFAULT_ACCEPT_MESSAGE);
+
   const handleAccept = async () => {
     if (!event) return;
 
@@ -199,6 +207,7 @@ export default function CalendarEventModal({
           body: JSON.stringify({
             status: "scheduled",
             color: "#10b981",
+            message: visitorMessage,
           }),
         },
       );
@@ -218,11 +227,13 @@ export default function CalendarEventModal({
     }
   };
 
-  const handleDecline = async () => {
+  const handleDecline = async (messageOverride?: string) => {
     if (!event) return;
 
     setIsDeclining(true);
     setError("");
+
+    const msg = messageOverride ?? visitorMessage;
 
     try {
       const response = await fetch(
@@ -232,6 +243,7 @@ export default function CalendarEventModal({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             status: "cancelled",
+            message: msg,
           }),
         },
       );
@@ -448,6 +460,25 @@ export default function CalendarEventModal({
           </div>
         )}
 
+        {/* Message to visitor (for pending bookings) */}
+        {isPending && !isEditing && (
+          <div>
+            <label className="block text-sm font-medium mb-1 text-gray-700">
+              Message to visitor
+            </label>
+            <textarea
+              value={visitorMessage}
+              onChange={(e) => setVisitorMessage(e.target.value)}
+              rows={3}
+              placeholder="Add a personal message..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary,#6366f1)] focus:border-transparent resize-y"
+            />
+            <p className="mt-1 text-xs text-gray-400">
+              This message will be included in the email to the visitor.
+            </p>
+          </div>
+        )}
+
         {/* Error message */}
         {error && (
           <div className="px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
@@ -472,7 +503,15 @@ export default function CalendarEventModal({
         ) : isPending ? (
           <>
             <button
-              onClick={handleDecline}
+              onClick={() => {
+                // If message is still the accept default, swap to decline default
+                const msg =
+                  visitorMessage === DEFAULT_ACCEPT_MESSAGE
+                    ? DEFAULT_DECLINE_MESSAGE
+                    : visitorMessage;
+                setVisitorMessage(msg);
+                handleDecline(msg);
+              }}
               disabled={isDeclining || isAccepting}
               className="px-4 py-2 rounded-lg border border-red-200 bg-white text-red-600 font-medium text-sm hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >

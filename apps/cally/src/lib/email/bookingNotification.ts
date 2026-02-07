@@ -17,6 +17,18 @@ export interface BookingNotificationData {
 }
 
 /**
+ * Get the public landing page URL for a tenant
+ */
+function getLandingPageUrl(tenant: CallyTenant): string {
+  if (tenant.domainConfig?.domain && tenant.domainConfig.vercelVerified) {
+    return `https://${tenant.domainConfig.domain}`;
+  }
+  // Fallback: use the cally app domain with tenant ID
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://cally.live";
+  return `${baseUrl}/${tenant.id}`;
+}
+
+/**
  * Get the from email for a tenant
  * Uses the tenant's verified domain email if available, else platform fallback
  */
@@ -220,6 +232,7 @@ export interface BookingConfirmedData {
   startTime: string; // ISO 8601
   endTime: string; // ISO 8601
   tenant: CallyTenant;
+  message?: string;
 }
 
 /**
@@ -250,7 +263,15 @@ export function parseVisitorFromDescription(
 export async function sendBookingConfirmedEmail(
   data: BookingConfirmedData,
 ): Promise<void> {
-  const { visitorName, visitorEmail, note, startTime, endTime, tenant } = data;
+  const {
+    visitorName,
+    visitorEmail,
+    note,
+    startTime,
+    endTime,
+    tenant,
+    message,
+  } = data;
 
   const timezone = tenant.bookingConfig?.timezone || "Australia/Sydney";
   const from = getFromEmail(tenant);
@@ -263,6 +284,13 @@ export async function sendBookingConfirmedEmail(
     );
 
     const subject = `Booking confirmed — ${start.dateStr}`;
+
+    const messageHtml = message
+      ? `<div style="background: #f9fafb; padding: 16px; border-radius: 8px; margin-bottom: 25px;">
+                <p style="margin: 0 0 6px 0; font-size: 13px; color: #888; font-weight: 600;">Message from ${tenant.name}:</p>
+                <p style="margin: 0; font-size: 15px; color: #333; line-height: 1.5;">${message.replace(/\n/g, "<br>")}</p>
+              </div>`
+      : "";
 
     const html = `
 <!DOCTYPE html>
@@ -295,6 +323,8 @@ export async function sendBookingConfirmedEmail(
               <p style="font-size: 16px; color: #333; margin: 0 0 20px 0;">
                 Great news! Your booking with <strong>${tenant.name}</strong> has been <strong>confirmed</strong>.
               </p>
+
+              ${messageHtml}
 
               <!-- Booking Details -->
               <div style="background: #ecfdf5; padding: 20px; border-radius: 8px; border-left: 4px solid #10b981; margin-bottom: 25px;">
@@ -354,7 +384,7 @@ export async function sendBookingConfirmedEmail(
     const text = `Hi ${visitorName},
 
 Great news! Your booking with ${tenant.name} has been confirmed.
-
+${message ? `\nMessage from ${tenant.name}:\n${message}\n` : ""}
 BOOKING DETAILS
 Date: ${start.dateStr}
 Time: ${start.timeStr} – ${end.timeStr}
@@ -385,6 +415,175 @@ ${tenant.name}`;
   } catch (error) {
     console.error(
       "[DBG][bookingNotification] Failed to send booking confirmed email:",
+      error,
+    );
+  }
+}
+
+// ========================================
+// Booking Declined Email
+// ========================================
+
+export interface BookingDeclinedData {
+  visitorName: string;
+  visitorEmail: string;
+  startTime: string; // ISO 8601
+  endTime: string; // ISO 8601
+  tenant: CallyTenant;
+  message?: string;
+}
+
+/**
+ * Send a booking declined email to the visitor
+ * Errors are caught internally so they don't break the API response
+ */
+export async function sendBookingDeclinedEmail(
+  data: BookingDeclinedData,
+): Promise<void> {
+  const { visitorName, visitorEmail, startTime, endTime, tenant, message } =
+    data;
+
+  const timezone = tenant.bookingConfig?.timezone || "Australia/Sydney";
+  const from = getFromEmail(tenant);
+  const start = formatTime(startTime, timezone);
+  const end = formatTime(endTime, timezone);
+  const bookingUrl = getLandingPageUrl(tenant);
+
+  try {
+    console.log(
+      `[DBG][bookingNotification] Sending booking declined email to ${visitorEmail}`,
+    );
+
+    const subject = `Booking update — ${start.dateStr}`;
+
+    const messageHtml = message
+      ? `<div style="background: #f9fafb; padding: 16px; border-radius: 8px; margin-bottom: 25px;">
+                <p style="margin: 0 0 6px 0; font-size: 13px; color: #888; font-weight: 600;">Message from ${tenant.name}:</p>
+                <p style="margin: 0; font-size: 15px; color: #333; line-height: 1.5;">${message.replace(/\n/g, "<br>")}</p>
+              </div>`
+      : "";
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="background: #6b7280; padding: 25px 30px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 22px;">
+                Booking Update
+              </h1>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 30px;">
+              <p style="font-size: 16px; color: #333; margin: 0 0 20px 0;">
+                Hi ${visitorName},
+              </p>
+
+              <p style="font-size: 16px; color: #333; margin: 0 0 20px 0;">
+                We're sorry, but unfortunately <strong>${tenant.name}</strong> is unable to accommodate your booking request at this time.
+              </p>
+
+              <p style="font-size: 16px; color: #333; margin: 0 0 25px 0;">
+                We sincerely apologise for any inconvenience this may cause.
+              </p>
+
+              ${messageHtml}
+
+              <!-- Booking Details -->
+              <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; border-left: 4px solid #9ca3af; margin-bottom: 25px;">
+                <h3 style="margin: 0 0 15px 0; color: #374151; font-size: 16px;">Original Request</h3>
+                <table width="100%" cellpadding="0" cellspacing="0" style="font-size: 14px;">
+                  <tr>
+                    <td style="padding: 6px 0; color: #666; width: 100px;">Date</td>
+                    <td style="padding: 6px 0; color: #333; font-weight: 500;">${start.dateStr}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 6px 0; color: #666;">Time</td>
+                    <td style="padding: 6px 0; color: #333; font-weight: 500;">${start.timeStr} – ${end.timeStr}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 6px 0; color: #666;">Timezone</td>
+                    <td style="padding: 6px 0; color: #333;">${timezone}</td>
+                  </tr>
+                </table>
+              </div>
+
+              <!-- Book Another Time CTA -->
+              <div style="text-align: center; margin-bottom: 25px;">
+                <a href="${bookingUrl}" style="display: inline-block; background: #4f46e5; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: 600;">
+                  Book Another Time
+                </a>
+              </div>
+
+              <p style="font-size: 13px; color: #999; margin: 0; text-align: center;">
+                Thank you for your understanding.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f9fafb; padding: 20px; text-align: center;">
+              <p style="margin: 0; font-size: 13px; color: #888;">
+                ${tenant.name}
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+    const text = `Hi ${visitorName},
+
+We're sorry, but unfortunately ${tenant.name} is unable to accommodate your booking request at this time.
+
+We sincerely apologise for any inconvenience this may cause.
+${message ? `\nMessage from ${tenant.name}:\n${message}\n` : ""}
+ORIGINAL REQUEST
+Date: ${start.dateStr}
+Time: ${start.timeStr} – ${end.timeStr}
+Timezone: ${timezone}
+
+Book another time: ${bookingUrl}
+
+Thank you for your understanding.
+
+---
+${tenant.name}`;
+
+    await emailClient.sendEmail({
+      to: visitorEmail,
+      from,
+      subject,
+      text,
+      html,
+      tags: [
+        { Name: "EmailType", Value: "booking-declined" },
+        { Name: "TenantId", Value: tenant.id },
+      ],
+    });
+
+    console.log(
+      `[DBG][bookingNotification] Booking declined email sent to ${visitorEmail}`,
+    );
+  } catch (error) {
+    console.error(
+      "[DBG][bookingNotification] Failed to send booking declined email:",
       error,
     );
   }
