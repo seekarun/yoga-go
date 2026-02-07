@@ -4,11 +4,13 @@
  */
 
 import { NextResponse } from "next/server";
+import { ulid } from "ulid";
 import type { ApiResponse } from "@/types";
 import { auth } from "@/auth";
 import { getTenantByUserId } from "@/lib/repositories/tenantRepository";
 import { emailClient } from "@/lib/email";
 import { getFromEmail } from "@/lib/email/bookingNotification";
+import { createEmail } from "@/lib/repositories/emailRepository";
 
 interface BroadcastRequest {
   emails: string[];
@@ -54,7 +56,12 @@ export async function POST(request: Request) {
       );
     }
 
-    const from = getFromEmail(tenant);
+    const fromFormatted = getFromEmail(tenant);
+    // Parse raw email from "Name <email>" format
+    const fromEmailMatch = fromFormatted.match(/<(.+)>/);
+    const fromEmail = fromEmailMatch ? fromEmailMatch[1] : fromFormatted;
+    const fromName = fromFormatted.replace(/<.+>/, "").trim();
+
     const htmlBody = emailBody.replace(/\n/g, "<br>");
 
     const html = `
@@ -93,11 +100,11 @@ export async function POST(request: Request) {
     let sent = 0;
     let failed = 0;
 
-    for (const email of emails) {
+    for (const recipientEmail of emails) {
       try {
         await emailClient.sendEmail({
-          to: email,
-          from,
+          to: recipientEmail,
+          from: fromFormatted,
           subject,
           text: emailBody,
           html,
@@ -106,12 +113,30 @@ export async function POST(request: Request) {
             { Name: "TenantId", Value: tenant.id },
           ],
         });
+
+        // Persist the sent email in DB
+        const emailId = ulid();
+        await createEmail({
+          id: emailId,
+          expertId: tenant.id,
+          messageId: `broadcast-${emailId}`,
+          from: { name: fromName, email: fromEmail },
+          to: [{ email: recipientEmail }],
+          subject,
+          bodyText: emailBody,
+          bodyHtml: html,
+          attachments: [],
+          receivedAt: new Date().toISOString(),
+          isOutgoing: true,
+          status: "sent",
+        });
+
         sent++;
-        console.log(`[DBG][broadcastEmail] Sent to ${email}`);
+        console.log(`[DBG][broadcastEmail] Sent to ${recipientEmail}`);
       } catch (error) {
         failed++;
         console.error(
-          `[DBG][broadcastEmail] Failed to send to ${email}:`,
+          `[DBG][broadcastEmail] Failed to send to ${recipientEmail}:`,
           error,
         );
       }

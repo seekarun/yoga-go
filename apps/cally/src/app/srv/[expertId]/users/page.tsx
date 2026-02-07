@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useParams } from "next/navigation";
+import Link from "next/link";
 import type { CallyUser, UserType } from "@/types";
 import Modal, { ModalHeader, ModalFooter } from "@/components/Modal";
 import { PrimaryButton, SecondaryButton } from "@/components/Button";
@@ -12,6 +14,7 @@ type FilterType = "all" | UserType;
  * Users management page - displays subscribers and visitors in a unified list
  */
 export default function UsersPage() {
+  const { expertId } = useParams<{ expertId: string }>();
   const [users, setUsers] = useState<CallyUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -253,6 +256,9 @@ export default function UsersPage() {
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--text-muted)]">
                   Bookings
                 </th>
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-[var(--text-muted)]">
+                  {/* View */}
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-border)]">
@@ -270,7 +276,10 @@ export default function UsersPage() {
                     />
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
+                    <Link
+                      href={`/srv/${expertId}/users/${encodeURIComponent(user.email)}`}
+                      className="flex items-center gap-3 group"
+                    >
                       {user.avatar ? (
                         // eslint-disable-next-line @next/next/no-img-element -- small avatar from external source
                         <img
@@ -283,10 +292,10 @@ export default function UsersPage() {
                           {user.name.charAt(0).toUpperCase()}
                         </div>
                       )}
-                      <span className="text-sm font-medium text-[var(--text-main)]">
+                      <span className="text-sm font-medium text-[var(--text-main)] group-hover:text-[var(--color-primary)] transition-colors">
                         {user.name}
                       </span>
-                    </div>
+                    </Link>
                   </td>
                   <td className="px-4 py-3 text-sm text-[var(--text-muted)]">
                     {user.email}
@@ -305,6 +314,14 @@ export default function UsersPage() {
                   </td>
                   <td className="px-4 py-3 text-sm text-[var(--text-muted)]">
                     {user.totalBookings || 0}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <Link
+                      href={`/srv/${expertId}/users/${encodeURIComponent(user.email)}`}
+                      className="text-sm text-[var(--color-primary)] hover:underline"
+                    >
+                      View
+                    </Link>
                   </td>
                 </tr>
               ))}

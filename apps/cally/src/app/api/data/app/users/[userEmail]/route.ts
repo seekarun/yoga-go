@@ -1,0 +1,84 @@
+/**
+ * GET /api/data/app/users/[userEmail]
+ * Returns user info + communication history for a specific user
+ */
+
+import { NextResponse } from "next/server";
+import type { CallyUser, Email, ApiResponse } from "@/types";
+import { auth } from "@/auth";
+import { getTenantByUserId } from "@/lib/repositories/tenantRepository";
+import * as subscriberRepository from "@/lib/repositories/subscriberRepository";
+import { getTenantCalendarEvents } from "@/lib/repositories/calendarEventRepository";
+import { mergeSubscribersAndVisitors } from "@/lib/users/mergeUsers";
+import { getEmailsByContact } from "@/lib/repositories/emailRepository";
+
+interface UserFileData {
+  user: CallyUser;
+  communications: Email[];
+}
+
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ userEmail: string }> },
+) {
+  const { userEmail } = await params;
+  const decodedEmail = decodeURIComponent(userEmail);
+
+  console.log("[DBG][userFile] GET called for:", decodedEmail);
+
+  try {
+    const session = await auth();
+    if (!session?.user?.cognitoSub) {
+      return NextResponse.json<ApiResponse<UserFileData>>(
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
+      );
+    }
+
+    const tenant = await getTenantByUserId(session.user.cognitoSub);
+    if (!tenant) {
+      return NextResponse.json<ApiResponse<UserFileData>>(
+        { success: false, error: "Tenant not found" },
+        { status: 404 },
+      );
+    }
+
+    // Fetch users and communications in parallel
+    const [subscribers, events, communications] = await Promise.all([
+      subscriberRepository.getSubscribersByTenant(tenant.id),
+      getTenantCalendarEvents(tenant.id),
+      getEmailsByContact(tenant.id, decodedEmail),
+    ]);
+
+    const users = mergeSubscribersAndVisitors(subscribers, events);
+    const user = users.find(
+      (u) => u.email.toLowerCase() === decodedEmail.toLowerCase(),
+    );
+
+    if (!user) {
+      return NextResponse.json<ApiResponse<UserFileData>>(
+        { success: false, error: "User not found" },
+        { status: 404 },
+      );
+    }
+
+    console.log(
+      `[DBG][userFile] Returning user ${decodedEmail} with ${communications.length} communications`,
+    );
+
+    return NextResponse.json<ApiResponse<UserFileData>>({
+      success: true,
+      data: { user, communications },
+    });
+  } catch (error) {
+    console.error("[DBG][userFile] Error:", error);
+    return NextResponse.json<ApiResponse<UserFileData>>(
+      {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Failed to fetch user file",
+      },
+      { status: 500 },
+    );
+  }
+}

@@ -351,6 +351,70 @@ export async function getEmailThread(threadId: string): Promise<Email[]> {
 }
 
 /**
+ * Get all emails for a specific contact (by email address).
+ * Queries all tenant emails and filters for those where the contact
+ * appears in `from.email` or any `to[].email`.
+ * Returns newest first.
+ */
+export async function getEmailsByContact(
+  tenantId: string,
+  contactEmail: string,
+): Promise<Email[]> {
+  console.log(
+    "[DBG][emailRepository] Getting emails for contact:",
+    contactEmail,
+  );
+
+  const normalizedContact = contactEmail.toLowerCase().trim();
+  const allEmails: Email[] = [];
+  let lastKey: Record<string, unknown> | undefined;
+
+  // Paginate through all tenant emails
+  do {
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: Tables.EMAILS,
+        KeyConditionExpression: "PK = :pk",
+        FilterExpression:
+          "attribute_not_exists(isDeleted) OR isDeleted = :false",
+        ExpressionAttributeValues: {
+          ":pk": EmailPK.INBOX(tenantId),
+          ":false": false,
+        },
+        ScanIndexForward: false,
+        ExclusiveStartKey: lastKey,
+      }),
+    );
+
+    const emails = (result.Items || []).map((item) =>
+      toEmail(item as DynamoDBEmailItem),
+    );
+
+    for (const email of emails) {
+      const fromMatch =
+        email.from.email.toLowerCase().trim() === normalizedContact;
+      const toMatch = email.to.some(
+        (addr) => addr.email.toLowerCase().trim() === normalizedContact,
+      );
+      if (fromMatch || toMatch) {
+        allEmails.push(email);
+      }
+    }
+
+    lastKey = result.LastEvaluatedKey as Record<string, unknown> | undefined;
+  } while (lastKey);
+
+  console.log(
+    "[DBG][emailRepository] Found",
+    allEmails.length,
+    "emails for contact:",
+    contactEmail,
+  );
+
+  return allEmails;
+}
+
+/**
  * Get unread count for tenant
  */
 export async function getUnreadCount(tenantId: string): Promise<number> {

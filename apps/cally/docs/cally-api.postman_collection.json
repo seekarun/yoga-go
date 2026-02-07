@@ -626,7 +626,26 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "data", "app", "subscribers", "email"]
             },
-            "description": "Send a broadcast email to selected users. Sends individually per recipient (not CC/BCC). Returns { sent: N, failed: N }. Requires authentication."
+            "description": "Send a broadcast email to selected users. Sends individually per recipient (not CC/BCC). Returns { sent: N, failed: N }. Sent emails are persisted in the emails table. Requires authentication."
+          }
+        },
+        {
+          "name": "Get User File",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/users/:userEmail",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "users", ":userEmail"],
+              "variable": [
+                {
+                  "key": "userEmail",
+                  "value": "user@example.com"
+                }
+              ]
+            },
+            "description": "Get user info and communication history for a specific user by email. Returns { user: CallyUser, communications: Email[] }. Communications include all sent and received emails between the tenant and the user, sorted newest first. Requires authentication."
           }
         }
       ]
