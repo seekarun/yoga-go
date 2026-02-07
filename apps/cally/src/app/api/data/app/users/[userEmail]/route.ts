@@ -4,17 +4,19 @@
  */
 
 import { NextResponse } from "next/server";
-import type { CallyUser, Email, ApiResponse } from "@/types";
+import type { CallyUser, Email, CalendarEvent, ApiResponse } from "@/types";
 import { auth } from "@/auth";
 import { getTenantByUserId } from "@/lib/repositories/tenantRepository";
 import * as subscriberRepository from "@/lib/repositories/subscriberRepository";
 import { getTenantCalendarEvents } from "@/lib/repositories/calendarEventRepository";
 import { mergeSubscribersAndVisitors } from "@/lib/users/mergeUsers";
 import { getEmailsByContact } from "@/lib/repositories/emailRepository";
+import { parseVisitorFromDescription } from "@/lib/email/bookingNotification";
 
 interface UserFileData {
   user: CallyUser;
   communications: Email[];
+  bookings: CalendarEvent[];
 }
 
 export async function GET(
@@ -62,13 +64,23 @@ export async function GET(
       );
     }
 
+    // Filter booking events for this user
+    const normalizedEmail = decodedEmail.toLowerCase().trim();
+    const bookings = events
+      .filter((e) => {
+        if (!e.title.startsWith("Booking:")) return false;
+        const visitor = parseVisitorFromDescription(e.description);
+        return visitor?.visitorEmail.toLowerCase().trim() === normalizedEmail;
+      })
+      .sort((a, b) => b.startTime.localeCompare(a.startTime));
+
     console.log(
-      `[DBG][userFile] Returning user ${decodedEmail} with ${communications.length} communications`,
+      `[DBG][userFile] Returning user ${decodedEmail} with ${communications.length} communications, ${bookings.length} bookings`,
     );
 
     return NextResponse.json<ApiResponse<UserFileData>>({
       success: true,
-      data: { user, communications },
+      data: { user, communications, bookings },
     });
   } catch (error) {
     console.error("[DBG][userFile] Error:", error);

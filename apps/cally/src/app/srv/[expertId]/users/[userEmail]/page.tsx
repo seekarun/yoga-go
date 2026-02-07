@@ -3,12 +3,18 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import type { CallyUser, Email } from "@/types";
+import type { CallyUser, Email, CalendarEvent } from "@/types";
 
 interface UserFileData {
   user: CallyUser;
   communications: Email[];
+  bookings: CalendarEvent[];
 }
+
+// Unified timeline item
+type TimelineItem =
+  | { type: "email"; date: string; data: Email }
+  | { type: "booking"; date: string; data: CalendarEvent };
 
 export default function UserFilePage() {
   const params = useParams();
@@ -73,7 +79,27 @@ export default function UserFilePage() {
     );
   }
 
-  const { user, communications } = data;
+  const { user, communications, bookings } = data;
+
+  // Build unified timeline sorted newest first
+  const timeline: TimelineItem[] = [
+    ...communications.map(
+      (email) =>
+        ({
+          type: "email",
+          date: email.receivedAt,
+          data: email,
+        }) as TimelineItem,
+    ),
+    ...bookings.map(
+      (booking) =>
+        ({
+          type: "booking",
+          date: booking.startTime,
+          data: booking,
+        }) as TimelineItem,
+    ),
+  ].sort((a, b) => b.date.localeCompare(a.date));
 
   return (
     <div className="p-6">
@@ -136,18 +162,18 @@ export default function UserFilePage() {
         </div>
       </div>
 
-      {/* Communications */}
+      {/* Activity Timeline */}
       <div>
         <h2 className="text-lg font-semibold text-[var(--text-main)] mb-4">
-          Communications
-          {communications.length > 0 && (
+          Activity
+          {timeline.length > 0 && (
             <span className="ml-2 text-sm font-normal text-[var(--text-muted)]">
-              ({communications.length})
+              ({timeline.length})
             </span>
           )}
         </h2>
 
-        {communications.length === 0 ? (
+        {timeline.length === 0 ? (
           <div className="bg-white rounded-lg border border-[var(--color-border)] p-8 text-center">
             <svg
               className="w-12 h-12 mx-auto text-[var(--text-muted)] mb-4"
@@ -159,22 +185,29 @@ export default function UserFilePage() {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
             <p className="text-[var(--text-muted)]">
-              No communications yet with this user.
+              No activity yet with this user.
             </p>
           </div>
         ) : (
           <div className="space-y-3">
-            {communications.map((email) => (
-              <CommunicationEntry
-                key={email.id}
-                email={email}
-                expertId={expertId}
-              />
-            ))}
+            {timeline.map((item) =>
+              item.type === "email" ? (
+                <EmailEntry
+                  key={`email-${item.data.id}`}
+                  email={item.data}
+                  expertId={expertId}
+                />
+              ) : (
+                <BookingEntry
+                  key={`booking-${item.data.id}`}
+                  booking={item.data}
+                />
+              ),
+            )}
           </div>
         )}
       </div>
@@ -182,13 +215,7 @@ export default function UserFilePage() {
   );
 }
 
-function CommunicationEntry({
-  email,
-  expertId,
-}: {
-  email: Email;
-  expertId: string;
-}) {
+function EmailEntry({ email, expertId }: { email: Email; expertId: string }) {
   const snippet =
     email.bodyText.length > 120
       ? email.bodyText.substring(0, 120) + "..."
@@ -216,6 +243,50 @@ function CommunicationEntry({
         </span>
       </div>
     </Link>
+  );
+}
+
+function BookingEntry({ booking }: { booking: CalendarEvent }) {
+  return (
+    <div className="bg-white rounded-lg border border-[var(--color-border)] p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-purple-50 text-purple-700">
+              Booking
+            </span>
+            <BookingStatusBadge status={booking.status} />
+            <span className="text-sm font-medium text-[var(--text-main)] truncate">
+              {booking.title.replace(/^Booking:\s*/, "")}
+            </span>
+          </div>
+          <p className="text-sm text-[var(--text-muted)]">
+            {formatBookingTime(booking.startTime, booking.endTime)}
+            {booking.duration ? ` (${booking.duration} min)` : ""}
+          </p>
+        </div>
+        <span className="text-xs text-[var(--text-muted)] whitespace-nowrap flex-shrink-0">
+          {formatDateTime(booking.startTime)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function BookingStatusBadge({ status }: { status: string }) {
+  const styles: Record<string, string> = {
+    scheduled: "bg-green-50 text-green-700",
+    pending: "bg-yellow-50 text-yellow-700",
+    cancelled: "bg-red-50 text-red-700",
+    completed: "bg-gray-100 text-gray-600",
+  };
+
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${styles[status] || "bg-gray-100 text-gray-600"}`}
+    >
+      {status.charAt(0).toUpperCase() + status.slice(1)}
+    </span>
   );
 }
 
@@ -263,4 +334,23 @@ function formatDateTime(isoString: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function formatBookingTime(startTime: string, endTime: string): string {
+  const start = new Date(startTime);
+  const end = new Date(endTime);
+  const dateStr = start.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+  const startStr = start.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const endStr = end.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return `${dateStr}, ${startStr} - ${endStr}`;
 }
