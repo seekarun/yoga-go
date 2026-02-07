@@ -70,6 +70,11 @@ export const TenantPK = {
   CALENDAR_EVENT: (date: string, eventId: string) =>
     `CALEVENT#${date}#${eventId}`,
   CALENDAR_EVENT_PREFIX: "CALEVENT#",
+
+  // Subscribers: PK=TENANT#{tenantId}, SK=SUBSCRIBER#EMAIL#{normalizedEmail}
+  SUBSCRIBER_EMAIL: (email: string) =>
+    `SUBSCRIBER#EMAIL#${email.toLowerCase().trim()}`,
+  SUBSCRIBER_EMAIL_PREFIX: "SUBSCRIBER#EMAIL#",
 } as const;
 
 // Entity type constants
@@ -77,6 +82,7 @@ export const EntityType = {
   TENANT: "TENANT",
   CALENDAR_EVENT: "CALENDAR_EVENT",
   EMAIL: "EMAIL",
+  SUBSCRIBER: "SUBSCRIBER",
 } as const;
 
 // ============================================

@@ -19,7 +19,7 @@ export interface BookingNotificationData {
 /**
  * Get the public landing page URL for a tenant
  */
-function getLandingPageUrl(tenant: CallyTenant): string {
+export function getLandingPageUrl(tenant: CallyTenant): string {
   if (tenant.domainConfig?.domain && tenant.domainConfig.vercelVerified) {
     return `https://${tenant.domainConfig.domain}`;
   }
@@ -32,7 +32,7 @@ function getLandingPageUrl(tenant: CallyTenant): string {
  * Get the from email for a tenant
  * Uses the tenant's verified domain email if available, else platform fallback
  */
-function getFromEmail(tenant: CallyTenant): string {
+export function getFromEmail(tenant: CallyTenant): string {
   if (
     tenant.emailConfig?.sesVerificationStatus === "verified" &&
     tenant.emailConfig.domainEmail
@@ -40,6 +40,31 @@ function getFromEmail(tenant: CallyTenant): string {
     return `${tenant.name} <${tenant.emailConfig.domainEmail}>`;
   }
   return `${tenant.name} <${FALLBACK_FROM_EMAIL}>`;
+}
+
+/**
+ * Get signup CTA HTML snippet for booking emails
+ */
+function getSignupCtaHtml(tenant: CallyTenant, visitorEmail: string): string {
+  const signupUrl = `${getLandingPageUrl(tenant)}/signup?email=${encodeURIComponent(visitorEmail)}`;
+  return `
+              <!-- Sign Up CTA -->
+              <div style="border-top: 1px solid #e5e7eb; margin-top: 25px; padding-top: 20px; text-align: center;">
+                <p style="font-size: 14px; color: #666; margin: 0 0 12px 0;">
+                  Sign up for a discount on your next appointment
+                </p>
+                <a href="${signupUrl}" style="display: inline-block; background: #4f46e5; color: #fff; padding: 10px 24px; border-radius: 6px; font-size: 14px; font-weight: 600; text-decoration: none;">
+                  Sign Up Now
+                </a>
+              </div>`;
+}
+
+/**
+ * Get signup CTA plain text for booking emails
+ */
+function getSignupCtaText(tenant: CallyTenant, visitorEmail: string): string {
+  const signupUrl = `${getLandingPageUrl(tenant)}/signup?email=${encodeURIComponent(visitorEmail)}`;
+  return `\nSign up for a discount on your next appointment: ${signupUrl}`;
 }
 
 /**
@@ -161,6 +186,8 @@ export async function sendBookingNotificationEmail(
               <p style="font-size: 13px; color: #999; margin: 0; text-align: center;">
                 If you did not make this request, you can safely ignore this email.
               </p>
+
+              ${getSignupCtaHtml(tenant, visitorEmail)}
             </td>
           </tr>
 
@@ -193,6 +220,7 @@ Timezone: ${timezone}${note ? `\nNote: ${note}` : ""}
 Status: Pending Confirmation
 
 If you did not make this request, you can safely ignore this email.
+${getSignupCtaText(tenant, visitorEmail)}
 
 ---
 ${tenant.name}`;
@@ -363,6 +391,8 @@ export async function sendBookingConfirmedEmail(
               <p style="font-size: 13px; color: #999; margin: 0; text-align: center;">
                 We look forward to seeing you!
               </p>
+
+              ${getSignupCtaHtml(tenant, visitorEmail)}
             </td>
           </tr>
 
@@ -393,6 +423,7 @@ Timezone: ${timezone}${note ? `\nNote: ${note}` : ""}
 Status: Confirmed
 
 We look forward to seeing you!
+${getSignupCtaText(tenant, visitorEmail)}
 
 ---
 ${tenant.name}`;
@@ -530,6 +561,8 @@ export async function sendBookingDeclinedEmail(
               <p style="font-size: 13px; color: #999; margin: 0; text-align: center;">
                 Thank you for your understanding.
               </p>
+
+              ${getSignupCtaHtml(tenant, visitorEmail)}
             </td>
           </tr>
 
@@ -562,6 +595,7 @@ Timezone: ${timezone}
 Book another time: ${bookingUrl}
 
 Thank you for your understanding.
+${getSignupCtaText(tenant, visitorEmail)}
 
 ---
 ${tenant.name}`;

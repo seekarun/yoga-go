@@ -12,19 +12,39 @@ import { cognitoConfig } from "@/lib/cognito";
 import { BASE_URL, COOKIE_DOMAIN, IS_PRODUCTION } from "@/config/env";
 import {
   getTenantByUserId,
+  getTenantById,
   createTenant,
 } from "@/lib/repositories/tenantRepository";
+import * as subscriberRepository from "@/lib/repositories/subscriberRepository";
+import { sendWelcomeEmail } from "@/lib/email/welcomeEmail";
 
 export async function GET(request: NextRequest) {
   console.log("[DBG][auth/google/callback] Processing Google OAuth callback");
 
   const searchParams = request.nextUrl.searchParams;
   const code = searchParams.get("code");
-  const state = searchParams.get("state"); // Contains the callback URL
+  const state = searchParams.get("state");
   const error = searchParams.get("error");
   const errorDescription = searchParams.get("error_description");
 
-  const callbackUrl = state || "/srv";
+  // Parse state — new format is base64-encoded JSON, old format is plain string
+  let callbackUrl = "/srv";
+  let visitorTenantId: string | undefined;
+  if (state) {
+    try {
+      const stateObj = JSON.parse(Buffer.from(state, "base64").toString());
+      callbackUrl = stateObj.callbackUrl || "/srv";
+      visitorTenantId = stateObj.visitorTenantId;
+    } catch {
+      // Backward compat: plain string state
+      callbackUrl = state;
+    }
+  }
+
+  console.log("[DBG][auth/google/callback] State parsed:", {
+    callbackUrl,
+    visitorTenantId,
+  });
 
   // Handle errors from Cognito
   if (error) {
@@ -96,7 +116,52 @@ export async function GET(request: NextRequest) {
       name: payload.name,
     });
 
-    // Check if tenant exists for this user, create if not
+    // ===== Visitor mode: subscribe to tenant, no session =====
+    if (visitorTenantId) {
+      console.log(
+        "[DBG][auth/google/callback] Visitor mode for tenant:",
+        visitorTenantId,
+      );
+
+      const visitorTenant = await getTenantById(visitorTenantId);
+      if (visitorTenant) {
+        // Check if already subscribed
+        const existing = await subscriberRepository.getSubscriber(
+          visitorTenantId,
+          payload.email,
+        );
+        if (!existing) {
+          await subscriberRepository.createSubscriber(visitorTenantId, {
+            email: payload.email || "",
+            name: payload.name || payload.email?.split("@")[0] || "User",
+            cognitoSub: payload.sub,
+            avatar: payload.picture,
+            subscribedAt: new Date().toISOString(),
+            source: "google",
+          });
+          console.log("[DBG][auth/google/callback] Visitor subscriber created");
+
+          // Send welcome email (fire-and-forget)
+          await sendWelcomeEmail({
+            name: payload.name || payload.email?.split("@")[0] || "User",
+            email: payload.email || "",
+            tenant: visitorTenant,
+          });
+        } else {
+          console.log("[DBG][auth/google/callback] Visitor already subscribed");
+        }
+      }
+
+      // Redirect to callback URL without setting session
+      const finalRedirectUrl = new URL(callbackUrl, BASE_URL);
+      console.log(
+        "[DBG][auth/google/callback] Visitor redirect to:",
+        finalRedirectUrl.toString(),
+      );
+      return NextResponse.redirect(finalRedirectUrl.toString());
+    }
+
+    // ===== Creator mode: create tenant + set session =====
     let tenant = await getTenantByUserId(payload.sub);
     if (!tenant) {
       console.log(

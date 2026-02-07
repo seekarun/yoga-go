@@ -478,6 +478,136 @@
           }
         }
       ]
+    },
+    {
+      "name": "Subscribers - Public",
+      "description": "Visitor signup/signin endpoints for tenant subscribers",
+      "item": [
+        {
+          "name": "Visitor Signup",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane Smith\",\n  \"email\": \"jane@example.com\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/tenants/:tenantId/subscribers/signup",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "tenants",
+                ":tenantId",
+                "subscribers",
+                "signup"
+              ],
+              "variable": [
+                {
+                  "key": "tenantId",
+                  "value": "01HXYZ..."
+                }
+              ]
+            },
+            "description": "Register a new visitor with Cognito. Does NOT create a tenant. Returns requiresVerification flag."
+          }
+        },
+        {
+          "name": "Visitor Verify Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"jane@example.com\",\n  \"code\": \"123456\",\n  \"name\": \"Jane Smith\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/tenants/:tenantId/subscribers/verify",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "tenants",
+                ":tenantId",
+                "subscribers",
+                "verify"
+              ],
+              "variable": [
+                {
+                  "key": "tenantId",
+                  "value": "01HXYZ..."
+                }
+              ]
+            },
+            "description": "Verify email with Cognito code, create subscriber record, and send welcome email."
+          }
+        },
+        {
+          "name": "Visitor Sign In",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"jane@example.com\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/tenants/:tenantId/subscribers/signin",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "tenants",
+                ":tenantId",
+                "subscribers",
+                "signin"
+              ],
+              "variable": [
+                {
+                  "key": "tenantId",
+                  "value": "01HXYZ..."
+                }
+              ]
+            },
+            "description": "Sign in existing user and subscribe to tenant. Does NOT set session cookie. Returns alreadySubscribed flag if already subscribed."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Subscribers - Authenticated",
+      "description": "Subscriber management for authenticated tenants",
+      "item": [
+        {
+          "name": "List Subscribers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/subscribers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "subscribers"]
+            },
+            "description": "List all subscribers for the authenticated tenant. Sorted by subscribedAt desc."
+          }
+        }
+      ]
     }
   ]
 }

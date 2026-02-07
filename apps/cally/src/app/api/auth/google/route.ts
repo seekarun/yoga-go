@@ -13,6 +13,14 @@ export async function GET(request: NextRequest) {
 
   const searchParams = request.nextUrl.searchParams;
   const callbackUrl = searchParams.get("callbackUrl") || "/srv";
+  const visitorTenantId = searchParams.get("visitorTenantId");
+
+  // Build state as base64-encoded JSON to carry visitor context
+  const stateObj: Record<string, string> = { callbackUrl };
+  if (visitorTenantId) {
+    stateObj.visitorTenantId = visitorTenantId;
+  }
+  const state = Buffer.from(JSON.stringify(stateObj)).toString("base64");
 
   // Cognito Hosted UI domain
   const domain = cognitoConfig.domain;
@@ -25,7 +33,7 @@ export async function GET(request: NextRequest) {
     scope: "email openid profile",
     redirect_uri: redirectUri,
     identity_provider: "Google",
-    state: callbackUrl, // Preserve callback URL in state
+    state,
     prompt: "select_account", // Force Google to show account selection
   });
 

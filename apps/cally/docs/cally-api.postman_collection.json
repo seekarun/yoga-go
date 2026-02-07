@@ -1,21 +1,85 @@
 {
   "info": {
-    "_postman_id": "cally-api-collection",
     "name": "Cally API",
-    "description": "API collection for Cally app - Calendar and email features",
+    "description": "API collection for Cally - Landing Pages, Calendar, Domain & Email, AI Assistant",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:3113",
-      "type": "string"
+      "value": "http://localhost:3113"
     }
   ],
   "item": [
     {
       "name": "Auth",
       "item": [
+        {
+          "name": "Signup",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"Password123!\",\n  \"name\": \"Test User\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/cognito/signup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "cognito", "signup"]
+            },
+            "description": "Register a new user with Cognito. Creates a tenant with ULID."
+          }
+        },
+        {
+          "name": "Verify Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"code\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/cognito/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "cognito", "verify"]
+            },
+            "description": "Verify email with confirmation code from Cognito."
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/cognito/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "cognito", "login"]
+            },
+            "description": "Login with email and password."
+          }
+        },
         {
           "name": "Get Current User",
           "request": {
@@ -25,7 +89,8 @@
               "raw": "{{baseUrl}}/api/auth/me",
               "host": ["{{baseUrl}}"],
               "path": ["api", "auth", "me"]
-            }
+            },
+            "description": "Get the current authenticated user with tenant ID."
           }
         },
         {
@@ -37,76 +102,70 @@
               "raw": "{{baseUrl}}/api/auth/logout",
               "host": ["{{baseUrl}}"],
               "path": ["api", "auth", "logout"]
-            }
+            },
+            "description": "Logout the current user."
           }
         }
       ]
     },
     {
-      "name": "Inbox",
+      "name": "Tenant - Public",
       "item": [
         {
-          "name": "List Emails",
+          "name": "Get Tenant Landing Page",
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/data/app/inbox?limit=20",
+              "raw": "{{baseUrl}}/api/data/tenants/:tenantId",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "data", "app", "inbox"],
-              "query": [
-                {
-                  "key": "limit",
-                  "value": "20"
-                },
-                {
-                  "key": "unreadOnly",
-                  "value": "false",
-                  "disabled": true
-                },
-                {
-                  "key": "starredOnly",
-                  "value": "false",
-                  "disabled": true
-                },
-                {
-                  "key": "search",
-                  "value": "",
-                  "disabled": true
-                },
-                {
-                  "key": "lastKey",
-                  "value": "",
-                  "disabled": true
-                }
-              ]
-            },
-            "description": "Get list of emails for the authenticated user's tenant. Supports filtering by unread/starred and pagination."
-          }
-        },
-        {
-          "name": "Get Email by ID",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/data/app/inbox/:emailId",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "data", "app", "inbox", ":emailId"],
+              "path": ["api", "data", "tenants", ":tenantId"],
               "variable": [
                 {
-                  "key": "emailId",
-                  "value": "email-id-here"
+                  "key": "tenantId",
+                  "value": "01HXYZ..."
                 }
               ]
             },
-            "description": "Get a single email by ID. If the email is part of a thread, returns all thread messages."
+            "description": "Get public tenant data with landing page config."
           }
         },
         {
-          "name": "Update Email Status",
+          "name": "Get Booking Slots",
           "request": {
-            "method": "PATCH",
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/tenants/:tenantId/booking/slots?date=2026-02-09",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "tenants",
+                ":tenantId",
+                "booking",
+                "slots"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2026-02-09"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "tenantId",
+                  "value": "01HXYZ..."
+                }
+              ]
+            },
+            "description": "Get available 30-minute booking slots for a date. Returns slots with availability status based on business hours and existing calendar events."
+          }
+        },
+        {
+          "name": "Create Booking",
+          "request": {
+            "method": "POST",
             "header": [
               {
                 "key": "Content-Type",
@@ -115,45 +174,108 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"isRead\": true,\n  \"isStarred\": false\n}"
+              "raw": "{\n  \"visitorName\": \"Jane Smith\",\n  \"visitorEmail\": \"jane@example.com\",\n  \"note\": \"First time visitor\",\n  \"startTime\": \"2026-02-09T22:00:00.000Z\",\n  \"endTime\": \"2026-02-09T22:30:00.000Z\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/api/data/app/inbox/:emailId",
+              "raw": "{{baseUrl}}/api/data/tenants/:tenantId/booking",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "data", "app", "inbox", ":emailId"],
+              "path": ["api", "data", "tenants", ":tenantId", "booking"],
               "variable": [
                 {
-                  "key": "emailId",
-                  "value": "email-id-here"
+                  "key": "tenantId",
+                  "value": "01HXYZ..."
                 }
               ]
             },
-            "description": "Update email read/starred status."
+            "description": "Create a booking. Validates slot availability to prevent double-booking. Creates a calendar event with title 'Booking: {name}'."
           }
         },
         {
-          "name": "Delete Email",
+          "name": "Public AI Chat",
           "request": {
-            "method": "DELETE",
-            "header": [],
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Hello, what services do you offer?\",\n  \"sessionMessages\": []\n}"
+            },
             "url": {
-              "raw": "{{baseUrl}}/api/data/app/inbox/:emailId",
+              "raw": "{{baseUrl}}/api/data/tenants/:tenantId/ai/chat",
               "host": ["{{baseUrl}}"],
-              "path": ["api", "data", "app", "inbox", ":emailId"],
+              "path": ["api", "data", "tenants", ":tenantId", "ai", "chat"],
               "variable": [
                 {
-                  "key": "emailId",
-                  "value": "email-id-here"
+                  "key": "tenantId",
+                  "value": "01HXYZ..."
                 }
               ]
             },
-            "description": "Soft delete an email (sets isDeleted flag and TTL for auto-cleanup after 90 days)."
+            "description": "Public chat endpoint for visitors. Returns 403 if AI assistant is not enabled for the tenant."
           }
         }
       ]
     },
     {
-      "name": "Domain & Email",
+      "name": "Landing Page - Authenticated",
+      "item": [
+        {
+          "name": "Get Landing Page Config",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/tenant/landing-page",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "tenant", "landing-page"]
+            },
+            "description": "Get the current user's landing page config (draft and published)."
+          }
+        },
+        {
+          "name": "Update Draft Landing Page",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hero\": {\n    \"headline\": \"Welcome to My Page\",\n    \"description\": \"Book a session with me!\",\n    \"ctaText\": \"Book Now\",\n    \"ctaLink\": \"#booking\"\n  },\n  \"sectionOrder\": [\"hero\", \"valuePropositions\", \"about\", \"photoGallery\", \"act\", \"footer\"],\n  \"disabledSections\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/tenant/landing-page",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "tenant", "landing-page"]
+            },
+            "description": "Update the draft landing page config. Auto-saves as draft."
+          }
+        },
+        {
+          "name": "Publish Landing Page",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/tenant/publish",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "tenant", "publish"]
+            },
+            "description": "Publish the draft landing page. Copies draft to published."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Domain - Authenticated",
+      "description": "Domain management endpoints for BYOD (Bring Your Own Domain)",
       "item": [
         {
           "name": "Get Domain Status",
@@ -164,7 +286,8 @@
               "raw": "{{baseUrl}}/api/data/app/domain/status",
               "host": ["{{baseUrl}}"],
               "path": ["api", "data", "app", "domain", "status"]
-            }
+            },
+            "description": "Get current domain and email configuration status for the authenticated user."
           }
         },
         {
@@ -179,13 +302,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"domain\": \"example.com\"\n}"
+              "raw": "{\n  \"domain\": \"mycoaching.com\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/data/app/domain/add",
               "host": ["{{baseUrl}}"],
               "path": ["api", "data", "app", "domain", "add"]
-            }
+            },
+            "description": "Add a domain to Vercel. Returns nameservers that need to be configured at the registrar."
           }
         },
         {
@@ -197,21 +321,29 @@
               "raw": "{{baseUrl}}/api/data/app/domain/verify",
               "host": ["{{baseUrl}}"],
               "path": ["api", "data", "app", "domain", "verify"]
-            }
+            },
+            "description": "Trigger Vercel to re-check DNS and verify domain ownership."
           }
         },
         {
           "name": "Remove Domain",
           "request": {
-            "method": "POST",
+            "method": "DELETE",
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/data/app/domain/remove",
               "host": ["{{baseUrl}}"],
               "path": ["api", "data", "app", "domain", "remove"]
-            }
+            },
+            "description": "Remove domain from Vercel and clear domain/email configuration."
           }
-        },
+        }
+      ]
+    },
+    {
+      "name": "Email - Authenticated",
+      "description": "Email setup endpoints for custom domain email via SES",
+      "item": [
         {
           "name": "Setup Email",
           "request": {
@@ -224,91 +356,47 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"emailPrefix\": \"hello\",\n  \"forwardToEmail\": \"user@example.com\"\n}"
+              "raw": "{\n  \"emailPrefix\": \"hello\",\n  \"forwardToEmail\": \"your@gmail.com\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/data/app/domain/email/setup",
               "host": ["{{baseUrl}}"],
               "path": ["api", "data", "app", "domain", "email", "setup"]
-            }
+            },
+            "description": "Create SES domain identity and setup email forwarding. Returns DKIM tokens and DNS records."
           }
         },
         {
-          "name": "Verify Email Setup",
+          "name": "Verify Email DNS",
           "request": {
-            "method": "POST",
+            "method": "GET",
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/data/app/domain/email/verify",
               "host": ["{{baseUrl}}"],
               "path": ["api", "data", "app", "domain", "email", "verify"]
-            }
+            },
+            "description": "Check email DNS verification status (MX, SPF, DKIM records)."
           }
         },
         {
           "name": "Disable Email",
           "request": {
-            "method": "POST",
+            "method": "DELETE",
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/data/app/domain/email/disable",
               "host": ["{{baseUrl}}"],
               "path": ["api", "data", "app", "domain", "email", "disable"]
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "Calendar",
-      "item": [
-        {
-          "name": "Get Calendar Events",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/data/app/calendar?from=2025-01-01&to=2025-12-31",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "data", "app", "calendar"],
-              "query": [
-                {
-                  "key": "from",
-                  "value": "2025-01-01"
-                },
-                {
-                  "key": "to",
-                  "value": "2025-12-31"
-                }
-              ]
-            }
-          }
-        },
-        {
-          "name": "Create Instant Meeting",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"title\": \"Quick Meeting\",\n  \"startTime\": \"2025-02-05T10:00:00.000Z\",\n  \"endTime\": \"2025-02-05T11:00:00.000Z\"\n}"
             },
-            "url": {
-              "raw": "{{baseUrl}}/api/data/app/calendar/instant",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "data", "app", "calendar", "instant"]
-            }
+            "description": "Delete SES domain identity and clear email configuration."
           }
         }
       ]
     },
     {
-      "name": "AI Assistant",
+      "name": "AI Assistant - Authenticated",
+      "description": "AI Assistant endpoints for chat widget configuration",
       "item": [
         {
           "name": "Get AI Settings",
@@ -319,11 +407,34 @@
               "raw": "{{baseUrl}}/api/data/app/ai/settings",
               "host": ["{{baseUrl}}"],
               "path": ["api", "data", "app", "ai", "settings"]
-            }
+            },
+            "description": "Get AI assistant settings for the authenticated user."
           }
         },
         {
-          "name": "Setup AI Assistant",
+          "name": "Update AI Settings",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"enabled\": true,\n  \"widgetPosition\": \"bottom-right\",\n  \"welcomeMessage\": \"Hi! How can I help you today?\",\n  \"placeholderText\": \"Type your message...\",\n  \"systemPrompt\": \"Always suggest booking a trial class.\",\n  \"businessInfo\": {\n    \"businessName\": \"Sunrise Yoga Studio\",\n    \"description\": \"A welcoming yoga studio for all levels\",\n    \"openingHours\": \"Mon-Fri 6am-8pm, Sat-Sun 8am-6pm\",\n    \"services\": \"Hatha Yoga, Vinyasa Flow, Private Sessions\",\n    \"location\": \"123 Main St, Sydney\",\n    \"contactInfo\": \"hello@sunriseyoga.com\",\n    \"additionalNotes\": \"We offer a free trial class for first-time visitors!\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/ai/settings",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "ai", "settings"]
+            },
+            "description": "Update AI assistant settings. Partial updates supported."
+          }
+        },
+        {
+          "name": "Demo Chat",
           "request": {
             "method": "POST",
             "header": [
@@ -334,13 +445,166 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"enabled\": true,\n  \"welcomeMessage\": \"Hi! How can I help you today?\",\n  \"systemPrompt\": \"You are a helpful assistant.\"\n}"
+              "raw": "{\n  \"message\": \"Hello, tell me about your services.\",\n  \"sessionMessages\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/ai/chat",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "ai", "chat"]
+            },
+            "description": "Demo chat endpoint for testing AI in dashboard. Uses the tenant's custom system prompt if configured."
+          }
+        },
+        {
+          "name": "Business Setup Chat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messages\": [\n    { \"role\": \"assistant\", \"content\": \"Hi! I'd love to learn about your business. What's it called?\" },\n    { \"role\": \"user\", \"content\": \"Sunrise Yoga Studio\" }\n  ],\n  \"saveIfComplete\": true\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/data/app/ai/setup",
               "host": ["{{baseUrl}}"],
               "path": ["api", "data", "app", "ai", "setup"]
-            }
+            },
+            "description": "AI-driven business setup chat. Uses function calling to extract structured business info from conversation. Set saveIfComplete to true to auto-save when setup is complete."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Subscribers - Public",
+      "description": "Visitor signup/signin endpoints for tenant subscribers",
+      "item": [
+        {
+          "name": "Visitor Signup",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane Smith\",\n  \"email\": \"jane@example.com\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/tenants/:tenantId/subscribers/signup",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "tenants",
+                ":tenantId",
+                "subscribers",
+                "signup"
+              ],
+              "variable": [
+                {
+                  "key": "tenantId",
+                  "value": "01HXYZ..."
+                }
+              ]
+            },
+            "description": "Register a new visitor with Cognito. Does NOT create a tenant. Returns requiresVerification flag."
+          }
+        },
+        {
+          "name": "Visitor Verify Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"jane@example.com\",\n  \"code\": \"123456\",\n  \"name\": \"Jane Smith\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/tenants/:tenantId/subscribers/verify",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "tenants",
+                ":tenantId",
+                "subscribers",
+                "verify"
+              ],
+              "variable": [
+                {
+                  "key": "tenantId",
+                  "value": "01HXYZ..."
+                }
+              ]
+            },
+            "description": "Verify email with Cognito code, create subscriber record, and send welcome email."
+          }
+        },
+        {
+          "name": "Visitor Sign In",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"jane@example.com\",\n  \"password\": \"Password123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/tenants/:tenantId/subscribers/signin",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "tenants",
+                ":tenantId",
+                "subscribers",
+                "signin"
+              ],
+              "variable": [
+                {
+                  "key": "tenantId",
+                  "value": "01HXYZ..."
+                }
+              ]
+            },
+            "description": "Sign in existing user and subscribe to tenant. Does NOT set session cookie. Returns alreadySubscribed flag if already subscribed."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Subscribers - Authenticated",
+      "description": "Subscriber management for authenticated tenants",
+      "item": [
+        {
+          "name": "List Subscribers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/subscribers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "subscribers"]
+            },
+            "description": "List all subscribers for the authenticated tenant. Sorted by subscribedAt desc."
           }
         }
       ]

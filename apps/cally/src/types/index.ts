@@ -8,3 +8,4 @@ export * from "./domain";
 export * from "./ai-assistant";
 export * from "./phone-calling";
 export * from "./booking";
+export * from "./subscriber";
