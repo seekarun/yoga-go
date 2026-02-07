@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import type { CallyUser, Email, CalendarEvent } from "@/types";
@@ -81,25 +81,48 @@ export default function UserFilePage() {
 
   const { user, communications, bookings } = data;
 
-  // Build unified timeline sorted newest first
-  const timeline: TimelineItem[] = [
-    ...communications.map(
-      (email) =>
-        ({
-          type: "email",
-          date: email.receivedAt,
-          data: email,
-        }) as TimelineItem,
-    ),
-    ...bookings.map(
-      (booking) =>
-        ({
-          type: "booking",
-          date: booking.startTime,
-          data: booking,
-        }) as TimelineItem,
-    ),
-  ].sort((a, b) => b.date.localeCompare(a.date));
+  // Build unified timeline
+  const allItems: TimelineItem[] = useMemo(() => {
+    const items: TimelineItem[] = [
+      ...communications.map(
+        (email) =>
+          ({
+            type: "email",
+            date: email.receivedAt,
+            data: email,
+          }) as TimelineItem,
+      ),
+      ...bookings.map(
+        (booking) =>
+          ({
+            type: "booking",
+            date: booking.startTime,
+            data: booking,
+          }) as TimelineItem,
+      ),
+    ];
+    return items;
+  }, [communications, bookings]);
+
+  const now = useMemo(() => new Date().toISOString(), []);
+
+  // Upcoming: future items sorted soonest first
+  const upcoming = useMemo(
+    () =>
+      allItems
+        .filter((item) => item.date > now)
+        .sort((a, b) => a.date.localeCompare(b.date)),
+    [allItems, now],
+  );
+
+  // Past: items at or before now, sorted newest first
+  const past = useMemo(
+    () =>
+      allItems
+        .filter((item) => item.date <= now)
+        .sort((a, b) => b.date.localeCompare(a.date)),
+    [allItems, now],
+  );
 
   return (
     <div className="p-6">
@@ -162,39 +185,39 @@ export default function UserFilePage() {
         </div>
       </div>
 
-      {/* Activity Timeline */}
-      <div>
-        <h2 className="text-lg font-semibold text-[var(--text-main)] mb-4">
-          Activity
-          {timeline.length > 0 && (
-            <span className="ml-2 text-sm font-normal text-[var(--text-muted)]">
-              ({timeline.length})
-            </span>
-          )}
-        </h2>
+      {/* No activity at all */}
+      {allItems.length === 0 && (
+        <div className="bg-white rounded-lg border border-[var(--color-border)] p-8 text-center">
+          <svg
+            className="w-12 h-12 mx-auto text-[var(--text-muted)] mb-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          <p className="text-[var(--text-muted)]">
+            No activity yet with this user.
+          </p>
+        </div>
+      )}
 
-        {timeline.length === 0 ? (
-          <div className="bg-white rounded-lg border border-[var(--color-border)] p-8 text-center">
-            <svg
-              className="w-12 h-12 mx-auto text-[var(--text-muted)] mb-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <p className="text-[var(--text-muted)]">
-              No activity yet with this user.
-            </p>
-          </div>
-        ) : (
+      {/* Upcoming */}
+      {upcoming.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-[var(--text-main)] mb-4">
+            Upcoming
+            <span className="ml-2 text-sm font-normal text-[var(--text-muted)]">
+              ({upcoming.length})
+            </span>
+          </h2>
           <div className="space-y-3">
-            {timeline.map((item) =>
+            {upcoming.map((item) =>
               item.type === "email" ? (
                 <EmailEntry
                   key={`email-${item.data.id}`}
@@ -209,8 +232,36 @@ export default function UserFilePage() {
               ),
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Past */}
+      {past.length > 0 && (
+        <div>
+          <h2 className="text-lg font-semibold text-[var(--text-main)] mb-4">
+            Past
+            <span className="ml-2 text-sm font-normal text-[var(--text-muted)]">
+              ({past.length})
+            </span>
+          </h2>
+          <div className="space-y-3">
+            {past.map((item) =>
+              item.type === "email" ? (
+                <EmailEntry
+                  key={`email-${item.data.id}`}
+                  email={item.data}
+                  expertId={expertId}
+                />
+              ) : (
+                <BookingEntry
+                  key={`booking-${item.data.id}`}
+                  booking={item.data}
+                />
+              ),
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

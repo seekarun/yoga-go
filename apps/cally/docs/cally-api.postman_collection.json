@@ -645,7 +645,26 @@
                 }
               ]
             },
-            "description": "Get user info and communication history for a specific user by email. Returns { user: CallyUser, communications: Email[] }. Communications include all sent and received emails between the tenant and the user, sorted newest first. Requires authentication."
+            "description": "Get user info and communication history for a specific user by email. Returns { user: CallyUser, communications: Email[], bookings: CalendarEvent[] }. Communications include all sent and received emails between the tenant and the user, sorted newest first. Requires authentication."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard - Authenticated",
+      "description": "Dashboard stats for authenticated tenants",
+      "item": [
+        {
+          "name": "Get Dashboard Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/dashboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "dashboard"]
+            },
+            "description": "Get dashboard statistics: total users, upcoming appointments, completed appointments. Requires authentication."
           }
         }
       ]
