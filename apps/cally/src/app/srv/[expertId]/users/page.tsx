@@ -51,6 +51,7 @@ export default function UsersPage() {
       all: users.length,
       registered: users.filter((u) => u.userType === "registered").length,
       visitor: users.filter((u) => u.userType === "visitor").length,
+      contact: users.filter((u) => u.userType === "contact").length,
     }),
     [users],
   );
@@ -158,6 +159,12 @@ export default function UsersPage() {
               count={counts.visitor}
               active={activeFilter === "visitor"}
               onClick={() => setActiveFilter("visitor")}
+            />
+            <FilterPill
+              label="Contacts"
+              count={counts.contact}
+              active={activeFilter === "contact"}
+              onClick={() => setActiveFilter("contact")}
             />
           </div>
           <input
@@ -308,9 +315,13 @@ export default function UsersPage() {
                       ? user.subscribedAt
                         ? formatDate(user.subscribedAt)
                         : "—"
-                      : user.lastBookingDate
-                        ? formatDate(user.lastBookingDate)
-                        : "—"}
+                      : user.userType === "contact"
+                        ? user.lastContactDate
+                          ? formatDate(user.lastContactDate)
+                          : "—"
+                        : user.lastBookingDate
+                          ? formatDate(user.lastBookingDate)
+                          : "—"}
                   </td>
                   <td className="px-4 py-3 text-sm text-[var(--text-muted)]">
                     {user.totalBookings || 0}
@@ -511,16 +522,22 @@ function FilterPill({
 }
 
 function TypeBadge({ userType }: { userType: string }) {
-  const isRegistered = userType === "registered";
+  const styles: Record<string, string> = {
+    registered: "bg-emerald-50 text-emerald-700",
+    visitor: "bg-amber-50 text-amber-700",
+    contact: "bg-blue-50 text-blue-700",
+  };
+  const labels: Record<string, string> = {
+    registered: "Registered",
+    visitor: "Visitor",
+    contact: "Contact",
+  };
+
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-        isRegistered
-          ? "bg-emerald-50 text-emerald-700"
-          : "bg-amber-50 text-amber-700"
-      }`}
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${styles[userType] || "bg-gray-100 text-gray-600"}`}
     >
-      {isRegistered ? "Registered" : "Visitor"}
+      {labels[userType] || userType}
     </span>
   );
 }

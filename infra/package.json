@@ -24,6 +24,7 @@
     "typescript": "^5.3.0"
   },
   "dependencies": {
+    "@core/lib": "*",
     "aws-cdk-lib": "^2.170.0",
     "constructs": "^10.3.0",
     "firebase-admin": "^13.6.0",

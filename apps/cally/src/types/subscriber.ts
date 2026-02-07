@@ -14,7 +14,7 @@ export interface TenantSubscriber {
   source: SubscriberSource;
 }
 
-export type UserType = "registered" | "visitor";
+export type UserType = "registered" | "visitor" | "contact";
 
 export interface CallyUser {
   email: string;
@@ -27,4 +27,6 @@ export interface CallyUser {
   lastBookingDate?: string;
   lastBookingStatus?: string;
   totalBookings?: number;
+  lastContactDate?: string;
+  totalContacts?: number;
 }

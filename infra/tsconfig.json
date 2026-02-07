@@ -21,7 +21,12 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@core/lib": ["../core/lib/src"],
+      "@core/lib/*": ["../core/lib/src/*"]
+    }
   },
   "include": ["**/*.ts"],
   "exclude": ["node_modules", "cdk.out"]

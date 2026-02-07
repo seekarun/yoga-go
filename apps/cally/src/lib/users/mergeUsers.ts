@@ -4,12 +4,13 @@
  */
 
 import type { CalendarEvent } from "@core/types";
-import type { TenantSubscriber, CallyUser } from "@/types";
+import type { TenantSubscriber, CallyUser, ContactSubmission } from "@/types";
 import { parseVisitorFromDescription } from "@/lib/email/bookingNotification";
 
 export function mergeSubscribersAndVisitors(
   subscribers: TenantSubscriber[],
   events: CalendarEvent[],
+  contacts?: ContactSubmission[],
 ): CallyUser[] {
   const userMap = new Map<string, CallyUser>();
 
@@ -60,10 +61,40 @@ export function mergeSubscribersAndVisitors(
     }
   }
 
-  // 3. Sort by newest date first (subscribedAt or lastBookingDate)
+  // 3. Parse contacts and merge
+  if (contacts) {
+    for (const contact of contacts) {
+      const key = contact.email.toLowerCase().trim();
+      const existing = userMap.get(key);
+
+      if (existing) {
+        // Enrich existing user with contact data
+        existing.totalContacts = (existing.totalContacts || 0) + 1;
+        if (
+          !existing.lastContactDate ||
+          contact.submittedAt > existing.lastContactDate
+        ) {
+          existing.lastContactDate = contact.submittedAt;
+        }
+      } else {
+        // New contact-only user
+        userMap.set(key, {
+          email: contact.email,
+          name: contact.name,
+          userType: "contact",
+          lastContactDate: contact.submittedAt,
+          totalContacts: 1,
+        });
+      }
+    }
+  }
+
+  // 4. Sort by newest date first (subscribedAt, lastBookingDate, or lastContactDate)
   return Array.from(userMap.values()).sort((a, b) => {
-    const dateA = a.subscribedAt || a.lastBookingDate || "";
-    const dateB = b.subscribedAt || b.lastBookingDate || "";
+    const dateA =
+      a.subscribedAt || a.lastBookingDate || a.lastContactDate || "";
+    const dateB =
+      b.subscribedAt || b.lastBookingDate || b.lastContactDate || "";
     return dateB.localeCompare(dateA);
   });
 }

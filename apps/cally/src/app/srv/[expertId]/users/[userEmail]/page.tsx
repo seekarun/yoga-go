@@ -3,18 +3,25 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import type { CallyUser, Email, CalendarEvent } from "@/types";
+import type {
+  CallyUser,
+  Email,
+  CalendarEvent,
+  ContactSubmission,
+} from "@/types";
 
 interface UserFileData {
   user: CallyUser;
   communications: Email[];
   bookings: CalendarEvent[];
+  contacts: ContactSubmission[];
 }
 
 // Unified timeline item
 type TimelineItem =
   | { type: "email"; date: string; data: Email }
-  | { type: "booking"; date: string; data: CalendarEvent };
+  | { type: "booking"; date: string; data: CalendarEvent }
+  | { type: "contact"; date: string; data: ContactSubmission };
 
 export default function UserFilePage() {
   const params = useParams();
@@ -52,6 +59,57 @@ export default function UserFilePage() {
     fetchData();
   }, [fetchData]);
 
+  // All hooks must be called before any early returns
+  const allItems: TimelineItem[] = useMemo(() => {
+    if (!data) return [];
+    const { communications, bookings, contacts } = data;
+    const items: TimelineItem[] = [
+      ...communications.map(
+        (email) =>
+          ({
+            type: "email",
+            date: email.receivedAt,
+            data: email,
+          }) as TimelineItem,
+      ),
+      ...bookings.map(
+        (booking) =>
+          ({
+            type: "booking",
+            date: booking.startTime,
+            data: booking,
+          }) as TimelineItem,
+      ),
+      ...(contacts || []).map(
+        (contact) =>
+          ({
+            type: "contact",
+            date: contact.submittedAt,
+            data: contact,
+          }) as TimelineItem,
+      ),
+    ];
+    return items;
+  }, [data]);
+
+  const now = useMemo(() => new Date().toISOString(), []);
+
+  const upcoming = useMemo(
+    () =>
+      allItems
+        .filter((item) => item.date > now)
+        .sort((a, b) => a.date.localeCompare(b.date)),
+    [allItems, now],
+  );
+
+  const past = useMemo(
+    () =>
+      allItems
+        .filter((item) => item.date <= now)
+        .sort((a, b) => b.date.localeCompare(a.date)),
+    [allItems, now],
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -79,50 +137,7 @@ export default function UserFilePage() {
     );
   }
 
-  const { user, communications, bookings } = data;
-
-  // Build unified timeline
-  const allItems: TimelineItem[] = useMemo(() => {
-    const items: TimelineItem[] = [
-      ...communications.map(
-        (email) =>
-          ({
-            type: "email",
-            date: email.receivedAt,
-            data: email,
-          }) as TimelineItem,
-      ),
-      ...bookings.map(
-        (booking) =>
-          ({
-            type: "booking",
-            date: booking.startTime,
-            data: booking,
-          }) as TimelineItem,
-      ),
-    ];
-    return items;
-  }, [communications, bookings]);
-
-  const now = useMemo(() => new Date().toISOString(), []);
-
-  // Upcoming: future items sorted soonest first
-  const upcoming = useMemo(
-    () =>
-      allItems
-        .filter((item) => item.date > now)
-        .sort((a, b) => a.date.localeCompare(b.date)),
-    [allItems, now],
-  );
-
-  // Past: items at or before now, sorted newest first
-  const past = useMemo(
-    () =>
-      allItems
-        .filter((item) => item.date <= now)
-        .sort((a, b) => b.date.localeCompare(a.date)),
-    [allItems, now],
-  );
+  const { user } = data;
 
   return (
     <div className="p-6">
@@ -180,6 +195,17 @@ export default function UserFilePage() {
                   {user.totalBookings !== 1 ? "s" : ""}
                 </span>
               ) : null}
+              {user.lastContactDate && (
+                <span className="text-xs text-[var(--text-muted)]">
+                  Last contact {formatDate(user.lastContactDate)}
+                </span>
+              )}
+              {user.totalContacts ? (
+                <span className="text-xs text-[var(--text-muted)]">
+                  {user.totalContacts} contact
+                  {user.totalContacts !== 1 ? "s" : ""}
+                </span>
+              ) : null}
             </div>
           </div>
         </div>
@@ -217,20 +243,13 @@ export default function UserFilePage() {
             </span>
           </h2>
           <div className="space-y-3">
-            {upcoming.map((item) =>
-              item.type === "email" ? (
-                <EmailEntry
-                  key={`email-${item.data.id}`}
-                  email={item.data}
-                  expertId={expertId}
-                />
-              ) : (
-                <BookingEntry
-                  key={`booking-${item.data.id}`}
-                  booking={item.data}
-                />
-              ),
-            )}
+            {upcoming.map((item) => (
+              <TimelineEntry
+                key={`${item.type}-${item.data.id}`}
+                item={item}
+                expertId={expertId}
+              />
+            ))}
           </div>
         </div>
       )}
@@ -245,23 +264,62 @@ export default function UserFilePage() {
             </span>
           </h2>
           <div className="space-y-3">
-            {past.map((item) =>
-              item.type === "email" ? (
-                <EmailEntry
-                  key={`email-${item.data.id}`}
-                  email={item.data}
-                  expertId={expertId}
-                />
-              ) : (
-                <BookingEntry
-                  key={`booking-${item.data.id}`}
-                  booking={item.data}
-                />
-              ),
-            )}
+            {past.map((item) => (
+              <TimelineEntry
+                key={`${item.type}-${item.data.id}`}
+                item={item}
+                expertId={expertId}
+              />
+            ))}
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function TimelineEntry({
+  item,
+  expertId,
+}: {
+  item: TimelineItem;
+  expertId: string;
+}) {
+  if (item.type === "email") {
+    return <EmailEntry email={item.data} expertId={expertId} />;
+  }
+  if (item.type === "booking") {
+    return <BookingEntry booking={item.data} />;
+  }
+  return <ContactEntry contact={item.data} />;
+}
+
+function ContactEntry({ contact }: { contact: ContactSubmission }) {
+  const snippet =
+    contact.message.length > 120
+      ? contact.message.substring(0, 120) + "..."
+      : contact.message;
+
+  return (
+    <div className="bg-white rounded-lg border border-[var(--color-border)] p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-blue-50 text-blue-700">
+              Contact
+            </span>
+            <span className="text-sm font-medium text-[var(--text-main)] truncate">
+              Contact form submission
+            </span>
+          </div>
+          <p className="text-sm text-[var(--text-muted)] line-clamp-2">
+            {snippet}
+          </p>
+        </div>
+        <span className="text-xs text-[var(--text-muted)] whitespace-nowrap flex-shrink-0">
+          {formatDateTime(contact.submittedAt)}
+        </span>
+      </div>
     </div>
   );
 }
@@ -354,16 +412,22 @@ function DirectionBadge({ isOutgoing }: { isOutgoing: boolean }) {
 }
 
 function TypeBadge({ userType }: { userType: string }) {
-  const isRegistered = userType === "registered";
+  const styles: Record<string, string> = {
+    registered: "bg-emerald-50 text-emerald-700",
+    visitor: "bg-amber-50 text-amber-700",
+    contact: "bg-blue-50 text-blue-700",
+  };
+  const labels: Record<string, string> = {
+    registered: "Registered",
+    visitor: "Visitor",
+    contact: "Contact",
+  };
+
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-        isRegistered
-          ? "bg-emerald-50 text-emerald-700"
-          : "bg-amber-50 text-amber-700"
-      }`}
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${styles[userType] || "bg-gray-100 text-gray-600"}`}
     >
-      {isRegistered ? "Registered" : "Visitor"}
+      {labels[userType] || userType}
     </span>
   );
 }

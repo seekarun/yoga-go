@@ -191,6 +191,34 @@
           }
         },
         {
+          "name": "Submit Contact Form",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane Smith\",\n  \"email\": \"jane@example.com\",\n  \"message\": \"Hi, I'd like to learn more about your services.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/tenants/:tenantId/contact",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "tenants", ":tenantId", "contact"],
+              "variable": [
+                {
+                  "key": "tenantId",
+                  "value": "01HXYZ..."
+                }
+              ]
+            },
+            "description": "Submit a contact form message. Stores the submission and sends a notification email to the tenant. Returns { contactId }."
+          }
+        },
+        {
           "name": "Public AI Chat",
           "request": {
             "method": "POST",

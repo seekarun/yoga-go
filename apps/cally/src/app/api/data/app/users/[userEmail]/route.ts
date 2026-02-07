@@ -4,11 +4,18 @@
  */
 
 import { NextResponse } from "next/server";
-import type { CallyUser, Email, CalendarEvent, ApiResponse } from "@/types";
+import type {
+  CallyUser,
+  Email,
+  CalendarEvent,
+  ContactSubmission,
+  ApiResponse,
+} from "@/types";
 import { auth } from "@/auth";
 import { getTenantByUserId } from "@/lib/repositories/tenantRepository";
 import * as subscriberRepository from "@/lib/repositories/subscriberRepository";
 import { getTenantCalendarEvents } from "@/lib/repositories/calendarEventRepository";
+import { getContactsByTenant } from "@/lib/repositories/contactRepository";
 import { mergeSubscribersAndVisitors } from "@/lib/users/mergeUsers";
 import { getEmailsByContact } from "@/lib/repositories/emailRepository";
 import { parseVisitorFromDescription } from "@/lib/email/bookingNotification";
@@ -17,6 +24,7 @@ interface UserFileData {
   user: CallyUser;
   communications: Email[];
   bookings: CalendarEvent[];
+  contacts: ContactSubmission[];
 }
 
 export async function GET(
@@ -45,14 +53,16 @@ export async function GET(
       );
     }
 
-    // Fetch users and communications in parallel
-    const [subscribers, events, communications] = await Promise.all([
-      subscriberRepository.getSubscribersByTenant(tenant.id),
-      getTenantCalendarEvents(tenant.id),
-      getEmailsByContact(tenant.id, decodedEmail),
-    ]);
+    // Fetch users, communications, and contacts in parallel
+    const [subscribers, events, communications, allContacts] =
+      await Promise.all([
+        subscriberRepository.getSubscribersByTenant(tenant.id),
+        getTenantCalendarEvents(tenant.id),
+        getEmailsByContact(tenant.id, decodedEmail),
+        getContactsByTenant(tenant.id),
+      ]);
 
-    const users = mergeSubscribersAndVisitors(subscribers, events);
+    const users = mergeSubscribersAndVisitors(subscribers, events, allContacts);
     const user = users.find(
       (u) => u.email.toLowerCase() === decodedEmail.toLowerCase(),
     );
@@ -74,13 +84,18 @@ export async function GET(
       })
       .sort((a, b) => b.startTime.localeCompare(a.startTime));
 
+    // Filter contacts for this user
+    const contacts = allContacts.filter(
+      (c) => c.email.toLowerCase().trim() === normalizedEmail,
+    );
+
     console.log(
-      `[DBG][userFile] Returning user ${decodedEmail} with ${communications.length} communications, ${bookings.length} bookings`,
+      `[DBG][userFile] Returning user ${decodedEmail} with ${communications.length} communications, ${bookings.length} bookings, ${contacts.length} contacts`,
     );
 
     return NextResponse.json<ApiResponse<UserFileData>>({
       success: true,
-      data: { user, communications, bookings },
+      data: { user, communications, bookings, contacts },
     });
   } catch (error) {
     console.error("[DBG][userFile] Error:", error);

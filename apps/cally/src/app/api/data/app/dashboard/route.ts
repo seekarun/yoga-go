@@ -9,6 +9,7 @@ import { auth } from "@/auth";
 import { getTenantByUserId } from "@/lib/repositories/tenantRepository";
 import * as subscriberRepository from "@/lib/repositories/subscriberRepository";
 import { getTenantCalendarEvents } from "@/lib/repositories/calendarEventRepository";
+import { getContactsByTenant } from "@/lib/repositories/contactRepository";
 import { mergeSubscribersAndVisitors } from "@/lib/users/mergeUsers";
 import { parseVisitorFromDescription } from "@/lib/email/bookingNotification";
 
@@ -38,13 +39,14 @@ export async function GET() {
       );
     }
 
-    const [subscribers, events] = await Promise.all([
+    const [subscribers, events, contacts] = await Promise.all([
       subscriberRepository.getSubscribersByTenant(tenant.id),
       getTenantCalendarEvents(tenant.id),
+      getContactsByTenant(tenant.id),
     ]);
 
     // Total users
-    const users = mergeSubscribersAndVisitors(subscribers, events);
+    const users = mergeSubscribersAndVisitors(subscribers, events, contacts);
     const totalUsers = users.length;
 
     // Filter booking events only

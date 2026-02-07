@@ -500,7 +500,15 @@ The MyYoga.Guru Team`,
             .secretValueFromJson("DEBOUNCE_API_KEY")
             .unsafeUnwrap(),
         },
-        bundling: { minify: true, sourceMap: false },
+        bundling: {
+          minify: true,
+          sourceMap: false,
+          // Bundle @core/lib from monorepo
+          nodeModules: [],
+          esbuildArgs: {
+            "--alias:@core/lib": path.join(__dirname, "../../core/lib/src"),
+          },
+        },
       },
     );
 
