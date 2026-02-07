@@ -13,3 +13,18 @@ export interface TenantSubscriber {
   subscribedAt: string;
   source: SubscriberSource;
 }
+
+export type UserType = "registered" | "visitor";
+
+export interface CallyUser {
+  email: string;
+  name: string;
+  userType: UserType;
+  cognitoSub?: string;
+  avatar?: string;
+  subscribedAt?: string;
+  source?: SubscriberSource;
+  lastBookingDate?: string;
+  lastBookingStatus?: string;
+  totalBookings?: number;
+}

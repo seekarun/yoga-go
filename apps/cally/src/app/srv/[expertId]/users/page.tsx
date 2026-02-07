@@ -1,36 +1,56 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import type { TenantSubscriber } from "@/types";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import type { CallyUser, UserType } from "@/types";
+
+type FilterType = "all" | UserType;
 
 /**
- * Users management page - displays tenant subscribers
+ * Users management page - displays subscribers and visitors in a unified list
  */
 export default function UsersPage() {
-  const [subscribers, setSubscribers] = useState<TenantSubscriber[]>([]);
+  const [users, setUsers] = useState<CallyUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [activeFilter, setActiveFilter] = useState<FilterType>("all");
 
-  const fetchSubscribers = useCallback(async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       const res = await fetch("/api/data/app/subscribers");
       const data = await res.json();
       if (data.success) {
-        setSubscribers(data.data || []);
+        setUsers(data.data || []);
       } else {
-        setError(data.error || "Failed to load subscribers");
+        setError(data.error || "Failed to load users");
       }
     } catch {
-      setError("Failed to load subscribers");
+      setError("Failed to load users");
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchSubscribers();
-  }, [fetchSubscribers]);
+    fetchUsers();
+  }, [fetchUsers]);
+
+  const counts = useMemo(
+    () => ({
+      all: users.length,
+      registered: users.filter((u) => u.userType === "registered").length,
+      visitor: users.filter((u) => u.userType === "visitor").length,
+    }),
+    [users],
+  );
+
+  const filteredUsers = useMemo(
+    () =>
+      activeFilter === "all"
+        ? users
+        : users.filter((u) => u.userType === activeFilter),
+    [users, activeFilter],
+  );
 
   return (
     <div className="p-6">
@@ -38,15 +58,39 @@ export default function UsersPage() {
         <div>
           <h1 className="text-2xl font-bold text-[var(--text-main)]">Users</h1>
           <p className="text-[var(--text-muted)] mt-1">
-            Manage your audience and subscribers.
+            Registered subscribers and booking visitors.
           </p>
         </div>
-        {!loading && subscribers.length > 0 && (
+        {!loading && users.length > 0 && (
           <span className="inline-flex items-center rounded-full bg-[var(--color-primary)]/10 px-3 py-1 text-sm font-medium text-[var(--color-primary)]">
-            {subscribers.length} subscriber{subscribers.length !== 1 ? "s" : ""}
+            {users.length} user{users.length !== 1 ? "s" : ""}
           </span>
         )}
       </div>
+
+      {/* Filter pills */}
+      {!loading && users.length > 0 && (
+        <div className="mb-4 flex gap-2">
+          <FilterPill
+            label="All"
+            count={counts.all}
+            active={activeFilter === "all"}
+            onClick={() => setActiveFilter("all")}
+          />
+          <FilterPill
+            label="Registered"
+            count={counts.registered}
+            active={activeFilter === "registered"}
+            onClick={() => setActiveFilter("registered")}
+          />
+          <FilterPill
+            label="Visitors"
+            count={counts.visitor}
+            active={activeFilter === "visitor"}
+            onClick={() => setActiveFilter("visitor")}
+          />
+        </div>
+      )}
 
       {error && (
         <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600">
@@ -63,7 +107,7 @@ export default function UsersPage() {
             />
           ))}
         </div>
-      ) : subscribers.length === 0 ? (
+      ) : users.length === 0 ? (
         <div className="bg-white rounded-lg border border-[var(--color-border)] p-8 text-center">
           <svg
             className="w-12 h-12 mx-auto text-[var(--text-muted)] mb-4"
@@ -79,10 +123,10 @@ export default function UsersPage() {
             />
           </svg>
           <h3 className="text-lg font-medium text-[var(--text-main)] mb-2">
-            No subscribers yet
+            No users yet
           </h3>
           <p className="text-[var(--text-muted)]">
-            Visitors who sign up from booking emails will appear here.
+            Visitors who book appointments or sign up will appear here.
           </p>
         </div>
       ) : (
@@ -97,46 +141,58 @@ export default function UsersPage() {
                   Email
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--text-muted)]">
-                  Source
+                  Type
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--text-muted)]">
-                  Signed Up
+                  Date
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--text-muted)]">
+                  Bookings
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-border)]">
-              {subscribers.map((subscriber) => (
+              {filteredUsers.map((user) => (
                 <tr
-                  key={subscriber.email}
+                  key={user.email}
                   className="hover:bg-gray-50/50 transition-colors"
                 >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      {subscriber.avatar ? (
+                      {user.avatar ? (
                         // eslint-disable-next-line @next/next/no-img-element -- small avatar from external source
                         <img
-                          src={subscriber.avatar}
+                          src={user.avatar}
                           alt=""
                           className="h-8 w-8 rounded-full"
                         />
                       ) : (
                         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-primary)]/10 text-sm font-medium text-[var(--color-primary)]">
-                          {subscriber.name.charAt(0).toUpperCase()}
+                          {user.name.charAt(0).toUpperCase()}
                         </div>
                       )}
                       <span className="text-sm font-medium text-[var(--text-main)]">
-                        {subscriber.name}
+                        {user.name}
                       </span>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-sm text-[var(--text-muted)]">
-                    {subscriber.email}
+                    {user.email}
                   </td>
                   <td className="px-4 py-3">
-                    <SourceBadge source={subscriber.source} />
+                    <TypeBadge userType={user.userType} />
                   </td>
                   <td className="px-4 py-3 text-sm text-[var(--text-muted)]">
-                    {formatDate(subscriber.subscribedAt)}
+                    {user.userType === "registered"
+                      ? user.subscribedAt
+                        ? formatDate(user.subscribedAt)
+                        : "—"
+                      : user.lastBookingDate
+                        ? formatDate(user.lastBookingDate)
+                        : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-[var(--text-muted)]">
+                    {user.totalBookings || 0}
                   </td>
                 </tr>
               ))}
@@ -148,26 +204,49 @@ export default function UsersPage() {
   );
 }
 
-function SourceBadge({ source }: { source: string }) {
-  const label =
-    source === "booking_email"
-      ? "Booking"
-      : source === "google"
-        ? "Google"
-        : "Direct";
-
-  const colorClass =
-    source === "google"
-      ? "bg-blue-50 text-blue-700"
-      : source === "booking_email"
-        ? "bg-amber-50 text-amber-700"
-        : "bg-gray-100 text-gray-600";
-
+function FilterPill({
+  label,
+  count,
+  active,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+}) {
   return (
-    <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${colorClass}`}
+    <button
+      onClick={onClick}
+      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-medium transition-colors ${
+        active
+          ? "bg-[var(--color-primary)] text-white"
+          : "bg-gray-100 text-[var(--text-muted)] hover:bg-gray-200"
+      }`}
     >
       {label}
+      <span
+        className={`inline-flex items-center justify-center rounded-full px-1.5 text-xs ${
+          active ? "bg-white/20 text-white" : "bg-gray-200 text-gray-600"
+        }`}
+      >
+        {count}
+      </span>
+    </button>
+  );
+}
+
+function TypeBadge({ userType }: { userType: string }) {
+  const isRegistered = userType === "registered";
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+        isRegistered
+          ? "bg-emerald-50 text-emerald-700"
+          : "bg-amber-50 text-amber-700"
+      }`}
+    >
+      {isRegistered ? "Registered" : "Visitor"}
     </span>
   );
 }

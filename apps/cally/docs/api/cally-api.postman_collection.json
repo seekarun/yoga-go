@@ -591,11 +591,11 @@
       ]
     },
     {
-      "name": "Subscribers - Authenticated",
-      "description": "Subscriber management for authenticated tenants",
+      "name": "Users - Authenticated",
+      "description": "Unified user list (subscribers + booking visitors) for authenticated tenants",
       "item": [
         {
-          "name": "List Subscribers",
+          "name": "List Users",
           "request": {
             "method": "GET",
             "header": [],
@@ -604,7 +604,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "data", "app", "subscribers"]
             },
-            "description": "List all subscribers for the authenticated tenant. Sorted by subscribedAt desc."
+            "description": "List all users (registered subscribers + booking visitors) for the authenticated tenant. Returns CallyUser[] with userType field ('registered' | 'visitor'). De-duplicates by email — visitors who later signed up show as 'registered'. Sorted by newest date first."
           }
         }
       ]
