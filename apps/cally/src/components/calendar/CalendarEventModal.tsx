@@ -48,9 +48,10 @@ function getStatusBadge(status?: string) {
   if (!status) return null;
 
   const styles: Record<string, { bg: string; text: string; label: string }> = {
+    pending: { bg: "#fef3c7", text: "#b45309", label: "Pending" },
     scheduled: { bg: "#dbeafe", text: "#1d4ed8", label: "Scheduled" },
     completed: { bg: "#d1fae5", text: "#059669", label: "Completed" },
-    cancelled: { bg: "#fef3c7", text: "#d97706", label: "Cancelled" },
+    cancelled: { bg: "#fee2e2", text: "#dc2626", label: "Cancelled" },
   };
 
   const style = styles[status] || {
@@ -86,6 +87,8 @@ export default function CalendarEventModal({
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isAccepting, setIsAccepting] = useState(false);
+  const [isDeclining, setIsDeclining] = useState(false);
   const [error, setError] = useState("");
 
   // Check if event has video conferencing
@@ -176,6 +179,77 @@ export default function CalendarEventModal({
       setError(err instanceof Error ? err.message : "Failed to update event");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const isPending = event?.extendedProps?.status === "pending";
+
+  const handleAccept = async () => {
+    if (!event) return;
+
+    setIsAccepting(true);
+    setError("");
+
+    try {
+      const response = await fetch(
+        `/api/data/app/calendar/events/${event.id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            status: "scheduled",
+            color: "#10b981",
+          }),
+        },
+      );
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || "Failed to accept booking");
+      }
+
+      console.log("[DBG][CalendarEventModal] Accepted booking:", event.id);
+      onEventUpdated();
+    } catch (err) {
+      console.error("[DBG][CalendarEventModal] Error accepting:", err);
+      setError(err instanceof Error ? err.message : "Failed to accept booking");
+    } finally {
+      setIsAccepting(false);
+    }
+  };
+
+  const handleDecline = async () => {
+    if (!event) return;
+
+    setIsDeclining(true);
+    setError("");
+
+    try {
+      const response = await fetch(
+        `/api/data/app/calendar/events/${event.id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            status: "cancelled",
+          }),
+        },
+      );
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || "Failed to decline booking");
+      }
+
+      console.log("[DBG][CalendarEventModal] Declined booking:", event.id);
+      onEventUpdated();
+    } catch (err) {
+      console.error("[DBG][CalendarEventModal] Error declining:", err);
+      setError(
+        err instanceof Error ? err.message : "Failed to decline booking",
+      );
+    } finally {
+      setIsDeclining(false);
     }
   };
 
@@ -393,6 +467,22 @@ export default function CalendarEventModal({
             </SecondaryButton>
             <PrimaryButton onClick={handleSaveEdit} disabled={isSaving}>
               {isSaving ? "Saving..." : "Save Changes"}
+            </PrimaryButton>
+          </>
+        ) : isPending ? (
+          <>
+            <button
+              onClick={handleDecline}
+              disabled={isDeclining || isAccepting}
+              className="px-4 py-2 rounded-lg border border-red-200 bg-white text-red-600 font-medium text-sm hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isDeclining ? "Declining..." : "Decline"}
+            </button>
+            <PrimaryButton
+              onClick={handleAccept}
+              disabled={isAccepting || isDeclining}
+            >
+              {isAccepting ? "Accepting..." : "Accept"}
             </PrimaryButton>
           </>
         ) : (

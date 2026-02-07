@@ -108,7 +108,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       endTime,
       date,
       type: "general",
-      color: "#10b981",
+      status: "pending",
+      color: "#f59e0b",
     });
 
     console.log("[DBG][booking] Created booking event:", event.id);

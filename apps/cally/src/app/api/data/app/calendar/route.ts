@@ -83,25 +83,34 @@ export async function GET(request: Request) {
       endDate,
     );
 
+    // Color constants for status-based overrides
+    const PENDING_COLOR = "#f59e0b"; // Amber for pending bookings
+
     // Transform events to CalendarItem format for FullCalendar
-    const calendarItems: CalendarItem[] = events.map((event) => ({
-      id: event.id,
-      title: event.title,
-      start: event.startTime,
-      end: event.endTime,
-      allDay: event.isAllDay,
-      type: "event",
-      color: event.color || EVENT_COLOR,
-      extendedProps: {
-        description: event.description,
-        location: event.location,
-        status: event.status,
-        // 100ms Video conferencing
-        hasVideoConference: event.hasVideoConference,
-        hmsRoomId: event.hmsRoomId,
-        hmsTemplateId: event.hmsTemplateId,
-      },
-    }));
+    const calendarItems: CalendarItem[] = events.map((event) => {
+      // Override color for pending events so they stand out
+      const color =
+        event.status === "pending" ? PENDING_COLOR : event.color || EVENT_COLOR;
+
+      return {
+        id: event.id,
+        title: event.title,
+        start: event.startTime,
+        end: event.endTime,
+        allDay: event.isAllDay,
+        type: "event",
+        color,
+        extendedProps: {
+          description: event.description,
+          location: event.location,
+          status: event.status,
+          // 100ms Video conferencing
+          hasVideoConference: event.hasVideoConference,
+          hmsRoomId: event.hmsRoomId,
+          hmsTemplateId: event.hmsTemplateId,
+        },
+      };
+    });
 
     // Sort by start time
     calendarItems.sort((a, b) => a.start.localeCompare(b.start));

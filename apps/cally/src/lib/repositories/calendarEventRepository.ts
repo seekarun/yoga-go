@@ -344,7 +344,7 @@ export async function createCalendarEvent(
     endTime: input.endTime,
     duration,
     type: "general", // Cally only supports general events
-    status: "scheduled" as CalendarEventStatus,
+    status: input.status ?? ("scheduled" as CalendarEventStatus),
     location: input.location,
     isAllDay: input.isAllDay,
     color: input.color,

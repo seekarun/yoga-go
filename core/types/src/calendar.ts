@@ -11,7 +11,11 @@ export type CalendarEventType = "general" | "live_session";
 /**
  * Calendar event status
  */
-export type CalendarEventStatus = "scheduled" | "cancelled" | "completed";
+export type CalendarEventStatus =
+  | "pending"
+  | "scheduled"
+  | "cancelled"
+  | "completed";
 
 /**
  * Calendar event entity
@@ -48,6 +52,8 @@ export interface CreateCalendarEventInput {
   startTime: string;
   endTime: string;
   type: CalendarEventType;
+  /** Override status. Defaults to "scheduled" when omitted. */
+  status?: CalendarEventStatus;
   /** Override date (YYYY-MM-DD) for storage key. When omitted, derived from startTime UTC. */
   date?: string;
   webinarId?: string;
