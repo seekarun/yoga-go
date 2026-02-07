@@ -1,4 +1,5 @@
 import { SESClient, SendEmailCommand, SendTemplatedEmailCommand } from '@aws-sdk/client-ses';
+import { createEmailClient } from '@core/lib';
 import { getTenantByExpertId } from '@/lib/repositories/tenantRepository';
 import { generatePalette, type ColorPalette } from '@/lib/colorPalette';
 import {
@@ -16,13 +17,20 @@ import {
 // ========================================
 // Uses IAM role credentials automatically in ECS
 
-// SES is in us-west-2 for email receiving support (receiving only available in us-east-1, us-west-2, eu-west-1)
+const fromEmail = process.env.SES_FROM_EMAIL || PLATFORM_EMAIL;
+const configSet = process.env.SES_CONFIG_SET;
+
+// Core email client for sendEmail / sendBulkEmail
+const emailClient = createEmailClient({
+  region: process.env.SES_REGION || 'us-west-2',
+  fromEmail,
+  configSet,
+});
+
+// Local SES client kept for specialized functions (SendTemplatedEmailCommand, etc.)
 const sesClient = new SESClient({
   region: process.env.SES_REGION || 'us-west-2',
 });
-
-const fromEmail = process.env.SES_FROM_EMAIL || PLATFORM_EMAIL;
-const configSet = process.env.SES_CONFIG_SET;
 
 console.log('[DBG][email] SES Email service initialized');
 console.log(`[DBG][email] From: ${fromEmail}, ConfigSet: ${configSet || 'none'}`);
@@ -52,68 +60,12 @@ export interface EmailOptions {
 }
 
 /**
- * Send an email using AWS SES
+ * Send an email using AWS SES (delegates to core email client)
  * @param options - Email options including to, from, subject, text, and optional html
  * @returns Promise that resolves when email is sent
  */
 export const sendEmail = async (options: EmailOptions): Promise<void> => {
-  const { to, from = fromEmail, subject, text, html } = options;
-
-  const recipients = Array.isArray(to) ? to : [to];
-
-  console.log(`[DBG][email] Sending email via SES to ${recipients.join(', ')}`);
-  console.log(`[DBG][email] Subject: ${subject}`);
-
-  const command = new SendEmailCommand({
-    Source: from,
-    Destination: {
-      ToAddresses: recipients,
-    },
-    Message: {
-      Subject: {
-        Data: subject,
-        Charset: 'UTF-8',
-      },
-      Body: {
-        Text: {
-          Data: text,
-          Charset: 'UTF-8',
-        },
-        Html: {
-          Data: html || text.replace(/\n/g, '<br>'),
-          Charset: 'UTF-8',
-        },
-      },
-    },
-    ConfigurationSetName: configSet,
-    Tags: [
-      {
-        Name: 'EmailType',
-        Value: 'transactional',
-      },
-    ],
-  });
-
-  try {
-    const response = await sesClient.send(command);
-    console.log(`[DBG][email] Email sent successfully. MessageId: ${response.MessageId}`);
-  } catch (error) {
-    console.error('[DBG][email] Error sending email:', error);
-    // Log AWS-specific error details
-    if (error && typeof error === 'object') {
-      const awsError = error as {
-        name?: string;
-        message?: string;
-        Code?: string;
-        $metadata?: unknown;
-      };
-      console.error('[DBG][email] AWS Error name:', awsError.name);
-      console.error('[DBG][email] AWS Error message:', awsError.message);
-      console.error('[DBG][email] AWS Error code:', awsError.Code);
-      console.error('[DBG][email] AWS metadata:', JSON.stringify(awsError.$metadata));
-    }
-    throw error;
-  }
+  await emailClient.sendEmail(options);
 };
 
 /**

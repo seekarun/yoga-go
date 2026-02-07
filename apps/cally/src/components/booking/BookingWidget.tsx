@@ -144,7 +144,7 @@ export default function BookingWidget({
       case "form":
         return "Your Details";
       case "confirmed":
-        return "Confirmed";
+        return "Request Submitted";
     }
   })();
 

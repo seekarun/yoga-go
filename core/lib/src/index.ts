@@ -5,3 +5,6 @@ export * from "./dynamodb";
 
 // Utility functions
 export * from "./utils";
+
+// Email client
+export * from "./email";

@@ -52,10 +52,11 @@ export default function BookingConfirmation({
       </div>
 
       <h3 className="text-lg font-semibold text-gray-900 mb-1">
-        Booking Confirmed!
+        Request Submitted!
       </h3>
       <p className="text-sm text-gray-600 mb-4">
-        Your appointment has been booked.
+        Your request has been submitted. You will receive an email on
+        confirmation.
       </p>
 
       <div className="bg-gray-50 rounded-lg p-4 mb-6 text-left">

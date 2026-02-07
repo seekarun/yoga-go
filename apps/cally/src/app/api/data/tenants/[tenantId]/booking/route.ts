@@ -10,6 +10,7 @@ import { createCalendarEvent } from "@/lib/repositories/calendarEventRepository"
 import { generateAvailableSlots } from "@/lib/booking/availability";
 import { DEFAULT_BOOKING_CONFIG } from "@/types/booking";
 import type { CreateBookingRequest } from "@/types/booking";
+import { sendBookingNotificationEmail } from "@/lib/email/bookingNotification";
 
 interface RouteParams {
   params: Promise<{
@@ -113,6 +114,19 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     });
 
     console.log("[DBG][booking] Created booking event:", event.id);
+
+    // Fire-and-forget: send booking notification email to visitor
+    sendBookingNotificationEmail({
+      visitorName,
+      visitorEmail,
+      note,
+      startTime,
+      endTime,
+      date,
+      tenant,
+    }).catch((err) =>
+      console.error("[DBG][booking] Notification email error:", err),
+    );
 
     return NextResponse.json({
       success: true,
