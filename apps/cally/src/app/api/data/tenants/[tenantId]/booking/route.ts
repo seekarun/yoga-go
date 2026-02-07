@@ -57,7 +57,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const bookingConfig = tenant.bookingConfig ?? DEFAULT_BOOKING_CONFIG;
 
     // Re-validate slot availability to prevent double-booking
-    const date = startTime.substring(0, 10);
+    // Extract date in the tenant's timezone (not UTC) to match how slots were generated
+    const startDate = new Date(startTime);
+    const dateFormatter = new Intl.DateTimeFormat("en-CA", {
+      timeZone: bookingConfig.timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    const date = dateFormatter.format(startDate);
     const existingEvents = await getCalendarEventsByDateRange(
       tenantId,
       date,
@@ -98,6 +106,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       description,
       startTime,
       endTime,
+      date,
       type: "general",
       color: "#10b981",
     });

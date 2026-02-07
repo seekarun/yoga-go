@@ -321,7 +321,7 @@ export async function createCalendarEvent(
 ): Promise<CalendarEvent> {
   const now = new Date().toISOString();
   const eventId = generateEventId();
-  const date = extractDate(input.startTime);
+  const date = input.date ?? extractDate(input.startTime);
   const duration = calculateDuration(input.startTime, input.endTime);
 
   console.log(

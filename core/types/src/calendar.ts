@@ -48,6 +48,8 @@ export interface CreateCalendarEventInput {
   startTime: string;
   endTime: string;
   type: CalendarEventType;
+  /** Override date (YYYY-MM-DD) for storage key. When omitted, derived from startTime UTC. */
+  date?: string;
   webinarId?: string;
   sessionId?: string;
   meetingLink?: string;
