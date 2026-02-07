@@ -115,8 +115,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     console.log("[DBG][booking] Created booking event:", event.id);
 
-    // Fire-and-forget: send booking notification email to visitor
-    sendBookingNotificationEmail({
+    // Send booking notification email to visitor (errors caught internally — won't break response)
+    await sendBookingNotificationEmail({
       visitorName,
       visitorEmail,
       note,
@@ -124,9 +124,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       endTime,
       date,
       tenant,
-    }).catch((err) =>
-      console.error("[DBG][booking] Notification email error:", err),
-    );
+    });
 
     return NextResponse.json({
       success: true,

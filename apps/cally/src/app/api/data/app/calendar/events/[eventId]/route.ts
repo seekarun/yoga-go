@@ -10,6 +10,10 @@ import type { ApiResponse, CalendarEvent, CalendarEventStatus } from "@/types";
 import { auth } from "@/auth";
 import { getTenantByUserId } from "@/lib/repositories/tenantRepository";
 import * as calendarEventRepository from "@/lib/repositories/calendarEventRepository";
+import {
+  sendBookingConfirmedEmail,
+  parseVisitorFromDescription,
+} from "@/lib/email/bookingNotification";
 
 interface RouteParams {
   params: Promise<{
@@ -166,6 +170,26 @@ export async function PUT(request: Request, { params }: RouteParams) {
     }
 
     console.log("[DBG][calendar/events/[eventId]] Updated event:", eventId);
+
+    // Send confirmation email when a pending booking is approved (status → scheduled)
+    if (currentEvent.status === "pending" && body.status === "scheduled") {
+      const visitor = parseVisitorFromDescription(currentEvent.description);
+      if (visitor) {
+        await sendBookingConfirmedEmail({
+          visitorName: visitor.visitorName,
+          visitorEmail: visitor.visitorEmail,
+          note: visitor.note,
+          startTime: updatedEvent.startTime,
+          endTime: updatedEvent.endTime,
+          tenant,
+        });
+      } else {
+        console.warn(
+          "[DBG][calendar/events/[eventId]] Could not parse visitor info for confirmation email",
+        );
+      }
+    }
+
     return NextResponse.json<ApiResponse<CalendarEvent>>({
       success: true,
       data: updatedEvent,

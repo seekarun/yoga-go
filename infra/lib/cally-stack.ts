@@ -287,6 +287,13 @@ export class CallyStack extends cdk.Stack {
       resources: ["arn:aws:ses:us-west-2:*:identity/*"],
     });
 
+    // SES policy for sending emails (booking notifications, etc.)
+    const sesEmailSendPolicy = new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ["ses:SendEmail", "ses:SendRawEmail"],
+      resources: ["*"],
+    });
+
     // S3 policy for audio file storage (TTS for phone calls)
     const s3Policy = new iam.PolicyStatement({
       effect: iam.Effect.ALLOW,
@@ -306,7 +313,7 @@ export class CallyStack extends cdk.Stack {
     // Create managed policy and attach to user
     const vercelPolicy = new iam.ManagedPolicy(this, "VercelPolicy", {
       managedPolicyName: "cally-vercel-policy",
-      statements: [dynamoDbPolicy, cognitoPolicy, sesPolicy, s3Policy],
+      statements: [dynamoDbPolicy, cognitoPolicy, sesPolicy, sesEmailSendPolicy, s3Policy],
     });
 
     vercelUser.addManagedPolicy(vercelPolicy);
