@@ -7,6 +7,7 @@ import { auth } from "@/auth";
 import {
   getTenantByUserId,
   updateDomainConfig,
+  createDomainLookup,
 } from "@/lib/repositories/tenantRepository";
 import { verifyDomain, getDomainStatus } from "@/lib/vercel";
 
@@ -67,8 +68,12 @@ export async function POST() {
         vercelVerified: true,
         vercelVerifiedAt: new Date().toISOString(),
       });
+
+      // Create domain→tenantId lookup record for middleware routing
+      await createDomainLookup(domain, tenant.id);
+
       console.log(
-        "[DBG][domain/verify] Domain verified for tenant:",
+        "[DBG][domain/verify] Domain verified and lookup created for tenant:",
         tenant.id,
       );
     }

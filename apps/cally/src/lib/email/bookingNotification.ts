@@ -43,10 +43,23 @@ export function getFromEmail(tenant: CallyTenant): string {
 }
 
 /**
+ * Get the signup page URL for a tenant
+ * Custom domain: middleware rewrites /signup → /{tenantId}/signup, so no tenantId in URL
+ * Default domain: explicit /{tenantId}/signup path needed
+ */
+function getSignupUrl(tenant: CallyTenant, visitorEmail: string): string {
+  if (tenant.domainConfig?.domain && tenant.domainConfig.vercelVerified) {
+    return `https://${tenant.domainConfig.domain}/signup?email=${encodeURIComponent(visitorEmail)}`;
+  }
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://cally.live";
+  return `${baseUrl}/${tenant.id}/signup?email=${encodeURIComponent(visitorEmail)}`;
+}
+
+/**
  * Get signup CTA HTML snippet for booking emails
  */
 function getSignupCtaHtml(tenant: CallyTenant, visitorEmail: string): string {
-  const signupUrl = `${getLandingPageUrl(tenant)}/signup?email=${encodeURIComponent(visitorEmail)}`;
+  const signupUrl = getSignupUrl(tenant, visitorEmail);
   return `
               <!-- Sign Up CTA -->
               <div style="border-top: 1px solid #e5e7eb; margin-top: 25px; padding-top: 20px; text-align: center;">
@@ -63,7 +76,7 @@ function getSignupCtaHtml(tenant: CallyTenant, visitorEmail: string): string {
  * Get signup CTA plain text for booking emails
  */
 function getSignupCtaText(tenant: CallyTenant, visitorEmail: string): string {
-  const signupUrl = `${getLandingPageUrl(tenant)}/signup?email=${encodeURIComponent(visitorEmail)}`;
+  const signupUrl = getSignupUrl(tenant, visitorEmail);
   return `\nSign up for a discount on your next appointment: ${signupUrl}`;
 }
 
