@@ -1,0 +1,3 @@
+- sanitize emails in appointments
+- record 100ms call and provide summary in /user page for tenants
+-

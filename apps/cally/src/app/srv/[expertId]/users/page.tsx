@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import type { CallyUser, UserType } from "@/types";
+import Modal, { ModalHeader, ModalFooter } from "@/components/Modal";
+import { PrimaryButton, SecondaryButton } from "@/components/Button";
+import { useToast } from "@/components/Toast";
 
 type FilterType = "all" | UserType;
 
@@ -13,6 +16,11 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterType>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
+  const [showComposeModal, setShowComposeModal] = useState(false);
+
+  const { showToast } = useToast();
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -44,13 +52,71 @@ export default function UsersPage() {
     [users],
   );
 
-  const filteredUsers = useMemo(
-    () =>
-      activeFilter === "all"
-        ? users
-        : users.filter((u) => u.userType === activeFilter),
-    [users, activeFilter],
+  const filteredUsers = useMemo(() => {
+    let result = users;
+
+    if (activeFilter !== "all") {
+      result = result.filter((u) => u.userType === activeFilter);
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (u) =>
+          u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q),
+      );
+    }
+
+    return result;
+  }, [users, activeFilter, searchQuery]);
+
+  const visibleEmails = useMemo(
+    () => new Set(filteredUsers.map((u) => u.email)),
+    [filteredUsers],
   );
+
+  const allVisibleSelected =
+    filteredUsers.length > 0 &&
+    filteredUsers.every((u) => selectedEmails.has(u.email));
+
+  const toggleSelectAll = () => {
+    setSelectedEmails((prev) => {
+      const next = new Set(prev);
+      if (allVisibleSelected) {
+        for (const email of visibleEmails) {
+          next.delete(email);
+        }
+      } else {
+        for (const email of visibleEmails) {
+          next.add(email);
+        }
+      }
+      return next;
+    });
+  };
+
+  const toggleSelect = (email: string) => {
+    setSelectedEmails((prev) => {
+      const next = new Set(prev);
+      if (next.has(email)) {
+        next.delete(email);
+      } else {
+        next.add(email);
+      }
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelectedEmails(new Set());
+
+  const handleSendComplete = (sentCount: number) => {
+    showToast(
+      `Email sent to ${sentCount} user${sentCount !== 1 ? "s" : ""}`,
+      "success",
+    );
+    setShowComposeModal(false);
+    clearSelection();
+  };
 
   return (
     <div className="p-6">
@@ -68,27 +134,57 @@ export default function UsersPage() {
         )}
       </div>
 
-      {/* Filter pills */}
+      {/* Filter pills and search */}
       {!loading && users.length > 0 && (
-        <div className="mb-4 flex gap-2">
-          <FilterPill
-            label="All"
-            count={counts.all}
-            active={activeFilter === "all"}
-            onClick={() => setActiveFilter("all")}
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <div className="flex gap-2">
+            <FilterPill
+              label="All"
+              count={counts.all}
+              active={activeFilter === "all"}
+              onClick={() => setActiveFilter("all")}
+            />
+            <FilterPill
+              label="Registered"
+              count={counts.registered}
+              active={activeFilter === "registered"}
+              onClick={() => setActiveFilter("registered")}
+            />
+            <FilterPill
+              label="Visitors"
+              count={counts.visitor}
+              active={activeFilter === "visitor"}
+              onClick={() => setActiveFilter("visitor")}
+            />
+          </div>
+          <input
+            type="text"
+            placeholder="Search by name or email..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-sm text-[var(--text-main)] placeholder:text-[var(--text-muted)] focus:border-[var(--color-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
           />
-          <FilterPill
-            label="Registered"
-            count={counts.registered}
-            active={activeFilter === "registered"}
-            onClick={() => setActiveFilter("registered")}
-          />
-          <FilterPill
-            label="Visitors"
-            count={counts.visitor}
-            active={activeFilter === "visitor"}
-            onClick={() => setActiveFilter("visitor")}
-          />
+        </div>
+      )}
+
+      {/* Selection toolbar */}
+      {selectedEmails.size > 0 && (
+        <div className="mb-4 flex items-center gap-3 rounded-lg border border-[var(--color-primary)]/20 bg-[var(--color-primary)]/5 px-4 py-2">
+          <span className="text-sm font-medium text-[var(--text-main)]">
+            {selectedEmails.size} selected
+          </span>
+          <PrimaryButton
+            size="default"
+            onClick={() => setShowComposeModal(true)}
+          >
+            Email Selected
+          </PrimaryButton>
+          <button
+            onClick={clearSelection}
+            className="text-sm text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
+          >
+            Clear
+          </button>
         </div>
       )}
 
@@ -134,6 +230,14 @@ export default function UsersPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-[var(--color-border)] bg-gray-50/50">
+                <th className="px-4 py-3 text-left">
+                  <input
+                    type="checkbox"
+                    checked={allVisibleSelected}
+                    onChange={toggleSelectAll}
+                    className="h-4 w-4 rounded border-gray-300 text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
+                  />
+                </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--text-muted)]">
                   Name
                 </th>
@@ -157,6 +261,14 @@ export default function UsersPage() {
                   key={user.email}
                   className="hover:bg-gray-50/50 transition-colors"
                 >
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedEmails.has(user.email)}
+                      onChange={() => toggleSelect(user.email)}
+                      className="h-4 w-4 rounded border-gray-300 text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       {user.avatar ? (
@@ -200,9 +312,154 @@ export default function UsersPage() {
           </table>
         </div>
       )}
+
+      {/* Compose email modal */}
+      <ComposeEmailModal
+        isOpen={showComposeModal}
+        onClose={() => setShowComposeModal(false)}
+        emails={Array.from(selectedEmails)}
+        onSendComplete={handleSendComplete}
+      />
     </div>
   );
 }
+
+// =============================================
+// Compose Email Modal
+// =============================================
+
+function ComposeEmailModal({
+  isOpen,
+  onClose,
+  emails,
+  onSendComplete,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  emails: string[];
+  onSendComplete: (sentCount: number) => void;
+}) {
+  const [subject, setSubject] = useState("");
+  const [body, setBody] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState("");
+
+  const handleClose = () => {
+    if (!sending) {
+      setSubject("");
+      setBody("");
+      setSendError("");
+      onClose();
+    }
+  };
+
+  const handleSend = async () => {
+    if (!subject.trim() || !body.trim()) return;
+
+    setSending(true);
+    setSendError("");
+
+    try {
+      const res = await fetch("/api/data/app/subscribers/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emails, subject, body }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        const sentCount = data.data?.sent ?? emails.length;
+        setSubject("");
+        setBody("");
+        setSendError("");
+        onSendComplete(sentCount);
+      } else {
+        setSendError(data.error || "Failed to send emails");
+      }
+    } catch {
+      setSendError("Failed to send emails. Please try again.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      maxWidth="max-w-2xl"
+      closeOnBackdropClick={!sending}
+      closeOnEscape={!sending}
+    >
+      <ModalHeader onClose={handleClose}>Compose Email</ModalHeader>
+
+      <p className="mb-4 text-sm text-[var(--text-muted)]">
+        Sending to {emails.length} user{emails.length !== 1 ? "s" : ""}
+      </p>
+
+      <div className="space-y-4">
+        <div>
+          <label
+            htmlFor="email-subject"
+            className="mb-1 block text-sm font-medium text-[var(--text-main)]"
+          >
+            Subject
+          </label>
+          <input
+            id="email-subject"
+            type="text"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            placeholder="Email subject..."
+            disabled={sending}
+            className="w-full rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--text-main)] placeholder:text-[var(--text-muted)] focus:border-[var(--color-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] disabled:opacity-50"
+          />
+        </div>
+
+        <div>
+          <label
+            htmlFor="email-body"
+            className="mb-1 block text-sm font-medium text-[var(--text-main)]"
+          >
+            Message
+          </label>
+          <textarea
+            id="email-body"
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="Write your message..."
+            rows={8}
+            disabled={sending}
+            className="w-full rounded-lg border border-[var(--color-border)] bg-white px-3 py-2 text-sm text-[var(--text-main)] placeholder:text-[var(--text-muted)] focus:border-[var(--color-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] disabled:opacity-50 resize-y"
+          />
+        </div>
+      </div>
+
+      {sendError && (
+        <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+          {sendError}
+        </div>
+      )}
+
+      <ModalFooter>
+        <SecondaryButton onClick={handleClose} disabled={sending}>
+          Cancel
+        </SecondaryButton>
+        <PrimaryButton
+          onClick={handleSend}
+          loading={sending}
+          disabled={!subject.trim() || !body.trim()}
+        >
+          Send
+        </PrimaryButton>
+      </ModalFooter>
+    </Modal>
+  );
+}
+
+// =============================================
+// Helper Components
+// =============================================
 
 function FilterPill({
   label,

@@ -606,6 +606,28 @@
             },
             "description": "List all users (registered subscribers + booking visitors) for the authenticated tenant. Returns CallyUser[] with userType field ('registered' | 'visitor'). De-duplicates by email — visitors who later signed up show as 'registered'. Sorted by newest date first."
           }
+        },
+        {
+          "name": "Send Broadcast Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"emails\": [\"user1@example.com\", \"user2@example.com\"],\n  \"subject\": \"Hello from our studio!\",\n  \"body\": \"We have exciting news to share with you.\\n\\nSee you soon!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/subscribers/email",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "subscribers", "email"]
+            },
+            "description": "Send a broadcast email to selected users. Sends individually per recipient (not CC/BCC). Returns { sent: N, failed: N }. Requires authentication."
+          }
         }
       ]
     }
