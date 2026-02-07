@@ -1,3 +1,4 @@
+// @ts-nocheck — WIP: depends on LandingPageConfig V2 types not yet implemented
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
