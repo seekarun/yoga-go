@@ -36,8 +36,15 @@
   // Prevent double-init
   if (window.CallyEmbed) return;
 
-  const script = document.currentScript;
-  if (!script) return;
+  // Find the script element — document.currentScript is null when loaded
+  // dynamically (e.g. React useEffect, async script injection)
+  const script =
+    document.currentScript ||
+    document.querySelector('script[src*="embed.js"][data-tenant-id]');
+  if (!script) {
+    console.error("[CallyEmbed] Could not find embed.js script element");
+    return;
+  }
 
   const tenantId = script.getAttribute("data-tenant-id");
   const widget = script.getAttribute("data-widget") || "booking";
@@ -116,7 +123,20 @@
       openPopup(widget);
     };
 
-    script.parentNode.insertBefore(triggerEl, script.nextSibling);
+    // Insert trigger near the script element if possible, otherwise use
+    // a data-container target, or fall back to document.body
+    const triggerTarget = container ? document.querySelector(container) : null;
+    if (triggerTarget) {
+      triggerTarget.appendChild(triggerEl);
+    } else if (
+      script.parentNode &&
+      script.parentNode !== document.head &&
+      script.parentNode !== document.documentElement
+    ) {
+      script.parentNode.insertBefore(triggerEl, script.nextSibling);
+    } else {
+      document.body.appendChild(triggerEl);
+    }
   }
 
   function openPopup(w) {
@@ -163,11 +183,20 @@
   // ====== INLINE MODE ======
 
   function initInline() {
-    const containerEl = container
-      ? document.querySelector(container)
-      : script.parentNode;
+    let containerEl = container ? document.querySelector(container) : null;
+    // Fall back to script's parent if it's a visible element (not <head>)
+    if (
+      !containerEl &&
+      script.parentNode &&
+      script.parentNode !== document.head &&
+      script.parentNode !== document.documentElement
+    ) {
+      containerEl = script.parentNode;
+    }
     if (!containerEl) {
-      console.error("[CallyEmbed] Container not found:", container);
+      console.error(
+        "[CallyEmbed] Container not found. Use data-container to specify a target element.",
+      );
       return;
     }
 
