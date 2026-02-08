@@ -56,9 +56,18 @@ const MODE_OPTIONS: Record<
   ],
 };
 
-const BASE_DOMAIN = process.env.NEXT_PUBLIC_DOMAIN || "cally.app";
-
 type SnippetFormat = "html" | "react";
+
+/**
+ * Get the base URL for embed snippets.
+ * Uses window.location.origin so it always matches the actual deployment domain.
+ */
+function getBaseUrl(): string {
+  if (typeof window !== "undefined") {
+    return window.location.origin;
+  }
+  return `https://${process.env.NEXT_PUBLIC_DOMAIN || "cally.app"}`;
+}
 
 function generateSnippet(
   tenantId: string,
@@ -66,7 +75,7 @@ function generateSnippet(
   mode: EmbedMode,
   format: SnippetFormat,
 ): string {
-  const base = `https://${BASE_DOMAIN}`;
+  const base = getBaseUrl();
 
   if (format === "react") {
     return generateReactSnippet(tenantId, widget, mode, base);
@@ -142,7 +151,7 @@ export default function EmbedSettingsPage() {
     selectedMode,
     snippetFormat,
   );
-  const previewUrl = `https://${BASE_DOMAIN}/embed/${tenantId}/${selectedWidget}`;
+  const previewUrl = `${getBaseUrl()}/embed/${tenantId}/${selectedWidget}`;
 
   // Reset mode when widget changes
   const handleWidgetChange = useCallback(

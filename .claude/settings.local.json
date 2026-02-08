@@ -120,7 +120,9 @@
       "Bash(git pull:*)",
       "Bash(git stash:*)",
       "Bash(git stash pop:*)",
-      "Bash(git status:*)"
+      "Bash(git status:*)",
+      "WebFetch(domain:craftedxp.au)",
+      "WebFetch(domain:proj-cally.vercel.app)"
     ],
     "deny": [],
     "ask": []
