@@ -22,6 +22,10 @@
  * Programmatic API (available after script loads):
  *   CallyEmbed.open('booking');
  *   CallyEmbed.close();
+ *
+ * Button integration (popup mode):
+ *   <button data-cally-open="booking">Book Now</button>
+ *   <button data-cally-open="contact">Contact Us</button>
  */
 (function () {
   "use strict";
@@ -108,7 +112,6 @@
   // State
   let overlayEl = null;
   let iframeEl = null;
-  let triggerEl = null;
   let floatBubbleEl = null;
   let isOpen = false;
 
@@ -145,47 +148,28 @@
   // ====== POPUP MODE ======
 
   function initPopup() {
-    // Create trigger button
-    triggerEl = document.createElement("button");
-    triggerEl.id = "cally-embed-trigger";
-    triggerEl.innerHTML =
-      '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>';
-    if (widget === "contact") {
-      triggerEl.innerHTML =
-        '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>';
-    }
-    const btnText = widget === "contact" ? " Contact Us" : " Book Now";
-    triggerEl.innerHTML += btnText;
-    triggerEl.style.cssText =
-      "display:inline-flex;align-items:center;gap:6px;padding:10px 20px;background:#6366f1;color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;transition:background 0.2s;z-index:99999;";
-    triggerEl.onmouseenter = function () {
-      triggerEl.style.background = "#4f46e5";
-    };
-    triggerEl.onmouseleave = function () {
-      triggerEl.style.background = "#6366f1";
-    };
-    triggerEl.onclick = function () {
-      openPopup(widget);
-    };
+    // Popup mode loads silently — no auto-rendered button.
+    // Users place their own buttons and wire them up via:
+    //   - data-cally-open="booking" attribute (click delegation)
+    //   - CallyEmbed.open('booking') programmatic call
 
-    // Insert trigger into the target container, or near the script, or body
-    const triggerTarget = container ? document.querySelector(container) : null;
-    if (triggerTarget) {
-      console.log("[CallyEmbed] Appending trigger to container:", container);
-      triggerTarget.appendChild(triggerEl);
-    } else if (
-      script &&
-      script.parentNode &&
-      script.parentNode !== document.head &&
-      script.parentNode !== document.documentElement
-    ) {
-      console.log("[CallyEmbed] Inserting trigger next to script element");
-      script.parentNode.insertBefore(triggerEl, script.nextSibling);
-    } else {
-      console.log("[CallyEmbed] Appending trigger to document.body");
-      document.body.appendChild(triggerEl);
-    }
-    console.log("[CallyEmbed] Popup trigger rendered.");
+    // Click delegation: catch clicks on any [data-cally-open] element
+    document.addEventListener("click", function (e) {
+      let target = e.target;
+      while (target && target !== document) {
+        if (target.getAttribute && target.getAttribute("data-cally-open")) {
+          const w = target.getAttribute("data-cally-open");
+          openPopup(w);
+          e.preventDefault();
+          return;
+        }
+        target = target.parentElement;
+      }
+    });
+
+    console.log(
+      "[CallyEmbed] Popup mode ready (no auto-button). Use data-cally-open attribute or CallyEmbed.open() to trigger.",
+    );
   }
 
   function openPopup(w) {

@@ -1,53 +1,63 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useEffect, useCallback } from "react";
 import type { SimpleLandingPageConfig } from "@/types/landing-page";
 import HeroTemplateRenderer from "@/templates/hero";
-import { BookingWidget } from "@/components/booking";
-import { ContactWidget } from "@/components/contact";
 
 interface LandingPageRendererProps {
   config: SimpleLandingPageConfig;
   tenantId: string;
 }
 
+declare const CallyEmbed:
+  | { open: (widget: string) => void; close: () => void; isOpen: () => boolean }
+  | undefined;
+
 /**
  * Public landing page renderer
  * Renders the selected template without edit mode
- * Handles booking widget when button action is "booking"
+ * Uses embed.js popup mode for booking/contact actions
  */
 export default function LandingPageRenderer({
   config,
   tenantId,
 }: LandingPageRendererProps) {
-  const [isBookingOpen, setIsBookingOpen] = useState(false);
-  const [isContactOpen, setIsContactOpen] = useState(false);
+  // Load embed.js in popup mode
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- embed config is a plain object on window
+    (window as any).CallyEmbedConfig = {
+      tenantId,
+      widget: "booking",
+      mode: "popup",
+    };
+    const script = document.createElement("script");
+    script.src = "/embed.js";
+    document.body.appendChild(script);
+    return () => {
+      script.remove();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- cleanup global
+      delete (window as any).CallyEmbed;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- cleanup global
+      delete (window as any).CallyEmbedConfig;
+      document.getElementById("cally-embed-overlay")?.remove();
+      document.getElementById("cally-embed-styles")?.remove();
+    };
+  }, [tenantId]);
 
   const handleButtonClick = useCallback(() => {
-    if (config.button?.action === "booking") {
-      setIsBookingOpen(true);
-    } else if (config.button?.action === "contact") {
-      setIsContactOpen(true);
+    const action = config.button?.action || "booking";
+    if (typeof CallyEmbed !== "undefined") {
+      CallyEmbed.open(action);
+    } else {
+      console.error("[DBG][LandingPageRenderer] CallyEmbed not loaded yet");
     }
   }, [config.button?.action]);
 
   return (
-    <>
-      <HeroTemplateRenderer
-        config={config}
-        isEditing={false}
-        onButtonClick={handleButtonClick}
-      />
-      <BookingWidget
-        tenantId={tenantId}
-        isOpen={isBookingOpen}
-        onClose={() => setIsBookingOpen(false)}
-      />
-      <ContactWidget
-        tenantId={tenantId}
-        isOpen={isContactOpen}
-        onClose={() => setIsContactOpen(false)}
-      />
-    </>
+    <HeroTemplateRenderer
+      config={config}
+      isEditing={false}
+      onButtonClick={handleButtonClick}
+    />
   );
 }

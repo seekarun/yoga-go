@@ -7,7 +7,6 @@ import { getTenantById } from "@/lib/repositories/tenantRepository";
 import { DEFAULT_LANDING_PAGE_CONFIG } from "@/types/landing-page";
 import LandingPageRenderer from "@/components/landing-page/LandingPageRenderer";
 import { ChatWidgetWrapper } from "@/components/ai";
-import EmbedTest from "@/components/EmbedTest";
 
 interface PageProps {
   params: Promise<{
@@ -80,8 +79,6 @@ export default async function TenantLandingPage({ params }: PageProps) {
         tenantId={tenantId}
         config={tenant.aiAssistantConfig}
       />
-      {/* Temporary: embed widget test — remove after testing */}
-      <EmbedTest tenantId={tenantId} />
     </>
   );
 }

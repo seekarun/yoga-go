@@ -21,7 +21,8 @@ const MODE_OPTIONS: Record<
     {
       value: "popup",
       label: "Popup",
-      description: 'Shows a "Book Now" button that opens an overlay',
+      description:
+        "Loads silently — wire up your own button with data-cally-open or CallyEmbed.open()",
     },
     {
       value: "inline",
@@ -33,7 +34,8 @@ const MODE_OPTIONS: Record<
     {
       value: "popup",
       label: "Popup",
-      description: 'Shows a "Contact Us" button that opens an overlay',
+      description:
+        "Loads silently — wire up your own button with data-cally-open or CallyEmbed.open()",
     },
     {
       value: "inline",
@@ -86,6 +88,10 @@ function generateSnippet(
     return `<div id="${containerId}"></div>\n<script src="${base}/embed.js"\n  data-tenant-id="${tenantId}"\n  data-widget="${widget}"\n  data-mode="inline"\n  data-container="#${containerId}">\n</script>`;
   }
 
+  if (mode === "popup") {
+    return `<!-- Load the embed script (loads silently, no auto-button) -->\n<script src="${base}/embed.js"\n  data-tenant-id="${tenantId}"\n  data-widget="${widget}"\n  data-mode="popup">\n</script>\n\n<!-- Place your own button(s) anywhere on the page -->\n<button data-cally-open="${widget}">${widget === "contact" ? "Contact Us" : "Book Now"}</button>`;
+  }
+
   return `<script src="${base}/embed.js"\n  data-tenant-id="${tenantId}"\n  data-widget="${widget}"\n  data-mode="${mode}">\n</script>`;
 }
 
@@ -123,6 +129,35 @@ export default function ${componentName}() {
 }`;
   }
 
+  if (mode === "popup") {
+    return `import { useEffect } from "react";
+
+export default function ${componentName}() {
+  useEffect(() => {
+    // Set config before loading the script
+    window.CallyEmbedConfig = {
+      tenantId: "${tenantId}",
+      widget: "${widget}",
+      mode: "popup",
+    };
+    const script = document.createElement("script");
+    script.src = "${base}/embed.js";
+    document.body.appendChild(script);
+    return () => {
+      script.remove();
+      delete window.CallyEmbed;
+      delete window.CallyEmbedConfig;
+    };
+  }, []);
+
+  return (
+    <button onClick={() => window.CallyEmbed?.open("${widget}")}>
+      ${widget === "contact" ? "Contact Us" : "Book Now"}
+    </button>
+  );
+}`;
+  }
+
   return `import { useEffect } from "react";
 
 export default function ${componentName}() {
@@ -143,7 +178,7 @@ export default function ${componentName}() {
     };
   }, []);
 
-  return null; // ${mode === "float" ? "Floating bubble renders at bottom-right of page" : "Popup trigger appends to document.body"}
+  return null; // ${mode === "float" ? "Floating bubble renders at bottom-right of page" : "Widget renders in configured mode"}
 }`;
 }
 
@@ -401,15 +436,23 @@ export default function EmbedSettingsPage() {
                 copy the code snippet.
               </li>
               <li>
-                Paste it into your page&apos;s HTML — either inside the{" "}
+                Paste the{" "}
                 <code className="bg-gray-100 px-1 rounded text-xs">
-                  &lt;body&gt;
+                  &lt;script&gt;
                 </code>{" "}
-                where you want the button/widget, or before the closing{" "}
+                tag before the closing{" "}
                 <code className="bg-gray-100 px-1 rounded text-xs">
                   &lt;/body&gt;
                 </code>{" "}
-                tag for popup/float modes.
+                tag.
+              </li>
+              <li>
+                For <span className="font-medium">popup</span> mode, place your
+                own button with{" "}
+                <code className="bg-gray-100 px-1 rounded text-xs">
+                  data-cally-open=&quot;booking&quot;
+                </code>{" "}
+                anywhere on the page.
               </li>
               <li>
                 For <span className="font-medium">inline</span> mode, place the{" "}
@@ -458,15 +501,23 @@ export default function EmbedSettingsPage() {
         {/* Programmatic API */}
         <div className="mt-6 bg-white border border-[var(--color-border)] rounded-lg p-5">
           <h3 className="font-medium text-[var(--text-main)] mb-2">
-            Programmatic API
+            Triggering the popup
           </h3>
           <p className="text-sm text-[var(--text-muted)] mb-3">
-            After the script loads, a global{" "}
-            <code className="bg-gray-100 px-1 rounded text-xs">CallyEmbed</code>{" "}
-            object is available for manual control:
+            In popup mode, the script loads silently — no button is rendered
+            automatically. Use either approach to open the widget:
+          </p>
+          <p className="text-sm font-medium text-[var(--text-main)] mb-1">
+            Option 1: HTML attribute (recommended)
+          </p>
+          <pre className="bg-gray-900 text-green-400 p-3 rounded-lg text-xs font-mono mb-3">
+            {`<!-- Any element with data-cally-open will trigger the popup -->\n<button data-cally-open="booking">Book Now</button>\n<a href="#" data-cally-open="contact">Get in touch</a>`}
+          </pre>
+          <p className="text-sm font-medium text-[var(--text-main)] mb-1">
+            Option 2: JavaScript API
           </p>
           <pre className="bg-gray-900 text-green-400 p-3 rounded-lg text-xs font-mono">
-            {`// Open the widget programmatically\nCallyEmbed.open();\n\n// Close it\nCallyEmbed.close();\n\n// Check state\nCallyEmbed.isOpen(); // true | false`}
+            {`// Open the widget programmatically\nCallyEmbed.open("booking");\nCallyEmbed.open("contact");\n\n// Close it\nCallyEmbed.close();\n\n// Check state\nCallyEmbed.isOpen(); // true | false`}
           </pre>
           <p className="text-sm text-[var(--text-muted)] mt-3">
             You can also listen to events dispatched on{" "}
