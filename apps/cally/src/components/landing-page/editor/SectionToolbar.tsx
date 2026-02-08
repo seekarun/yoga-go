@@ -32,21 +32,38 @@ export default function SectionToolbar({
   onSectionMoveDown,
 }: SectionToolbarProps) {
   const [collapsed, setCollapsed] = useState(false);
-  const [position, setPosition] = useState({ x: 12, y: 0 });
+  // y=null means "use CSS centering"; once dragged, y becomes a pixel value
+  const [position, setPosition] = useState<{ x: number; y: number | null }>({
+    x: 12,
+    y: null,
+  });
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef({ mouseX: 0, mouseY: 0, elX: 0, elY: 0 });
   const panelRef = useRef<HTMLDivElement>(null);
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
-      // Only drag from the header area
       e.preventDefault();
       setIsDragging(true);
+
+      // Resolve CSS-centered position to actual pixels on first drag
+      let startY = position.y;
+      if (startY === null && panelRef.current) {
+        const parentRect =
+          panelRef.current.offsetParent?.getBoundingClientRect();
+        const panelRect = panelRef.current.getBoundingClientRect();
+        if (parentRect) {
+          startY = panelRect.top - parentRect.top;
+        } else {
+          startY = 0;
+        }
+      }
+
       dragStartRef.current = {
         mouseX: e.clientX,
         mouseY: e.clientY,
         elX: position.x,
-        elY: position.y,
+        elY: startY ?? 0,
       };
 
       const handleMouseMove = (ev: MouseEvent) => {
@@ -70,8 +87,10 @@ export default function SectionToolbar({
     [position],
   );
 
-  // Use centered Y when position.y is 0 (initial), otherwise use the dragged offset
-  const useCenteredY = position.y === 0;
+  const positionStyles: React.CSSProperties =
+    position.y === null
+      ? { top: "50%", transform: "translateY(-50%)" }
+      : { top: `${position.y}px` };
 
   if (collapsed) {
     return (
@@ -81,9 +100,7 @@ export default function SectionToolbar({
         style={{
           position: "absolute",
           left: `${position.x}px`,
-          ...(useCenteredY
-            ? { top: "50%", transform: "translateY(-50%)" }
-            : { top: `calc(50% + ${position.y}px)` }),
+          ...positionStyles,
           zIndex: 20,
           backgroundColor: "rgba(255, 255, 255, 0.95)",
           border: "1px solid #e5e7eb",
@@ -107,9 +124,7 @@ export default function SectionToolbar({
   const panelStyle: React.CSSProperties = {
     position: "absolute",
     left: `${position.x}px`,
-    ...(useCenteredY
-      ? { top: "50%", transform: "translateY(-50%)" }
-      : { top: `calc(50% + ${position.y}px)` }),
+    ...positionStyles,
     zIndex: 20,
     backgroundColor: "rgba(255, 255, 255, 0.95)",
     border: "1px solid #e5e7eb",
