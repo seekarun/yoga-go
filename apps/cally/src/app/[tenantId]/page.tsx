@@ -6,7 +6,6 @@ import { notFound } from "next/navigation";
 import { getTenantById } from "@/lib/repositories/tenantRepository";
 import { DEFAULT_LANDING_PAGE_CONFIG } from "@/types/landing-page";
 import LandingPageRenderer from "@/components/landing-page/LandingPageRenderer";
-import { ChatWidgetWrapper } from "@/components/ai";
 
 interface PageProps {
   params: Promise<{
@@ -72,15 +71,7 @@ export default async function TenantLandingPage({ params }: PageProps) {
     ...tenant.customLandingPage,
   };
 
-  return (
-    <>
-      <LandingPageRenderer config={landingPage} tenantId={tenantId} />
-      <ChatWidgetWrapper
-        tenantId={tenantId}
-        config={tenant.aiAssistantConfig}
-      />
-    </>
-  );
+  return <LandingPageRenderer config={landingPage} tenantId={tenantId} />;
 }
 
 // Generate metadata for SEO

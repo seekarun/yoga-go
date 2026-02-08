@@ -101,7 +101,7 @@ export const TEMPLATES: TemplateInfo[] = [
 /**
  * Action button types
  */
-export type ButtonAction = "booking" | "contact";
+export type ButtonAction = "booking" | "contact" | "chat";
 
 export interface ButtonConfig {
   label: string;
@@ -150,6 +150,7 @@ export const BUTTON_ACTIONS: {
     description: "Opens the booking calendar",
   },
   { id: "contact", name: "Contact Form", description: "Opens a contact form" },
+  { id: "chat", name: "AI Chat", description: "Opens the AI chat assistant" },
 ];
 
 /**
