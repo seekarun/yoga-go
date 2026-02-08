@@ -1,27 +1,22 @@
 "use client";
 
 import type { HeroTemplateProps } from "./types";
-import FeaturesSection from "./FeaturesSection";
+import SectionsRenderer from "./SectionsRenderer";
 
 /**
  * Minimal Template
  * Clean and simple with subtle background
  */
-export default function MinimalTemplate({
-  config,
-  isEditing = false,
-  onTitleChange,
-  onSubtitleChange,
-  onButtonClick,
-  onAboutParagraphChange,
-  onAboutImageClick,
-  onFeaturesHeadingChange,
-  onFeaturesSubheadingChange,
-  onFeatureCardChange,
-  onFeatureCardImageClick,
-  onAddFeatureCard,
-  onRemoveFeatureCard,
-}: HeroTemplateProps) {
+export default function MinimalTemplate(props: HeroTemplateProps) {
+  const {
+    config,
+    isEditing = false,
+    onTitleChange,
+    onSubtitleChange,
+    onButtonClick,
+    onAboutParagraphChange,
+    onAboutImageClick,
+  } = props;
   const {
     title,
     subtitle,
@@ -30,7 +25,6 @@ export default function MinimalTemplate({
     imageZoom,
     button,
     about,
-    features,
   } = config;
 
   const containerStyle: React.CSSProperties = {
@@ -370,20 +364,8 @@ export default function MinimalTemplate({
         </div>
       )}
 
-      {/* Features Section */}
-      {features && features.cards.length > 0 && (
-        <FeaturesSection
-          features={features}
-          isEditing={isEditing}
-          variant="light"
-          onHeadingChange={onFeaturesHeadingChange}
-          onSubheadingChange={onFeaturesSubheadingChange}
-          onCardChange={onFeatureCardChange}
-          onCardImageClick={onFeatureCardImageClick}
-          onAddCard={onAddFeatureCard}
-          onRemoveCard={onRemoveFeatureCard}
-        />
-      )}
+      {/* Dynamic Sections */}
+      <SectionsRenderer {...props} variant="light" />
     </>
   );
 }

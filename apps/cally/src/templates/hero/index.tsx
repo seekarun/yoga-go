@@ -1,6 +1,6 @@
 "use client";
 
-import type { TemplateId, SimpleLandingPageConfig } from "@/types/landing-page";
+import type { TemplateId } from "@/types/landing-page";
 import type { HeroTemplateProps } from "./types";
 import CenteredTemplate from "./CenteredTemplate";
 import LeftAlignedTemplate from "./LeftAlignedTemplate";
@@ -19,65 +19,15 @@ const TEMPLATE_COMPONENTS: Record<TemplateId, React.FC<HeroTemplateProps>> = {
   bold: BoldTemplate,
 };
 
-interface HeroTemplateRendererProps {
-  config: SimpleLandingPageConfig;
-  isEditing?: boolean;
-  onTitleChange?: (title: string) => void;
-  onSubtitleChange?: (subtitle: string) => void;
-  onButtonClick?: () => void;
-  onAboutParagraphChange?: (paragraph: string) => void;
-  onAboutImageClick?: () => void;
-  onFeaturesHeadingChange?: (heading: string) => void;
-  onFeaturesSubheadingChange?: (subheading: string) => void;
-  onFeatureCardChange?: (
-    cardId: string,
-    field: "title" | "description",
-    value: string,
-  ) => void;
-  onFeatureCardImageClick?: (cardId: string) => void;
-  onAddFeatureCard?: () => void;
-  onRemoveFeatureCard?: (cardId: string) => void;
-}
-
 /**
  * Hero Template Renderer
- * Renders the appropriate template based on the config
+ * Renders the appropriate template based on the config, passing all props through
  */
-export default function HeroTemplateRenderer({
-  config,
-  isEditing = false,
-  onTitleChange,
-  onSubtitleChange,
-  onButtonClick,
-  onAboutParagraphChange,
-  onAboutImageClick,
-  onFeaturesHeadingChange,
-  onFeaturesSubheadingChange,
-  onFeatureCardChange,
-  onFeatureCardImageClick,
-  onAddFeatureCard,
-  onRemoveFeatureCard,
-}: HeroTemplateRendererProps) {
+export default function HeroTemplateRenderer(props: HeroTemplateProps) {
   const TemplateComponent =
-    TEMPLATE_COMPONENTS[config.template] || CenteredTemplate;
+    TEMPLATE_COMPONENTS[props.config.template] || CenteredTemplate;
 
-  return (
-    <TemplateComponent
-      config={config}
-      isEditing={isEditing}
-      onTitleChange={onTitleChange}
-      onSubtitleChange={onSubtitleChange}
-      onButtonClick={onButtonClick}
-      onAboutParagraphChange={onAboutParagraphChange}
-      onAboutImageClick={onAboutImageClick}
-      onFeaturesHeadingChange={onFeaturesHeadingChange}
-      onFeaturesSubheadingChange={onFeaturesSubheadingChange}
-      onFeatureCardChange={onFeatureCardChange}
-      onFeatureCardImageClick={onFeatureCardImageClick}
-      onAddFeatureCard={onAddFeatureCard}
-      onRemoveFeatureCard={onRemoveFeatureCard}
-    />
-  );
+  return <TemplateComponent {...props} />;
 }
 
 // Re-export individual templates for direct use

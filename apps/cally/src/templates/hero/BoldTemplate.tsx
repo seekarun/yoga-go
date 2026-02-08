@@ -1,27 +1,22 @@
 "use client";
 
 import type { HeroTemplateProps } from "./types";
-import FeaturesSection from "./FeaturesSection";
+import SectionsRenderer from "./SectionsRenderer";
 
 /**
  * Bold Template
  * Large typography with strong visual impact
  */
-export default function BoldTemplate({
-  config,
-  isEditing = false,
-  onTitleChange,
-  onSubtitleChange,
-  onButtonClick,
-  onAboutParagraphChange,
-  onAboutImageClick,
-  onFeaturesHeadingChange,
-  onFeaturesSubheadingChange,
-  onFeatureCardChange,
-  onFeatureCardImageClick,
-  onAddFeatureCard,
-  onRemoveFeatureCard,
-}: HeroTemplateProps) {
+export default function BoldTemplate(props: HeroTemplateProps) {
+  const {
+    config,
+    isEditing = false,
+    onTitleChange,
+    onSubtitleChange,
+    onButtonClick,
+    onAboutParagraphChange,
+    onAboutImageClick,
+  } = props;
   const {
     title,
     subtitle,
@@ -30,7 +25,6 @@ export default function BoldTemplate({
     imageZoom,
     button,
     about,
-    features,
   } = config;
 
   const containerStyle: React.CSSProperties = {
@@ -365,20 +359,8 @@ export default function BoldTemplate({
         </div>
       )}
 
-      {/* Features Section */}
-      {features && features.cards.length > 0 && (
-        <FeaturesSection
-          features={features}
-          isEditing={isEditing}
-          variant="dark"
-          onHeadingChange={onFeaturesHeadingChange}
-          onSubheadingChange={onFeaturesSubheadingChange}
-          onCardChange={onFeatureCardChange}
-          onCardImageClick={onFeatureCardImageClick}
-          onAddCard={onAddFeatureCard}
-          onRemoveCard={onRemoveFeatureCard}
-        />
-      )}
+      {/* Dynamic Sections */}
+      <SectionsRenderer {...props} variant="dark" />
     </>
   );
 }

@@ -1,27 +1,22 @@
 "use client";
 
 import type { HeroTemplateProps } from "./types";
-import FeaturesSection from "./FeaturesSection";
+import SectionsRenderer from "./SectionsRenderer";
 
 /**
  * Centered Template
  * Classic centered layout with title and subtitle over the background
  */
-export default function CenteredTemplate({
-  config,
-  isEditing = false,
-  onTitleChange,
-  onSubtitleChange,
-  onButtonClick,
-  onAboutParagraphChange,
-  onAboutImageClick,
-  onFeaturesHeadingChange,
-  onFeaturesSubheadingChange,
-  onFeatureCardChange,
-  onFeatureCardImageClick,
-  onAddFeatureCard,
-  onRemoveFeatureCard,
-}: HeroTemplateProps) {
+export default function CenteredTemplate(props: HeroTemplateProps) {
+  const {
+    config,
+    isEditing = false,
+    onTitleChange,
+    onSubtitleChange,
+    onButtonClick,
+    onAboutParagraphChange,
+    onAboutImageClick,
+  } = props;
   const {
     title,
     subtitle,
@@ -30,7 +25,6 @@ export default function CenteredTemplate({
     imageZoom,
     button,
     about,
-    features,
   } = config;
 
   const containerStyle: React.CSSProperties = {
@@ -371,20 +365,8 @@ export default function CenteredTemplate({
         </div>
       )}
 
-      {/* Features Section */}
-      {features && features.cards.length > 0 && (
-        <FeaturesSection
-          features={features}
-          isEditing={isEditing}
-          variant="gray"
-          onHeadingChange={onFeaturesHeadingChange}
-          onSubheadingChange={onFeaturesSubheadingChange}
-          onCardChange={onFeatureCardChange}
-          onCardImageClick={onFeatureCardImageClick}
-          onAddCard={onAddFeatureCard}
-          onRemoveCard={onRemoveFeatureCard}
-        />
-      )}
+      {/* Dynamic Sections */}
+      <SectionsRenderer {...props} variant="gray" />
     </>
   );
 }

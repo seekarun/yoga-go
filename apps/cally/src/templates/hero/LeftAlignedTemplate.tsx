@@ -1,27 +1,22 @@
 "use client";
 
 import type { HeroTemplateProps } from "./types";
-import FeaturesSection from "./FeaturesSection";
+import SectionsRenderer from "./SectionsRenderer";
 
 /**
  * Left Aligned Template
  * Content aligned to the left with a modern feel
  */
-export default function LeftAlignedTemplate({
-  config,
-  isEditing = false,
-  onTitleChange,
-  onSubtitleChange,
-  onButtonClick,
-  onAboutParagraphChange,
-  onAboutImageClick,
-  onFeaturesHeadingChange,
-  onFeaturesSubheadingChange,
-  onFeatureCardChange,
-  onFeatureCardImageClick,
-  onAddFeatureCard,
-  onRemoveFeatureCard,
-}: HeroTemplateProps) {
+export default function LeftAlignedTemplate(props: HeroTemplateProps) {
+  const {
+    config,
+    isEditing = false,
+    onTitleChange,
+    onSubtitleChange,
+    onButtonClick,
+    onAboutParagraphChange,
+    onAboutImageClick,
+  } = props;
   const {
     title,
     subtitle,
@@ -30,7 +25,6 @@ export default function LeftAlignedTemplate({
     imageZoom,
     button,
     about,
-    features,
   } = config;
 
   const containerStyle: React.CSSProperties = {
@@ -371,20 +365,8 @@ export default function LeftAlignedTemplate({
         </div>
       )}
 
-      {/* Features Section */}
-      {features && features.cards.length > 0 && (
-        <FeaturesSection
-          features={features}
-          isEditing={isEditing}
-          variant="gray"
-          onHeadingChange={onFeaturesHeadingChange}
-          onSubheadingChange={onFeaturesSubheadingChange}
-          onCardChange={onFeatureCardChange}
-          onCardImageClick={onFeatureCardImageClick}
-          onAddCard={onAddFeatureCard}
-          onRemoveCard={onRemoveFeatureCard}
-        />
-      )}
+      {/* Dynamic Sections */}
+      <SectionsRenderer {...props} variant="gray" />
     </>
   );
 }

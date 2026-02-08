@@ -10,6 +10,12 @@ import type {
   FeaturesConfig,
   FeatureCard,
   TemplateImageConfig,
+  TestimonialsConfig,
+  Testimonial,
+  FAQConfig,
+  FAQItem,
+  FooterConfig,
+  SectionOrderItem,
 } from "@/types/landing-page";
 import {
   TEMPLATES,
@@ -18,6 +24,7 @@ import {
 } from "@/types/landing-page";
 import { ImageEditorOverlay, ButtonEditorOverlay } from "@core/components";
 import HeroTemplateRenderer from "@/templates/hero";
+import SectionToolbar from "./SectionToolbar";
 
 interface SimpleLandingPageEditorProps {
   tenantId: string;
@@ -106,7 +113,7 @@ export default function SimpleLandingPageEditor({
           tenantData.customLandingPage ||
           DEFAULT_LANDING_PAGE_CONFIG;
 
-        // Ensure we have a valid config structure
+        // Ensure we have a valid config structure (backward compat for new fields)
         setConfig({
           template: landingPage.template || "centered",
           title: landingPage.title || "Welcome",
@@ -127,6 +134,13 @@ export default function SimpleLandingPageEditor({
           },
           features:
             landingPage.features || DEFAULT_LANDING_PAGE_CONFIG.features,
+          testimonials:
+            landingPage.testimonials ||
+            DEFAULT_LANDING_PAGE_CONFIG.testimonials,
+          faq: landingPage.faq || DEFAULT_LANDING_PAGE_CONFIG.faq,
+          footer: landingPage.footer || DEFAULT_LANDING_PAGE_CONFIG.footer,
+          sections:
+            landingPage.sections || DEFAULT_LANDING_PAGE_CONFIG.sections,
         });
 
         setTimeout(() => {
@@ -361,6 +375,249 @@ export default function SimpleLandingPageEditor({
         ),
       } as FeaturesConfig,
     }));
+    setIsDirty(true);
+  }, []);
+
+  // --- Testimonials handlers ---
+  const handleTestimonialsHeadingChange = useCallback((heading: string) => {
+    setConfig((prev) => ({
+      ...prev,
+      testimonials: {
+        ...prev.testimonials,
+        heading,
+        testimonials: prev.testimonials?.testimonials || [],
+      } as TestimonialsConfig,
+    }));
+    setIsDirty(true);
+  }, []);
+
+  const handleTestimonialsSubheadingChange = useCallback(
+    (subheading: string) => {
+      setConfig((prev) => ({
+        ...prev,
+        testimonials: {
+          ...prev.testimonials,
+          subheading,
+          testimonials: prev.testimonials?.testimonials || [],
+        } as TestimonialsConfig,
+      }));
+      setIsDirty(true);
+    },
+    [],
+  );
+
+  const handleTestimonialChange = useCallback(
+    (
+      testimonialId: string,
+      field: "quote" | "authorName" | "authorTitle",
+      value: string,
+    ) => {
+      setConfig((prev) => ({
+        ...prev,
+        testimonials: {
+          ...prev.testimonials,
+          testimonials: (prev.testimonials?.testimonials || []).map((t) =>
+            t.id === testimonialId ? { ...t, [field]: value } : t,
+          ),
+        } as TestimonialsConfig,
+      }));
+      setIsDirty(true);
+    },
+    [],
+  );
+
+  const handleAddTestimonial = useCallback(() => {
+    const newTestimonial: Testimonial = {
+      id: `testimonial-${Date.now()}`,
+      quote: "Share your experience here.",
+      authorName: "Name",
+      authorTitle: "Client",
+      rating: 5,
+    };
+    setConfig((prev) => ({
+      ...prev,
+      testimonials: {
+        ...prev.testimonials,
+        testimonials: [
+          ...(prev.testimonials?.testimonials || []),
+          newTestimonial,
+        ],
+      } as TestimonialsConfig,
+    }));
+    setIsDirty(true);
+  }, []);
+
+  const handleRemoveTestimonial = useCallback((testimonialId: string) => {
+    setConfig((prev) => ({
+      ...prev,
+      testimonials: {
+        ...prev.testimonials,
+        testimonials: (prev.testimonials?.testimonials || []).filter(
+          (t) => t.id !== testimonialId,
+        ),
+      } as TestimonialsConfig,
+    }));
+    setIsDirty(true);
+  }, []);
+
+  // --- FAQ handlers ---
+  const handleFAQHeadingChange = useCallback((heading: string) => {
+    setConfig((prev) => ({
+      ...prev,
+      faq: {
+        ...prev.faq,
+        heading,
+        items: prev.faq?.items || [],
+      } as FAQConfig,
+    }));
+    setIsDirty(true);
+  }, []);
+
+  const handleFAQSubheadingChange = useCallback((subheading: string) => {
+    setConfig((prev) => ({
+      ...prev,
+      faq: {
+        ...prev.faq,
+        subheading,
+        items: prev.faq?.items || [],
+      } as FAQConfig,
+    }));
+    setIsDirty(true);
+  }, []);
+
+  const handleFAQItemChange = useCallback(
+    (itemId: string, field: "question" | "answer", value: string) => {
+      setConfig((prev) => ({
+        ...prev,
+        faq: {
+          ...prev.faq,
+          items: (prev.faq?.items || []).map((item) =>
+            item.id === itemId ? { ...item, [field]: value } : item,
+          ),
+        } as FAQConfig,
+      }));
+      setIsDirty(true);
+    },
+    [],
+  );
+
+  const handleAddFAQItem = useCallback(() => {
+    const newItem: FAQItem = {
+      id: `faq-${Date.now()}`,
+      question: "Your question here?",
+      answer: "Your answer here.",
+    };
+    setConfig((prev) => ({
+      ...prev,
+      faq: {
+        ...prev.faq,
+        items: [...(prev.faq?.items || []), newItem],
+      } as FAQConfig,
+    }));
+    setIsDirty(true);
+  }, []);
+
+  const handleRemoveFAQItem = useCallback((itemId: string) => {
+    setConfig((prev) => ({
+      ...prev,
+      faq: {
+        ...prev.faq,
+        items: (prev.faq?.items || []).filter((item) => item.id !== itemId),
+      } as FAQConfig,
+    }));
+    setIsDirty(true);
+  }, []);
+
+  // --- Footer handlers ---
+  const handleFooterTextChange = useCallback((text: string) => {
+    setConfig((prev) => ({
+      ...prev,
+      footer: { ...prev.footer, text } as FooterConfig,
+    }));
+    setIsDirty(true);
+  }, []);
+
+  const handleFooterLinkChange = useCallback(
+    (index: number, field: "label" | "url", value: string) => {
+      setConfig((prev) => ({
+        ...prev,
+        footer: {
+          ...prev.footer,
+          links: (prev.footer?.links || []).map((link, i) =>
+            i === index ? { ...link, [field]: value } : link,
+          ),
+        } as FooterConfig,
+      }));
+      setIsDirty(true);
+    },
+    [],
+  );
+
+  const handleAddFooterLink = useCallback(() => {
+    setConfig((prev) => ({
+      ...prev,
+      footer: {
+        ...prev.footer,
+        links: [...(prev.footer?.links || []), { label: "Link", url: "#" }],
+      } as FooterConfig,
+    }));
+    setIsDirty(true);
+  }, []);
+
+  const handleRemoveFooterLink = useCallback((index: number) => {
+    setConfig((prev) => ({
+      ...prev,
+      footer: {
+        ...prev.footer,
+        links: (prev.footer?.links || []).filter((_, i) => i !== index),
+      } as FooterConfig,
+    }));
+    setIsDirty(true);
+  }, []);
+
+  // --- Section management handlers ---
+  const handleAboutToggle = useCallback((enabled: boolean) => {
+    setConfig((prev) => ({
+      ...prev,
+      about: enabled
+        ? prev.about || DEFAULT_LANDING_PAGE_CONFIG.about
+        : undefined,
+    }));
+    setIsDirty(true);
+  }, []);
+
+  const handleSectionToggle = useCallback(
+    (sectionId: string, enabled: boolean) => {
+      setConfig((prev) => ({
+        ...prev,
+        sections: (prev.sections || []).map((s) =>
+          s.id === sectionId ? { ...s, enabled } : s,
+        ),
+      }));
+      setIsDirty(true);
+    },
+    [],
+  );
+
+  const handleSectionMoveUp = useCallback((sectionId: string) => {
+    setConfig((prev) => {
+      const sections = [...(prev.sections || [])];
+      const idx = sections.findIndex((s) => s.id === sectionId);
+      if (idx <= 0) return prev;
+      [sections[idx - 1], sections[idx]] = [sections[idx], sections[idx - 1]];
+      return { ...prev, sections };
+    });
+    setIsDirty(true);
+  }, []);
+
+  const handleSectionMoveDown = useCallback((sectionId: string) => {
+    setConfig((prev) => {
+      const sections = [...(prev.sections || [])];
+      const idx = sections.findIndex((s) => s.id === sectionId);
+      if (idx < 0 || idx >= sections.length - 1) return prev;
+      [sections[idx], sections[idx + 1]] = [sections[idx + 1], sections[idx]];
+      return { ...prev, sections };
+    });
     setIsDirty(true);
   }, []);
 
@@ -610,6 +867,16 @@ export default function SimpleLandingPageEditor({
         className="flex-1 overflow-auto relative"
         style={{ backgroundColor: "#e5e7eb" }}
       >
+        {/* Section Toolbar */}
+        <SectionToolbar
+          sections={config.sections || DEFAULT_LANDING_PAGE_CONFIG.sections!}
+          aboutEnabled={!!config.about}
+          onAboutToggle={handleAboutToggle}
+          onSectionToggle={handleSectionToggle}
+          onSectionMoveUp={handleSectionMoveUp}
+          onSectionMoveDown={handleSectionMoveDown}
+        />
+
         <div className="mx-auto" style={{ maxWidth: "1200px" }}>
           <div className="m-4 bg-white shadow-lg overflow-hidden relative">
             {/* Image Edit Button - Top Right */}
@@ -648,6 +915,22 @@ export default function SimpleLandingPageEditor({
               onFeatureCardImageClick={handleFeatureCardImageClick}
               onAddFeatureCard={handleAddFeatureCard}
               onRemoveFeatureCard={handleRemoveFeatureCard}
+              onTestimonialsHeadingChange={handleTestimonialsHeadingChange}
+              onTestimonialsSubheadingChange={
+                handleTestimonialsSubheadingChange
+              }
+              onTestimonialChange={handleTestimonialChange}
+              onAddTestimonial={handleAddTestimonial}
+              onRemoveTestimonial={handleRemoveTestimonial}
+              onFAQHeadingChange={handleFAQHeadingChange}
+              onFAQSubheadingChange={handleFAQSubheadingChange}
+              onFAQItemChange={handleFAQItemChange}
+              onAddFAQItem={handleAddFAQItem}
+              onRemoveFAQItem={handleRemoveFAQItem}
+              onFooterTextChange={handleFooterTextChange}
+              onFooterLinkChange={handleFooterLinkChange}
+              onAddFooterLink={handleAddFooterLink}
+              onRemoveFooterLink={handleRemoveFooterLink}
             />
           </div>
         </div>
@@ -655,8 +938,8 @@ export default function SimpleLandingPageEditor({
 
       {/* Hint */}
       <div className="flex-shrink-0 bg-gray-100 border-t border-[var(--color-border)] px-6 py-2 text-center text-sm text-[var(--text-muted)]">
-        Click on the title or subtitle to edit inline. Use the image icon (top
-        right) to change background.
+        Click on any text to edit inline. Use the Sections panel (left) to
+        toggle and reorder sections.
       </div>
 
       {/* Image Editor Overlay - Hero Background */}

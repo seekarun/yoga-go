@@ -137,6 +137,62 @@ export interface FeaturesConfig {
 }
 
 /**
+ * Section ordering types
+ */
+export type SectionId = "features" | "testimonials" | "faq";
+
+export interface SectionOrderItem {
+  id: SectionId;
+  enabled: boolean;
+}
+
+/**
+ * Testimonials section configuration
+ */
+export interface Testimonial {
+  id: string;
+  quote: string;
+  authorName: string;
+  authorTitle?: string;
+  rating?: number;
+}
+
+export interface TestimonialsConfig {
+  heading?: string;
+  subheading?: string;
+  testimonials: Testimonial[];
+}
+
+/**
+ * FAQ section configuration
+ */
+export interface FAQItem {
+  id: string;
+  question: string;
+  answer: string;
+}
+
+export interface FAQConfig {
+  heading?: string;
+  subheading?: string;
+  items: FAQItem[];
+}
+
+/**
+ * Footer section configuration
+ */
+export interface FooterLink {
+  label: string;
+  url: string;
+}
+
+export interface FooterConfig {
+  text?: string;
+  links?: FooterLink[];
+  showPoweredBy?: boolean;
+}
+
+/**
  * Available button actions with display names
  */
 export const BUTTON_ACTIONS: {
@@ -172,6 +228,14 @@ export interface SimpleLandingPageConfig {
   about?: AboutConfig;
   /** Features section configuration */
   features?: FeaturesConfig;
+  /** Testimonials section configuration */
+  testimonials?: TestimonialsConfig;
+  /** FAQ section configuration */
+  faq?: FAQConfig;
+  /** Footer section configuration */
+  footer?: FooterConfig;
+  /** Section ordering (features, testimonials, faq) */
+  sections?: SectionOrderItem[];
 }
 
 /**
@@ -219,6 +283,62 @@ export const DEFAULT_LANDING_PAGE_CONFIG: SimpleLandingPageConfig = {
       },
     ],
   },
+  testimonials: {
+    heading: "What People Say",
+    subheading: "Hear from those who have worked with me",
+    testimonials: [
+      {
+        id: "testimonial-1",
+        quote:
+          "An incredible experience that truly transformed my perspective. Highly recommended!",
+        authorName: "Sarah M.",
+        authorTitle: "Client",
+        rating: 5,
+      },
+      {
+        id: "testimonial-2",
+        quote:
+          "Professional, knowledgeable, and genuinely caring. The sessions exceeded my expectations.",
+        authorName: "James R.",
+        authorTitle: "Client",
+        rating: 5,
+      },
+    ],
+  },
+  faq: {
+    heading: "Frequently Asked Questions",
+    subheading: "Everything you need to know",
+    items: [
+      {
+        id: "faq-1",
+        question: "How do I book a session?",
+        answer:
+          "Simply click the Book Now button at the top of the page to view available times and schedule your session.",
+      },
+      {
+        id: "faq-2",
+        question: "What should I expect in my first session?",
+        answer:
+          "Your first session is an introductory meeting where we discuss your goals and create a personalised plan together.",
+      },
+      {
+        id: "faq-3",
+        question: "Do you offer online sessions?",
+        answer:
+          "Yes! I offer both in-person and online sessions to accommodate your schedule and preferences.",
+      },
+    ],
+  },
+  footer: {
+    text: "\u00a9 2026 All rights reserved.",
+    links: [],
+    showPoweredBy: true,
+  },
+  sections: [
+    { id: "features", enabled: true },
+    { id: "testimonials", enabled: false },
+    { id: "faq", enabled: false },
+  ],
 };
 
 /**
