@@ -95,38 +95,52 @@ function generateReactSnippet(
   mode: EmbedMode,
   base: string,
 ): string {
+  const componentName = `Cally${widget.charAt(0).toUpperCase() + widget.slice(1)}`;
+
   if (mode === "inline") {
-    return `import { useEffect, useRef } from "react";
+    return `import { useEffect } from "react";
 
-export default function Cally${widget.charAt(0).toUpperCase() + widget.slice(1)}() {
-  const containerRef = useRef(null);
-
+export default function ${componentName}() {
   useEffect(() => {
+    // Set config before loading the script
+    window.CallyEmbedConfig = {
+      tenantId: "${tenantId}",
+      widget: "${widget}",
+      mode: "inline",
+      container: "#cally-${widget}",
+    };
     const script = document.createElement("script");
     script.src = "${base}/embed.js";
-    script.setAttribute("data-tenant-id", "${tenantId}");
-    script.setAttribute("data-widget", "${widget}");
-    script.setAttribute("data-mode", "inline");
-    script.setAttribute("data-container", "#cally-${widget}");
     document.body.appendChild(script);
-    return () => { script.remove(); window.CallyEmbed = undefined; };
+    return () => {
+      script.remove();
+      delete window.CallyEmbed;
+      delete window.CallyEmbedConfig;
+    };
   }, []);
 
-  return <div id="cally-${widget}" ref={containerRef} />;
+  return <div id="cally-${widget}" />;
 }`;
   }
 
   return `import { useEffect } from "react";
 
-export default function Cally${widget.charAt(0).toUpperCase() + widget.slice(1)}() {
+export default function ${componentName}() {
   useEffect(() => {
+    // Set config before loading the script
+    window.CallyEmbedConfig = {
+      tenantId: "${tenantId}",
+      widget: "${widget}",
+      mode: "${mode}",
+    };
     const script = document.createElement("script");
     script.src = "${base}/embed.js";
-    script.setAttribute("data-tenant-id", "${tenantId}");
-    script.setAttribute("data-widget", "${widget}");
-    script.setAttribute("data-mode", "${mode}");
     document.body.appendChild(script);
-    return () => { script.remove(); window.CallyEmbed = undefined; };
+    return () => {
+      script.remove();
+      delete window.CallyEmbed;
+      delete window.CallyEmbedConfig;
+    };
   }, []);
 
   return null; // ${mode === "float" ? "Floating bubble renders at bottom-right of page" : "Popup trigger appends to document.body"}
