@@ -114,18 +114,35 @@ export default function SimpleLandingPageEditor({
           DEFAULT_LANDING_PAGE_CONFIG;
 
         // Ensure we have a valid config structure (backward compat for new fields)
-        const loadedSections =
-          landingPage.sections || DEFAULT_LANDING_PAGE_CONFIG.sections || [];
-        // Ensure "about" is in sections array (backward compat for older configs)
-        const hasAboutSection = loadedSections.some(
-          (s: SectionOrderItem) => s.id === "about",
-        );
-        const finalSections = hasAboutSection
-          ? loadedSections
-          : [
-              { id: "about" as const, enabled: !!landingPage.about },
-              ...loadedSections,
-            ];
+        const knownSectionIds = new Set([
+          "about",
+          "features",
+          "testimonials",
+          "faq",
+        ]);
+        const loadedSections = landingPage.sections || [];
+        // Validate sections — if they contain unrecognized IDs (old format), use defaults
+        const hasValidSections =
+          loadedSections.length > 0 &&
+          loadedSections.every((s: SectionOrderItem) =>
+            knownSectionIds.has(s.id),
+          );
+        let finalSections: SectionOrderItem[];
+        if (hasValidSections) {
+          // Ensure "about" is in sections array
+          const hasAbout = loadedSections.some(
+            (s: SectionOrderItem) => s.id === "about",
+          );
+          finalSections = hasAbout
+            ? loadedSections
+            : [
+                { id: "about" as const, enabled: !!landingPage.about },
+                ...loadedSections,
+              ];
+        } else {
+          // Old format or missing — use defaults
+          finalSections = DEFAULT_LANDING_PAGE_CONFIG.sections || [];
+        }
 
         setConfig({
           template: landingPage.template || "centered",
