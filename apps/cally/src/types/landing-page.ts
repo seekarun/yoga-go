@@ -139,7 +139,7 @@ export interface FeaturesConfig {
 /**
  * Section ordering types
  */
-export type SectionId = "features" | "testimonials" | "faq";
+export type SectionId = "about" | "features" | "testimonials" | "faq";
 
 export interface SectionOrderItem {
   id: SectionId;
@@ -234,7 +234,11 @@ export interface SimpleLandingPageConfig {
   faq?: FAQConfig;
   /** Footer section configuration */
   footer?: FooterConfig;
-  /** Section ordering (features, testimonials, faq) */
+  /** Whether hero section is visible (default true) */
+  heroEnabled?: boolean;
+  /** Whether footer section is visible (default true) */
+  footerEnabled?: boolean;
+  /** Section ordering (about, features, testimonials, faq) */
   sections?: SectionOrderItem[];
 }
 
@@ -334,7 +338,10 @@ export const DEFAULT_LANDING_PAGE_CONFIG: SimpleLandingPageConfig = {
     links: [],
     showPoweredBy: true,
   },
+  heroEnabled: true,
+  footerEnabled: true,
   sections: [
+    { id: "about", enabled: true },
     { id: "features", enabled: true },
     { id: "testimonials", enabled: false },
     { id: "faq", enabled: false },

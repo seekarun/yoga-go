@@ -68,3 +68,52 @@ Key Observations
    more expensive. Consider adding a sliding window.
 5. Morning briefings are the biggest AI line item — and it's purely TTS, not LLM. Switching to a cheaper TTS provider
    (e.g., AWS Polly at ~$4/1M chars vs $15/1M) could cut TTS cost by ~70%.
+
+Zoom actually has two different SDKs with very different licensing models:
+
+Option 1: Zoom Meeting SDK (embed Zoom's full UI)
+
+- Each tenant (host) needs a paid Zoom account (Pro at ~$13/mo)
+- OR you go through the Zoom ISV Partner Program where Cally holds a master license
+- ISV minimum commitment: $2,000/month for 50,000 minutes
+- Tenants don't need their own Zoom accounts under ISV — Cally provisions meetings on their behalf
+  ┌───────────────────────────┬──────────────────────────────┬──────────┐
+  │ Approach │ Cost │ Who pays │
+  ├───────────────────────────┼──────────────────────────────┼──────────┤
+  │ Tenants bring own Zoom │ $0 to you, ~$13/mo to tenant │ Tenant │
+  ├───────────────────────────┼──────────────────────────────┼──────────┤
+  │ ISV Program (Cally hosts) │ $2,000/mo minimum │ You │
+  ├───────────────────────────┼──────────────────────────────┼──────────┤
+  │ ISV break-even │ ~45-65 tenants │ You │
+  └───────────────────────────┴──────────────────────────────┴──────────┘
+  Option 2: Zoom Video SDK (build your own UI, like 100ms)
+
+- Pay-per-minute, no per-user license needed
+- Cally holds one account, all tenants use it
+- 20 free credits/month for development
+- Usage-based pricing (contact Zoom for rates, but roughly comparable to 100ms)
+
+So to directly answer your question:
+
+Meeting SDK without ISV → Yes, each tenant needs their own paid Zoom Pro account ($13/mo). Cally just embeds the
+meeting experience.
+
+Meeting SDK with ISV → No, Cally holds the license and provisions meetings. But the $2,000/mo minimum means you need
+~45+ tenants just to break even vs tenants paying $13 each.
+
+For a small platform like Cally, the realistic options are:
+┌─────────────────────────────────────┬─────────────────────────────────┬────────────────────────┐
+│ Option │ Best when │ Per-tenant cost │
+├─────────────────────────────────────┼─────────────────────────────────┼────────────────────────┤
+│ 100ms, recording off │ < 50 tenants, you control UX │ ~$2-8/mo │
+├─────────────────────────────────────┼─────────────────────────────────┼────────────────────────┤
+│ Tenants use own Zoom │ You don't want video costs │ $0 (tenant pays $13) │
+├─────────────────────────────────────┼─────────────────────────────────┼────────────────────────┤
+│ Generate Zoom/Meet links (no embed) │ Simplest approach │ $0 │
+├─────────────────────────────────────┼─────────────────────────────────┼────────────────────────┤
+│ LiveKit self-hosted │ 50+ tenants, you want control │ ~$2-5/mo (EC2) │
+├─────────────────────────────────────┼─────────────────────────────────┼────────────────────────┤
+│ Zoom ISV │ 100+ tenants, want Zoom quality │ ~$20-40/mo (amortized) │
+└─────────────────────────────────────┴─────────────────────────────────┴────────────────────────┘
+The current 100ms setup with auto-recording is the most expensive path. The cheapest zero-effort change would be
+disabling auto-recording — that alone drops 100ms costs from ~$43 to ~$8/mo per moderate tenant.

@@ -4,24 +4,29 @@ import { useState } from "react";
 import type { SectionOrderItem } from "@/types/landing-page";
 
 interface SectionToolbarProps {
+  heroEnabled: boolean;
+  footerEnabled: boolean;
   sections: SectionOrderItem[];
-  aboutEnabled: boolean;
-  onAboutToggle: (enabled: boolean) => void;
+  onHeroToggle: (enabled: boolean) => void;
+  onFooterToggle: (enabled: boolean) => void;
   onSectionToggle: (sectionId: string, enabled: boolean) => void;
   onSectionMoveUp: (sectionId: string) => void;
   onSectionMoveDown: (sectionId: string) => void;
 }
 
 const SECTION_LABELS: Record<string, string> = {
+  about: "About",
   features: "Features",
   testimonials: "Testimonials",
   faq: "FAQ",
 };
 
 export default function SectionToolbar({
+  heroEnabled,
+  footerEnabled,
   sections,
-  aboutEnabled,
-  onAboutToggle,
+  onHeroToggle,
+  onFooterToggle,
   onSectionToggle,
   onSectionMoveUp,
   onSectionMoveDown,
@@ -94,11 +99,6 @@ export default function SectionToolbar({
     flex: 1,
     fontSize: "0.8rem",
     fontWeight: 500,
-  };
-
-  const fixedLabelStyle: React.CSSProperties = {
-    ...labelStyle,
-    color: "#9ca3af",
   };
 
   const toggleStyle = (enabled: boolean): React.CSSProperties => ({
@@ -175,31 +175,27 @@ export default function SectionToolbar({
         </button>
       </div>
 
-      {/* Hero - always first, no controls */}
+      {/* Hero - fixed at top, toggle only */}
       <div style={rowStyle}>
-        <span style={fixedLabelStyle}>Hero</span>
-        <span style={{ fontSize: "0.65rem", color: "#9ca3af" }}>Always</span>
-      </div>
-
-      {/* About - toggle only */}
-      <div style={rowStyle}>
-        <span style={labelStyle}>About</span>
+        <span style={labelStyle}>Hero</span>
         <button
           type="button"
-          style={toggleStyle(aboutEnabled)}
-          onClick={() => onAboutToggle(!aboutEnabled)}
+          style={toggleStyle(heroEnabled)}
+          onClick={() => onHeroToggle(!heroEnabled)}
         >
-          <div style={toggleKnobStyle(aboutEnabled)} />
+          <div style={toggleKnobStyle(heroEnabled)} />
         </button>
       </div>
 
       {/* Divider */}
       <div style={{ borderTop: "1px solid #e5e7eb", margin: "6px 0" }} />
 
-      {/* Reorderable sections */}
+      {/* Reorderable sections (about, features, testimonials, faq) */}
       {sections.map((section, index) => (
         <div key={section.id} style={rowStyle}>
-          <span style={labelStyle}>{SECTION_LABELS[section.id]}</span>
+          <span style={labelStyle}>
+            {SECTION_LABELS[section.id] || section.id}
+          </span>
 
           {/* Move up */}
           <button
@@ -257,10 +253,16 @@ export default function SectionToolbar({
       {/* Divider */}
       <div style={{ borderTop: "1px solid #e5e7eb", margin: "6px 0" }} />
 
-      {/* Footer - always last, no controls */}
+      {/* Footer - fixed at bottom, toggle only */}
       <div style={rowStyle}>
-        <span style={fixedLabelStyle}>Footer</span>
-        <span style={{ fontSize: "0.65rem", color: "#9ca3af" }}>Always</span>
+        <span style={labelStyle}>Footer</span>
+        <button
+          type="button"
+          style={toggleStyle(footerEnabled)}
+          onClick={() => onFooterToggle(!footerEnabled)}
+        >
+          <div style={toggleKnobStyle(footerEnabled)} />
+        </button>
       </div>
     </div>
   );

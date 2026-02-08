@@ -114,6 +114,19 @@ export default function SimpleLandingPageEditor({
           DEFAULT_LANDING_PAGE_CONFIG;
 
         // Ensure we have a valid config structure (backward compat for new fields)
+        const loadedSections =
+          landingPage.sections || DEFAULT_LANDING_PAGE_CONFIG.sections || [];
+        // Ensure "about" is in sections array (backward compat for older configs)
+        const hasAboutSection = loadedSections.some(
+          (s: SectionOrderItem) => s.id === "about",
+        );
+        const finalSections = hasAboutSection
+          ? loadedSections
+          : [
+              { id: "about" as const, enabled: !!landingPage.about },
+              ...loadedSections,
+            ];
+
         setConfig({
           template: landingPage.template || "centered",
           title: landingPage.title || "Welcome",
@@ -125,13 +138,7 @@ export default function SimpleLandingPageEditor({
             label: "Book Now",
             action: "booking",
           },
-          about: landingPage.about || {
-            image: undefined,
-            imagePosition: "50% 50%",
-            imageZoom: 100,
-            paragraph:
-              "I'm passionate about helping people achieve their goals. With years of experience in my field, I provide personalized guidance tailored to your unique needs. Let's work together to unlock your potential.",
-          },
+          about: landingPage.about || DEFAULT_LANDING_PAGE_CONFIG.about,
           features:
             landingPage.features || DEFAULT_LANDING_PAGE_CONFIG.features,
           testimonials:
@@ -139,8 +146,9 @@ export default function SimpleLandingPageEditor({
             DEFAULT_LANDING_PAGE_CONFIG.testimonials,
           faq: landingPage.faq || DEFAULT_LANDING_PAGE_CONFIG.faq,
           footer: landingPage.footer || DEFAULT_LANDING_PAGE_CONFIG.footer,
-          sections:
-            landingPage.sections || DEFAULT_LANDING_PAGE_CONFIG.sections,
+          heroEnabled: landingPage.heroEnabled ?? true,
+          footerEnabled: landingPage.footerEnabled ?? true,
+          sections: finalSections,
         });
 
         setTimeout(() => {
@@ -576,12 +584,18 @@ export default function SimpleLandingPageEditor({
   }, []);
 
   // --- Section management handlers ---
-  const handleAboutToggle = useCallback((enabled: boolean) => {
+  const handleHeroToggle = useCallback((enabled: boolean) => {
     setConfig((prev) => ({
       ...prev,
-      about: enabled
-        ? prev.about || DEFAULT_LANDING_PAGE_CONFIG.about
-        : undefined,
+      heroEnabled: enabled,
+    }));
+    setIsDirty(true);
+  }, []);
+
+  const handleFooterToggle = useCallback((enabled: boolean) => {
+    setConfig((prev) => ({
+      ...prev,
+      footerEnabled: enabled,
     }));
     setIsDirty(true);
   }, []);
@@ -863,75 +877,76 @@ export default function SimpleLandingPageEditor({
       )}
 
       {/* Main Preview (with inline editing) */}
-      <div
-        className="flex-1 overflow-auto relative"
-        style={{ backgroundColor: "#e5e7eb" }}
-      >
-        {/* Section Toolbar */}
+      <div className="flex-1 relative" style={{ backgroundColor: "#e5e7eb" }}>
+        {/* Section Toolbar — outside scroll area so it stays visible */}
         <SectionToolbar
+          heroEnabled={config.heroEnabled !== false}
+          footerEnabled={config.footerEnabled !== false}
           sections={config.sections || DEFAULT_LANDING_PAGE_CONFIG.sections!}
-          aboutEnabled={!!config.about}
-          onAboutToggle={handleAboutToggle}
+          onHeroToggle={handleHeroToggle}
+          onFooterToggle={handleFooterToggle}
           onSectionToggle={handleSectionToggle}
           onSectionMoveUp={handleSectionMoveUp}
           onSectionMoveDown={handleSectionMoveDown}
         />
 
-        <div className="mx-auto" style={{ maxWidth: "1200px" }}>
-          <div className="m-4 bg-white shadow-lg overflow-hidden relative">
-            {/* Image Edit Button - Top Right */}
-            <button
-              onClick={() => setShowImageEditor(true)}
-              className="absolute top-4 right-4 z-10 p-3 bg-white/90 hover:bg-white rounded-full shadow-lg transition-all hover:scale-105"
-              title="Edit background image"
-            >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+        <div className="absolute inset-0 overflow-auto">
+          <div className="mx-auto" style={{ maxWidth: "1200px" }}>
+            <div className="m-4 bg-white shadow-lg overflow-hidden relative">
+              {/* Image Edit Button - Top Right */}
+              <button
+                onClick={() => setShowImageEditor(true)}
+                className="absolute top-4 right-4 z-10 p-3 bg-white/90 hover:bg-white rounded-full shadow-lg transition-all hover:scale-105"
+                title="Edit background image"
               >
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                <circle cx="8.5" cy="8.5" r="1.5" />
-                <polyline points="21 15 16 10 5 21" />
-              </svg>
-            </button>
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" />
+                  <polyline points="21 15 16 10 5 21" />
+                </svg>
+              </button>
 
-            <HeroTemplateRenderer
-              config={config}
-              isEditing={true}
-              onTitleChange={handleTitleChange}
-              onSubtitleChange={handleSubtitleChange}
-              onButtonClick={() => setShowButtonEditor(true)}
-              onAboutParagraphChange={handleAboutParagraphChange}
-              onAboutImageClick={() => setShowAboutImageEditor(true)}
-              onFeaturesHeadingChange={handleFeaturesHeadingChange}
-              onFeaturesSubheadingChange={handleFeaturesSubheadingChange}
-              onFeatureCardChange={handleFeatureCardChange}
-              onFeatureCardImageClick={handleFeatureCardImageClick}
-              onAddFeatureCard={handleAddFeatureCard}
-              onRemoveFeatureCard={handleRemoveFeatureCard}
-              onTestimonialsHeadingChange={handleTestimonialsHeadingChange}
-              onTestimonialsSubheadingChange={
-                handleTestimonialsSubheadingChange
-              }
-              onTestimonialChange={handleTestimonialChange}
-              onAddTestimonial={handleAddTestimonial}
-              onRemoveTestimonial={handleRemoveTestimonial}
-              onFAQHeadingChange={handleFAQHeadingChange}
-              onFAQSubheadingChange={handleFAQSubheadingChange}
-              onFAQItemChange={handleFAQItemChange}
-              onAddFAQItem={handleAddFAQItem}
-              onRemoveFAQItem={handleRemoveFAQItem}
-              onFooterTextChange={handleFooterTextChange}
-              onFooterLinkChange={handleFooterLinkChange}
-              onAddFooterLink={handleAddFooterLink}
-              onRemoveFooterLink={handleRemoveFooterLink}
-            />
+              <HeroTemplateRenderer
+                config={config}
+                isEditing={true}
+                onTitleChange={handleTitleChange}
+                onSubtitleChange={handleSubtitleChange}
+                onButtonClick={() => setShowButtonEditor(true)}
+                onAboutParagraphChange={handleAboutParagraphChange}
+                onAboutImageClick={() => setShowAboutImageEditor(true)}
+                onFeaturesHeadingChange={handleFeaturesHeadingChange}
+                onFeaturesSubheadingChange={handleFeaturesSubheadingChange}
+                onFeatureCardChange={handleFeatureCardChange}
+                onFeatureCardImageClick={handleFeatureCardImageClick}
+                onAddFeatureCard={handleAddFeatureCard}
+                onRemoveFeatureCard={handleRemoveFeatureCard}
+                onTestimonialsHeadingChange={handleTestimonialsHeadingChange}
+                onTestimonialsSubheadingChange={
+                  handleTestimonialsSubheadingChange
+                }
+                onTestimonialChange={handleTestimonialChange}
+                onAddTestimonial={handleAddTestimonial}
+                onRemoveTestimonial={handleRemoveTestimonial}
+                onFAQHeadingChange={handleFAQHeadingChange}
+                onFAQSubheadingChange={handleFAQSubheadingChange}
+                onFAQItemChange={handleFAQItemChange}
+                onAddFAQItem={handleAddFAQItem}
+                onRemoveFAQItem={handleRemoveFAQItem}
+                onFooterTextChange={handleFooterTextChange}
+                onFooterLinkChange={handleFooterLinkChange}
+                onAddFooterLink={handleAddFooterLink}
+                onRemoveFooterLink={handleRemoveFooterLink}
+              />
+            </div>
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import type { SimpleLandingPageConfig } from "@/types/landing-page";
+import AboutSection from "./AboutSection";
 import FeaturesSection from "./FeaturesSection";
 import TestimonialsSection from "./TestimonialsSection";
 import FAQSection from "./FAQSection";
@@ -10,6 +11,9 @@ interface SectionsRendererProps {
   config: SimpleLandingPageConfig;
   isEditing?: boolean;
   variant?: "light" | "dark" | "gray";
+  // About callbacks
+  onAboutParagraphChange?: (paragraph: string) => void;
+  onAboutImageClick?: () => void;
   // Features callbacks
   onFeaturesHeadingChange?: (heading: string) => void;
   onFeaturesSubheadingChange?: (subheading: string) => void;
@@ -56,6 +60,8 @@ export default function SectionsRenderer({
   config,
   isEditing = false,
   variant = "light",
+  onAboutParagraphChange,
+  onAboutImageClick,
   onFeaturesHeadingChange,
   onFeaturesSubheadingChange,
   onFeatureCardChange,
@@ -78,6 +84,7 @@ export default function SectionsRenderer({
   onRemoveFooterLink,
 }: SectionsRendererProps) {
   const sections = config.sections || [
+    { id: "about" as const, enabled: true },
     { id: "features" as const, enabled: true },
     { id: "testimonials" as const, enabled: false },
     { id: "faq" as const, enabled: false },
@@ -89,6 +96,18 @@ export default function SectionsRenderer({
         .filter((s) => s.enabled)
         .map((section) => {
           switch (section.id) {
+            case "about":
+              return config.about ? (
+                <AboutSection
+                  key="about"
+                  about={config.about}
+                  isEditing={isEditing}
+                  variant={variant}
+                  onParagraphChange={onAboutParagraphChange}
+                  onImageClick={onAboutImageClick}
+                />
+              ) : null;
+
             case "features":
               return config.features && config.features.cards.length > 0 ? (
                 <FeaturesSection
@@ -140,8 +159,8 @@ export default function SectionsRenderer({
           }
         })}
 
-      {/* Footer always last */}
-      {config.footer && (
+      {/* Footer always last, controlled by footerEnabled */}
+      {config.footerEnabled !== false && config.footer && (
         <FooterSection
           footer={config.footer}
           isEditing={isEditing}

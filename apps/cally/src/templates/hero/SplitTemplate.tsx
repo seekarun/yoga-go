@@ -14,18 +14,9 @@ export default function SplitTemplate(props: HeroTemplateProps) {
     onTitleChange,
     onSubtitleChange,
     onButtonClick,
-    onAboutParagraphChange,
-    onAboutImageClick,
   } = props;
-  const {
-    title,
-    subtitle,
-    backgroundImage,
-    imagePosition,
-    imageZoom,
-    button,
-    about,
-  } = config;
+  const { title, subtitle, backgroundImage, imagePosition, imageZoom, button } =
+    config;
 
   const containerStyle: React.CSSProperties = {
     minHeight: "100vh",
@@ -111,237 +102,101 @@ export default function SplitTemplate(props: HeroTemplateProps) {
     position: "relative",
   };
 
-  // About section styles - Split theme (reversed layout)
-  const aboutSectionStyle: React.CSSProperties = {
-    width: "100%",
-    display: "flex",
-    flexDirection: "row",
-    minHeight: "60vh",
-  };
-
-  const aboutTextSide: React.CSSProperties = {
-    flex: 1,
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "center",
-    padding: "60px 8%",
-    backgroundColor: "#ffffff",
-    color: "#1a1a1a",
-  };
-
-  const aboutImageSide: React.CSSProperties = {
-    flex: 1,
-    position: "relative",
-    backgroundColor: "#f3f4f6",
-    minHeight: "400px",
-  };
-
-  const aboutImageStyle: React.CSSProperties = {
-    position: "absolute",
-    inset: 0,
-    backgroundImage: about?.image ? `url(${about.image})` : undefined,
-    backgroundPosition: about?.imagePosition || "50% 50%",
-    backgroundSize: "cover",
-    backgroundRepeat: "no-repeat",
-    backgroundColor: about?.image ? undefined : "#e5e7eb",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    transform: about?.image
-      ? `scale(${(about?.imageZoom || 100) / 100})`
-      : undefined,
-  };
-
-  const aboutParagraphStyle: React.CSSProperties = {
-    fontSize: "1.1rem",
-    lineHeight: 1.8,
-    color: "#4b5563",
-    textAlign: "left",
-    maxWidth: "450px",
-  };
-
-  const editableAboutStyle: React.CSSProperties = isEditing
-    ? {
-        cursor: "text",
-        outline: "none",
-        borderRadius: "4px",
-        padding: "12px",
-        transition: "background 0.2s, outline 0.2s",
-      }
-    : {};
-
   return (
     <>
       {/* Hero Section */}
-      <div style={containerStyle}>
-        {isEditing && (
-          <style>{`
-            .editable-field-dark:focus {
-              background: rgba(0, 0, 0, 0.05) !important;
-              outline: 2px solid rgba(0, 0, 0, 0.3) !important;
-            }
-            .editable-field-dark:hover:not(:focus) {
-              background: rgba(0, 0, 0, 0.02);
-            }
-          `}</style>
-        )}
-        <div style={contentSide}>
-          {isEditing ? (
-            <>
-              <div
-                className="editable-field-dark"
-                contentEditable
-                suppressContentEditableWarning
-                style={{ ...titleStyle, ...editableBaseStyle }}
-                onBlur={(e) =>
-                  onTitleChange?.(e.currentTarget.textContent || "")
-                }
-              >
-                {title}
-              </div>
-              <div
-                className="editable-field-dark"
-                contentEditable
-                suppressContentEditableWarning
-                style={{ ...subtitleStyle, ...editableBaseStyle }}
-                onBlur={(e) =>
-                  onSubtitleChange?.(e.currentTarget.textContent || "")
-                }
-              >
-                {subtitle}
-              </div>
-              {button && (
-                <button
-                  type="button"
-                  onClick={onButtonClick}
-                  style={editButtonStyle}
-                >
-                  {button.label}
-                  <span
-                    style={{
-                      position: "absolute",
-                      top: "-8px",
-                      right: "-8px",
-                      width: "24px",
-                      height: "24px",
-                      backgroundColor: "#2563eb",
-                      borderRadius: "50%",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <svg
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="white"
-                      strokeWidth="2"
-                    >
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                    </svg>
-                  </span>
-                </button>
-              )}
-            </>
-          ) : (
-            <>
-              <h1 style={titleStyle}>{title}</h1>
-              <p style={subtitleStyle}>{subtitle}</p>
-              {button && (
-                <button
-                  type="button"
-                  style={buttonStyle}
-                  onClick={onButtonClick}
-                >
-                  {button.label}
-                </button>
-              )}
-            </>
+      {config.heroEnabled !== false && (
+        <div style={containerStyle}>
+          {isEditing && (
+            <style>{`
+              .editable-field-dark:focus {
+                background: rgba(0, 0, 0, 0.05) !important;
+                outline: 2px solid rgba(0, 0, 0, 0.3) !important;
+              }
+              .editable-field-dark:hover:not(:focus) {
+                background: rgba(0, 0, 0, 0.02);
+              }
+            `}</style>
           )}
-        </div>
-        <div style={imageSide}>
-          <div style={imageSideBackground} />
-        </div>
-      </div>
-
-      {/* About Section */}
-      {about && (
-        <div style={aboutSectionStyle}>
-          {/* About Image Side */}
-          <div style={aboutImageSide}>
-            <div style={aboutImageStyle}>
-              {!about.image && (
-                <svg
-                  width="48"
-                  height="48"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#9ca3af"
-                  strokeWidth="1.5"
+          <div style={contentSide}>
+            {isEditing ? (
+              <>
+                <div
+                  className="editable-field-dark"
+                  contentEditable
+                  suppressContentEditableWarning
+                  style={{ ...titleStyle, ...editableBaseStyle }}
+                  onBlur={(e) =>
+                    onTitleChange?.(e.currentTarget.textContent || "")
+                  }
                 >
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                  <circle cx="8.5" cy="8.5" r="1.5" />
-                  <polyline points="21 15 16 10 5 21" />
-                </svg>
-              )}
-            </div>
-            {isEditing && (
-              <button
-                type="button"
-                onClick={onAboutImageClick}
-                style={{
-                  position: "absolute",
-                  top: "12px",
-                  right: "12px",
-                  width: "36px",
-                  height: "36px",
-                  backgroundColor: "white",
-                  borderRadius: "50%",
-                  border: "none",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-                  zIndex: 1,
-                }}
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#374151"
-                  strokeWidth="2"
+                  {title}
+                </div>
+                <div
+                  className="editable-field-dark"
+                  contentEditable
+                  suppressContentEditableWarning
+                  style={{ ...subtitleStyle, ...editableBaseStyle }}
+                  onBlur={(e) =>
+                    onSubtitleChange?.(e.currentTarget.textContent || "")
+                  }
                 >
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                  <circle cx="8.5" cy="8.5" r="1.5" />
-                  <polyline points="21 15 16 10 5 21" />
-                </svg>
-              </button>
+                  {subtitle}
+                </div>
+                {button && (
+                  <button
+                    type="button"
+                    onClick={onButtonClick}
+                    style={editButtonStyle}
+                  >
+                    {button.label}
+                    <span
+                      style={{
+                        position: "absolute",
+                        top: "-8px",
+                        right: "-8px",
+                        width: "24px",
+                        height: "24px",
+                        backgroundColor: "#2563eb",
+                        borderRadius: "50%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="white"
+                        strokeWidth="2"
+                      >
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                      </svg>
+                    </span>
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                <h1 style={titleStyle}>{title}</h1>
+                <p style={subtitleStyle}>{subtitle}</p>
+                {button && (
+                  <button
+                    type="button"
+                    style={buttonStyle}
+                    onClick={onButtonClick}
+                  >
+                    {button.label}
+                  </button>
+                )}
+              </>
             )}
           </div>
-
-          {/* About Text Side */}
-          <div style={aboutTextSide}>
-            {isEditing ? (
-              <div
-                className="editable-field-dark"
-                contentEditable
-                suppressContentEditableWarning
-                style={{ ...aboutParagraphStyle, ...editableAboutStyle }}
-                onBlur={(e) =>
-                  onAboutParagraphChange?.(e.currentTarget.textContent || "")
-                }
-              >
-                {about.paragraph}
-              </div>
-            ) : (
-              <p style={aboutParagraphStyle}>{about.paragraph}</p>
-            )}
+          <div style={imageSide}>
+            <div style={imageSideBackground} />
           </div>
         </div>
       )}
