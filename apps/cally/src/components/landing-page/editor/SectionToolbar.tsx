@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import type { SectionOrderItem } from "@/types/landing-page";
 
 interface SectionToolbarProps {
@@ -32,6 +32,46 @@ export default function SectionToolbar({
   onSectionMoveDown,
 }: SectionToolbarProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [position, setPosition] = useState({ x: 12, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = useRef({ mouseX: 0, mouseY: 0, elX: 0, elY: 0 });
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      // Only drag from the header area
+      e.preventDefault();
+      setIsDragging(true);
+      dragStartRef.current = {
+        mouseX: e.clientX,
+        mouseY: e.clientY,
+        elX: position.x,
+        elY: position.y,
+      };
+
+      const handleMouseMove = (ev: MouseEvent) => {
+        const dx = ev.clientX - dragStartRef.current.mouseX;
+        const dy = ev.clientY - dragStartRef.current.mouseY;
+        setPosition({
+          x: dragStartRef.current.elX + dx,
+          y: dragStartRef.current.elY + dy,
+        });
+      };
+
+      const handleMouseUp = () => {
+        setIsDragging(false);
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
+      };
+
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+    },
+    [position],
+  );
+
+  // Use centered Y when position.y is 0 (initial), otherwise use the dragged offset
+  const useCenteredY = position.y === 0;
 
   if (collapsed) {
     return (
@@ -40,9 +80,10 @@ export default function SectionToolbar({
         onClick={() => setCollapsed(false)}
         style={{
           position: "absolute",
-          left: "12px",
-          top: "50%",
-          transform: "translateY(-50%)",
+          left: `${position.x}px`,
+          ...(useCenteredY
+            ? { top: "50%", transform: "translateY(-50%)" }
+            : { top: `calc(50% + ${position.y}px)` }),
           zIndex: 20,
           backgroundColor: "rgba(255, 255, 255, 0.95)",
           border: "1px solid #e5e7eb",
@@ -65,16 +106,20 @@ export default function SectionToolbar({
 
   const panelStyle: React.CSSProperties = {
     position: "absolute",
-    left: "12px",
-    top: "50%",
-    transform: "translateY(-50%)",
+    left: `${position.x}px`,
+    ...(useCenteredY
+      ? { top: "50%", transform: "translateY(-50%)" }
+      : { top: `calc(50% + ${position.y}px)` }),
     zIndex: 20,
     backgroundColor: "rgba(255, 255, 255, 0.95)",
     border: "1px solid #e5e7eb",
     borderRadius: "12px",
     padding: "12px",
-    boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
+    boxShadow: isDragging
+      ? "0 8px 24px rgba(0,0,0,0.18)"
+      : "0 4px 16px rgba(0,0,0,0.1)",
     width: "180px",
+    userSelect: "none",
   };
 
   const headerStyle: React.CSSProperties = {
@@ -84,6 +129,7 @@ export default function SectionToolbar({
     marginBottom: "8px",
     paddingBottom: "8px",
     borderBottom: "1px solid #e5e7eb",
+    cursor: "grab",
   };
 
   const rowStyle: React.CSSProperties = {
@@ -142,12 +188,34 @@ export default function SectionToolbar({
   };
 
   return (
-    <div style={panelStyle}>
-      {/* Header */}
-      <div style={headerStyle}>
+    <div ref={panelRef} style={panelStyle}>
+      {/* Header — drag handle */}
+      <div style={headerStyle} onMouseDown={handleMouseDown}>
         <span
-          style={{ fontSize: "0.75rem", fontWeight: 700, color: "#1a1a1a" }}
+          style={{
+            fontSize: "0.75rem",
+            fontWeight: 700,
+            color: "#1a1a1a",
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+          }}
         >
+          {/* Drag grip icon */}
+          <svg
+            width="10"
+            height="10"
+            viewBox="0 0 24 24"
+            fill="#9ca3af"
+            stroke="none"
+          >
+            <circle cx="5" cy="4" r="2" />
+            <circle cx="12" cy="4" r="2" />
+            <circle cx="5" cy="12" r="2" />
+            <circle cx="12" cy="12" r="2" />
+            <circle cx="5" cy="20" r="2" />
+            <circle cx="12" cy="20" r="2" />
+          </svg>
           Sections
         </span>
         <button
