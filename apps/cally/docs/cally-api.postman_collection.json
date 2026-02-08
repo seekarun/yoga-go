@@ -696,6 +696,51 @@
           }
         }
       ]
+    },
+    {
+      "name": "Embed Widgets",
+      "description": "Embeddable widget pages for external websites (iframe-based)",
+      "item": [
+        {
+          "name": "Embed Booking Widget",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/embed/{{tenantId}}/booking",
+              "host": ["{{baseUrl}}"],
+              "path": ["embed", "{{tenantId}}", "booking"]
+            },
+            "description": "Renders the booking widget in an iframe-friendly layout (no app shell). Used as iframe src in embed.js."
+          }
+        },
+        {
+          "name": "Embed Contact Widget",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/embed/{{tenantId}}/contact",
+              "host": ["{{baseUrl}}"],
+              "path": ["embed", "{{tenantId}}", "contact"]
+            },
+            "description": "Renders the contact form in an iframe-friendly layout (no app shell). Used as iframe src in embed.js."
+          }
+        },
+        {
+          "name": "Embed Chat Widget",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/embed/{{tenantId}}/chat",
+              "host": ["{{baseUrl}}"],
+              "path": ["embed", "{{tenantId}}", "chat"]
+            },
+            "description": "Renders the AI chat widget in an iframe-friendly layout (no app shell). Chat panel is always open, filling the iframe."
+          }
+        }
+      ]
     }
   ]
 }

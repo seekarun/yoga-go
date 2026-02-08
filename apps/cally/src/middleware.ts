@@ -25,6 +25,7 @@ function isSystemPath(pathname: string): boolean {
     pathname.startsWith("/api/") ||
     pathname.startsWith("/auth/") ||
     pathname.startsWith("/srv/") ||
+    pathname.startsWith("/embed/") ||
     pathname.startsWith("/_next/") ||
     /\.(ico|png|jpg|jpeg|svg|css|js|woff|woff2)$/.test(pathname)
   );
@@ -43,9 +44,27 @@ function hasSessionCookie(request: NextRequest): boolean {
  * 1. Custom domain rewriting: mymusic.guru/signup → /{tenantId}/signup
  * 2. Authentication for protected routes
  */
+/**
+ * Add CORS headers to a response for public tenant API routes
+ */
+function addCorsHeaders(response: NextResponse): NextResponse {
+  response.headers.set("Access-Control-Allow-Origin", "*");
+  response.headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  response.headers.set("Access-Control-Allow-Headers", "Content-Type");
+  return response;
+}
+
 export default async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hostname = request.headers.get("host") || "";
+
+  // --- CORS for public tenant API routes (used by embed widgets) ---
+  if (pathname.startsWith("/api/data/tenants/")) {
+    if (request.method === "OPTIONS") {
+      const response = new NextResponse(null, { status: 204 });
+      return addCorsHeaders(response);
+    }
+  }
 
   // --- Custom domain rewriting ---
   if (isCustomDomain(hostname) && !isSystemPath(pathname)) {
@@ -96,9 +115,13 @@ export default async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Allow public API routes
+  // Allow public API routes (add CORS for tenant API routes used by embeds)
   if (pathname.startsWith("/api") && !pathname.startsWith("/api/srv")) {
-    return NextResponse.next();
+    const response = NextResponse.next();
+    if (pathname.startsWith("/api/data/tenants/")) {
+      return addCorsHeaders(response);
+    }
+    return response;
   }
 
   // Protected routes: /srv/* and /data/app/*

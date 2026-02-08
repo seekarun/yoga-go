@@ -125,6 +125,17 @@ export default function IntegrationsPage() {
               Configure AI phone calls and morning briefings
             </p>
           </Link>
+          <Link
+            href={`/srv/${expertId}/settings/embed`}
+            className="block p-4 bg-white rounded-lg border border-[var(--color-border)] hover:border-[var(--color-primary)] transition-colors"
+          >
+            <h3 className="font-medium text-[var(--text-main)]">
+              Embed Widgets
+            </h3>
+            <p className="text-sm text-[var(--text-muted)]">
+              Add booking, contact, or chat widgets to your external website
+            </p>
+          </Link>
         </div>
       </div>
     </div>
