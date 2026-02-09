@@ -80,6 +80,10 @@ export const TenantPK = {
   CONTACT: (timestamp: string, contactId: string) =>
     `CONTACT#${timestamp}#${contactId}`,
   CONTACT_PREFIX: "CONTACT#",
+
+  // Transcripts: PK=TENANT#{tenantId}, SK=TRANSCRIPT#{eventId}
+  TRANSCRIPT: (eventId: string) => `TRANSCRIPT#${eventId}`,
+  TRANSCRIPT_PREFIX: "TRANSCRIPT#",
 } as const;
 
 // Entity type constants
@@ -89,6 +93,7 @@ export const EntityType = {
   EMAIL: "EMAIL",
   SUBSCRIBER: "SUBSCRIBER",
   CONTACT: "CONTACT",
+  TRANSCRIPT: "TRANSCRIPT",
 } as const;
 
 // ============================================

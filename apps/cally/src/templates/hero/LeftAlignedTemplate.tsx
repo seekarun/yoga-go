@@ -72,7 +72,7 @@ export default function LeftAlignedTemplate(props: HeroTemplateProps) {
   const accentLine: React.CSSProperties = {
     width: "80px",
     height: "4px",
-    background: "#667eea",
+    background: "var(--brand-500, #667eea)",
     marginBottom: "30px",
     borderRadius: "2px",
   };
@@ -92,8 +92,8 @@ export default function LeftAlignedTemplate(props: HeroTemplateProps) {
     padding: "16px 40px",
     fontSize: "1rem",
     fontWeight: 600,
-    backgroundColor: "#667eea",
-    color: "#ffffff",
+    backgroundColor: "var(--brand-500, #667eea)",
+    color: "var(--brand-500-contrast, #ffffff)",
     border: "none",
     borderRadius: "6px",
     cursor: "pointer",

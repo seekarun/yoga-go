@@ -37,7 +37,7 @@ export default function TestimonialsSection({
       quote: "#374151",
       authorName: "#1a1a1a",
       authorTitle: "#6b7280",
-      star: "#f59e0b",
+      star: "var(--brand-500, #f59e0b)",
       starEmpty: "#d1d5db",
     },
     dark: {
@@ -49,7 +49,7 @@ export default function TestimonialsSection({
       quote: "#d1d5db",
       authorName: "#ffffff",
       authorTitle: "#9ca3af",
-      star: "#f59e0b",
+      star: "var(--brand-500, #f59e0b)",
       starEmpty: "#4b5563",
     },
     gray: {
@@ -61,7 +61,7 @@ export default function TestimonialsSection({
       quote: "#374151",
       authorName: "#1a1a1a",
       authorTitle: "#6b7280",
-      star: "#f59e0b",
+      star: "var(--brand-500, #f59e0b)",
       starEmpty: "#d1d5db",
     },
   };

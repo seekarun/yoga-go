@@ -38,7 +38,7 @@ export default function CenteredTemplate(props: HeroTemplateProps) {
     backgroundColor: backgroundImage ? "#000" : undefined,
     backgroundImage: backgroundImage
       ? `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url(${backgroundImage})`
-      : "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+      : `linear-gradient(135deg, var(--brand-500, #667eea) 0%, var(--brand-600, #764ba2) 100%)`,
     backgroundPosition: imagePosition || "50% 50%",
     backgroundSize: "cover",
     backgroundRepeat: "no-repeat",
@@ -89,8 +89,8 @@ export default function CenteredTemplate(props: HeroTemplateProps) {
     padding: "16px 40px",
     fontSize: "1.1rem",
     fontWeight: 600,
-    backgroundColor: "#ffffff",
-    color: "#1a1a1a",
+    backgroundColor: "var(--brand-500, #ffffff)",
+    color: "var(--brand-500-contrast, #1a1a1a)",
     border: "none",
     borderRadius: "8px",
     cursor: "pointer",

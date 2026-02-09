@@ -3,6 +3,7 @@
 import { useEffect, useCallback } from "react";
 import type { SimpleLandingPageConfig } from "@/types/landing-page";
 import HeroTemplateRenderer from "@/templates/hero";
+import { LandingPageThemeProvider } from "@/templates/hero/ThemeProvider";
 
 interface LandingPageRendererProps {
   config: SimpleLandingPageConfig;
@@ -54,10 +55,12 @@ export default function LandingPageRenderer({
   }, [config.button?.action]);
 
   return (
-    <HeroTemplateRenderer
-      config={config}
-      isEditing={false}
-      onButtonClick={handleButtonClick}
-    />
+    <LandingPageThemeProvider palette={config.theme?.palette}>
+      <HeroTemplateRenderer
+        config={config}
+        isEditing={false}
+        onButtonClick={handleButtonClick}
+      />
+    </LandingPageThemeProvider>
   );
 }

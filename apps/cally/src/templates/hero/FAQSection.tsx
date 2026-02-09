@@ -39,7 +39,7 @@ export default function FAQSection({
       itemBorder: "#e5e7eb",
       question: "#1a1a1a",
       answer: "#4b5563",
-      icon: "#6b7280",
+      icon: "var(--brand-500, #6b7280)",
     },
     dark: {
       bg: "#1a1a1a",
@@ -49,7 +49,7 @@ export default function FAQSection({
       itemBorder: "#374151",
       question: "#ffffff",
       answer: "#d1d5db",
-      icon: "#9ca3af",
+      icon: "var(--brand-500, #9ca3af)",
     },
     gray: {
       bg: "#f3f4f6",
@@ -59,7 +59,7 @@ export default function FAQSection({
       itemBorder: "#e5e7eb",
       question: "#1a1a1a",
       answer: "#4b5563",
-      icon: "#6b7280",
+      icon: "var(--brand-500, #6b7280)",
     },
   };
 

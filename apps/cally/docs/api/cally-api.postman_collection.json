@@ -741,6 +741,98 @@
           }
         }
       ]
+    },
+    {
+      "name": "Transcription",
+      "item": [
+        {
+          "name": "Upload Audio (Get Presigned URL)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "session={{sessionToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fileSizeBytes\": 1048576,\n  \"fileName\": \"recording.webm\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/calendar/events/{{eventId}}/transcript/upload",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "app",
+                "calendar",
+                "events",
+                "{{eventId}}",
+                "transcript",
+                "upload"
+              ]
+            },
+            "description": "Generate a presigned S3 URL for uploading meeting audio. Creates a transcript record in DynamoDB with 'uploading' status."
+          }
+        },
+        {
+          "name": "Get Transcript",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "session={{sessionToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/calendar/events/{{eventId}}/transcript",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "app",
+                "calendar",
+                "events",
+                "{{eventId}}",
+                "transcript"
+              ]
+            },
+            "description": "Get transcript data for a calendar event. Returns status, transcript text, summary, and topics."
+          }
+        },
+        {
+          "name": "Queue Transcription",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "session={{sessionToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/calendar/events/{{eventId}}/transcript",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "app",
+                "calendar",
+                "events",
+                "{{eventId}}",
+                "transcript"
+              ]
+            },
+            "description": "Queue a transcript for processing after audio upload is complete. Updates status to 'queued' and sends SQS message."
+          }
+        }
+      ]
     }
   ]
 }

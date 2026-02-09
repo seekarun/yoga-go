@@ -44,7 +44,7 @@ export default function FooterSection({
   };
 
   const linkStyle: React.CSSProperties = {
-    color: "#d1d5db",
+    color: "var(--brand-300, #d1d5db)",
     fontSize: "0.85rem",
     textDecoration: "none",
     transition: "color 0.2s",

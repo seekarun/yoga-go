@@ -49,7 +49,7 @@ export default function SplitTemplate(props: HeroTemplateProps) {
     inset: 0,
     backgroundImage: backgroundImage
       ? `url(${backgroundImage})`
-      : "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+      : `linear-gradient(135deg, var(--brand-500, #667eea) 0%, var(--brand-600, #764ba2) 100%)`,
     backgroundPosition: imagePosition || "50% 50%",
     backgroundSize: "cover",
     backgroundRepeat: "no-repeat",
@@ -89,8 +89,8 @@ export default function SplitTemplate(props: HeroTemplateProps) {
     padding: "16px 40px",
     fontSize: "1rem",
     fontWeight: 600,
-    backgroundColor: "#1a1a1a",
-    color: "#ffffff",
+    backgroundColor: "var(--brand-500, #1a1a1a)",
+    color: "var(--brand-500-contrast, #ffffff)",
     border: "none",
     borderRadius: "6px",
     cursor: "pointer",

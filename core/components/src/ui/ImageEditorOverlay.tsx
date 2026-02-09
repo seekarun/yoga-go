@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import { readFile } from "@core/lib";
+import { readFile } from "@core/lib/utils/cropImage";
 import { PexelsImagePicker } from "./PexelsImagePicker";
 
 export interface ImageEditorData {

@@ -7,6 +7,8 @@
  * - Just title, subtitle, and background image
  */
 
+import type { ColorPalette } from "@/lib/colorPalette";
+
 /**
  * Template IDs for the 5 available hero templates
  */
@@ -240,6 +242,11 @@ export interface SimpleLandingPageConfig {
   footerEnabled?: boolean;
   /** Section ordering (about, features, testimonials, faq) */
   sections?: SectionOrderItem[];
+  /** Brand colour theme */
+  theme?: {
+    primaryColor?: string;
+    palette?: ColorPalette;
+  };
 }
 
 /**

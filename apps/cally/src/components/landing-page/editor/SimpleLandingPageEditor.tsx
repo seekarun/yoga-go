@@ -25,6 +25,15 @@ import {
 import { ImageEditorOverlay, ButtonEditorOverlay } from "@core/components";
 import HeroTemplateRenderer from "@/templates/hero";
 import SectionToolbar from "./SectionToolbar";
+import type { ColorHarmonyType } from "@/lib/colorPalette";
+import {
+  generatePalette,
+  getHarmonyColors,
+  hexToHsl,
+  isValidHexColor,
+  HARMONY_OPTIONS,
+} from "@/lib/colorPalette";
+import { LandingPageThemeProvider } from "@/templates/hero/ThemeProvider";
 
 interface SimpleLandingPageEditorProps {
   tenantId: string;
@@ -61,6 +70,17 @@ export default function SimpleLandingPageEditor({
     string | null
   >(null);
 
+  // Brand colour picker state
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [hexInput, setHexInput] = useState("#667eea");
+  const [hexError, setHexError] = useState(false);
+  const [colorHarmony, setColorHarmony] =
+    useState<ColorHarmonyType>("analogous");
+  const colorPickerRef = useRef<HTMLDivElement>(null);
+  const colorInputRef = useRef<HTMLInputElement>(null);
+
+  const currentBrandColor = config.theme?.primaryColor || "#667eea";
+
   // Get current template's image configuration
   const currentTemplateImageConfig: TemplateImageConfig = useMemo(() => {
     const template = TEMPLATES.find((t) => t.id === config.template);
@@ -71,6 +91,57 @@ export default function SimpleLandingPageEditor({
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const savedIndicatorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialLoadRef = useRef(true);
+
+  // Close colour picker on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        colorPickerRef.current &&
+        !colorPickerRef.current.contains(e.target as Node)
+      ) {
+        setShowColorPicker(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Sync hex input when brand color changes externally
+  useEffect(() => {
+    setHexInput(currentBrandColor);
+  }, [currentBrandColor]);
+
+  // Update palette when harmony changes
+  useEffect(() => {
+    if (config.theme?.primaryColor && config.theme?.palette) {
+      const harmonyColors = getHarmonyColors(
+        config.theme.primaryColor,
+        colorHarmony,
+      );
+      if (
+        config.theme.palette.secondary !== harmonyColors.secondary ||
+        config.theme.palette.highlight !== harmonyColors.highlight
+      ) {
+        setConfig((prev) => ({
+          ...prev,
+          theme: {
+            ...prev.theme,
+            primaryColor: prev.theme?.primaryColor,
+            palette: prev.theme?.palette
+              ? {
+                  ...prev.theme.palette,
+                  secondary: harmonyColors.secondary,
+                  highlight: harmonyColors.highlight,
+                  harmonyType: colorHarmony,
+                }
+              : undefined,
+          },
+        }));
+        setIsDirty(true);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run when harmony changes
+  }, [colorHarmony]);
 
   // Fetch data on mount
   useEffect(() => {
@@ -166,6 +237,7 @@ export default function SimpleLandingPageEditor({
           heroEnabled: landingPage.heroEnabled ?? true,
           footerEnabled: landingPage.footerEnabled ?? true,
           sections: finalSections,
+          theme: landingPage.theme || undefined,
         });
 
         setTimeout(() => {
@@ -652,6 +724,62 @@ export default function SimpleLandingPageEditor({
     setIsDirty(true);
   }, []);
 
+  // Brand colour handlers
+  const handleBrandColorChange = useCallback(
+    (color: string) => {
+      const palette = generatePalette(color);
+      const harmonyColors = getHarmonyColors(color, colorHarmony);
+      setConfig((prev) => ({
+        ...prev,
+        theme: {
+          primaryColor: color,
+          palette: {
+            ...palette,
+            secondary: harmonyColors.secondary,
+            highlight: harmonyColors.highlight,
+            harmonyType: colorHarmony,
+          },
+        },
+      }));
+      setIsDirty(true);
+    },
+    [colorHarmony],
+  );
+
+  const handleHexInputChange = useCallback(
+    (value: string) => {
+      let hex = value;
+      if (!hex.startsWith("#")) hex = "#" + hex;
+      setHexInput(hex);
+
+      if (isValidHexColor(hex)) {
+        setHexError(false);
+        handleBrandColorChange(hex);
+      } else {
+        setHexError(hex.length >= 7);
+      }
+    },
+    [handleBrandColorChange],
+  );
+
+  const handleHexInputKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter" && isValidHexColor(hexInput)) {
+        handleBrandColorChange(hexInput);
+        setShowColorPicker(false);
+      }
+    },
+    [hexInput, handleBrandColorChange],
+  );
+
+  const cycleHarmony = useCallback(() => {
+    const currentIndex = HARMONY_OPTIONS.findIndex(
+      (h) => h.type === colorHarmony,
+    );
+    const nextIndex = (currentIndex + 1) % HARMONY_OPTIONS.length;
+    setColorHarmony(HARMONY_OPTIONS[nextIndex].type);
+  }, [colorHarmony]);
+
   // Save data function
   const saveData = async (): Promise<boolean> => {
     try {
@@ -762,6 +890,176 @@ export default function SimpleLandingPageEditor({
           Template:{" "}
           {TEMPLATES.find((t) => t.id === config.template)?.name || "Centered"}
         </button>
+
+        {/* Brand Colour Picker */}
+        <div className="relative" ref={colorPickerRef}>
+          <button
+            onClick={() => setShowColorPicker(!showColorPicker)}
+            className="px-3 py-2 border border-[var(--color-border)] rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
+            title="Brand Color"
+          >
+            <span
+              className="w-4 h-4 rounded-full border border-gray-300"
+              style={{ backgroundColor: currentBrandColor }}
+            />
+            Brand
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+
+          {showColorPicker && (
+            <div className="absolute top-full left-0 mt-1 bg-white border border-[var(--color-border)] rounded-lg shadow-lg p-4 z-50 w-[240px]">
+              <div className="text-xs font-medium text-gray-700 mb-3">
+                Your Brand Colour (click to change)
+              </div>
+
+              {/* Colour Picker */}
+              <div className="mb-4">
+                <div
+                  className="relative w-full h-32 rounded-lg overflow-hidden cursor-pointer border border-gray-200"
+                  onClick={() => colorInputRef.current?.click()}
+                >
+                  <input
+                    ref={colorInputRef}
+                    type="color"
+                    value={currentBrandColor}
+                    onChange={(e) => handleBrandColorChange(e.target.value)}
+                    className="absolute inset-0 w-[200%] h-[200%] cursor-pointer border-0 -top-1/2 -left-1/2"
+                  />
+                </div>
+              </div>
+
+              {/* Hex Input */}
+              <div className="mb-4">
+                <label className="block text-xs text-gray-500 mb-1">
+                  Hex Code
+                </label>
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-8 h-8 rounded-md border border-gray-200 flex-shrink-0"
+                    style={{
+                      backgroundColor: isValidHexColor(hexInput)
+                        ? hexInput
+                        : currentBrandColor,
+                    }}
+                  />
+                  <input
+                    type="text"
+                    value={hexInput}
+                    onChange={(e) => handleHexInputChange(e.target.value)}
+                    onKeyDown={handleHexInputKeyDown}
+                    placeholder="#000000"
+                    maxLength={7}
+                    className={`flex-1 px-2 py-1.5 text-sm border rounded-md font-mono uppercase ${
+                      hexError
+                        ? "border-red-300 focus:ring-red-500 focus:border-red-500"
+                        : "border-gray-200 focus:ring-blue-500 focus:border-blue-500"
+                    } focus:outline-none focus:ring-1`}
+                  />
+                </div>
+                {hexError && (
+                  <p className="text-xs text-red-500 mt-1">
+                    Enter valid hex (e.g. #FF5733)
+                  </p>
+                )}
+              </div>
+
+              {/* Colour Palette Display */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs text-gray-500">Color Palette</label>
+                  <button
+                    onClick={cycleHarmony}
+                    className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                    title="Cycle color harmony"
+                  >
+                    <span className="text-[10px]">
+                      {
+                        HARMONY_OPTIONS.find((h) => h.type === colorHarmony)
+                          ?.label
+                      }
+                    </span>
+                    <svg
+                      className="w-3.5 h-3.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                      />
+                    </svg>
+                  </button>
+                </div>
+                {(() => {
+                  const harmonyColors = getHarmonyColors(
+                    currentBrandColor,
+                    colorHarmony,
+                  );
+                  return (
+                    <div className="flex flex-col gap-2">
+                      <div
+                        className="h-10 rounded-lg border border-gray-200 flex items-center justify-center"
+                        style={{ backgroundColor: currentBrandColor }}
+                      >
+                        <span
+                          className="text-xs font-medium"
+                          style={{
+                            color:
+                              hexToHsl(currentBrandColor).l > 50
+                                ? "#374151"
+                                : "#fff",
+                          }}
+                        >
+                          Primary
+                        </span>
+                      </div>
+                      <div
+                        className="h-8 rounded-lg border border-gray-200 flex items-center justify-center"
+                        style={{
+                          backgroundColor: harmonyColors.secondary,
+                        }}
+                      >
+                        <span className="text-xs font-medium text-gray-700">
+                          Secondary
+                        </span>
+                      </div>
+                      <div
+                        className="h-8 rounded-lg border border-gray-200 flex items-center justify-center"
+                        style={{
+                          backgroundColor: harmonyColors.highlight,
+                        }}
+                      >
+                        <span className="text-xs font-medium text-gray-700">
+                          Highlight
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
+                <p className="text-[10px] text-gray-400 mt-1.5 text-center">
+                  {
+                    HARMONY_OPTIONS.find((h) => h.type === colorHarmony)
+                      ?.description
+                  }
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Status indicator */}
         <div className="flex-1 min-w-0 text-sm text-[var(--text-muted)] flex items-center gap-2">
@@ -932,37 +1230,39 @@ export default function SimpleLandingPageEditor({
                 </svg>
               </button>
 
-              <HeroTemplateRenderer
-                config={config}
-                isEditing={true}
-                onTitleChange={handleTitleChange}
-                onSubtitleChange={handleSubtitleChange}
-                onButtonClick={() => setShowButtonEditor(true)}
-                onAboutParagraphChange={handleAboutParagraphChange}
-                onAboutImageClick={() => setShowAboutImageEditor(true)}
-                onFeaturesHeadingChange={handleFeaturesHeadingChange}
-                onFeaturesSubheadingChange={handleFeaturesSubheadingChange}
-                onFeatureCardChange={handleFeatureCardChange}
-                onFeatureCardImageClick={handleFeatureCardImageClick}
-                onAddFeatureCard={handleAddFeatureCard}
-                onRemoveFeatureCard={handleRemoveFeatureCard}
-                onTestimonialsHeadingChange={handleTestimonialsHeadingChange}
-                onTestimonialsSubheadingChange={
-                  handleTestimonialsSubheadingChange
-                }
-                onTestimonialChange={handleTestimonialChange}
-                onAddTestimonial={handleAddTestimonial}
-                onRemoveTestimonial={handleRemoveTestimonial}
-                onFAQHeadingChange={handleFAQHeadingChange}
-                onFAQSubheadingChange={handleFAQSubheadingChange}
-                onFAQItemChange={handleFAQItemChange}
-                onAddFAQItem={handleAddFAQItem}
-                onRemoveFAQItem={handleRemoveFAQItem}
-                onFooterTextChange={handleFooterTextChange}
-                onFooterLinkChange={handleFooterLinkChange}
-                onAddFooterLink={handleAddFooterLink}
-                onRemoveFooterLink={handleRemoveFooterLink}
-              />
+              <LandingPageThemeProvider palette={config.theme?.palette}>
+                <HeroTemplateRenderer
+                  config={config}
+                  isEditing={true}
+                  onTitleChange={handleTitleChange}
+                  onSubtitleChange={handleSubtitleChange}
+                  onButtonClick={() => setShowButtonEditor(true)}
+                  onAboutParagraphChange={handleAboutParagraphChange}
+                  onAboutImageClick={() => setShowAboutImageEditor(true)}
+                  onFeaturesHeadingChange={handleFeaturesHeadingChange}
+                  onFeaturesSubheadingChange={handleFeaturesSubheadingChange}
+                  onFeatureCardChange={handleFeatureCardChange}
+                  onFeatureCardImageClick={handleFeatureCardImageClick}
+                  onAddFeatureCard={handleAddFeatureCard}
+                  onRemoveFeatureCard={handleRemoveFeatureCard}
+                  onTestimonialsHeadingChange={handleTestimonialsHeadingChange}
+                  onTestimonialsSubheadingChange={
+                    handleTestimonialsSubheadingChange
+                  }
+                  onTestimonialChange={handleTestimonialChange}
+                  onAddTestimonial={handleAddTestimonial}
+                  onRemoveTestimonial={handleRemoveTestimonial}
+                  onFAQHeadingChange={handleFAQHeadingChange}
+                  onFAQSubheadingChange={handleFAQSubheadingChange}
+                  onFAQItemChange={handleFAQItemChange}
+                  onAddFAQItem={handleAddFAQItem}
+                  onRemoveFAQItem={handleRemoveFAQItem}
+                  onFooterTextChange={handleFooterTextChange}
+                  onFooterLinkChange={handleFooterLinkChange}
+                  onAddFooterLink={handleAddFooterLink}
+                  onRemoveFooterLink={handleRemoveFooterLink}
+                />
+              </LandingPageThemeProvider>
             </div>
           </div>
         </div>

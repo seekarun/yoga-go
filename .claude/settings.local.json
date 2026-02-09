@@ -122,7 +122,8 @@
       "Bash(git stash pop:*)",
       "Bash(git status:*)",
       "WebFetch(domain:craftedxp.au)",
-      "WebFetch(domain:proj-cally.vercel.app)"
+      "WebFetch(domain:proj-cally.vercel.app)",
+      "Bash(aws s3 ls:*)"
     ],
     "deny": [],
     "ask": []

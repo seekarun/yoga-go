@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Modal, { ModalHeader, ModalFooter } from "@/components/Modal";
 import { PrimaryButton, SecondaryButton } from "@/components/Button";
+import TranscriptViewer from "@/components/TranscriptViewer";
 import type { CalendarItem } from "@/types";
 
 interface CalendarEventModalProps {
@@ -501,6 +502,11 @@ export default function CalendarEventModal({
               </button>
             </div>
           </div>
+        )}
+
+        {/* Transcript */}
+        {hasVideoConference && !isEditing && (
+          <TranscriptViewer eventId={event.id} />
         )}
 
         {/* Message to visitor (for pending bookings) */}

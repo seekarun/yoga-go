@@ -2,9 +2,14 @@ import * as cdk from "aws-cdk-lib";
 import * as cognito from "aws-cdk-lib/aws-cognito";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as iam from "aws-cdk-lib/aws-iam";
+import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as lambdaNodejs from "aws-cdk-lib/aws-lambda-nodejs";
+import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
 import * as s3 from "aws-cdk-lib/aws-s3";
+import * as sqs from "aws-cdk-lib/aws-sqs";
 import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 import type { Construct } from "constructs";
+import * as path from "path";
 
 /**
  * Cally Application Stack
@@ -94,7 +99,7 @@ export class CallyStack extends cdk.Stack {
         restrictPublicBuckets: false,
       }),
       removalPolicy: cdk.RemovalPolicy.RETAIN,
-      // Auto-delete old audio files after 7 days to save costs
+      // Auto-delete old audio files to save costs
       lifecycleRules: [
         {
           id: "DeleteOldBriefings",
@@ -102,10 +107,16 @@ export class CallyStack extends cdk.Stack {
           expiration: cdk.Duration.days(7),
           enabled: true,
         },
+        {
+          id: "DeleteOldTranscripts",
+          prefix: "transcripts/",
+          expiration: cdk.Duration.days(30),
+          enabled: true,
+        },
       ],
       cors: [
         {
-          allowedMethods: [s3.HttpMethods.GET],
+          allowedMethods: [s3.HttpMethods.GET, s3.HttpMethods.PUT],
           allowedOrigins: ["*"],
           allowedHeaders: ["*"],
         },
@@ -119,6 +130,62 @@ export class CallyStack extends cdk.Stack {
         principals: [new iam.AnyPrincipal()],
         actions: ["s3:GetObject"],
         resources: [`${this.audioBucket.bucketArn}/briefings/*`],
+      }),
+    );
+
+    // ========================================
+    // SQS Queue for Transcription Processing
+    // ========================================
+    const transcriptionDlq = new sqs.Queue(this, "TranscriptionDLQ", {
+      queueName: "cally-transcription-dlq",
+      retentionPeriod: cdk.Duration.days(14),
+    });
+
+    const transcriptionQueue = new sqs.Queue(this, "TranscriptionQueue", {
+      queueName: "cally-transcription-queue",
+      visibilityTimeout: cdk.Duration.minutes(15),
+      retentionPeriod: cdk.Duration.days(7),
+      deadLetterQueue: {
+        queue: transcriptionDlq,
+        maxReceiveCount: 3,
+      },
+    });
+
+    // ========================================
+    // Lambda: Transcription Processor
+    // ========================================
+    const transcriptionProcessor = new lambdaNodejs.NodejsFunction(
+      this,
+      "TranscriptionProcessor",
+      {
+        functionName: "cally-transcription-processor",
+        entry: path.join(__dirname, "../lambda/cally-transcription-processor.ts"),
+        handler: "handler",
+        runtime: lambda.Runtime.NODEJS_20_X,
+        memorySize: 512,
+        timeout: cdk.Duration.minutes(15),
+        environment: {
+          DYNAMODB_TABLE: this.coreTable.tableName,
+          S3_BUCKET: this.audioBucket.bucketName,
+          SECRETS_NAME: "cally/production",
+        },
+        bundling: {
+          minify: true,
+          sourceMap: false,
+          externalModules: ["@aws-sdk/*"],
+        },
+      },
+    );
+
+    // Grant Lambda permissions
+    this.coreTable.grantReadWriteData(transcriptionProcessor);
+    this.audioBucket.grantRead(transcriptionProcessor);
+    appSecret.grantRead(transcriptionProcessor);
+
+    // Add SQS event source
+    transcriptionProcessor.addEventSource(
+      new lambdaEventSources.SqsEventSource(transcriptionQueue, {
+        batchSize: 1,
       }),
     );
 
@@ -310,10 +377,17 @@ export class CallyStack extends cdk.Stack {
       ],
     });
 
+    // SQS policy for sending transcription messages
+    const sqsPolicy = new iam.PolicyStatement({
+      effect: iam.Effect.ALLOW,
+      actions: ["sqs:SendMessage"],
+      resources: [transcriptionQueue.queueArn],
+    });
+
     // Create managed policy and attach to user
     const vercelPolicy = new iam.ManagedPolicy(this, "VercelPolicy", {
       managedPolicyName: "cally-vercel-policy",
-      statements: [dynamoDbPolicy, cognitoPolicy, sesPolicy, sesEmailSendPolicy, s3Policy],
+      statements: [dynamoDbPolicy, cognitoPolicy, sesPolicy, sesEmailSendPolicy, s3Policy, sqsPolicy],
     });
 
     vercelUser.addManagedPolicy(vercelPolicy);
@@ -368,6 +442,12 @@ export class CallyStack extends cdk.Stack {
       description:
         "IAM User ARN for Vercel - create access keys in AWS Console",
       exportName: "CallyVercelUserArn",
+    });
+
+    new cdk.CfnOutput(this, "TranscriptionQueueUrl", {
+      value: transcriptionQueue.queueUrl,
+      description: "SQS Queue URL for transcription processing",
+      exportName: "CallyTranscriptionQueueUrl",
     });
 
     // Note: Client secret can be retrieved from AWS Console or CLI:

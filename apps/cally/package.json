@@ -14,11 +14,13 @@
     "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,json,css,md}\""
   },
   "dependencies": {
+    "@100mslive/react-sdk": "^0.11.1",
     "@aws-sdk/client-cognito-identity-provider": "^3.939.0",
     "@aws-sdk/client-dynamodb": "^3.940.0",
     "@aws-sdk/client-s3": "^3.956.0",
     "@aws-sdk/client-ses": "^3.940.0",
     "@aws-sdk/client-sesv2": "^3.946.0",
+    "@aws-sdk/client-sqs": "^3.985.0",
     "@aws-sdk/lib-dynamodb": "^3.940.0",
     "@aws-sdk/s3-request-presigner": "^3.956.0",
     "@fullcalendar/core": "^6.1.20",
@@ -36,12 +38,12 @@
     "jsonwebtoken": "^9.0.2",
     "nanoid": "^5.1.6",
     "next": "15.5.7",
-    "styled-jsx": "5.1.6",
     "pexels": "^1.4.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-easy-crop": "^5.5.3",
     "stripe": "^19.1.0",
+    "styled-jsx": "5.1.6",
     "twilio": "^5.5.0",
     "ulid": "^3.0.2",
     "uuid": "^13.0.0"

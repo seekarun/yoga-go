@@ -10,3 +10,4 @@ export * from "./phone-calling";
 export * from "./booking";
 export * from "./subscriber";
 export * from "./contact";
+export * from "./transcript";
