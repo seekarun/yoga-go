@@ -165,24 +165,9 @@ export const DEFAULT_PHONE_CONFIG: PhoneConfig = {
 };
 
 /**
- * Available timezones for selection (common IANA timezones)
+ * Re-export shared timezone list for backward compatibility
  */
-export const SUPPORTED_TIMEZONES = [
-  "Australia/Sydney",
-  "Australia/Melbourne",
-  "Australia/Brisbane",
-  "Australia/Perth",
-  "Australia/Adelaide",
-  "Pacific/Auckland",
-  "Asia/Singapore",
-  "Asia/Hong_Kong",
-  "Asia/Tokyo",
-  "Europe/London",
-  "Europe/Paris",
-  "America/New_York",
-  "America/Los_Angeles",
-  "America/Chicago",
-] as const;
+export { SUPPORTED_TIMEZONES } from "@/lib/timezones";
 
 /**
  * Day names for UI

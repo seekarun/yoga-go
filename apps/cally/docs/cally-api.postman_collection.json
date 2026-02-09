@@ -698,6 +698,47 @@
       ]
     },
     {
+      "name": "Preferences - Authenticated",
+      "description": "Tenant preferences (timezone, regional settings)",
+      "item": [
+        {
+          "name": "Get Preferences",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/preferences",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "preferences"]
+            },
+            "description": "Get tenant preferences including timezone. Falls back to bookingConfig.timezone then Australia/Sydney."
+          }
+        },
+        {
+          "name": "Update Preferences",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"timezone\": \"Australia/Sydney\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/preferences",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "preferences"]
+            },
+            "description": "Update tenant preferences. Timezone must be a valid IANA timezone string."
+          }
+        }
+      ]
+    },
+    {
       "name": "Embed Widgets",
       "description": "Embeddable widget pages for external websites (iframe-based)",
       "item": [

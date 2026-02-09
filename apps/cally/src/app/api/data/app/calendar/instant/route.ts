@@ -69,8 +69,10 @@ export async function POST(
     const now = new Date();
     const endTime = new Date(now.getTime() + durationMinutes * 60 * 1000);
 
-    // Generate title with timestamp
-    const title = `Instant Meeting - ${now.toLocaleDateString("en-US", { month: "short", day: "numeric" })} ${now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`;
+    // Generate title with timestamp in tenant's timezone (server runs in UTC on Vercel)
+    const tz =
+      tenant.timezone || tenant.bookingConfig?.timezone || "Australia/Sydney";
+    const title = `Instant Meeting - ${now.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: tz })} ${now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: tz })}`;
 
     console.log("[DBG][instant-meeting] Creating instant meeting:", title);
 

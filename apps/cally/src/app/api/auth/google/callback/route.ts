@@ -168,12 +168,14 @@ export async function GET(request: NextRequest) {
         "[DBG][auth/google/callback] No tenant found, creating new tenant",
       );
       const tenantId = nanoid(12);
+      const timezone = request.headers.get("x-vercel-ip-timezone") || undefined;
       tenant = await createTenant({
         id: tenantId,
         userId: payload.sub,
         name: payload.name || payload.email?.split("@")[0] || "User",
         email: payload.email || "",
         avatar: payload.picture,
+        timezone,
       });
       console.log("[DBG][auth/google/callback] Created tenant:", tenant.id);
     } else {

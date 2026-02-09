@@ -46,6 +46,7 @@ export interface CallyTenant {
   aiAssistantConfig?: AiAssistantConfig;
   phoneConfig?: PhoneConfig;
   bookingConfig?: BookingConfig;
+  timezone?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -70,6 +71,7 @@ export interface CreateTenantInput {
   name: string;
   email: string;
   avatar?: string;
+  timezone?: string;
 }
 
 /**
@@ -177,6 +179,7 @@ export async function createTenant(
     name: input.name,
     email: input.email,
     avatar: input.avatar,
+    ...(input.timezone ? { timezone: input.timezone } : {}),
     isLandingPagePublished: false,
     createdAt: now,
     updatedAt: now,

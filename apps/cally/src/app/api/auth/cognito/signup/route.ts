@@ -69,7 +69,13 @@ export async function POST(request: NextRequest) {
     // Create tenant in DynamoDB with ULID
     if (result.userSub) {
       const tenantId = ulid().toLowerCase();
-      console.log("[DBG][signup] Creating tenant with ID:", tenantId);
+      const timezone = request.headers.get("x-vercel-ip-timezone") || undefined;
+      console.log(
+        "[DBG][signup] Creating tenant with ID:",
+        tenantId,
+        "timezone:",
+        timezone,
+      );
 
       try {
         await createTenant({
@@ -77,6 +83,7 @@ export async function POST(request: NextRequest) {
           userId: result.userSub,
           name: name.trim(),
           email: email.toLowerCase().trim(),
+          timezone,
         });
         console.log("[DBG][signup] Tenant created successfully:", tenantId);
       } catch (tenantError) {
