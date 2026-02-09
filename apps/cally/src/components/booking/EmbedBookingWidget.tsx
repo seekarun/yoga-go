@@ -82,6 +82,8 @@ export default function EmbedBookingWidget({
       visitorName: string;
       visitorEmail: string;
       note: string;
+      _hp: string;
+      _t: string;
     }) => {
       if (!selectedSlot) return;
 
@@ -98,6 +100,8 @@ export default function EmbedBookingWidget({
             note: data.note || undefined,
             startTime: selectedSlot.startTime,
             endTime: selectedSlot.endTime,
+            _hp: data._hp,
+            _t: data._t,
           }),
         });
 

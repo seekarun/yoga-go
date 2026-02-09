@@ -1,9 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { useSpamProtection } from "@core/hooks";
 
 interface ContactFormProps {
-  onSubmit: (data: { name: string; email: string; message: string }) => void;
+  onSubmit: (data: {
+    name: string;
+    email: string;
+    message: string;
+    _hp: string;
+    _t: string;
+  }) => void;
   submitting: boolean;
 }
 
@@ -11,6 +18,7 @@ export default function ContactForm({
   onSubmit,
   submitting,
 }: ContactFormProps) {
+  const { honeypotProps, getSpamFields } = useSpamProtection();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
@@ -31,11 +39,13 @@ export default function ContactForm({
       name: name.trim(),
       email: email.trim(),
       message: message.trim(),
+      ...getSpamFields(),
     });
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <input {...honeypotProps} />
       <div>
         <label
           htmlFor="contact-name"

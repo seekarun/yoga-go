@@ -26,7 +26,13 @@ export default function EmbedContactWidget({
   }, [notifyClose]);
 
   const handleSubmit = useCallback(
-    async (data: { name: string; email: string; message: string }) => {
+    async (data: {
+      name: string;
+      email: string;
+      message: string;
+      _hp: string;
+      _t: string;
+    }) => {
       setSubmitting(true);
       setError(null);
 
@@ -34,7 +40,13 @@ export default function EmbedContactWidget({
         const res = await fetch(`/api/data/tenants/${tenantId}/contact`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
+          body: JSON.stringify({
+            name: data.name,
+            email: data.email,
+            message: data.message,
+            _hp: data._hp,
+            _t: data._t,
+          }),
         });
 
         const json = (await res.json()) as {

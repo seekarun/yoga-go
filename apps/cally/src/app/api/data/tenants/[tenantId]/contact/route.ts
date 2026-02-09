@@ -8,7 +8,8 @@ import { getTenantById } from "@/lib/repositories/tenantRepository";
 import { createContact } from "@/lib/repositories/contactRepository";
 import { sendContactNotificationEmail } from "@/lib/email/contactNotification";
 import { isValidEmail } from "@core/lib/email/validator";
-import { extractVisitorInfo } from "@core/lib";
+import { extractVisitorInfo, checkSpamProtection } from "@core/lib";
+import { Tables } from "@/lib/dynamodb";
 
 interface RouteParams {
   params: Promise<{
@@ -25,6 +26,20 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       "[DBG][contact] Creating contact submission for tenant:",
       tenantId,
     );
+
+    // Spam protection check (honeypot → timing → rate limit)
+    const spamCheck = await checkSpamProtection(request.headers, body, {
+      tableName: Tables.CORE,
+    });
+    if (!spamCheck.passed) {
+      console.log(
+        `[DBG][contact] Spam blocked for tenant ${tenantId}: ${spamCheck.reason}`,
+      );
+      return NextResponse.json(
+        { success: false, error: "Too many requests. Please try again later." },
+        { status: 429 },
+      );
+    }
 
     const visitorInfo = extractVisitorInfo(request.headers);
     const { name, email, message } = body;

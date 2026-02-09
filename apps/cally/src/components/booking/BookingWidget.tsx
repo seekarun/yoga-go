@@ -97,6 +97,8 @@ export default function BookingWidget({
       visitorName: string;
       visitorEmail: string;
       note: string;
+      _hp: string;
+      _t: string;
     }) => {
       if (!selectedSlot) return;
 
@@ -113,6 +115,8 @@ export default function BookingWidget({
             note: data.note || undefined,
             startTime: selectedSlot.startTime,
             endTime: selectedSlot.endTime,
+            _hp: data._hp,
+            _t: data._t,
           }),
         });
 

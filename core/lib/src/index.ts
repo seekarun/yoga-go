@@ -11,3 +11,6 @@ export * from "./email";
 
 // Visitor info extraction
 export * from "./visitor";
+
+// Spam protection
+export * from "./spam-protection";

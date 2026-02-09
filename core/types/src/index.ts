@@ -54,3 +54,6 @@ export * from "./notification";
 
 // Visitor types
 export * from "./visitor";
+
+// Spam protection types
+export * from "./spam-protection";

@@ -1,12 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { useSpamProtection } from "@core/hooks";
 
 interface BookingFormProps {
   onSubmit: (data: {
     visitorName: string;
     visitorEmail: string;
     note: string;
+    _hp: string;
+    _t: string;
   }) => void;
   submitting: boolean;
 }
@@ -15,6 +18,7 @@ export default function BookingForm({
   onSubmit,
   submitting,
 }: BookingFormProps) {
+  const { honeypotProps, getSpamFields } = useSpamProtection();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [note, setNote] = useState("");
@@ -35,11 +39,13 @@ export default function BookingForm({
       visitorName: name.trim(),
       visitorEmail: email.trim(),
       note: note.trim(),
+      ...getSpamFields(),
     });
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <input {...honeypotProps} />
       <div>
         <label
           htmlFor="booking-name"

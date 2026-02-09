@@ -63,6 +63,7 @@ export class CallyStack extends cdk.Stack {
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
       pointInTimeRecovery: false,
+      timeToLiveAttribute: "ttl",
     });
 
     // GSI1: Inverted lookups
