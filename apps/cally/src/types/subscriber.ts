@@ -29,4 +29,5 @@ export interface CallyUser {
   totalBookings?: number;
   lastContactDate?: string;
   totalContacts?: number;
+  anonymous?: boolean;
 }

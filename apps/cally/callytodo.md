@@ -1,5 +1,6 @@
-- sanitize emails in appointments
-- record 100ms call and provide summary in /user page for tenants
+x sanitize emails in appointments
+x record 100ms call and provide summary in /user page for tenants
+
 - sync calendar events to google calendar (and others)
 - video call recording and AI feed
 - AI chat to look up user's past interactions
@@ -20,6 +21,9 @@
 - mobile app to go with webapp
 - SEO help
 - review DB structure for scaling
+- zoom integration for video calls
+  - can zoom calls be recorded and transcribed?
+- Shopify?
 
   Sections That Could Be Added
   ┌──────────────────────┬───────────────────────────────────────────────────────────────────┐

@@ -57,6 +57,7 @@ export function mergeSubscribersAndVisitors(
         lastBookingDate: eventDate,
         lastBookingStatus: event.status,
         totalBookings: 1,
+        ...(event.flaggedAsSpam && { anonymous: true }),
       });
     }
   }
@@ -84,6 +85,7 @@ export function mergeSubscribersAndVisitors(
           userType: "contact",
           lastContactDate: contact.submittedAt,
           totalContacts: 1,
+          ...(contact.flaggedAsSpam && { anonymous: true }),
         });
       }
     }

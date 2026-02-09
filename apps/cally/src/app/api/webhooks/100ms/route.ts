@@ -107,8 +107,26 @@ function formatSummary(sections: HmsSummarySection[]): string {
     .join("\n\n");
 }
 
+const HMS_WEBHOOK_SECRET = process.env.HMS_WEBHOOK_SECRET;
+
 export async function POST(request: Request) {
   console.log("[DBG][webhook/100ms] Webhook received");
+
+  // Verify shared-secret header configured in 100ms Dashboard
+  if (HMS_WEBHOOK_SECRET) {
+    const incomingSecret = request.headers.get("x-100ms-webhook-secret");
+    if (incomingSecret !== HMS_WEBHOOK_SECRET) {
+      console.error("[DBG][webhook/100ms] Invalid webhook secret");
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
+      );
+    }
+  } else {
+    console.warn(
+      "[DBG][webhook/100ms] HMS_WEBHOOK_SECRET not set — skipping verification",
+    );
+  }
 
   try {
     const payload: HmsWebhookPayload = await request.json();

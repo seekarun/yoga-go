@@ -22,6 +22,7 @@ export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
   const [showComposeModal, setShowComposeModal] = useState(false);
+  const [hideAnonymous, setHideAnonymous] = useState(false);
 
   const { showToast } = useToast();
 
@@ -52,12 +53,17 @@ export default function UsersPage() {
       registered: users.filter((u) => u.userType === "registered").length,
       visitor: users.filter((u) => u.userType === "visitor").length,
       contact: users.filter((u) => u.userType === "contact").length,
+      anonymous: users.filter((u) => u.anonymous).length,
     }),
     [users],
   );
 
   const filteredUsers = useMemo(() => {
     let result = users;
+
+    if (hideAnonymous) {
+      result = result.filter((u) => !u.anonymous);
+    }
 
     if (activeFilter !== "all") {
       result = result.filter((u) => u.userType === activeFilter);
@@ -72,7 +78,7 @@ export default function UsersPage() {
     }
 
     return result;
-  }, [users, activeFilter, searchQuery]);
+  }, [users, activeFilter, searchQuery, hideAnonymous]);
 
   const visibleEmails = useMemo(
     () => new Set(filteredUsers.map((u) => u.email)),
@@ -174,6 +180,17 @@ export default function UsersPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="rounded-lg border border-[var(--color-border)] bg-white px-3 py-1.5 text-sm text-[var(--text-main)] placeholder:text-[var(--text-muted)] focus:border-[var(--color-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
           />
+          {counts.anonymous > 0 && (
+            <label className="ml-auto flex items-center gap-1.5 text-sm text-[var(--text-muted)] cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={hideAnonymous}
+                onChange={(e) => setHideAnonymous(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
+              />
+              Hide anonymous ({counts.anonymous})
+            </label>
+          )}
         </div>
       )}
 
@@ -272,7 +289,7 @@ export default function UsersPage() {
               {filteredUsers.map((user) => (
                 <tr
                   key={user.email}
-                  className="hover:bg-gray-50/50 transition-colors"
+                  className={`hover:bg-gray-50/50 transition-colors ${user.anonymous ? "opacity-60" : ""}`}
                 >
                   <td className="px-4 py-3">
                     <input
@@ -302,6 +319,11 @@ export default function UsersPage() {
                       <span className="text-sm font-medium text-[var(--text-main)] group-hover:text-[var(--color-primary)] transition-colors">
                         {user.name}
                       </span>
+                      {user.anonymous && (
+                        <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
+                          Anonymous
+                        </span>
+                      )}
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-sm text-[var(--text-muted)]">
