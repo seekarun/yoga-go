@@ -8,6 +8,7 @@ import { getTenantById } from "@/lib/repositories/tenantRepository";
 import { createContact } from "@/lib/repositories/contactRepository";
 import { sendContactNotificationEmail } from "@/lib/email/contactNotification";
 import { isValidEmail } from "@core/lib/email/validator";
+import { extractVisitorInfo } from "@core/lib";
 
 interface RouteParams {
   params: Promise<{
@@ -25,6 +26,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       tenantId,
     );
 
+    const visitorInfo = extractVisitorInfo(request.headers);
     const { name, email, message } = body;
 
     // Validate required fields
@@ -62,6 +64,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         message: message.trim(),
         flaggedAsSpam: true,
         emailValidationReason: emailValidation.reason,
+        visitorInfo,
       });
 
       console.log(
@@ -84,6 +87,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       name: name.trim(),
       email: email.toLowerCase().trim(),
       message: message.trim(),
+      visitorInfo,
     });
 
     // Send notification email to tenant (fire-and-forget)

@@ -2,6 +2,7 @@
 
 import type { BaseEntity } from "./base";
 import type { WebinarStatus } from "./video";
+import type { VisitorInfo } from "./visitor";
 
 /**
  * Calendar event type
@@ -43,6 +44,8 @@ export interface CalendarEvent extends BaseEntity {
   hmsTemplateId?: string;
   // Spam detection
   flaggedAsSpam?: boolean;
+  // Visitor geolocation metadata
+  visitorInfo?: VisitorInfo;
 }
 
 /**
@@ -71,6 +74,8 @@ export interface CreateCalendarEventInput {
   hmsTemplateId?: string;
   // Spam detection
   flaggedAsSpam?: boolean;
+  // Visitor geolocation metadata
+  visitorInfo?: VisitorInfo;
 }
 
 /**

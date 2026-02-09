@@ -51,3 +51,6 @@ export * from "./calendar";
 
 // Notification types
 export * from "./notification";
+
+// Visitor types
+export * from "./visitor";

@@ -12,6 +12,7 @@ import { DEFAULT_BOOKING_CONFIG } from "@/types/booking";
 import type { CreateBookingRequest } from "@/types/booking";
 import { sendBookingNotificationEmail } from "@/lib/email/bookingNotification";
 import { isValidEmail } from "@core/lib/email/validator";
+import { extractVisitorInfo } from "@core/lib";
 
 interface RouteParams {
   params: Promise<{
@@ -26,6 +27,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     console.log("[DBG][booking] Creating booking for tenant:", tenantId);
 
+    const visitorInfo = extractVisitorInfo(request.headers);
     const { visitorName, visitorEmail, note, startTime, endTime } = body;
 
     // Validate required fields
@@ -110,6 +112,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       status: "pending",
       color: "#f59e0b",
       flaggedAsSpam: isFlaggedAsSpam || undefined,
+      visitorInfo,
     });
 
     console.log("[DBG][booking] Created booking event:", event.id);

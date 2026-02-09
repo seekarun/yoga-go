@@ -356,6 +356,8 @@ export async function createCalendarEvent(
     hmsTemplateId: input.hmsTemplateId,
     // Spam detection
     flaggedAsSpam: input.flaggedAsSpam,
+    // Visitor geolocation metadata
+    visitorInfo: input.visitorInfo,
     createdAt: now,
     updatedAt: now,
   };
@@ -458,6 +460,8 @@ export async function updateCalendarEvent(
     hmsTemplateId: "hmsTemplateId",
     // Spam detection
     flaggedAsSpam: "flaggedAsSpam",
+    // Visitor geolocation metadata
+    visitorInfo: "visitorInfo",
   };
 
   for (const [field, key] of Object.entries(fieldMappings)) {

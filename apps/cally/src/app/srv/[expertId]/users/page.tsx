@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import type { CallyUser, UserType } from "@/types";
+import type { VisitorInfo } from "@core/types";
 import Modal, { ModalHeader, ModalFooter } from "@/components/Modal";
 import { PrimaryButton, SecondaryButton } from "@/components/Button";
 import { useToast } from "@/components/Toast";
@@ -275,6 +276,9 @@ export default function UsersPage() {
                   Type
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--text-muted)]">
+                  Location
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--text-muted)]">
                   Date
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-[var(--text-muted)]">
@@ -331,6 +335,9 @@ export default function UsersPage() {
                   </td>
                   <td className="px-4 py-3">
                     <TypeBadge userType={user.userType} />
+                  </td>
+                  <td className="px-4 py-3 text-sm text-[var(--text-muted)]">
+                    {formatLocation(user.visitorInfo)}
                   </td>
                   <td className="px-4 py-3 text-sm text-[var(--text-muted)]">
                     {user.userType === "registered"
@@ -571,4 +578,12 @@ function formatDate(isoString: string): string {
     day: "numeric",
     year: "numeric",
   });
+}
+
+function formatLocation(visitorInfo?: VisitorInfo): string {
+  if (!visitorInfo) return "\u2014";
+  const { city, country } = visitorInfo;
+  if (city && country) return `${city}, ${country}`;
+  if (country) return country;
+  return "\u2014";
 }

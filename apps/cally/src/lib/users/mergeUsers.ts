@@ -46,6 +46,10 @@ export function mergeSubscribersAndVisitors(
       if (!existing.lastBookingDate || eventDate > existing.lastBookingDate) {
         existing.lastBookingDate = eventDate;
         existing.lastBookingStatus = event.status;
+        // Update visitor info from most recent interaction
+        if (event.visitorInfo) {
+          existing.visitorInfo = event.visitorInfo;
+        }
       }
     } else {
       // New visitor
@@ -58,6 +62,7 @@ export function mergeSubscribersAndVisitors(
         lastBookingStatus: event.status,
         totalBookings: 1,
         ...(event.flaggedAsSpam && { anonymous: true }),
+        ...(event.visitorInfo && { visitorInfo: event.visitorInfo }),
       });
     }
   }
@@ -76,6 +81,10 @@ export function mergeSubscribersAndVisitors(
           contact.submittedAt > existing.lastContactDate
         ) {
           existing.lastContactDate = contact.submittedAt;
+          // Update visitor info from most recent interaction
+          if (contact.visitorInfo) {
+            existing.visitorInfo = contact.visitorInfo;
+          }
         }
       } else {
         // New contact-only user
@@ -86,6 +95,7 @@ export function mergeSubscribersAndVisitors(
           lastContactDate: contact.submittedAt,
           totalContacts: 1,
           ...(contact.flaggedAsSpam && { anonymous: true }),
+          ...(contact.visitorInfo && { visitorInfo: contact.visitorInfo }),
         });
       }
     }

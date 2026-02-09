@@ -8,3 +8,6 @@ export * from "./utils";
 
 // Email client
 export * from "./email";
+
+// Visitor info extraction
+export * from "./visitor";

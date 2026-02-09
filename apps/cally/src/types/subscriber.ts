@@ -3,6 +3,8 @@
  * Visitors who sign up via booking emails or landing pages
  */
 
+import type { VisitorInfo } from "@core/types";
+
 export type SubscriberSource = "booking_email" | "google" | "direct";
 
 export interface TenantSubscriber {
@@ -30,4 +32,5 @@ export interface CallyUser {
   lastContactDate?: string;
   totalContacts?: number;
   anonymous?: boolean;
+  visitorInfo?: VisitorInfo;
 }

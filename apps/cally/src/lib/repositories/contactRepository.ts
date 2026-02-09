@@ -12,6 +12,7 @@
 import { PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import { docClient, Tables, TenantPK, EntityType } from "../dynamodb";
 import type { ContactSubmission } from "@/types";
+import type { VisitorInfo } from "@core/types";
 
 /**
  * DynamoDB item type (includes PK/SK keys)
@@ -48,6 +49,7 @@ export async function createContact(
     message: string;
     flaggedAsSpam?: boolean;
     emailValidationReason?: string;
+    visitorInfo?: VisitorInfo;
   },
 ): Promise<ContactSubmission> {
   const id = generateId();
@@ -69,6 +71,7 @@ export async function createContact(
     ...(data.emailValidationReason && {
       emailValidationReason: data.emailValidationReason,
     }),
+    ...(data.visitorInfo && { visitorInfo: data.visitorInfo }),
   };
 
   const item: DynamoDBContactItem = {
