@@ -42,7 +42,13 @@ function generateId(): string {
  */
 export async function createContact(
   tenantId: string,
-  data: { name: string; email: string; message: string },
+  data: {
+    name: string;
+    email: string;
+    message: string;
+    flaggedAsSpam?: boolean;
+    emailValidationReason?: string;
+  },
 ): Promise<ContactSubmission> {
   const id = generateId();
   const submittedAt = new Date().toISOString();
@@ -57,6 +63,12 @@ export async function createContact(
     name: data.name,
     message: data.message,
     submittedAt,
+    ...(data.flaggedAsSpam !== undefined && {
+      flaggedAsSpam: data.flaggedAsSpam,
+    }),
+    ...(data.emailValidationReason && {
+      emailValidationReason: data.emailValidationReason,
+    }),
   };
 
   const item: DynamoDBContactItem = {

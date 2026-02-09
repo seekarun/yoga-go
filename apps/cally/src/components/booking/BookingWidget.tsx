@@ -31,6 +31,7 @@ export default function BookingWidget({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmedSlot, setConfirmedSlot] = useState<TimeSlot | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
 
   const resetState = useCallback(() => {
     setStep("date-select");
@@ -40,6 +41,7 @@ export default function BookingWidget({
     setSubmitting(false);
     setError(null);
     setConfirmedSlot(null);
+    setWarning(null);
   }, []);
 
   const handleClose = useCallback(() => {
@@ -117,6 +119,7 @@ export default function BookingWidget({
         const json = (await res.json()) as {
           success: boolean;
           error?: string;
+          warning?: string;
         };
 
         if (!json.success) {
@@ -124,6 +127,9 @@ export default function BookingWidget({
           return;
         }
 
+        if (json.warning) {
+          setWarning(json.warning);
+        }
         setConfirmedSlot(selectedSlot);
         setStep("confirmed");
       } catch {
@@ -273,6 +279,7 @@ export default function BookingWidget({
           endTime={confirmedSlot.endTime}
           timezone={timezone}
           onClose={handleClose}
+          warning={warning ?? undefined}
         />
       )}
     </Modal>

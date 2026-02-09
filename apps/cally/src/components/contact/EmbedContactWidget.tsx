@@ -19,6 +19,7 @@ export default function EmbedContactWidget({
   const [step, setStep] = useState<ContactStep>("form");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
 
   const handleClose = useCallback(() => {
     notifyClose();
@@ -39,6 +40,7 @@ export default function EmbedContactWidget({
         const json = (await res.json()) as {
           success: boolean;
           error?: string;
+          warning?: string;
         };
 
         if (!json.success) {
@@ -46,6 +48,9 @@ export default function EmbedContactWidget({
           return;
         }
 
+        if (json.warning) {
+          setWarning(json.warning);
+        }
         setStep("confirmed");
         notifyContacted();
       } catch {
@@ -98,7 +103,12 @@ export default function EmbedContactWidget({
           <ContactForm onSubmit={handleSubmit} submitting={submitting} />
         )}
 
-        {step === "confirmed" && <ContactConfirmation onClose={handleClose} />}
+        {step === "confirmed" && (
+          <ContactConfirmation
+            onClose={handleClose}
+            warning={warning ?? undefined}
+          />
+        )}
       </div>
     </div>
   );

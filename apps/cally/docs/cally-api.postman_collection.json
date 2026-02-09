@@ -741,6 +741,179 @@
           }
         }
       ]
+    },
+    {
+      "name": "Transcription",
+      "item": [
+        {
+          "name": "Upload Audio (Get Presigned URL)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "session={{sessionToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fileSizeBytes\": 1048576,\n  \"fileName\": \"recording.webm\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/calendar/events/{{eventId}}/transcript/upload",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "app",
+                "calendar",
+                "events",
+                "{{eventId}}",
+                "transcript",
+                "upload"
+              ]
+            },
+            "description": "Generate a presigned S3 URL for uploading meeting audio. Creates a transcript record in DynamoDB with 'uploading' status."
+          }
+        },
+        {
+          "name": "Get Transcript",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "session={{sessionToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/calendar/events/{{eventId}}/transcript",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "app",
+                "calendar",
+                "events",
+                "{{eventId}}",
+                "transcript"
+              ]
+            },
+            "description": "Get transcript data for a calendar event. Returns status, transcript text, summary, speaker segments, and topics."
+          }
+        },
+        {
+          "name": "Queue Transcription",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "session={{sessionToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/calendar/events/{{eventId}}/transcript",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "app",
+                "calendar",
+                "events",
+                "{{eventId}}",
+                "transcript"
+              ]
+            },
+            "description": "Queue a transcript for processing after audio upload is complete. Updates status to 'queued' and sends SQS message."
+          }
+        },
+        {
+          "name": "Start Recording (with Transcription)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "session={{sessionToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/calendar/events/{{eventId}}/recording/start",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "app",
+                "calendar",
+                "events",
+                "{{eventId}}",
+                "recording",
+                "start"
+              ]
+            },
+            "description": "Start 100ms server-side recording with post-call transcription enabled. Calls 100ms Recording API with transcription config (JSON + TXT output, summary with key points and action items). Creates a transcript record with 'recording' status."
+          }
+        },
+        {
+          "name": "Stop Recording",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "session={{sessionToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/calendar/events/{{eventId}}/recording/stop",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "app",
+                "calendar",
+                "events",
+                "{{eventId}}",
+                "recording",
+                "stop"
+              ]
+            },
+            "description": "Stop 100ms server-side recording. Updates transcript status to 'processing'. 100ms will fire a webhook when transcription completes."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Webhooks",
+      "item": [
+        {
+          "name": "100ms Webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"transcription.success\",\n  \"data\": {\n    \"room_id\": \"test-room-id\",\n    \"session_id\": \"test-session\",\n    \"duration\": 300,\n    \"transcript_json_presigned_url\": \"https://example.com/transcript.json\",\n    \"summary_json_presigned_url\": \"https://example.com/summary.json\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/webhooks/100ms",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "webhooks", "100ms"]
+            },
+            "description": "100ms webhook endpoint. Handles transcription.success (downloads transcript + summary, stores in DynamoDB) and transcription.failure (updates status to failed). Configure webhook URL in 100ms Dashboard > Developer > Webhook URL."
+          }
+        }
+      ]
     }
   ]
 }

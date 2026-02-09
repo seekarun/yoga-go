@@ -21,11 +21,13 @@ export default function ContactWidget({
   const [step, setStep] = useState<ContactStep>("form");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
 
   const resetState = useCallback(() => {
     setStep("form");
     setSubmitting(false);
     setError(null);
+    setWarning(null);
   }, []);
 
   const handleClose = useCallback(() => {
@@ -49,6 +51,7 @@ export default function ContactWidget({
         const json = (await res.json()) as {
           success: boolean;
           error?: string;
+          warning?: string;
         };
 
         if (!json.success) {
@@ -56,6 +59,9 @@ export default function ContactWidget({
           return;
         }
 
+        if (json.warning) {
+          setWarning(json.warning);
+        }
         setStep("confirmed");
       } catch {
         setError("Failed to send message. Please try again.");
@@ -82,7 +88,12 @@ export default function ContactWidget({
         <ContactForm onSubmit={handleSubmit} submitting={submitting} />
       )}
 
-      {step === "confirmed" && <ContactConfirmation onClose={handleClose} />}
+      {step === "confirmed" && (
+        <ContactConfirmation
+          onClose={handleClose}
+          warning={warning ?? undefined}
+        />
+      )}
     </Modal>
   );
 }

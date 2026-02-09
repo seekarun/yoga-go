@@ -11,6 +11,7 @@ import { generateAvailableSlots } from "@/lib/booking/availability";
 import { DEFAULT_BOOKING_CONFIG } from "@/types/booking";
 import type { CreateBookingRequest } from "@/types/booking";
 import { sendBookingNotificationEmail } from "@/lib/email/bookingNotification";
+import { isValidEmail } from "@core/lib/email/validator";
 
 interface RouteParams {
   params: Promise<{
@@ -35,14 +36,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           error:
             "Missing required fields: visitorName, visitorEmail, startTime, endTime",
         },
-        { status: 400 },
-      );
-    }
-
-    // Validate email format
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(visitorEmail)) {
-      return NextResponse.json(
-        { success: false, error: "Invalid email address" },
         { status: 400 },
       );
     }
@@ -93,6 +86,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    // Validate email (format, disposable domain, MX record) — after slot check to avoid DNS lookups for invalid slots
+    const emailValidation = await isValidEmail(visitorEmail);
+
     // Create the booking as a calendar event
     const description = [
       `Visitor: ${visitorName}`,
@@ -101,6 +97,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     ]
       .filter(Boolean)
       .join("\n");
+
+    const isFlaggedAsSpam = !emailValidation.valid;
 
     const event = await createCalendarEvent(tenantId, {
       title: `Booking: ${visitorName}`,
@@ -111,9 +109,32 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       type: "general",
       status: "pending",
       color: "#f59e0b",
+      flaggedAsSpam: isFlaggedAsSpam || undefined,
     });
 
     console.log("[DBG][booking] Created booking event:", event.id);
+
+    if (isFlaggedAsSpam) {
+      console.log(
+        `[DBG][booking] Spam-flagged booking ${event.id} — reason: ${emailValidation.reason}`,
+      );
+
+      return NextResponse.json(
+        {
+          success: true,
+          warning:
+            "Your email address appears invalid. Your booking was received, but you may not receive a confirmation email. Please check your email address if this is a mistake.",
+          data: {
+            eventId: event.id,
+            title: event.title,
+            startTime: event.startTime,
+            endTime: event.endTime,
+            date: event.date,
+          },
+        },
+        { status: 202 },
+      );
+    }
 
     // Send booking notification email to visitor (errors caught internally — won't break response)
     await sendBookingNotificationEmail({

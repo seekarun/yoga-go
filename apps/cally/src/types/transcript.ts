@@ -1,7 +1,7 @@
 /**
  * Transcript Types for Cally
  *
- * Used for meeting transcription via OpenAI Whisper
+ * Used for meeting transcription via OpenAI Whisper and 100ms post-call transcription
  */
 
 export type TranscriptStatus =
@@ -9,8 +9,17 @@ export type TranscriptStatus =
   | "queued"
   | "transcribing"
   | "summarizing"
+  | "recording"
+  | "processing"
   | "completed"
   | "failed";
+
+export interface SpeakerSegment {
+  speaker: string;
+  text: string;
+  startTime: number;
+  endTime: number;
+}
 
 export interface MeetingTranscript {
   id: string; // same as eventId
@@ -25,6 +34,8 @@ export interface MeetingTranscript {
   transcriptText?: string;
   summary?: string;
   topics?: string[];
+  speakerSegments?: SpeakerSegment[];
+  transcriptionSource?: "whisper" | "100ms";
   errorMessage?: string;
   createdAt: string;
   updatedAt: string;

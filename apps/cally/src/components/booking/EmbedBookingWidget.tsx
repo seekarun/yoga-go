@@ -29,6 +29,7 @@ export default function EmbedBookingWidget({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmedSlot, setConfirmedSlot] = useState<TimeSlot | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
 
   const handleClose = useCallback(() => {
     notifyClose();
@@ -103,6 +104,7 @@ export default function EmbedBookingWidget({
         const json = (await res.json()) as {
           success: boolean;
           error?: string;
+          warning?: string;
         };
 
         if (!json.success) {
@@ -110,6 +112,9 @@ export default function EmbedBookingWidget({
           return;
         }
 
+        if (json.warning) {
+          setWarning(json.warning);
+        }
         setConfirmedSlot(selectedSlot);
         setStep("confirmed");
         notifyBooked();
@@ -295,6 +300,7 @@ export default function EmbedBookingWidget({
             endTime={confirmedSlot.endTime}
             timezone={timezone}
             onClose={handleConfirmationClose}
+            warning={warning ?? undefined}
           />
         )}
       </div>

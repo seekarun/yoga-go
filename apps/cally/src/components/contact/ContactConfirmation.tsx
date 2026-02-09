@@ -2,10 +2,12 @@
 
 interface ContactConfirmationProps {
   onClose: () => void;
+  warning?: string;
 }
 
 export default function ContactConfirmation({
   onClose,
+  warning,
 }: ContactConfirmationProps) {
   return (
     <div className="text-center py-4">
@@ -28,10 +30,16 @@ export default function ContactConfirmation({
       <h3 className="text-lg font-semibold text-gray-900 mb-1">
         Message Sent!
       </h3>
-      <p className="text-sm text-gray-600 mb-6">
+      <p className="text-sm text-gray-600 mb-4">
         Thank you for reaching out. We&apos;ll get back to you as soon as
         possible.
       </p>
+
+      {warning && (
+        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800 text-left">
+          {warning}
+        </div>
+      )}
 
       <button
         type="button"

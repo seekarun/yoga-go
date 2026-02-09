@@ -41,6 +41,8 @@ export interface CalendarEvent extends BaseEntity {
   hasVideoConference?: boolean;
   hmsRoomId?: string;
   hmsTemplateId?: string;
+  // Spam detection
+  flaggedAsSpam?: boolean;
 }
 
 /**
@@ -67,6 +69,8 @@ export interface CreateCalendarEventInput {
   hasVideoConference?: boolean;
   hmsRoomId?: string;
   hmsTemplateId?: string;
+  // Spam detection
+  flaggedAsSpam?: boolean;
 }
 
 /**

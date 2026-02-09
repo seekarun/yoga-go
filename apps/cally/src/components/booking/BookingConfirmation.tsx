@@ -5,6 +5,7 @@ interface BookingConfirmationProps {
   endTime: string;
   timezone: string;
   onClose: () => void;
+  warning?: string;
 }
 
 export default function BookingConfirmation({
@@ -12,6 +13,7 @@ export default function BookingConfirmation({
   endTime,
   timezone,
   onClose,
+  warning,
 }: BookingConfirmationProps) {
   const start = new Date(startTime);
   const dateStr = start.toLocaleDateString("en-US", {
@@ -58,6 +60,12 @@ export default function BookingConfirmation({
         Your request has been submitted. You will receive an email on
         confirmation.
       </p>
+
+      {warning && (
+        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800 text-left">
+          {warning}
+        </div>
+      )}
 
       <div className="bg-gray-50 rounded-lg p-4 mb-6 text-left">
         <div className="text-sm text-gray-600 mb-1">Date</div>

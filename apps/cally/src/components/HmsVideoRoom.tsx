@@ -28,7 +28,6 @@ import {
 } from "@100mslive/react-sdk";
 import type { BlurBackgroundPlugin } from "@/lib/blur-background-plugin";
 import { getBlurPlugin, disposeBlurPlugin } from "@/lib/blur-background-plugin";
-import { useAudioCapture } from "@/hooks/useAudioCapture";
 
 interface HmsVideoRoomProps {
   authToken: string;
@@ -78,18 +77,8 @@ export default function HmsVideoRoom({
   const [showParticipantsMenu, setShowParticipantsMenu] = useState(false);
   const [promotingPeerId, setPromotingPeerId] = useState<string | null>(null);
 
-  // Audio capture for transcription (host-only)
-  const {
-    isCapturing,
-    audioBlob,
-    durationSeconds: captureDuration,
-    startCapture,
-    stopCapture,
-    stopAndGetBlob,
-  } = useAudioCapture();
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
-  const [isLeaving, setIsLeaving] = useState(false);
+  // Recording status message
+  const [recordingStatus, setRecordingStatus] = useState<string | null>(null);
 
   // Handle 100ms notifications (errors, etc.)
   useEffect(() => {
@@ -208,123 +197,10 @@ export default function HmsVideoRoom({
     return () => clearTimeout(timeout);
   }, [isJoining, isConnected, error]);
 
-  // Upload audio blob to S3 and queue for transcription
-  const uploadAudio = async (blob: Blob) => {
-    setIsUploading(true);
-    setUploadProgress("Getting upload URL...");
-
-    try {
-      // Get the eventId from URL (format: /srv/{expertId}/live/{eventId})
-      const pathParts = window.location.pathname.split("/");
-      const eventId = pathParts[pathParts.length - 1];
-
-      // Step 1: Get presigned URL
-      const uploadRes = await fetch(
-        `/api/data/app/calendar/events/${eventId}/transcript/upload`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            fileSizeBytes: blob.size,
-            fileName: "recording.webm",
-          }),
-        },
-      );
-      const uploadData = await uploadRes.json();
-
-      if (!uploadData.success) {
-        console.error(
-          "[DBG][HmsVideoRoom] Upload init failed:",
-          uploadData.error,
-        );
-        setUploadProgress(`Error: ${uploadData.error}`);
-        return;
-      }
-
-      // Step 2: Upload to S3
-      setUploadProgress("Uploading audio...");
-      const s3Res = await fetch(uploadData.data.presignedUrl, {
-        method: "PUT",
-        headers: { "Content-Type": "audio/webm" },
-        body: blob,
-      });
-
-      if (!s3Res.ok) {
-        console.error("[DBG][HmsVideoRoom] S3 upload failed:", s3Res.status);
-        setUploadProgress("Upload failed");
-        return;
-      }
-
-      // Step 3: Queue for processing
-      setUploadProgress("Starting transcription...");
-      const queueRes = await fetch(
-        `/api/data/app/calendar/events/${eventId}/transcript`,
-        { method: "POST" },
-      );
-      const queueData = await queueRes.json();
-
-      if (queueData.success) {
-        setUploadProgress("Transcription queued!");
-        console.log("[DBG][HmsVideoRoom] Transcription queued successfully");
-      } else {
-        setUploadProgress(`Error: ${queueData.error}`);
-      }
-    } catch (err) {
-      console.error("[DBG][HmsVideoRoom] Upload error:", err);
-      setUploadProgress("Upload failed");
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  // Upload captured audio when blob is available (for manual stop, not leave)
-  useEffect(() => {
-    if (!audioBlob || isUploading || isLeaving) return;
-    uploadAudio(audioBlob);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [audioBlob]);
-
   const handleLeave = async () => {
     console.log("[DBG][HmsVideoRoom] Leaving room");
-    setIsLeaving(true);
-
-    // If capturing, stop and wait for blob, then upload before navigating away
-    if (isCapturing) {
-      setUploadProgress("Saving recording...");
-      const blob = await stopAndGetBlob();
-      if (blob) {
-        console.log(
-          "[DBG][HmsVideoRoom] Got audio blob, size:",
-          blob.size,
-          "uploading...",
-        );
-        await uploadAudio(blob);
-      } else {
-        console.warn("[DBG][HmsVideoRoom] No audio blob returned");
-      }
-    }
-
     await hmsActions.leave();
     onLeave?.();
-  };
-
-  const toggleTranscription = () => {
-    if (isCapturing) {
-      console.log("[DBG][HmsVideoRoom] Stopping transcription capture");
-      stopCapture();
-    } else {
-      console.log("[DBG][HmsVideoRoom] Starting transcription capture");
-      startCapture();
-    }
-  };
-
-  // Format capture duration
-  const formatDuration = (seconds: number): string => {
-    const m = Math.floor(seconds / 60)
-      .toString()
-      .padStart(2, "0");
-    const s = (seconds % 60).toString().padStart(2, "0");
-    return `${m}:${s}`;
   };
 
   const toggleAudio = async () => {
@@ -572,6 +448,12 @@ export default function HmsVideoRoom({
     }
   };
 
+  // Get eventId from URL (format: /srv/{expertId}/live/{eventId})
+  const getEventId = (): string => {
+    const pathParts = window.location.pathname.split("/");
+    return pathParts[pathParts.length - 1];
+  };
+
   const toggleRecording = async () => {
     // Only original host can control recording
     if (!isOriginalHost) {
@@ -588,19 +470,45 @@ export default function HmsVideoRoom({
       isRecordingOn,
     );
     setIsRecordingLoading(true);
+    setRecordingStatus(null);
 
     try {
+      const eventId = getEventId();
+
       if (isRecordingOn) {
-        await hmsActions.stopRTMPAndRecording();
-        console.log("[DBG][HmsVideoRoom] Recording stopped");
+        // Stop recording via server-side route
+        const res = await fetch(
+          `/api/data/app/calendar/events/${eventId}/recording/stop`,
+          { method: "POST" },
+        );
+        const data = await res.json();
+
+        if (data.success) {
+          console.log("[DBG][HmsVideoRoom] Recording stopped via API");
+          setRecordingStatus("Transcription processing...");
+        } else {
+          console.error("[DBG][HmsVideoRoom] Stop failed:", data.error);
+          setRecordingStatus(`Error: ${data.error}`);
+        }
       } else {
-        await hmsActions.startRTMPOrRecording({
-          record: true,
-        });
-        console.log("[DBG][HmsVideoRoom] Recording started");
+        // Start recording via server-side route (includes transcription config)
+        const res = await fetch(
+          `/api/data/app/calendar/events/${eventId}/recording/start`,
+          { method: "POST" },
+        );
+        const data = await res.json();
+
+        if (data.success) {
+          console.log("[DBG][HmsVideoRoom] Recording started via API");
+          setRecordingStatus(null);
+        } else {
+          console.error("[DBG][HmsVideoRoom] Start failed:", data.error);
+          setRecordingStatus(`Error: ${data.error}`);
+        }
       }
     } catch (err) {
       console.error("[DBG][HmsVideoRoom] Failed to toggle recording:", err);
+      setRecordingStatus("Failed to toggle recording");
     } finally {
       setIsRecordingLoading(false);
     }
@@ -1275,89 +1183,24 @@ export default function HmsVideoRoom({
           </div>
         )}
 
-        {/* Transcribe Button - host only */}
-        {isOriginalHost && (
-          <div style={{ position: "relative" }}>
-            <button
-              onClick={toggleTranscription}
-              disabled={isUploading}
-              style={{
-                width: "48px",
-                height: "48px",
-                borderRadius: "50%",
-                border: "none",
-                background: isCapturing ? "#f59e0b" : "#374151",
-                color: "#fff",
-                cursor: isUploading ? "not-allowed" : "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                opacity: isUploading ? 0.6 : 1,
-                position: "relative",
-              }}
-              title={
-                isCapturing
-                  ? `Transcribing ${formatDuration(captureDuration)} — click to stop`
-                  : "Start transcription capture"
-              }
-            >
-              {isUploading ? (
-                <div
-                  style={{
-                    width: "20px",
-                    height: "20px",
-                    border: "2px solid #666",
-                    borderTop: "2px solid #fff",
-                    borderRadius: "50%",
-                    animation: "spin 1s linear infinite",
-                  }}
-                />
-              ) : (
-                <svg
-                  viewBox="0 0 24 24"
-                  width="22"
-                  height="22"
-                  fill="currentColor"
-                >
-                  <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" />
-                </svg>
-              )}
-              {/* Pulsing indicator when capturing */}
-              {isCapturing && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "2px",
-                    right: "2px",
-                    width: "10px",
-                    height: "10px",
-                    borderRadius: "50%",
-                    background: "#ef4444",
-                    border: "2px solid #f59e0b",
-                    animation: "pulse 1.5s ease-in-out infinite",
-                  }}
-                />
-              )}
-            </button>
-            {/* Upload progress indicator */}
-            {uploadProgress && (
-              <div
-                style={{
-                  position: "absolute",
-                  bottom: "-24px",
-                  left: "50%",
-                  transform: "translateX(-50%)",
-                  whiteSpace: "nowrap",
-                  fontSize: "10px",
-                  color: "#9ca3af",
-                  background: "#1f1f1f",
-                  padding: "2px 8px",
-                  borderRadius: "4px",
-                }}
-              >
-                {uploadProgress}
-              </div>
-            )}
+        {/* Recording status indicator */}
+        {recordingStatus && (
+          <div
+            style={{
+              position: "absolute",
+              bottom: "80px",
+              left: "50%",
+              transform: "translateX(-50%)",
+              whiteSpace: "nowrap",
+              fontSize: "12px",
+              color: "#9ca3af",
+              background: "#1f1f1f",
+              padding: "6px 12px",
+              borderRadius: "6px",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+            }}
+          >
+            {recordingStatus}
           </div>
         )}
 

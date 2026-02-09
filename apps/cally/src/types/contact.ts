@@ -9,4 +9,6 @@ export interface ContactSubmission {
   name: string;
   message: string;
   submittedAt: string;
+  flaggedAsSpam?: boolean;
+  emailValidationReason?: string;
 }

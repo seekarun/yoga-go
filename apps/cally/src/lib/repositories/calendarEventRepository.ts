@@ -16,6 +16,7 @@ import {
   UpdateCommand,
   DeleteCommand,
   QueryCommand,
+  ScanCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { docClient, Tables, TenantPK, EntityType } from "../dynamodb";
 import type {
@@ -353,6 +354,8 @@ export async function createCalendarEvent(
     hasVideoConference: input.hasVideoConference,
     hmsRoomId: input.hmsRoomId,
     hmsTemplateId: input.hmsTemplateId,
+    // Spam detection
+    flaggedAsSpam: input.flaggedAsSpam,
     createdAt: now,
     updatedAt: now,
   };
@@ -453,6 +456,8 @@ export async function updateCalendarEvent(
     hasVideoConference: "hasVideoConference",
     hmsRoomId: "hmsRoomId",
     hmsTemplateId: "hmsTemplateId",
+    // Spam detection
+    flaggedAsSpam: "flaggedAsSpam",
   };
 
   for (const [field, key] of Object.entries(fieldMappings)) {
@@ -588,4 +593,44 @@ export async function deleteCalendarEvent(
     );
     return false;
   }
+}
+
+/**
+ * Get calendar event by 100ms room ID
+ * Uses a table scan since hmsRoomId is not indexed.
+ * Acceptable for low-volume webhook usage.
+ * @param roomId - The 100ms room ID
+ */
+export async function getCalendarEventByHmsRoomId(
+  roomId: string,
+): Promise<CalendarEvent | null> {
+  console.log(
+    "[DBG][calendarEventRepository] Getting event by hmsRoomId:",
+    roomId,
+  );
+
+  const result = await docClient.send(
+    new ScanCommand({
+      TableName: Tables.CORE,
+      FilterExpression: "entityType = :entityType AND hmsRoomId = :roomId",
+      ExpressionAttributeValues: {
+        ":entityType": EntityType.CALENDAR_EVENT,
+        ":roomId": roomId,
+      },
+    }),
+  );
+
+  if (!result.Items || result.Items.length === 0) {
+    console.log(
+      "[DBG][calendarEventRepository] No event found for hmsRoomId:",
+      roomId,
+    );
+    return null;
+  }
+
+  console.log(
+    "[DBG][calendarEventRepository] Found event for hmsRoomId:",
+    roomId,
+  );
+  return toCalendarEvent(result.Items[0] as DynamoDBCalendarEventItem);
 }

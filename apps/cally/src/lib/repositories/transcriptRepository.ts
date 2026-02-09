@@ -128,6 +128,8 @@ export async function updateTranscriptStatus(
       | "audioDurationSeconds"
       | "errorMessage"
       | "completedAt"
+      | "speakerSegments"
+      | "transcriptionSource"
     >
   >,
 ): Promise<void> {
@@ -182,6 +184,16 @@ export async function updateTranscriptStatus(
       updateExpressions.push("#completedAt = :completedAt");
       expressionNames["#completedAt"] = "completedAt";
       expressionValues[":completedAt"] = updates.completedAt;
+    }
+    if (updates.speakerSegments !== undefined) {
+      updateExpressions.push("#speakerSegments = :speakerSegments");
+      expressionNames["#speakerSegments"] = "speakerSegments";
+      expressionValues[":speakerSegments"] = updates.speakerSegments;
+    }
+    if (updates.transcriptionSource !== undefined) {
+      updateExpressions.push("#transcriptionSource = :transcriptionSource");
+      expressionNames["#transcriptionSource"] = "transcriptionSource";
+      expressionValues[":transcriptionSource"] = updates.transcriptionSource;
     }
   }
 

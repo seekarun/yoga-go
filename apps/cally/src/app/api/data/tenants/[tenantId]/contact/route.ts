@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { getTenantById } from "@/lib/repositories/tenantRepository";
 import { createContact } from "@/lib/repositories/contactRepository";
 import { sendContactNotificationEmail } from "@/lib/email/contactNotification";
+import { isValidEmail } from "@core/lib/email/validator";
 
 interface RouteParams {
   params: Promise<{
@@ -37,20 +38,44 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Validate email format
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return NextResponse.json(
-        { success: false, error: "Invalid email address" },
-        { status: 400 },
-      );
-    }
-
     // Verify tenant exists
     const tenant = await getTenantById(tenantId);
     if (!tenant) {
       return NextResponse.json(
         { success: false, error: "Tenant not found" },
         { status: 404 },
+      );
+    }
+
+    // Validate email (format, disposable domain, MX record)
+    const emailValidation = await isValidEmail(email);
+
+    if (!emailValidation.valid) {
+      console.log(
+        `[DBG][contact] Invalid email detected: ${email} — reason: ${emailValidation.reason}`,
+      );
+
+      // Save the record flagged as spam, but skip notification
+      const contact = await createContact(tenantId, {
+        name: name.trim(),
+        email: email.toLowerCase().trim(),
+        message: message.trim(),
+        flaggedAsSpam: true,
+        emailValidationReason: emailValidation.reason,
+      });
+
+      console.log(
+        `[DBG][contact] Spam-flagged contact ${contact.id} created for tenant ${tenantId}`,
+      );
+
+      return NextResponse.json(
+        {
+          success: true,
+          warning:
+            "Your email address appears invalid. Your message was received, but please check your email if this is a mistake.",
+          data: { contactId: contact.id },
+        },
+        { status: 202 },
       );
     }
 

@@ -8,7 +8,11 @@
  */
 
 import { useEffect, useState, useCallback } from "react";
-import type { MeetingTranscript, TranscriptStatus } from "@/types";
+import type {
+  MeetingTranscript,
+  TranscriptStatus,
+  SpeakerSegment,
+} from "@/types";
 
 interface TranscriptViewerProps {
   eventId: string;
@@ -19,6 +23,8 @@ const STATUS_LABELS: Record<TranscriptStatus, string> = {
   queued: "Queued for processing...",
   transcribing: "Transcribing audio...",
   summarizing: "Generating summary...",
+  recording: "Recording in progress...",
+  processing: "Processing transcript...",
   completed: "Transcript ready",
   failed: "Transcription failed",
 };
@@ -28,9 +34,33 @@ const STATUS_COLORS: Record<TranscriptStatus, string> = {
   queued: "#8b5cf6",
   transcribing: "#3b82f6",
   summarizing: "#06b6d4",
+  recording: "#ef4444",
+  processing: "#f59e0b",
   completed: "#22c55e",
   failed: "#ef4444",
 };
+
+// Consistent colors for speaker labels
+const SPEAKER_COLORS = [
+  "#6366f1",
+  "#ec4899",
+  "#14b8a6",
+  "#f97316",
+  "#8b5cf6",
+  "#06b6d4",
+  "#84cc16",
+  "#e11d48",
+];
+
+function getSpeakerColor(
+  speaker: string,
+  speakerMap: Map<string, number>,
+): string {
+  if (!speakerMap.has(speaker)) {
+    speakerMap.set(speaker, speakerMap.size);
+  }
+  return SPEAKER_COLORS[speakerMap.get(speaker)! % SPEAKER_COLORS.length];
+}
 
 export default function TranscriptViewer({ eventId }: TranscriptViewerProps) {
   const [transcript, setTranscript] = useState<MeetingTranscript | null>(null);
@@ -76,6 +106,8 @@ export default function TranscriptViewer({ eventId }: TranscriptViewerProps) {
       "queued",
       "transcribing",
       "summarizing",
+      "recording",
+      "processing",
     ].includes(transcript.status);
 
     if (!isProcessing) return;
@@ -252,6 +284,11 @@ export default function TranscriptViewer({ eventId }: TranscriptViewerProps) {
         </div>
       )}
 
+      {/* Speaker Segments (conversation view) */}
+      {transcript.speakerSegments && transcript.speakerSegments.length > 0 && (
+        <SpeakerSegmentsView segments={transcript.speakerSegments} />
+      )}
+
       {/* Full Transcript (collapsible) */}
       {transcript.transcriptText && (
         <div style={{ padding: "16px" }}>
@@ -306,6 +343,95 @@ export default function TranscriptViewer({ eventId }: TranscriptViewerProps) {
       )}
 
       <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }`}</style>
+    </div>
+  );
+}
+
+/**
+ * Renders speaker-labeled conversation segments
+ */
+function SpeakerSegmentsView({ segments }: { segments: SpeakerSegment[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const speakerMap = new Map<string, number>();
+
+  // Build speaker map for consistent colors
+  segments.forEach((s) => getSpeakerColor(s.speaker, speakerMap));
+
+  const displaySegments = expanded ? segments : segments.slice(0, 10);
+  const hasMore = segments.length > 10;
+
+  return (
+    <div
+      style={{
+        padding: "16px",
+        borderBottom: "1px solid var(--color-border, #e5e7eb)",
+      }}
+    >
+      <h4
+        style={{
+          fontSize: "13px",
+          fontWeight: "600",
+          color: "var(--text-muted, #6b7280)",
+          textTransform: "uppercase",
+          marginBottom: "12px",
+        }}
+      >
+        Conversation
+      </h4>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "8px",
+          maxHeight: expanded ? "500px" : "none",
+          overflowY: expanded ? "auto" : "visible",
+        }}
+      >
+        {displaySegments.map((segment, idx) => {
+          const color = getSpeakerColor(segment.speaker, speakerMap);
+          return (
+            <div key={idx} style={{ display: "flex", gap: "8px" }}>
+              <span
+                style={{
+                  fontSize: "13px",
+                  fontWeight: "600",
+                  color,
+                  minWidth: "80px",
+                  flexShrink: 0,
+                }}
+              >
+                {segment.speaker}
+              </span>
+              <span
+                style={{
+                  fontSize: "14px",
+                  lineHeight: "1.5",
+                  color: "var(--text-main, #111827)",
+                }}
+              >
+                {segment.text}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      {hasMore && !expanded && (
+        <button
+          onClick={() => setExpanded(true)}
+          style={{
+            marginTop: "8px",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            fontSize: "13px",
+            fontWeight: "600",
+            color: "var(--color-primary, #6366f1)",
+            padding: 0,
+          }}
+        >
+          Show all {segments.length} segments
+        </button>
+      )}
     </div>
   );
 }
