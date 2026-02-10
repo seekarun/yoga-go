@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSpamProtection } from "@core/hooks";
+import { useOptionalAuth } from "@/contexts/AuthContext";
 
 interface ContactFormProps {
   onSubmit: (data: {
@@ -18,11 +19,33 @@ export default function ContactForm({
   onSubmit,
   submitting,
 }: ContactFormProps) {
+  const auth = useOptionalAuth();
   const { honeypotProps, getSpamFields } = useSpamProtection();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [name, setName] = useState(
+    auth?.isAuthenticated && auth.user?.profile.name
+      ? auth.user.profile.name
+      : "",
+  );
+  const [email, setEmail] = useState(
+    auth?.isAuthenticated && auth.user?.profile.email
+      ? auth.user.profile.email
+      : "",
+  );
   const [message, setMessage] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
+
+  // Auto-populate from authenticated user when auth loads
+  useEffect(() => {
+    if (auth?.isAuthenticated && auth.user) {
+      if (auth.user.profile.name && !name) {
+        setName(auth.user.profile.name);
+      }
+      if (auth.user.profile.email && !email) {
+        setEmail(auth.user.profile.email);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only run when auth state changes, not when name/email change
+  }, [auth?.isAuthenticated, auth?.user]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

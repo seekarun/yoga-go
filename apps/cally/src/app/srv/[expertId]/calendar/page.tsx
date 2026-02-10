@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -25,6 +25,9 @@ export default function CalendarPage() {
   const [error, setError] = useState("");
   const [isCreatingInstantMeeting, setIsCreatingInstantMeeting] =
     useState(false);
+  const [videoCallPreference, setVideoCallPreference] = useState<
+    "cally" | "google_meet" | "zoom"
+  >("cally");
 
   // Modal states
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -36,6 +39,22 @@ export default function CalendarPage() {
     start: string;
     end: string;
   } | null>(null);
+
+  // Fetch video call preference
+  useEffect(() => {
+    async function fetchPreference() {
+      try {
+        const res = await fetch("/api/data/app/preferences");
+        const data = await res.json();
+        if (data.success && data.data?.videoCallPreference) {
+          setVideoCallPreference(data.data.videoCallPreference);
+        }
+      } catch (err) {
+        console.error("[DBG][calendar-page] Failed to fetch preferences:", err);
+      }
+    }
+    fetchPreference();
+  }, []);
 
   // Fetch calendar events
   const fetchEvents = useCallback(async (start: string, end: string) => {
@@ -102,14 +121,7 @@ export default function CalendarPage() {
       allDay: eventApi.allDay,
       type: "event",
       color: eventApi.backgroundColor || undefined,
-      extendedProps: {
-        description: eventApi.extendedProps.description,
-        location: eventApi.extendedProps.location,
-        status: eventApi.extendedProps.status,
-        hasVideoConference: eventApi.extendedProps.hasVideoConference,
-        hmsRoomId: eventApi.extendedProps.hmsRoomId,
-        hmsTemplateId: eventApi.extendedProps.hmsTemplateId,
-      },
+      extendedProps: eventApi.extendedProps,
     };
 
     setSelectedEvent(calendarItem);
@@ -305,6 +317,7 @@ export default function CalendarPage() {
         initialDate={createModalDate}
         tenantId={expertId}
         onEventCreated={handleEventCreated}
+        videoCallPreference={videoCallPreference}
       />
 
       {/* View/Edit Event Modal */}

@@ -15,6 +15,9 @@ import { isValidTimezone } from "@/lib/timezones";
 
 interface PreferencesData {
   timezone: string;
+  videoCallPreference: "cally" | "google_meet" | "zoom";
+  googleCalendarConnected: boolean;
+  zoomConnected: boolean;
 }
 
 const DEFAULT_TIMEZONE = "Australia/Sydney";
@@ -50,7 +53,12 @@ export async function GET(): Promise<
 
     return NextResponse.json({
       success: true,
-      data: { timezone },
+      data: {
+        timezone,
+        videoCallPreference: tenant.videoCallPreference ?? "cally",
+        googleCalendarConnected: !!tenant.googleCalendarConfig,
+        zoomConnected: !!tenant.zoomConfig,
+      },
     });
   } catch (error) {
     console.error("[DBG][preferences] GET error:", error);
@@ -92,27 +100,85 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { timezone } = body;
+    const { timezone, videoCallPreference } = body;
 
-    if (!timezone || typeof timezone !== "string") {
+    // Build partial update
+    const updates: Record<string, unknown> = {};
+
+    // Validate timezone if provided
+    if (timezone !== undefined) {
+      if (!timezone || typeof timezone !== "string") {
+        return NextResponse.json(
+          { success: false, error: "timezone must be a non-empty string" },
+          { status: 400 },
+        );
+      }
+      if (!isValidTimezone(timezone)) {
+        return NextResponse.json(
+          { success: false, error: "Invalid IANA timezone" },
+          { status: 400 },
+        );
+      }
+      updates.timezone = timezone;
+    }
+
+    // Validate videoCallPreference if provided
+    if (videoCallPreference !== undefined) {
+      if (
+        videoCallPreference !== "cally" &&
+        videoCallPreference !== "google_meet" &&
+        videoCallPreference !== "zoom"
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              'videoCallPreference must be "cally", "google_meet", or "zoom"',
+          },
+          { status: 400 },
+        );
+      }
+      if (
+        videoCallPreference === "google_meet" &&
+        !tenant.googleCalendarConfig
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Google Calendar must be connected to use Google Meet",
+          },
+          { status: 400 },
+        );
+      }
+      if (videoCallPreference === "zoom" && !tenant.zoomConfig) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Zoom must be connected to use Zoom meetings",
+          },
+          { status: 400 },
+        );
+      }
+      updates.videoCallPreference = videoCallPreference;
+    }
+
+    if (Object.keys(updates).length === 0) {
       return NextResponse.json(
-        { success: false, error: "timezone is required" },
+        { success: false, error: "No valid fields to update" },
         { status: 400 },
       );
     }
 
-    if (!isValidTimezone(timezone)) {
-      return NextResponse.json(
-        { success: false, error: "Invalid IANA timezone" },
-        { status: 400 },
-      );
-    }
-
-    const updated = await updateTenant(tenant.id, { timezone });
+    const updated = await updateTenant(tenant.id, updates);
 
     return NextResponse.json({
       success: true,
-      data: { timezone: updated.timezone || timezone },
+      data: {
+        timezone: updated.timezone || tenant.timezone || DEFAULT_TIMEZONE,
+        videoCallPreference: updated.videoCallPreference ?? "cally",
+        googleCalendarConnected: !!tenant.googleCalendarConfig,
+        zoomConnected: !!tenant.zoomConfig,
+      },
       message: "Preferences updated",
     });
   } catch (error) {

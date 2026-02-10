@@ -96,9 +96,17 @@ export default function CalendarEventModal({
 
   // Check if event has video conferencing
   const hasVideoConference = event?.extendedProps?.hasVideoConference;
+  const hasMeetingLink = !!event?.extendedProps?.meetingLink;
+  const hasHmsRoom = !!event?.extendedProps?.hmsRoomId;
 
   const handleJoinMeeting = () => {
     if (!event) return;
+    // If the event has an external meeting link (Zoom/Google Meet), open it directly
+    if (hasMeetingLink) {
+      window.open(event.extendedProps.meetingLink, "_blank", "noopener");
+      return;
+    }
+    // Otherwise use built-in 100ms video room
     router.push(`/srv/${expertId}/live/${event.id}`);
   };
 
@@ -459,8 +467,69 @@ export default function CalendarEventModal({
           </div>
         ) : null}
 
-        {/* Video Conferencing */}
-        {hasVideoConference && !isEditing && (
+        {/* Meeting Link (Google Meet or Zoom) */}
+        {event.extendedProps.meetingLink && !isEditing && (
+          <div className="flex items-start gap-3">
+            <div
+              className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                event.extendedProps.meetingLink.includes("zoom.us")
+                  ? "bg-blue-50"
+                  : "bg-blue-50"
+              }`}
+            >
+              <svg
+                className="w-5 h-5 text-blue-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-900">
+                {event.extendedProps.meetingLink.includes("zoom.us")
+                  ? "Zoom Meeting"
+                  : "Google Meet"}
+              </p>
+              <a
+                href={event.extendedProps.meetingLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`mt-1 inline-flex items-center gap-2 px-4 py-2 text-white rounded-lg font-medium text-sm transition-colors ${
+                  event.extendedProps.meetingLink.includes("zoom.us")
+                    ? "bg-[#2D8CFF] hover:bg-[#2681F0]"
+                    : "bg-[#1a73e8] hover:bg-[#1557b0]"
+                }`}
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                  />
+                </svg>
+                {event.extendedProps.meetingLink.includes("zoom.us")
+                  ? "Join Zoom Meeting"
+                  : "Join with Google Meet"}
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* Video Conferencing (100ms - only when no external meeting link) */}
+        {hasVideoConference && hasHmsRoom && !hasMeetingLink && !isEditing && (
           <div className="flex items-start gap-3">
             <div className="w-9 h-9 rounded-lg bg-green-100 flex items-center justify-center shrink-0">
               <svg

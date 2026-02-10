@@ -10,4 +10,7 @@ export * from "./phone-calling";
 export * from "./booking";
 export * from "./subscriber";
 export * from "./contact";
+export * from "./feedback";
 export * from "./transcript";
+export * from "./google-calendar";
+export * from "./zoom";

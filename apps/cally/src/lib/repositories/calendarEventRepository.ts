@@ -358,6 +358,10 @@ export async function createCalendarEvent(
     flaggedAsSpam: input.flaggedAsSpam,
     // Visitor geolocation metadata
     visitorInfo: input.visitorInfo,
+    // External meeting link (Zoom, Google Meet, etc.)
+    meetingLink: input.meetingLink,
+    // Google Calendar sync
+    googleCalendarEventId: input.googleCalendarEventId,
     createdAt: now,
     updatedAt: now,
   };
@@ -462,6 +466,9 @@ export async function updateCalendarEvent(
     flaggedAsSpam: "flaggedAsSpam",
     // Visitor geolocation metadata
     visitorInfo: "visitorInfo",
+    meetingLink: "meetingLink",
+    // Google Calendar sync
+    googleCalendarEventId: "googleCalendarEventId",
   };
 
   for (const [field, key] of Object.entries(fieldMappings)) {

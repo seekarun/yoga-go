@@ -15,6 +15,11 @@ import {
   sendBookingDeclinedEmail,
   parseVisitorFromDescription,
 } from "@/lib/email/bookingNotification";
+import {
+  pushUpdateToGoogle,
+  pushDeleteToGoogle,
+  generateMeetLinkForEvent,
+} from "@/lib/google-calendar-sync";
 
 interface RouteParams {
   params: Promise<{
@@ -172,6 +177,25 @@ export async function PUT(request: Request, { params }: RouteParams) {
 
     console.log("[DBG][calendar/events/[eventId]] Updated event:", eventId);
 
+    // Push update to Google Calendar (fire-and-forget)
+    pushUpdateToGoogle(tenant, updatedEvent).catch((err) =>
+      console.warn("[DBG][calendar/events/[eventId]] Google push failed:", err),
+    );
+
+    // Generate Meet link on approval if autoAddMeetLink is enabled
+    const isApproval =
+      currentEvent.status === "pending" && body.status === "scheduled";
+    if (
+      isApproval &&
+      tenant.googleCalendarConfig?.autoAddMeetLink &&
+      !updatedEvent.meetingLink
+    ) {
+      const meetLink = await generateMeetLinkForEvent(tenant, updatedEvent);
+      if (meetLink) {
+        updatedEvent.meetingLink = meetLink;
+      }
+    }
+
     // Send booking emails on status transitions
     const isBookingStatusChange =
       (currentEvent.status === "pending" ||
@@ -265,6 +289,14 @@ export async function DELETE(request: Request, { params }: RouteParams) {
         { status: 404 },
       );
     }
+
+    // Push delete to Google Calendar (fire-and-forget, before deleting locally)
+    pushDeleteToGoogle(tenant, currentEvent).catch((err) =>
+      console.warn(
+        "[DBG][calendar/events/[eventId]] Google delete failed:",
+        err,
+      ),
+    );
 
     console.log("[DBG][calendar/events/[eventId]] Deleting event:", eventId);
 

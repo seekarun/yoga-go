@@ -5,13 +5,9 @@ import { useSearchParams } from "next/navigation";
 
 interface VerifyEmailFormProps {
   tenantId: string;
-  tenantName: string;
 }
 
-export default function VerifyEmailForm({
-  tenantId,
-  tenantName,
-}: VerifyEmailFormProps) {
+export default function VerifyEmailForm({ tenantId }: VerifyEmailFormProps) {
   const searchParams = useSearchParams();
   const prefillEmail = searchParams.get("email") || "";
   const prefillName = searchParams.get("name") || "";
@@ -24,29 +20,10 @@ export default function VerifyEmailForm({
   const [resendMessage, setResendMessage] = useState("");
   const [verified, setVerified] = useState(false);
 
+  // Full page navigation so AuthContext re-fetches session from the new cookie
   if (verified) {
-    return (
-      <div style={cardStyle}>
-        <div style={successIconStyle}>
-          <svg
-            width="48"
-            height="48"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#10b981"
-            strokeWidth="2"
-          >
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-            <polyline points="22 4 12 14.01 9 11.01" />
-          </svg>
-        </div>
-        <h2 style={titleStyle}>Welcome!</h2>
-        <p style={subtitleStyle}>
-          You&apos;re signed up with <strong>{tenantName}</strong>. Check your
-          email for a welcome message with exclusive offers.
-        </p>
-      </div>
-    );
+    window.location.href = `/${tenantId}`;
+    return null;
   }
 
   return (
@@ -262,9 +239,4 @@ const linkButtonStyle: React.CSSProperties = {
   cursor: "pointer",
   padding: "0",
   fontSize: "14px",
-};
-
-const successIconStyle: React.CSSProperties = {
-  textAlign: "center",
-  marginBottom: "16px",
 };

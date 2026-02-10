@@ -4,6 +4,7 @@ import { useEffect, useCallback } from "react";
 import type { SimpleLandingPageConfig } from "@/types/landing-page";
 import HeroTemplateRenderer from "@/templates/hero";
 import { LandingPageThemeProvider } from "@/templates/hero/ThemeProvider";
+import ProfileIconDropdown from "@/components/ProfileIconDropdown";
 
 interface LandingPageRendererProps {
   config: SimpleLandingPageConfig;
@@ -56,6 +57,7 @@ export default function LandingPageRenderer({
 
   return (
     <LandingPageThemeProvider palette={config.theme?.palette}>
+      <ProfileIconDropdown tenantId={tenantId} />
       <HeroTemplateRenderer
         config={config}
         isEditing={false}

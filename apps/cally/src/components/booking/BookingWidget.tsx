@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import Modal, { ModalHeader } from "@/components/Modal";
 import { DEFAULT_BOOKING_CONFIG } from "@/types/booking";
 import type { TimeSlot, AvailableSlotsResponse } from "@/types/booking";
+import { useVisitorTimezone } from "@/hooks/useVisitorTimezone";
 import DatePicker from "./DatePicker";
 import TimeSlotGrid from "./TimeSlotGrid";
 import BookingForm from "./BookingForm";
@@ -22,12 +23,15 @@ export default function BookingWidget({
   isOpen,
   onClose,
 }: BookingWidgetProps) {
+  const [visitorTimezone] = useVisitorTimezone();
   const [step, setStep] = useState<BookingStep>("date-select");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
-  const [timezone, setTimezone] = useState(DEFAULT_BOOKING_CONFIG.timezone);
+  const [timezone, setTimezone] = useState(
+    visitorTimezone || DEFAULT_BOOKING_CONFIG.timezone,
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmedSlot, setConfirmedSlot] = useState<TimeSlot | null>(null);
@@ -75,7 +79,7 @@ export default function BookingWidget({
         }
 
         setSlots(json.data.slots);
-        setTimezone(json.data.timezone);
+        setTimezone(visitorTimezone || json.data.timezone);
       } catch {
         setError("Failed to load available times");
         setSlots([]);
@@ -83,7 +87,7 @@ export default function BookingWidget({
         setSlotsLoading(false);
       }
     },
-    [tenantId],
+    [tenantId, visitorTimezone],
   );
 
   const handleSlotSelect = useCallback((slot: TimeSlot) => {

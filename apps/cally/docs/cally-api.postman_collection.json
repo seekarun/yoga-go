@@ -632,7 +632,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "data", "app", "subscribers"]
             },
-            "description": "List all users (registered subscribers + booking visitors) for the authenticated tenant. Returns CallyUser[] with userType field ('registered' | 'visitor'). De-duplicates by email — visitors who later signed up show as 'registered'. Sorted by newest date first."
+            "description": "List all users (registered subscribers + booking visitors) for the authenticated tenant. Returns CallyUser[] with userType field ('registered' | 'visitor'). De-duplicates by email \u2014 visitors who later signed up show as 'registered'. Sorted by newest date first."
           }
         },
         {
@@ -734,6 +734,211 @@
               "path": ["api", "data", "app", "preferences"]
             },
             "description": "Update tenant preferences. Timezone must be a valid IANA timezone string."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Feedback - Public",
+      "description": "Public feedback form endpoints for collecting user feedback",
+      "item": [
+        {
+          "name": "Get Feedback Request Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/tenants/:tenantId/feedback?token=abc123",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "tenants", ":tenantId", "feedback"],
+              "query": [
+                {
+                  "key": "token",
+                  "value": "abc123"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "tenantId",
+                  "value": "01HXYZ..."
+                }
+              ]
+            },
+            "description": "Validate a feedback token and return request info (recipientName, status, tenantName) for rendering the feedback form."
+          }
+        },
+        {
+          "name": "Submit Feedback",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"abc123\",\n  \"rating\": 5,\n  \"message\": \"Amazing experience! Highly recommend.\",\n  \"consentToShowcase\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/tenants/:tenantId/feedback",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "tenants", ":tenantId", "feedback"],
+              "variable": [
+                {
+                  "key": "tenantId",
+                  "value": "01HXYZ..."
+                }
+              ]
+            },
+            "description": "Submit feedback for a pending request. Rating 1-5, message required. consentToShowcase controls whether it can be displayed on the landing page. Includes spam protection."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Feedback - Authenticated",
+      "description": "Feedback management endpoints for authenticated tenants",
+      "item": [
+        {
+          "name": "Request Feedback",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"name\": \"Jane Smith\",\n  \"customMessage\": \"I'd love to hear your feedback!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/feedback/request",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "feedback", "request"]
+            },
+            "description": "Send a feedback request email to a user. Creates a pending feedback record with a unique token and sends an email with a link to the feedback form."
+          }
+        },
+        {
+          "name": "List Feedback",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/feedback",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "feedback"]
+            },
+            "description": "List all feedback requests for the authenticated tenant, sorted newest first. Returns pending, submitted, and approved items."
+          }
+        },
+        {
+          "name": "Approve Feedback",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"createdAt\": \"2026-02-10T10:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/feedback/:feedbackId/approve",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "app",
+                "feedback",
+                ":feedbackId",
+                "approve"
+              ],
+              "variable": [
+                {
+                  "key": "feedbackId",
+                  "value": "abc123"
+                }
+              ]
+            },
+            "description": "Approve submitted feedback for display on the landing page testimonials section. Requires createdAt to reconstruct the DynamoDB sort key."
+          }
+        },
+        {
+          "name": "Remind Feedback",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"createdAt\": \"2026-02-10T10:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/feedback/:feedbackId/remind",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "app",
+                "feedback",
+                ":feedbackId",
+                "remind"
+              ],
+              "variable": [
+                {
+                  "key": "feedbackId",
+                  "value": "abc123"
+                }
+              ]
+            },
+            "description": "Resend the feedback request email for a pending feedback item. Increments remindCount and sets lastRemindedAt. Only works for pending (not yet submitted) feedback."
+          }
+        },
+        {
+          "name": "Revoke Feedback Approval",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"createdAt\": \"2026-02-10T10:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/feedback/:feedbackId/approve",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "app",
+                "feedback",
+                ":feedbackId",
+                "approve"
+              ],
+              "variable": [
+                {
+                  "key": "feedbackId",
+                  "value": "abc123"
+                }
+              ]
+            },
+            "description": "Revoke approval for feedback. Removes it from the landing page testimonials section."
           }
         }
       ]
@@ -952,6 +1157,310 @@
               "path": ["api", "webhooks", "100ms"]
             },
             "description": "100ms webhook endpoint. Handles transcription.success (downloads transcript + summary, stores in DynamoDB) and transcription.failure (updates status to failed). Configure webhook URL in 100ms Dashboard > Developer > Webhook URL."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Surveys",
+      "item": [
+        {
+          "name": "List Surveys (Auth)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/surveys",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "surveys"]
+            },
+            "description": "List all surveys for the authenticated tenant (newest first)."
+          }
+        },
+        {
+          "name": "Create Survey (Auth)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Customer Satisfaction Survey\",\n  \"description\": \"Help us improve our service\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/surveys",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "surveys"]
+            },
+            "description": "Create a new draft survey."
+          }
+        },
+        {
+          "name": "Get Survey (Auth)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/surveys/{{surveyId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "surveys", "{{surveyId}}"]
+            },
+            "description": "Get a single survey with full question data."
+          }
+        },
+        {
+          "name": "Update Survey (Auth)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"createdAt\": \"2026-01-01T00:00:00.000Z\",\n  \"title\": \"Updated Survey Title\",\n  \"questions\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/surveys/{{surveyId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "surveys", "{{surveyId}}"]
+            },
+            "description": "Update survey title, description, questions, or contactInfo. Requires createdAt for DynamoDB SK."
+          }
+        },
+        {
+          "name": "Delete Survey (Auth)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"createdAt\": \"2026-01-01T00:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/surveys/{{surveyId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "surveys", "{{surveyId}}"]
+            },
+            "description": "Delete a survey. Requires createdAt for DynamoDB SK."
+          }
+        },
+        {
+          "name": "Change Survey Status (Auth)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"active\",\n  \"createdAt\": \"2026-01-01T00:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/surveys/{{surveyId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "app",
+                "surveys",
+                "{{surveyId}}",
+                "status"
+              ]
+            },
+            "description": "Change survey status. Valid values: active, closed, archived."
+          }
+        },
+        {
+          "name": "List Survey Responses (Auth)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/surveys/{{surveyId}}/responses",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "app",
+                "surveys",
+                "{{surveyId}}",
+                "responses"
+              ]
+            },
+            "description": "List all responses for a survey (newest first)."
+          }
+        },
+        {
+          "name": "Duplicate Survey (Auth)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/surveys/{{surveyId}}/duplicate",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "app",
+                "surveys",
+                "{{surveyId}}",
+                "duplicate"
+              ]
+            },
+            "description": "Duplicate a survey as a new draft. Copies all questions, options, branches, and contact info with new IDs."
+          }
+        },
+        {
+          "name": "Get Public Survey",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/tenants/{{tenantId}}/surveys/{{surveyId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "tenants",
+                "{{tenantId}}",
+                "surveys",
+                "{{surveyId}}"
+              ]
+            },
+            "description": "Get active survey info for public rendering (title, description, questions)."
+          }
+        },
+        {
+          "name": "Submit Survey Response (Public)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"answers\": [\n    { \"questionId\": \"q1\", \"answer\": \"option1\" },\n    { \"questionId\": \"q2\", \"answer\": \"Great experience!\" }\n  ],\n  \"contactInfo\": {\n    \"name\": \"Jane Doe\",\n    \"email\": \"jane@example.com\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/tenants/{{tenantId}}/surveys/{{surveyId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "tenants",
+                "{{tenantId}}",
+                "surveys",
+                "{{surveyId}}"
+              ]
+            },
+            "description": "Submit a survey response (public, no auth required). Includes spam protection."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Google Calendar - Authenticated",
+      "item": [
+        {
+          "name": "Connect Google Calendar",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/google-calendar/connect",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "google-calendar", "connect"]
+            },
+            "description": "Redirects to Google OAuth consent screen. Opens in browser \u2014 not callable from Postman directly."
+          }
+        },
+        {
+          "name": "Google Calendar Callback",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/google-calendar/callback?code=AUTH_CODE&state=BASE64_STATE",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "google-calendar", "callback"],
+              "query": [
+                {
+                  "key": "code",
+                  "value": "AUTH_CODE"
+                },
+                {
+                  "key": "state",
+                  "value": "BASE64_STATE"
+                }
+              ]
+            },
+            "description": "OAuth callback handler. Exchanges code for tokens and stores config. Called by Google \u2014 not directly."
+          }
+        },
+        {
+          "name": "Get Google Calendar Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/google-calendar/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "google-calendar", "status"]
+            },
+            "description": "Returns Google Calendar connection status: connected, email, blockBookingSlots, connectedAt."
+          }
+        },
+        {
+          "name": "Update Google Calendar Settings",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"blockBookingSlots\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/google-calendar/settings",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "google-calendar", "settings"]
+            },
+            "description": "Updates Google Calendar preferences. Currently supports blockBookingSlots toggle."
+          }
+        },
+        {
+          "name": "Disconnect Google Calendar",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/google-calendar/disconnect",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "google-calendar", "disconnect"]
+            },
+            "description": "Revokes Google OAuth token and removes Google Calendar config from tenant."
           }
         }
       ]

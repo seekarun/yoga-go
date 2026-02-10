@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 interface VisitorSignupFormProps {
   tenantId: string;
@@ -15,11 +15,11 @@ export default function VisitorSignupForm({
   tenantName,
 }: VisitorSignupFormProps) {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const prefillEmail = searchParams.get("email") || "";
-  const subscribed = searchParams.get("subscribed") === "true";
+  const initialMode =
+    searchParams.get("mode") === "signin" ? "signin" : "signup";
 
-  const [mode, setMode] = useState<Mode>("signup");
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [name, setName] = useState("");
   const [email, setEmail] = useState(prefillEmail);
   const [password, setPassword] = useState("");
@@ -28,55 +28,10 @@ export default function VisitorSignupForm({
   const [loading, setLoading] = useState(false);
   const [signInSuccess, setSignInSuccess] = useState(false);
 
-  // Show success message if came back from Google OAuth
-  if (subscribed) {
-    return (
-      <div style={cardStyle}>
-        <div style={successIconStyle}>
-          <svg
-            width="48"
-            height="48"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#10b981"
-            strokeWidth="2"
-          >
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-            <polyline points="22 4 12 14.01 9 11.01" />
-          </svg>
-        </div>
-        <h2 style={titleStyle}>Welcome!</h2>
-        <p style={subtitleStyle}>
-          You&apos;re now signed up with <strong>{tenantName}</strong>. Check
-          your email for a welcome message.
-        </p>
-      </div>
-    );
-  }
-
+  // Full page navigation so AuthContext re-fetches session from the new cookie
   if (signInSuccess) {
-    return (
-      <div style={cardStyle}>
-        <div style={successIconStyle}>
-          <svg
-            width="48"
-            height="48"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#10b981"
-            strokeWidth="2"
-          >
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-            <polyline points="22 4 12 14.01 9 11.01" />
-          </svg>
-        </div>
-        <h2 style={titleStyle}>Welcome!</h2>
-        <p style={subtitleStyle}>
-          You&apos;re now signed up with <strong>{tenantName}</strong>. Check
-          your email for a welcome message.
-        </p>
-      </div>
-    );
+    window.location.href = `/${tenantId}`;
+    return null;
   }
 
   return (
@@ -167,7 +122,7 @@ export default function VisitorSignupForm({
       </div>
 
       <a
-        href={`/api/auth/google?callbackUrl=/${tenantId}/signup?subscribed=true&visitorTenantId=${tenantId}`}
+        href={`/api/auth/google?callbackUrl=/${tenantId}&visitorTenantId=${tenantId}`}
         style={googleButtonStyle}
       >
         <svg
@@ -251,9 +206,7 @@ export default function VisitorSignupForm({
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {
-          router.push(
-            `/${tenantId}/verify-email?email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}`,
-          );
+          window.location.href = `/${tenantId}/verify-email?email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}`;
         } else if (data.code === "USER_EXISTS") {
           setError(
             "An account with this email already exists. Try signing in instead.",
@@ -282,9 +235,7 @@ export default function VisitorSignupForm({
         if (data.success) {
           setSignInSuccess(true);
         } else if (data.code === "NOT_VERIFIED") {
-          router.push(
-            `/${tenantId}/verify-email?email=${encodeURIComponent(email)}`,
-          );
+          window.location.href = `/${tenantId}/verify-email?email=${encodeURIComponent(email)}`;
         } else {
           setError(data.error || "Sign in failed. Please try again.");
         }
@@ -405,9 +356,4 @@ const linkButtonStyle: React.CSSProperties = {
   cursor: "pointer",
   padding: "0",
   fontSize: "14px",
-};
-
-const successIconStyle: React.CSSProperties = {
-  textAlign: "center",
-  marginBottom: "16px",
 };

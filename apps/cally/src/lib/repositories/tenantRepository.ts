@@ -27,6 +27,8 @@ import type { DomainConfig, EmailConfig } from "@/types/domain";
 import type { AiAssistantConfig } from "@/types/ai-assistant";
 import type { PhoneConfig } from "@/types/phone-calling";
 import type { BookingConfig } from "@/types/booking";
+import type { GoogleCalendarConfig } from "@/types/google-calendar";
+import type { ZoomConfig } from "@/types/zoom";
 
 /**
  * Cally Tenant Entity
@@ -46,6 +48,9 @@ export interface CallyTenant {
   aiAssistantConfig?: AiAssistantConfig;
   phoneConfig?: PhoneConfig;
   bookingConfig?: BookingConfig;
+  googleCalendarConfig?: GoogleCalendarConfig;
+  zoomConfig?: ZoomConfig;
+  videoCallPreference?: "cally" | "google_meet" | "zoom";
   timezone?: string;
   createdAt: string;
   updatedAt: string;
@@ -491,6 +496,80 @@ export async function clearDomainAndEmailConfig(
     tenantId,
   );
   return toTenant(updatedItem);
+}
+
+// ===================================================================
+// GOOGLE CALENDAR OPERATIONS
+// ===================================================================
+
+/**
+ * Remove Google Calendar config from tenant (uses DynamoDB REMOVE)
+ */
+export async function removeGoogleCalendarConfig(
+  tenantId: string,
+): Promise<CallyTenant> {
+  console.log(
+    "[DBG][tenantRepository] Removing Google Calendar config:",
+    tenantId,
+  );
+
+  const result = await docClient.send(
+    new UpdateCommand({
+      TableName: Tables.CORE,
+      Key: {
+        PK: TenantPK.TENANT(tenantId),
+        SK: TenantPK.META,
+      },
+      UpdateExpression: "REMOVE #gcConfig SET #updatedAt = :updatedAt",
+      ExpressionAttributeNames: {
+        "#gcConfig": "googleCalendarConfig",
+        "#updatedAt": "updatedAt",
+      },
+      ExpressionAttributeValues: {
+        ":updatedAt": new Date().toISOString(),
+      },
+      ReturnValues: "ALL_NEW",
+    }),
+  );
+
+  console.log(
+    "[DBG][tenantRepository] Removed Google Calendar config for:",
+    tenantId,
+  );
+  return toTenant(result.Attributes as DynamoDBTenantItem);
+}
+
+// ===================================================================
+// ZOOM OPERATIONS
+// ===================================================================
+
+/**
+ * Remove Zoom config from tenant (uses DynamoDB REMOVE)
+ */
+export async function removeZoomConfig(tenantId: string): Promise<CallyTenant> {
+  console.log("[DBG][tenantRepository] Removing Zoom config:", tenantId);
+
+  const result = await docClient.send(
+    new UpdateCommand({
+      TableName: Tables.CORE,
+      Key: {
+        PK: TenantPK.TENANT(tenantId),
+        SK: TenantPK.META,
+      },
+      UpdateExpression: "REMOVE #zoomConfig SET #updatedAt = :updatedAt",
+      ExpressionAttributeNames: {
+        "#zoomConfig": "zoomConfig",
+        "#updatedAt": "updatedAt",
+      },
+      ExpressionAttributeValues: {
+        ":updatedAt": new Date().toISOString(),
+      },
+      ReturnValues: "ALL_NEW",
+    }),
+  );
+
+  console.log("[DBG][tenantRepository] Removed Zoom config for:", tenantId);
+  return toTenant(result.Attributes as DynamoDBTenantItem);
 }
 
 // ===================================================================

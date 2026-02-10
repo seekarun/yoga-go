@@ -14,8 +14,18 @@ export default function PreferencesPage() {
   const { user, logout } = useAuth();
 
   const [timezone, setTimezone] = useState("");
+  const [videoCallPreference, setVideoCallPreference] = useState<
+    "cally" | "google_meet" | "zoom"
+  >("cally");
+  const [googleCalendarConnected, setGoogleCalendarConnected] = useState(false);
+  const [zoomConnected, setZoomConnected] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingVideo, setSavingVideo] = useState(false);
   const [feedback, setFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+  const [videoFeedback, setVideoFeedback] = useState<{
     type: "success" | "error";
     message: string;
   } | null>(null);
@@ -24,8 +34,12 @@ export default function PreferencesPage() {
     try {
       const res = await fetch("/api/data/app/preferences");
       const data = await res.json();
-      if (data.success && data.data?.timezone) {
-        setTimezone(data.data.timezone);
+      if (data.success && data.data) {
+        if (data.data.timezone) setTimezone(data.data.timezone);
+        if (data.data.videoCallPreference)
+          setVideoCallPreference(data.data.videoCallPreference);
+        setGoogleCalendarConnected(!!data.data.googleCalendarConnected);
+        setZoomConnected(!!data.data.zoomConnected);
       }
     } catch (err) {
       console.error("[DBG][preferences] Failed to fetch preferences:", err);
@@ -61,6 +75,46 @@ export default function PreferencesPage() {
     } finally {
       setSaving(false);
       setTimeout(() => setFeedback(null), 3000);
+    }
+  };
+
+  const handleVideoCallPreferenceChange = async (
+    newPref: "cally" | "google_meet" | "zoom",
+  ) => {
+    if (newPref === videoCallPreference) return;
+    setVideoCallPreference(newPref);
+    setSavingVideo(true);
+    setVideoFeedback(null);
+
+    try {
+      const res = await fetch("/api/data/app/preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ videoCallPreference: newPref }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setVideoFeedback({
+          type: "success",
+          message: "Video preference updated",
+        });
+      } else {
+        setVideoFeedback({
+          type: "error",
+          message: data.error || "Failed to update video preference",
+        });
+        // Revert on failure
+        setVideoCallPreference(videoCallPreference);
+      }
+    } catch {
+      setVideoFeedback({
+        type: "error",
+        message: "Failed to update video preference",
+      });
+      setVideoCallPreference(videoCallPreference);
+    } finally {
+      setSavingVideo(false);
+      setTimeout(() => setVideoFeedback(null), 3000);
     }
   };
 
@@ -145,6 +199,139 @@ export default function PreferencesPage() {
               </span>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Video Calls Section */}
+      <div className="bg-white rounded-lg border border-[var(--color-border)] p-6 mb-6">
+        <h2 className="text-lg font-semibold text-[var(--text-main)] mb-1">
+          Video Calls
+        </h2>
+        <p className="text-sm text-[var(--text-muted)] mb-4">
+          Choose the video conferencing provider for new events.
+        </p>
+        <div className="space-y-3">
+          {/* Cally Video option */}
+          <button
+            type="button"
+            onClick={() => handleVideoCallPreferenceChange("cally")}
+            disabled={savingVideo}
+            className={`w-full text-left p-4 rounded-lg border-2 transition-colors ${
+              videoCallPreference === "cally"
+                ? "border-[var(--color-primary)] bg-[var(--color-primary)]/5"
+                : "border-[var(--color-border)] hover:border-gray-300"
+            } disabled:opacity-50`}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                  videoCallPreference === "cally"
+                    ? "border-[var(--color-primary)]"
+                    : "border-gray-300"
+                }`}
+              >
+                {videoCallPreference === "cally" && (
+                  <div className="w-3 h-3 rounded-full bg-[var(--color-primary)]" />
+                )}
+              </div>
+              <div>
+                <p className="font-medium text-[var(--text-main)]">
+                  Cally Video
+                </p>
+                <p className="text-sm text-[var(--text-muted)]">
+                  Built-in video conferencing powered by Cally
+                </p>
+              </div>
+            </div>
+          </button>
+
+          {/* Google Meet option */}
+          <button
+            type="button"
+            onClick={() => handleVideoCallPreferenceChange("google_meet")}
+            disabled={savingVideo || !googleCalendarConnected}
+            className={`w-full text-left p-4 rounded-lg border-2 transition-colors ${
+              videoCallPreference === "google_meet"
+                ? "border-[var(--color-primary)] bg-[var(--color-primary)]/5"
+                : "border-[var(--color-border)] hover:border-gray-300"
+            } disabled:opacity-50`}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                  videoCallPreference === "google_meet"
+                    ? "border-[var(--color-primary)]"
+                    : "border-gray-300"
+                }`}
+              >
+                {videoCallPreference === "google_meet" && (
+                  <div className="w-3 h-3 rounded-full bg-[var(--color-primary)]" />
+                )}
+              </div>
+              <div>
+                <p className="font-medium text-[var(--text-main)]">
+                  Google Meet
+                </p>
+                <p className="text-sm text-[var(--text-muted)]">
+                  {googleCalendarConnected
+                    ? "Generate Google Meet links for events"
+                    : "Connect Google Calendar in Integrations to enable"}
+                </p>
+              </div>
+            </div>
+          </button>
+
+          {/* Zoom option */}
+          <button
+            type="button"
+            onClick={() => handleVideoCallPreferenceChange("zoom")}
+            disabled={savingVideo || !zoomConnected}
+            className={`w-full text-left p-4 rounded-lg border-2 transition-colors ${
+              videoCallPreference === "zoom"
+                ? "border-[var(--color-primary)] bg-[var(--color-primary)]/5"
+                : "border-[var(--color-border)] hover:border-gray-300"
+            } disabled:opacity-50`}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                  videoCallPreference === "zoom"
+                    ? "border-[var(--color-primary)]"
+                    : "border-gray-300"
+                }`}
+              >
+                {videoCallPreference === "zoom" && (
+                  <div className="w-3 h-3 rounded-full bg-[var(--color-primary)]" />
+                )}
+              </div>
+              <div>
+                <p className="font-medium text-[var(--text-main)]">Zoom</p>
+                <p className="text-sm text-[var(--text-muted)]">
+                  {zoomConnected
+                    ? "Generate Zoom meeting links for events"
+                    : "Connect Zoom in Integrations to enable"}
+                </p>
+              </div>
+            </div>
+          </button>
+        </div>
+
+        {/* Video feedback */}
+        <div className="mt-3 h-5">
+          {savingVideo && (
+            <span className="text-sm text-[var(--text-muted)]">Saving...</span>
+          )}
+          {videoFeedback && (
+            <span
+              className={`text-sm ${
+                videoFeedback.type === "success"
+                  ? "text-green-600"
+                  : "text-red-600"
+              }`}
+            >
+              {videoFeedback.message}
+            </span>
+          )}
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 
 /**
@@ -10,11 +11,52 @@ export default function IntegrationsPage() {
   const params = useParams();
   const expertId = params.expertId as string;
 
+  const [googleStatus, setGoogleStatus] = useState<{
+    connected: boolean;
+    email: string | null;
+  }>({ connected: false, email: null });
+
+  const [zoomStatus, setZoomStatus] = useState<{
+    connected: boolean;
+    email: string | null;
+  }>({ connected: false, email: null });
+
+  useEffect(() => {
+    fetch("/api/data/app/google-calendar/status")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          setGoogleStatus({
+            connected: data.data.connected,
+            email: data.data.email,
+          });
+        }
+      })
+      .catch((err) =>
+        console.error("[DBG][settings] Failed to fetch Google status:", err),
+      );
+
+    fetch("/api/data/app/zoom/status")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          setZoomStatus({
+            connected: data.data.connected,
+            email: data.data.email,
+          });
+        }
+      })
+      .catch((err) =>
+        console.error("[DBG][settings] Failed to fetch Zoom status:", err),
+      );
+  }, []);
+
   const integrations = [
     {
       name: "Stripe",
       description: "Accept payments from your customers",
-      status: "Not connected",
+      connected: false,
+      statusText: "Not connected",
       icon: (
         <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
           <path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.591-7.305z" />
@@ -23,8 +65,11 @@ export default function IntegrationsPage() {
     },
     {
       name: "Google Calendar",
-      description: "Sync events with Google Calendar",
-      status: "Not connected",
+      description: googleStatus.connected
+        ? `Connected to ${googleStatus.email}`
+        : "Sync events with Google Calendar",
+      connected: googleStatus.connected,
+      statusText: googleStatus.connected ? "Connected" : "Not connected",
       href: `/srv/${expertId}/settings/google`,
       icon: (
         <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
@@ -35,8 +80,11 @@ export default function IntegrationsPage() {
     },
     {
       name: "Zoom",
-      description: "Create Zoom meetings automatically",
-      status: "Not connected",
+      description: zoomStatus.connected
+        ? `Connected to ${zoomStatus.email}`
+        : "Create Zoom meetings automatically",
+      connected: zoomStatus.connected,
+      statusText: zoomStatus.connected ? "Connected" : "Not connected",
       href: `/srv/${expertId}/settings/zoom`,
       icon: (
         <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
@@ -77,20 +125,39 @@ export default function IntegrationsPage() {
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-sm text-[var(--text-muted)]">
-                {integration.status}
-              </span>
-              {integration.href ? (
-                <Link
-                  href={integration.href}
-                  className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary-hover)] transition-colors text-sm"
-                >
-                  Connect
-                </Link>
+              {integration.connected ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-green-500" />
+                    <span className="text-sm text-green-600">Connected</span>
+                  </div>
+                  {integration.href && (
+                    <Link
+                      href={integration.href}
+                      className="px-4 py-2 border border-[var(--color-border)] text-[var(--text-main)] rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                    >
+                      Manage
+                    </Link>
+                  )}
+                </>
               ) : (
-                <button className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary-hover)] transition-colors text-sm">
-                  Connect
-                </button>
+                <>
+                  <span className="text-sm text-[var(--text-muted)]">
+                    {integration.statusText}
+                  </span>
+                  {integration.href ? (
+                    <Link
+                      href={integration.href}
+                      className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary-hover)] transition-colors text-sm"
+                    >
+                      Connect
+                    </Link>
+                  ) : (
+                    <button className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary-hover)] transition-colors text-sm">
+                      Connect
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </div>

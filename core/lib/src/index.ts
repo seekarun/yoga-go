@@ -14,3 +14,6 @@ export * from "./visitor";
 
 // Spam protection
 export * from "./spam-protection";
+
+// Survey flow engine
+export * from "./survey-flow";

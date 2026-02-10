@@ -18,6 +18,16 @@ import { getTenantByUserId } from "@/lib/repositories/tenantRepository";
 import * as calendarEventRepository from "@/lib/repositories/calendarEventRepository";
 import { createHmsRoomForEvent } from "@/lib/100ms-meeting";
 import { is100msConfigured } from "@/lib/100ms-auth";
+import {
+  pushCreateToGoogle,
+  generateMeetLinkForEvent,
+} from "@/lib/google-calendar-sync";
+import {
+  getGoogleCalendarClient,
+  listGoogleEvents,
+} from "@/lib/google-calendar";
+import { updateTenant } from "@/lib/repositories/tenantRepository";
+import { createZoomMeeting, getZoomClient } from "@/lib/zoom";
 
 // Color constant for general events
 const EVENT_COLOR = "#6366f1"; // Indigo - matches cally design
@@ -76,17 +86,76 @@ export async function GET(request: Request) {
       endDate,
     );
 
-    // Fetch calendar events
-    const events = await calendarEventRepository.getCalendarEventsByDateRange(
+    // Fetch Cally events and Google Calendar events in parallel
+    const eventsPromise = calendarEventRepository.getCalendarEventsByDateRange(
       tenantId,
       startDate,
       endDate,
     );
 
+    let googleItems: CalendarItem[] = [];
+    const googleCalendarConfig = tenant.googleCalendarConfig;
+
+    if (googleCalendarConfig) {
+      try {
+        const { client, updatedConfig } =
+          await getGoogleCalendarClient(googleCalendarConfig);
+
+        if (updatedConfig !== googleCalendarConfig) {
+          await updateTenant(tenantId, {
+            googleCalendarConfig: updatedConfig,
+          });
+        }
+
+        const googleEvents = await listGoogleEvents(
+          client,
+          updatedConfig.calendarId,
+          start,
+          end,
+        );
+
+        googleItems = googleEvents
+          .filter((ge) => ge.start?.dateTime && ge.end?.dateTime)
+          .map((ge) => ({
+            id: `gcal_${ge.id}`,
+            title: ge.summary || "(No title)",
+            start: ge.start!.dateTime!,
+            end: ge.end!.dateTime!,
+            allDay: false,
+            type: "event" as const,
+            color: "#4285F4", // Google blue
+            extendedProps: {
+              description: ge.description || undefined,
+              location: ge.location || undefined,
+              status: "scheduled" as const,
+              source: "google_calendar",
+            },
+          }));
+      } catch (error) {
+        console.warn(
+          "[DBG][calendar] Failed to fetch Google Calendar events:",
+          error,
+        );
+      }
+    }
+
+    const events = await eventsPromise;
+
+    // Collect Google event IDs from Cally events to avoid duplicates
+    const syncedGoogleIds = new Set(
+      events.map((e) => e.googleCalendarEventId).filter(Boolean),
+    );
+
+    // Filter out Google events that are already synced as Cally events
+    const filteredGoogleItems = googleItems.filter((gi) => {
+      const googleId = gi.id.replace("gcal_", "");
+      return !syncedGoogleIds.has(googleId);
+    });
+
     // Color constants for status-based overrides
     const PENDING_COLOR = "#f59e0b"; // Amber for pending bookings
 
-    // Transform events to CalendarItem format for FullCalendar
+    // Transform Cally events to CalendarItem format for FullCalendar
     const calendarItems: CalendarItem[] = events.map((event) => {
       // Override color for pending events so they stand out
       const color =
@@ -102,6 +171,7 @@ export async function GET(request: Request) {
         color,
         extendedProps: {
           description: event.description,
+          meetingLink: event.meetingLink,
           location: event.location,
           status: event.status,
           // 100ms Video conferencing
@@ -111,6 +181,9 @@ export async function GET(request: Request) {
         },
       };
     });
+
+    // Merge Google Calendar events
+    calendarItems.push(...filteredGoogleItems);
 
     // Sort by start time
     calendarItems.sort((a, b) => a.start.localeCompare(b.start));
@@ -206,8 +279,60 @@ export async function POST(request: Request) {
       hasVideoConference: body.hasVideoConference,
     };
 
-    // Create 100ms room if video conferencing is requested
-    if (body.hasVideoConference) {
+    // Determine video call preference
+    const useGoogleMeet =
+      tenant.videoCallPreference === "google_meet" &&
+      !!tenant.googleCalendarConfig;
+    const useZoom =
+      tenant.videoCallPreference === "zoom" && !!tenant.zoomConfig;
+
+    // Create Zoom meeting if requested
+    if (body.hasVideoConference && useZoom) {
+      console.log("[DBG][calendar] Creating Zoom meeting for event");
+      try {
+        const durationMs =
+          new Date(endTime).getTime() - new Date(startTime).getTime();
+        const durationMinutes = Math.max(Math.round(durationMs / 60000), 15);
+
+        const { joinUrl } = await createZoomMeeting(
+          tenant.zoomConfig!,
+          title,
+          startTime,
+          durationMinutes,
+        );
+        input.meetingLink = joinUrl;
+        console.log("[DBG][calendar] Zoom meeting created:", joinUrl);
+
+        // Persist refreshed token if it was updated
+        const { updatedConfig } = await getZoomClient(tenant.zoomConfig!);
+        if (updatedConfig !== tenant.zoomConfig) {
+          await updateTenant(tenantId, { zoomConfig: updatedConfig });
+        }
+      } catch (zoomError) {
+        console.warn(
+          "[DBG][calendar] Zoom meeting creation failed, falling back to 100ms:",
+          zoomError,
+        );
+        // Fall back to 100ms
+        if (is100msConfigured()) {
+          const tempEventId = `evt_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+          try {
+            const hmsResult = await createHmsRoomForEvent(
+              tenantId,
+              tempEventId,
+              title,
+            );
+            input.hmsRoomId = hmsResult.roomId;
+            input.hmsTemplateId = hmsResult.templateId;
+          } catch (hmsErr) {
+            console.warn("[DBG][calendar] 100ms fallback also failed:", hmsErr);
+          }
+        }
+      }
+    }
+
+    // Create 100ms room for Cally Video (default)
+    if (body.hasVideoConference && !useGoogleMeet && !useZoom) {
       if (!is100msConfigured()) {
         return NextResponse.json<ApiResponse<CalendarEvent>>(
           {
@@ -220,7 +345,6 @@ export async function POST(request: Request) {
 
       console.log("[DBG][calendar] Creating 100ms room for event");
 
-      // Create a temporary event ID for the room name
       const tempEventId = `evt_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
       try {
@@ -252,6 +376,119 @@ export async function POST(request: Request) {
     );
 
     console.log("[DBG][calendar] Created event:", event.id);
+
+    // If Google Meet was requested, generate a Meet link for the event
+    if (body.hasVideoConference && useGoogleMeet) {
+      console.log(
+        "[DBG][calendar] Generating Google Meet link for event:",
+        event.id,
+      );
+      try {
+        const meetLink = await generateMeetLinkForEvent(tenant, event);
+        if (meetLink) {
+          console.log("[DBG][calendar] Google Meet link generated:", meetLink);
+          const updatedEvent =
+            await calendarEventRepository.getCalendarEventById(
+              tenantId,
+              event.date,
+              event.id,
+            );
+          if (updatedEvent) {
+            return NextResponse.json<ApiResponse<CalendarEvent>>({
+              success: true,
+              data: updatedEvent,
+            });
+          }
+        } else {
+          // Fall back to 100ms if Meet link generation failed
+          console.warn(
+            "[DBG][calendar] Google Meet link generation returned null, falling back to 100ms",
+          );
+          if (is100msConfigured()) {
+            const tempEventId = `evt_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+            try {
+              const hmsResult = await createHmsRoomForEvent(
+                tenantId,
+                tempEventId,
+                title,
+              );
+              await calendarEventRepository.updateCalendarEvent(
+                tenantId,
+                event.date,
+                event.id,
+                {
+                  hmsRoomId: hmsResult.roomId,
+                  hmsTemplateId: hmsResult.templateId,
+                },
+              );
+              const fallbackEvent =
+                await calendarEventRepository.getCalendarEventById(
+                  tenantId,
+                  event.date,
+                  event.id,
+                );
+              if (fallbackEvent) {
+                return NextResponse.json<ApiResponse<CalendarEvent>>({
+                  success: true,
+                  data: fallbackEvent,
+                });
+              }
+            } catch (hmsErr) {
+              console.warn(
+                "[DBG][calendar] 100ms fallback also failed:",
+                hmsErr,
+              );
+            }
+          }
+        }
+      } catch (meetErr) {
+        console.warn(
+          "[DBG][calendar] Google Meet link generation failed:",
+          meetErr,
+        );
+      }
+    }
+
+    // Push to Google Calendar for sync
+    // Skip if we already pushed via generateMeetLinkForEvent above
+    // When Zoom is the video provider, still sync but don't let Google add a Meet link
+    if (
+      tenant.googleCalendarConfig &&
+      !(body.hasVideoConference && useGoogleMeet)
+    ) {
+      console.log(
+        "[DBG][calendar] Google Calendar config exists:",
+        !!tenant.googleCalendarConfig,
+        "autoAddMeetLink:",
+        tenant.googleCalendarConfig?.autoAddMeetLink,
+      );
+      try {
+        const googleEventId = await pushCreateToGoogle(tenant, event);
+        console.log(
+          "[DBG][calendar] pushCreateToGoogle result:",
+          googleEventId,
+        );
+        // Re-fetch event to get the meetingLink and googleCalendarEventId
+        const updatedEvent = await calendarEventRepository.getCalendarEventById(
+          tenantId,
+          event.date,
+          event.id,
+        );
+        console.log(
+          "[DBG][calendar] Re-fetched event meetingLink:",
+          updatedEvent?.meetingLink,
+        );
+        if (updatedEvent) {
+          return NextResponse.json<ApiResponse<CalendarEvent>>({
+            success: true,
+            data: updatedEvent,
+          });
+        }
+      } catch (err) {
+        console.warn("[DBG][calendar] Google push failed:", err);
+      }
+    }
+
     return NextResponse.json<ApiResponse<CalendarEvent>>({
       success: true,
       data: event,

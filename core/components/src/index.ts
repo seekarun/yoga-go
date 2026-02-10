@@ -2,3 +2,6 @@
 
 // UI components
 export * from "./ui";
+
+// Survey components
+export * from "./survey";

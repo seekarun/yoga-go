@@ -14,6 +14,7 @@ import { sendBookingNotificationEmail } from "@/lib/email/bookingNotification";
 import { isValidEmail } from "@core/lib/email/validator";
 import { extractVisitorInfo, checkSpamProtection } from "@core/lib";
 import { Tables } from "@/lib/dynamodb";
+import { pushCreateToGoogle } from "@/lib/google-calendar-sync";
 
 interface RouteParams {
   params: Promise<{
@@ -133,6 +134,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     });
 
     console.log("[DBG][booking] Created booking event:", event.id);
+
+    // Push to Google Calendar (fire-and-forget)
+    pushCreateToGoogle(tenant, event).catch((err) =>
+      console.warn("[DBG][booking] Google push failed:", err),
+    );
 
     if (isFlaggedAsSpam) {
       console.log(

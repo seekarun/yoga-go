@@ -19,7 +19,7 @@ export const verticalConfig = {
     blog: false,
     recordings: false,
     analytics: false,
-    survey: false,
+    survey: true,
     assets: false,
     inbox: false,
     messages: false,

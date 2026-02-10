@@ -38,7 +38,7 @@ export default async function VerifyEmailPage({ params }: PageProps) {
         padding: "20px",
       }}
     >
-      <VerifyEmailForm tenantId={tenantId} tenantName={tenant.name} />
+      <VerifyEmailForm tenantId={tenantId} />
     </div>
   );
 }

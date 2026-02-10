@@ -11,6 +11,7 @@ interface CreateEventModalProps {
   initialDate: Date | null;
   tenantId: string;
   onEventCreated: () => void;
+  videoCallPreference?: "cally" | "google_meet" | "zoom";
 }
 
 // Predefined colors for events
@@ -24,7 +25,12 @@ const EVENT_COLORS = [
 ];
 
 function formatDateForInput(date: Date): string {
-  return date.toISOString().slice(0, 16);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
 function addHours(date: Date, hours: number): Date {
@@ -39,6 +45,7 @@ export default function CreateEventModal({
   initialDate,
   tenantId: _tenantId,
   onEventCreated,
+  videoCallPreference = "cally",
 }: CreateEventModalProps) {
   // Form state
   const [title, setTitle] = useState("");
@@ -249,7 +256,11 @@ export default function CreateEventModal({
             </label>
             {hasVideoConference && (
               <span className="text-xs text-gray-500 ml-1">
-                (100ms video room will be created)
+                {videoCallPreference === "zoom"
+                  ? "(Zoom meeting will be created)"
+                  : videoCallPreference === "google_meet"
+                    ? "(Google Meet link will be created)"
+                    : "(Cally video room will be created)"}
               </span>
             )}
           </div>

@@ -94,7 +94,13 @@ export default function LiveMeetingPage({ params }: PageProps) {
 
         setEvent(eventData.data);
 
-        // Check if event has video conferencing
+        // If the event has an external meeting link (Zoom/Google Meet), redirect
+        if (eventData.data.meetingLink && !eventData.data.hmsRoomId) {
+          window.location.href = eventData.data.meetingLink;
+          return;
+        }
+
+        // Check if event has video conferencing (100ms)
         if (!eventData.data.hasVideoConference || !eventData.data.hmsRoomId) {
           setError("This event does not have video conferencing enabled");
           setLoading(false);

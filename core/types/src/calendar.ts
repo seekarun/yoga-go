@@ -46,6 +46,8 @@ export interface CalendarEvent extends BaseEntity {
   flaggedAsSpam?: boolean;
   // Visitor geolocation metadata
   visitorInfo?: VisitorInfo;
+  // Google Calendar sync
+  googleCalendarEventId?: string;
 }
 
 /**
@@ -76,6 +78,8 @@ export interface CreateCalendarEventInput {
   flaggedAsSpam?: boolean;
   // Visitor geolocation metadata
   visitorInfo?: VisitorInfo;
+  // Google Calendar sync
+  googleCalendarEventId?: string;
 }
 
 /**
@@ -91,14 +95,16 @@ export interface CalendarItem {
   color?: string;
   extendedProps: {
     description?: string;
+    meetingLink?: string;
     webinarId?: string;
     sessionId?: string;
-    meetingLink?: string;
     location?: string;
     status?: CalendarEventStatus | WebinarStatus;
     // 100ms Video conferencing
     hasVideoConference?: boolean;
     hmsRoomId?: string;
     hmsTemplateId?: string;
+    // Event source
+    source?: string;
   };
 }

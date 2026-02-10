@@ -8,6 +8,7 @@ import type {
   Email,
   CalendarEvent,
   ContactSubmission,
+  FeedbackRequest,
 } from "@/types";
 
 interface UserFileData {
@@ -15,13 +16,15 @@ interface UserFileData {
   communications: Email[];
   bookings: CalendarEvent[];
   contacts: ContactSubmission[];
+  feedbackRequests: FeedbackRequest[];
 }
 
 // Unified timeline item
 type TimelineItem =
   | { type: "email"; date: string; data: Email }
   | { type: "booking"; date: string; data: CalendarEvent }
-  | { type: "contact"; date: string; data: ContactSubmission };
+  | { type: "contact"; date: string; data: ContactSubmission }
+  | { type: "feedback"; date: string; data: FeedbackRequest };
 
 export default function UserFilePage() {
   const params = useParams();
@@ -32,6 +35,15 @@ export default function UserFilePage() {
   const [data, setData] = useState<UserFileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Feedback request state
+  const [showFeedbackForm, setShowFeedbackForm] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState(
+    "I'd love to hear your feedback! Please take a moment to share your experience.",
+  );
+  const [feedbackSending, setFeedbackSending] = useState(false);
+  const [feedbackSuccess, setFeedbackSuccess] = useState(false);
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -59,10 +71,42 @@ export default function UserFilePage() {
     fetchData();
   }, [fetchData]);
 
+  const sendFeedbackRequest = useCallback(async () => {
+    if (!data?.user) return;
+    setFeedbackSending(true);
+    setFeedbackError(null);
+    try {
+      const res = await fetch("/api/data/app/feedback/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: data.user.email,
+          name: data.user.name,
+          customMessage: feedbackMessage.trim() || undefined,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setFeedbackSuccess(true);
+        fetchData();
+        setTimeout(() => {
+          setShowFeedbackForm(false);
+          setFeedbackSuccess(false);
+        }, 3000);
+      } else {
+        setFeedbackError(json.error || "Failed to send feedback request");
+      }
+    } catch {
+      setFeedbackError("Failed to send feedback request");
+    } finally {
+      setFeedbackSending(false);
+    }
+  }, [data?.user, feedbackMessage, fetchData]);
+
   // All hooks must be called before any early returns
   const allItems: TimelineItem[] = useMemo(() => {
     if (!data) return [];
-    const { communications, bookings, contacts } = data;
+    const { communications, bookings, contacts, feedbackRequests } = data;
     const items: TimelineItem[] = [
       ...communications.map(
         (email) =>
@@ -86,6 +130,14 @@ export default function UserFilePage() {
             type: "contact",
             date: contact.submittedAt,
             data: contact,
+          }) as TimelineItem,
+      ),
+      ...(feedbackRequests || []).map(
+        (fb) =>
+          ({
+            type: "feedback",
+            date: fb.submittedAt || fb.createdAt,
+            data: fb,
           }) as TimelineItem,
       ),
     ];
@@ -208,7 +260,91 @@ export default function UserFilePage() {
               ) : null}
             </div>
           </div>
+
+          {/* Request Feedback Button */}
+          <button
+            type="button"
+            onClick={() => setShowFeedbackForm(!showFeedbackForm)}
+            className="ml-auto flex-shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-purple-200 bg-purple-50 text-purple-700 text-sm font-medium hover:bg-purple-100 transition-colors"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
+              />
+            </svg>
+            Request Feedback
+          </button>
         </div>
+
+        {/* Feedback Request Inline Form */}
+        {showFeedbackForm && (
+          <div className="mt-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+            {feedbackSuccess ? (
+              <div className="flex items-center gap-2 text-green-700">
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+                <span className="text-sm font-medium">
+                  Feedback request sent to {user.email}
+                </span>
+              </div>
+            ) : (
+              <>
+                <label
+                  htmlFor="feedback-msg"
+                  className="block text-sm font-medium text-purple-800 mb-2"
+                >
+                  Message to include in the email
+                </label>
+                <textarea
+                  id="feedback-msg"
+                  value={feedbackMessage}
+                  onChange={(e) => setFeedbackMessage(e.target.value)}
+                  rows={3}
+                  className="w-full p-3 border border-purple-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-300"
+                />
+                {feedbackError && (
+                  <p className="mt-2 text-sm text-red-600">{feedbackError}</p>
+                )}
+                <div className="mt-3 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={sendFeedbackRequest}
+                    disabled={feedbackSending}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+                  >
+                    {feedbackSending ? "Sending..." : "Send Request"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowFeedbackForm(false)}
+                    className="px-4 py-2 text-sm text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* No activity at all */}
@@ -291,6 +427,9 @@ function TimelineEntry({
   if (item.type === "booking") {
     return <BookingEntry booking={item.data} />;
   }
+  if (item.type === "feedback") {
+    return <FeedbackEntry feedback={item.data} />;
+  }
   return <ContactEntry contact={item.data} />;
 }
 
@@ -318,6 +457,61 @@ function ContactEntry({ contact }: { contact: ContactSubmission }) {
         </div>
         <span className="text-xs text-[var(--text-muted)] whitespace-nowrap flex-shrink-0">
           {formatDateTime(contact.submittedAt)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function FeedbackEntry({ feedback }: { feedback: FeedbackRequest }) {
+  const isSubmitted = feedback.status === "submitted";
+
+  return (
+    <div className="bg-white rounded-lg border border-[var(--color-border)] p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-purple-50 text-purple-700">
+              {isSubmitted ? "Review Submitted" : "Requested Review"}
+            </span>
+            {isSubmitted && feedback.rating && (
+              <span className="flex items-center gap-0.5">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <svg
+                    key={star}
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill={star <= feedback.rating! ? "#f59e0b" : "#d1d5db"}
+                    stroke="none"
+                  >
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                  </svg>
+                ))}
+              </span>
+            )}
+            {feedback.approved && (
+              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-green-50 text-green-700">
+                Approved
+              </span>
+            )}
+          </div>
+          {isSubmitted && feedback.message ? (
+            <p className="text-sm text-[var(--text-muted)] line-clamp-2">
+              &ldquo;
+              {feedback.message.length > 120
+                ? feedback.message.substring(0, 120) + "..."
+                : feedback.message}
+              &rdquo;
+            </p>
+          ) : (
+            <p className="text-sm text-[var(--text-muted)]">
+              Feedback request sent — awaiting response
+            </p>
+          )}
+        </div>
+        <span className="text-xs text-[var(--text-muted)] whitespace-nowrap flex-shrink-0">
+          {formatDateTime(feedback.submittedAt || feedback.createdAt)}
         </span>
       </div>
     </div>

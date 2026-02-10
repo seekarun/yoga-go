@@ -4,7 +4,9 @@
  */
 import { notFound } from "next/navigation";
 import { getTenantById } from "@/lib/repositories/tenantRepository";
+import { getApprovedFeedback } from "@/lib/repositories/feedbackRepository";
 import { DEFAULT_LANDING_PAGE_CONFIG } from "@/types/landing-page";
+import type { Testimonial } from "@/types/landing-page";
 import LandingPageRenderer from "@/components/landing-page/LandingPageRenderer";
 
 interface PageProps {
@@ -70,6 +72,34 @@ export default async function TenantLandingPage({ params }: PageProps) {
     ...DEFAULT_LANDING_PAGE_CONFIG,
     ...tenant.customLandingPage,
   };
+
+  // Merge approved feedback into testimonials
+  const approvedFeedback = await getApprovedFeedback(tenantId);
+  if (approvedFeedback.length > 0) {
+    const feedbackTestimonials: Testimonial[] = approvedFeedback
+      .filter((f) => f.message && f.recipientName)
+      .map((f) => ({
+        id: `feedback-${f.id}`,
+        quote: f.message!,
+        authorName: f.recipientName,
+        rating: f.rating,
+      }));
+
+    if (feedbackTestimonials.length > 0) {
+      const existingTestimonials = landingPage.testimonials?.testimonials || [];
+      landingPage.testimonials = {
+        ...landingPage.testimonials,
+        testimonials: [...feedbackTestimonials, ...existingTestimonials],
+      };
+
+      // Auto-enable testimonials section if there are approved items
+      if (landingPage.sections) {
+        landingPage.sections = landingPage.sections.map((s) =>
+          s.id === "testimonials" ? { ...s, enabled: true } : s,
+        );
+      }
+    }
+  }
 
   return <LandingPageRenderer config={landingPage} tenantId={tenantId} />;
 }

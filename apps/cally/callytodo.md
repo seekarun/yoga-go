@@ -1,29 +1,42 @@
 x sanitize emails in appointments
 x record 100ms call and provide summary in /user page for tenants
+x fetch user info like country/timezone etc.
+x spam check
 
-- sync calendar events to google calendar (and others)
-- video call recording and AI feed
+x if user signed up, skip email/name fields in forms
+x if user signed up, show profile icon
+x collect feedback/testimonials from users after appointment
+x sync calendar events to google calendar
+x zoom integration for video calls
+
 - AI chat to look up user's past interactions
-- if user signed up, skip email/name fields in forms
-- if user signed up, show profile icon
-- fetch user info like country/timezone etc.
-- spam check
+- video call recording and AI feed
 - buy domain option
 - multiple emails
-- collect feedback from users after appointment
+- SEO help
+- review DB structure for scaling
+- user preferences (password, email)
+- user favicon and meta data for SEO
+- AI token usage for user - track and report
+- recurring events in calendar
 - accept payments for calendar events
+
+- production deployment.
+
 - products. appointment booking based on product, eg. 30 mins for haircut
-- book via call
-- book via whatsapp
+- mobile app to go with webapp
 - voice assistant - talk to AI bot on page,
   - "what was the feedback from my last meeting"
   - "Is this visitor likely to convert?"
-- mobile app to go with webapp
-- SEO help
-- review DB structure for scaling
-- zoom integration for video calls
-  - can zoom calls be recorded and transcribed?
 - Shopify?
+- book via call
+- book via whatsapp
+- workflows - "after appointment, send follow-up email with feedback and next steps"
+- i18n
+- app/play store ratings in testimonials
+- sync calendar events with apple calendar
+- sync calendar events with outlook calendar
+- can zoom calls be recorded and transcribed?
 
   Sections That Could Be Added
   ┌──────────────────────┬───────────────────────────────────────────────────────────────────┐

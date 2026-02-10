@@ -5,7 +5,7 @@ import type { BaseEntity } from "./base";
 /**
  * Question type
  */
-export type QuestionType = "multiple-choice" | "text";
+export type QuestionType = "multiple-choice" | "text" | "finish";
 
 /**
  * Survey status
@@ -21,6 +21,16 @@ export interface QuestionOption {
 }
 
 /**
+ * Maps an answer choice to the next question (for conditional branching)
+ * - MC questions: one branch per option + optional default fallback (optionId undefined)
+ * - Text questions: single default branch (optionId undefined) → next question or end
+ */
+export interface QuestionBranch {
+  optionId?: string;
+  nextQuestionId: string | null; // null = end survey
+}
+
+/**
  * Survey question
  */
 export interface SurveyQuestion {
@@ -30,6 +40,9 @@ export interface SurveyQuestion {
   options?: QuestionOption[];
   required: boolean;
   order: number;
+  branches?: QuestionBranch[];
+  position?: { x: number; y: number };
+  inference?: "none" | "process";
 }
 
 /**

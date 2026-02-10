@@ -84,6 +84,21 @@ export const TenantPK = {
   // Transcripts: PK=TENANT#{tenantId}, SK=TRANSCRIPT#{eventId}
   TRANSCRIPT: (eventId: string) => `TRANSCRIPT#${eventId}`,
   TRANSCRIPT_PREFIX: "TRANSCRIPT#",
+
+  // Feedback: PK=TENANT#{tenantId}, SK=FEEDBACK#{timestamp}#{feedbackId}
+  FEEDBACK: (timestamp: string, feedbackId: string) =>
+    `FEEDBACK#${timestamp}#${feedbackId}`,
+  FEEDBACK_PREFIX: "FEEDBACK#",
+
+  // Surveys: PK=TENANT#{tenantId}, SK=SURVEY#{timestamp}#{surveyId}
+  SURVEY: (timestamp: string, surveyId: string) =>
+    `SURVEY#${timestamp}#${surveyId}`,
+  SURVEY_PREFIX: "SURVEY#",
+
+  // Survey Responses: PK=TENANT#{tenantId}, SK=SURVEYRESP#{surveyId}#{timestamp}#{responseId}
+  SURVEY_RESPONSE: (surveyId: string, timestamp: string, responseId: string) =>
+    `SURVEYRESP#${surveyId}#${timestamp}#${responseId}`,
+  SURVEY_RESPONSE_PREFIX: (surveyId: string) => `SURVEYRESP#${surveyId}#`,
 } as const;
 
 // Entity type constants
@@ -93,7 +108,10 @@ export const EntityType = {
   EMAIL: "EMAIL",
   SUBSCRIBER: "SUBSCRIBER",
   CONTACT: "CONTACT",
+  FEEDBACK: "FEEDBACK",
   TRANSCRIPT: "TRANSCRIPT",
+  SURVEY: "SURVEY",
+  SURVEY_RESPONSE: "SURVEY_RESPONSE",
 } as const;
 
 // ============================================

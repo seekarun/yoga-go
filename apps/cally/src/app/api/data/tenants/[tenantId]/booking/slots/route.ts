@@ -4,10 +4,18 @@
  */
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { getTenantById } from "@/lib/repositories/tenantRepository";
+import {
+  getTenantById,
+  updateTenant,
+} from "@/lib/repositories/tenantRepository";
 import { getCalendarEventsByDateRange } from "@/lib/repositories/calendarEventRepository";
 import { generateAvailableSlots } from "@/lib/booking/availability";
 import { DEFAULT_BOOKING_CONFIG } from "@/types/booking";
+import type { CalendarEvent } from "@/types";
+import {
+  getGoogleCalendarClient,
+  listGoogleEvents,
+} from "@/lib/google-calendar";
 
 interface RouteParams {
   params: Promise<{
@@ -62,7 +70,66 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       date,
     );
 
-    const slots = generateAvailableSlots(date, bookingConfig, existingEvents);
+    // Fetch Google Calendar events to block slots if configured
+    let allEvents: CalendarEvent[] = existingEvents;
+    const googleCalendarConfig = tenant.googleCalendarConfig;
+
+    if (googleCalendarConfig?.blockBookingSlots) {
+      try {
+        const { client, updatedConfig } =
+          await getGoogleCalendarClient(googleCalendarConfig);
+
+        if (updatedConfig !== googleCalendarConfig) {
+          await updateTenant(tenantId, {
+            googleCalendarConfig: updatedConfig,
+          });
+        }
+
+        // Build time range for the requested date
+        const dateStart = `${date}T00:00:00Z`;
+        const dateEnd = `${date}T23:59:59Z`;
+
+        const googleEvents = await listGoogleEvents(
+          client,
+          updatedConfig.calendarId,
+          dateStart,
+          dateEnd,
+        );
+
+        // Convert to CalendarEvent-like objects (only startTime/endTime needed)
+        const googleBlocking: CalendarEvent[] = googleEvents
+          .filter((ge) => ge.start?.dateTime && ge.end?.dateTime)
+          .map((ge) => ({
+            id: `gcal_${ge.id}`,
+            expertId: tenantId,
+            title: ge.summary || "",
+            date,
+            startTime: ge.start!.dateTime!,
+            endTime: ge.end!.dateTime!,
+            duration: 0,
+            type: "general" as const,
+            status: "scheduled" as const,
+            createdAt: "",
+            updatedAt: "",
+          }));
+
+        allEvents = [...existingEvents, ...googleBlocking];
+
+        console.log(
+          "[DBG][booking/slots] Added",
+          googleBlocking.length,
+          "Google events as blockers",
+        );
+      } catch (error) {
+        console.warn(
+          "[DBG][booking/slots] Failed to fetch Google Calendar events:",
+          error,
+        );
+        // Proceed with Cally events only
+      }
+    }
+
+    const slots = generateAvailableSlots(date, bookingConfig, allEvents);
 
     return NextResponse.json({
       success: true,

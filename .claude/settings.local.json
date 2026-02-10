@@ -124,7 +124,8 @@
       "WebFetch(domain:craftedxp.au)",
       "WebFetch(domain:proj-cally.vercel.app)",
       "Bash(aws s3 ls:*)",
-      "WebFetch(domain:vercel.com)"
+      "WebFetch(domain:vercel.com)",
+      "Bash(echo:*)"
     ],
     "deny": [],
     "ask": []

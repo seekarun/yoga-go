@@ -9,6 +9,7 @@ import type {
   Email,
   CalendarEvent,
   ContactSubmission,
+  FeedbackRequest,
   ApiResponse,
 } from "@/types";
 import { auth } from "@/auth";
@@ -16,6 +17,7 @@ import { getTenantByUserId } from "@/lib/repositories/tenantRepository";
 import * as subscriberRepository from "@/lib/repositories/subscriberRepository";
 import { getTenantCalendarEvents } from "@/lib/repositories/calendarEventRepository";
 import { getContactsByTenant } from "@/lib/repositories/contactRepository";
+import { getFeedbackByTenant } from "@/lib/repositories/feedbackRepository";
 import { mergeSubscribersAndVisitors } from "@/lib/users/mergeUsers";
 import { getEmailsByContact } from "@/lib/repositories/emailRepository";
 import { parseVisitorFromDescription } from "@/lib/email/bookingNotification";
@@ -25,6 +27,7 @@ interface UserFileData {
   communications: Email[];
   bookings: CalendarEvent[];
   contacts: ContactSubmission[];
+  feedbackRequests: FeedbackRequest[];
 }
 
 export async function GET(
@@ -53,13 +56,14 @@ export async function GET(
       );
     }
 
-    // Fetch users, communications, and contacts in parallel
-    const [subscribers, events, communications, allContacts] =
+    // Fetch users, communications, contacts, and feedback in parallel
+    const [subscribers, events, communications, allContacts, allFeedback] =
       await Promise.all([
         subscriberRepository.getSubscribersByTenant(tenant.id),
         getTenantCalendarEvents(tenant.id),
         getEmailsByContact(tenant.id, decodedEmail),
         getContactsByTenant(tenant.id),
+        getFeedbackByTenant(tenant.id),
       ]);
 
     const users = mergeSubscribersAndVisitors(subscribers, events, allContacts);
@@ -89,13 +93,18 @@ export async function GET(
       (c) => c.email.toLowerCase().trim() === normalizedEmail,
     );
 
+    // Filter feedback requests for this user
+    const feedbackRequests = allFeedback.filter(
+      (f) => f.recipientEmail.toLowerCase().trim() === normalizedEmail,
+    );
+
     console.log(
-      `[DBG][userFile] Returning user ${decodedEmail} with ${communications.length} communications, ${bookings.length} bookings, ${contacts.length} contacts`,
+      `[DBG][userFile] Returning user ${decodedEmail} with ${communications.length} communications, ${bookings.length} bookings, ${contacts.length} contacts, ${feedbackRequests.length} feedback requests`,
     );
 
     return NextResponse.json<ApiResponse<UserFileData>>({
       success: true,
-      data: { user, communications, bookings, contacts },
+      data: { user, communications, bookings, contacts, feedbackRequests },
     });
   } catch (error) {
     console.error("[DBG][userFile] Error:", error);
