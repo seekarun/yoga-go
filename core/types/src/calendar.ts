@@ -10,6 +10,35 @@ import type { VisitorInfo } from "./visitor";
 export type CalendarEventType = "general" | "live_session";
 
 /**
+ * Recurrence frequency options
+ */
+export type RecurrenceFrequency =
+  | "daily"
+  | "weekly"
+  | "monthly"
+  | "yearly"
+  | "weekday";
+
+/**
+ * Monthly recurrence mode
+ */
+export type MonthlyMode = "dayOfMonth" | "dayOfWeek";
+
+/**
+ * Recurrence rule for recurring events
+ */
+export interface RecurrenceRule {
+  frequency: RecurrenceFrequency;
+  interval: number;
+  daysOfWeek?: number[]; // 0=Sun..6=Sat, for weekly
+  monthlyMode?: MonthlyMode;
+  end: {
+    afterOccurrences?: number;
+    onDate?: string; // YYYY-MM-DD
+  };
+}
+
+/**
  * Calendar event status
  */
 export type CalendarEventStatus =
@@ -50,6 +79,9 @@ export interface CalendarEvent extends BaseEntity {
   googleCalendarEventId?: string;
   // Outlook Calendar sync
   outlookCalendarEventId?: string;
+  // Recurrence
+  recurrenceGroupId?: string;
+  recurrenceRule?: RecurrenceRule;
 }
 
 /**
@@ -84,6 +116,9 @@ export interface CreateCalendarEventInput {
   googleCalendarEventId?: string;
   // Outlook Calendar sync
   outlookCalendarEventId?: string;
+  // Recurrence
+  recurrenceGroupId?: string;
+  recurrenceRule?: RecurrenceRule;
 }
 
 /**
@@ -110,5 +145,7 @@ export interface CalendarItem {
     hmsTemplateId?: string;
     // Event source
     source?: string;
+    // Recurrence
+    recurrenceGroupId?: string;
   };
 }

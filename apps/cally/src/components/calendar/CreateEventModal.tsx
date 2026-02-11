@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Modal, { ModalHeader, ModalFooter } from "@/components/Modal";
 import { PrimaryButton, SecondaryButton } from "@/components/Button";
-import type { CreateCalendarEventInput } from "@/types";
+import RecurrenceSelector from "@/components/calendar/RecurrenceSelector";
+import type { CreateCalendarEventInput, RecurrenceRule } from "@/types";
 
 interface CreateEventModalProps {
   isOpen: boolean;
@@ -57,6 +58,22 @@ export default function CreateEventModal({
   const [isAllDay, setIsAllDay] = useState(false);
   const [notes, setNotes] = useState("");
   const [hasVideoConference, setHasVideoConference] = useState(false);
+  const [recurrenceRule, setRecurrenceRule] = useState<RecurrenceRule | null>(
+    null,
+  );
+
+  const isRecurring = recurrenceRule !== null;
+
+  const handleRecurrenceChange = useCallback(
+    (rule: RecurrenceRule | null) => {
+      setRecurrenceRule(rule);
+      // Disable video conferencing when recurring
+      if (rule && hasVideoConference) {
+        setHasVideoConference(false);
+      }
+    },
+    [hasVideoConference],
+  );
 
   // UI state
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -81,6 +98,7 @@ export default function CreateEventModal({
       setIsAllDay(false);
       setNotes("");
       setHasVideoConference(false);
+      setRecurrenceRule(null);
       setError("");
     }
   }, [isOpen, initialDate]);
@@ -136,10 +154,13 @@ export default function CreateEventModal({
         hasVideoConference,
       };
 
+      // Include recurrence rule in the request body if set
+      const body = recurrenceRule ? { ...input, recurrenceRule } : input;
+
       const response = await fetch("/api/data/app/calendar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
+        body: JSON.stringify(body),
       });
 
       const data = await response.json();
@@ -241,6 +262,13 @@ export default function CreateEventModal({
             </label>
           </div>
 
+          {/* Recurrence */}
+          <RecurrenceSelector
+            startDate={startTime ? new Date(startTime) : null}
+            value={recurrenceRule}
+            onChange={handleRecurrenceChange}
+          />
+
           {/* Video Conferencing */}
           <div className="flex items-center gap-2">
             <input
@@ -248,15 +276,21 @@ export default function CreateEventModal({
               id="hasVideoConference"
               checked={hasVideoConference}
               onChange={(e) => setHasVideoConference(e.target.checked)}
-              className="w-4 h-4 rounded text-[var(--color-primary,#6366f1)] focus:ring-[var(--color-primary,#6366f1)]"
+              disabled={isRecurring}
+              className="w-4 h-4 rounded text-[var(--color-primary,#6366f1)] focus:ring-[var(--color-primary,#6366f1)] disabled:opacity-50"
             />
             <label
               htmlFor="hasVideoConference"
-              className="text-sm text-gray-700"
+              className={`text-sm ${isRecurring ? "text-gray-400" : "text-gray-700"}`}
             >
               Add video conferencing
             </label>
-            {hasVideoConference && (
+            {isRecurring && (
+              <span className="text-xs text-gray-400 ml-1">
+                (Not available for recurring events)
+              </span>
+            )}
+            {hasVideoConference && !isRecurring && (
               <span className="text-xs text-gray-500 ml-1">
                 {videoCallPreference === "zoom"
                   ? "(Zoom meeting will be created)"
@@ -337,7 +371,11 @@ export default function CreateEventModal({
             Cancel
           </SecondaryButton>
           <PrimaryButton type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Creating..." : "Create Event"}
+            {isSubmitting
+              ? "Creating..."
+              : isRecurring
+                ? "Create Recurring Event"
+                : "Create Event"}
           </PrimaryButton>
         </ModalFooter>
       </form>

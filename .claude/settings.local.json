@@ -126,7 +126,10 @@
       "Bash(aws s3 ls:*)",
       "WebFetch(domain:vercel.com)",
       "Bash(echo:*)",
-      "Bash(cdk diff:*)"
+      "Bash(cdk diff:*)",
+      "WebFetch(domain:developers.google.com)",
+      "WebFetch(domain:datatracker.ietf.org)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": [],
     "ask": []

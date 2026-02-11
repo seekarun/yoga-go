@@ -989,6 +989,167 @@
       ]
     },
     {
+      "name": "Calendar",
+      "item": [
+        {
+          "name": "Get Calendar Events",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "session={{sessionToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/calendar?start=2026-02-01T00:00:00Z&end=2026-02-28T23:59:59Z",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "calendar"],
+              "query": [
+                { "key": "start", "value": "2026-02-01T00:00:00Z" },
+                { "key": "end", "value": "2026-02-28T23:59:59Z" }
+              ]
+            },
+            "description": "Get calendar events for a date range. Returns CalendarItem[] including Cally events, Google Calendar events, and Outlook events. Recurring events include recurrenceGroupId in extendedProps."
+          }
+        },
+        {
+          "name": "Create Event",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "session={{sessionToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Team Meeting\",\n  \"description\": \"Weekly standup\",\n  \"startTime\": \"2026-02-15T09:00:00.000Z\",\n  \"endTime\": \"2026-02-15T10:00:00.000Z\",\n  \"location\": \"Office\",\n  \"color\": \"#6366f1\",\n  \"isAllDay\": false,\n  \"hasVideoConference\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/calendar",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "calendar"]
+            },
+            "description": "Create a single calendar event. Set hasVideoConference to true to create a video room (Zoom/Google Meet/100ms based on tenant preference)."
+          }
+        },
+        {
+          "name": "Create Recurring Event",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "session={{sessionToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Weekly Yoga Class\",\n  \"description\": \"Morning yoga session\",\n  \"startTime\": \"2026-02-17T09:00:00.000Z\",\n  \"endTime\": \"2026-02-17T10:00:00.000Z\",\n  \"location\": \"Studio\",\n  \"color\": \"#22c55e\",\n  \"isAllDay\": false,\n  \"recurrenceRule\": {\n    \"frequency\": \"weekly\",\n    \"interval\": 1,\n    \"daysOfWeek\": [2],\n    \"end\": {\n      \"afterOccurrences\": 10\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/calendar",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "calendar"]
+            },
+            "description": "Create a recurring event series. Expands into individual events linked by recurrenceGroupId. Max 52 occurrences. Video conferencing not supported for recurring events. Frequency options: daily, weekly, monthly, yearly, weekday. For weekly: daysOfWeek (0=Sun..6=Sat). For monthly: monthlyMode (dayOfMonth or dayOfWeek). End: afterOccurrences (1-52) or onDate (YYYY-MM-DD)."
+          }
+        },
+        {
+          "name": "Get Event By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Cookie", "value": "session={{sessionToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/calendar/events/{{eventId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "app",
+                "calendar",
+                "events",
+                "{{eventId}}"
+              ]
+            },
+            "description": "Get a single calendar event by ID. Returns full CalendarEvent with recurrenceGroupId and recurrenceRule (if first in series)."
+          }
+        },
+        {
+          "name": "Update Event",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "session={{sessionToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Meeting\",\n  \"description\": \"Updated description\",\n  \"status\": \"scheduled\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/calendar/events/{{eventId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "app",
+                "calendar",
+                "events",
+                "{{eventId}}"
+              ]
+            },
+            "description": "Update a calendar event. Supports partial updates. For recurring events, updates only the individual instance."
+          }
+        },
+        {
+          "name": "Delete Event",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Cookie", "value": "session={{sessionToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/calendar/events/{{eventId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "app",
+                "calendar",
+                "events",
+                "{{eventId}}"
+              ]
+            },
+            "description": "Delete a single calendar event. Also removes from Google Calendar and Outlook Calendar if synced."
+          }
+        },
+        {
+          "name": "Delete All In Series",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Cookie", "value": "session={{sessionToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/calendar/events/{{eventId}}?deleteAll=true",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "app",
+                "calendar",
+                "events",
+                "{{eventId}}"
+              ],
+              "query": [{ "key": "deleteAll", "value": "true" }]
+            },
+            "description": "Delete all events in a recurrence series. Uses the event's recurrenceGroupId to find and batch-delete all instances. Returns { deleted: true, count: N }. Also removes each instance from Google/Outlook Calendar."
+          }
+        }
+      ]
+    },
+    {
       "name": "Transcription",
       "item": [
         {

@@ -265,6 +265,8 @@ export async function PUT(request: Request, { params }: RouteParams) {
 /**
  * DELETE /api/data/app/calendar/events/[eventId]
  * Delete a calendar event
+ * Query params:
+ *   - deleteAll=true: Delete all events in the recurrence series
  */
 export async function DELETE(request: Request, { params }: RouteParams) {
   const { eventId } = await params;
@@ -273,21 +275,21 @@ export async function DELETE(request: Request, { params }: RouteParams) {
   try {
     const session = await auth();
     if (!session?.user?.cognitoSub) {
-      return NextResponse.json<ApiResponse<{ deleted: boolean }>>(
-        { success: false, error: "Unauthorized" },
-        { status: 401 },
-      );
+      return NextResponse.json<
+        ApiResponse<{ deleted: boolean; count?: number }>
+      >({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
     const tenant = await getTenantByUserId(session.user.cognitoSub);
     if (!tenant) {
-      return NextResponse.json<ApiResponse<{ deleted: boolean }>>(
-        { success: false, error: "Tenant not found" },
-        { status: 404 },
-      );
+      return NextResponse.json<
+        ApiResponse<{ deleted: boolean; count?: number }>
+      >({ success: false, error: "Tenant not found" }, { status: 404 });
     }
 
     const tenantId = tenant.id;
+    const { searchParams } = new URL(request.url);
+    const deleteAll = searchParams.get("deleteAll") === "true";
 
     // Get current event to find its date
     const currentEvent = await calendarEventRepository.getCalendarEventByIdOnly(
@@ -296,10 +298,51 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     );
 
     if (!currentEvent) {
-      return NextResponse.json<ApiResponse<{ deleted: boolean }>>(
-        { success: false, error: "Event not found" },
-        { status: 404 },
+      return NextResponse.json<
+        ApiResponse<{ deleted: boolean; count?: number }>
+      >({ success: false, error: "Event not found" }, { status: 404 });
+    }
+
+    // Delete all events in the recurrence series
+    if (deleteAll && currentEvent.recurrenceGroupId) {
+      console.log(
+        "[DBG][calendar/events/[eventId]] Deleting entire recurrence group:",
+        currentEvent.recurrenceGroupId,
       );
+
+      const deletedEvents =
+        await calendarEventRepository.deleteCalendarEventsByRecurrenceGroup(
+          tenantId,
+          currentEvent.recurrenceGroupId,
+        );
+
+      // Push delete to Google/Outlook for each deleted event (fire-and-forget)
+      for (const event of deletedEvents) {
+        pushDeleteToGoogle(tenant, event).catch((err) =>
+          console.warn(
+            "[DBG][calendar/events/[eventId]] Google delete failed for series event:",
+            err,
+          ),
+        );
+        pushDeleteToOutlook(tenant, event).catch((err) =>
+          console.warn(
+            "[DBG][calendar/events/[eventId]] Outlook delete failed for series event:",
+            err,
+          ),
+        );
+      }
+
+      console.log(
+        "[DBG][calendar/events/[eventId]] Deleted",
+        deletedEvents.length,
+        "events from recurrence group",
+      );
+      return NextResponse.json<
+        ApiResponse<{ deleted: boolean; count?: number }>
+      >({
+        success: true,
+        data: { deleted: true, count: deletedEvents.length },
+      });
     }
 
     // Push delete to Google Calendar (fire-and-forget, before deleting locally)
@@ -327,20 +370,21 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     );
 
     if (!deleted) {
-      return NextResponse.json<ApiResponse<{ deleted: boolean }>>(
-        { success: false, error: "Failed to delete event" },
-        { status: 500 },
-      );
+      return NextResponse.json<
+        ApiResponse<{ deleted: boolean; count?: number }>
+      >({ success: false, error: "Failed to delete event" }, { status: 500 });
     }
 
     console.log("[DBG][calendar/events/[eventId]] Deleted event:", eventId);
-    return NextResponse.json<ApiResponse<{ deleted: boolean }>>({
-      success: true,
-      data: { deleted: true },
-    });
+    return NextResponse.json<ApiResponse<{ deleted: boolean; count?: number }>>(
+      {
+        success: true,
+        data: { deleted: true },
+      },
+    );
   } catch (error) {
     console.error("[DBG][calendar/events/[eventId]] Error deleting:", error);
-    return NextResponse.json<ApiResponse<{ deleted: boolean }>>(
+    return NextResponse.json<ApiResponse<{ deleted: boolean; count?: number }>>(
       {
         success: false,
         error:

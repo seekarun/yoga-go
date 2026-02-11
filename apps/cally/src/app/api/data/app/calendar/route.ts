@@ -12,6 +12,7 @@ import type {
   CalendarEvent,
   CalendarItem,
   CreateCalendarEventInput,
+  RecurrenceRule,
 } from "@/types";
 import { auth } from "@/auth";
 import { getTenantByUserId } from "@/lib/repositories/tenantRepository";
@@ -30,6 +31,7 @@ import { updateTenant } from "@/lib/repositories/tenantRepository";
 import { createZoomMeeting, getZoomClient } from "@/lib/zoom";
 import { pushCreateToOutlook } from "@/lib/outlook-calendar-sync";
 import { getOutlookClient, listOutlookEvents } from "@/lib/outlook-calendar";
+import { expandRecurrence } from "@/lib/recurrence";
 
 // Color constant for general events
 const EVENT_COLOR = "#6366f1"; // Indigo - matches cally design
@@ -244,6 +246,8 @@ export async function GET(request: Request) {
           hasVideoConference: event.hasVideoConference,
           hmsRoomId: event.hmsRoomId,
           hmsTemplateId: event.hmsTemplateId,
+          // Recurrence
+          recurrenceGroupId: event.recurrenceGroupId,
         },
       };
     });
@@ -333,6 +337,106 @@ export async function POST(request: Request) {
         { success: false, error: "End time must be after start time" },
         { status: 400 },
       );
+    }
+
+    // Handle recurring events
+    const recurrenceRule = body.recurrenceRule as RecurrenceRule | undefined;
+
+    if (recurrenceRule) {
+      // Block video conferencing for recurring events
+      if (body.hasVideoConference) {
+        return NextResponse.json<ApiResponse<CalendarEvent>>(
+          {
+            success: false,
+            error:
+              "Video conferencing is not supported for recurring events. Create individual events instead.",
+          },
+          { status: 400 },
+        );
+      }
+
+      console.log(
+        "[DBG][calendar] Creating recurring event series with rule:",
+        recurrenceRule.frequency,
+      );
+
+      const recurrenceGroupId = `rgrp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const occurrenceDates = expandRecurrence(startTime, recurrenceRule);
+
+      console.log(
+        "[DBG][calendar] Expanded to",
+        occurrenceDates.length,
+        "occurrences",
+      );
+
+      // Compute time-of-day offset from the original startTime
+      const originalStart = new Date(startTime);
+      const originalEnd = new Date(endTime);
+      const durationMs = originalEnd.getTime() - originalStart.getTime();
+
+      const events: CalendarEvent[] = [];
+      for (let i = 0; i < occurrenceDates.length; i++) {
+        const occDate = occurrenceDates[i];
+        // Preserve the time-of-day from the original start, change the date
+        const occStart = new Date(originalStart);
+        const [year, month, day] = occDate.split("-").map(Number);
+        occStart.setFullYear(year, month - 1, day);
+        const occEnd = new Date(occStart.getTime() + durationMs);
+
+        const occInput: CreateCalendarEventInput = {
+          title,
+          description: body.description,
+          startTime: occStart.toISOString(),
+          endTime: occEnd.toISOString(),
+          date: occDate,
+          type: "general",
+          location: body.location,
+          isAllDay: body.isAllDay,
+          color: body.color,
+          notes: body.notes,
+          recurrenceGroupId,
+          // Store recurrenceRule only on the first instance
+          recurrenceRule: i === 0 ? recurrenceRule : undefined,
+        };
+
+        const event = await calendarEventRepository.createCalendarEvent(
+          tenantId,
+          occInput,
+        );
+        events.push(event);
+      }
+
+      console.log(
+        "[DBG][calendar] Created",
+        events.length,
+        "recurring event instances",
+      );
+
+      // Fire-and-forget push each instance to Google/Outlook for sync
+      for (const event of events) {
+        if (tenant.googleCalendarConfig) {
+          pushCreateToGoogle(tenant, event).catch((err) =>
+            console.warn(
+              "[DBG][calendar] Google push failed for recurring instance:",
+              err,
+            ),
+          );
+        }
+        if (tenant.outlookCalendarConfig) {
+          pushCreateToOutlook(tenant, event).catch((err) =>
+            console.warn(
+              "[DBG][calendar] Outlook push failed for recurring instance:",
+              err,
+            ),
+          );
+        }
+      }
+
+      // Return the first event (frontend refetches via onEventCreated)
+      return NextResponse.json<ApiResponse<CalendarEvent>>({
+        success: true,
+        data: events[0],
+      });
     }
 
     const input: CreateCalendarEventInput = {

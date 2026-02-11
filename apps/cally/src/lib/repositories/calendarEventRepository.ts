@@ -17,6 +17,7 @@ import {
   DeleteCommand,
   QueryCommand,
   ScanCommand,
+  BatchWriteCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { docClient, Tables, TenantPK, EntityType } from "../dynamodb";
 import type {
@@ -362,6 +363,11 @@ export async function createCalendarEvent(
     meetingLink: input.meetingLink,
     // Google Calendar sync
     googleCalendarEventId: input.googleCalendarEventId,
+    // Outlook Calendar sync
+    outlookCalendarEventId: input.outlookCalendarEventId,
+    // Recurrence
+    recurrenceGroupId: input.recurrenceGroupId,
+    recurrenceRule: input.recurrenceRule,
     createdAt: now,
     updatedAt: now,
   };
@@ -469,6 +475,11 @@ export async function updateCalendarEvent(
     meetingLink: "meetingLink",
     // Google Calendar sync
     googleCalendarEventId: "googleCalendarEventId",
+    // Outlook Calendar sync
+    outlookCalendarEventId: "outlookCalendarEventId",
+    // Recurrence
+    recurrenceGroupId: "recurrenceGroupId",
+    recurrenceRule: "recurrenceRule",
   };
 
   for (const [field, key] of Object.entries(fieldMappings)) {
@@ -604,6 +615,105 @@ export async function deleteCalendarEvent(
     );
     return false;
   }
+}
+
+/**
+ * Get all calendar events in a recurrence group
+ * @param tenantId - The tenant ID
+ * @param recurrenceGroupId - The recurrence group ID
+ */
+export async function getCalendarEventsByRecurrenceGroup(
+  tenantId: string,
+  recurrenceGroupId: string,
+): Promise<CalendarEvent[]> {
+  console.log(
+    "[DBG][calendarEventRepository] Getting events by recurrence group:",
+    recurrenceGroupId,
+    "for tenant:",
+    tenantId,
+  );
+
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: Tables.CORE,
+      KeyConditionExpression: "PK = :pk AND begins_with(SK, :skPrefix)",
+      FilterExpression: "recurrenceGroupId = :groupId",
+      ExpressionAttributeValues: {
+        ":pk": TenantPK.TENANT(tenantId),
+        ":skPrefix": TenantPK.CALENDAR_EVENT_PREFIX,
+        ":groupId": recurrenceGroupId,
+      },
+    }),
+  );
+
+  const events = (result.Items || []).map((item) =>
+    toCalendarEvent(item as DynamoDBCalendarEventItem),
+  );
+  console.log(
+    "[DBG][calendarEventRepository] Found",
+    events.length,
+    "events in recurrence group",
+  );
+  return events;
+}
+
+/**
+ * Delete all calendar events in a recurrence group (batch delete, 25 per batch)
+ * @param tenantId - The tenant ID
+ * @param recurrenceGroupId - The recurrence group ID
+ * @returns Array of deleted events (for sync cleanup)
+ */
+export async function deleteCalendarEventsByRecurrenceGroup(
+  tenantId: string,
+  recurrenceGroupId: string,
+): Promise<CalendarEvent[]> {
+  console.log(
+    "[DBG][calendarEventRepository] Batch deleting recurrence group:",
+    recurrenceGroupId,
+    "for tenant:",
+    tenantId,
+  );
+
+  const events = await getCalendarEventsByRecurrenceGroup(
+    tenantId,
+    recurrenceGroupId,
+  );
+
+  if (events.length === 0) {
+    console.log(
+      "[DBG][calendarEventRepository] No events found in recurrence group",
+    );
+    return [];
+  }
+
+  // DynamoDB BatchWriteItem supports max 25 items per batch
+  const BATCH_SIZE = 25;
+  for (let i = 0; i < events.length; i += BATCH_SIZE) {
+    const batch = events.slice(i, i + BATCH_SIZE);
+    const deleteRequests = batch.map((event) => ({
+      DeleteRequest: {
+        Key: {
+          PK: TenantPK.TENANT(tenantId),
+          SK: TenantPK.CALENDAR_EVENT(event.date, event.id),
+        },
+      },
+    }));
+
+    await docClient.send(
+      new BatchWriteCommand({
+        RequestItems: {
+          [Tables.CORE]: deleteRequests,
+        },
+      }),
+    );
+  }
+
+  console.log(
+    "[DBG][calendarEventRepository] Batch deleted",
+    events.length,
+    "events from recurrence group",
+  );
+  return events;
 }
 
 /**

@@ -92,7 +92,11 @@ export default function CalendarEventModal({
   const [isDeclining, setIsDeclining] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [showCancelForm, setShowCancelForm] = useState(false);
+  const [isDeletingSeries, setIsDeletingSeries] = useState(false);
   const [error, setError] = useState("");
+
+  // Check if event is recurring
+  const isRecurring = !!event?.extendedProps?.recurrenceGroupId;
 
   // Check if event has video conferencing
   const hasVideoConference = event?.extendedProps?.hasVideoConference;
@@ -125,6 +129,7 @@ export default function CalendarEventModal({
       setIsDeleting(false);
       setIsSaving(false);
       setShowCancelForm(false);
+      setIsDeletingSeries(false);
       setError("");
     }
   }, [event]);
@@ -155,6 +160,38 @@ export default function CalendarEventModal({
       setError(err instanceof Error ? err.message : "Failed to delete event");
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleDeleteSeries = async () => {
+    if (!event) return;
+
+    setIsDeletingSeries(true);
+    setError("");
+
+    try {
+      const response = await fetch(
+        `/api/data/app/calendar/events/${event.id}?deleteAll=true`,
+        {
+          method: "DELETE",
+        },
+      );
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || "Failed to delete series");
+      }
+
+      console.log(
+        "[DBG][CalendarEventModal] Deleted series, count:",
+        data.data.count,
+      );
+      onEventUpdated();
+    } catch (err) {
+      console.error("[DBG][CalendarEventModal] Error deleting series:", err);
+      setError(err instanceof Error ? err.message : "Failed to delete series");
+    } finally {
+      setIsDeletingSeries(false);
     }
   };
 
@@ -343,6 +380,17 @@ export default function CalendarEventModal({
             Event
           </span>
           {getStatusBadge(event.extendedProps.status)}
+          {isRecurring && (
+            <span
+              className="px-2 py-1 rounded-full text-xs font-semibold"
+              style={{
+                background: "#ede9fe",
+                color: "#7c3aed",
+              }}
+            >
+              Recurring
+            </span>
+          )}
         </div>
 
         {/* Title */}
@@ -665,11 +713,20 @@ export default function CalendarEventModal({
           <>
             <button
               onClick={handleDelete}
-              disabled={isDeleting || isCancelling}
+              disabled={isDeleting || isDeletingSeries || isCancelling}
               className="px-4 py-2 rounded-lg border border-red-200 bg-white text-red-600 font-medium text-sm hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isDeleting ? "Deleting..." : "Delete"}
             </button>
+            {isRecurring && (
+              <button
+                onClick={handleDeleteSeries}
+                disabled={isDeleting || isDeletingSeries || isCancelling}
+                className="px-4 py-2 rounded-lg border border-red-200 bg-red-600 text-white font-medium text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isDeletingSeries ? "Deleting..." : "Delete All in Series"}
+              </button>
+            )}
             {isScheduled && isBooking && !showCancelForm && (
               <button
                 onClick={() => setShowCancelForm(true)}
