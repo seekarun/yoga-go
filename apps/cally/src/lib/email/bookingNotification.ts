@@ -33,13 +33,14 @@ export function getLandingPageUrl(tenant: CallyTenant): string {
  * Uses the tenant's verified domain email if available, else platform fallback
  */
 export function getFromEmail(tenant: CallyTenant): string {
+  const displayName = tenant.emailDisplayName || tenant.name;
   if (
     tenant.emailConfig?.sesVerificationStatus === "verified" &&
     tenant.emailConfig.domainEmail
   ) {
-    return `${tenant.name} <${tenant.emailConfig.domainEmail}>`;
+    return `${displayName} <${tenant.emailConfig.domainEmail}>`;
   }
-  return `${tenant.name} <${FALLBACK_FROM_EMAIL}>`;
+  return `${displayName} <${FALLBACK_FROM_EMAIL}>`;
 }
 
 /**

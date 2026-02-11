@@ -164,7 +164,9 @@ export default function CreateEventModal({
       maxWidth="max-w-lg"
       padding={false}
     >
-      <ModalHeader onClose={onClose}>Create Event</ModalHeader>
+      <ModalHeader onClose={onClose} className="px-6 pt-6">
+        Create Event
+      </ModalHeader>
 
       <form onSubmit={handleSubmit}>
         <div className="px-6 pb-2 space-y-4">

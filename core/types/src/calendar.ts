@@ -48,6 +48,8 @@ export interface CalendarEvent extends BaseEntity {
   visitorInfo?: VisitorInfo;
   // Google Calendar sync
   googleCalendarEventId?: string;
+  // Outlook Calendar sync
+  outlookCalendarEventId?: string;
 }
 
 /**
@@ -80,6 +82,8 @@ export interface CreateCalendarEventInput {
   visitorInfo?: VisitorInfo;
   // Google Calendar sync
   googleCalendarEventId?: string;
+  // Outlook Calendar sync
+  outlookCalendarEventId?: string;
 }
 
 /**

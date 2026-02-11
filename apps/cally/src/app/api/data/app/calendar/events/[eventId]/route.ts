@@ -20,6 +20,10 @@ import {
   pushDeleteToGoogle,
   generateMeetLinkForEvent,
 } from "@/lib/google-calendar-sync";
+import {
+  pushUpdateToOutlook,
+  pushDeleteToOutlook,
+} from "@/lib/outlook-calendar-sync";
 
 interface RouteParams {
   params: Promise<{
@@ -182,6 +186,14 @@ export async function PUT(request: Request, { params }: RouteParams) {
       console.warn("[DBG][calendar/events/[eventId]] Google push failed:", err),
     );
 
+    // Push update to Outlook Calendar (fire-and-forget)
+    pushUpdateToOutlook(tenant, updatedEvent).catch((err) =>
+      console.warn(
+        "[DBG][calendar/events/[eventId]] Outlook push failed:",
+        err,
+      ),
+    );
+
     // Generate Meet link on approval if autoAddMeetLink is enabled
     const isApproval =
       currentEvent.status === "pending" && body.status === "scheduled";
@@ -294,6 +306,14 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     pushDeleteToGoogle(tenant, currentEvent).catch((err) =>
       console.warn(
         "[DBG][calendar/events/[eventId]] Google delete failed:",
+        err,
+      ),
+    );
+
+    // Push delete to Outlook Calendar (fire-and-forget, before deleting locally)
+    pushDeleteToOutlook(tenant, currentEvent).catch((err) =>
+      console.warn(
+        "[DBG][calendar/events/[eventId]] Outlook delete failed:",
         err,
       ),
     );

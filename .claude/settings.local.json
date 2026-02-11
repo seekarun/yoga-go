@@ -125,7 +125,8 @@
       "WebFetch(domain:proj-cally.vercel.app)",
       "Bash(aws s3 ls:*)",
       "WebFetch(domain:vercel.com)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(cdk diff:*)"
     ],
     "deny": [],
     "ask": []

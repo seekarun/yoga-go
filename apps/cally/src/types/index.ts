@@ -14,3 +14,4 @@ export * from "./feedback";
 export * from "./transcript";
 export * from "./google-calendar";
 export * from "./zoom";
+export * from "./outlook-calendar";

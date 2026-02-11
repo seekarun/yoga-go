@@ -104,13 +104,15 @@ export function ModalHeader({
   children,
   onClose,
   showCloseButton = true,
+  className = "",
 }: {
   children: ReactNode;
   onClose?: () => void;
   showCloseButton?: boolean;
+  className?: string;
 }) {
   return (
-    <div className="flex items-center justify-between mb-4">
+    <div className={`flex items-center justify-between mb-4 ${className}`}>
       <h2 className="text-lg font-semibold text-gray-900">{children}</h2>
       {showCloseButton && onClose && (
         <button

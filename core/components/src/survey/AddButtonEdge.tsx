@@ -1,12 +1,7 @@
 "use client";
 
 import { type CSSProperties } from "react";
-import {
-  BaseEdge,
-  EdgeLabelRenderer,
-  getBezierPath,
-  type EdgeProps,
-} from "@xyflow/react";
+import { BaseEdge, EdgeLabelRenderer, type EdgeProps } from "@xyflow/react";
 
 export interface AddButtonEdgeData {
   onInsert: (
@@ -16,7 +11,102 @@ export interface AddButtonEdgeData {
     sourceHandle: string | null,
   ) => void;
   readOnly: boolean;
+  pathOffset?: number;
+  approachOffset?: number;
+  targetNodeTop?: number;
+  targetNodeRight?: number;
+  maxPathOffset?: number;
   [key: string]: unknown;
+}
+
+const BASE_GAP = 20;
+const BORDER_RADIUS = 8;
+
+/**
+ * Build a right-angle routed path from source (right handle) to target (left handle).
+ *
+ * 5-segment path that never crosses through nodes:
+ *   source → right(VX) → down/up(HY) → left(LX) → down(targetY) → right(targetX)
+ *
+ * pathOffset     — shifts VX right  (bottom-most source = leftmost)
+ * approachOffset — shifts HY up AND LX left  (bottom-most source = topmost & leftmost)
+ */
+function buildRoutedPath(
+  sourceX: number,
+  sourceY: number,
+  targetX: number,
+  targetY: number,
+  pathOffset: number,
+  approachOffset: number,
+  targetNodeTop: number,
+  targetNodeRight?: number,
+  maxPathOffset?: number,
+): [string, number, number] {
+  // Right-side vertical X — anchored to target node's right edge when available
+  const vx =
+    targetNodeRight != null && maxPathOffset != null
+      ? Math.max(
+          sourceX + BASE_GAP,
+          targetNodeRight - (maxPathOffset - pathOffset),
+        )
+      : Math.max(sourceX, targetX) + BASE_GAP + pathOffset;
+  // Horizontal approach Y — above the TOP of the target node (not the handle)
+  const hy = targetNodeTop - BASE_GAP - approachOffset;
+  // Left-side vertical X — to the left of the target handle
+  const lx = targetX - BASE_GAP - approachOffset;
+
+  // Clamp border radius so it doesn't overshoot any segment
+  const r = Math.max(
+    0,
+    Math.min(
+      BORDER_RADIUS,
+      Math.abs(vx - sourceX) / 2,
+      Math.abs(hy - sourceY) / 2,
+      Math.abs(vx - lx) / 2,
+      Math.abs(targetY - hy) / 2,
+      Math.abs(targetX - lx) / 2,
+    ),
+  );
+
+  const goingDown = sourceY <= hy;
+
+  let path: string;
+
+  if (goingDown) {
+    // source → right → down → left → down → right → target
+    path = [
+      `M ${sourceX},${sourceY}`,
+      `H ${vx - r}`,
+      `Q ${vx},${sourceY} ${vx},${sourceY + r}`,
+      `V ${hy - r}`,
+      `Q ${vx},${hy} ${vx - r},${hy}`,
+      `H ${lx + r}`,
+      `Q ${lx},${hy} ${lx},${hy + r}`,
+      `V ${targetY - r}`,
+      `Q ${lx},${targetY} ${lx + r},${targetY}`,
+      `H ${targetX}`,
+    ].join(" ");
+  } else {
+    // source → right → up → left → down → right → target
+    path = [
+      `M ${sourceX},${sourceY}`,
+      `H ${vx - r}`,
+      `Q ${vx},${sourceY} ${vx},${sourceY - r}`,
+      `V ${hy + r}`,
+      `Q ${vx},${hy} ${vx - r},${hy}`,
+      `H ${lx + r}`,
+      `Q ${lx},${hy} ${lx},${hy + r}`,
+      `V ${targetY - r}`,
+      `Q ${lx},${targetY} ${lx + r},${targetY}`,
+      `H ${targetX}`,
+    ].join(" ");
+  }
+
+  // Place label at midpoint of horizontal approach segment
+  const labelX = (vx + lx) / 2;
+  const labelY = hy;
+
+  return [path, labelX, labelY];
 }
 
 const btnWrapperStyle: CSSProperties = {
@@ -49,23 +139,29 @@ export function AddButtonEdge({
   sourceY,
   targetX,
   targetY,
-  sourcePosition,
-  targetPosition,
   sourceHandleId,
   style,
   markerEnd,
   data,
 }: EdgeProps) {
-  const [edgePath, labelX, labelY] = getBezierPath({
+  const edgeData = data as AddButtonEdgeData | undefined;
+  const pathOffset = edgeData?.pathOffset ?? 0;
+  const approachOffset = edgeData?.approachOffset ?? 0;
+  const targetNodeTop = edgeData?.targetNodeTop ?? targetY;
+  const targetNodeRight = edgeData?.targetNodeRight;
+  const maxPathOffset = edgeData?.maxPathOffset;
+
+  const [edgePath, labelX, labelY] = buildRoutedPath(
     sourceX,
     sourceY,
-    sourcePosition,
     targetX,
     targetY,
-    targetPosition,
-  });
-
-  const edgeData = data as AddButtonEdgeData | undefined;
+    pathOffset,
+    approachOffset,
+    targetNodeTop,
+    targetNodeRight,
+    maxPathOffset,
+  );
   const readOnly = edgeData?.readOnly ?? true;
 
   return (

@@ -19,8 +19,14 @@ export default function PreferencesPage() {
   >("cally");
   const [googleCalendarConnected, setGoogleCalendarConnected] = useState(false);
   const [zoomConnected, setZoomConnected] = useState(false);
+  const [emailDisplayName, setEmailDisplayName] = useState("");
   const [saving, setSaving] = useState(false);
+  const [savingEmail, setSavingEmail] = useState(false);
   const [savingVideo, setSavingVideo] = useState(false);
+  const [emailFeedback, setEmailFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";
     message: string;
@@ -36,6 +42,8 @@ export default function PreferencesPage() {
       const data = await res.json();
       if (data.success && data.data) {
         if (data.data.timezone) setTimezone(data.data.timezone);
+        if (data.data.emailDisplayName !== undefined)
+          setEmailDisplayName(data.data.emailDisplayName);
         if (data.data.videoCallPreference)
           setVideoCallPreference(data.data.videoCallPreference);
         setGoogleCalendarConnected(!!data.data.googleCalendarConnected);
@@ -49,6 +57,39 @@ export default function PreferencesPage() {
   useEffect(() => {
     fetchPreferences();
   }, [fetchPreferences]);
+
+  const handleEmailDisplayNameBlur = async () => {
+    setSavingEmail(true);
+    setEmailFeedback(null);
+
+    try {
+      const res = await fetch("/api/data/app/preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emailDisplayName }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setEmailFeedback({
+          type: "success",
+          message: "Email display name updated",
+        });
+      } else {
+        setEmailFeedback({
+          type: "error",
+          message: data.error || "Failed to update email display name",
+        });
+      }
+    } catch {
+      setEmailFeedback({
+        type: "error",
+        message: "Failed to update email display name",
+      });
+    } finally {
+      setSavingEmail(false);
+      setTimeout(() => setEmailFeedback(null), 3000);
+    }
+  };
 
   const handleTimezoneChange = async (newTimezone: string) => {
     setTimezone(newTimezone);
@@ -148,6 +189,53 @@ export default function PreferencesPage() {
             <p className="text-[var(--text-body)]">
               {user?.profile?.name || "Not set"}
             </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Email Section */}
+      <div className="bg-white rounded-lg border border-[var(--color-border)] p-6 mb-6">
+        <h2 className="text-lg font-semibold text-[var(--text-main)] mb-4">
+          Email
+        </h2>
+        <div>
+          <label
+            htmlFor="email-display-name"
+            className="block text-sm font-medium text-[var(--text-muted)] mb-1"
+          >
+            Sender Display Name
+          </label>
+          <p className="text-sm text-[var(--text-muted)] mb-2">
+            This name appears as the sender on all outgoing emails.
+          </p>
+          <div className="flex items-center gap-3">
+            <input
+              id="email-display-name"
+              type="text"
+              value={emailDisplayName}
+              onChange={(e) => setEmailDisplayName(e.target.value)}
+              onBlur={handleEmailDisplayNameBlur}
+              placeholder={user?.profile?.name || "Your name"}
+              maxLength={100}
+              disabled={savingEmail}
+              className="border border-[var(--color-border)] rounded-lg px-3 py-2 text-[var(--text-main)] bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] disabled:opacity-50 w-72"
+            />
+            {savingEmail && (
+              <span className="text-sm text-[var(--text-muted)]">
+                Saving...
+              </span>
+            )}
+            {emailFeedback && (
+              <span
+                className={`text-sm ${
+                  emailFeedback.type === "success"
+                    ? "text-green-600"
+                    : "text-red-600"
+                }`}
+              >
+                {emailFeedback.message}
+              </span>
+            )}
           </div>
         </div>
       </div>

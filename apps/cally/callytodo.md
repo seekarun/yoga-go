@@ -8,21 +8,27 @@ x if user signed up, show profile icon
 x collect feedback/testimonials from users after appointment
 x sync calendar events to google calendar
 x zoom integration for video calls
+x email reply
 
 - AI chat to look up user's past interactions
 - video call recording and AI feed
 - buy domain option
-- multiple emails
+- user preferences (password, email)
+- AI token usage for user - track and report
+- user favicon and meta data for SEO
 - SEO help
 - review DB structure for scaling
-- user preferences (password, email)
-- user favicon and meta data for SEO
-- AI token usage for user - track and report
 - recurring events in calendar
 - accept payments for calendar events
+- chat for video calls 100ms
+- super admin console
+- tenant subscription
 
 - production deployment.
 
+- multiple emails (aliases?)
+- xero integration for invoicing
+- intuit quickbooks integration
 - products. appointment booking based on product, eg. 30 mins for haircut
 - mobile app to go with webapp
 - voice assistant - talk to AI bot on page,

@@ -699,7 +699,7 @@
     },
     {
       "name": "Preferences - Authenticated",
-      "description": "Tenant preferences (timezone, regional settings)",
+      "description": "Tenant preferences (timezone, email display name, regional settings)",
       "item": [
         {
           "name": "Get Preferences",
@@ -711,7 +711,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "data", "app", "preferences"]
             },
-            "description": "Get tenant preferences including timezone. Falls back to bookingConfig.timezone then Australia/Sydney."
+            "description": "Get tenant preferences including timezone and emailDisplayName. Falls back to bookingConfig.timezone then Australia/Sydney."
           }
         },
         {
@@ -726,14 +726,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"timezone\": \"Australia/Sydney\"\n}"
+              "raw": "{\n  \"timezone\": \"Australia/Sydney\",\n  \"emailDisplayName\": \"My Studio Name\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/data/app/preferences",
               "host": ["{{baseUrl}}"],
               "path": ["api", "data", "app", "preferences"]
             },
-            "description": "Update tenant preferences. Timezone must be a valid IANA timezone string."
+            "description": "Update tenant preferences. Timezone must be a valid IANA timezone string. emailDisplayName (max 100 chars) customizes the sender name on outgoing emails; send empty string to clear."
           }
         }
       ]
@@ -1466,6 +1466,108 @@
       ]
     },
     {
+      "name": "Outlook Calendar - Authenticated",
+      "item": [
+        {
+          "name": "Connect Outlook Calendar",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/outlook-calendar/connect",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "outlook-calendar", "connect"]
+            },
+            "description": "Redirects to Microsoft OAuth consent screen. Opens in browser — not callable from Postman directly."
+          }
+        },
+        {
+          "name": "Outlook Calendar Callback",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/outlook-calendar/callback?code=AUTH_CODE&state=BASE64_STATE",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "outlook-calendar", "callback"],
+              "query": [
+                {
+                  "key": "code",
+                  "value": "AUTH_CODE"
+                },
+                {
+                  "key": "state",
+                  "value": "BASE64_STATE"
+                }
+              ]
+            },
+            "description": "OAuth callback handler. Exchanges code for tokens and stores config. Called by Microsoft — not directly."
+          }
+        },
+        {
+          "name": "Get Outlook Calendar Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/outlook-calendar/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "outlook-calendar", "status"]
+            },
+            "description": "Returns Outlook Calendar connection status: connected, email, blockBookingSlots, connectedAt."
+          }
+        },
+        {
+          "name": "Update Outlook Calendar Settings",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"blockBookingSlots\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/outlook-calendar/settings",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "outlook-calendar", "settings"]
+            },
+            "description": "Updates Outlook Calendar preferences. Currently supports blockBookingSlots toggle."
+          }
+        },
+        {
+          "name": "Disconnect Outlook Calendar",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/outlook-calendar/disconnect",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "outlook-calendar", "disconnect"]
+            },
+            "description": "Clears stored tokens and removes Outlook Calendar config from tenant."
+          }
+        },
+        {
+          "name": "Sync Existing Events to Outlook",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/outlook-calendar/sync",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "outlook-calendar", "sync"]
+            },
+            "description": "One-time bulk push of existing Cally events to Outlook Calendar. Skips events already synced."
+          }
+        }
+      ]
+    },
+    {
       "name": "Zoom - Authenticated",
       "item": [
         {
@@ -1528,6 +1630,172 @@
               "path": ["api", "data", "app", "zoom", "disconnect"]
             },
             "description": "Revokes Zoom OAuth token and removes Zoom config from tenant. Resets videoCallPreference to 'cally' if it was 'zoom'."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Inbox - Authenticated",
+      "description": "Email inbox endpoints for viewing and replying to emails",
+      "item": [
+        {
+          "name": "List Inbox Emails",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/inbox",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "inbox"]
+            },
+            "description": "List all inbox emails for the authenticated tenant. Returns emails sorted newest first with pagination support."
+          }
+        },
+        {
+          "name": "Get Email Detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/inbox/:emailId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "inbox", ":emailId"],
+              "variable": [
+                {
+                  "key": "emailId",
+                  "value": "email-id-here"
+                }
+              ]
+            },
+            "description": "Get a single email with thread messages if part of a thread."
+          }
+        },
+        {
+          "name": "Update Email Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isRead\": true,\n  \"isStarred\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/inbox/:emailId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "inbox", ":emailId"],
+              "variable": [
+                {
+                  "key": "emailId",
+                  "value": "email-id-here"
+                }
+              ]
+            },
+            "description": "Update email read/starred status."
+          }
+        },
+        {
+          "name": "Delete Email",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/inbox/:emailId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "inbox", ":emailId"],
+              "variable": [
+                {
+                  "key": "emailId",
+                  "value": "email-id-here"
+                }
+              ]
+            },
+            "description": "Soft delete an email. Sets isDeleted flag with 90-day TTL."
+          }
+        },
+        {
+          "name": "Reply to Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Thank you for your email. I'll get back to you shortly.\",\n  \"attachments\": [\n    {\n      \"filename\": \"document.pdf\",\n      \"contentType\": \"application/pdf\",\n      \"size\": 12345,\n      \"s3Key\": \"reply-attachments/tenant-id/attachment-id/document.pdf\",\n      \"attachmentId\": \"attachment-id\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/inbox/:emailId/reply",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "inbox", ":emailId", "reply"],
+              "variable": [
+                {
+                  "key": "emailId",
+                  "value": "email-id-here"
+                }
+              ]
+            },
+            "description": "Send a reply to an email. Creates an outgoing email record and starts/joins a thread. Optionally include attachments (upload via presigned URL first). Returns the stored outgoing email."
+          }
+        },
+        {
+          "name": "Download Attachment",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/inbox/:emailId/attachments/:attachmentId",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "app",
+                "inbox",
+                ":emailId",
+                "attachments",
+                ":attachmentId"
+              ],
+              "variable": [
+                {
+                  "key": "emailId",
+                  "value": "email-id-here"
+                },
+                {
+                  "key": "attachmentId",
+                  "value": "attachment-id-here"
+                }
+              ]
+            },
+            "description": "Get a presigned S3 download URL for an email attachment. URL expires in 5 minutes. Returns { downloadUrl, filename, mimeType, expiresIn }."
+          }
+        },
+        {
+          "name": "Upload Reply Attachment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"filename\": \"document.pdf\",\n  \"contentType\": \"application/pdf\",\n  \"size\": 12345\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/inbox/attachments/upload",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "inbox", "attachments", "upload"]
+            },
+            "description": "Get a presigned S3 PUT URL for uploading an attachment to include in a reply. URL expires in 10 minutes. Max file size: 10MB. Returns { uploadUrl, attachmentId, s3Key, filename, contentType, expiresIn }."
           }
         }
       ]

@@ -23,8 +23,25 @@ export interface EmailOptions {
 }
 
 /**
+ * Attachment input for sending emails with files
+ */
+export interface EmailAttachmentInput {
+  filename: string;
+  content: Buffer;
+  contentType: string;
+}
+
+/**
+ * Options for sending an email with attachments (requires raw MIME)
+ */
+export interface RawEmailOptions extends EmailOptions {
+  attachments?: EmailAttachmentInput[];
+}
+
+/**
  * Email client interface
  */
 export interface EmailClient {
   sendEmail(options: EmailOptions): Promise<string | undefined>;
+  sendRawEmail(options: RawEmailOptions): Promise<string | undefined>;
 }

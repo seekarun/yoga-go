@@ -29,6 +29,7 @@ import type { PhoneConfig } from "@/types/phone-calling";
 import type { BookingConfig } from "@/types/booking";
 import type { GoogleCalendarConfig } from "@/types/google-calendar";
 import type { ZoomConfig } from "@/types/zoom";
+import type { OutlookCalendarConfig } from "@/types/outlook-calendar";
 
 /**
  * Cally Tenant Entity
@@ -50,7 +51,9 @@ export interface CallyTenant {
   bookingConfig?: BookingConfig;
   googleCalendarConfig?: GoogleCalendarConfig;
   zoomConfig?: ZoomConfig;
+  outlookCalendarConfig?: OutlookCalendarConfig;
   videoCallPreference?: "cally" | "google_meet" | "zoom";
+  emailDisplayName?: string;
   timezone?: string;
   createdAt: string;
   updatedAt: string;
@@ -569,6 +572,47 @@ export async function removeZoomConfig(tenantId: string): Promise<CallyTenant> {
   );
 
   console.log("[DBG][tenantRepository] Removed Zoom config for:", tenantId);
+  return toTenant(result.Attributes as DynamoDBTenantItem);
+}
+
+// ===================================================================
+// OUTLOOK CALENDAR OPERATIONS
+// ===================================================================
+
+/**
+ * Remove Outlook Calendar config from tenant (uses DynamoDB REMOVE)
+ */
+export async function removeOutlookCalendarConfig(
+  tenantId: string,
+): Promise<CallyTenant> {
+  console.log(
+    "[DBG][tenantRepository] Removing Outlook Calendar config:",
+    tenantId,
+  );
+
+  const result = await docClient.send(
+    new UpdateCommand({
+      TableName: Tables.CORE,
+      Key: {
+        PK: TenantPK.TENANT(tenantId),
+        SK: TenantPK.META,
+      },
+      UpdateExpression: "REMOVE #ocConfig SET #updatedAt = :updatedAt",
+      ExpressionAttributeNames: {
+        "#ocConfig": "outlookCalendarConfig",
+        "#updatedAt": "updatedAt",
+      },
+      ExpressionAttributeValues: {
+        ":updatedAt": new Date().toISOString(),
+      },
+      ReturnValues: "ALL_NEW",
+    }),
+  );
+
+  console.log(
+    "[DBG][tenantRepository] Removed Outlook Calendar config for:",
+    tenantId,
+  );
   return toTenant(result.Attributes as DynamoDBTenantItem);
 }
 

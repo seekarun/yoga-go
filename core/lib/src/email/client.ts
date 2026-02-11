@@ -1,7 +1,16 @@
 // Core Email Client - AWS SES
 
-import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
-import type { EmailClientConfig, EmailClient, EmailOptions } from "./types";
+import {
+  SESClient,
+  SendEmailCommand,
+  SendRawEmailCommand,
+} from "@aws-sdk/client-ses";
+import type {
+  EmailClientConfig,
+  EmailClient,
+  EmailOptions,
+  RawEmailOptions,
+} from "./types";
 
 /**
  * Create a reusable email client backed by AWS SES
@@ -86,6 +95,98 @@ export function createEmailClient(config: EmailClientConfig): EmailClient {
             JSON.stringify(awsError.$metadata),
           );
         }
+        throw error;
+      }
+    },
+
+    async sendRawEmail(options: RawEmailOptions): Promise<string | undefined> {
+      const {
+        to,
+        from = fromEmail,
+        subject,
+        text,
+        html,
+        replyTo,
+        attachments = [],
+      } = options;
+
+      const recipients = Array.isArray(to) ? to : [to];
+      const boundary = `----=_Part_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
+      console.log(
+        `[DBG][core-email] Sending raw email with ${attachments.length} attachment(s) to ${recipients.join(", ")}`,
+      );
+
+      // Build MIME message
+      const lines: string[] = [];
+      lines.push(`From: ${from}`);
+      lines.push(`To: ${recipients.join(", ")}`);
+      lines.push(`Subject: ${subject}`);
+      if (replyTo && replyTo.length > 0) {
+        lines.push(`Reply-To: ${replyTo.join(", ")}`);
+      }
+      lines.push("MIME-Version: 1.0");
+      lines.push(`Content-Type: multipart/mixed; boundary="${boundary}"`);
+      lines.push("");
+
+      // Text/HTML body part
+      const bodyBoundary = `----=_Alt_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      lines.push(`--${boundary}`);
+      lines.push(
+        `Content-Type: multipart/alternative; boundary="${bodyBoundary}"`,
+      );
+      lines.push("");
+
+      // Plain text
+      lines.push(`--${bodyBoundary}`);
+      lines.push("Content-Type: text/plain; charset=UTF-8");
+      lines.push("Content-Transfer-Encoding: 7bit");
+      lines.push("");
+      lines.push(text);
+      lines.push("");
+
+      // HTML
+      const htmlBody = html || text.replace(/\n/g, "<br>");
+      lines.push(`--${bodyBoundary}`);
+      lines.push("Content-Type: text/html; charset=UTF-8");
+      lines.push("Content-Transfer-Encoding: 7bit");
+      lines.push("");
+      lines.push(htmlBody);
+      lines.push("");
+      lines.push(`--${bodyBoundary}--`);
+      lines.push("");
+
+      // Attachment parts
+      for (const att of attachments) {
+        lines.push(`--${boundary}`);
+        lines.push(`Content-Type: ${att.contentType}; name="${att.filename}"`);
+        lines.push("Content-Transfer-Encoding: base64");
+        lines.push(
+          `Content-Disposition: attachment; filename="${att.filename}"`,
+        );
+        lines.push("");
+        lines.push(att.content.toString("base64"));
+        lines.push("");
+      }
+
+      lines.push(`--${boundary}--`);
+
+      const rawMessage = lines.join("\r\n");
+
+      const command = new SendRawEmailCommand({
+        RawMessage: {
+          Data: Buffer.from(rawMessage),
+        },
+      });
+
+      try {
+        const response = await sesClient.send(command);
+        console.log(
+          `[DBG][core-email] Raw email sent. MessageId: ${response.MessageId}`,
+        );
+        return response.MessageId;
+      } catch (error) {
+        console.error("[DBG][core-email] Error sending raw email:", error);
         throw error;
       }
     },

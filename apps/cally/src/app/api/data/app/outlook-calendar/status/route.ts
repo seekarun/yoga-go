@@ -1,6 +1,6 @@
 /**
- * GET /api/data/app/google-calendar/status
- * Returns Google Calendar connection status
+ * GET /api/data/app/outlook-calendar/status
+ * Returns Outlook Calendar connection status
  */
 
 import { NextResponse } from "next/server";
@@ -8,7 +8,7 @@ import { auth } from "@/auth";
 import { getTenantByUserId } from "@/lib/repositories/tenantRepository";
 
 export async function GET() {
-  console.log("[DBG][google-calendar/status] GET called");
+  console.log("[DBG][outlook-calendar/status] GET called");
 
   try {
     const session = await auth();
@@ -27,7 +27,7 @@ export async function GET() {
       );
     }
 
-    const config = tenant.googleCalendarConfig;
+    const config = tenant.outlookCalendarConfig;
 
     return NextResponse.json({
       success: true,
@@ -35,13 +35,12 @@ export async function GET() {
         connected: !!config,
         email: config?.email || null,
         blockBookingSlots: config?.blockBookingSlots ?? true,
-        autoAddMeetLink: config?.autoAddMeetLink ?? false,
         pushEvents: config?.pushEvents ?? true,
         connectedAt: config?.connectedAt || null,
       },
     });
   } catch (error) {
-    console.error("[DBG][google-calendar/status] Error:", error);
+    console.error("[DBG][outlook-calendar/status] Error:", error);
     return NextResponse.json(
       { success: false, error: "Failed to get status" },
       { status: 500 },

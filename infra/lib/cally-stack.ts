@@ -281,6 +281,16 @@ export class CallyStack extends cdk.Stack {
     this.userPoolClient.node.addDependency(googleProvider);
 
     // ========================================
+    // Import Shared S3 Bucket (email attachments)
+    // ========================================
+    // yoga-go-incoming-emails: SES Lambda stores parsed email attachments here
+    const emailBucket = s3.Bucket.fromBucketName(
+      this,
+      "EmailBucket",
+      "yoga-go-incoming-emails-710735877057",
+    );
+
+    // ========================================
     // Import Shared Tables (from yoga-go-core-stack)
     // ========================================
     // yoga-go-emails: Shared email storage for SES Lambda compatibility
@@ -375,6 +385,8 @@ export class CallyStack extends cdk.Stack {
       resources: [
         this.audioBucket.bucketArn,
         `${this.audioBucket.bucketArn}/*`,
+        emailBucket.bucketArn,
+        `${emailBucket.bucketArn}/*`,
       ],
     });
 

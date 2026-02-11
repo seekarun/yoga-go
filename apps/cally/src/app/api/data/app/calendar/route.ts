@@ -28,6 +28,8 @@ import {
 } from "@/lib/google-calendar";
 import { updateTenant } from "@/lib/repositories/tenantRepository";
 import { createZoomMeeting, getZoomClient } from "@/lib/zoom";
+import { pushCreateToOutlook } from "@/lib/outlook-calendar-sync";
+import { getOutlookClient, listOutlookEvents } from "@/lib/outlook-calendar";
 
 // Color constant for general events
 const EVENT_COLOR = "#6366f1"; // Indigo - matches cally design
@@ -86,7 +88,7 @@ export async function GET(request: Request) {
       endDate,
     );
 
-    // Fetch Cally events and Google Calendar events in parallel
+    // Fetch Cally events, Google Calendar events, and Outlook events in parallel
     const eventsPromise = calendarEventRepository.getCalendarEventsByDateRange(
       tenantId,
       startDate,
@@ -139,6 +141,59 @@ export async function GET(request: Request) {
       }
     }
 
+    let outlookItems: CalendarItem[] = [];
+    const outlookCalendarConfig = tenant.outlookCalendarConfig;
+
+    if (outlookCalendarConfig) {
+      try {
+        const { updatedConfig } = await getOutlookClient(outlookCalendarConfig);
+
+        if (updatedConfig !== outlookCalendarConfig) {
+          await updateTenant(tenantId, {
+            outlookCalendarConfig: updatedConfig,
+          });
+        }
+
+        const outlookEvents = await listOutlookEvents(
+          updatedConfig,
+          start,
+          end,
+        );
+
+        outlookItems = outlookEvents
+          .filter((oe) => oe.start?.dateTime && oe.end?.dateTime)
+          .map((oe) => {
+            // Graph API returns dateTime without Z suffix when using UTC preference
+            // e.g. "2026-02-11T03:30:00.0000000" — append Z so browsers parse as UTC
+            const startDt = oe.start!.dateTime!;
+            const endDt = oe.end!.dateTime!;
+            const ensureUtc = (dt: string) =>
+              dt.endsWith("Z") ? dt : new Date(dt + "Z").toISOString();
+
+            return {
+              id: `outlook_${oe.id}`,
+              title: oe.subject || "(No title)",
+              start: ensureUtc(startDt),
+              end: ensureUtc(endDt),
+              allDay: oe.isAllDay || false,
+              type: "event" as const,
+              color: "#0078D4", // Outlook blue
+              extendedProps: {
+                description: oe.body?.content || undefined,
+                location: oe.location?.displayName || undefined,
+                status: "scheduled" as const,
+                source: "outlook_calendar",
+              },
+            };
+          });
+      } catch (error) {
+        console.warn(
+          "[DBG][calendar] Failed to fetch Outlook Calendar events:",
+          error,
+        );
+      }
+    }
+
     const events = await eventsPromise;
 
     // Collect Google event IDs from Cally events to avoid duplicates
@@ -150,6 +205,17 @@ export async function GET(request: Request) {
     const filteredGoogleItems = googleItems.filter((gi) => {
       const googleId = gi.id.replace("gcal_", "");
       return !syncedGoogleIds.has(googleId);
+    });
+
+    // Collect Outlook event IDs from Cally events to avoid duplicates
+    const syncedOutlookIds = new Set(
+      events.map((e) => e.outlookCalendarEventId).filter(Boolean),
+    );
+
+    // Filter out Outlook events that are already synced as Cally events
+    const filteredOutlookItems = outlookItems.filter((oi) => {
+      const outlookId = oi.id.replace("outlook_", "");
+      return !syncedOutlookIds.has(outlookId);
     });
 
     // Color constants for status-based overrides
@@ -184,6 +250,9 @@ export async function GET(request: Request) {
 
     // Merge Google Calendar events
     calendarItems.push(...filteredGoogleItems);
+
+    // Merge Outlook Calendar events
+    calendarItems.push(...filteredOutlookItems);
 
     // Sort by start time
     calendarItems.sort((a, b) => a.start.localeCompare(b.start));
@@ -376,6 +445,14 @@ export async function POST(request: Request) {
     );
 
     console.log("[DBG][calendar] Created event:", event.id);
+
+    // Push to Outlook Calendar for sync (fire-and-forget)
+    // Placed before Google Calendar blocks which may return early
+    if (tenant.outlookCalendarConfig) {
+      pushCreateToOutlook(tenant, event).catch((err) =>
+        console.warn("[DBG][calendar] Outlook push failed:", err),
+      );
+    }
 
     // If Google Meet was requested, generate a Meet link for the event
     if (body.hasVideoConference && useGoogleMeet) {

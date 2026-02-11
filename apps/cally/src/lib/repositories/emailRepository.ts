@@ -441,6 +441,74 @@ export async function getUnreadCount(tenantId: string): Promise<number> {
 }
 
 /**
+ * Update the threadId on an email (used when starting a thread from a reply)
+ */
+export async function updateEmailThreadId(
+  emailId: string,
+  tenantId: string,
+  threadId: string,
+): Promise<Email | null> {
+  console.log(
+    "[DBG][emailRepository] Updating email threadId:",
+    emailId,
+    "->",
+    threadId,
+  );
+
+  // First find the email to get its receivedAt for the SK
+  const email = await findEmailById(emailId, tenantId);
+  if (!email) {
+    console.log("[DBG][emailRepository] Email not found for threadId update");
+    return null;
+  }
+
+  const result = await docClient.send(
+    new UpdateCommand({
+      TableName: Tables.EMAILS,
+      Key: {
+        PK: EmailPK.INBOX(tenantId),
+        SK: `${email.receivedAt}#${emailId}`,
+      },
+      UpdateExpression: "SET #threadId = :threadId, #updatedAt = :updatedAt",
+      ExpressionAttributeNames: {
+        "#threadId": "threadId",
+        "#updatedAt": "updatedAt",
+      },
+      ExpressionAttributeValues: {
+        ":threadId": threadId,
+        ":updatedAt": new Date().toISOString(),
+      },
+      ReturnValues: "ALL_NEW",
+    }),
+  );
+
+  if (!result.Attributes) {
+    console.log("[DBG][emailRepository] Email not found for threadId update");
+    return null;
+  }
+
+  // Also create a THREAD partition entry for this email so getEmailThread finds it
+  await docClient.send(
+    new PutCommand({
+      TableName: Tables.EMAILS,
+      Item: {
+        PK: EmailPK.THREAD(threadId),
+        SK: emailId,
+        emailId,
+        expertId: tenantId,
+        receivedAt: email.receivedAt,
+      },
+    }),
+  );
+
+  console.log(
+    "[DBG][emailRepository] Updated email threadId and created thread entry:",
+    emailId,
+  );
+  return toEmail(result.Attributes as DynamoDBEmailItem);
+}
+
+/**
  * Soft delete an email by ID
  */
 export async function deleteEmail(

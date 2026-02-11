@@ -4,21 +4,20 @@ import { useParams, useSearchParams } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 
-interface GoogleCalendarStatus {
+interface OutlookCalendarStatus {
   connected: boolean;
   email: string | null;
   blockBookingSlots: boolean;
-  autoAddMeetLink: boolean;
   pushEvents: boolean;
   connectedAt: string | null;
 }
 
-export default function GoogleSettingsPage() {
+export default function OutlookSettingsPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const expertId = params.expertId as string;
 
-  const [status, setStatus] = useState<GoogleCalendarStatus | null>(null);
+  const [status, setStatus] = useState<OutlookCalendarStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [disconnecting, setDisconnecting] = useState(false);
   const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
@@ -28,14 +27,14 @@ export default function GoogleSettingsPage() {
   const handleSync = async () => {
     setSyncing(true);
     try {
-      const res = await fetch("/api/data/app/google-calendar/sync", {
+      const res = await fetch("/api/data/app/outlook-calendar/sync", {
         method: "POST",
       });
       const data = await res.json();
       if (data.success) {
         const { synced, failed, alreadySynced } = data.data;
         const parts = [];
-        if (synced > 0) parts.push(`${synced} events pushed to Google`);
+        if (synced > 0) parts.push(`${synced} events pushed to Outlook`);
         if (alreadySynced > 0) parts.push(`${alreadySynced} already synced`);
         if (failed > 0) parts.push(`${failed} failed`);
         setToast(parts.join(", ") || "No events to sync.");
@@ -43,7 +42,7 @@ export default function GoogleSettingsPage() {
         setToast("Sync failed. Please try again.");
       }
     } catch (error) {
-      console.error("[DBG][google-settings] Sync failed:", error);
+      console.error("[DBG][outlook-settings] Sync failed:", error);
       setToast("Sync failed. Please try again.");
     } finally {
       setSyncing(false);
@@ -52,13 +51,13 @@ export default function GoogleSettingsPage() {
 
   const fetchStatus = useCallback(async () => {
     try {
-      const res = await fetch("/api/data/app/google-calendar/status");
+      const res = await fetch("/api/data/app/outlook-calendar/status");
       const data = await res.json();
       if (data.success) {
         setStatus(data.data);
       }
     } catch (error) {
-      console.error("[DBG][google-settings] Failed to fetch status:", error);
+      console.error("[DBG][outlook-settings] Failed to fetch status:", error);
     } finally {
       setLoading(false);
     }
@@ -71,14 +70,13 @@ export default function GoogleSettingsPage() {
   // Show toast on successful connection
   useEffect(() => {
     if (searchParams.get("connected") === "true") {
-      setToast("Google Calendar connected successfully!");
-      // Clear query param without reload
-      window.history.replaceState({}, "", `/srv/${expertId}/settings/google`);
+      setToast("Outlook Calendar connected successfully!");
+      window.history.replaceState({}, "", `/srv/${expertId}/settings/outlook`);
     }
     const error = searchParams.get("error");
     if (error) {
       setToast(`Connection failed: ${error.replace(/_/g, " ")}`);
-      window.history.replaceState({}, "", `/srv/${expertId}/settings/google`);
+      window.history.replaceState({}, "", `/srv/${expertId}/settings/outlook`);
     }
   }, [searchParams, expertId]);
 
@@ -91,13 +89,13 @@ export default function GoogleSettingsPage() {
   }, [toast]);
 
   const handleConnect = () => {
-    window.location.href = "/api/data/app/google-calendar/connect";
+    window.location.href = "/api/data/app/outlook-calendar/connect";
   };
 
   const handleDisconnect = async () => {
     setDisconnecting(true);
     try {
-      const res = await fetch("/api/data/app/google-calendar/disconnect", {
+      const res = await fetch("/api/data/app/outlook-calendar/disconnect", {
         method: "POST",
       });
       const data = await res.json();
@@ -106,14 +104,13 @@ export default function GoogleSettingsPage() {
           connected: false,
           email: null,
           blockBookingSlots: true,
-          autoAddMeetLink: false,
           pushEvents: true,
           connectedAt: null,
         });
-        setToast("Google Calendar disconnected.");
+        setToast("Outlook Calendar disconnected.");
       }
     } catch (error) {
-      console.error("[DBG][google-settings] Failed to disconnect:", error);
+      console.error("[DBG][outlook-settings] Failed to disconnect:", error);
       setToast("Failed to disconnect. Please try again.");
     } finally {
       setDisconnecting(false);
@@ -123,7 +120,7 @@ export default function GoogleSettingsPage() {
 
   const handleToggleBlockSlots = async (checked: boolean) => {
     try {
-      const res = await fetch("/api/data/app/google-calendar/settings", {
+      const res = await fetch("/api/data/app/outlook-calendar/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ blockBookingSlots: checked }),
@@ -133,29 +130,16 @@ export default function GoogleSettingsPage() {
         setStatus({ ...status, blockBookingSlots: checked });
       }
     } catch (error) {
-      console.error("[DBG][google-settings] Failed to update settings:", error);
-    }
-  };
-
-  const handleToggleMeetLink = async (checked: boolean) => {
-    try {
-      const res = await fetch("/api/data/app/google-calendar/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ autoAddMeetLink: checked }),
-      });
-      const data = await res.json();
-      if (data.success && status) {
-        setStatus({ ...status, autoAddMeetLink: checked });
-      }
-    } catch (error) {
-      console.error("[DBG][google-settings] Failed to update settings:", error);
+      console.error(
+        "[DBG][outlook-settings] Failed to update settings:",
+        error,
+      );
     }
   };
 
   const handleTogglePushEvents = async (checked: boolean) => {
     try {
-      const res = await fetch("/api/data/app/google-calendar/settings", {
+      const res = await fetch("/api/data/app/outlook-calendar/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pushEvents: checked }),
@@ -165,38 +149,45 @@ export default function GoogleSettingsPage() {
         setStatus({ ...status, pushEvents: checked });
       }
     } catch (error) {
-      console.error("[DBG][google-settings] Failed to update settings:", error);
+      console.error(
+        "[DBG][outlook-settings] Failed to update settings:",
+        error,
+      );
     }
   };
+
+  const backLink = (
+    <Link
+      href={`/srv/${expertId}/settings`}
+      className="inline-flex items-center gap-1 text-sm text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors mb-3"
+    >
+      <svg
+        className="w-4 h-4"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M15.75 19.5 8.25 12l7.5-7.5"
+        />
+      </svg>
+      Back to Integrations
+    </Link>
+  );
 
   if (loading) {
     return (
       <div className="p-6">
         <div className="mb-8">
-          <Link
-            href={`/srv/${expertId}/settings`}
-            className="inline-flex items-center gap-1 text-sm text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors mb-3"
-          >
-            <svg
-              className="w-4 h-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M15.75 19.5 8.25 12l7.5-7.5"
-              />
-            </svg>
-            Back to Integrations
-          </Link>
+          {backLink}
           <h1 className="text-2xl font-bold text-[var(--text-main)]">
-            Google Calendar
+            Outlook Calendar
           </h1>
           <p className="text-[var(--text-muted)] mt-1">
-            Connect your Google Calendar to sync events.
+            Connect your Outlook Calendar to sync events.
           </p>
         </div>
         <div className="bg-white rounded-lg border border-[var(--color-border)] p-8 text-center">
@@ -216,30 +207,12 @@ export default function GoogleSettingsPage() {
       )}
 
       <div className="mb-8">
-        <Link
-          href={`/srv/${expertId}/settings`}
-          className="inline-flex items-center gap-1 text-sm text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors mb-3"
-        >
-          <svg
-            className="w-4 h-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M15.75 19.5 8.25 12l7.5-7.5"
-            />
-          </svg>
-          Back to Integrations
-        </Link>
+        {backLink}
         <h1 className="text-2xl font-bold text-[var(--text-main)]">
-          Google Calendar
+          Outlook Calendar
         </h1>
         <p className="text-[var(--text-muted)] mt-1">
-          Connect your Google Calendar to sync events.
+          Connect your Outlook Calendar to sync events.
         </p>
       </div>
 
@@ -250,7 +223,6 @@ export default function GoogleSettingsPage() {
           showDisconnectConfirm={showDisconnectConfirm}
           syncing={syncing}
           onToggleBlockSlots={handleToggleBlockSlots}
-          onToggleMeetLink={handleToggleMeetLink}
           onTogglePushEvents={handleTogglePushEvents}
           onSync={handleSync}
           onDisconnectClick={() => setShowDisconnectConfirm(true)}
@@ -282,21 +254,20 @@ function DisconnectedState({ onConnect }: { onConnect: () => void }) {
         />
       </svg>
       <h3 className="text-lg font-medium text-[var(--text-main)] mb-2">
-        Google Calendar Integration
+        Outlook Calendar Integration
       </h3>
       <p className="text-[var(--text-muted)] mb-2">
-        Connect your Google Calendar to:
+        Connect your Microsoft Outlook Calendar to:
       </p>
       <ul className="text-[var(--text-muted)] text-sm mb-6 space-y-1">
-        <li>Automatically sync Cally events to your Google Calendar</li>
-        <li>See your Google Calendar events alongside Cally events</li>
-        <li>Block booking slots when you&apos;re busy on Google Calendar</li>
+        <li>Automatically sync Cally events to your Outlook Calendar</li>
+        <li>Block booking slots when you&apos;re busy on Outlook Calendar</li>
       </ul>
       <button
         onClick={onConnect}
         className="px-6 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary-hover)] transition-colors"
       >
-        Connect Google Calendar
+        Connect Outlook Calendar
       </button>
     </div>
   );
@@ -308,19 +279,17 @@ function ConnectedState({
   showDisconnectConfirm,
   syncing,
   onToggleBlockSlots,
-  onToggleMeetLink,
   onTogglePushEvents,
   onSync,
   onDisconnectClick,
   onDisconnectConfirm,
   onDisconnectCancel,
 }: {
-  status: GoogleCalendarStatus;
+  status: OutlookCalendarStatus;
   disconnecting: boolean;
   showDisconnectConfirm: boolean;
   syncing: boolean;
   onToggleBlockSlots: (checked: boolean) => void;
-  onToggleMeetLink: (checked: boolean) => void;
   onTogglePushEvents: (checked: boolean) => void;
   onSync: () => void;
   onDisconnectClick: () => void;
@@ -333,7 +302,7 @@ function ConnectedState({
       <div className="bg-white rounded-lg border border-[var(--color-border)] p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#4285F4] flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-[#0078D4] flex items-center justify-center">
               <svg
                 className="w-5 h-5 text-white"
                 viewBox="0 0 24 24"
@@ -344,7 +313,7 @@ function ConnectedState({
             </div>
             <div>
               <p className="font-medium text-[var(--text-main)]">
-                Google Calendar Connected
+                Outlook Calendar Connected
               </p>
               <p className="text-sm text-[var(--text-muted)]">{status.email}</p>
               {status.connectedAt && (
@@ -373,7 +342,7 @@ function ConnectedState({
               Block booking slots
             </p>
             <p className="text-sm text-[var(--text-muted)]">
-              When enabled, time slots that conflict with your Google Calendar
+              When enabled, time slots that conflict with your Outlook Calendar
               events will be unavailable for booking.
             </p>
           </div>
@@ -394,36 +363,12 @@ function ConnectedState({
         <label className="flex items-center justify-between cursor-pointer">
           <div>
             <p className="font-medium text-[var(--text-main)]">
-              Auto-add Google Meet link
-            </p>
-            <p className="text-sm text-[var(--text-muted)]">
-              Automatically generate a Google Meet link when you create an event
-              or confirm a booking.
-            </p>
-          </div>
-          <div className="ml-4 relative">
-            <input
-              type="checkbox"
-              className="sr-only peer"
-              checked={status.autoAddMeetLink}
-              onChange={(e) => onToggleMeetLink(e.target.checked)}
-            />
-            <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-[var(--color-primary)] transition-colors" />
-            <div className="absolute left-[2px] top-[2px] bg-white w-5 h-5 rounded-full transition-transform peer-checked:translate-x-5" />
-          </div>
-        </label>
-
-        <hr className="my-4 border-[var(--color-border)]" />
-
-        <label className="flex items-center justify-between cursor-pointer">
-          <div>
-            <p className="font-medium text-[var(--text-main)]">
-              Push Cally events to Google Calendar
+              Push Cally events to Outlook Calendar
             </p>
             <p className="text-sm text-[var(--text-muted)]">
               When enabled, events created in Cally are automatically pushed to
-              your Google Calendar. When disabled, Cally only reads events from
-              Google Calendar.
+              your Outlook Calendar. When disabled, Cally only reads events from
+              Outlook Calendar.
             </p>
           </div>
           <div className="ml-4 relative">
@@ -445,9 +390,8 @@ function ConnectedState({
           Sync Existing Events
         </h3>
         <p className="text-sm text-[var(--text-muted)] mb-4">
-          Push all existing Cally events to Google Calendar. Events already
-          synced will be skipped. Google Calendar events already appear
-          automatically in Cally.
+          Push all existing Cally events to Outlook Calendar. Events already
+          synced will be skipped.
         </p>
         <button
           onClick={onSync}
@@ -463,8 +407,8 @@ function ConnectedState({
         {showDisconnectConfirm ? (
           <div>
             <p className="text-[var(--text-main)] mb-4">
-              Are you sure you want to disconnect Google Calendar? Existing
-              synced events in Google Calendar will remain, but future changes
+              Are you sure you want to disconnect Outlook Calendar? Existing
+              synced events in Outlook Calendar will remain, but future changes
               won&apos;t be synced.
             </p>
             <div className="flex gap-2">
@@ -489,7 +433,7 @@ function ConnectedState({
             onClick={onDisconnectClick}
             className="text-red-600 hover:text-red-700 text-sm font-medium"
           >
-            Disconnect Google Calendar
+            Disconnect Outlook Calendar
           </button>
         )}
       </div>

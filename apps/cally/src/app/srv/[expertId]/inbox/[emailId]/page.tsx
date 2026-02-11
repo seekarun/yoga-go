@@ -1,10 +1,21 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import DOMPurify from "dompurify";
 import type { EmailAttachment, EmailWithThread } from "@/types";
+
+interface ReplyAttachment {
+  file: File;
+  uploading: boolean;
+  uploaded: boolean;
+  s3Key?: string;
+  attachmentId?: string;
+}
+
+const MAX_ATTACHMENTS = 5;
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 export default function EmailDetailPage() {
   const params = useParams();
@@ -15,6 +26,14 @@ export default function EmailDetailPage() {
   const [email, setEmail] = useState<EmailWithThread | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showReply, setShowReply] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const [replySending, setReplySending] = useState(false);
+  const [replyError, setReplyError] = useState<string | null>(null);
+  const [replyAttachments, setReplyAttachments] = useState<ReplyAttachment[]>(
+    [],
+  );
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchEmail = useCallback(async () => {
     try {
@@ -49,9 +68,21 @@ export default function EmailDetailPage() {
     fetchEmail();
   }, [fetchEmail]);
 
-  const handleDownloadAttachment = async (_attachment: EmailAttachment) => {
-    // For now, attachments are not implemented
-    alert("Attachment download not yet implemented");
+  const handleDownloadAttachment = async (attachment: EmailAttachment) => {
+    try {
+      const response = await fetch(
+        `/api/data/app/inbox/${emailId}/attachments/${attachment.id}`,
+      );
+      const data = await response.json();
+      if (data.success && data.data?.downloadUrl) {
+        window.open(data.data.downloadUrl, "_blank");
+      } else {
+        alert("Failed to get download link");
+      }
+    } catch (err) {
+      console.error("[DBG][email-detail] Download error:", err);
+      alert("Failed to download attachment");
+    }
   };
 
   const handleDelete = async () => {
@@ -71,6 +102,152 @@ export default function EmailDetailPage() {
     } catch (err) {
       console.error("[DBG][email-detail] Delete error:", err);
       alert("Failed to delete email");
+    }
+  };
+
+  const handleAddFiles = (files: FileList | null) => {
+    if (!files) return;
+    const newFiles: ReplyAttachment[] = [];
+    const currentCount = replyAttachments.length;
+
+    for (let i = 0; i < files.length; i++) {
+      if (currentCount + newFiles.length >= MAX_ATTACHMENTS) {
+        alert(`Maximum ${MAX_ATTACHMENTS} attachments allowed`);
+        break;
+      }
+      const file = files[i];
+      if (file.size > MAX_FILE_SIZE) {
+        alert(`${file.name} exceeds 10MB limit`);
+        continue;
+      }
+      newFiles.push({ file, uploading: false, uploaded: false });
+    }
+
+    setReplyAttachments((prev) => [...prev, ...newFiles]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleRemoveAttachment = (index: number) => {
+    setReplyAttachments((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const uploadAttachment = async (
+    att: ReplyAttachment,
+  ): Promise<{ s3Key: string; attachmentId: string } | null> => {
+    try {
+      // Get presigned upload URL
+      const res = await fetch("/api/data/app/inbox/attachments/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: att.file.name,
+          contentType: att.file.type || "application/octet-stream",
+          size: att.file.size,
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        console.error("[DBG][email-detail] Upload URL failed:", data.error);
+        return null;
+      }
+
+      // Upload file to S3 via presigned URL
+      const uploadRes = await fetch(data.data.uploadUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": att.file.type || "application/octet-stream",
+        },
+        body: att.file,
+      });
+
+      if (!uploadRes.ok) {
+        console.error(
+          "[DBG][email-detail] S3 upload failed:",
+          uploadRes.status,
+        );
+        return null;
+      }
+
+      return { s3Key: data.data.s3Key, attachmentId: data.data.attachmentId };
+    } catch (err) {
+      console.error("[DBG][email-detail] Upload error:", err);
+      return null;
+    }
+  };
+
+  const handleReply = async () => {
+    if (!replyText.trim()) return;
+
+    try {
+      setReplySending(true);
+      setReplyError(null);
+      console.log("[DBG][email-detail] Sending reply for email:", emailId);
+
+      // Upload attachments to S3 first
+      const uploadedAttachments: Array<{
+        filename: string;
+        contentType: string;
+        size: number;
+        s3Key: string;
+        attachmentId: string;
+      }> = [];
+
+      if (replyAttachments.length > 0) {
+        setReplyAttachments((prev) =>
+          prev.map((a) => ({ ...a, uploading: true })),
+        );
+
+        for (const att of replyAttachments) {
+          const result = await uploadAttachment(att);
+          if (!result) {
+            setReplyError(`Failed to upload ${att.file.name}`);
+            setReplyAttachments((prev) =>
+              prev.map((a) => ({ ...a, uploading: false })),
+            );
+            setReplySending(false);
+            return;
+          }
+          uploadedAttachments.push({
+            filename: att.file.name,
+            contentType: att.file.type || "application/octet-stream",
+            size: att.file.size,
+            s3Key: result.s3Key,
+            attachmentId: result.attachmentId,
+          });
+        }
+
+        setReplyAttachments((prev) =>
+          prev.map((a) => ({ ...a, uploading: false, uploaded: true })),
+        );
+      }
+
+      const response = await fetch(`/api/data/app/inbox/${emailId}/reply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: replyText,
+          attachments:
+            uploadedAttachments.length > 0 ? uploadedAttachments : undefined,
+        }),
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        setReplyText("");
+        setReplyAttachments([]);
+        setShowReply(false);
+        // Re-fetch to show updated thread
+        await fetchEmail();
+      } else {
+        setReplyError(data.error || "Failed to send reply");
+      }
+    } catch (err) {
+      console.error("[DBG][email-detail] Reply error:", err);
+      setReplyError("Failed to send reply");
+    } finally {
+      setReplySending(false);
     }
   };
 
@@ -385,6 +562,221 @@ export default function EmailDetailPage() {
             </>
           )}
         </div>
+
+        {/* Reply Section */}
+        {(() => {
+          // Determine reply recipient: last incoming sender in thread, or email sender
+          const replyTo = email.threadMessages?.length
+            ? (() => {
+                const lastIncoming = [...email.threadMessages]
+                  .reverse()
+                  .find((m) => !m.isOutgoing);
+                return lastIncoming?.from || email.from;
+              })()
+            : email.from;
+
+          return (
+            <div className="mt-4">
+              {!showReply ? (
+                <button
+                  onClick={() => setShowReply(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-medium"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+                    />
+                  </svg>
+                  Reply
+                </button>
+              ) : (
+                <div className="bg-white rounded-lg shadow p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <svg
+                      className="w-4 h-4 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+                      />
+                    </svg>
+                    <span className="text-sm text-gray-500">
+                      Replying to{" "}
+                      <strong className="text-gray-700">
+                        {replyTo.name || replyTo.email}
+                      </strong>
+                    </span>
+                  </div>
+                  <textarea
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    placeholder="Type your reply..."
+                    rows={5}
+                    className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent resize-y"
+                    disabled={replySending}
+                  />
+
+                  {/* Attachment chips */}
+                  {replyAttachments.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {replyAttachments.map((att, idx) => (
+                        <div
+                          key={`${att.file.name}-${idx}`}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-100 rounded-lg text-xs"
+                        >
+                          <svg
+                            className="w-3.5 h-3.5 text-gray-400 flex-shrink-0"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                            />
+                          </svg>
+                          <span className="truncate max-w-[120px] text-gray-700">
+                            {att.file.name}
+                          </span>
+                          <span className="text-gray-400">
+                            ({formatFileSize(att.file.size)})
+                          </span>
+                          {att.uploading && (
+                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-500" />
+                          )}
+                          {!replySending && (
+                            <button
+                              onClick={() => handleRemoveAttachment(idx)}
+                              className="ml-0.5 text-gray-400 hover:text-red-500 transition-colors"
+                              type="button"
+                            >
+                              <svg
+                                className="w-3.5 h-3.5"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M6 18L18 6M6 6l12 12"
+                                />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {replyError && (
+                    <p className="text-sm text-red-600 mt-2">{replyError}</p>
+                  )}
+                  <div className="flex items-center justify-between mt-3">
+                    {/* Attach file button */}
+                    <div>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        multiple
+                        className="hidden"
+                        onChange={(e) => handleAddFiles(e.target.files)}
+                        disabled={
+                          replySending ||
+                          replyAttachments.length >= MAX_ATTACHMENTS
+                        }
+                      />
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={
+                          replySending ||
+                          replyAttachments.length >= MAX_ATTACHMENTS
+                        }
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        type="button"
+                        title={`Attach files (max ${MAX_ATTACHMENTS}, 10MB each)`}
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                          />
+                        </svg>
+                        Attach
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          setShowReply(false);
+                          setReplyText("");
+                          setReplyError(null);
+                          setReplyAttachments([]);
+                        }}
+                        className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                        disabled={replySending}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleReply}
+                        disabled={replySending || !replyText.trim()}
+                        className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      >
+                        {replySending ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                            Sending...
+                          </>
+                        ) : (
+                          <>
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                              />
+                            </svg>
+                            Send Reply
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
     </>
   );

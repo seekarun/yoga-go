@@ -272,6 +272,12 @@ async function parseEmailMime(
         const attachmentId = generateId();
         const s3Key = `parsed/${messageId}/${attachmentId}`;
 
+        // Sanitize filename for S3 metadata (ASCII-only, no control chars)
+        const safeFilename = (attachment.filename || "attachment").replace(
+          /[^\x20-\x7E]/g,
+          "_",
+        );
+
         await s3.send(
           new PutObjectCommand({
             Bucket: BUCKET_NAME,
@@ -279,7 +285,7 @@ async function parseEmailMime(
             Body: attachment.content,
             ContentType: attachment.contentType || "application/octet-stream",
             Metadata: {
-              filename: attachment.filename || "attachment",
+              filename: safeFilename,
               originalMessageId: messageId,
             },
           }),

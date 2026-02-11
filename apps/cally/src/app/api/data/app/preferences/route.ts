@@ -15,6 +15,7 @@ import { isValidTimezone } from "@/lib/timezones";
 
 interface PreferencesData {
   timezone: string;
+  emailDisplayName: string;
   videoCallPreference: "cally" | "google_meet" | "zoom";
   googleCalendarConnected: boolean;
   zoomConnected: boolean;
@@ -55,6 +56,7 @@ export async function GET(): Promise<
       success: true,
       data: {
         timezone,
+        emailDisplayName: tenant.emailDisplayName || "",
         videoCallPreference: tenant.videoCallPreference ?? "cally",
         googleCalendarConnected: !!tenant.googleCalendarConfig,
         zoomConnected: !!tenant.zoomConfig,
@@ -100,10 +102,31 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { timezone, videoCallPreference } = body;
+    const { timezone, videoCallPreference, emailDisplayName } = body;
 
     // Build partial update
     const updates: Record<string, unknown> = {};
+
+    // Validate emailDisplayName if provided
+    if (emailDisplayName !== undefined) {
+      if (typeof emailDisplayName !== "string") {
+        return NextResponse.json(
+          { success: false, error: "emailDisplayName must be a string" },
+          { status: 400 },
+        );
+      }
+      if (emailDisplayName.length > 100) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "emailDisplayName must be 100 characters or less",
+          },
+          { status: 400 },
+        );
+      }
+      // Allow empty string to clear the custom display name
+      updates.emailDisplayName = emailDisplayName.trim() || "";
+    }
 
     // Validate timezone if provided
     if (timezone !== undefined) {
@@ -175,6 +198,7 @@ export async function PUT(
       success: true,
       data: {
         timezone: updated.timezone || tenant.timezone || DEFAULT_TIMEZONE,
+        emailDisplayName: updated.emailDisplayName || "",
         videoCallPreference: updated.videoCallPreference ?? "cally",
         googleCalendarConnected: !!tenant.googleCalendarConfig,
         zoomConnected: !!tenant.zoomConfig,

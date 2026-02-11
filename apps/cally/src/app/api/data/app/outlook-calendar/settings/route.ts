@@ -1,6 +1,6 @@
 /**
- * PUT /api/data/app/google-calendar/settings
- * Updates Google Calendar preferences (e.g., blockBookingSlots)
+ * PUT /api/data/app/outlook-calendar/settings
+ * Updates Outlook Calendar preferences (e.g., blockBookingSlots)
  */
 
 import { NextResponse } from "next/server";
@@ -11,7 +11,7 @@ import {
 } from "@/lib/repositories/tenantRepository";
 
 export async function PUT(request: Request) {
-  console.log("[DBG][google-calendar/settings] PUT called");
+  console.log("[DBG][outlook-calendar/settings] PUT called");
 
   try {
     const session = await auth();
@@ -30,9 +30,9 @@ export async function PUT(request: Request) {
       );
     }
 
-    if (!tenant.googleCalendarConfig) {
+    if (!tenant.outlookCalendarConfig) {
       return NextResponse.json(
-        { success: false, error: "Google Calendar is not connected" },
+        { success: false, error: "Outlook Calendar is not connected" },
         { status: 400 },
       );
     }
@@ -40,25 +40,22 @@ export async function PUT(request: Request) {
     const body = await request.json();
 
     const updatedConfig = {
-      ...tenant.googleCalendarConfig,
+      ...tenant.outlookCalendarConfig,
     };
 
     if (typeof body.blockBookingSlots === "boolean") {
       updatedConfig.blockBookingSlots = body.blockBookingSlots;
-    }
-    if (typeof body.autoAddMeetLink === "boolean") {
-      updatedConfig.autoAddMeetLink = body.autoAddMeetLink;
     }
     if (typeof body.pushEvents === "boolean") {
       updatedConfig.pushEvents = body.pushEvents;
     }
 
     await updateTenant(tenant.id, {
-      googleCalendarConfig: updatedConfig,
+      outlookCalendarConfig: updatedConfig,
     });
 
     console.log(
-      "[DBG][google-calendar/settings] Updated settings for tenant:",
+      "[DBG][outlook-calendar/settings] Updated settings for tenant:",
       tenant.id,
     );
 
@@ -66,12 +63,11 @@ export async function PUT(request: Request) {
       success: true,
       data: {
         blockBookingSlots: updatedConfig.blockBookingSlots,
-        autoAddMeetLink: updatedConfig.autoAddMeetLink,
         pushEvents: updatedConfig.pushEvents,
       },
     });
   } catch (error) {
-    console.error("[DBG][google-calendar/settings] Error:", error);
+    console.error("[DBG][outlook-calendar/settings] Error:", error);
     return NextResponse.json(
       { success: false, error: "Failed to update settings" },
       { status: 500 },

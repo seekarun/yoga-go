@@ -19,7 +19,7 @@ function StatusBadge({ status }: { status: SurveyStatus }) {
     closed: { bg: "#fef3c7", text: "#d97706" },
     archived: { bg: "#fee2e2", text: "#dc2626" },
   };
-  const c = colors[status];
+  const c = colors[status] ?? { bg: "#f3f4f6", text: "#6b7280" };
   return (
     <span
       style={{
@@ -205,9 +205,9 @@ export default function SurveysListPage() {
 
       {/* Survey cards */}
       <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-        {surveys.map((survey) => (
+        {surveys.map((survey, idx) => (
           <div
-            key={survey.id}
+            key={survey.id ?? `survey-${idx}`}
             role="button"
             tabIndex={0}
             onClick={() => router.push(`/srv/${expertId}/surveys/${survey.id}`)}

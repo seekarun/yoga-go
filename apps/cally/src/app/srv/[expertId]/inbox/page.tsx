@@ -377,7 +377,12 @@ export default function InboxPage() {
                         {email.subject || "(no subject)"}
                       </p>
                       <p className="text-sm text-gray-500 mt-0.5 truncate">
-                        {email.bodyText?.substring(0, 100) || "(no content)"}
+                        {(isThread && email.threadMessages?.length
+                          ? email.threadMessages[
+                              email.threadMessages.length - 1
+                            ].bodyText
+                          : email.bodyText
+                        )?.substring(0, 100) || "(no content)"}
                       </p>
 
                       {email.attachments && email.attachments.length > 0 && (

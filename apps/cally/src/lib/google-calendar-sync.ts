@@ -27,6 +27,7 @@ export async function pushCreateToGoogle(
   event: CalendarEvent,
 ): Promise<string | null> {
   if (!tenant.googleCalendarConfig) return null;
+  if (tenant.googleCalendarConfig.pushEvents === false) return null;
 
   try {
     const { client, updatedConfig } = await getGoogleCalendarClient(
@@ -50,7 +51,9 @@ export async function pushCreateToGoogle(
       event,
       {
         withMeetLink:
-          updatedConfig.autoAddMeetLink && !!event.hasVideoConference,
+          updatedConfig.autoAddMeetLink &&
+          !!event.hasVideoConference &&
+          tenant.videoCallPreference === "google_meet",
       },
     );
     console.log(
@@ -99,6 +102,7 @@ export async function pushUpdateToGoogle(
   event: CalendarEvent,
 ): Promise<void> {
   if (!tenant.googleCalendarConfig || !event.googleCalendarEventId) return;
+  if (tenant.googleCalendarConfig.pushEvents === false) return;
 
   try {
     const { client, updatedConfig } = await getGoogleCalendarClient(
@@ -138,6 +142,7 @@ export async function pushDeleteToGoogle(
   event: CalendarEvent,
 ): Promise<void> {
   if (!tenant.googleCalendarConfig || !event.googleCalendarEventId) return;
+  if (tenant.googleCalendarConfig.pushEvents === false) return;
 
   try {
     const { client, updatedConfig } = await getGoogleCalendarClient(

@@ -181,16 +181,36 @@ export default function CalendarPage() {
   }, [expertId, router]);
 
   // Transform CalendarItem to FullCalendar event format
-  const fullCalendarEvents = events.map((event) => ({
-    id: event.id,
-    title: event.title,
-    start: event.start,
-    end: event.end,
-    allDay: event.allDay,
-    backgroundColor: event.color,
-    borderColor: event.color,
-    extendedProps: event.extendedProps,
-  }));
+  const fullCalendarEvents = events.map((event) => {
+    const source = event.extendedProps?.source;
+    const isExternal =
+      source === "google_calendar" || source === "outlook_calendar";
+
+    if (isExternal) {
+      return {
+        id: event.id,
+        title: event.title,
+        start: event.start,
+        end: event.end,
+        allDay: event.allDay,
+        backgroundColor: "#ffffff",
+        borderColor: source === "google_calendar" ? "#4285F4" : "#0078D4",
+        textColor: "#6b7280",
+        extendedProps: event.extendedProps,
+      };
+    }
+
+    return {
+      id: event.id,
+      title: event.title,
+      start: event.start,
+      end: event.end,
+      allDay: event.allDay,
+      backgroundColor: event.color,
+      borderColor: event.color,
+      extendedProps: event.extendedProps,
+    };
+  });
 
   return (
     <div className="p-6">

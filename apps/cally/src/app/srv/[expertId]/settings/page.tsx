@@ -21,6 +21,11 @@ export default function IntegrationsPage() {
     email: string | null;
   }>({ connected: false, email: null });
 
+  const [outlookStatus, setOutlookStatus] = useState<{
+    connected: boolean;
+    email: string | null;
+  }>({ connected: false, email: null });
+
   useEffect(() => {
     fetch("/api/data/app/google-calendar/status")
       .then((res) => res.json())
@@ -49,6 +54,20 @@ export default function IntegrationsPage() {
       .catch((err) =>
         console.error("[DBG][settings] Failed to fetch Zoom status:", err),
       );
+
+    fetch("/api/data/app/outlook-calendar/status")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          setOutlookStatus({
+            connected: data.data.connected,
+            email: data.data.email,
+          });
+        }
+      })
+      .catch((err) =>
+        console.error("[DBG][settings] Failed to fetch Outlook status:", err),
+      );
   }, []);
 
   const integrations = [
@@ -71,6 +90,21 @@ export default function IntegrationsPage() {
       connected: googleStatus.connected,
       statusText: googleStatus.connected ? "Connected" : "Not connected",
       href: `/srv/${expertId}/settings/google`,
+      icon: (
+        <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19.5 3h-3V1.5h-1.5V3h-6V1.5H7.5V3h-3C3.675 3 3 3.675 3 4.5v15c0 .825.675 1.5 1.5 1.5h15c.825 0 1.5-.675 1.5-1.5v-15c0-.825-.675-1.5-1.5-1.5zm0 16.5h-15V7.5h15v12z" />
+          <path d="M7.5 10.5h3v3h-3zM12 10.5h3v3h-3zM16.5 10.5h-1.5v3h3v-1.5h-1.5z" />
+        </svg>
+      ),
+    },
+    {
+      name: "Outlook Calendar",
+      description: outlookStatus.connected
+        ? `Connected to ${outlookStatus.email}`
+        : "Sync events with Outlook Calendar",
+      connected: outlookStatus.connected,
+      statusText: outlookStatus.connected ? "Connected" : "Not connected",
+      href: `/srv/${expertId}/settings/outlook`,
       icon: (
         <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
           <path d="M19.5 3h-3V1.5h-1.5V3h-6V1.5H7.5V3h-3C3.675 3 3 3.675 3 4.5v15c0 .825.675 1.5 1.5 1.5h15c.825 0 1.5-.675 1.5-1.5v-15c0-.825-.675-1.5-1.5-1.5zm0 16.5h-15V7.5h15v12z" />

@@ -170,6 +170,22 @@ The MyYoga.Guru Team`,
           expiration: cdk.Duration.days(90),
           enabled: true,
         },
+        {
+          id: "DeleteReplyAttachmentsAfter30Days",
+          prefix: "reply-attachments/",
+          expiration: cdk.Duration.days(30),
+          enabled: true,
+        },
+      ],
+      cors: [
+        {
+          allowedMethods: [s3.HttpMethods.PUT],
+          allowedOrigins: [
+            "http://localhost:3113",
+            "https://proj-cally.vercel.app",
+          ],
+          allowedHeaders: ["*"],
+        },
       ],
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
