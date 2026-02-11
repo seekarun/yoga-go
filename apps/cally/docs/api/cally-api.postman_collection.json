@@ -1023,14 +1023,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Team Meeting\",\n  \"description\": \"Weekly standup\",\n  \"startTime\": \"2026-02-15T09:00:00.000Z\",\n  \"endTime\": \"2026-02-15T10:00:00.000Z\",\n  \"location\": \"Office\",\n  \"color\": \"#6366f1\",\n  \"isAllDay\": false,\n  \"hasVideoConference\": false\n}"
+              "raw": "{\n  \"title\": \"Team Meeting\",\n  \"description\": \"Weekly standup\",\n  \"startTime\": \"2026-02-15T09:00:00.000Z\",\n  \"endTime\": \"2026-02-15T10:00:00.000Z\",\n  \"location\": \"Office\",\n  \"color\": \"#6366f1\",\n  \"isAllDay\": false,\n  \"hasVideoConference\": false,\n  \"attendees\": [\n    { \"email\": \"alice@example.com\", \"name\": \"Alice\" },\n    { \"email\": \"bob@example.com\", \"name\": \"Bob\" }\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/data/app/calendar",
               "host": ["{{baseUrl}}"],
               "path": ["api", "data", "app", "calendar"]
             },
-            "description": "Create a single calendar event. Set hasVideoConference to true to create a video room (Zoom/Google Meet/100ms based on tenant preference)."
+            "description": "Create a single calendar event. Set hasVideoConference to true to create a video room (Zoom/Google Meet/100ms based on tenant preference). Include attendees array to invite users; invite emails are sent automatically."
           }
         },
         {
@@ -1085,7 +1085,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Updated Meeting\",\n  \"description\": \"Updated description\",\n  \"status\": \"scheduled\"\n}"
+              "raw": "{\n  \"title\": \"Updated Meeting\",\n  \"description\": \"Updated description\",\n  \"status\": \"scheduled\",\n  \"attendees\": [\n    { \"email\": \"alice@example.com\", \"name\": \"Alice\" }\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/data/app/calendar/events/{{eventId}}",
@@ -1100,6 +1100,34 @@
               ]
             },
             "description": "Update a calendar event. Supports partial updates. For recurring events, updates only the individual instance."
+          }
+        },
+        {
+          "name": "Update Future Events",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Cookie", "value": "session={{sessionToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Meeting\",\n  \"description\": \"Updated description\",\n  \"location\": \"New Location\",\n  \"startTime\": \"2025-03-15T10:00:00.000Z\",\n  \"endTime\": \"2025-03-15T11:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/calendar/events/{{eventId}}?updateFuture=true",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "app",
+                "calendar",
+                "events",
+                "{{eventId}}"
+              ],
+              "query": [{ "key": "updateFuture", "value": "true" }]
+            },
+            "description": "Update a recurring calendar event and apply time changes to all future events in the series. Computes the time delta from the clicked event and shifts all future events by the same amount. Also applies title, description, and location changes to future events."
           }
         },
         {

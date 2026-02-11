@@ -5,7 +5,9 @@ import { useRouter, useParams } from "next/navigation";
 import Modal, { ModalHeader, ModalFooter } from "@/components/Modal";
 import { PrimaryButton, SecondaryButton } from "@/components/Button";
 import TranscriptViewer from "@/components/TranscriptViewer";
-import type { CalendarItem } from "@/types";
+import AttendeeSelector from "@/components/calendar/AttendeeSelector";
+import type { CalendarItem, EventAttendee } from "@/types";
+import { formatDateForInput } from "@/lib/dateUtils";
 
 interface CalendarEventModalProps {
   isOpen: boolean;
@@ -118,6 +120,9 @@ export default function CalendarEventModal({
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editLocation, setEditLocation] = useState("");
+  const [editStartTime, setEditStartTime] = useState("");
+  const [editEndTime, setEditEndTime] = useState("");
+  const [editAttendees, setEditAttendees] = useState<EventAttendee[]>([]);
 
   // Reset state when event changes
   useEffect(() => {
@@ -125,6 +130,9 @@ export default function CalendarEventModal({
       setEditTitle(event.title);
       setEditDescription(event.extendedProps.description || "");
       setEditLocation(event.extendedProps.location || "");
+      setEditStartTime(formatDateForInput(new Date(event.start)));
+      setEditEndTime(formatDateForInput(new Date(event.end)));
+      setEditAttendees(event.extendedProps.attendees || []);
       setIsEditing(false);
       setIsDeleting(false);
       setIsSaving(false);
@@ -195,15 +203,24 @@ export default function CalendarEventModal({
     }
   };
 
-  const handleSaveEdit = async () => {
+  const handleSaveEdit = async (updateFuture = false) => {
     if (!event) return;
+
+    // Validate end > start
+    const start = new Date(editStartTime);
+    const end = new Date(editEndTime);
+    if (end <= start) {
+      setError("End time must be after start time");
+      return;
+    }
 
     setIsSaving(true);
     setError("");
 
     try {
+      const queryParam = updateFuture ? "?updateFuture=true" : "";
       const response = await fetch(
-        `/api/data/app/calendar/events/${event.id}`,
+        `/api/data/app/calendar/events/${event.id}${queryParam}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -211,6 +228,9 @@ export default function CalendarEventModal({
             title: editTitle,
             description: editDescription,
             location: editLocation,
+            startTime: new Date(editStartTime).toISOString(),
+            endTime: new Date(editEndTime).toISOString(),
+            attendees: editAttendees,
           }),
         },
       );
@@ -363,38 +383,13 @@ export default function CalendarEventModal({
       maxWidth="max-w-md"
       padding={false}
     >
-      <ModalHeader onClose={onClose}>
-        {isEditing ? "Edit Event" : "Event Details"}
+      <ModalHeader onClose={onClose} className="px-6 pt-6">
+        {isEditing ? "Edit Event" : event.title}
       </ModalHeader>
 
       <div className="px-6 pb-2 space-y-4">
-        {/* Status Badge */}
-        <div className="flex items-center gap-2">
-          <span
-            className="px-2 py-1 rounded-full text-xs font-semibold"
-            style={{
-              background: "rgba(99, 102, 241, 0.2)",
-              color: "#4338ca",
-            }}
-          >
-            Event
-          </span>
-          {getStatusBadge(event.extendedProps.status)}
-          {isRecurring && (
-            <span
-              className="px-2 py-1 rounded-full text-xs font-semibold"
-              style={{
-                background: "#ede9fe",
-                color: "#7c3aed",
-              }}
-            >
-              Recurring
-            </span>
-          )}
-        </div>
-
-        {/* Title */}
-        {isEditing ? (
+        {/* Title (edit mode only) */}
+        {isEditing && (
           <div>
             <label className="block text-sm font-medium mb-1 text-gray-700">
               Title
@@ -406,36 +401,61 @@ export default function CalendarEventModal({
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary,#6366f1)] focus:border-transparent"
             />
           </div>
-        ) : (
-          <h3 className="text-xl font-semibold text-gray-900">{event.title}</h3>
         )}
 
         {/* Time */}
-        <div className="flex items-start gap-3">
-          <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
-            <svg
-              className="w-5 h-5 text-gray-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+        {isEditing ? (
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1 text-gray-700">
+                Start
+              </label>
+              <input
+                type="datetime-local"
+                value={editStartTime}
+                onChange={(e) => setEditStartTime(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary,#6366f1)] focus:border-transparent"
               />
-            </svg>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1 text-gray-700">
+                End
+              </label>
+              <input
+                type="datetime-local"
+                value={editEndTime}
+                onChange={(e) => setEditEndTime(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary,#6366f1)] focus:border-transparent"
+              />
+            </div>
           </div>
-          <div>
-            <p className="font-medium text-gray-900">
-              {formatDateTime(event.start)}
-            </p>
-            <p className="text-sm text-gray-500">
-              Duration: {formatDuration(event.start, event.end)}
-            </p>
+        ) : (
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+              <svg
+                className="w-5 h-5 text-gray-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+            <div>
+              <p className="font-medium text-gray-900">
+                {formatDateTime(event.start)}
+              </p>
+              <p className="text-sm text-gray-500">
+                Duration: {formatDuration(event.start, event.end)}
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Description */}
         {isEditing ? (
@@ -512,6 +532,49 @@ export default function CalendarEventModal({
             <p className="text-sm text-gray-700">
               {event.extendedProps.location}
             </p>
+          </div>
+        ) : null}
+
+        {/* Attendees */}
+        {isEditing ? (
+          <AttendeeSelector
+            selectedAttendees={editAttendees}
+            onChange={setEditAttendees}
+          />
+        ) : event.extendedProps.attendees &&
+          event.extendedProps.attendees.length > 0 ? (
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
+              <svg
+                className="w-5 h-5 text-gray-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900 mb-1">
+                Attendees
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {event.extendedProps.attendees.map((attendee) => (
+                  <span
+                    key={attendee.email}
+                    className="inline-flex items-center px-2 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs font-medium"
+                    title={attendee.email}
+                  >
+                    {attendee.name}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
         ) : null}
 
@@ -681,9 +744,29 @@ export default function CalendarEventModal({
             >
               Cancel
             </SecondaryButton>
-            <PrimaryButton onClick={handleSaveEdit} disabled={isSaving}>
-              {isSaving ? "Saving..." : "Save Changes"}
-            </PrimaryButton>
+            {isRecurring ? (
+              <>
+                <SecondaryButton
+                  onClick={() => handleSaveEdit(false)}
+                  disabled={isSaving}
+                >
+                  {isSaving ? "Saving..." : "Save This Event"}
+                </SecondaryButton>
+                <PrimaryButton
+                  onClick={() => handleSaveEdit(true)}
+                  disabled={isSaving}
+                >
+                  {isSaving ? "Saving..." : "Save Future Events"}
+                </PrimaryButton>
+              </>
+            ) : (
+              <PrimaryButton
+                onClick={() => handleSaveEdit(false)}
+                disabled={isSaving}
+              >
+                {isSaving ? "Saving..." : "Save Changes"}
+              </PrimaryButton>
+            )}
           </>
         ) : isPending ? (
           <>
@@ -710,53 +793,59 @@ export default function CalendarEventModal({
             </PrimaryButton>
           </>
         ) : (
-          <>
-            <button
-              onClick={handleDelete}
-              disabled={isDeleting || isDeletingSeries || isCancelling}
-              className="px-4 py-2 rounded-lg border border-red-200 bg-white text-red-600 font-medium text-sm hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isDeleting ? "Deleting..." : "Delete"}
-            </button>
-            {isRecurring && (
+          <div className="flex w-full items-center justify-between">
+            {/* Left: destructive actions */}
+            <div className="flex gap-2">
               <button
-                onClick={handleDeleteSeries}
+                onClick={handleDelete}
                 disabled={isDeleting || isDeletingSeries || isCancelling}
-                className="px-4 py-2 rounded-lg border border-red-200 bg-red-600 text-white font-medium text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-2 rounded-lg border border-red-200 bg-white text-red-600 font-medium text-sm hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isDeletingSeries ? "Deleting..." : "Delete All in Series"}
+                {isDeleting ? "Deleting..." : "Delete"}
               </button>
-            )}
-            {isScheduled && isBooking && !showCancelForm && (
-              <button
-                onClick={() => setShowCancelForm(true)}
-                className="px-4 py-2 rounded-lg border border-orange-200 bg-white text-orange-600 font-medium text-sm hover:bg-orange-50"
+              {isRecurring && (
+                <button
+                  onClick={handleDeleteSeries}
+                  disabled={isDeleting || isDeletingSeries || isCancelling}
+                  className="px-3 py-2 rounded-lg bg-red-600 text-white font-medium text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isDeletingSeries ? "Deleting..." : "Delete Series"}
+                </button>
+              )}
+              {isScheduled && isBooking && !showCancelForm && (
+                <button
+                  onClick={() => setShowCancelForm(true)}
+                  className="px-3 py-2 rounded-lg border border-orange-200 bg-white text-orange-600 font-medium text-sm hover:bg-orange-50"
+                >
+                  Cancel Booking
+                </button>
+              )}
+              {showCancelForm && isScheduled && isBooking && (
+                <button
+                  onClick={handleCancelBooking}
+                  disabled={isCancelling}
+                  className="px-3 py-2 rounded-lg bg-red-600 text-white font-medium text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isCancelling ? "Cancelling..." : "Confirm Cancel"}
+                </button>
+              )}
+            </div>
+            {/* Right: neutral actions */}
+            <div className="flex gap-2">
+              {!showCancelForm && (
+                <SecondaryButton onClick={() => setIsEditing(true)}>
+                  Edit
+                </SecondaryButton>
+              )}
+              <PrimaryButton
+                onClick={
+                  showCancelForm ? () => setShowCancelForm(false) : onClose
+                }
               >
-                Cancel Booking
-              </button>
-            )}
-            {showCancelForm && isScheduled && isBooking && (
-              <button
-                onClick={handleCancelBooking}
-                disabled={isCancelling}
-                className="px-4 py-2 rounded-lg border border-red-200 bg-red-600 text-white font-medium text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isCancelling ? "Cancelling..." : "Confirm Cancel"}
-              </button>
-            )}
-            {!showCancelForm && (
-              <SecondaryButton onClick={() => setIsEditing(true)}>
-                Edit
-              </SecondaryButton>
-            )}
-            <PrimaryButton
-              onClick={
-                showCancelForm ? () => setShowCancelForm(false) : onClose
-              }
-            >
-              {showCancelForm ? "Back" : "Close"}
-            </PrimaryButton>
-          </>
+                {showCancelForm ? "Back" : "Close"}
+              </PrimaryButton>
+            </div>
+          </div>
         )}
       </ModalFooter>
     </Modal>

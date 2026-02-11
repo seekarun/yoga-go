@@ -368,6 +368,8 @@ export async function createCalendarEvent(
     // Recurrence
     recurrenceGroupId: input.recurrenceGroupId,
     recurrenceRule: input.recurrenceRule,
+    // Attendees
+    attendees: input.attendees,
     createdAt: now,
     updatedAt: now,
   };
@@ -458,6 +460,7 @@ export async function updateCalendarEvent(
   const fieldMappings: Record<string, keyof typeof updates> = {
     title: "title",
     description: "description",
+    startTime: "startTime",
     endTime: "endTime",
     status: "status",
     location: "location",
@@ -480,6 +483,8 @@ export async function updateCalendarEvent(
     // Recurrence
     recurrenceGroupId: "recurrenceGroupId",
     recurrenceRule: "recurrenceRule",
+    // Attendees
+    attendees: "attendees",
   };
 
   for (const [field, key] of Object.entries(fieldMappings)) {

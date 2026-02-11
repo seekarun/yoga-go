@@ -12,6 +12,7 @@ import type {
   CalendarEvent,
   CalendarItem,
   CreateCalendarEventInput,
+  EventAttendee,
   RecurrenceRule,
 } from "@/types";
 import { auth } from "@/auth";
@@ -32,6 +33,7 @@ import { createZoomMeeting, getZoomClient } from "@/lib/zoom";
 import { pushCreateToOutlook } from "@/lib/outlook-calendar-sync";
 import { getOutlookClient, listOutlookEvents } from "@/lib/outlook-calendar";
 import { expandRecurrence } from "@/lib/recurrence";
+import { sendEventInviteEmail } from "@/lib/email/eventInviteEmail";
 
 // Color constant for general events
 const EVENT_COLOR = "#6366f1"; // Indigo - matches cally design
@@ -248,6 +250,8 @@ export async function GET(request: Request) {
           hmsTemplateId: event.hmsTemplateId,
           // Recurrence
           recurrenceGroupId: event.recurrenceGroupId,
+          // Attendees
+          attendees: event.attendees,
         },
       };
     });
@@ -339,6 +343,9 @@ export async function POST(request: Request) {
       );
     }
 
+    // Parse attendees
+    const attendees = (body.attendees as EventAttendee[] | undefined) || [];
+
     // Handle recurring events
     const recurrenceRule = body.recurrenceRule as RecurrenceRule | undefined;
 
@@ -397,6 +404,7 @@ export async function POST(request: Request) {
           recurrenceGroupId,
           // Store recurrenceRule only on the first instance
           recurrenceRule: i === 0 ? recurrenceRule : undefined,
+          attendees: attendees.length > 0 ? attendees : undefined,
         };
 
         const event = await calendarEventRepository.createCalendarEvent(
@@ -411,6 +419,22 @@ export async function POST(request: Request) {
         events.length,
         "recurring event instances",
       );
+
+      // Send invite emails once for the series (not per occurrence)
+      if (attendees.length > 0) {
+        for (const attendee of attendees) {
+          sendEventInviteEmail({
+            attendeeName: attendee.name,
+            attendeeEmail: attendee.email,
+            eventTitle: title,
+            startTime,
+            endTime,
+            tenant,
+          }).catch((err) =>
+            console.warn("[DBG][calendar] Invite email failed:", err),
+          );
+        }
+      }
 
       // Fire-and-forget push each instance to Google/Outlook for sync
       for (const event of events) {
@@ -450,6 +474,7 @@ export async function POST(request: Request) {
       color: body.color,
       notes: body.notes,
       hasVideoConference: body.hasVideoConference,
+      attendees: attendees.length > 0 ? attendees : undefined,
     };
 
     // Determine video call preference
@@ -549,6 +574,22 @@ export async function POST(request: Request) {
     );
 
     console.log("[DBG][calendar] Created event:", event.id);
+
+    // Send invite emails to attendees (fire-and-forget)
+    if (attendees.length > 0) {
+      for (const attendee of attendees) {
+        sendEventInviteEmail({
+          attendeeName: attendee.name,
+          attendeeEmail: attendee.email,
+          eventTitle: title,
+          startTime,
+          endTime,
+          tenant,
+        }).catch((err) =>
+          console.warn("[DBG][calendar] Invite email failed:", err),
+        );
+      }
+    }
 
     // Push to Outlook Calendar for sync (fire-and-forget)
     // Placed before Google Calendar blocks which may return early

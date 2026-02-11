@@ -115,6 +115,8 @@ export async function PUT(request: Request, { params }: RouteParams) {
 
     const tenantId = tenant.id;
     const body = await request.json();
+    const { searchParams } = new URL(request.url);
+    const updateFuture = searchParams.get("updateFuture") === "true";
 
     // Get current event to find its date
     const currentEvent = await calendarEventRepository.getCalendarEventByIdOnly(
@@ -162,6 +164,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     if (body.isAllDay !== undefined) updates.isAllDay = body.isAllDay;
     if (body.color !== undefined) updates.color = body.color;
     if (body.notes !== undefined) updates.notes = body.notes;
+    if (body.attendees !== undefined) updates.attendees = body.attendees;
 
     console.log("[DBG][calendar/events/[eventId]] Updating event:", eventId);
 
@@ -180,6 +183,93 @@ export async function PUT(request: Request, { params }: RouteParams) {
     }
 
     console.log("[DBG][calendar/events/[eventId]] Updated event:", eventId);
+
+    // Handle updating future events in a recurrence group
+    if (
+      updateFuture &&
+      currentEvent.recurrenceGroupId &&
+      body.startTime &&
+      body.endTime
+    ) {
+      console.log(
+        "[DBG][calendar/events/[eventId]] Updating future events in recurrence group:",
+        currentEvent.recurrenceGroupId,
+      );
+
+      // Compute time delta: how much the start time shifted
+      const startDeltaMs =
+        new Date(body.startTime).getTime() -
+        new Date(currentEvent.startTime).getTime();
+      const endDeltaMs =
+        new Date(body.endTime).getTime() -
+        new Date(currentEvent.endTime).getTime();
+
+      // Fetch all events in the recurrence group
+      const groupEvents =
+        await calendarEventRepository.getCalendarEventsByRecurrenceGroup(
+          tenantId,
+          currentEvent.recurrenceGroupId,
+        );
+
+      // Filter to future events (date >= current event's date) excluding the current event
+      const futureEvents = groupEvents.filter(
+        (evt) => evt.date >= currentEvent.date && evt.id !== currentEvent.id,
+      );
+
+      console.log(
+        "[DBG][calendar/events/[eventId]] Found",
+        futureEvents.length,
+        "future events to update",
+      );
+
+      for (const futureEvent of futureEvents) {
+        const shiftedStart = new Date(
+          new Date(futureEvent.startTime).getTime() + startDeltaMs,
+        ).toISOString();
+        const shiftedEnd = new Date(
+          new Date(futureEvent.endTime).getTime() + endDeltaMs,
+        ).toISOString();
+
+        const futureUpdates: Partial<CalendarEvent> = {
+          startTime: shiftedStart,
+          endTime: shiftedEnd,
+        };
+        if (body.title !== undefined) futureUpdates.title = body.title;
+        if (body.description !== undefined)
+          futureUpdates.description = body.description;
+        if (body.location !== undefined) futureUpdates.location = body.location;
+
+        const updatedFutureEvent =
+          await calendarEventRepository.updateCalendarEvent(
+            tenantId,
+            futureEvent.date,
+            futureEvent.id,
+            futureUpdates,
+          );
+
+        // Fire-and-forget sync for each updated future event
+        if (updatedFutureEvent) {
+          pushUpdateToGoogle(tenant, updatedFutureEvent).catch((err) =>
+            console.warn(
+              "[DBG][calendar/events/[eventId]] Google push failed for future event:",
+              err,
+            ),
+          );
+          pushUpdateToOutlook(tenant, updatedFutureEvent).catch((err) =>
+            console.warn(
+              "[DBG][calendar/events/[eventId]] Outlook push failed for future event:",
+              err,
+            ),
+          );
+        }
+      }
+
+      console.log(
+        "[DBG][calendar/events/[eventId]] Updated",
+        futureEvents.length,
+        "future events",
+      );
+    }
 
     // Push update to Google Calendar (fire-and-forget)
     pushUpdateToGoogle(tenant, updatedEvent).catch((err) =>

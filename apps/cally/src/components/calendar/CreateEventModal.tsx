@@ -4,7 +4,13 @@ import { useState, useEffect, useCallback } from "react";
 import Modal, { ModalHeader, ModalFooter } from "@/components/Modal";
 import { PrimaryButton, SecondaryButton } from "@/components/Button";
 import RecurrenceSelector from "@/components/calendar/RecurrenceSelector";
-import type { CreateCalendarEventInput, RecurrenceRule } from "@/types";
+import AttendeeSelector from "@/components/calendar/AttendeeSelector";
+import type {
+  CreateCalendarEventInput,
+  EventAttendee,
+  RecurrenceRule,
+} from "@/types";
+import { formatDateForInput } from "@/lib/dateUtils";
 
 interface CreateEventModalProps {
   isOpen: boolean;
@@ -24,15 +30,6 @@ const EVENT_COLORS = [
   { name: "Orange", value: "#f97316" },
   { name: "Pink", value: "#ec4899" },
 ];
-
-function formatDateForInput(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
-}
 
 function addHours(date: Date, hours: number): Date {
   const result = new Date(date);
@@ -61,6 +58,7 @@ export default function CreateEventModal({
   const [recurrenceRule, setRecurrenceRule] = useState<RecurrenceRule | null>(
     null,
   );
+  const [attendees, setAttendees] = useState<EventAttendee[]>([]);
 
   const isRecurring = recurrenceRule !== null;
 
@@ -99,6 +97,7 @@ export default function CreateEventModal({
       setNotes("");
       setHasVideoConference(false);
       setRecurrenceRule(null);
+      setAttendees([]);
       setError("");
     }
   }, [isOpen, initialDate]);
@@ -152,6 +151,7 @@ export default function CreateEventModal({
         color,
         notes,
         hasVideoConference,
+        attendees: attendees.length > 0 ? attendees : undefined,
       };
 
       // Include recurrence rule in the request body if set
@@ -219,6 +219,12 @@ export default function CreateEventModal({
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary,#6366f1)] focus:border-transparent resize-y"
             />
           </div>
+
+          {/* Attendees */}
+          <AttendeeSelector
+            selectedAttendees={attendees}
+            onChange={setAttendees}
+          />
 
           {/* Date & Time */}
           <div className="grid grid-cols-2 gap-4">

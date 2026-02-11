@@ -84,7 +84,7 @@ function getSignupCtaText(tenant: CallyTenant, visitorEmail: string): string {
 /**
  * Format time for display in email
  */
-function formatTime(
+export function formatTime(
   isoString: string,
   timezone: string,
 ): { dateStr: string; timeStr: string } {

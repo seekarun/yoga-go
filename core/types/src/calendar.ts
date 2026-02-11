@@ -39,6 +39,14 @@ export interface RecurrenceRule {
 }
 
 /**
+ * Event attendee
+ */
+export interface EventAttendee {
+  email: string;
+  name: string;
+}
+
+/**
  * Calendar event status
  */
 export type CalendarEventStatus =
@@ -82,6 +90,8 @@ export interface CalendarEvent extends BaseEntity {
   // Recurrence
   recurrenceGroupId?: string;
   recurrenceRule?: RecurrenceRule;
+  // Attendees
+  attendees?: EventAttendee[];
 }
 
 /**
@@ -119,6 +129,8 @@ export interface CreateCalendarEventInput {
   // Recurrence
   recurrenceGroupId?: string;
   recurrenceRule?: RecurrenceRule;
+  // Attendees
+  attendees?: EventAttendee[];
 }
 
 /**
@@ -147,5 +159,7 @@ export interface CalendarItem {
     source?: string;
     // Recurrence
     recurrenceGroupId?: string;
+    // Attendees
+    attendees?: EventAttendee[];
   };
 }
