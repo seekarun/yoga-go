@@ -1,5 +1,5 @@
 /**
- * Survey Repository for Cally - DynamoDB Operations
+ * Survey Repository for CallyGo - DynamoDB Operations
  *
  * Storage patterns:
  * - Surveys:   PK="TENANT#{tenantId}", SK="SURVEY#{timestamp}#{surveyId}"

@@ -1076,7 +1076,7 @@ export default function PreferencesPage() {
           Choose the video conferencing provider for new events.
         </p>
         <div className="space-y-3">
-          {/* Cally Video option */}
+          {/* CallyGo Video option */}
           <button
             type="button"
             onClick={() => handleVideoCallPreferenceChange("cally")}
@@ -1101,10 +1101,10 @@ export default function PreferencesPage() {
               </div>
               <div>
                 <p className="font-medium text-[var(--text-main)]">
-                  Cally Video
+                  CallyGo Video
                 </p>
                 <p className="text-sm text-[var(--text-muted)]">
-                  Built-in video conferencing powered by Cally
+                  Built-in video conferencing powered by CallyGo
                 </p>
               </div>
             </div>

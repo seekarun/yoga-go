@@ -1,5 +1,5 @@
 /**
- * Email Repository - DynamoDB Operations for Cally
+ * Email Repository - DynamoDB Operations for CallyGo
  *
  * Stores emails in yoga-go-emails table (shared with yoga) for SES Lambda compatibility:
  * - PK: "INBOX#{tenantId}" (matches expertId pattern in yoga)

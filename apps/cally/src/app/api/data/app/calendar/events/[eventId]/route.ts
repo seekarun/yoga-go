@@ -1,5 +1,5 @@
 /**
- * Calendar Event CRUD Route for Cally
+ * Calendar Event CRUD Route for CallyGo
  * GET /api/data/app/calendar/events/[eventId] - Get single event
  * PUT /api/data/app/calendar/events/[eventId] - Update event
  * DELETE /api/data/app/calendar/events/[eventId] - Delete event

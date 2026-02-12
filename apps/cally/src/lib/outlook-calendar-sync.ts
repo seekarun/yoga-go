@@ -2,7 +2,7 @@
  * Outlook Calendar sync helpers
  *
  * Fire-and-forget push sync: creates/updates/deletes Outlook Calendar events
- * when Cally events change. Failures are logged but don't break the request.
+ * when CallyGo events change. Failures are logged but don't break the request.
  */
 
 import type { CalendarEvent } from "@/types";
@@ -17,8 +17,8 @@ import { updateTenant } from "@/lib/repositories/tenantRepository";
 import * as calendarEventRepository from "@/lib/repositories/calendarEventRepository";
 
 /**
- * Push a newly created Cally event to Outlook Calendar.
- * Updates the Cally event with the Outlook Calendar event ID.
+ * Push a newly created CallyGo event to Outlook Calendar.
+ * Updates the CallyGo event with the Outlook Calendar event ID.
  * Returns the Outlook event ID if successful, null otherwise.
  */
 export async function pushCreateToOutlook(
@@ -42,7 +42,7 @@ export async function pushCreateToOutlook(
 
     const outlookEventId = await createOutlookEvent(updatedConfig, event);
 
-    // Store the Outlook event ID on the Cally event
+    // Store the Outlook event ID on the CallyGo event
     await calendarEventRepository.updateCalendarEvent(
       tenant.id,
       event.date,
@@ -65,7 +65,7 @@ export async function pushCreateToOutlook(
 }
 
 /**
- * Push an updated Cally event to Outlook Calendar
+ * Push an updated CallyGo event to Outlook Calendar
  */
 export async function pushUpdateToOutlook(
   tenant: CallyTenant,

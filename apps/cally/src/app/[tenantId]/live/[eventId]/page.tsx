@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Public Live Meeting Page for Cally
+ * Public Live Meeting Page for CallyGo
  * Route: /{tenantId}/live/{eventId}
  *
  * Public page accessible without authentication.

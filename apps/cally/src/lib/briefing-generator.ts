@@ -1,5 +1,5 @@
 /**
- * Briefing Generator for Cally
+ * Briefing Generator for CallyGo
  * Generates morning briefing content from calendar events and emails
  */
 

@@ -1,5 +1,5 @@
 /**
- * Transcript Route for Cally
+ * Transcript Route for CallyGo
  * GET /api/data/app/calendar/events/[eventId]/transcript - Get transcript
  * POST /api/data/app/calendar/events/[eventId]/transcript - Queue for processing
  */

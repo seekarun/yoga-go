@@ -1,6 +1,6 @@
 /**
  * NextAuth v5 Configuration with AWS Cognito
- * Cally uses its own Cognito User Pool with Google OAuth
+ * CallyGo uses its own Cognito User Pool with Google OAuth
  */
 import NextAuth from "next-auth";
 import Cognito from "next-auth/providers/cognito";

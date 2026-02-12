@@ -1,5 +1,5 @@
 /**
- * Tenant Repository for Cally - DynamoDB Operations
+ * Tenant Repository for CallyGo - DynamoDB Operations
  *
  * Storage pattern:
  * - Primary: PK="TENANT#{tenantId}", SK="META"
@@ -31,9 +31,10 @@ import type { GoogleCalendarConfig } from "@/types/google-calendar";
 import type { ZoomConfig } from "@/types/zoom";
 import type { OutlookCalendarConfig } from "@/types/outlook-calendar";
 import type { StripeConfig } from "@/types/stripe";
+import type { SubscriptionConfig } from "@/types/subscription";
 
 /**
- * Cally Tenant Entity
+ * CallyGo Tenant Entity
  * Simplified tenant for landing pages and calendar
  */
 export interface CallyTenant {
@@ -54,6 +55,7 @@ export interface CallyTenant {
   zoomConfig?: ZoomConfig;
   outlookCalendarConfig?: OutlookCalendarConfig;
   stripeConfig?: StripeConfig;
+  subscriptionConfig?: SubscriptionConfig;
   videoCallPreference?: "cally" | "google_meet" | "zoom";
   emailDisplayName?: string;
   timezone?: string;
@@ -469,6 +471,18 @@ export async function clearDomainAndEmailConfig(
     // Intentionally omit domainConfig and emailConfig
     aiAssistantConfig: tenant.aiAssistantConfig,
     phoneConfig: tenant.phoneConfig,
+    bookingConfig: tenant.bookingConfig,
+    googleCalendarConfig: tenant.googleCalendarConfig,
+    zoomConfig: tenant.zoomConfig,
+    outlookCalendarConfig: tenant.outlookCalendarConfig,
+    stripeConfig: tenant.stripeConfig,
+    subscriptionConfig: tenant.subscriptionConfig,
+    videoCallPreference: tenant.videoCallPreference,
+    emailDisplayName: tenant.emailDisplayName,
+    timezone: tenant.timezone,
+    defaultEventDuration: tenant.defaultEventDuration,
+    currency: tenant.currency,
+    address: tenant.address,
     createdAt: tenant.createdAt,
     updatedAt: now,
   };
@@ -634,6 +648,47 @@ export async function removeStripeConfig(
   );
 
   console.log("[DBG][tenantRepository] Removed Stripe config for:", tenantId);
+  return toTenant(result.Attributes as DynamoDBTenantItem);
+}
+
+// ===================================================================
+// SUBSCRIPTION OPERATIONS
+// ===================================================================
+
+/**
+ * Remove subscription config from tenant (uses DynamoDB REMOVE)
+ */
+export async function removeSubscriptionConfig(
+  tenantId: string,
+): Promise<CallyTenant> {
+  console.log(
+    "[DBG][tenantRepository] Removing subscription config:",
+    tenantId,
+  );
+
+  const result = await docClient.send(
+    new UpdateCommand({
+      TableName: Tables.CORE,
+      Key: {
+        PK: TenantPK.TENANT(tenantId),
+        SK: TenantPK.META,
+      },
+      UpdateExpression: "REMOVE #subConfig SET #updatedAt = :updatedAt",
+      ExpressionAttributeNames: {
+        "#subConfig": "subscriptionConfig",
+        "#updatedAt": "updatedAt",
+      },
+      ExpressionAttributeValues: {
+        ":updatedAt": new Date().toISOString(),
+      },
+      ReturnValues: "ALL_NEW",
+    }),
+  );
+
+  console.log(
+    "[DBG][tenantRepository] Removed subscription config for:",
+    tenantId,
+  );
   return toTenant(result.Attributes as DynamoDBTenantItem);
 }
 

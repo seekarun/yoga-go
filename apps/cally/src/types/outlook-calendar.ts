@@ -9,6 +9,6 @@ export interface OutlookCalendarConfig {
   email: string; // Microsoft account email
   calendarId: string; // "primary" or specific calendar ID
   blockBookingSlots: boolean; // default true
-  pushEvents: boolean; // default true — push Cally events to Outlook Calendar
+  pushEvents: boolean; // default true — push CallyGo events to Outlook Calendar
   connectedAt: string; // ISO 8601
 }

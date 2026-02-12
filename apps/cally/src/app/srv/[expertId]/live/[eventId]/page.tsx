@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Live Meeting Page for Cally
+ * Live Meeting Page for CallyGo
  *
  * Displays 100ms video room for calendar events with video conferencing
  * Fetches auth token and renders HmsVideoRoom component

@@ -1,5 +1,5 @@
 /**
- * Transcript Upload Route for Cally
+ * Transcript Upload Route for CallyGo
  * POST /api/data/app/calendar/events/[eventId]/transcript/upload
  *
  * Generates a presigned S3 PUT URL for uploading audio,

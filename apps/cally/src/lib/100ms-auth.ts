@@ -1,5 +1,5 @@
 /**
- * 100ms Authentication for Cally
+ * 100ms Authentication for CallyGo
  *
  * Handles JWT token generation for 100ms video conferencing
  * Uses app-level API credentials from environment variables

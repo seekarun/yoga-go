@@ -1,5 +1,5 @@
 /**
- * Environment-based configuration for Cally
+ * Environment-based configuration for CallyGo
  */
 
 // Local development port

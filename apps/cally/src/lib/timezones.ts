@@ -1,5 +1,5 @@
 /**
- * Shared timezone utilities for Cally
+ * Shared timezone utilities for CallyGo
  * Single source of truth for supported IANA timezones
  */
 

@@ -303,7 +303,7 @@ export default function CallySidebar({ expertId }: CallySidebarProps) {
       <div className="h-16 flex items-center justify-between px-4 border-b border-[var(--color-border)]">
         {!collapsed && (
           <span className="text-xl font-bold text-[var(--color-primary)]">
-            Cally
+            CallyGo
           </span>
         )}
         <button

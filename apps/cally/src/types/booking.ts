@@ -1,5 +1,5 @@
 /**
- * Booking Types for Cally
+ * Booking Types for CallyGo
  * Configuration, time slots, and API request/response types
  */
 

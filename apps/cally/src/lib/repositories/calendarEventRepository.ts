@@ -1,5 +1,5 @@
 /**
- * Calendar Event Repository for Cally - DynamoDB Operations
+ * Calendar Event Repository for CallyGo - DynamoDB Operations
  *
  * Tenant-partitioned design:
  * - PK: "TENANT#{tenantId}"
@@ -7,7 +7,7 @@
  *
  * Date format YYYY-MM-DD enables efficient range queries with begins_with
  *
- * Note: Cally only supports "general" events (no webinars/live sessions)
+ * Note: CallyGo only supports "general" events (no webinars/live sessions)
  */
 
 import {
@@ -404,7 +404,7 @@ export async function createCalendarEvent(
     startTime: input.startTime,
     endTime: input.endTime,
     duration,
-    type: "general", // Cally only supports general events
+    type: "general", // CallyGo only supports general events
     status: input.status ?? ("scheduled" as CalendarEventStatus),
     location: input.location,
     isAllDay: input.isAllDay,
@@ -497,7 +497,7 @@ export async function updateCalendarEvent(
         description: updates.description ?? currentEvent.description,
         startTime: updates.startTime,
         endTime: updates.endTime ?? currentEvent.endTime,
-        type: "general", // Cally only supports general events
+        type: "general", // CallyGo only supports general events
         location: updates.location ?? currentEvent.location,
         isAllDay: updates.isAllDay ?? currentEvent.isAllDay,
         color: updates.color ?? currentEvent.color,

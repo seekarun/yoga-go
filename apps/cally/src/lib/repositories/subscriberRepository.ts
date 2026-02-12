@@ -1,5 +1,5 @@
 /**
- * Subscriber Repository for Cally - DynamoDB Operations
+ * Subscriber Repository for CallyGo - DynamoDB Operations
  *
  * Storage pattern:
  * - PK="TENANT#{tenantId}", SK="SUBSCRIBER#EMAIL#{normalizedEmail}"

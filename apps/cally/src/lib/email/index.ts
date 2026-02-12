@@ -1,5 +1,5 @@
 /**
- * Cally Email Client
+ * CallyGo Email Client
  * Uses the core email module backed by AWS SES
  */
 import { createEmailClient } from "@core/lib";

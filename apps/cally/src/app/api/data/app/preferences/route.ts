@@ -1,5 +1,5 @@
 /**
- * Preferences API Route for Cally
+ * Preferences API Route for CallyGo
  * GET  /api/data/app/preferences - Get tenant preferences (timezone)
  * PUT  /api/data/app/preferences - Update tenant preferences (timezone)
  */

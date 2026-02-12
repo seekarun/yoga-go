@@ -1,5 +1,5 @@
 /**
- * Phone Calling Types for Cally
+ * Phone Calling Types for CallyGo
  * Types for AI phone calling, morning briefings, and Twilio integration
  */
 

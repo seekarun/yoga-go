@@ -1,5 +1,5 @@
 /**
- * 100ms Meeting/Room Management for Cally
+ * 100ms Meeting/Room Management for CallyGo
  *
  * Handles room creation and management via 100ms API
  * Simplified version for calendar events with video conferencing

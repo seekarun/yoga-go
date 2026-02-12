@@ -1,5 +1,5 @@
 /**
- * Feedback Repository for Cally - DynamoDB Operations
+ * Feedback Repository for CallyGo - DynamoDB Operations
  *
  * Storage pattern:
  * - PK="TENANT#{tenantId}", SK="FEEDBACK#{timestamp}#{feedbackId}"

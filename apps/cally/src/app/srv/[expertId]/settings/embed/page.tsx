@@ -101,7 +101,7 @@ function generateReactSnippet(
   mode: EmbedMode,
   base: string,
 ): string {
-  const componentName = `Cally${widget.charAt(0).toUpperCase() + widget.slice(1)}`;
+  const componentName = `CallyGo${widget.charAt(0).toUpperCase() + widget.slice(1)}`;
 
   if (mode === "inline") {
     return `import { useEffect } from "react";

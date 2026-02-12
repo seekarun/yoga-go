@@ -2,7 +2,7 @@
  * Google Calendar sync helpers
  *
  * Fire-and-forget push sync: creates/updates/deletes Google Calendar events
- * when Cally events change. Failures are logged but don't break the request.
+ * when CallyGo events change. Failures are logged but don't break the request.
  */
 
 import type { CalendarEvent } from "@/types";
@@ -18,8 +18,8 @@ import { updateTenant } from "@/lib/repositories/tenantRepository";
 import * as calendarEventRepository from "@/lib/repositories/calendarEventRepository";
 
 /**
- * Push a newly created Cally event to Google Calendar.
- * Updates the Cally event with the Google Calendar event ID.
+ * Push a newly created CallyGo event to Google Calendar.
+ * Updates the CallyGo event with the Google Calendar event ID.
  * Returns the Google event ID if successful, null otherwise.
  */
 export async function pushCreateToGoogle(
@@ -63,7 +63,7 @@ export async function pushCreateToGoogle(
       meetLink,
     );
 
-    // Store the Google event ID (and Meet link if generated) on the Cally event
+    // Store the Google event ID (and Meet link if generated) on the CallyGo event
     // Don't overwrite meetingLink if the event already has one (e.g. from Zoom)
     const eventUpdates: Partial<CalendarEvent> = {
       googleCalendarEventId: googleEventId,
@@ -95,7 +95,7 @@ export async function pushCreateToGoogle(
 }
 
 /**
- * Push an updated Cally event to Google Calendar
+ * Push an updated CallyGo event to Google Calendar
  */
 export async function pushUpdateToGoogle(
   tenant: CallyTenant,
@@ -174,10 +174,10 @@ export async function pushDeleteToGoogle(
 }
 
 /**
- * Generate a Google Meet link for a Cally event.
+ * Generate a Google Meet link for a CallyGo event.
  * If the event already exists in Google Calendar, patches it to add Meet.
  * If not, creates a Google Calendar event with Meet.
- * Stores the meetingLink back on the Cally event.
+ * Stores the meetingLink back on the CallyGo event.
  * Returns the Meet link if successful, null otherwise.
  */
 export async function generateMeetLinkForEvent(
@@ -227,7 +227,7 @@ export async function generateMeetLinkForEvent(
     }
 
     if (meetLink) {
-      // Store the Meet link on the Cally event
+      // Store the Meet link on the CallyGo event
       await calendarEventRepository.updateCalendarEvent(
         tenant.id,
         event.date,

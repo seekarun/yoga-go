@@ -204,7 +204,7 @@ export default function FooterSection({
 
         {/* Powered By */}
         {footer.showPoweredBy !== false && (
-          <div style={poweredByStyle}>Powered by Cally</div>
+          <div style={poweredByStyle}>Powered by CallyGo</div>
         )}
       </div>
     </footer>

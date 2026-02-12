@@ -1,11 +1,11 @@
 /**
- * Cally Vertical Configuration
- * Cally is a simplified app for landing pages, calendars, and live sessions
+ * CallyGo Vertical Configuration
+ * CallyGo is a simplified app for landing pages, calendars, and live sessions
  */
 
 export const verticalConfig = {
-  name: "Cally",
-  appName: "Cally",
+  name: "CallyGo",
+  appName: "CallyGo",
   tagline: "Your scheduling and landing page platform",
   terminology: {
     expert: "Creator",

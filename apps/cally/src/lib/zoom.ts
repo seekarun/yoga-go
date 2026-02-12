@@ -1,5 +1,5 @@
 /**
- * Zoom API client for Cally
+ * Zoom API client for CallyGo
  *
  * Provides functions to interact with Zoom:
  * - OAuth token management (exchange, refresh, revoke)

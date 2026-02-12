@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
         "[DBG][twilio-voice] No audio or text provided, using fallback",
       );
       twiml = generateSpeechTwiml(
-        "Hello, this is a test call from Cally. Goodbye!",
+        "Hello, this is a test call from CallyGo. Goodbye!",
       );
     }
 

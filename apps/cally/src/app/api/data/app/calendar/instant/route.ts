@@ -1,5 +1,5 @@
 /**
- * Instant Meeting API Route for Cally
+ * Instant Meeting API Route for CallyGo
  * POST /api/data/app/calendar/instant - Create an instant meeting
  *
  * Creates a calendar event with a 100ms video conference room that starts immediately

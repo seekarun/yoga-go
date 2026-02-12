@@ -1,5 +1,5 @@
 /**
- * AI Assistant Types for Cally
+ * AI Assistant Types for CallyGo
  * Types for chat widget and AI configuration
  */
 

@@ -235,6 +235,17 @@ export default function IntegrationsPage() {
         </h2>
         <div className="space-y-2">
           <Link
+            href={`/srv/${expertId}/settings/subscription`}
+            className="block p-4 bg-white rounded-lg border border-[var(--color-border)] hover:border-[var(--color-primary)] transition-colors"
+          >
+            <h3 className="font-medium text-[var(--text-main)]">
+              Subscription & Billing
+            </h3>
+            <p className="text-sm text-[var(--text-muted)]">
+              Manage your plan, billing, and payment method
+            </p>
+          </Link>
+          <Link
             href={`/srv/${expertId}/settings/domain`}
             className="block p-4 bg-white rounded-lg border border-[var(--color-border)] hover:border-[var(--color-primary)] transition-colors"
           >

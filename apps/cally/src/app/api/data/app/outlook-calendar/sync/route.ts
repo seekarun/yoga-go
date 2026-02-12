@@ -1,6 +1,6 @@
 /**
  * POST /api/data/app/outlook-calendar/sync
- * One-time bulk push of existing Cally events to Outlook Calendar.
+ * One-time bulk push of existing CallyGo events to Outlook Calendar.
  * Skips events that already have an outlookCalendarEventId.
  */
 
@@ -50,7 +50,7 @@ export async function POST() {
       });
     }
 
-    // Get all Cally events
+    // Get all CallyGo events
     const allEvents = await calendarEventRepository.getTenantCalendarEvents(
       tenant.id,
     );
@@ -75,7 +75,7 @@ export async function POST() {
       try {
         const outlookEventId = await createOutlookEvent(updatedConfig, event);
 
-        // Store the Outlook event ID on the Cally event
+        // Store the Outlook event ID on the CallyGo event
         await calendarEventRepository.updateCalendarEvent(
           tenant.id,
           event.date,

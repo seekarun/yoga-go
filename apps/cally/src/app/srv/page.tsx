@@ -48,7 +48,7 @@ export default function SrvPage() {
       <div className="max-w-md w-full mx-4">
         <div className="bg-white rounded-lg shadow-lg p-8">
           <h1 className="text-2xl font-bold text-[var(--text-main)] mb-4">
-            Welcome to Cally
+            Welcome to CallyGo
           </h1>
           <p className="text-[var(--text-body)] mb-6">
             Set up your profile to start creating landing pages and managing

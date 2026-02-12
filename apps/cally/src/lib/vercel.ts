@@ -1,5 +1,5 @@
 /**
- * Vercel API Integration for Cally
+ * Vercel API Integration for CallyGo
  *
  * Manages custom domains via Vercel's REST API.
  * Requires VERCEL_TOKEN and VERCEL_PROJECT_ID environment variables.

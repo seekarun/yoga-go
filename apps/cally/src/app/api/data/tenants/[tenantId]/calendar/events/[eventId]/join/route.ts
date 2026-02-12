@@ -1,5 +1,5 @@
 /**
- * Public Meeting Join API Route for Cally
+ * Public Meeting Join API Route for CallyGo
  * POST /api/data/tenants/[tenantId]/calendar/events/[eventId]/join
  *
  * Public endpoint - no auth required (middleware allows /api/data/tenants/*)

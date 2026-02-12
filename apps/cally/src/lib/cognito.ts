@@ -1,5 +1,5 @@
 /**
- * AWS Cognito Configuration for Cally
+ * AWS Cognito Configuration for CallyGo
  */
 
 export const cognitoConfig = {

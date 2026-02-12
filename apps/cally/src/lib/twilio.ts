@@ -1,5 +1,5 @@
 /**
- * Twilio Integration for Cally
+ * Twilio Integration for CallyGo
  * Handles phone verification and voice calls
  */
 

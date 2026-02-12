@@ -1,5 +1,5 @@
 /**
- * Contact Repository for Cally - DynamoDB Operations
+ * Contact Repository for CallyGo - DynamoDB Operations
  *
  * Storage pattern:
  * - PK="TENANT#{tenantId}", SK="CONTACT#{timestamp}#{contactId}"

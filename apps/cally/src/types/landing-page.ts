@@ -1,7 +1,7 @@
 /**
- * Cally Landing Page Types
+ * CallyGo Landing Page Types
  *
- * Simplified landing page configuration for Cally.
+ * Simplified landing page configuration for CallyGo.
  * Uses template-based approach with minimal customization:
  * - 5 hero-style templates
  * - Just title, subtitle, and background image

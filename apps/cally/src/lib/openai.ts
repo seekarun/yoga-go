@@ -1,5 +1,5 @@
 /**
- * OpenAI Integration for Cally AI Assistant
+ * OpenAI Integration for CallyGo AI Assistant
  */
 
 import type { ChatMessage, BusinessInfo } from "@/types/ai-assistant";

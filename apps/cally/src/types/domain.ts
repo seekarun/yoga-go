@@ -1,5 +1,5 @@
 /**
- * Domain and Email Configuration Types for Cally BYOD
+ * Domain and Email Configuration Types for CallyGo BYOD
  */
 
 /**

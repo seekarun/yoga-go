@@ -1,5 +1,5 @@
 /**
- * Product Types for Cally
+ * Product Types for CallyGo
  * Products/services that tenants offer in their catalog
  */
 

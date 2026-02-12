@@ -1,5 +1,5 @@
 /**
- * Transcript Types for Cally
+ * Transcript Types for CallyGo
  *
  * Used for meeting transcription via OpenAI Whisper and 100ms post-call transcription
  */

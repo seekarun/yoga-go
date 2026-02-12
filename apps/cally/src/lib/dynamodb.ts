@@ -1,5 +1,5 @@
 /**
- * DynamoDB Client Configuration for Cally
+ * DynamoDB Client Configuration for CallyGo
  *
  * Single-table design using 'cally-main' table:
  *

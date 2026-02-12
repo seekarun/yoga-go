@@ -2446,6 +2446,98 @@
           }
         }
       ]
+    },
+    {
+      "name": "Subscription",
+      "item": [
+        {
+          "name": "Checkout Redirect",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/subscription/checkout-redirect?tier=professional",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "app",
+                "subscription",
+                "checkout-redirect"
+              ],
+              "query": [
+                {
+                  "key": "tier",
+                  "value": "professional",
+                  "description": "Subscription tier: starter, professional, or business"
+                }
+              ]
+            },
+            "description": "Authenticated. Creates Stripe Customer + Checkout Session and redirects (302) to Stripe Checkout. If already subscribed, redirects to settings."
+          }
+        },
+        {
+          "name": "Success Callback",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/subscription/success?session_id=cs_test_xxx",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "subscription", "success"],
+              "query": [
+                {
+                  "key": "session_id",
+                  "value": "cs_test_xxx",
+                  "description": "Stripe Checkout session ID"
+                }
+              ]
+            },
+            "description": "Authenticated. Callback from Stripe Checkout. Saves subscription config and redirects to settings page."
+          }
+        },
+        {
+          "name": "Get Status",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/subscription/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "subscription", "status"]
+            },
+            "description": "Authenticated. Returns tenant subscription config or { hasSubscription: false }."
+          }
+        },
+        {
+          "name": "Customer Portal",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/subscription/portal",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "subscription", "portal"]
+            },
+            "description": "Authenticated. Creates Stripe Customer Portal session and returns portalUrl for billing management."
+          }
+        },
+        {
+          "name": "Subscription Webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "stripe-signature",
+                "value": "{{stripeSignature}}",
+                "description": "Stripe webhook signature"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/stripe/subscription-webhook",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stripe", "subscription-webhook"]
+            },
+            "description": "Public Stripe webhook for subscription lifecycle events. Handles customer.subscription.created/updated/deleted, trial_will_end, and invoice.payment_failed."
+          }
+        }
+      ]
     }
   ]
 }

@@ -1,5 +1,5 @@
 /**
- * Stripe Connect Types for Cally
+ * Stripe Connect Types for CallyGo
  */
 
 export interface StripeConfig {

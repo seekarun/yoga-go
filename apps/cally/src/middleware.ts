@@ -40,7 +40,7 @@ function hasSessionCookie(request: NextRequest): boolean {
 }
 
 /**
- * Middleware for Cally app
+ * Middleware for CallyGo app
  * 1. Custom domain rewriting: mymusic.guru/signup → /{tenantId}/signup
  * 2. Authentication for protected routes
  */

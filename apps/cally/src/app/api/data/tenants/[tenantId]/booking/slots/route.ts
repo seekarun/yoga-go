@@ -143,7 +143,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           "[DBG][booking/slots] Failed to fetch Google Calendar events:",
           error,
         );
-        // Proceed with Cally events only
+        // Proceed with CallyGo events only
       }
     }
 

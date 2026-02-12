@@ -1,5 +1,5 @@
 /**
- * Google Calendar API client for Cally
+ * Google Calendar API client for CallyGo
  *
  * Provides functions to interact with Google Calendar:
  * - OAuth token management (refresh)
@@ -177,7 +177,7 @@ export async function revokeGoogleToken(accessToken: string): Promise<void> {
 }
 
 /**
- * Convert a Cally CalendarEvent to a Google Calendar event resource
+ * Convert a CallyGo CalendarEvent to a Google Calendar event resource
  */
 function toGoogleEventResource(
   event: Pick<

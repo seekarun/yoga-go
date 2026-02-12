@@ -1,5 +1,5 @@
 /**
- * Product Repository for Cally - DynamoDB Operations
+ * Product Repository for CallyGo - DynamoDB Operations
  *
  * Storage pattern:
  * - PK="TENANT#{tenantId}", SK="PRODUCT#{productId}"

@@ -1,5 +1,5 @@
 /**
- * Meeting Join API Route for Cally
+ * Meeting Join API Route for CallyGo
  * POST /api/data/app/calendar/events/[eventId]/join
  * Generates auth token for user to join 100ms video conference
  */

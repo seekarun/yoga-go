@@ -1,6 +1,6 @@
 /**
  * POST /api/data/app/google-calendar/sync
- * One-time bulk push of existing Cally events to Google Calendar.
+ * One-time bulk push of existing CallyGo events to Google Calendar.
  * Skips events that already have a googleCalendarEventId.
  */
 
@@ -53,7 +53,7 @@ export async function POST() {
       });
     }
 
-    // Get all Cally events
+    // Get all CallyGo events
     const allEvents = await calendarEventRepository.getTenantCalendarEvents(
       tenant.id,
     );
@@ -85,7 +85,7 @@ export async function POST() {
           { withMeetLink },
         );
 
-        // Store the Google event ID (and Meet link if generated) on the Cally event
+        // Store the Google event ID (and Meet link if generated) on the CallyGo event
         await calendarEventRepository.updateCalendarEvent(
           tenant.id,
           event.date,

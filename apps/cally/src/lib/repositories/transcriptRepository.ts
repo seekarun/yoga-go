@@ -1,5 +1,5 @@
 /**
- * Transcript Repository for Cally - DynamoDB Operations
+ * Transcript Repository for CallyGo - DynamoDB Operations
  *
  * Tenant-partitioned design:
  * - PK: "TENANT#{tenantId}"

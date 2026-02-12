@@ -1,8 +1,9 @@
 /**
- * Stripe Client Library for Cally
- * Handles Stripe Connect operations: account creation, onboarding, checkout sessions, webhooks
+ * Stripe Client Library for CallyGo
+ * Handles Stripe Connect operations and platform subscription billing
  */
 import Stripe from "stripe";
+import type { SubscriptionTier } from "@/types/subscription";
 
 let stripeInstance: Stripe | null = null;
 
@@ -207,4 +208,145 @@ export async function createPartialRefund(
     payment_intent: paymentIntentId,
     amount: amountCents,
   });
+}
+
+// ===================================================================
+// SUBSCRIPTION BILLING (platform subscriptions, not Connect)
+// ===================================================================
+
+/**
+ * Get Stripe Price ID for a subscription tier from env vars
+ */
+export function getStripePriceId(tier: SubscriptionTier): string {
+  const priceMap: Record<SubscriptionTier, string | undefined> = {
+    starter: process.env.STRIPE_PRICE_STARTER,
+    professional: process.env.STRIPE_PRICE_PROFESSIONAL,
+    business: process.env.STRIPE_PRICE_BUSINESS,
+  };
+  const priceId = priceMap[tier];
+  if (!priceId) {
+    throw new Error(
+      `STRIPE_PRICE_${tier.toUpperCase()} environment variable is not set`,
+    );
+  }
+  return priceId;
+}
+
+/**
+ * Get trial period days for a subscription tier
+ */
+export function getTrialDays(tier: SubscriptionTier): number {
+  return tier === "starter" ? 180 : 30;
+}
+
+/**
+ * Get or create a Stripe Customer for a tenant
+ */
+export async function getOrCreateCustomer(params: {
+  tenantId: string;
+  email: string;
+  name: string;
+  existingCustomerId?: string;
+}): Promise<Stripe.Customer> {
+  const stripe = getStripeClient();
+
+  if (params.existingCustomerId) {
+    console.log(
+      "[DBG][stripe] Retrieving existing customer:",
+      params.existingCustomerId,
+    );
+    return stripe.customers.retrieve(
+      params.existingCustomerId,
+    ) as Promise<Stripe.Customer>;
+  }
+
+  console.log(
+    "[DBG][stripe] Creating new customer for tenant:",
+    params.tenantId,
+  );
+  return stripe.customers.create({
+    email: params.email,
+    name: params.name,
+    metadata: { tenantId: params.tenantId },
+  });
+}
+
+/**
+ * Create a Stripe Checkout Session for subscription billing
+ */
+export async function createSubscriptionCheckout(params: {
+  customerId: string;
+  priceId: string;
+  trialDays: number;
+  tenantId: string;
+  tier: SubscriptionTier;
+  successUrl: string;
+  cancelUrl: string;
+}): Promise<Stripe.Checkout.Session> {
+  console.log(
+    "[DBG][stripe] Creating subscription checkout for tier:",
+    params.tier,
+  );
+  const stripe = getStripeClient();
+
+  return stripe.checkout.sessions.create({
+    mode: "subscription",
+    customer: params.customerId,
+    line_items: [{ price: params.priceId, quantity: 1 }],
+    subscription_data: {
+      trial_period_days: params.trialDays,
+      metadata: { tenantId: params.tenantId, tier: params.tier },
+    },
+    metadata: { tenantId: params.tenantId, tier: params.tier },
+    success_url: params.successUrl,
+    cancel_url: params.cancelUrl,
+  });
+}
+
+/**
+ * Create a Stripe Customer Portal session for billing management
+ */
+export async function createCustomerPortalSession(params: {
+  customerId: string;
+  returnUrl: string;
+}): Promise<Stripe.BillingPortal.Session> {
+  console.log(
+    "[DBG][stripe] Creating customer portal session for:",
+    params.customerId,
+  );
+  const stripe = getStripeClient();
+
+  return stripe.billingPortal.sessions.create({
+    customer: params.customerId,
+    return_url: params.returnUrl,
+  });
+}
+
+/**
+ * Retrieve a Stripe Subscription by ID
+ */
+export async function getSubscription(
+  subscriptionId: string,
+): Promise<Stripe.Subscription> {
+  console.log("[DBG][stripe] Retrieving subscription:", subscriptionId);
+  const stripe = getStripeClient();
+  return stripe.subscriptions.retrieve(subscriptionId);
+}
+
+/**
+ * Construct and verify a Stripe webhook event for subscription events
+ * Uses a separate webhook secret from the Connect/booking webhook
+ */
+export function constructSubscriptionWebhookEvent(
+  body: string,
+  signature: string,
+): Stripe.Event {
+  const stripe = getStripeClient();
+  const secret = process.env.STRIPE_SUBSCRIPTION_WEBHOOK_SECRET;
+  if (!secret) {
+    throw new Error(
+      "STRIPE_SUBSCRIPTION_WEBHOOK_SECRET environment variable is not set",
+    );
+  }
+  return stripe.webhooks.constructEvent(body, signature, secret);
 }

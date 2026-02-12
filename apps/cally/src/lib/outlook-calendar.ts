@@ -1,5 +1,5 @@
 /**
- * Outlook Calendar API client for Cally
+ * Outlook Calendar API client for CallyGo
  *
  * Provides functions to interact with Microsoft Graph Calendar API:
  * - OAuth token management (exchange, refresh)
@@ -185,7 +185,7 @@ export async function getOutlookClient(
 }
 
 /**
- * Convert a Cally CalendarEvent to an Outlook event body
+ * Convert a CallyGo CalendarEvent to an Outlook event body
  */
 function toOutlookEventBody(
   event: Pick<

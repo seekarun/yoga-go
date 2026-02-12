@@ -1,5 +1,5 @@
 /**
- * OpenAI Whisper Integration for Cally
+ * OpenAI Whisper Integration for CallyGo
  * Uses OpenAI's Whisper API to transcribe audio files
  */
 

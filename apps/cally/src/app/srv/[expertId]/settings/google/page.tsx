@@ -288,8 +288,8 @@ function DisconnectedState({ onConnect }: { onConnect: () => void }) {
         Connect your Google Calendar to:
       </p>
       <ul className="text-[var(--text-muted)] text-sm mb-6 space-y-1">
-        <li>Automatically sync Cally events to your Google Calendar</li>
-        <li>See your Google Calendar events alongside Cally events</li>
+        <li>Automatically sync CallyGo events to your Google Calendar</li>
+        <li>See your Google Calendar events alongside CallyGo events</li>
         <li>Block booking slots when you&apos;re busy on Google Calendar</li>
       </ul>
       <button
@@ -418,12 +418,12 @@ function ConnectedState({
         <label className="flex items-center justify-between cursor-pointer">
           <div>
             <p className="font-medium text-[var(--text-main)]">
-              Push Cally events to Google Calendar
+              Push CallyGo events to Google Calendar
             </p>
             <p className="text-sm text-[var(--text-muted)]">
-              When enabled, events created in Cally are automatically pushed to
-              your Google Calendar. When disabled, Cally only reads events from
-              Google Calendar.
+              When enabled, events created in CallyGo are automatically pushed
+              to your Google Calendar. When disabled, CallyGo only reads events
+              from Google Calendar.
             </p>
           </div>
           <div className="ml-4 relative">
@@ -445,9 +445,9 @@ function ConnectedState({
           Sync Existing Events
         </h3>
         <p className="text-sm text-[var(--text-muted)] mb-4">
-          Push all existing Cally events to Google Calendar. Events already
+          Push all existing CallyGo events to Google Calendar. Events already
           synced will be skipped. Google Calendar events already appear
-          automatically in Cally.
+          automatically in CallyGo.
         </p>
         <button
           onClick={onSync}

@@ -307,7 +307,7 @@ ${hasRefund ? `Refund: ${isFullRefund ? "Full" : "Partial"} refund of ${formatCu
     // Send to tenant's primary email address
     await emailClient.sendEmail({
       to: tenant.email,
-      from: `Cally <${FALLBACK_FROM_EMAIL}>`,
+      from: `CallyGo <${FALLBACK_FROM_EMAIL}>`,
       subject,
       text,
       html,

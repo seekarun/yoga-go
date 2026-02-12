@@ -147,7 +147,7 @@ export default function CreateEventModal({
         description,
         startTime: new Date(startTime).toISOString(),
         endTime: new Date(endTime).toISOString(),
-        type: "general", // Cally only supports general events
+        type: "general", // CallyGo only supports general events
         location,
         isAllDay,
         color,
@@ -304,7 +304,7 @@ export default function CreateEventModal({
                   ? "(Zoom meeting will be created)"
                   : videoCallPreference === "google_meet"
                     ? "(Google Meet link will be created)"
-                    : "(Cally video room will be created)"}
+                    : "(CallyGo video room will be created)"}
               </span>
             )}
           </div>

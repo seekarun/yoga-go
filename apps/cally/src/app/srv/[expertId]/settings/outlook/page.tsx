@@ -260,7 +260,7 @@ function DisconnectedState({ onConnect }: { onConnect: () => void }) {
         Connect your Microsoft Outlook Calendar to:
       </p>
       <ul className="text-[var(--text-muted)] text-sm mb-6 space-y-1">
-        <li>Automatically sync Cally events to your Outlook Calendar</li>
+        <li>Automatically sync CallyGo events to your Outlook Calendar</li>
         <li>Block booking slots when you&apos;re busy on Outlook Calendar</li>
       </ul>
       <button
@@ -363,12 +363,12 @@ function ConnectedState({
         <label className="flex items-center justify-between cursor-pointer">
           <div>
             <p className="font-medium text-[var(--text-main)]">
-              Push Cally events to Outlook Calendar
+              Push CallyGo events to Outlook Calendar
             </p>
             <p className="text-sm text-[var(--text-muted)]">
-              When enabled, events created in Cally are automatically pushed to
-              your Outlook Calendar. When disabled, Cally only reads events from
-              Outlook Calendar.
+              When enabled, events created in CallyGo are automatically pushed
+              to your Outlook Calendar. When disabled, CallyGo only reads events
+              from Outlook Calendar.
             </p>
           </div>
           <div className="ml-4 relative">
@@ -390,7 +390,7 @@ function ConnectedState({
           Sync Existing Events
         </h3>
         <p className="text-sm text-[var(--text-muted)] mb-4">
-          Push all existing Cally events to Outlook Calendar. Events already
+          Push all existing CallyGo events to Outlook Calendar. Events already
           synced will be skipped.
         </p>
         <button

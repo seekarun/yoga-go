@@ -1,9 +1,9 @@
 /**
- * Calendar API Route for Cally
+ * Calendar API Route for CallyGo
  * GET /api/data/app/calendar - Get calendar events for date range
  * POST /api/data/app/calendar - Create a new calendar event
  *
- * Note: Cally only supports "general" events (no webinars/live sessions)
+ * Note: CallyGo only supports "general" events (no webinars/live sessions)
  */
 
 import { NextResponse } from "next/server";
@@ -92,7 +92,7 @@ export async function GET(request: Request) {
       endDate,
     );
 
-    // Fetch Cally events, Google Calendar events, and Outlook events in parallel
+    // Fetch CallyGo events, Google Calendar events, and Outlook events in parallel
     const eventsPromise = calendarEventRepository.getCalendarEventsByDateRange(
       tenantId,
       startDate,
@@ -200,23 +200,23 @@ export async function GET(request: Request) {
 
     const events = await eventsPromise;
 
-    // Collect Google event IDs from Cally events to avoid duplicates
+    // Collect Google event IDs from CallyGo events to avoid duplicates
     const syncedGoogleIds = new Set(
       events.map((e) => e.googleCalendarEventId).filter(Boolean),
     );
 
-    // Filter out Google events that are already synced as Cally events
+    // Filter out Google events that are already synced as CallyGo events
     const filteredGoogleItems = googleItems.filter((gi) => {
       const googleId = gi.id.replace("gcal_", "");
       return !syncedGoogleIds.has(googleId);
     });
 
-    // Collect Outlook event IDs from Cally events to avoid duplicates
+    // Collect Outlook event IDs from CallyGo events to avoid duplicates
     const syncedOutlookIds = new Set(
       events.map((e) => e.outlookCalendarEventId).filter(Boolean),
     );
 
-    // Filter out Outlook events that are already synced as Cally events
+    // Filter out Outlook events that are already synced as CallyGo events
     const filteredOutlookItems = outlookItems.filter((oi) => {
       const outlookId = oi.id.replace("outlook_", "");
       return !syncedOutlookIds.has(outlookId);
@@ -225,7 +225,7 @@ export async function GET(request: Request) {
     // Color constants for status-based overrides
     const PENDING_COLOR = "#f59e0b"; // Amber for pending bookings
 
-    // Transform Cally events to CalendarItem format for FullCalendar
+    // Transform CallyGo events to CalendarItem format for FullCalendar
     const calendarItems: CalendarItem[] = events.map((event) => {
       // Use event's own color if set; fall back to amber for pending, default otherwise
       const color = event.color
@@ -476,7 +476,7 @@ export async function POST(request: Request) {
       description: body.description,
       startTime,
       endTime,
-      type: "general", // Cally only supports general events
+      type: "general", // CallyGo only supports general events
       location: body.location,
       isAllDay: body.isAllDay,
       color: body.color,
@@ -537,7 +537,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // Create 100ms room for Cally Video (default)
+    // Create 100ms room for CallyGo Video (default)
     if (body.hasVideoConference && !useGoogleMeet && !useZoom) {
       if (!is100msConfigured()) {
         return NextResponse.json<ApiResponse<CalendarEvent>>(

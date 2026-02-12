@@ -1,5 +1,5 @@
 /**
- * OpenAI Text-to-Speech Integration for Cally
+ * OpenAI Text-to-Speech Integration for CallyGo
  * Uses OpenAI's TTS API to convert text to speech
  */
 

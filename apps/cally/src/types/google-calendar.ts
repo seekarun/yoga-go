@@ -10,6 +10,6 @@ export interface GoogleCalendarConfig {
   calendarId: string; // "primary" by default
   blockBookingSlots: boolean; // default true
   autoAddMeetLink: boolean; // default false
-  pushEvents: boolean; // default true — push Cally events to Google Calendar
+  pushEvents: boolean; // default true — push CallyGo events to Google Calendar
   connectedAt: string; // ISO 8601
 }
