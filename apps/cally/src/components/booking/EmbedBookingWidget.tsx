@@ -12,13 +12,14 @@ import { useVisitorTimezone } from "@/hooks/useVisitorTimezone";
 import DayTimelineView from "./DayTimelineView";
 import BookingForm from "./BookingForm";
 import BookingConfirmation from "./BookingConfirmation";
+import StripeCheckoutView from "./StripeCheckout";
 import {
   getTodayInTimezone,
   getMaxDate,
   findFirstBusinessDay,
 } from "./dateUtils";
 
-type BookingStep = "schedule" | "form" | "confirmed";
+type BookingStep = "schedule" | "form" | "payment" | "confirmed";
 
 interface EmbedBookingWidgetProps {
   tenantId: string;
@@ -61,6 +62,9 @@ export default function EmbedBookingWidget({
   const [error, setError] = useState<string | null>(null);
   const [confirmedSlot, setConfirmedSlot] = useState<TimeSlot | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
+  const [checkoutClientSecret, setCheckoutClientSecret] = useState<
+    string | null
+  >(null);
 
   const handleClose = useCallback(() => {
     notifyClose();
@@ -185,7 +189,7 @@ export default function EmbedBookingWidget({
           warning?: string;
           data?: {
             requiresPayment?: boolean;
-            checkoutUrl?: string;
+            clientSecret?: string;
           };
         };
 
@@ -194,9 +198,10 @@ export default function EmbedBookingWidget({
           return;
         }
 
-        // Redirect to Stripe Checkout for paid bookings
-        if (json.data?.requiresPayment && json.data?.checkoutUrl) {
-          window.location.href = json.data.checkoutUrl;
+        // Show embedded Stripe Checkout for paid bookings
+        if (json.data?.requiresPayment && json.data?.clientSecret) {
+          setCheckoutClientSecret(json.data.clientSecret);
+          setStep("payment");
           return;
         }
 
@@ -225,6 +230,8 @@ export default function EmbedBookingWidget({
         return "Book an Appointment";
       case "form":
         return "Your Details";
+      case "payment":
+        return "Payment";
       case "confirmed":
         return "Request Submitted";
     }
@@ -334,6 +341,16 @@ export default function EmbedBookingWidget({
               submitting={submitting}
             />
           </div>
+        )}
+
+        {step === "payment" && checkoutClientSecret && (
+          <StripeCheckoutView
+            clientSecret={checkoutClientSecret}
+            onBack={() => {
+              setCheckoutClientSecret(null);
+              setStep("form");
+            }}
+          />
         )}
 
         {step === "confirmed" && confirmedSlot && (

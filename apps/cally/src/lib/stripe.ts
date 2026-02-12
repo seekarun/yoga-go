@@ -81,18 +81,19 @@ export async function createCheckoutSession(params: {
   currency: string;
   unitAmount: number; // in smallest currency unit (cents)
   productName: string;
+  tenantName: string;
   applicationFeeAmount: number; // in smallest currency unit (cents)
-  successUrl: string;
-  cancelUrl: string;
+  returnUrl: string;
   metadata: Record<string, string>;
 }): Promise<Stripe.Checkout.Session> {
   console.log(
-    "[DBG][stripe] Creating checkout session for account:",
+    "[DBG][stripe] Creating embedded checkout session for account:",
     params.connectedAccountId,
   );
   const stripe = getStripeClient();
 
   return stripe.checkout.sessions.create({
+    ui_mode: "embedded",
     mode: "payment",
     line_items: [
       {
@@ -112,8 +113,12 @@ export async function createCheckoutSession(params: {
         destination: params.connectedAccountId,
       },
     },
-    success_url: params.successUrl,
-    cancel_url: params.cancelUrl,
+    return_url: params.returnUrl,
+    custom_text: {
+      submit: {
+        message: `Booking with ${params.tenantName}`,
+      },
+    },
     expires_at: Math.floor(Date.now() / 1000) + 1800, // 30 minutes
     metadata: params.metadata,
   });

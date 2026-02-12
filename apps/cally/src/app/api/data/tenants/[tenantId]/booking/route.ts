@@ -188,20 +188,19 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         (productPrice * feePercent) / 100,
       );
 
-      // Build success/cancel URLs
+      // Build return URL for after payment
       const baseUrl = getLandingPageUrl(tenant);
-      const successUrl = `${baseUrl}/booking/success?session_id={CHECKOUT_SESSION_ID}`;
-      const cancelUrl = baseUrl;
+      const returnUrl = `${baseUrl}/booking/success?session_id={CHECKOUT_SESSION_ID}`;
 
-      // Create Stripe Checkout Session
+      // Create Stripe Embedded Checkout Session
       const checkoutSession = await createCheckoutSession({
         connectedAccountId: tenant.stripeConfig.accountId,
         currency: tenant.currency || "aud",
         unitAmount: productPrice,
         productName: productName || "Booking",
+        tenantName: tenant.name,
         applicationFeeAmount,
-        successUrl,
-        cancelUrl,
+        returnUrl,
         metadata: {
           tenantId,
           eventId: event.id,
@@ -226,7 +225,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           endTime: event.endTime,
           date: event.date,
           requiresPayment: true,
-          checkoutUrl: checkoutSession.url,
+          clientSecret: checkoutSession.client_secret,
         },
       });
     }
