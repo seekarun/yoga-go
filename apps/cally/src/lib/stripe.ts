@@ -43,7 +43,8 @@ export async function createAccountLink(
 ): Promise<Stripe.AccountLink> {
   console.log("[DBG][stripe] Creating account link for account:", accountId);
   const stripe = getStripeClient();
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://cally.live";
+  const baseUrl =
+    process.env.NEXT_PUBLIC_APP_URL || "https://proj-cally.vercel.app";
 
   return stripe.accountLinks.create({
     account: accountId,

@@ -16,13 +16,15 @@ export async function GET() {
   try {
     const session = await auth();
     if (!session?.user?.cognitoSub) {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://cally.live";
+      const baseUrl =
+        process.env.NEXT_PUBLIC_APP_URL || "https://proj-cally.vercel.app";
       return NextResponse.redirect(`${baseUrl}/auth/signin`);
     }
 
     const tenant = await getTenantByUserId(session.user.cognitoSub);
     if (!tenant || !tenant.stripeConfig?.accountId) {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://cally.live";
+      const baseUrl =
+        process.env.NEXT_PUBLIC_APP_URL || "https://proj-cally.vercel.app";
       return NextResponse.redirect(
         `${baseUrl}/srv/${tenant?.id || ""}/settings?error=stripe_not_found`,
       );
@@ -42,7 +44,8 @@ export async function GET() {
       },
     });
 
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://cally.live";
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL || "https://proj-cally.vercel.app";
     const queryParam =
       status.chargesEnabled && status.detailsSubmitted
         ? "connected=true"
@@ -53,7 +56,8 @@ export async function GET() {
     );
   } catch (error) {
     console.error("[DBG][stripe/callback] Error:", error);
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://cally.live";
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL || "https://proj-cally.vercel.app";
     return NextResponse.redirect(
       `${baseUrl}/srv/settings?error=stripe_callback_failed`,
     );

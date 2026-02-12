@@ -13,13 +13,15 @@ export async function GET() {
   try {
     const session = await auth();
     if (!session?.user?.cognitoSub) {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://cally.live";
+      const baseUrl =
+        process.env.NEXT_PUBLIC_APP_URL || "https://proj-cally.vercel.app";
       return NextResponse.redirect(`${baseUrl}/auth/signin`);
     }
 
     const tenant = await getTenantByUserId(session.user.cognitoSub);
     if (!tenant || !tenant.stripeConfig?.accountId) {
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://cally.live";
+      const baseUrl =
+        process.env.NEXT_PUBLIC_APP_URL || "https://proj-cally.vercel.app";
       return NextResponse.redirect(
         `${baseUrl}/srv/${tenant?.id || ""}/settings?error=stripe_not_found`,
       );
@@ -35,7 +37,8 @@ export async function GET() {
     return NextResponse.redirect(accountLink.url);
   } catch (error) {
     console.error("[DBG][stripe/refresh] Error:", error);
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://cally.live";
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL || "https://proj-cally.vercel.app";
     return NextResponse.redirect(
       `${baseUrl}/srv/settings?error=stripe_refresh_failed`,
     );

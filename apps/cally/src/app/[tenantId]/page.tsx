@@ -110,7 +110,7 @@ export default async function TenantLandingPage({ params }: PageProps) {
   const domain = tenant.domainConfig?.domain;
   const baseUrl = domain
     ? `https://${domain}`
-    : `https://cally.live/${tenantId}`;
+    : `https://proj-cally.vercel.app/${tenantId}`;
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -165,7 +165,7 @@ export async function generateMetadata({ params }: PageProps) {
   const domain = tenant.domainConfig?.domain;
   const baseUrl = domain
     ? `https://${domain}`
-    : `https://cally.live/${tenantId}`;
+    : `https://proj-cally.vercel.app/${tenantId}`;
 
   const metadata: Metadata = {
     title,

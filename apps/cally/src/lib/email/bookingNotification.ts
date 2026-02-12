@@ -24,7 +24,8 @@ export function getLandingPageUrl(tenant: CallyTenant): string {
     return `https://${tenant.domainConfig.domain}`;
   }
   // Fallback: use the cally app domain with tenant ID
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://cally.live";
+  const baseUrl =
+    process.env.NEXT_PUBLIC_APP_URL || "https://proj-cally.vercel.app";
   return `${baseUrl}/${tenant.id}`;
 }
 
@@ -52,7 +53,8 @@ function getSignupUrl(tenant: CallyTenant, visitorEmail: string): string {
   if (tenant.domainConfig?.domain && tenant.domainConfig.vercelVerified) {
     return `https://${tenant.domainConfig.domain}/signup?email=${encodeURIComponent(visitorEmail)}`;
   }
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://cally.live";
+  const baseUrl =
+    process.env.NEXT_PUBLIC_APP_URL || "https://proj-cally.vercel.app";
   return `${baseUrl}/${tenant.id}/signup?email=${encodeURIComponent(visitorEmail)}`;
 }
 
