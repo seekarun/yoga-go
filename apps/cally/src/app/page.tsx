@@ -199,15 +199,15 @@ function HeroMockup() {
 
           {/* AI chat bubble */}
           <div className="px-4 pb-5">
-            <div className="bg-[var(--color-accent)] rounded-xl p-3 shadow-sm flex items-start gap-2.5">
-              <div className="w-7 h-7 bg-white/20 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+            <div className="bg-[rgba(255,127,80,0.05)] rounded-xl p-3 shadow-sm flex items-start gap-2.5 border border-[rgba(255,127,80,0.2)]">
+              <div className="w-7 h-7 bg-[var(--color-accent)]/15 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-[var(--color-accent)]">
                 <IconSparkles />
               </div>
               <div>
-                <p className="text-xs font-semibold text-white mb-0.5">
+                <p className="text-xs font-semibold text-[var(--text-main)] mb-0.5">
                   CallyGo AI
                 </p>
-                <p className="text-xs text-white/90 leading-relaxed">
+                <p className="text-xs text-[var(--text-body)] leading-relaxed">
                   You have 3 bookings today. Sarah prefers shorter sessions
                   &mdash; want me to send a reminder?
                 </p>
@@ -303,10 +303,10 @@ function PricingCard({
       </ul>
       <button
         onClick={onCtaClick}
-        className={`w-full py-3.5 px-4 rounded-lg font-medium transition-all duration-200 min-h-[44px] ${
+        className={`w-full py-3.5 px-4 rounded-lg font-medium transition-all duration-300 min-h-[48px] ${
           highlighted
-            ? "bg-white text-[var(--color-primary)] hover:bg-white/90"
-            : "bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)]"
+            ? "bg-white text-[var(--color-primary)] hover:bg-white/90 hover:shadow-[0_10px_15px_-3px_rgba(255,255,255,0.3)]"
+            : "bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)] hover:shadow-[0_10px_15px_-3px_rgba(0,128,128,0.3)]"
         }`}
       >
         {cta}
@@ -349,8 +349,8 @@ export default function HomePage() {
     <div className="min-h-screen bg-[var(--color-bg-main)]">
       {/* ── Navigation ── */}
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-[var(--color-border)]">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="flex justify-between items-center h-16">
+        <div className="max-w-6xl mx-auto px-6 md:px-6">
+          <div className="flex justify-between items-center h-16 md:h-16 py-2 md:py-0">
             <span
               className="text-xl font-bold text-[var(--color-primary)]"
               style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
@@ -375,7 +375,7 @@ export default function HomePage() {
               {isAuthenticated ? (
                 <Link
                   href="/srv"
-                  className="px-5 py-2.5 bg-[var(--color-primary)] text-white text-sm font-medium rounded-lg hover:bg-[var(--color-primary-hover)] transition-colors min-h-[44px] flex items-center"
+                  className="px-5 py-2.5 bg-[var(--color-primary)] text-white text-sm font-medium rounded-lg hover:bg-[var(--color-primary-hover)] hover:shadow-[0_10px_15px_-3px_rgba(0,128,128,0.3)] transition-all min-h-[48px] flex items-center"
                 >
                   Dashboard
                 </Link>
@@ -383,13 +383,13 @@ export default function HomePage() {
                 <>
                   <Link
                     href="/auth/signin"
-                    className="px-4 py-2.5 text-sm font-medium text-[var(--text-body)] hover:text-[var(--color-primary)] transition-colors min-h-[44px] flex items-center"
+                    className="px-4 py-2.5 text-sm font-medium text-[var(--text-body)] hover:text-[var(--color-primary)] transition-all min-h-[48px] flex items-center"
                   >
                     Log In
                   </Link>
                   <button
                     onClick={() => login("/srv")}
-                    className="px-5 py-2.5 bg-[var(--color-primary)] text-white text-sm font-medium rounded-lg hover:bg-[var(--color-primary-hover)] transition-colors min-h-[44px]"
+                    className="px-5 py-2.5 bg-[var(--color-primary)] text-white text-sm font-medium rounded-lg hover:bg-[var(--color-primary-hover)] hover:shadow-[0_10px_15px_-3px_rgba(0,128,128,0.3)] transition-all min-h-[48px]"
                   >
                     Get Started
                   </button>
@@ -402,15 +402,15 @@ export default function HomePage() {
 
       {/* ── Hero Section ── */}
       <section className="relative overflow-hidden bg-white">
-        <div className="max-w-6xl mx-auto px-6 pt-16 pb-20 md:pt-24 md:pb-28">
-          <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-center">
+        <div className="max-w-6xl mx-auto px-6 pt-16 pb-20 md:pt-[120px] md:pb-[120px]">
+          <div className="grid md:grid-cols-2 gap-12 md:gap-[80px] items-center">
             {/* Left — copy */}
-            <div>
-              <div className="inline-flex items-center gap-2 bg-[var(--color-secondary)] text-[var(--color-primary)] text-sm font-medium px-4 py-2 rounded-full mb-6">
+            <div className="text-center md:text-left">
+              <div className="inline-flex items-center gap-2 bg-[var(--color-secondary)] text-[var(--color-primary)] text-sm font-semibold px-4 py-2 rounded-full mb-6">
                 <IconSparkles />
                 <span>AI-powered for solopreneurs</span>
               </div>
-              <h1 className="text-4xl sm:text-5xl lg:text-[3.25rem] font-bold text-[var(--text-main)] leading-[1.15] mb-6">
+              <h1 className="text-[2rem] sm:text-5xl lg:text-[3.25rem] font-bold text-[var(--text-main)] mb-6">
                 Run your business.
                 <br />
                 <span className="text-[var(--color-primary)]">
@@ -424,7 +424,7 @@ export default function HomePage() {
               <div className="flex flex-col sm:flex-row gap-4">
                 <button
                   onClick={handleGetStarted}
-                  className="px-8 py-4 bg-[var(--color-primary)] text-white rounded-xl hover:bg-[var(--color-primary-hover)] transition-colors text-base font-semibold shadow-lg shadow-[var(--color-primary)]/20 min-h-[44px]"
+                  className="px-8 py-4 bg-[var(--color-primary)] text-white rounded-xl hover:bg-[var(--color-primary-hover)] hover:shadow-[0_10px_15px_-3px_rgba(0,128,128,0.3)] transition-all text-base font-semibold shadow-lg shadow-[var(--color-primary)]/20 min-h-[48px]"
                 >
                   Start Your 14-Day Free Trial
                 </button>
@@ -435,7 +435,7 @@ export default function HomePage() {
             </div>
 
             {/* Right — mockup */}
-            <div className="flex justify-center md:justify-end">
+            <div className="flex justify-center md:justify-end animate-float">
               <HeroMockup />
             </div>
           </div>
@@ -445,177 +445,183 @@ export default function HomePage() {
       </section>
 
       {/* ── Feature Bento Grid ── */}
-      <section id="features" className="max-w-6xl mx-auto px-6 py-20 md:py-28">
-        <div className="text-center mb-14">
-          <h2 className="text-3xl sm:text-4xl font-bold text-[var(--text-main)] mb-4">
-            Everything you need, nothing you don&apos;t
-          </h2>
-          <p className="text-lg text-[var(--text-body)] max-w-xl mx-auto">
-            Three powerful pillars to run your business from one calm center.
-          </p>
-        </div>
-
-        {/* Bento grid */}
-        <div className="grid md:grid-cols-3 gap-6">
-          {/* Card 1 — Landing Pages (tall) */}
-          <div className="group bg-white rounded-2xl border border-[var(--color-border)] p-8 hover:shadow-xl hover:shadow-[var(--color-primary)]/5 transition-all duration-300 flex flex-col">
-            <div className="w-14 h-14 bg-[var(--color-secondary)] rounded-xl flex items-center justify-center text-[var(--color-primary)] mb-6">
-              <IconLayout />
-            </div>
-            <h3 className="text-xl font-bold text-[var(--text-main)] mb-3">
-              Simple Landing Pages
-            </h3>
-            <p className="text-[var(--text-body)] leading-relaxed mb-6 flex-1">
-              Create a professional online presence in minutes. Customise your
-              brand, list your services, and let clients book directly &mdash;
-              no coding needed.
+      <section
+        id="features"
+        className="bg-[var(--color-bg-main)] py-20 md:py-28"
+      >
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="text-center mb-14">
+            <h2 className="text-3xl sm:text-4xl font-bold text-[var(--text-main)] mb-4">
+              Everything you need, nothing you don&apos;t
+            </h2>
+            <p className="text-lg text-[var(--text-body)] max-w-xl mx-auto">
+              Three powerful pillars to run your business from one calm center.
             </p>
-            <div className="bg-[var(--color-secondary)] rounded-xl p-4">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-8 h-8 bg-[var(--color-primary)] rounded-lg" />
-                <div className="flex-1">
-                  <div className="h-2 bg-[var(--color-primary)]/20 rounded w-2/3 mb-1" />
-                  <div className="h-2 bg-[var(--color-primary)]/10 rounded w-1/2" />
-                </div>
-              </div>
-              <div className="h-12 bg-white/60 rounded-lg mt-2" />
-              <div className="flex gap-2 mt-2">
-                <div className="h-8 bg-[var(--color-primary)] rounded-lg flex-1" />
-                <div className="h-8 bg-white/80 rounded-lg flex-1" />
-              </div>
-            </div>
-            <ul className="mt-6 space-y-2">
-              {[
-                "AI-powered page editor",
-                "Custom domain support",
-                "Products & services showcase",
-              ].map((item) => (
-                <li
-                  key={item}
-                  className="flex items-center gap-2 text-sm text-[var(--text-body)]"
-                >
-                  <span className="text-[var(--color-primary)]">
-                    <IconCheck />
-                  </span>
-                  {item}
-                </li>
-              ))}
-            </ul>
           </div>
 
-          {/* Card 2 — Smart Scheduling (tall) */}
-          <div className="group bg-white rounded-2xl border border-[var(--color-border)] p-8 hover:shadow-xl hover:shadow-[var(--color-primary)]/5 transition-all duration-300 flex flex-col">
-            <div className="w-14 h-14 bg-[var(--color-secondary)] rounded-xl flex items-center justify-center text-[var(--color-primary)] mb-6">
-              <IconCalendar />
-            </div>
-            <h3 className="text-xl font-bold text-[var(--text-main)] mb-3">
-              Smart Scheduling
-            </h3>
-            <p className="text-[var(--text-body)] leading-relaxed mb-6 flex-1">
-              Clients book from your page. You set the rules &mdash; working
-              hours, buffers, and availability. Syncs with Google Calendar and
-              Outlook.
-            </p>
-            <div className="bg-[var(--color-secondary)] rounded-xl p-4">
-              <div className="grid grid-cols-7 gap-1 mb-2">
-                {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
-                  <div
-                    key={`${d}-${i}`}
-                    className="text-center text-[10px] font-medium text-[var(--text-muted)]"
-                  >
-                    {d}
+          {/* Bento grid */}
+          <div className="grid md:grid-cols-3 gap-6">
+            {/* Card 1 — Landing Pages (tall) */}
+            <div className="group bg-white rounded-3xl border border-[var(--color-secondary)] p-8 hover:shadow-xl hover:shadow-[var(--color-primary)]/5 transition-all duration-300 flex flex-col">
+              <div className="w-14 h-14 bg-[var(--color-secondary)] rounded-xl flex items-center justify-center text-[var(--color-primary)] mb-6">
+                <IconLayout />
+              </div>
+              <h3 className="text-xl font-bold text-[var(--text-main)] mb-3">
+                Simple Landing Pages
+              </h3>
+              <p className="text-[var(--text-body)] leading-relaxed mb-6 flex-1">
+                Create a professional online presence in minutes. Customise your
+                brand, list your services, and let clients book directly &mdash;
+                no coding needed.
+              </p>
+              <div className="bg-[var(--color-secondary)] rounded-xl p-4">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-8 h-8 bg-[var(--color-primary)] rounded-lg" />
+                  <div className="flex-1">
+                    <div className="h-2 bg-[var(--color-primary)]/20 rounded w-2/3 mb-1" />
+                    <div className="h-2 bg-[var(--color-primary)]/10 rounded w-1/2" />
                   </div>
-                ))}
-                {Array.from({ length: 14 }, (_, i) => (
-                  <div
-                    key={i}
-                    className={`aspect-square rounded-md flex items-center justify-center text-[10px] font-medium ${
-                      i === 4
-                        ? "bg-[var(--color-primary)] text-white"
-                        : i === 8
-                          ? "bg-[var(--color-accent)] text-white"
-                          : "bg-white/60 text-[var(--text-muted)]"
-                    }`}
+                </div>
+                <div className="h-12 bg-white/60 rounded-lg mt-2" />
+                <div className="flex gap-2 mt-2">
+                  <div className="h-8 bg-[var(--color-primary)] rounded-lg flex-1" />
+                  <div className="h-8 bg-white/80 rounded-lg flex-1" />
+                </div>
+              </div>
+              <ul className="mt-6 space-y-2">
+                {[
+                  "AI-powered page editor",
+                  "Custom domain support",
+                  "Products & services showcase",
+                ].map((item) => (
+                  <li
+                    key={item}
+                    className="flex items-center gap-2 text-sm text-[var(--text-body)]"
                   >
-                    {i + 10}
+                    <span className="text-[var(--color-primary)]">
+                      <IconCheck />
+                    </span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Card 2 — Smart Scheduling (tall) */}
+            <div className="group bg-white rounded-3xl border border-[var(--color-secondary)] p-8 hover:shadow-xl hover:shadow-[var(--color-primary)]/5 transition-all duration-300 flex flex-col">
+              <div className="w-14 h-14 bg-[var(--color-secondary)] rounded-xl flex items-center justify-center text-[var(--color-primary)] mb-6">
+                <IconCalendar />
+              </div>
+              <h3 className="text-xl font-bold text-[var(--text-main)] mb-3">
+                Smart Scheduling
+              </h3>
+              <p className="text-[var(--text-body)] leading-relaxed mb-6 flex-1">
+                Clients book from your page. You set the rules &mdash; working
+                hours, buffers, and availability. Syncs with Google Calendar and
+                Outlook.
+              </p>
+              <div className="bg-[var(--color-secondary)] rounded-xl p-4">
+                <div className="grid grid-cols-7 gap-1 mb-2">
+                  {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
+                    <div
+                      key={`${d}-${i}`}
+                      className="text-center text-[10px] font-medium text-[var(--text-muted)]"
+                    >
+                      {d}
+                    </div>
+                  ))}
+                  {Array.from({ length: 14 }, (_, i) => (
+                    <div
+                      key={i}
+                      className={`aspect-square rounded-md flex items-center justify-center text-[10px] font-medium ${
+                        i === 4
+                          ? "bg-[var(--color-primary)] text-white"
+                          : i === 8
+                            ? "bg-[var(--color-accent)] text-white"
+                            : "bg-white/60 text-[var(--text-muted)]"
+                      }`}
+                    >
+                      {i + 10}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <ul className="mt-6 space-y-2">
+                {[
+                  "Stripe payments at booking",
+                  "Video calls (Zoom, Meet, built-in)",
+                  "Automated reminders & follow-ups",
+                ].map((item) => (
+                  <li
+                    key={item}
+                    className="flex items-center gap-2 text-sm text-[var(--text-body)]"
+                  >
+                    <span className="text-[var(--color-primary)]">
+                      <IconCheck />
+                    </span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Card 3 — AI Assistant (tall, accent border) */}
+            <div className="group bg-white rounded-3xl border-2 border-[var(--color-accent)]/30 p-8 hover:shadow-xl hover:shadow-[var(--color-accent)]/10 transition-all duration-300 flex flex-col">
+              <div className="w-14 h-14 bg-[var(--color-accent)]/10 rounded-xl flex items-center justify-center text-[var(--color-accent)] mb-6">
+                <IconSparkles />
+              </div>
+              <h3 className="text-xl font-bold text-[var(--text-main)] mb-3">
+                AI Business Assistant
+              </h3>
+              <p className="text-[var(--text-body)] leading-relaxed mb-6 flex-1">
+                Your AI sidekick handles morning briefings, client comms,
+                content ideas, and daily planning &mdash; so you can focus on
+                your craft.
+              </p>
+              <div className="bg-[var(--color-accent)]/5 rounded-xl p-4 space-y-2.5">
+                {[
+                  {
+                    icon: <IconChatBubble />,
+                    text: '"Draft a follow-up for Sarah\'s appointment"',
+                  },
+                  {
+                    icon: <IconBolt />,
+                    text: '"Send me a morning briefing at 8am"',
+                  },
+                  {
+                    icon: <IconClipboard />,
+                    text: '"Summarise this week\'s bookings"',
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.text}
+                    className="flex items-center gap-2.5 bg-white rounded-lg px-3 py-2.5 text-xs text-[var(--text-body)] shadow-sm border border-[var(--color-border)]"
+                  >
+                    <span className="text-[var(--color-accent)] shrink-0">
+                      {item.icon}
+                    </span>
+                    <span className="leading-tight">{item.text}</span>
                   </div>
                 ))}
               </div>
+              <ul className="mt-6 space-y-2">
+                {[
+                  "Phone morning briefings",
+                  "AI content for your landing page",
+                  "Smart scheduling suggestions",
+                ].map((item) => (
+                  <li
+                    key={item}
+                    className="flex items-center gap-2 text-sm text-[var(--text-body)]"
+                  >
+                    <span className="text-[var(--color-accent)]">
+                      <IconCheck />
+                    </span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
             </div>
-            <ul className="mt-6 space-y-2">
-              {[
-                "Stripe payments at booking",
-                "Video calls (Zoom, Meet, built-in)",
-                "Automated reminders & follow-ups",
-              ].map((item) => (
-                <li
-                  key={item}
-                  className="flex items-center gap-2 text-sm text-[var(--text-body)]"
-                >
-                  <span className="text-[var(--color-primary)]">
-                    <IconCheck />
-                  </span>
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Card 3 — AI Assistant (tall, accent border) */}
-          <div className="group bg-white rounded-2xl border-2 border-[var(--color-accent)]/30 p-8 hover:shadow-xl hover:shadow-[var(--color-accent)]/10 transition-all duration-300 flex flex-col">
-            <div className="w-14 h-14 bg-[var(--color-accent)]/10 rounded-xl flex items-center justify-center text-[var(--color-accent)] mb-6">
-              <IconSparkles />
-            </div>
-            <h3 className="text-xl font-bold text-[var(--text-main)] mb-3">
-              AI Business Assistant
-            </h3>
-            <p className="text-[var(--text-body)] leading-relaxed mb-6 flex-1">
-              Your AI sidekick handles morning briefings, client comms, content
-              ideas, and daily planning &mdash; so you can focus on your craft.
-            </p>
-            <div className="bg-[var(--color-accent)]/5 rounded-xl p-4 space-y-2.5">
-              {[
-                {
-                  icon: <IconChatBubble />,
-                  text: '"Draft a follow-up for Sarah\'s appointment"',
-                },
-                {
-                  icon: <IconBolt />,
-                  text: '"Send me a morning briefing at 8am"',
-                },
-                {
-                  icon: <IconClipboard />,
-                  text: '"Summarise this week\'s bookings"',
-                },
-              ].map((item) => (
-                <div
-                  key={item.text}
-                  className="flex items-center gap-2.5 bg-white rounded-lg px-3 py-2.5 text-xs text-[var(--text-body)] shadow-sm border border-[var(--color-border)]"
-                >
-                  <span className="text-[var(--color-accent)] shrink-0">
-                    {item.icon}
-                  </span>
-                  <span className="leading-tight">{item.text}</span>
-                </div>
-              ))}
-            </div>
-            <ul className="mt-6 space-y-2">
-              {[
-                "Phone morning briefings",
-                "AI content for your landing page",
-                "Smart scheduling suggestions",
-              ].map((item) => (
-                <li
-                  key={item}
-                  className="flex items-center gap-2 text-sm text-[var(--text-body)]"
-                >
-                  <span className="text-[var(--color-accent)]">
-                    <IconCheck />
-                  </span>
-                  {item}
-                </li>
-              ))}
-            </ul>
           </div>
         </div>
       </section>
@@ -816,7 +822,7 @@ export default function HomePage() {
             </p>
             <button
               onClick={handleGetStarted}
-              className="px-10 py-4 bg-white text-[var(--color-primary)] rounded-xl font-semibold text-lg hover:bg-white/90 transition-colors shadow-lg min-h-[44px]"
+              className="px-10 py-4 bg-white text-[var(--color-primary)] rounded-xl font-semibold text-lg hover:bg-white/90 hover:shadow-[0_10px_15px_-3px_rgba(255,255,255,0.3)] transition-all shadow-lg min-h-[48px]"
             >
               Join CallyGo Today
             </button>

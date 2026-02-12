@@ -66,6 +66,20 @@ export default async function middleware(request: NextRequest) {
     }
   }
 
+  // --- Block /supa admin routes on non-localhost ---
+  const host = hostname.split(":")[0];
+  const isLocalhost = host === "localhost" || host === "127.0.0.1";
+
+  if (
+    !isLocalhost &&
+    (pathname.startsWith("/supa") || pathname.startsWith("/api/supa"))
+  ) {
+    if (pathname.startsWith("/api/supa")) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+
   // --- Custom domain rewriting ---
   if (isCustomDomain(hostname) && !isSystemPath(pathname)) {
     const tenantId = await lookupTenantByDomain(hostname.split(":")[0]);

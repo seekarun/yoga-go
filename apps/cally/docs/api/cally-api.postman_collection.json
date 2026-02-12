@@ -2538,6 +2538,46 @@
           }
         }
       ]
+    },
+    {
+      "name": "Admin (Localhost Only)",
+      "item": [
+        {
+          "name": "List Tenants",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/supa/tenants",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "supa", "tenants"]
+            },
+            "description": "List all tenants with basic info. Localhost only."
+          }
+        },
+        {
+          "name": "Delete Tenant",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenantId\": \"TENANT_ID_HERE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/supa/delete-tenant",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "supa", "delete-tenant"]
+            },
+            "description": "Delete all data for a tenant (main table, emails, domain lookups). Localhost only. Returns deletion counts per entity type."
+          }
+        }
+      ]
     }
   ]
 }
