@@ -141,7 +141,14 @@ export interface FeaturesConfig {
 /**
  * Section ordering types
  */
-export type SectionId = "about" | "features" | "testimonials" | "faq";
+export type SectionId =
+  | "about"
+  | "features"
+  | "products"
+  | "testimonials"
+  | "faq"
+  | "location"
+  | "gallery";
 
 export interface SectionOrderItem {
   id: SectionId;
@@ -178,6 +185,45 @@ export interface FAQConfig {
   heading?: string;
   subheading?: string;
   items: FAQItem[];
+}
+
+/**
+ * Location section configuration
+ */
+export interface LocationConfig {
+  heading?: string;
+  subheading?: string;
+}
+
+/**
+ * Gallery section configuration
+ */
+export interface GalleryImage {
+  id: string;
+  url: string;
+  caption?: string;
+}
+
+export interface GalleryConfig {
+  heading?: string;
+  subheading?: string;
+  images: GalleryImage[];
+}
+
+/**
+ * SEO configuration for landing pages
+ */
+export interface SEOConfig {
+  /** Custom SEO title (overrides hero title) */
+  title?: string;
+  /** Custom meta description (overrides subtitle) */
+  description?: string;
+  /** Comma-separated keywords */
+  keywords?: string;
+  /** URL for og:image / twitter:image */
+  ogImage?: string;
+  /** URL for favicon */
+  favicon?: string;
 }
 
 /**
@@ -234,6 +280,10 @@ export interface SimpleLandingPageConfig {
   testimonials?: TestimonialsConfig;
   /** FAQ section configuration */
   faq?: FAQConfig;
+  /** Location section configuration */
+  location?: LocationConfig;
+  /** Gallery section configuration */
+  gallery?: GalleryConfig;
   /** Footer section configuration */
   footer?: FooterConfig;
   /** Whether hero section is visible (default true) */
@@ -247,6 +297,8 @@ export interface SimpleLandingPageConfig {
     primaryColor?: string;
     palette?: ColorPalette;
   };
+  /** SEO configuration */
+  seo?: SEOConfig;
 }
 
 /**
@@ -340,18 +392,31 @@ export const DEFAULT_LANDING_PAGE_CONFIG: SimpleLandingPageConfig = {
       },
     ],
   },
+  location: {
+    heading: "Visit Us",
+    subheading: "Find us at our location",
+  },
+  gallery: {
+    heading: "Gallery",
+    subheading: "",
+    images: [],
+  },
   footer: {
     text: "\u00a9 2026 All rights reserved.",
     links: [],
     showPoweredBy: true,
   },
+  seo: {},
   heroEnabled: true,
   footerEnabled: true,
   sections: [
     { id: "about", enabled: true },
     { id: "features", enabled: true },
+    { id: "products", enabled: false },
     { id: "testimonials", enabled: false },
     { id: "faq", enabled: false },
+    { id: "location", enabled: false },
+    { id: "gallery", enabled: false },
   ],
 };
 

@@ -1,10 +1,14 @@
 "use client";
 
 import type { SimpleLandingPageConfig } from "@/types/landing-page";
+import type { Product } from "@/types";
 import AboutSection from "./AboutSection";
 import FeaturesSection from "./FeaturesSection";
+import ProductsSection from "./ProductsSection";
 import TestimonialsSection from "./TestimonialsSection";
 import FAQSection from "./FAQSection";
+import LocationSection from "./LocationSection";
+import GallerySection from "./GallerySection";
 import FooterSection from "./FooterSection";
 
 interface SectionsRendererProps {
@@ -25,6 +29,10 @@ interface SectionsRendererProps {
   onFeatureCardImageClick?: (cardId: string) => void;
   onAddFeatureCard?: () => void;
   onRemoveFeatureCard?: (cardId: string) => void;
+  // Products data
+  products?: Product[];
+  currency?: string;
+  onBookProduct?: (productId: string) => void;
   // Testimonials callbacks
   onTestimonialsHeadingChange?: (heading: string) => void;
   onTestimonialsSubheadingChange?: (subheading: string) => void;
@@ -35,6 +43,15 @@ interface SectionsRendererProps {
   ) => void;
   onAddTestimonial?: () => void;
   onRemoveTestimonial?: (testimonialId: string) => void;
+  // Location props & callbacks
+  address?: string;
+  onLocationHeadingChange?: (heading: string) => void;
+  onLocationSubheadingChange?: (subheading: string) => void;
+  // Gallery callbacks
+  onGalleryHeadingChange?: (heading: string) => void;
+  onGallerySubheadingChange?: (subheading: string) => void;
+  onGalleryAddImage?: () => void;
+  onGalleryRemoveImage?: (imageId: string) => void;
   // FAQ callbacks
   onFAQHeadingChange?: (heading: string) => void;
   onFAQSubheadingChange?: (subheading: string) => void;
@@ -68,6 +85,16 @@ export default function SectionsRenderer({
   onFeatureCardImageClick,
   onAddFeatureCard,
   onRemoveFeatureCard,
+  products,
+  currency,
+  onBookProduct,
+  address,
+  onLocationHeadingChange,
+  onLocationSubheadingChange,
+  onGalleryHeadingChange,
+  onGallerySubheadingChange,
+  onGalleryAddImage,
+  onGalleryRemoveImage,
   onTestimonialsHeadingChange,
   onTestimonialsSubheadingChange,
   onTestimonialChange,
@@ -124,6 +151,17 @@ export default function SectionsRenderer({
                 />
               ) : null;
 
+            case "products":
+              return products && products.length > 0 ? (
+                <ProductsSection
+                  key="products"
+                  products={products}
+                  currency={currency || "AUD"}
+                  variant={variant}
+                  onBookProduct={onBookProduct}
+                />
+              ) : null;
+
             case "testimonials":
               return config.testimonials ? (
                 <TestimonialsSection
@@ -151,6 +189,33 @@ export default function SectionsRenderer({
                   onItemChange={onFAQItemChange}
                   onAddItem={onAddFAQItem}
                   onRemoveItem={onRemoveFAQItem}
+                />
+              ) : null;
+
+            case "location":
+              return config.location ? (
+                <LocationSection
+                  key="location"
+                  location={config.location}
+                  address={address}
+                  isEditing={isEditing}
+                  variant={variant}
+                  onHeadingChange={onLocationHeadingChange}
+                  onSubheadingChange={onLocationSubheadingChange}
+                />
+              ) : null;
+
+            case "gallery":
+              return config.gallery ? (
+                <GallerySection
+                  key="gallery"
+                  gallery={config.gallery}
+                  isEditing={isEditing}
+                  variant={variant}
+                  onHeadingChange={onGalleryHeadingChange}
+                  onSubheadingChange={onGallerySubheadingChange}
+                  onAddImage={onGalleryAddImage}
+                  onRemoveImage={onGalleryRemoveImage}
                 />
               ) : null;
 

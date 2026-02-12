@@ -3,8 +3,10 @@
  * Route: /{tenantId}
  */
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { getTenantById } from "@/lib/repositories/tenantRepository";
 import { getApprovedFeedback } from "@/lib/repositories/feedbackRepository";
+import { getActiveProducts } from "@/lib/repositories/productRepository";
 import { DEFAULT_LANDING_PAGE_CONFIG } from "@/types/landing-page";
 import type { Testimonial } from "@/types/landing-page";
 import LandingPageRenderer from "@/components/landing-page/LandingPageRenderer";
@@ -73,8 +75,11 @@ export default async function TenantLandingPage({ params }: PageProps) {
     ...tenant.customLandingPage,
   };
 
-  // Merge approved feedback into testimonials
-  const approvedFeedback = await getApprovedFeedback(tenantId);
+  // Fetch active products and feedback in parallel
+  const [approvedFeedback, activeProducts] = await Promise.all([
+    getApprovedFeedback(tenantId),
+    getActiveProducts(tenantId),
+  ]);
   if (approvedFeedback.length > 0) {
     const feedbackTestimonials: Testimonial[] = approvedFeedback
       .filter((f) => f.message && f.recipientName)
@@ -101,7 +106,42 @@ export default async function TenantLandingPage({ params }: PageProps) {
     }
   }
 
-  return <LandingPageRenderer config={landingPage} tenantId={tenantId} />;
+  // Build canonical URL for structured data
+  const domain = tenant.domainConfig?.domain;
+  const baseUrl = domain
+    ? `https://${domain}`
+    : `https://cally.live/${tenantId}`;
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    name: tenant.name,
+    description: landingPage.seo?.description || landingPage.subtitle,
+    ...(tenant.address && {
+      address: {
+        "@type": "PostalAddress",
+        streetAddress: tenant.address,
+      },
+    }),
+    ...(landingPage.seo?.ogImage && { image: landingPage.seo.ogImage }),
+    url: baseUrl,
+  };
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <LandingPageRenderer
+        config={landingPage}
+        tenantId={tenantId}
+        products={activeProducts}
+        currency={tenant.currency ?? "AUD"}
+        address={tenant.address}
+      />
+    </>
+  );
 }
 
 // Generate metadata for SEO
@@ -110,14 +150,51 @@ export async function generateMetadata({ params }: PageProps) {
   const tenant = await getTenantById(tenantId);
 
   if (!tenant) {
-    return {
-      title: "Not Found",
-    };
+    return { title: "Not Found" };
   }
 
-  return {
-    title: tenant.customLandingPage?.title || tenant.name,
-    description:
-      tenant.customLandingPage?.subtitle || `Welcome to ${tenant.name}'s page`,
+  const lp = tenant.customLandingPage;
+  const seo = lp?.seo;
+
+  const title = seo?.title || lp?.title || tenant.name;
+  const description =
+    seo?.description || lp?.subtitle || `Welcome to ${tenant.name}'s page`;
+  const ogImage = seo?.ogImage || lp?.backgroundImage;
+  const favicon = seo?.favicon;
+
+  const domain = tenant.domainConfig?.domain;
+  const baseUrl = domain
+    ? `https://${domain}`
+    : `https://cally.live/${tenantId}`;
+
+  const metadata: Metadata = {
+    title,
+    description,
+    keywords: seo?.keywords,
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      url: baseUrl,
+      ...(ogImage && { images: [{ url: ogImage, width: 1200, height: 630 }] }),
+    },
+    twitter: {
+      card: ogImage ? "summary_large_image" : "summary",
+      title,
+      description,
+      ...(ogImage && { images: [ogImage] }),
+    },
+    alternates: {
+      canonical: baseUrl,
+    },
+    ...(favicon && {
+      icons: {
+        icon: favicon,
+        shortcut: favicon,
+        apple: favicon,
+      },
+    }),
   };
+
+  return metadata;
 }

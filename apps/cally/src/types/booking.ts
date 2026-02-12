@@ -44,6 +44,8 @@ export interface AvailableSlotsResponse {
   date: string; // YYYY-MM-DD
   timezone: string;
   slots: TimeSlot[];
+  weeklySchedule?: WeeklySchedule;
+  lookaheadDays?: number;
 }
 
 /**
@@ -55,6 +57,7 @@ export interface CreateBookingRequest {
   note?: string;
   startTime: string; // ISO 8601
   endTime: string; // ISO 8601
+  productId?: string;
 }
 
 /**

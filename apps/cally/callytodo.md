@@ -9,23 +9,35 @@ x collect feedback/testimonials from users after appointment
 x sync calendar events to google calendar
 x zoom integration for video calls
 x email reply
+x products and services
+x recurring events in calendar
+x user favicon and meta data for SEO
+x SEO help
+x user preferences (password, email)
+
+- accept payments for calendar events
+- tenant subscription
 
 - AI chat to look up user's past interactions
 - video call recording and AI feed
-- buy domain option
-- user preferences (password, email)
-- AI token usage for user - track and report
-- user favicon and meta data for SEO
-- SEO help
 - review DB structure for scaling
-- recurring events in calendar
-- accept payments for calendar events
 - chat for video calls 100ms
 - super admin console
-- tenant subscription
-
+- booking wait list
+- add phone number + whatsapp support for booking
 - production deployment.
 
+- invite
+  - CHarles
+  - Denise
+  - The accountant on FB
+  - Anusha?
+
+- facebook login
+- buy domain option
+- AI token usage for user - track and report
+- workflow builder - "after appointment, send follow-up email with feedback and next steps"
+- task manager
 - multiple emails (aliases?)
 - xero integration for invoicing
 - intuit quickbooks integration
@@ -43,6 +55,8 @@ x email reply
 - sync calendar events with apple calendar
 - sync calendar events with outlook calendar
 - can zoom calls be recorded and transcribed?
+- remove account and move out all data.
+- set up people for multi-user support in tenants
 
   Sections That Could Be Added
   ┌──────────────────────┬───────────────────────────────────────────────────────────────────┐
@@ -140,3 +154,8 @@ For a small platform like Cally, the realistic options are:
 └─────────────────────────────────────┴─────────────────────────────────┴────────────────────────┘
 The current 100ms setup with auto-recording is the most expensive path. The cheapest zero-effort change would be
 disabling auto-recording — that alone drops 100ms costs from ~$43 to ~$8/mo per moderate tenant.
+
+biz kit
+launchd
+
+bizcally.com

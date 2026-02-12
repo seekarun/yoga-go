@@ -143,7 +143,7 @@ export default function LiveMeetingPage({ params }: PageProps) {
   };
 
   const handleCopyLink = async () => {
-    const shareUrl = `${window.location.origin}/srv/${expertId}/live/${eventId}`;
+    const shareUrl = `${window.location.origin}/${expertId}/live/${eventId}`;
     try {
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);

@@ -8,6 +8,10 @@
     {
       "key": "baseUrl",
       "value": "http://localhost:3113"
+    },
+    {
+      "key": "cronSecret",
+      "value": "your-cron-secret-here"
     }
   ],
   "item": [
@@ -174,7 +178,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"visitorName\": \"Jane Smith\",\n  \"visitorEmail\": \"jane@example.com\",\n  \"note\": \"First time visitor\",\n  \"startTime\": \"2026-02-09T22:00:00.000Z\",\n  \"endTime\": \"2026-02-09T22:30:00.000Z\"\n}"
+              "raw": "{\n  \"visitorName\": \"Jane Smith\",\n  \"visitorEmail\": \"jane@example.com\",\n  \"note\": \"First time visitor\",\n  \"startTime\": \"2026-02-09T22:00:00.000Z\",\n  \"endTime\": \"2026-02-09T22:30:00.000Z\",\n  \"productId\": \"optional-product-uuid\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/data/tenants/:tenantId/booking",
@@ -187,7 +191,62 @@
                 }
               ]
             },
-            "description": "Create a booking. Validates slot availability to prevent double-booking. Creates a calendar event with title 'Booking: {name}'."
+            "description": "Create a booking. Validates slot availability to prevent double-booking. Creates a calendar event with title 'Booking: {name}'. Optional productId links booking to a product (overrides slot duration)."
+          }
+        },
+        {
+          "name": "Get Active Products (Public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/tenants/:tenantId/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "tenants", ":tenantId", "products"],
+              "variable": [
+                {
+                  "key": "tenantId",
+                  "value": "01HXYZ..."
+                }
+              ]
+            },
+            "description": "Get active products for a tenant (public). Returns { products: Product[], currency: string }. Products sorted by sortOrder asc."
+          }
+        },
+        {
+          "name": "Get Booking Slots (with Product)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/tenants/:tenantId/booking/slots?date=2026-02-09&productId=product-uuid",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "tenants",
+                ":tenantId",
+                "booking",
+                "slots"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2026-02-09"
+                },
+                {
+                  "key": "productId",
+                  "value": "product-uuid"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "tenantId",
+                  "value": "01HXYZ..."
+                }
+              ]
+            },
+            "description": "Get available booking slots for a date with product-specific duration. If productId is provided, slot duration comes from the product's durationMinutes instead of the default booking config."
           }
         },
         {
@@ -244,6 +303,47 @@
               ]
             },
             "description": "Public chat endpoint for visitors. Returns 403 if AI assistant is not enabled for the tenant."
+          }
+        },
+        {
+          "name": "Join Meeting (Public)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane Smith\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/tenants/:tenantId/calendar/events/:eventId/join",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "tenants",
+                ":tenantId",
+                "calendar",
+                "events",
+                ":eventId",
+                "join"
+              ],
+              "variable": [
+                {
+                  "key": "tenantId",
+                  "value": "01HXYZ..."
+                },
+                {
+                  "key": "eventId",
+                  "value": "evt_123..."
+                }
+              ]
+            },
+            "description": "Public endpoint to join a video meeting. Returns 100ms auth token, room ID, and role. If the caller is authenticated as the tenant owner, they get the 'host' role; otherwise 'guest'. Guests must provide a name in the request body."
           }
         }
       ]
@@ -699,7 +799,7 @@
     },
     {
       "name": "Preferences - Authenticated",
-      "description": "Tenant preferences (timezone, email display name, regional settings)",
+      "description": "Tenant preferences (timezone, email display name, default event duration, regional settings, business address)",
       "item": [
         {
           "name": "Get Preferences",
@@ -711,7 +811,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "data", "app", "preferences"]
             },
-            "description": "Get tenant preferences including timezone and emailDisplayName. Falls back to bookingConfig.timezone then Australia/Sydney."
+            "description": "Get tenant preferences including timezone, emailDisplayName, videoCallPreference, defaultEventDuration (minutes, default 30), and address. Falls back to bookingConfig.timezone then Australia/Sydney."
           }
         },
         {
@@ -726,14 +826,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"timezone\": \"Australia/Sydney\",\n  \"emailDisplayName\": \"My Studio Name\"\n}"
+              "raw": "{\n  \"timezone\": \"Australia/Sydney\",\n  \"emailDisplayName\": \"My Studio Name\",\n  \"defaultEventDuration\": 30,\n  \"currency\": \"AUD\",\n  \"address\": \"123 Main St, Sydney NSW 2000\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/data/app/preferences",
               "host": ["{{baseUrl}}"],
               "path": ["api", "data", "app", "preferences"]
             },
-            "description": "Update tenant preferences. Timezone must be a valid IANA timezone string. emailDisplayName (max 100 chars) customizes the sender name on outgoing emails; send empty string to clear."
+            "description": "Update tenant preferences. Timezone must be a valid IANA timezone string. emailDisplayName (max 100 chars) customizes the sender name on outgoing emails; send empty string to clear. defaultEventDuration must be one of: 15, 30, 45, 60, 90, 120 (minutes). currency must be one of: AUD, USD, GBP, EUR, INR, NZD, CAD, SGD. address (max 300 chars) is the business address displayed on the landing page location section."
           }
         }
       ]
@@ -1566,6 +1666,113 @@
       ]
     },
     {
+      "name": "Products - Authenticated",
+      "description": "Product catalog CRUD endpoints for authenticated tenants",
+      "item": [
+        {
+          "name": "List Products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "products"]
+            },
+            "description": "List all products for the authenticated tenant (sorted by sortOrder asc, then createdAt asc)."
+          }
+        },
+        {
+          "name": "Create Product",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Hair Cut\",\n  \"description\": \"Professional haircut service\",\n  \"durationMinutes\": 30,\n  \"price\": 4000,\n  \"color\": \"#6366f1\",\n  \"isActive\": true,\n  \"sortOrder\": 0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/products",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "products"]
+            },
+            "description": "Create a new product. Price is in smallest currency unit (cents). Duration 5-480 minutes. Name required."
+          }
+        },
+        {
+          "name": "Get Product",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/products/:productId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "products", ":productId"],
+              "variable": [
+                {
+                  "key": "productId",
+                  "value": "product-uuid"
+                }
+              ]
+            },
+            "description": "Get a single product by ID."
+          }
+        },
+        {
+          "name": "Update Product",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Premium Hair Cut\",\n  \"price\": 5000,\n  \"durationMinutes\": 45,\n  \"color\": \"#3b82f6\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/products/:productId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "products", ":productId"],
+              "variable": [
+                {
+                  "key": "productId",
+                  "value": "product-uuid"
+                }
+              ]
+            },
+            "description": "Update a product. Supports partial updates. Same validation as create."
+          }
+        },
+        {
+          "name": "Delete Product",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/products/:productId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "products", ":productId"],
+              "variable": [
+                {
+                  "key": "productId",
+                  "value": "product-uuid"
+                }
+              ]
+            },
+            "description": "Delete a product by ID."
+          }
+        }
+      ]
+    },
+    {
       "name": "Google Calendar - Authenticated",
       "item": [
         {
@@ -1985,6 +2192,173 @@
               "path": ["api", "data", "app", "inbox", "attachments", "upload"]
             },
             "description": "Get a presigned S3 PUT URL for uploading an attachment to include in a reply. URL expires in 10 minutes. Max file size: 10MB. Returns { uploadUrl, attachmentId, s3Key, filename, contentType, expiresIn }."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cron Jobs",
+      "description": "Vercel Cron job endpoints (require CRON_SECRET authorization)",
+      "item": [
+        {
+          "name": "Morning Briefing Cron",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cronSecret}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cron/morning-briefing",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "cron", "morning-briefing"]
+            },
+            "description": "Trigger morning briefing calls for eligible tenants. Runs every 15 minutes via Vercel Cron."
+          }
+        },
+        {
+          "name": "Event Reminders Cron",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cronSecret}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cron/event-reminders",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "cron", "event-reminders"]
+            },
+            "description": "Send event reminder emails to attendees. Checks events starting in ~24h and ~10m windows. Runs every 5 minutes via Vercel Cron. Returns { checked, reminded24h, reminded10m, errors, durationMs }."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Stripe Connect",
+      "item": [
+        {
+          "name": "Connect Stripe (redirect)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/stripe/connect",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "stripe", "connect"]
+            },
+            "description": "Starts Stripe Connect onboarding. Creates Express account and redirects to Stripe. Requires auth."
+          }
+        },
+        {
+          "name": "Stripe Callback (redirect)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/stripe/callback?tenantId=YOUR_TENANT_ID",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "stripe", "callback"],
+              "query": [
+                {
+                  "key": "tenantId",
+                  "value": "YOUR_TENANT_ID"
+                }
+              ]
+            },
+            "description": "Return URL from Stripe onboarding. Updates account status and redirects to settings."
+          }
+        },
+        {
+          "name": "Stripe Refresh (redirect)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/stripe/refresh?tenantId=YOUR_TENANT_ID",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "stripe", "refresh"],
+              "query": [
+                {
+                  "key": "tenantId",
+                  "value": "YOUR_TENANT_ID"
+                }
+              ]
+            },
+            "description": "Refreshes expired Stripe onboarding link and redirects."
+          }
+        },
+        {
+          "name": "Stripe Status",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/stripe/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "stripe", "status"]
+            },
+            "description": "Returns Stripe Connect connection status: connected, chargesEnabled, detailsSubmitted, email, applicationFeePercent, connectedAt."
+          }
+        },
+        {
+          "name": "Disconnect Stripe",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/stripe/disconnect",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "stripe", "disconnect"]
+            },
+            "description": "Removes Stripe config from tenant. Does not delete the Stripe account."
+          }
+        },
+        {
+          "name": "Update Stripe Settings",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"applicationFeePercent\": 5\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/stripe/settings",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "stripe", "settings"]
+            },
+            "description": "Updates application fee percentage (0-100) on Stripe config."
+          }
+        },
+        {
+          "name": "Stripe Webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "stripe-signature",
+                "value": "YOUR_STRIPE_SIGNATURE"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/stripe/webhook",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stripe", "webhook"]
+            },
+            "description": "Public Stripe webhook. Handles checkout.session.completed (confirms booking) and checkout.session.expired (frees slot)."
           }
         }
       ]

@@ -19,6 +19,7 @@ interface CreateEventModalProps {
   tenantId: string;
   onEventCreated: () => void;
   videoCallPreference?: "cally" | "google_meet" | "zoom";
+  defaultDurationMinutes?: number;
 }
 
 // Predefined colors for events
@@ -31,9 +32,9 @@ const EVENT_COLORS = [
   { name: "Pink", value: "#ec4899" },
 ];
 
-function addHours(date: Date, hours: number): Date {
+function addMinutes(date: Date, minutes: number): Date {
   const result = new Date(date);
-  result.setHours(result.getHours() + hours);
+  result.setMinutes(result.getMinutes() + minutes);
   return result;
 }
 
@@ -44,6 +45,7 @@ export default function CreateEventModal({
   tenantId: _tenantId,
   onEventCreated,
   videoCallPreference = "cally",
+  defaultDurationMinutes = 30,
 }: CreateEventModalProps) {
   // Form state
   const [title, setTitle] = useState("");
@@ -85,7 +87,7 @@ export default function CreateEventModal({
       if (start.getHours() === 0) {
         start.setHours(9, 0, 0, 0);
       }
-      const end = addHours(start, 1);
+      const end = addMinutes(start, defaultDurationMinutes);
 
       setTitle("");
       setDescription("");
@@ -100,16 +102,16 @@ export default function CreateEventModal({
       setAttendees([]);
       setError("");
     }
-  }, [isOpen, initialDate]);
+  }, [isOpen, initialDate, defaultDurationMinutes]);
 
   // Handle start time change - auto-adjust end time
   const handleStartTimeChange = (newStart: string) => {
     setStartTime(newStart);
 
-    // Auto-set end time to 1 hour after start
+    // Auto-set end time based on default duration
     const startDate = new Date(newStart);
     if (!isNaN(startDate.getTime())) {
-      const endDate = addHours(startDate, 1);
+      const endDate = addMinutes(startDate, defaultDurationMinutes);
       setEndTime(formatDateForInput(endDate));
     }
   };

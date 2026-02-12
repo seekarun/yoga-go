@@ -134,6 +134,14 @@ function SignInContent() {
                   {showPassword ? "Hide" : "Show"}
                 </button>
               </div>
+              <div className="mt-1 text-right">
+                <Link
+                  href={`/auth/forgot-password${email ? `?email=${encodeURIComponent(email)}` : ""}`}
+                  className="text-sm text-[var(--color-primary)] hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </div>
             </div>
 
             <button

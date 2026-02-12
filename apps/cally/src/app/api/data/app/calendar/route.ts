@@ -227,9 +227,12 @@ export async function GET(request: Request) {
 
     // Transform Cally events to CalendarItem format for FullCalendar
     const calendarItems: CalendarItem[] = events.map((event) => {
-      // Override color for pending events so they stand out
-      const color =
-        event.status === "pending" ? PENDING_COLOR : event.color || EVENT_COLOR;
+      // Use event's own color if set; fall back to amber for pending, default otherwise
+      const color = event.color
+        ? event.color
+        : event.status === "pending"
+          ? PENDING_COLOR
+          : EVENT_COLOR;
 
       return {
         id: event.id,

@@ -1,36 +1,68 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import Modal, { ModalHeader } from "@/components/Modal";
 import { DEFAULT_BOOKING_CONFIG } from "@/types/booking";
-import type { TimeSlot, AvailableSlotsResponse } from "@/types/booking";
+import type {
+  TimeSlot,
+  AvailableSlotsResponse,
+  BookingConfig,
+} from "@/types/booking";
 import { useVisitorTimezone } from "@/hooks/useVisitorTimezone";
-import DatePicker from "./DatePicker";
-import TimeSlotGrid from "./TimeSlotGrid";
+import DayTimelineView from "./DayTimelineView";
 import BookingForm from "./BookingForm";
 import BookingConfirmation from "./BookingConfirmation";
+import {
+  getTodayInTimezone,
+  getMaxDate,
+  findFirstBusinessDay,
+} from "./dateUtils";
 
-type BookingStep = "date-select" | "time-select" | "form" | "confirmed";
+type BookingStep = "schedule" | "form" | "confirmed";
 
 interface BookingWidgetProps {
   tenantId: string;
   isOpen: boolean;
   onClose: () => void;
+  productId?: string;
+  productName?: string;
 }
 
 export default function BookingWidget({
   tenantId,
   isOpen,
   onClose,
+  productId,
+  productName,
 }: BookingWidgetProps) {
   const [visitorTimezone] = useVisitorTimezone();
-  const [step, setStep] = useState<BookingStep>("date-select");
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [bookingConfig, setBookingConfig] = useState(DEFAULT_BOOKING_CONFIG);
+  const [configLoaded, setConfigLoaded] = useState(false);
+
+  const todayStr = getTodayInTimezone(bookingConfig.timezone);
+  const maxDate = useMemo(
+    () => getMaxDate(todayStr, bookingConfig.lookaheadDays),
+    [todayStr, bookingConfig.lookaheadDays],
+  );
+
+  const initialDate = useMemo(
+    () =>
+      findFirstBusinessDay(
+        todayStr,
+        bookingConfig.weeklySchedule,
+        todayStr,
+        maxDate,
+      ) ?? todayStr,
+    [todayStr, bookingConfig.weeklySchedule, maxDate],
+  );
+
+  const [step, setStep] = useState<BookingStep>("schedule");
+  const [selectedDate, setSelectedDate] = useState<string>(initialDate);
   const [slots, setSlots] = useState<TimeSlot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
   const [timezone, setTimezone] = useState(
-    visitorTimezone || DEFAULT_BOOKING_CONFIG.timezone,
+    visitorTimezone || bookingConfig.timezone,
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,34 +70,31 @@ export default function BookingWidget({
   const [warning, setWarning] = useState<string | null>(null);
 
   const resetState = useCallback(() => {
-    setStep("date-select");
-    setSelectedDate(null);
+    setStep("schedule");
+    setSelectedDate(initialDate);
     setSlots([]);
     setSelectedSlot(null);
     setSubmitting(false);
     setError(null);
     setConfirmedSlot(null);
     setWarning(null);
-  }, []);
+  }, [initialDate]);
 
   const handleClose = useCallback(() => {
     onClose();
-    // Reset after animation
     setTimeout(resetState, 200);
   }, [onClose, resetState]);
 
-  const handleDateSelect = useCallback(
+  const fetchSlots = useCallback(
     async (date: string) => {
-      setSelectedDate(date);
-      setSelectedSlot(null);
-      setError(null);
       setSlotsLoading(true);
-      setStep("time-select");
+      setError(null);
 
       try {
-        const res = await fetch(
-          `/api/data/tenants/${tenantId}/booking/slots?date=${date}`,
-        );
+        const slotsUrl = productId
+          ? `/api/data/tenants/${tenantId}/booking/slots?date=${date}&productId=${productId}`
+          : `/api/data/tenants/${tenantId}/booking/slots?date=${date}`;
+        const res = await fetch(slotsUrl);
         const json = (await res.json()) as {
           success: boolean;
           data?: AvailableSlotsResponse;
@@ -80,6 +109,19 @@ export default function BookingWidget({
 
         setSlots(json.data.slots);
         setTimezone(visitorTimezone || json.data.timezone);
+
+        // Update booking config from API on first load
+        if (!configLoaded && json.data.weeklySchedule) {
+          const newConfig: BookingConfig = {
+            timezone: json.data.timezone,
+            slotDurationMinutes: DEFAULT_BOOKING_CONFIG.slotDurationMinutes,
+            lookaheadDays:
+              json.data.lookaheadDays ?? DEFAULT_BOOKING_CONFIG.lookaheadDays,
+            weeklySchedule: json.data.weeklySchedule,
+          };
+          setBookingConfig(newConfig);
+          setConfigLoaded(true);
+        }
       } catch {
         setError("Failed to load available times");
         setSlots([]);
@@ -87,7 +129,42 @@ export default function BookingWidget({
         setSlotsLoading(false);
       }
     },
-    [tenantId, visitorTimezone],
+    [tenantId, visitorTimezone, productId, configLoaded],
+  );
+
+  // Auto-fetch slots when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchSlots(selectedDate);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only trigger on open
+  }, [isOpen]);
+
+  // Re-select initial date when config loads from API
+  useEffect(() => {
+    if (configLoaded && step === "schedule") {
+      const newInitial =
+        findFirstBusinessDay(
+          todayStr,
+          bookingConfig.weeklySchedule,
+          todayStr,
+          maxDate,
+        ) ?? todayStr;
+      if (newInitial !== selectedDate) {
+        setSelectedDate(newInitial);
+        fetchSlots(newInitial);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only run when config first loads
+  }, [configLoaded]);
+
+  const handleDateChange = useCallback(
+    (date: string) => {
+      setSelectedDate(date);
+      setSelectedSlot(null);
+      fetchSlots(date);
+    },
+    [fetchSlots],
   );
 
   const handleSlotSelect = useCallback((slot: TimeSlot) => {
@@ -119,6 +196,7 @@ export default function BookingWidget({
             note: data.note || undefined,
             startTime: selectedSlot.startTime,
             endTime: selectedSlot.endTime,
+            productId: productId || undefined,
             _hp: data._hp,
             _t: data._t,
           }),
@@ -128,10 +206,20 @@ export default function BookingWidget({
           success: boolean;
           error?: string;
           warning?: string;
+          data?: {
+            requiresPayment?: boolean;
+            checkoutUrl?: string;
+          };
         };
 
         if (!json.success) {
           setError(json.error ?? "Booking failed");
+          return;
+        }
+
+        // Redirect to Stripe Checkout for paid bookings
+        if (json.data?.requiresPayment && json.data?.checkoutUrl) {
+          window.location.href = json.data.checkoutUrl;
           return;
         }
 
@@ -146,15 +234,13 @@ export default function BookingWidget({
         setSubmitting(false);
       }
     },
-    [tenantId, selectedSlot],
+    [tenantId, selectedSlot, productId],
   );
 
   const stepTitle = (() => {
     switch (step) {
-      case "date-select":
-        return "Select a Date";
-      case "time-select":
-        return "Select a Time";
+      case "schedule":
+        return productName || "Book an Appointment";
       case "form":
         return "Your Details";
       case "confirmed":
@@ -172,66 +258,23 @@ export default function BookingWidget({
         </div>
       )}
 
-      {step === "date-select" && (
-        <DatePicker
-          bookingConfig={DEFAULT_BOOKING_CONFIG}
+      {step === "schedule" && (
+        <DayTimelineView
+          bookingConfig={bookingConfig}
+          slots={slots}
+          loading={slotsLoading}
           selectedDate={selectedDate}
-          onDateSelect={handleDateSelect}
+          timezone={timezone}
+          onDateChange={handleDateChange}
+          onSlotSelect={handleSlotSelect}
         />
-      )}
-
-      {step === "time-select" && (
-        <div>
-          <button
-            type="button"
-            onClick={() => setStep("date-select")}
-            className="flex items-center text-sm text-indigo-600 hover:text-indigo-800 mb-3"
-          >
-            <svg
-              className="w-4 h-4 mr-1"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-            Back to calendar
-          </button>
-
-          {selectedDate && (
-            <p className="text-sm text-gray-600 mb-3">
-              {new Date(selectedDate + "T12:00:00Z").toLocaleDateString(
-                "en-US",
-                {
-                  weekday: "long",
-                  month: "long",
-                  day: "numeric",
-                  timeZone: "UTC",
-                },
-              )}
-            </p>
-          )}
-
-          <TimeSlotGrid
-            slots={slots}
-            loading={slotsLoading}
-            selectedSlot={selectedSlot}
-            onSlotSelect={handleSlotSelect}
-            timezone={timezone}
-          />
-        </div>
       )}
 
       {step === "form" && (
         <div>
           <button
             type="button"
-            onClick={() => setStep("time-select")}
+            onClick={() => setStep("schedule")}
             className="flex items-center text-sm text-indigo-600 hover:text-indigo-800 mb-3"
           >
             <svg
@@ -247,22 +290,21 @@ export default function BookingWidget({
                 d="M15 19l-7-7 7-7"
               />
             </svg>
-            Back to times
+            Back to schedule
           </button>
 
           {selectedSlot && (
             <div className="bg-indigo-50 rounded-lg p-3 mb-4 text-sm">
               <span className="font-medium text-indigo-900">
-                {selectedDate &&
-                  new Date(selectedDate + "T12:00:00Z").toLocaleDateString(
-                    "en-US",
-                    {
-                      weekday: "short",
-                      month: "short",
-                      day: "numeric",
-                      timeZone: "UTC",
-                    },
-                  )}
+                {new Date(selectedDate + "T12:00:00Z").toLocaleDateString(
+                  "en-US",
+                  {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                    timeZone: "UTC",
+                  },
+                )}
               </span>
               <span className="text-indigo-700">
                 {" "}

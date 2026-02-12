@@ -126,7 +126,7 @@ export async function POST(
     console.log("[DBG][instant-meeting] Created event:", event.id);
 
     // Build the join URL
-    const joinUrl = `/srv/${tenantId}/live/${event.id}`;
+    const joinUrl = `/${tenantId}/live/${event.id}`;
 
     return NextResponse.json({
       success: true,

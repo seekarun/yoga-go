@@ -6,6 +6,8 @@
 
 import { NextResponse } from "next/server";
 import type { ApiResponse } from "@/types";
+import type { WeeklySchedule } from "@/types/booking";
+import { DEFAULT_BOOKING_CONFIG } from "@/types/booking";
 import { auth } from "@/auth";
 import {
   getTenantByUserId,
@@ -14,12 +16,30 @@ import {
 import { isValidTimezone } from "@/lib/timezones";
 
 interface PreferencesData {
+  name: string;
+  address: string;
   timezone: string;
-  emailDisplayName: string;
   videoCallPreference: "cally" | "google_meet" | "zoom";
+  defaultEventDuration: number;
+  currency: string;
   googleCalendarConnected: boolean;
   zoomConnected: boolean;
+  weeklySchedule: WeeklySchedule;
 }
+
+const VALID_CURRENCIES = [
+  "AUD",
+  "USD",
+  "GBP",
+  "EUR",
+  "INR",
+  "NZD",
+  "CAD",
+  "SGD",
+];
+
+const MIN_DURATION = 5;
+const MAX_DURATION = 480;
 
 const DEFAULT_TIMEZONE = "Australia/Sydney";
 
@@ -55,11 +75,17 @@ export async function GET(): Promise<
     return NextResponse.json({
       success: true,
       data: {
+        name: tenant.name,
+        address: tenant.address ?? "",
         timezone,
-        emailDisplayName: tenant.emailDisplayName || "",
         videoCallPreference: tenant.videoCallPreference ?? "cally",
+        defaultEventDuration: tenant.defaultEventDuration ?? 30,
+        currency: tenant.currency ?? "AUD",
         googleCalendarConnected: !!tenant.googleCalendarConfig,
         zoomConnected: !!tenant.zoomConfig,
+        weeklySchedule:
+          tenant.bookingConfig?.weeklySchedule ??
+          DEFAULT_BOOKING_CONFIG.weeklySchedule,
       },
     });
   } catch (error) {
@@ -102,30 +128,57 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { timezone, videoCallPreference, emailDisplayName } = body;
+    const {
+      name,
+      address,
+      timezone,
+      videoCallPreference,
+      defaultEventDuration,
+      currency,
+      weeklySchedule,
+    } = body;
 
     // Build partial update
     const updates: Record<string, unknown> = {};
 
-    // Validate emailDisplayName if provided
-    if (emailDisplayName !== undefined) {
-      if (typeof emailDisplayName !== "string") {
+    // Validate address if provided
+    if (address !== undefined) {
+      if (typeof address !== "string") {
         return NextResponse.json(
-          { success: false, error: "emailDisplayName must be a string" },
+          { success: false, error: "Address must be a string" },
           { status: 400 },
         );
       }
-      if (emailDisplayName.length > 100) {
+      if (address.length > 300) {
         return NextResponse.json(
           {
             success: false,
-            error: "emailDisplayName must be 100 characters or less",
+            error: "Address must be 300 characters or less",
           },
           { status: 400 },
         );
       }
-      // Allow empty string to clear the custom display name
-      updates.emailDisplayName = emailDisplayName.trim() || "";
+      updates.address = address.trim();
+    }
+
+    // Validate name if provided
+    if (name !== undefined) {
+      if (typeof name !== "string" || !name.trim()) {
+        return NextResponse.json(
+          { success: false, error: "Name must be a non-empty string" },
+          { status: 400 },
+        );
+      }
+      if (name.length > 100) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Name must be 100 characters or less",
+          },
+          { status: 400 },
+        );
+      }
+      updates.name = name.trim();
     }
 
     // Validate timezone if provided
@@ -185,6 +238,124 @@ export async function PUT(
       updates.videoCallPreference = videoCallPreference;
     }
 
+    // Validate defaultEventDuration if provided
+    if (defaultEventDuration !== undefined) {
+      const duration = Number(defaultEventDuration);
+      if (
+        !Number.isInteger(duration) ||
+        duration < MIN_DURATION ||
+        duration > MAX_DURATION
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `defaultEventDuration must be a whole number between ${MIN_DURATION} and ${MAX_DURATION}`,
+          },
+          { status: 400 },
+        );
+      }
+      updates.defaultEventDuration = duration;
+    }
+
+    // Validate currency if provided
+    if (currency !== undefined) {
+      if (
+        typeof currency !== "string" ||
+        !VALID_CURRENCIES.includes(currency)
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Currency must be one of: ${VALID_CURRENCIES.join(", ")}`,
+          },
+          { status: 400 },
+        );
+      }
+      updates.currency = currency;
+    }
+
+    // Validate weeklySchedule if provided
+    if (weeklySchedule !== undefined) {
+      if (typeof weeklySchedule !== "object" || weeklySchedule === null) {
+        return NextResponse.json(
+          { success: false, error: "weeklySchedule must be an object" },
+          { status: 400 },
+        );
+      }
+
+      const requiredDays = [0, 1, 2, 3, 4, 5, 6];
+      for (const day of requiredDays) {
+        const entry = weeklySchedule[day];
+        if (!entry || typeof entry !== "object") {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `weeklySchedule must include day ${day}`,
+            },
+            { status: 400 },
+          );
+        }
+        if (typeof entry.enabled !== "boolean") {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `weeklySchedule[${day}].enabled must be a boolean`,
+            },
+            { status: 400 },
+          );
+        }
+        const start = Number(entry.startHour);
+        const end = Number(entry.endHour);
+        if (
+          !Number.isInteger(start) ||
+          start < 0 ||
+          start > 23 ||
+          !Number.isInteger(end) ||
+          end < 0 ||
+          end > 23
+        ) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `weeklySchedule[${day}] hours must be integers 0-23`,
+            },
+            { status: 400 },
+          );
+        }
+        if (entry.enabled && end <= start) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `weeklySchedule[${day}].endHour must be greater than startHour`,
+            },
+            { status: 400 },
+          );
+        }
+      }
+
+      const hasEnabledDay = requiredDays.some((d) => weeklySchedule[d].enabled);
+      if (!hasEnabledDay) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "At least one day must be enabled",
+          },
+          { status: 400 },
+        );
+      }
+
+      // Merge into bookingConfig, preserving other fields
+      const existingConfig = tenant.bookingConfig ?? DEFAULT_BOOKING_CONFIG;
+      updates.bookingConfig = {
+        ...existingConfig,
+        weeklySchedule,
+        timezone:
+          (updates.timezone as string) ||
+          tenant.timezone ||
+          existingConfig.timezone,
+      };
+    }
+
     if (Object.keys(updates).length === 0) {
       return NextResponse.json(
         { success: false, error: "No valid fields to update" },
@@ -197,11 +368,17 @@ export async function PUT(
     return NextResponse.json({
       success: true,
       data: {
+        name: updated.name,
+        address: updated.address ?? "",
         timezone: updated.timezone || tenant.timezone || DEFAULT_TIMEZONE,
-        emailDisplayName: updated.emailDisplayName || "",
         videoCallPreference: updated.videoCallPreference ?? "cally",
+        defaultEventDuration: updated.defaultEventDuration ?? 30,
+        currency: updated.currency ?? "AUD",
         googleCalendarConnected: !!tenant.googleCalendarConfig,
         zoomConnected: !!tenant.zoomConfig,
+        weeklySchedule:
+          updated.bookingConfig?.weeklySchedule ??
+          DEFAULT_BOOKING_CONFIG.weeklySchedule,
       },
       message: "Preferences updated",
     });

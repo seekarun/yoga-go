@@ -16,6 +16,7 @@ import {
   getGoogleCalendarClient,
   listGoogleEvents,
 } from "@/lib/google-calendar";
+import { getProductById } from "@/lib/repositories/productRepository";
 
 interface RouteParams {
   params: Promise<{
@@ -54,7 +55,24 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const bookingConfig = tenant.bookingConfig ?? DEFAULT_BOOKING_CONFIG;
+    // Check for product-specific duration override
+    const productId = searchParams.get("productId");
+    const bookingConfig = {
+      ...(tenant.bookingConfig ?? DEFAULT_BOOKING_CONFIG),
+    };
+
+    if (productId) {
+      const product = await getProductById(tenantId, productId);
+      if (product && product.isActive) {
+        bookingConfig.slotDurationMinutes = product.durationMinutes;
+        console.log(
+          "[DBG][booking/slots] Using product duration:",
+          product.durationMinutes,
+          "min for product:",
+          productId,
+        );
+      }
+    }
 
     // Fetch existing events for the requested date
     const existingEvents = await getCalendarEventsByDateRange(
@@ -137,6 +155,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         date,
         timezone: bookingConfig.timezone,
         slots,
+        weeklySchedule: bookingConfig.weeklySchedule,
+        lookaheadDays: bookingConfig.lookaheadDays,
       },
     });
   } catch (error) {

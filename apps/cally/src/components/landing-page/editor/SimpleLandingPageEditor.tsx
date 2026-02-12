@@ -15,13 +15,18 @@ import type {
   FAQConfig,
   FAQItem,
   FooterConfig,
+  LocationConfig,
+  GalleryConfig,
+  GalleryImage,
   SectionOrderItem,
+  SEOConfig,
 } from "@/types/landing-page";
 import {
   TEMPLATES,
   DEFAULT_LANDING_PAGE_CONFIG,
   BUTTON_ACTIONS,
 } from "@/types/landing-page";
+import type { Product } from "@/types";
 import { ImageEditorOverlay, ButtonEditorOverlay } from "@core/components";
 import HeroTemplateRenderer from "@/templates/hero";
 import SectionToolbar from "./SectionToolbar";
@@ -70,6 +75,20 @@ export default function SimpleLandingPageEditor({
     string | null
   >(null);
 
+  // Gallery image editor state
+  const [showGalleryImageEditor, setShowGalleryImageEditor] = useState(false);
+
+  // SEO panel state
+  const [showSEOPanel, setShowSEOPanel] = useState(false);
+  const [showSEOOgImageEditor, setShowSEOOgImageEditor] = useState(false);
+  const [showSEOFaviconEditor, setShowSEOFaviconEditor] = useState(false);
+  const seoPickerRef = useRef<HTMLDivElement>(null);
+
+  // Products state (for preview in editor)
+  const [products, setProducts] = useState<Product[]>([]);
+  const [editorCurrency, setEditorCurrency] = useState("AUD");
+  const [editorAddress, setEditorAddress] = useState("");
+
   // Brand colour picker state
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [hexInput, setHexInput] = useState("#667eea");
@@ -100,6 +119,20 @@ export default function SimpleLandingPageEditor({
         !colorPickerRef.current.contains(e.target as Node)
       ) {
         setShowColorPicker(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Close SEO panel on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        seoPickerRef.current &&
+        !seoPickerRef.current.contains(e.target as Node)
+      ) {
+        setShowSEOPanel(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -188,8 +221,11 @@ export default function SimpleLandingPageEditor({
         const knownSectionIds = new Set([
           "about",
           "features",
+          "products",
           "testimonials",
           "faq",
+          "location",
+          "gallery",
         ]);
         const loadedSections = landingPage.sections || [];
         // Validate sections — if they contain unrecognized IDs (old format), use defaults
@@ -200,16 +236,45 @@ export default function SimpleLandingPageEditor({
           );
         let finalSections: SectionOrderItem[];
         if (hasValidSections) {
-          // Ensure "about" is in sections array
+          // Ensure "about" and "products" are in sections array
           const hasAbout = loadedSections.some(
             (s: SectionOrderItem) => s.id === "about",
           );
-          finalSections = hasAbout
+          const hasProducts = loadedSections.some(
+            (s: SectionOrderItem) => s.id === "products",
+          );
+          let patched = hasAbout
             ? loadedSections
             : [
                 { id: "about" as const, enabled: !!landingPage.about },
                 ...loadedSections,
               ];
+          if (!hasProducts) {
+            // Insert "products" after "features" (or at end of middle sections)
+            const featIdx = patched.findIndex(
+              (s: SectionOrderItem) => s.id === "features",
+            );
+            const insertAt = featIdx >= 0 ? featIdx + 1 : patched.length;
+            patched = [
+              ...patched.slice(0, insertAt),
+              { id: "products" as const, enabled: false },
+              ...patched.slice(insertAt),
+            ];
+          }
+          // Ensure location and gallery exist
+          const hasLocation = patched.some(
+            (s: SectionOrderItem) => s.id === "location",
+          );
+          const hasGallery = patched.some(
+            (s: SectionOrderItem) => s.id === "gallery",
+          );
+          if (!hasLocation) {
+            patched = [...patched, { id: "location" as const, enabled: false }];
+          }
+          if (!hasGallery) {
+            patched = [...patched, { id: "gallery" as const, enabled: false }];
+          }
+          finalSections = patched;
         } else {
           // Old format or missing — use defaults
           finalSections = DEFAULT_LANDING_PAGE_CONFIG.sections || [];
@@ -233,11 +298,15 @@ export default function SimpleLandingPageEditor({
             landingPage.testimonials ||
             DEFAULT_LANDING_PAGE_CONFIG.testimonials,
           faq: landingPage.faq || DEFAULT_LANDING_PAGE_CONFIG.faq,
+          location:
+            landingPage.location || DEFAULT_LANDING_PAGE_CONFIG.location,
+          gallery: landingPage.gallery || DEFAULT_LANDING_PAGE_CONFIG.gallery,
           footer: landingPage.footer || DEFAULT_LANDING_PAGE_CONFIG.footer,
           heroEnabled: landingPage.heroEnabled ?? true,
           footerEnabled: landingPage.footerEnabled ?? true,
           sections: finalSections,
           theme: landingPage.theme || undefined,
+          seo: landingPage.seo || DEFAULT_LANDING_PAGE_CONFIG.seo,
         });
 
         setTimeout(() => {
@@ -255,6 +324,33 @@ export default function SimpleLandingPageEditor({
     };
 
     fetchData();
+
+    // Fetch products for preview
+    const fetchProducts = async () => {
+      try {
+        const [productsRes, prefsRes] = await Promise.all([
+          fetch("/api/data/app/products"),
+          fetch("/api/data/app/preferences"),
+        ]);
+        const productsJson = await productsRes.json();
+        const prefsJson = await prefsRes.json();
+        if (productsJson.success && productsJson.data) {
+          setProducts(productsJson.data.filter((p: Product) => p.isActive));
+        }
+        if (prefsJson.success && prefsJson.data?.currency) {
+          setEditorCurrency(prefsJson.data.currency);
+        }
+        if (prefsJson.success && prefsJson.data?.address) {
+          setEditorAddress(prefsJson.data.address);
+        }
+      } catch (err) {
+        console.error(
+          "[DBG][SimpleLandingPageEditor] Failed to fetch products:",
+          err,
+        );
+      }
+    };
+    fetchProducts();
   }, []);
 
   // Auto-save effect
@@ -625,6 +721,90 @@ export default function SimpleLandingPageEditor({
     setIsDirty(true);
   }, []);
 
+  // --- Location handlers ---
+  const handleLocationHeadingChange = useCallback((heading: string) => {
+    setConfig((prev) => ({
+      ...prev,
+      location: {
+        ...prev.location,
+        heading,
+      } as LocationConfig,
+    }));
+    setIsDirty(true);
+  }, []);
+
+  const handleLocationSubheadingChange = useCallback((subheading: string) => {
+    setConfig((prev) => ({
+      ...prev,
+      location: {
+        ...prev.location,
+        subheading,
+      } as LocationConfig,
+    }));
+    setIsDirty(true);
+  }, []);
+
+  // --- Gallery handlers ---
+  const handleGalleryHeadingChange = useCallback((heading: string) => {
+    setConfig((prev) => ({
+      ...prev,
+      gallery: {
+        ...prev.gallery,
+        heading,
+        images: prev.gallery?.images || [],
+      } as GalleryConfig,
+    }));
+    setIsDirty(true);
+  }, []);
+
+  const handleGallerySubheadingChange = useCallback((subheading: string) => {
+    setConfig((prev) => ({
+      ...prev,
+      gallery: {
+        ...prev.gallery,
+        subheading,
+        images: prev.gallery?.images || [],
+      } as GalleryConfig,
+    }));
+    setIsDirty(true);
+  }, []);
+
+  const handleGalleryAddImage = useCallback(() => {
+    setShowGalleryImageEditor(true);
+  }, []);
+
+  const handleGalleryImageChange = useCallback(
+    (data: { imageUrl: string; imagePosition: string; imageZoom: number }) => {
+      if (!data.imageUrl) return;
+      const newImage: GalleryImage = {
+        id: `gallery-${Date.now()}`,
+        url: data.imageUrl,
+      };
+      setConfig((prev) => ({
+        ...prev,
+        gallery: {
+          ...prev.gallery,
+          images: [...(prev.gallery?.images || []), newImage],
+        } as GalleryConfig,
+      }));
+      setIsDirty(true);
+    },
+    [],
+  );
+
+  const handleGalleryRemoveImage = useCallback((imageId: string) => {
+    setConfig((prev) => ({
+      ...prev,
+      gallery: {
+        ...prev.gallery,
+        images: (prev.gallery?.images || []).filter(
+          (img) => img.id !== imageId,
+        ),
+      } as GalleryConfig,
+    }));
+    setIsDirty(true);
+  }, []);
+
   // --- Footer handlers ---
   const handleFooterTextChange = useCallback((text: string) => {
     setConfig((prev) => ({
@@ -779,6 +959,49 @@ export default function SimpleLandingPageEditor({
     const nextIndex = (currentIndex + 1) % HARMONY_OPTIONS.length;
     setColorHarmony(HARMONY_OPTIONS[nextIndex].type);
   }, [colorHarmony]);
+
+  // --- SEO handlers ---
+  const handleSEOFieldChange = useCallback(
+    (field: keyof SEOConfig, value: string) => {
+      setConfig((prev) => ({
+        ...prev,
+        seo: {
+          ...prev.seo,
+          [field]: value || undefined,
+        },
+      }));
+      setIsDirty(true);
+    },
+    [],
+  );
+
+  const handleSEOOgImageChange = useCallback(
+    (data: { imageUrl: string; imagePosition: string; imageZoom: number }) => {
+      setConfig((prev) => ({
+        ...prev,
+        seo: {
+          ...prev.seo,
+          ogImage: data.imageUrl || undefined,
+        },
+      }));
+      setIsDirty(true);
+    },
+    [],
+  );
+
+  const handleSEOFaviconChange = useCallback(
+    (data: { imageUrl: string; imagePosition: string; imageZoom: number }) => {
+      setConfig((prev) => ({
+        ...prev,
+        seo: {
+          ...prev.seo,
+          favicon: data.imageUrl || undefined,
+        },
+      }));
+      setIsDirty(true);
+    },
+    [],
+  );
 
   // Save data function
   const saveData = async (): Promise<boolean> => {
@@ -1061,6 +1284,181 @@ export default function SimpleLandingPageEditor({
           )}
         </div>
 
+        {/* SEO Panel */}
+        <div className="relative" ref={seoPickerRef}>
+          <button
+            onClick={() => setShowSEOPanel(!showSEOPanel)}
+            className="px-3 py-2 border border-[var(--color-border)] rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
+            title="SEO Settings"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            SEO
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+
+          {showSEOPanel && (
+            <div className="absolute top-full left-0 mt-1 bg-white border border-[var(--color-border)] rounded-lg shadow-lg p-4 z-50 w-[340px]">
+              <div className="text-xs font-medium text-gray-700 mb-3">
+                Search Engine Optimisation
+              </div>
+
+              {/* SEO Title */}
+              <div className="mb-3">
+                <label className="block text-xs text-gray-500 mb-1">
+                  SEO Title
+                </label>
+                <input
+                  type="text"
+                  value={config.seo?.title || ""}
+                  onChange={(e) =>
+                    handleSEOFieldChange("title", e.target.value)
+                  }
+                  placeholder="Custom page title for search engines"
+                  maxLength={70}
+                  className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <div className="flex justify-between mt-0.5">
+                  <span className="text-[10px] text-gray-400">
+                    Overrides hero title in search results
+                  </span>
+                  <span className="text-[10px] text-gray-400">
+                    {(config.seo?.title || "").length}/70
+                  </span>
+                </div>
+              </div>
+
+              {/* Meta Description */}
+              <div className="mb-3">
+                <label className="block text-xs text-gray-500 mb-1">
+                  Meta Description
+                </label>
+                <textarea
+                  value={config.seo?.description || ""}
+                  onChange={(e) =>
+                    handleSEOFieldChange("description", e.target.value)
+                  }
+                  placeholder="Custom description for search results"
+                  maxLength={160}
+                  rows={2}
+                  className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                />
+                <div className="flex justify-between mt-0.5">
+                  <span className="text-[10px] text-gray-400">
+                    Shown below the title in search results
+                  </span>
+                  <span className="text-[10px] text-gray-400">
+                    {(config.seo?.description || "").length}/160
+                  </span>
+                </div>
+              </div>
+
+              {/* Keywords */}
+              <div className="mb-3">
+                <label className="block text-xs text-gray-500 mb-1">
+                  Keywords
+                </label>
+                <input
+                  type="text"
+                  value={config.seo?.keywords || ""}
+                  onChange={(e) =>
+                    handleSEOFieldChange("keywords", e.target.value)
+                  }
+                  placeholder="e.g. yoga, meditation, wellness"
+                  className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <span className="text-[10px] text-gray-400">
+                  Comma-separated keywords for search engines
+                </span>
+              </div>
+
+              {/* OG Image */}
+              <div className="mb-3">
+                <label className="block text-xs text-gray-500 mb-1">
+                  Social Share Image
+                </label>
+                <div className="flex items-center gap-2">
+                  {config.seo?.ogImage ? (
+                    <div
+                      className="w-20 h-[42px] rounded border border-gray-200 bg-cover bg-center flex-shrink-0"
+                      style={{
+                        backgroundImage: `url(${config.seo.ogImage})`,
+                      }}
+                    />
+                  ) : (
+                    <div className="w-20 h-[42px] rounded border border-dashed border-gray-300 flex items-center justify-center flex-shrink-0">
+                      <span className="text-[10px] text-gray-400">
+                        1200x630
+                      </span>
+                    </div>
+                  )}
+                  <button
+                    onClick={() => setShowSEOOgImageEditor(true)}
+                    className="px-2 py-1 text-xs border border-gray-200 rounded hover:bg-gray-50 transition-colors"
+                  >
+                    {config.seo?.ogImage ? "Change" : "Add"}
+                  </button>
+                </div>
+                <span className="text-[10px] text-gray-400">
+                  Shown when shared on social media (Facebook, Twitter, etc.)
+                </span>
+              </div>
+
+              {/* Favicon */}
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">
+                  Favicon
+                </label>
+                <div className="flex items-center gap-2">
+                  {config.seo?.favicon ? (
+                    <div
+                      className="w-6 h-6 rounded border border-gray-200 bg-cover bg-center flex-shrink-0"
+                      style={{
+                        backgroundImage: `url(${config.seo.favicon})`,
+                      }}
+                    />
+                  ) : (
+                    <div className="w-6 h-6 rounded border border-dashed border-gray-300 flex items-center justify-center flex-shrink-0">
+                      <span className="text-[8px] text-gray-400">ico</span>
+                    </div>
+                  )}
+                  <button
+                    onClick={() => setShowSEOFaviconEditor(true)}
+                    className="px-2 py-1 text-xs border border-gray-200 rounded hover:bg-gray-50 transition-colors"
+                  >
+                    {config.seo?.favicon ? "Change" : "Add"}
+                  </button>
+                </div>
+                <span className="text-[10px] text-gray-400">
+                  Small icon shown in browser tabs
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Status indicator */}
         <div className="flex-1 min-w-0 text-sm text-[var(--text-muted)] flex items-center gap-2">
           {saving ? (
@@ -1234,6 +1632,8 @@ export default function SimpleLandingPageEditor({
                 <HeroTemplateRenderer
                   config={config}
                   isEditing={true}
+                  products={products}
+                  currency={editorCurrency}
                   onTitleChange={handleTitleChange}
                   onSubtitleChange={handleSubtitleChange}
                   onButtonClick={() => setShowButtonEditor(true)}
@@ -1257,6 +1657,13 @@ export default function SimpleLandingPageEditor({
                   onFAQItemChange={handleFAQItemChange}
                   onAddFAQItem={handleAddFAQItem}
                   onRemoveFAQItem={handleRemoveFAQItem}
+                  address={editorAddress}
+                  onLocationHeadingChange={handleLocationHeadingChange}
+                  onLocationSubheadingChange={handleLocationSubheadingChange}
+                  onGalleryHeadingChange={handleGalleryHeadingChange}
+                  onGallerySubheadingChange={handleGallerySubheadingChange}
+                  onGalleryAddImage={handleGalleryAddImage}
+                  onGalleryRemoveImage={handleGalleryRemoveImage}
                   onFooterTextChange={handleFooterTextChange}
                   onFooterLinkChange={handleFooterLinkChange}
                   onAddFooterLink={handleAddFooterLink}
@@ -1339,6 +1746,45 @@ export default function SimpleLandingPageEditor({
         title="Edit Feature Image"
         aspectRatio={currentTemplateImageConfig.featureCardImage}
         defaultSearchQuery="business service"
+      />
+
+      {/* Gallery Image Editor Overlay */}
+      <ImageEditorOverlay
+        isOpen={showGalleryImageEditor}
+        onClose={() => setShowGalleryImageEditor(false)}
+        onSave={handleGalleryImageChange}
+        currentImage={undefined}
+        currentPosition={undefined}
+        currentZoom={undefined}
+        title="Add Gallery Image"
+        aspectRatio="4/3"
+        defaultSearchQuery="professional gallery"
+      />
+
+      {/* SEO OG Image Editor Overlay */}
+      <ImageEditorOverlay
+        isOpen={showSEOOgImageEditor}
+        onClose={() => setShowSEOOgImageEditor(false)}
+        onSave={handleSEOOgImageChange}
+        currentImage={config.seo?.ogImage}
+        currentPosition={undefined}
+        currentZoom={undefined}
+        title="Edit Social Share Image"
+        aspectRatio="1200/630"
+        defaultSearchQuery="social media banner"
+      />
+
+      {/* SEO Favicon Editor Overlay */}
+      <ImageEditorOverlay
+        isOpen={showSEOFaviconEditor}
+        onClose={() => setShowSEOFaviconEditor(false)}
+        onSave={handleSEOFaviconChange}
+        currentImage={config.seo?.favicon}
+        currentPosition={undefined}
+        currentZoom={undefined}
+        title="Edit Favicon"
+        aspectRatio="1/1"
+        defaultSearchQuery="logo icon"
       />
     </div>
   );

@@ -3,6 +3,7 @@
  */
 
 import type { SimpleLandingPageConfig } from "@/types/landing-page";
+import type { Product } from "@/types";
 
 export interface HeroTemplateProps {
   config: SimpleLandingPageConfig;
@@ -23,6 +24,10 @@ export interface HeroTemplateProps {
   onFeatureCardImageClick?: (cardId: string) => void;
   onAddFeatureCard?: () => void;
   onRemoveFeatureCard?: (cardId: string) => void;
+  // Products data
+  products?: Product[];
+  currency?: string;
+  onBookProduct?: (productId: string) => void;
   // Testimonials callbacks
   onTestimonialsHeadingChange?: (heading: string) => void;
   onTestimonialsSubheadingChange?: (subheading: string) => void;
@@ -43,6 +48,15 @@ export interface HeroTemplateProps {
   ) => void;
   onAddFAQItem?: () => void;
   onRemoveFAQItem?: (itemId: string) => void;
+  // Location props & callbacks
+  address?: string;
+  onLocationHeadingChange?: (heading: string) => void;
+  onLocationSubheadingChange?: (subheading: string) => void;
+  // Gallery callbacks
+  onGalleryHeadingChange?: (heading: string) => void;
+  onGallerySubheadingChange?: (subheading: string) => void;
+  onGalleryAddImage?: () => void;
+  onGalleryRemoveImage?: (imageId: string) => void;
   // Footer callbacks
   onFooterTextChange?: (text: string) => void;
   onFooterLinkChange?: (

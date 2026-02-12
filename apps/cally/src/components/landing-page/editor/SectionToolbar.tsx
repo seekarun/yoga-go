@@ -17,8 +17,11 @@ interface SectionToolbarProps {
 const SECTION_LABELS: Record<string, string> = {
   about: "About",
   features: "Features",
+  products: "Products",
   testimonials: "Testimonials",
   faq: "FAQ",
+  location: "Location",
+  gallery: "Gallery",
 };
 
 export default function SectionToolbar({

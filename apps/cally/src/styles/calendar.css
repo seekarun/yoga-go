@@ -168,6 +168,20 @@
   opacity: 0.9;
 }
 
+/* Placeholder event – shown while the create-event modal is open */
+.fc-event-placeholder {
+  background-color: rgba(99, 102, 241, 0.15) !important;
+  border: 2px dashed rgba(99, 102, 241, 0.5) !important;
+  color: var(--color-primary, #6366f1) !important;
+  pointer-events: none;
+}
+
+.fc-event-placeholder .fc-event-title,
+.fc-event-placeholder .fc-event-time {
+  color: var(--color-primary, #6366f1) !important;
+  opacity: 0.7;
+}
+
 /* More events popover */
 .fc .fc-daygrid-more-link {
   color: var(--color-primary, #6366f1);
@@ -191,6 +205,11 @@
 
 .fc .fc-timegrid-col:hover {
   background-color: rgba(99, 102, 241, 0.02);
+}
+
+/* Non-business hours (greyed out in week/day views) */
+.fc .fc-non-business {
+  background-color: rgba(0, 0, 0, 0.03);
 }
 
 /* Now indicator */

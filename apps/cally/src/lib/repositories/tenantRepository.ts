@@ -30,6 +30,7 @@ import type { BookingConfig } from "@/types/booking";
 import type { GoogleCalendarConfig } from "@/types/google-calendar";
 import type { ZoomConfig } from "@/types/zoom";
 import type { OutlookCalendarConfig } from "@/types/outlook-calendar";
+import type { StripeConfig } from "@/types/stripe";
 
 /**
  * Cally Tenant Entity
@@ -52,9 +53,13 @@ export interface CallyTenant {
   googleCalendarConfig?: GoogleCalendarConfig;
   zoomConfig?: ZoomConfig;
   outlookCalendarConfig?: OutlookCalendarConfig;
+  stripeConfig?: StripeConfig;
   videoCallPreference?: "cally" | "google_meet" | "zoom";
   emailDisplayName?: string;
   timezone?: string;
+  defaultEventDuration?: number;
+  currency?: string;
+  address?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -297,26 +302,16 @@ export async function updateDraftLandingPage(
 
     const now = new Date().toISOString();
 
-    // Create the full item with updated draft
+    // Create the full item with updated draft — spread all existing fields
+    // so newly-added tenant properties are never accidentally dropped
     const updatedItem: DynamoDBTenantItem = {
+      ...tenant,
       PK: TenantPK.TENANT(tenantId),
       SK: TenantPK.META,
       GSI1PK: TenantPK.USER_GSI1PK(tenant.userId),
       GSI1SK: TenantPK.TENANT_GSI1SK(tenantId),
       entityType: EntityType.TENANT,
-      id: tenant.id,
-      userId: tenant.userId,
-      name: tenant.name,
-      email: tenant.email,
-      avatar: tenant.avatar,
       draftLandingPage: draftLandingPage,
-      customLandingPage: tenant.customLandingPage,
-      isLandingPagePublished: tenant.isLandingPagePublished,
-      domainConfig: tenant.domainConfig,
-      emailConfig: tenant.emailConfig,
-      aiAssistantConfig: tenant.aiAssistantConfig,
-      phoneConfig: tenant.phoneConfig,
-      createdAt: tenant.createdAt,
       updatedAt: now,
     };
 
@@ -359,26 +354,17 @@ export async function publishLandingPage(
 
   const now = new Date().toISOString();
 
-  // Create the full item with published landing page
+  // Create the full item with published landing page — spread all existing
+  // fields so newly-added tenant properties are never accidentally dropped
   const updatedItem: DynamoDBTenantItem = {
+    ...tenant,
     PK: TenantPK.TENANT(tenantId),
     SK: TenantPK.META,
     GSI1PK: TenantPK.USER_GSI1PK(tenant.userId),
     GSI1SK: TenantPK.TENANT_GSI1SK(tenantId),
     entityType: EntityType.TENANT,
-    id: tenant.id,
-    userId: tenant.userId,
-    name: tenant.name,
-    email: tenant.email,
-    avatar: tenant.avatar,
-    draftLandingPage: tenant.draftLandingPage,
     customLandingPage: landingPageToPublish,
     isLandingPagePublished: true,
-    domainConfig: tenant.domainConfig,
-    emailConfig: tenant.emailConfig,
-    aiAssistantConfig: tenant.aiAssistantConfig,
-    phoneConfig: tenant.phoneConfig,
-    createdAt: tenant.createdAt,
     updatedAt: now,
   };
 
@@ -613,6 +599,41 @@ export async function removeOutlookCalendarConfig(
     "[DBG][tenantRepository] Removed Outlook Calendar config for:",
     tenantId,
   );
+  return toTenant(result.Attributes as DynamoDBTenantItem);
+}
+
+// ===================================================================
+// STRIPE OPERATIONS
+// ===================================================================
+
+/**
+ * Remove Stripe config from tenant (uses DynamoDB REMOVE)
+ */
+export async function removeStripeConfig(
+  tenantId: string,
+): Promise<CallyTenant> {
+  console.log("[DBG][tenantRepository] Removing Stripe config:", tenantId);
+
+  const result = await docClient.send(
+    new UpdateCommand({
+      TableName: Tables.CORE,
+      Key: {
+        PK: TenantPK.TENANT(tenantId),
+        SK: TenantPK.META,
+      },
+      UpdateExpression: "REMOVE #stripeConfig SET #updatedAt = :updatedAt",
+      ExpressionAttributeNames: {
+        "#stripeConfig": "stripeConfig",
+        "#updatedAt": "updatedAt",
+      },
+      ExpressionAttributeValues: {
+        ":updatedAt": new Date().toISOString(),
+      },
+      ReturnValues: "ALL_NEW",
+    }),
+  );
+
+  console.log("[DBG][tenantRepository] Removed Stripe config for:", tenantId);
   return toTenant(result.Attributes as DynamoDBTenantItem);
 }
 

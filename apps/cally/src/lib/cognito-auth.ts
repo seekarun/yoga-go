@@ -9,6 +9,9 @@ import {
   ResendConfirmationCodeCommand,
   InitiateAuthCommand,
   GetUserCommand,
+  ForgotPasswordCommand,
+  ConfirmForgotPasswordCommand,
+  ChangePasswordCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
 import { createHmac } from "crypto";
 import { cognitoConfig } from "./cognito";
@@ -254,6 +257,120 @@ export async function getUserInfo(
     };
   } catch (error) {
     console.error("[DBG][cognito-auth] getUserInfo error:", error);
+    throw error;
+  }
+}
+
+export interface ForgotPasswordParams {
+  email: string;
+}
+
+export interface ForgotPasswordResult {
+  success: boolean;
+  message: string;
+}
+
+/**
+ * Initiate forgot password flow — sends a reset code to the user's email
+ */
+export async function forgotPassword(
+  params: ForgotPasswordParams,
+): Promise<ForgotPasswordResult> {
+  const { email } = params;
+
+  try {
+    const command = new ForgotPasswordCommand({
+      ClientId: cognitoConfig.clientId,
+      SecretHash: calculateSecretHash(email),
+      Username: email,
+    });
+
+    await client.send(command);
+
+    return {
+      success: true,
+      message: "Password reset code sent to your email.",
+    };
+  } catch (error) {
+    console.error("[DBG][cognito-auth] forgotPassword error:", error);
+    throw error;
+  }
+}
+
+export interface ConfirmForgotPasswordParams {
+  email: string;
+  code: string;
+  newPassword: string;
+}
+
+export interface ConfirmForgotPasswordResult {
+  success: boolean;
+  message: string;
+}
+
+/**
+ * Confirm forgot password — verifies the code and sets the new password
+ */
+export async function confirmForgotPassword(
+  params: ConfirmForgotPasswordParams,
+): Promise<ConfirmForgotPasswordResult> {
+  const { email, code, newPassword } = params;
+
+  try {
+    const command = new ConfirmForgotPasswordCommand({
+      ClientId: cognitoConfig.clientId,
+      SecretHash: calculateSecretHash(email),
+      Username: email,
+      ConfirmationCode: code,
+      Password: newPassword,
+    });
+
+    await client.send(command);
+
+    return {
+      success: true,
+      message: "Password reset successfully.",
+    };
+  } catch (error) {
+    console.error("[DBG][cognito-auth] confirmForgotPassword error:", error);
+    throw error;
+  }
+}
+
+export interface ChangePasswordParams {
+  accessToken: string;
+  previousPassword: string;
+  proposedPassword: string;
+}
+
+export interface ChangePasswordResult {
+  success: boolean;
+  message: string;
+}
+
+/**
+ * Change password for an authenticated user
+ */
+export async function changePassword(
+  params: ChangePasswordParams,
+): Promise<ChangePasswordResult> {
+  const { accessToken, previousPassword, proposedPassword } = params;
+
+  try {
+    const command = new ChangePasswordCommand({
+      AccessToken: accessToken,
+      PreviousPassword: previousPassword,
+      ProposedPassword: proposedPassword,
+    });
+
+    await client.send(command);
+
+    return {
+      success: true,
+      message: "Password changed successfully.",
+    };
+  } catch (error) {
+    console.error("[DBG][cognito-auth] changePassword error:", error);
     throw error;
   }
 }

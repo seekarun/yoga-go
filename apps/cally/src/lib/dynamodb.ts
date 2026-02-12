@@ -99,6 +99,10 @@ export const TenantPK = {
   SURVEY_RESPONSE: (surveyId: string, timestamp: string, responseId: string) =>
     `SURVEYRESP#${surveyId}#${timestamp}#${responseId}`,
   SURVEY_RESPONSE_PREFIX: (surveyId: string) => `SURVEYRESP#${surveyId}#`,
+
+  // Products: PK=TENANT#{tenantId}, SK=PRODUCT#{productId}
+  PRODUCT: (productId: string) => `PRODUCT#${productId}`,
+  PRODUCT_PREFIX: "PRODUCT#",
 } as const;
 
 // Entity type constants
@@ -112,6 +116,7 @@ export const EntityType = {
   TRANSCRIPT: "TRANSCRIPT",
   SURVEY: "SURVEY",
   SURVEY_RESPONSE: "SURVEY_RESPONSE",
+  PRODUCT: "PRODUCT",
 } as const;
 
 // ============================================

@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
-import type { DateClickArg } from "@fullcalendar/interaction";
 import type { EventClickArg, DatesSetArg } from "@fullcalendar/core";
 import type { CalendarItem } from "@/types";
+import type { WeeklySchedule } from "@/types/booking";
+import { DEFAULT_BOOKING_CONFIG } from "@/types/booking";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import CreateEventModal from "@/components/calendar/CreateEventModal";
 import CalendarEventModal from "@/components/calendar/CalendarEventModal";
@@ -28,6 +29,10 @@ export default function CalendarPage() {
   const [videoCallPreference, setVideoCallPreference] = useState<
     "cally" | "google_meet" | "zoom"
   >("cally");
+  const [defaultEventDuration, setDefaultEventDuration] = useState(30);
+  const [weeklySchedule, setWeeklySchedule] = useState<WeeklySchedule>(
+    DEFAULT_BOOKING_CONFIG.weeklySchedule,
+  );
 
   // Modal states
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -46,8 +51,16 @@ export default function CalendarPage() {
       try {
         const res = await fetch("/api/data/app/preferences");
         const data = await res.json();
-        if (data.success && data.data?.videoCallPreference) {
-          setVideoCallPreference(data.data.videoCallPreference);
+        if (data.success && data.data) {
+          if (data.data.videoCallPreference) {
+            setVideoCallPreference(data.data.videoCallPreference);
+          }
+          if (data.data.defaultEventDuration) {
+            setDefaultEventDuration(data.data.defaultEventDuration);
+          }
+          if (data.data.weeklySchedule) {
+            setWeeklySchedule(data.data.weeklySchedule);
+          }
         }
       } catch (err) {
         console.error("[DBG][calendar-page] Failed to fetch preferences:", err);
@@ -101,15 +114,42 @@ export default function CalendarPage() {
     [dateRange, fetchEvents],
   );
 
-  // Handle clicking on empty date
-  const handleDateClick = useCallback((arg: DateClickArg) => {
-    console.log("[DBG][calendar-page] Date clicked:", arg.date);
-    setCreateModalDate(arg.date);
-    setIsCreateModalOpen(true);
-  }, []);
+  // Placeholder event shown while create modal is open
+  const [placeholderEvent, setPlaceholderEvent] = useState<{
+    start: string;
+    end: string;
+  } | null>(null);
+
+  // Handle selecting a time range on the calendar
+  const handleSelect = useCallback(
+    (arg: { start: Date; end: Date; allDay: boolean }) => {
+      console.log("[DBG][calendar-page] Date selected:", arg.start);
+      // For all-day (month view click), default to 9am–10am
+      let start = arg.start;
+      let end = arg.end;
+      if (arg.allDay) {
+        start = new Date(arg.start);
+        start.setHours(9, 0, 0, 0);
+        end = new Date(start);
+        end.setHours(10, 0, 0, 0);
+      }
+      setPlaceholderEvent({
+        start: start.toISOString(),
+        end: end.toISOString(),
+      });
+      setCreateModalDate(arg.start);
+      setIsCreateModalOpen(true);
+      // Unselect the FullCalendar highlight
+      calendarRef.current?.getApi().unselect();
+    },
+    [],
+  );
 
   // Handle clicking on existing event
   const handleEventClick = useCallback((arg: EventClickArg) => {
+    // Ignore clicks on the placeholder event
+    if (arg.event.id === "__placeholder__") return;
+
     console.log("[DBG][calendar-page] Event clicked:", arg.event.id);
 
     const eventApi = arg.event;
@@ -131,12 +171,20 @@ export default function CalendarPage() {
   const handleEventCreated = useCallback(() => {
     setIsCreateModalOpen(false);
     setCreateModalDate(null);
+    setPlaceholderEvent(null);
 
     // Refetch events
     if (dateRange) {
       fetchEvents(dateRange.start, dateRange.end);
     }
   }, [dateRange, fetchEvents]);
+
+  // Handle create modal close/cancel
+  const handleCreateModalClose = useCallback(() => {
+    setIsCreateModalOpen(false);
+    setCreateModalDate(null);
+    setPlaceholderEvent(null);
+  }, []);
 
   // Handle event update/delete
   const handleEventUpdated = useCallback(() => {
@@ -157,7 +205,7 @@ export default function CalendarPage() {
       const response = await fetch("/api/data/app/calendar/instant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ duration: 30 }),
+        body: JSON.stringify({ duration: defaultEventDuration }),
       });
 
       const data = await response.json();
@@ -178,10 +226,10 @@ export default function CalendarPage() {
       setError("Failed to create instant meeting");
       setIsCreatingInstantMeeting(false);
     }
-  }, [expertId, router]);
+  }, [expertId, router, defaultEventDuration]);
 
   // Transform CalendarItem to FullCalendar event format
-  const fullCalendarEvents = events.map((event) => {
+  const fullCalendarEvents: Record<string, unknown>[] = events.map((event) => {
     const source = event.extendedProps?.source;
     const isExternal =
       source === "google_calendar" || source === "outlook_calendar";
@@ -211,6 +259,35 @@ export default function CalendarPage() {
       extendedProps: event.extendedProps,
     };
   });
+
+  // Convert weeklySchedule to FullCalendar businessHours format
+  const businessHours = useMemo(
+    () =>
+      Object.entries(weeklySchedule)
+        .filter(([, day]) => day.enabled)
+        .map(([dow, day]) => ({
+          daysOfWeek: [Number(dow)],
+          startTime: `${String(day.startHour).padStart(2, "0")}:00`,
+          endTime: `${String(day.endHour).padStart(2, "0")}:00`,
+        })),
+    [weeklySchedule],
+  );
+
+  // Add placeholder event while create modal is open
+  if (placeholderEvent) {
+    fullCalendarEvents.push({
+      id: "__placeholder__",
+      title: "(New Event)",
+      start: placeholderEvent.start,
+      end: placeholderEvent.end,
+      allDay: false,
+      classNames: ["fc-event-placeholder"],
+      backgroundColor: "transparent",
+      borderColor: "transparent",
+      editable: false,
+      display: "block",
+    });
+  }
 
   return (
     <div className="p-6">
@@ -307,11 +384,12 @@ export default function CalendarPage() {
           }}
           events={fullCalendarEvents}
           datesSet={handleDatesSet}
-          dateClick={handleDateClick}
+          select={handleSelect}
           eventClick={handleEventClick}
           editable={false}
           selectable={true}
-          selectMirror={true}
+          selectMirror={false}
+          unselectAuto={false}
           dayMaxEvents={3}
           weekends={true}
           nowIndicator={true}
@@ -323,6 +401,7 @@ export default function CalendarPage() {
           }}
           slotMinTime="06:00:00"
           slotMaxTime="22:00:00"
+          businessHours={businessHours}
           eventDisplay="block"
         />
       </div>
@@ -330,14 +409,12 @@ export default function CalendarPage() {
       {/* Create Event Modal */}
       <CreateEventModal
         isOpen={isCreateModalOpen}
-        onClose={() => {
-          setIsCreateModalOpen(false);
-          setCreateModalDate(null);
-        }}
+        onClose={handleCreateModalClose}
         initialDate={createModalDate}
         tenantId={expertId}
         onEventCreated={handleEventCreated}
         videoCallPreference={videoCallPreference}
+        defaultDurationMinutes={defaultEventDuration}
       />
 
       {/* View/Edit Event Modal */}

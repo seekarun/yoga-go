@@ -313,6 +313,65 @@ export async function getUpcomingCalendarEvents(
 }
 
 /**
+ * Update color on all future events linked to a product
+ */
+export async function updateEventColorByProductId(
+  tenantId: string,
+  productId: string,
+  newColor: string,
+): Promise<number> {
+  const today = new Date().toISOString().substring(0, 10);
+
+  console.log(
+    `[DBG][calendarEventRepository] Updating color for product ${productId} events from ${today}`,
+  );
+
+  // Query future events and filter by productId
+  const result = await docClient.send(
+    new QueryCommand({
+      TableName: Tables.CORE,
+      KeyConditionExpression: "PK = :pk AND SK >= :skStart",
+      FilterExpression: "begins_with(SK, :prefix) AND productId = :productId",
+      ExpressionAttributeValues: {
+        ":pk": TenantPK.TENANT(tenantId),
+        ":skStart": `CALEVENT#${today}`,
+        ":prefix": TenantPK.CALENDAR_EVENT_PREFIX,
+        ":productId": productId,
+      },
+    }),
+  );
+
+  const events = (result.Items || []) as DynamoDBCalendarEventItem[];
+  let updated = 0;
+
+  for (const item of events) {
+    if (item.color === newColor) continue;
+
+    await docClient.send(
+      new UpdateCommand({
+        TableName: Tables.CORE,
+        Key: { PK: item.PK, SK: item.SK },
+        UpdateExpression: "SET #color = :color, #updatedAt = :updatedAt",
+        ExpressionAttributeNames: {
+          "#color": "color",
+          "#updatedAt": "updatedAt",
+        },
+        ExpressionAttributeValues: {
+          ":color": newColor,
+          ":updatedAt": new Date().toISOString(),
+        },
+      }),
+    );
+    updated++;
+  }
+
+  console.log(
+    `[DBG][calendarEventRepository] Updated color on ${updated} events for product ${productId}`,
+  );
+  return updated;
+}
+
+/**
  * Create a new calendar event
  * @param tenantId - The tenant ID
  * @param input - Calendar event creation input
@@ -370,6 +429,9 @@ export async function createCalendarEvent(
     recurrenceRule: input.recurrenceRule,
     // Attendees
     attendees: input.attendees,
+    // Stripe payment
+    stripeCheckoutSessionId: input.stripeCheckoutSessionId,
+    stripePaymentIntentId: input.stripePaymentIntentId,
     createdAt: now,
     updatedAt: now,
   };
@@ -485,6 +547,14 @@ export async function updateCalendarEvent(
     recurrenceRule: "recurrenceRule",
     // Attendees
     attendees: "attendees",
+    // Product link
+    productId: "productId",
+    // Stripe payment
+    stripeCheckoutSessionId: "stripeCheckoutSessionId",
+    stripePaymentIntentId: "stripePaymentIntentId",
+    // Reminder tracking
+    reminder24hSentAt: "reminder24hSentAt",
+    reminder10mSentAt: "reminder10mSentAt",
   };
 
   for (const [field, key] of Object.entries(fieldMappings)) {

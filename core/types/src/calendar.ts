@@ -51,6 +51,7 @@ export interface EventAttendee {
  */
 export type CalendarEventStatus =
   | "pending"
+  | "pending_payment"
   | "scheduled"
   | "cancelled"
   | "completed";
@@ -92,6 +93,14 @@ export interface CalendarEvent extends BaseEntity {
   recurrenceRule?: RecurrenceRule;
   // Attendees
   attendees?: EventAttendee[];
+  // Product link (for booking events)
+  productId?: string;
+  // Stripe payment
+  stripeCheckoutSessionId?: string;
+  stripePaymentIntentId?: string;
+  // Reminder tracking (internal — set by cron, not by user)
+  reminder24hSentAt?: string;
+  reminder10mSentAt?: string;
 }
 
 /**
@@ -129,6 +138,11 @@ export interface CreateCalendarEventInput {
   // Recurrence
   recurrenceGroupId?: string;
   recurrenceRule?: RecurrenceRule;
+  // Product link (for booking events)
+  productId?: string;
+  // Stripe payment
+  stripeCheckoutSessionId?: string;
+  stripePaymentIntentId?: string;
   // Attendees
   attendees?: EventAttendee[];
 }
