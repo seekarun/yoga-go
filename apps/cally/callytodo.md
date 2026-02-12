@@ -14,8 +14,8 @@ x recurring events in calendar
 x user favicon and meta data for SEO
 x SEO help
 x user preferences (password, email)
+x accept payments for calendar events
 
-- accept payments for calendar events
 - tenant subscription
 
 - AI chat to look up user's past interactions
@@ -26,13 +26,16 @@ x user preferences (password, email)
 - booking wait list
 - add phone number + whatsapp support for booking
 - production deployment.
+- more templates
 
 - invite
   - CHarles
   - Denise
   - The accountant on FB
   - Anusha?
+  - Ramya
 
+- search for cally.live and replace with domain everywehre
 - facebook login
 - buy domain option
 - AI token usage for user - track and report
@@ -159,3 +162,54 @@ biz kit
 launchd
 
 bizcally.com
+
+callygo.com
+callyon.com
+
+🟢 Starter – $29/month
+
+For solo operators starting out
+
+Includes:
+• Branded landing page
+• Appointment booking
+• Basic CRM
+• Automated reminders
+• Email notifications
+• AI chat (limited)
+
+This should feel like:
+
+“Less than one appointment per month”
+
+===============================
+
+Growth – $49/month
+
+For busy operators
+
+Includes everything in Starter plus:
+• SMS reminders
+• Email marketing campaigns
+• Advanced CRM (tags, notes)
+• AI auto-replies
+• Basic analytics
+• Remove platform branding
+
+This is likely your sweet spot.
+
+===============================
+
+🟣 Pro – $79/month
+
+For small salons (2–5 staff)
+
+Includes:
+• Multiple staff calendars
+• Team scheduling
+• Commission tracking
+• Advanced automation
+• Priority support
+• Custom domain included
+
+how do you handle cancellations?

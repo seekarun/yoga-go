@@ -432,6 +432,11 @@ export async function createCalendarEvent(
     // Stripe payment
     stripeCheckoutSessionId: input.stripeCheckoutSessionId,
     stripePaymentIntentId: input.stripePaymentIntentId,
+    // Cancellation tracking
+    cancelledBy: input.cancelledBy,
+    cancelledAt: input.cancelledAt,
+    refundAmountCents: input.refundAmountCents,
+    stripeRefundId: input.stripeRefundId,
     createdAt: now,
     updatedAt: now,
   };
@@ -555,6 +560,11 @@ export async function updateCalendarEvent(
     // Reminder tracking
     reminder24hSentAt: "reminder24hSentAt",
     reminder10mSentAt: "reminder10mSentAt",
+    // Cancellation tracking
+    cancelledBy: "cancelledBy",
+    cancelledAt: "cancelledAt",
+    refundAmountCents: "refundAmountCents",
+    stripeRefundId: "stripeRefundId",
   };
 
   for (const [field, key] of Object.entries(fieldMappings)) {

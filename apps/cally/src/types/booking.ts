@@ -19,6 +19,19 @@ export interface DaySchedule {
 export type WeeklySchedule = Record<number, DaySchedule>;
 
 /**
+ * Cancellation policy configuration
+ */
+export interface CancellationConfig {
+  cancellationDeadlineHours: number; // default: 24
+  lateCancellationRefundPercent: number; // 0-100, default: 0
+}
+
+export const DEFAULT_CANCELLATION_CONFIG: CancellationConfig = {
+  cancellationDeadlineHours: 24,
+  lateCancellationRefundPercent: 0,
+};
+
+/**
  * Booking configuration stored on the tenant
  */
 export interface BookingConfig {
@@ -26,6 +39,7 @@ export interface BookingConfig {
   slotDurationMinutes: number;
   lookaheadDays: number;
   weeklySchedule: WeeklySchedule;
+  cancellationConfig?: CancellationConfig;
 }
 
 /**

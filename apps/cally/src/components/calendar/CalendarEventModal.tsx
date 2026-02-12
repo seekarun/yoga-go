@@ -52,9 +52,15 @@ function getStatusBadge(status?: string) {
 
   const styles: Record<string, { bg: string; text: string; label: string }> = {
     pending: { bg: "#fef3c7", text: "#b45309", label: "Pending" },
+    pending_payment: {
+      bg: "#fef3c7",
+      text: "#b45309",
+      label: "Pending Payment",
+    },
     scheduled: { bg: "#dbeafe", text: "#1d4ed8", label: "Scheduled" },
     completed: { bg: "#d1fae5", text: "#059669", label: "Completed" },
     cancelled: { bg: "#fee2e2", text: "#dc2626", label: "Cancelled" },
+    no_show: { bg: "#fef3c7", text: "#92400e", label: "No Show" },
   };
 
   const style = styles[status] || {
@@ -255,6 +261,10 @@ export default function CalendarEventModal({
   const isScheduled = event?.extendedProps?.status === "scheduled";
   // A booking event has visitor info in the description
   const isBooking = !!event?.title?.startsWith("Booking:");
+
+  const isCancelled = event?.extendedProps?.status === "cancelled";
+  const hasRefund = !!event?.extendedProps?.stripeRefundId;
+  const isPaidBooking = !!event?.extendedProps?.stripePaymentIntentId;
 
   // Message to include in the email sent to the visitor
   const DEFAULT_ACCEPT_MESSAGE =
@@ -578,6 +588,48 @@ export default function CalendarEventModal({
           </div>
         ) : null}
 
+        {/* Refund badge on cancelled paid events */}
+        {!isEditing && isCancelled && isPaidBooking && (
+          <div className="flex items-start gap-3">
+            <div
+              className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${hasRefund ? "bg-green-100" : "bg-gray-100"}`}
+            >
+              <svg
+                className={`w-5 h-5 ${hasRefund ? "text-green-600" : "text-gray-500"}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+            <div>
+              {hasRefund ? (
+                <span className="inline-flex items-center px-2.5 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">
+                  Refund issued
+                </span>
+              ) : (
+                <span className="inline-flex items-center px-2.5 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-semibold">
+                  No refund
+                </span>
+              )}
+              {event?.extendedProps?.cancelledBy && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Cancelled by{" "}
+                  {event.extendedProps.cancelledBy === "tenant"
+                    ? "you"
+                    : "visitor"}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Meeting Link (Google Meet or Zoom) */}
         {event.extendedProps.meetingLink && !isEditing && (
           <div className="flex items-start gap-3">
@@ -826,7 +878,11 @@ export default function CalendarEventModal({
                   disabled={isCancelling}
                   className="px-3 py-2 rounded-lg bg-red-600 text-white font-medium text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isCancelling ? "Cancelling..." : "Confirm Cancel"}
+                  {isCancelling
+                    ? isPaidBooking
+                      ? "Cancelling & processing refund..."
+                      : "Cancelling..."
+                    : "Confirm Cancel"}
                 </button>
               )}
             </div>

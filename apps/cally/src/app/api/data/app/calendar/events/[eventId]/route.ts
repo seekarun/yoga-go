@@ -16,6 +16,10 @@ import {
   parseVisitorFromDescription,
 } from "@/lib/email/bookingNotification";
 import {
+  sendBookingCancelledEmailToVisitor,
+  sendBookingCancelledEmailToTenant,
+} from "@/lib/email/bookingCancelledEmail";
+import {
   pushUpdateToGoogle,
   pushDeleteToGoogle,
   generateMeetLinkForEvent,
@@ -24,6 +28,8 @@ import {
   pushUpdateToOutlook,
   pushDeleteToOutlook,
 } from "@/lib/outlook-calendar-sync";
+import { buildCancelUrl } from "@/lib/cancel-token";
+import { getPaymentIntent, createFullRefund } from "@/lib/stripe";
 
 interface RouteParams {
   params: Promise<{
@@ -309,6 +315,21 @@ export async function PUT(request: Request, { params }: RouteParams) {
       const visitor = parseVisitorFromDescription(currentEvent.description);
       if (visitor) {
         if (body.status === "scheduled") {
+          // Generate cancel URL for the confirmed email
+          let cancelUrl: string | undefined;
+          try {
+            cancelUrl = buildCancelUrl(tenant, {
+              tenantId: tenant.id,
+              eventId: updatedEvent.id,
+              date: updatedEvent.date,
+            });
+          } catch (err) {
+            console.warn(
+              "[DBG][calendar/events/[eventId]] Failed to generate cancel URL:",
+              err,
+            );
+          }
+
           await sendBookingConfirmedEmail({
             visitorName: visitor.visitorName,
             visitorEmail: visitor.visitorEmail,
@@ -317,16 +338,85 @@ export async function PUT(request: Request, { params }: RouteParams) {
             endTime: updatedEvent.endTime,
             tenant,
             message: body.message,
+            cancelUrl,
           });
         } else if (body.status === "cancelled") {
-          await sendBookingDeclinedEmail({
-            visitorName: visitor.visitorName,
-            visitorEmail: visitor.visitorEmail,
-            startTime: updatedEvent.startTime,
-            endTime: updatedEvent.endTime,
-            tenant,
-            message: body.message,
-          });
+          // Tenant cancelling — issue full refund if paid
+          const currency = tenant.currency ?? "AUD";
+          let refundAmountCents = 0;
+          let stripeRefundId: string | undefined;
+
+          if (updatedEvent.stripePaymentIntentId) {
+            try {
+              const pi = await getPaymentIntent(
+                updatedEvent.stripePaymentIntentId,
+              );
+              refundAmountCents = pi.amount;
+              const refund = await createFullRefund(
+                updatedEvent.stripePaymentIntentId,
+              );
+              stripeRefundId = refund.id;
+              console.log(
+                "[DBG][calendar/events/[eventId]] Full refund issued:",
+                stripeRefundId,
+              );
+
+              // Update event with refund info
+              await calendarEventRepository.updateCalendarEvent(
+                tenantId,
+                updatedEvent.date,
+                updatedEvent.id,
+                {
+                  cancelledBy: "tenant",
+                  cancelledAt: new Date().toISOString(),
+                  refundAmountCents,
+                  stripeRefundId,
+                },
+              );
+            } catch (refundErr) {
+              console.error(
+                "[DBG][calendar/events/[eventId]] Refund failed:",
+                refundErr,
+              );
+            }
+          } else {
+            // No payment — still record cancellation metadata
+            await calendarEventRepository.updateCalendarEvent(
+              tenantId,
+              updatedEvent.date,
+              updatedEvent.id,
+              {
+                cancelledBy: "tenant",
+                cancelledAt: new Date().toISOString(),
+              },
+            );
+          }
+
+          // Send cancellation email (with refund info) instead of decline email
+          if (refundAmountCents > 0 || updatedEvent.stripePaymentIntentId) {
+            await sendBookingCancelledEmailToVisitor({
+              visitorName: visitor.visitorName,
+              visitorEmail: visitor.visitorEmail,
+              startTime: updatedEvent.startTime,
+              endTime: updatedEvent.endTime,
+              tenant,
+              cancelledBy: "tenant",
+              refundAmountCents,
+              currency,
+              isFullRefund: true,
+              message: body.message,
+            });
+          } else {
+            // Non-paid booking — send regular decline email
+            await sendBookingDeclinedEmail({
+              visitorName: visitor.visitorName,
+              visitorEmail: visitor.visitorEmail,
+              startTime: updatedEvent.startTime,
+              endTime: updatedEvent.endTime,
+              tenant,
+              message: body.message,
+            });
+          }
         }
       } else if (body.status === "scheduled" || body.status === "cancelled") {
         console.warn(

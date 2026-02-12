@@ -6,8 +6,11 @@
 
 import { NextResponse } from "next/server";
 import type { ApiResponse } from "@/types";
-import type { WeeklySchedule } from "@/types/booking";
-import { DEFAULT_BOOKING_CONFIG } from "@/types/booking";
+import type { WeeklySchedule, CancellationConfig } from "@/types/booking";
+import {
+  DEFAULT_BOOKING_CONFIG,
+  DEFAULT_CANCELLATION_CONFIG,
+} from "@/types/booking";
 import { auth } from "@/auth";
 import {
   getTenantByUserId,
@@ -25,6 +28,7 @@ interface PreferencesData {
   googleCalendarConnected: boolean;
   zoomConnected: boolean;
   weeklySchedule: WeeklySchedule;
+  cancellationConfig: CancellationConfig;
 }
 
 const VALID_CURRENCIES = [
@@ -86,6 +90,9 @@ export async function GET(): Promise<
         weeklySchedule:
           tenant.bookingConfig?.weeklySchedule ??
           DEFAULT_BOOKING_CONFIG.weeklySchedule,
+        cancellationConfig:
+          tenant.bookingConfig?.cancellationConfig ??
+          DEFAULT_CANCELLATION_CONFIG,
       },
     });
   } catch (error) {
@@ -136,6 +143,7 @@ export async function PUT(
       defaultEventDuration,
       currency,
       weeklySchedule,
+      cancellationConfig,
     } = body;
 
     // Build partial update
@@ -356,6 +364,58 @@ export async function PUT(
       };
     }
 
+    // Validate cancellationConfig if provided
+    if (cancellationConfig !== undefined) {
+      if (
+        typeof cancellationConfig !== "object" ||
+        cancellationConfig === null
+      ) {
+        return NextResponse.json(
+          { success: false, error: "cancellationConfig must be an object" },
+          { status: 400 },
+        );
+      }
+
+      const hours = Number(cancellationConfig.cancellationDeadlineHours);
+      if (!Number.isFinite(hours) || hours <= 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "cancellationDeadlineHours must be a positive number",
+          },
+          { status: 400 },
+        );
+      }
+
+      const refundPercent = Number(
+        cancellationConfig.lateCancellationRefundPercent,
+      );
+      if (
+        !Number.isFinite(refundPercent) ||
+        refundPercent < 0 ||
+        refundPercent > 100
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "lateCancellationRefundPercent must be a number between 0 and 100",
+          },
+          { status: 400 },
+        );
+      }
+
+      // Merge into bookingConfig
+      const existingConfig = tenant.bookingConfig ?? DEFAULT_BOOKING_CONFIG;
+      updates.bookingConfig = {
+        ...(updates.bookingConfig ?? existingConfig),
+        cancellationConfig: {
+          cancellationDeadlineHours: hours,
+          lateCancellationRefundPercent: refundPercent,
+        },
+      };
+    }
+
     if (Object.keys(updates).length === 0) {
       return NextResponse.json(
         { success: false, error: "No valid fields to update" },
@@ -379,6 +439,9 @@ export async function PUT(
         weeklySchedule:
           updated.bookingConfig?.weeklySchedule ??
           DEFAULT_BOOKING_CONFIG.weeklySchedule,
+        cancellationConfig:
+          updated.bookingConfig?.cancellationConfig ??
+          DEFAULT_CANCELLATION_CONFIG,
       },
       message: "Preferences updated",
     });

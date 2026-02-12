@@ -35,7 +35,6 @@ export async function GET() {
         chargesEnabled: config?.chargesEnabled ?? false,
         detailsSubmitted: config?.detailsSubmitted ?? false,
         email: config?.email || null,
-        applicationFeePercent: config?.applicationFeePercent ?? 0,
         connectedAt: config?.connectedAt || null,
       },
     });

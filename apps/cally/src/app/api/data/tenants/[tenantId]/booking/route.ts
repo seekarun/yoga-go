@@ -182,8 +182,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
       console.log("[DBG][booking] Created pending_payment event:", event.id);
 
-      // Calculate application fee
-      const feePercent = tenant.stripeConfig.applicationFeePercent ?? 0;
+      // Calculate application fee from env var (applies to all tenants)
+      const feePercent =
+        Number(process.env.STRIPE_APPLICATION_FEE_PERCENT) || 0;
       const applicationFeeAmount = Math.round(
         (productPrice * feePercent) / 100,
       );
@@ -200,6 +201,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         productName: productName || "Booking",
         tenantName: tenant.name,
         applicationFeeAmount,
+        customerEmail: visitorEmail,
         returnUrl,
         metadata: {
           tenantId,
@@ -226,6 +228,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           date: event.date,
           requiresPayment: true,
           clientSecret: checkoutSession.client_secret,
+          checkoutSessionId: checkoutSession.id,
         },
       });
     }

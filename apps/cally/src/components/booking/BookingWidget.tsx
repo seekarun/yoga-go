@@ -72,6 +72,11 @@ export default function BookingWidget({
   const [checkoutClientSecret, setCheckoutClientSecret] = useState<
     string | null
   >(null);
+  const [pendingPaymentInfo, setPendingPaymentInfo] = useState<{
+    eventId: string;
+    date: string;
+    checkoutSessionId: string;
+  } | null>(null);
 
   const resetState = useCallback(() => {
     setStep("schedule");
@@ -83,12 +88,8 @@ export default function BookingWidget({
     setConfirmedSlot(null);
     setWarning(null);
     setCheckoutClientSecret(null);
+    setPendingPaymentInfo(null);
   }, [initialDate]);
-
-  const handleClose = useCallback(() => {
-    onClose();
-    setTimeout(resetState, 200);
-  }, [onClose, resetState]);
 
   const fetchSlots = useCallback(
     async (date: string) => {
@@ -214,6 +215,9 @@ export default function BookingWidget({
           data?: {
             requiresPayment?: boolean;
             clientSecret?: string;
+            checkoutSessionId?: string;
+            eventId?: string;
+            date?: string;
           };
         };
 
@@ -225,6 +229,17 @@ export default function BookingWidget({
         // Show embedded Stripe Checkout for paid bookings
         if (json.data?.requiresPayment && json.data?.clientSecret) {
           setCheckoutClientSecret(json.data.clientSecret);
+          if (
+            json.data.eventId &&
+            json.data.date &&
+            json.data.checkoutSessionId
+          ) {
+            setPendingPaymentInfo({
+              eventId: json.data.eventId,
+              date: json.data.date,
+              checkoutSessionId: json.data.checkoutSessionId,
+            });
+          }
           setStep("payment");
           return;
         }
@@ -242,6 +257,29 @@ export default function BookingWidget({
     },
     [tenantId, selectedSlot, productId],
   );
+
+  const cancelPendingPayment = useCallback(async () => {
+    if (!pendingPaymentInfo) return;
+    try {
+      await fetch(`/api/data/tenants/${tenantId}/booking/cancel-payment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(pendingPaymentInfo),
+      });
+    } catch (err) {
+      console.warn("[DBG][BookingWidget] Failed to cancel payment:", err);
+    }
+    setPendingPaymentInfo(null);
+    setCheckoutClientSecret(null);
+  }, [tenantId, pendingPaymentInfo]);
+
+  const handleClose = useCallback(() => {
+    if (pendingPaymentInfo) {
+      cancelPendingPayment();
+    }
+    onClose();
+    setTimeout(resetState, 200);
+  }, [onClose, resetState, pendingPaymentInfo, cancelPendingPayment]);
 
   const stepTitle = (() => {
     switch (step) {
@@ -335,7 +373,7 @@ export default function BookingWidget({
         <StripeCheckoutView
           clientSecret={checkoutClientSecret}
           onBack={() => {
-            setCheckoutClientSecret(null);
+            cancelPendingPayment();
             setStep("form");
           }}
         />

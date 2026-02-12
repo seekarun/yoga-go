@@ -277,6 +277,7 @@ export interface BookingConfirmedData {
   endTime: string; // ISO 8601
   tenant: CallyTenant;
   message?: string;
+  cancelUrl?: string;
 }
 
 /**
@@ -315,6 +316,7 @@ export async function sendBookingConfirmedEmail(
     endTime,
     tenant,
     message,
+    cancelUrl,
   } = data;
 
   const timezone = tenant.bookingConfig?.timezone || "Australia/Sydney";
@@ -408,6 +410,20 @@ export async function sendBookingConfirmedEmail(
                 We look forward to seeing you!
               </p>
 
+              ${
+                cancelUrl
+                  ? `<!-- Cancel Booking Link -->
+              <div style="border-top: 1px solid #e5e7eb; margin-top: 25px; padding-top: 20px; text-align: center;">
+                <p style="font-size: 13px; color: #999; margin: 0 0 8px 0;">
+                  Need to cancel?
+                </p>
+                <a href="${cancelUrl}" style="font-size: 13px; color: #dc2626; text-decoration: underline;">
+                  Cancel this booking
+                </a>
+              </div>`
+                  : ""
+              }
+
               ${getSignupCtaHtml(tenant, visitorEmail)}
             </td>
           </tr>
@@ -439,6 +455,7 @@ Timezone: ${timezone}${note ? `\nNote: ${note}` : ""}
 Status: Confirmed
 
 We look forward to seeing you!
+${cancelUrl ? `\nNeed to cancel? ${cancelUrl}` : ""}
 ${getSignupCtaText(tenant, visitorEmail)}
 
 ---

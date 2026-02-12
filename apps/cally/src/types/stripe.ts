@@ -7,6 +7,6 @@ export interface StripeConfig {
   chargesEnabled: boolean; // Can the account accept charges?
   detailsSubmitted: boolean; // Has onboarding been completed?
   email?: string; // Stripe account email
-  applicationFeePercent?: number; // Platform fee percentage (0-100), default 0
+  applicationFeePercent?: number; // Platform fee percentage
   connectedAt: string; // ISO 8601
 }

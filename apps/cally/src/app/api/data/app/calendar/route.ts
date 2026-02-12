@@ -255,6 +255,11 @@ export async function GET(request: Request) {
           recurrenceGroupId: event.recurrenceGroupId,
           // Attendees
           attendees: event.attendees,
+          // Cancellation / refund info
+          cancelledBy: event.cancelledBy,
+          stripeRefundId: event.stripeRefundId,
+          refundAmountCents: event.refundAmountCents,
+          stripePaymentIntentId: event.stripePaymentIntentId,
         },
       };
     });

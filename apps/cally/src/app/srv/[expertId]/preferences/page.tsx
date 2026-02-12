@@ -4,8 +4,11 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { SUPPORTED_TIMEZONES, getTimezoneLabel } from "@/lib/timezones";
-import type { WeeklySchedule } from "@/types/booking";
-import { DEFAULT_BOOKING_CONFIG } from "@/types/booking";
+import type { WeeklySchedule, CancellationConfig } from "@/types/booking";
+import {
+  DEFAULT_BOOKING_CONFIG,
+  DEFAULT_CANCELLATION_CONFIG,
+} from "@/types/booking";
 
 /**
  * User preferences/settings page
@@ -63,6 +66,13 @@ export default function PreferencesPage() {
     type: "success" | "error";
     message: string;
   } | null>(null);
+  const [cancellationConfig, setCancellationConfig] =
+    useState<CancellationConfig>(DEFAULT_CANCELLATION_CONFIG);
+  const [savingCancellation, setSavingCancellation] = useState(false);
+  const [cancellationFeedback, setCancellationFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
@@ -88,6 +98,8 @@ export default function PreferencesPage() {
         if (data.data.currency) setCurrency(data.data.currency);
         if (data.data.weeklySchedule)
           setWeeklySchedule(data.data.weeklySchedule);
+        if (data.data.cancellationConfig)
+          setCancellationConfig(data.data.cancellationConfig);
         setGoogleCalendarConnected(!!data.data.googleCalendarConnected);
         setZoomConnected(!!data.data.zoomConnected);
       }
@@ -294,6 +306,56 @@ export default function PreferencesPage() {
       setSavingSchedule(false);
       setTimeout(() => setScheduleFeedback(null), 3000);
     }
+  };
+
+  const saveCancellationConfig = async (updated: CancellationConfig) => {
+    setSavingCancellation(true);
+    setCancellationFeedback(null);
+
+    try {
+      const res = await fetch("/api/data/app/preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cancellationConfig: updated }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCancellationFeedback({
+          type: "success",
+          message: "Cancellation policy updated",
+        });
+      } else {
+        setCancellationFeedback({
+          type: "error",
+          message: data.error || "Failed to update cancellation policy",
+        });
+        setCancellationConfig(cancellationConfig);
+      }
+    } catch {
+      setCancellationFeedback({
+        type: "error",
+        message: "Failed to update cancellation policy",
+      });
+      setCancellationConfig(cancellationConfig);
+    } finally {
+      setSavingCancellation(false);
+      setTimeout(() => setCancellationFeedback(null), 3000);
+    }
+  };
+
+  const handleDeadlineChange = (hours: number) => {
+    const updated = { ...cancellationConfig, cancellationDeadlineHours: hours };
+    setCancellationConfig(updated);
+    saveCancellationConfig(updated);
+  };
+
+  const handleLateRefundChange = (percent: number) => {
+    const updated = {
+      ...cancellationConfig,
+      lateCancellationRefundPercent: percent,
+    };
+    setCancellationConfig(updated);
+    saveCancellationConfig(updated);
   };
 
   const handleDayToggle = (day: number) => {
@@ -921,6 +983,84 @@ export default function PreferencesPage() {
                 }`}
               >
                 {scheduleFeedback.message}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Cancellation Policy */}
+        <div className="mt-6 pt-6 border-t border-[var(--color-border)]">
+          <label className="block text-sm font-medium text-[var(--text-muted)] mb-1">
+            Cancellation Policy
+          </label>
+          <p className="text-sm text-[var(--text-muted)] mb-3">
+            Control refund rules when visitors cancel their bookings.
+          </p>
+          <div className="space-y-4">
+            <div>
+              <label
+                htmlFor="deadline-select"
+                className="block text-sm text-[var(--text-body)] mb-1"
+              >
+                Cancellation deadline
+              </label>
+              <p className="text-xs text-[var(--text-muted)] mb-2">
+                Visitors get a full refund if they cancel before this deadline.
+              </p>
+              <select
+                id="deadline-select"
+                value={cancellationConfig.cancellationDeadlineHours}
+                onChange={(e) => handleDeadlineChange(Number(e.target.value))}
+                disabled={savingCancellation}
+                className="border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--text-main)] bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] disabled:opacity-50"
+              >
+                <option value={6}>6 hours before</option>
+                <option value={12}>12 hours before</option>
+                <option value={24}>24 hours before</option>
+                <option value={48}>48 hours before</option>
+                <option value={72}>72 hours before</option>
+              </select>
+            </div>
+            <div>
+              <label
+                htmlFor="late-refund-select"
+                className="block text-sm text-[var(--text-body)] mb-1"
+              >
+                Late cancellation refund
+              </label>
+              <p className="text-xs text-[var(--text-muted)] mb-2">
+                Refund percentage when visitor cancels after the deadline.
+              </p>
+              <select
+                id="late-refund-select"
+                value={cancellationConfig.lateCancellationRefundPercent}
+                onChange={(e) => handleLateRefundChange(Number(e.target.value))}
+                disabled={savingCancellation}
+                className="border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm text-[var(--text-main)] bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] disabled:opacity-50"
+              >
+                <option value={0}>0% — No refund</option>
+                <option value={25}>25% refund</option>
+                <option value={50}>50% refund</option>
+                <option value={75}>75% refund</option>
+                <option value={100}>100% — Full refund</option>
+              </select>
+            </div>
+          </div>
+          <div className="mt-2 h-5">
+            {savingCancellation && (
+              <span className="text-sm text-[var(--text-muted)]">
+                Saving...
+              </span>
+            )}
+            {cancellationFeedback && (
+              <span
+                className={`text-sm ${
+                  cancellationFeedback.type === "success"
+                    ? "text-green-600"
+                    : "text-red-600"
+                }`}
+              >
+                {cancellationFeedback.message}
               </span>
             )}
           </div>

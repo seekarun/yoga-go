@@ -83,6 +83,7 @@ export async function createCheckoutSession(params: {
   productName: string;
   tenantName: string;
   applicationFeeAmount: number; // in smallest currency unit (cents)
+  customerEmail: string;
   returnUrl: string;
   metadata: Record<string, string>;
 }): Promise<Stripe.Checkout.Session> {
@@ -113,6 +114,7 @@ export async function createCheckoutSession(params: {
         destination: params.connectedAccountId,
       },
     },
+    customer_email: params.customerEmail,
     return_url: params.returnUrl,
     custom_text: {
       submit: {
@@ -147,4 +149,62 @@ export async function getCheckoutSession(
 ): Promise<Stripe.Checkout.Session> {
   const stripe = getStripeClient();
   return stripe.checkout.sessions.retrieve(sessionId);
+}
+
+/**
+ * Expire a Checkout Session (immediately cancels it)
+ */
+export async function expireCheckoutSession(
+  sessionId: string,
+): Promise<Stripe.Checkout.Session> {
+  console.log("[DBG][stripe] Expiring checkout session:", sessionId);
+  const stripe = getStripeClient();
+  return stripe.checkout.sessions.expire(sessionId);
+}
+
+/**
+ * Retrieve a PaymentIntent by ID
+ */
+export async function getPaymentIntent(
+  paymentIntentId: string,
+): Promise<Stripe.PaymentIntent> {
+  console.log("[DBG][stripe] Retrieving payment intent:", paymentIntentId);
+  const stripe = getStripeClient();
+  return stripe.paymentIntents.retrieve(paymentIntentId);
+}
+
+/**
+ * Create a full refund for a payment intent
+ * For Connect destination charges, Stripe auto-reverses the transfer proportionally.
+ */
+export async function createFullRefund(
+  paymentIntentId: string,
+): Promise<Stripe.Refund> {
+  console.log(
+    "[DBG][stripe] Creating full refund for payment intent:",
+    paymentIntentId,
+  );
+  const stripe = getStripeClient();
+  return stripe.refunds.create({ payment_intent: paymentIntentId });
+}
+
+/**
+ * Create a partial refund for a payment intent
+ * For Connect destination charges, Stripe auto-reverses the transfer proportionally.
+ */
+export async function createPartialRefund(
+  paymentIntentId: string,
+  amountCents: number,
+): Promise<Stripe.Refund> {
+  console.log(
+    "[DBG][stripe] Creating partial refund for payment intent:",
+    paymentIntentId,
+    "amount:",
+    amountCents,
+  );
+  const stripe = getStripeClient();
+  return stripe.refunds.create({
+    payment_intent: paymentIntentId,
+    amount: amountCents,
+  });
 }

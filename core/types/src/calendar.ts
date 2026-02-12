@@ -54,7 +54,8 @@ export type CalendarEventStatus =
   | "pending_payment"
   | "scheduled"
   | "cancelled"
-  | "completed";
+  | "completed"
+  | "no_show";
 
 /**
  * Calendar event entity
@@ -101,6 +102,11 @@ export interface CalendarEvent extends BaseEntity {
   // Reminder tracking (internal — set by cron, not by user)
   reminder24hSentAt?: string;
   reminder10mSentAt?: string;
+  // Cancellation tracking
+  cancelledBy?: "tenant" | "visitor";
+  cancelledAt?: string;
+  refundAmountCents?: number;
+  stripeRefundId?: string;
 }
 
 /**
@@ -145,6 +151,11 @@ export interface CreateCalendarEventInput {
   stripePaymentIntentId?: string;
   // Attendees
   attendees?: EventAttendee[];
+  // Cancellation tracking
+  cancelledBy?: "tenant" | "visitor";
+  cancelledAt?: string;
+  refundAmountCents?: number;
+  stripeRefundId?: string;
 }
 
 /**
@@ -175,5 +186,10 @@ export interface CalendarItem {
     recurrenceGroupId?: string;
     // Attendees
     attendees?: EventAttendee[];
+    // Cancellation / refund info
+    cancelledBy?: "tenant" | "visitor";
+    stripeRefundId?: string;
+    refundAmountCents?: number;
+    stripePaymentIntentId?: string;
   };
 }

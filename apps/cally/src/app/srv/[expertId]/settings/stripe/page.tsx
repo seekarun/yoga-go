@@ -9,7 +9,6 @@ interface StripeStatus {
   chargesEnabled: boolean;
   detailsSubmitted: boolean;
   email: string | null;
-  applicationFeePercent: number;
   connectedAt: string | null;
 }
 
@@ -23,8 +22,6 @@ export default function StripeSettingsPage() {
   const [disconnecting, setDisconnecting] = useState(false);
   const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  const [feePercent, setFeePercent] = useState<number>(0);
-  const [savingFee, setSavingFee] = useState(false);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -32,7 +29,6 @@ export default function StripeSettingsPage() {
       const data = await res.json();
       if (data.success) {
         setStatus(data.data);
-        setFeePercent(data.data.applicationFeePercent ?? 0);
       }
     } catch (error) {
       console.error("[DBG][stripe-settings] Failed to fetch status:", error);
@@ -91,7 +87,6 @@ export default function StripeSettingsPage() {
           chargesEnabled: false,
           detailsSubmitted: false,
           email: null,
-          applicationFeePercent: 0,
           connectedAt: null,
         });
         setToast("Stripe disconnected.");
@@ -102,28 +97,6 @@ export default function StripeSettingsPage() {
     } finally {
       setDisconnecting(false);
       setShowDisconnectConfirm(false);
-    }
-  };
-
-  const handleSaveFee = async () => {
-    setSavingFee(true);
-    try {
-      const res = await fetch("/api/data/app/stripe/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ applicationFeePercent: feePercent }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setToast("Application fee updated.");
-      } else {
-        setToast(data.error || "Failed to update fee.");
-      }
-    } catch (error) {
-      console.error("[DBG][stripe-settings] Failed to save fee:", error);
-      setToast("Failed to update fee. Please try again.");
-    } finally {
-      setSavingFee(false);
     }
   };
 
@@ -266,43 +239,6 @@ export default function StripeSettingsPage() {
               )}
             </div>
           </div>
-
-          {/* Application fee settings */}
-          {status.chargesEnabled && (
-            <div className="bg-white rounded-lg border border-[var(--color-border)] p-6">
-              <h3 className="font-medium text-[var(--text-main)] mb-2">
-                Application Fee
-              </h3>
-              <p className="text-sm text-[var(--text-muted)] mb-4">
-                Set the percentage fee kept by the platform on each payment.
-              </p>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    step={0.5}
-                    value={feePercent}
-                    onChange={(e) =>
-                      setFeePercent(
-                        Math.min(100, Math.max(0, Number(e.target.value))),
-                      )
-                    }
-                    className="w-24 px-3 py-2 border border-[var(--color-border)] rounded-lg text-sm"
-                  />
-                  <span className="text-sm text-[var(--text-muted)]">%</span>
-                </div>
-                <button
-                  onClick={handleSaveFee}
-                  disabled={savingFee}
-                  className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary-hover)] transition-colors text-sm disabled:opacity-50"
-                >
-                  {savingFee ? "Saving..." : "Save"}
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* Disconnect */}
           <div className="bg-white rounded-lg border border-[var(--color-border)] p-6">

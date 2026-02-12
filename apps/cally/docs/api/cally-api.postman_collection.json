@@ -250,6 +250,72 @@
           }
         },
         {
+          "name": "Cancel Booking - Preview (Public)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/data/tenants/:tenantId/booking/cancel?token=eyJ0ZW5hbnRJZCI6IjAxSFhZWi4uLiIsImV2ZW50SWQiOiJldnRfMTIzIiwiZGF0ZSI6IjIwMjYtMDItMTAifQ.abc123",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "tenants",
+                ":tenantId",
+                "booking",
+                "cancel"
+              ],
+              "query": [
+                {
+                  "key": "token",
+                  "value": "eyJ0ZW5hbnRJZCI6IjAxSFhZWi4uLiIsImV2ZW50SWQiOiJldnRfMTIzIiwiZGF0ZSI6IjIwMjYtMDItMTAifQ.abc123"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "tenantId",
+                  "value": "01HXYZ..."
+                }
+              ]
+            },
+            "description": "Preview cancellation details for a booking. Returns event info, refund calculation based on cancellation policy, and deadline status. Requires a valid HMAC cancel token from the booking confirmation email."
+          }
+        },
+        {
+          "name": "Cancel Booking - Execute (Public)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"eyJ0ZW5hbnRJZCI6IjAxSFhZWi4uLiIsImV2ZW50SWQiOiJldnRfMTIzIiwiZGF0ZSI6IjIwMjYtMDItMTAifQ.abc123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/tenants/:tenantId/booking/cancel",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "tenants",
+                ":tenantId",
+                "booking",
+                "cancel"
+              ],
+              "variable": [
+                {
+                  "key": "tenantId",
+                  "value": "01HXYZ..."
+                }
+              ]
+            },
+            "description": "Execute booking cancellation. Verifies token, processes Stripe refund (full/partial based on cancellation policy), updates event status, and sends cancellation emails to visitor and tenant."
+          }
+        },
+        {
           "name": "Submit Contact Form",
           "request": {
             "method": "POST",
@@ -2234,6 +2300,24 @@
               "path": ["api", "cron", "event-reminders"]
             },
             "description": "Send event reminder emails to attendees. Checks events starting in ~24h and ~10m windows. Runs every 5 minutes via Vercel Cron. Returns { checked, reminded24h, reminded10m, errors, durationMs }."
+          }
+        },
+        {
+          "name": "Mark Completed Cron",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cronSecret}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cron/mark-completed",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "cron", "mark-completed"]
+            },
+            "description": "Mark past scheduled events as completed. Scans events from 30 days ago to yesterday with status 'scheduled' and updates them to 'completed'. Runs daily at 2 AM UTC via Vercel Cron. Returns { tenantsProcessed, eventsChecked, eventsCompleted, errors, durationMs }."
           }
         }
       ]
