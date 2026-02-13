@@ -17,6 +17,14 @@
     {
       "path": "/api/cron/mark-completed",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/ad-metrics-sync",
+      "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/waitlist-notify",
+      "schedule": "*/5 * * * *"
     }
   ],
   "headers": [

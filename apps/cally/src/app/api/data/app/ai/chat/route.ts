@@ -13,6 +13,7 @@ import {
   buildSystemPrompt,
 } from "@/lib/openai";
 import type { ChatMessage, ChatCompletionRequest } from "@/types/ai-assistant";
+import { searchKnowledge } from "@/lib/rag";
 
 export async function POST(request: NextRequest) {
   try {
@@ -57,10 +58,14 @@ export async function POST(request: NextRequest) {
     };
     messages.push(userMessage);
 
-    // Build system prompt from tenant config (includes business info)
+    // Retrieve relevant knowledge base context
+    const relevantChunks = await searchKnowledge(tenant.id, body.message, 3);
+
+    // Build system prompt from tenant config (includes business info + RAG context)
     const systemPrompt = buildSystemPrompt(
       tenant.aiAssistantConfig?.systemPrompt,
       tenant.aiAssistantConfig?.businessInfo,
+      relevantChunks,
     );
 
     // Call OpenAI

@@ -15,18 +15,22 @@ x user favicon and meta data for SEO
 x SEO help
 x user preferences (password, email)
 x accept payments for calendar events
+x tenant subscription
 
-- tenant subscription
+- more templates
+- super admin console
 
+- booking wait list
 - AI chat to look up user's past interactions
 - video call recording and AI feed
 - review DB structure for scaling
+- backups
+- add images for products
 - chat for video calls 100ms
-- super admin console
-- booking wait list
 - add phone number + whatsapp support for booking
+- alerts
+
 - production deployment.
-- more templates
 
 - invite
   - CHarles
@@ -34,6 +38,7 @@ x accept payments for calendar events
   - The accountant on FB
   - Anusha?
   - Ramya
+  - the real estate guy?
 
 - search for cally.live and replace with domain everywehre
 - facebook login

@@ -78,6 +78,7 @@ export async function GET() {
           forwardToEmail: tenant.emailConfig.forwardToEmail,
           forwardingEnabled: true,
           sesVerificationStatus: "verified",
+          forwardToCal: tenant.emailConfig.forwardToCal ?? true,
         });
         console.log(
           "[DBG][email/verify] Created domain lookup for:",

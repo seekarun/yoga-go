@@ -1692,6 +1692,7 @@ export default function SimpleLandingPageEditor({
         title="Edit Background Image"
         aspectRatio={currentTemplateImageConfig.heroBackground}
         defaultSearchQuery="professional business"
+        uploadEndpoint="/api/data/app/tenant/landing-page/upload"
       />
 
       {/* Button Editor Overlay */}
@@ -1715,6 +1716,7 @@ export default function SimpleLandingPageEditor({
         title="Edit About Image"
         aspectRatio={currentTemplateImageConfig.aboutImage}
         defaultSearchQuery="portrait professional"
+        uploadEndpoint="/api/data/app/tenant/landing-page/upload"
       />
 
       {/* Feature Card Image Editor Overlay */}
@@ -1746,6 +1748,7 @@ export default function SimpleLandingPageEditor({
         title="Edit Feature Image"
         aspectRatio={currentTemplateImageConfig.featureCardImage}
         defaultSearchQuery="business service"
+        uploadEndpoint="/api/data/app/tenant/landing-page/upload"
       />
 
       {/* Gallery Image Editor Overlay */}
@@ -1759,6 +1762,7 @@ export default function SimpleLandingPageEditor({
         title="Add Gallery Image"
         aspectRatio="4/3"
         defaultSearchQuery="professional gallery"
+        uploadEndpoint="/api/data/app/tenant/landing-page/upload"
       />
 
       {/* SEO OG Image Editor Overlay */}
@@ -1772,6 +1776,7 @@ export default function SimpleLandingPageEditor({
         title="Edit Social Share Image"
         aspectRatio="1200/630"
         defaultSearchQuery="social media banner"
+        uploadEndpoint="/api/data/app/tenant/landing-page/upload"
       />
 
       {/* SEO Favicon Editor Overlay */}
@@ -1785,6 +1790,7 @@ export default function SimpleLandingPageEditor({
         title="Edit Favicon"
         aspectRatio="1/1"
         defaultSearchQuery="logo icon"
+        uploadEndpoint="/api/data/app/tenant/landing-page/upload"
       />
     </div>
   );

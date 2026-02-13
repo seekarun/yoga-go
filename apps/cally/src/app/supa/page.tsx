@@ -16,6 +16,7 @@ interface DeleteResult {
   tenantId: string;
   counts: Record<string, number | boolean>;
   totalDeleted: number;
+  warnings?: string[];
 }
 
 export default function SupaAdminPage() {
@@ -179,6 +180,17 @@ export default function SupaAdminPage() {
                   </span>
                 ) : null;
               }
+              if (key === "vercelDomain") {
+                if (val === true) {
+                  return (
+                    <span key={key} style={countBadgeStyle}>
+                      Vercel domain: removed
+                    </span>
+                  );
+                }
+                // false with warning is shown below
+                return null;
+              }
               if (typeof val === "number" && val > 0) {
                 return (
                   <span key={key} style={countBadgeStyle}>
@@ -189,6 +201,26 @@ export default function SupaAdminPage() {
               return null;
             })}
           </div>
+          {deleteResult.warnings && deleteResult.warnings.length > 0 && (
+            <div
+              style={{
+                marginTop: "0.75rem",
+                padding: "0.75rem",
+                background: "#fef3c7",
+                border: "1px solid #fbbf24",
+                borderRadius: "0.375rem",
+                fontSize: "0.813rem",
+                color: "#92400e",
+              }}
+            >
+              <strong>Warnings:</strong>
+              {deleteResult.warnings.map((w, i) => (
+                <div key={i} style={{ marginTop: "0.25rem" }}>
+                  {w}
+                </div>
+              ))}
+            </div>
+          )}
           <button
             onClick={() => setDeleteResult(null)}
             style={{

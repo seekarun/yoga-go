@@ -31,22 +31,22 @@ export async function POST(request: Request) {
     const {
       emailPrefix = "hello",
       forwardToEmail,
-    }: { emailPrefix?: string; forwardToEmail: string } = body;
+      forwardToCal = true,
+    }: {
+      emailPrefix?: string;
+      forwardToEmail?: string;
+      forwardToCal?: boolean;
+    } = body;
 
-    if (!forwardToEmail || typeof forwardToEmail !== "string") {
-      return NextResponse.json(
-        { success: false, error: "Forward-to email is required" },
-        { status: 400 },
-      );
-    }
-
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(forwardToEmail)) {
-      return NextResponse.json(
-        { success: false, error: "Invalid forward-to email format" },
-        { status: 400 },
-      );
+    // Validate email format if provided
+    if (forwardToEmail) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(forwardToEmail)) {
+        return NextResponse.json(
+          { success: false, error: "Invalid forward-to email format" },
+          { status: 400 },
+        );
+      }
     }
 
     // Validate email prefix (alphanumeric, dots, dashes, underscores)
@@ -116,7 +116,8 @@ export async function POST(request: Request) {
       // Continue - user can add records manually
     }
 
-    // Save email config to tenant
+    // Save email config to tenant (including AI assistant email)
+    const aiEmail = `cal@${domain}`;
     await updateEmailConfig(tenant.id, {
       domainEmail,
       emailPrefix,
@@ -126,9 +127,11 @@ export async function POST(request: Request) {
       dkimStatus: sesResult.verificationStatus,
       mxVerified: false,
       spfVerified: false,
-      forwardToEmail,
+      forwardToEmail: forwardToEmail || "",
       forwardingEnabled: false,
       enabledAt: new Date().toISOString(),
+      aiEmail,
+      forwardToCal,
     });
 
     console.log(

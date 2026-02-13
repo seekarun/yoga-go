@@ -10,6 +10,7 @@ import { getActiveProducts } from "@/lib/repositories/productRepository";
 import { DEFAULT_LANDING_PAGE_CONFIG } from "@/types/landing-page";
 import type { Testimonial } from "@/types/landing-page";
 import LandingPageRenderer from "@/components/landing-page/LandingPageRenderer";
+import { ChatWidgetWrapper } from "@/components/ai";
 
 interface PageProps {
   params: Promise<{
@@ -139,6 +140,10 @@ export default async function TenantLandingPage({ params }: PageProps) {
         products={activeProducts}
         currency={tenant.currency ?? "AUD"}
         address={tenant.address}
+      />
+      <ChatWidgetWrapper
+        tenantId={tenantId}
+        config={tenant.aiAssistantConfig}
       />
     </>
   );

@@ -50,11 +50,21 @@ export interface ChatMessage {
 }
 
 /**
+ * Visitor context sent from the chat widget (logged-in user info + timezone)
+ */
+export interface ChatVisitorInfo {
+  name?: string;
+  email?: string;
+  timezone?: string;
+}
+
+/**
  * Request for chat completion
  */
 export interface ChatCompletionRequest {
   message: string;
   sessionMessages?: ChatMessage[];
+  visitorInfo?: ChatVisitorInfo;
 }
 
 /**

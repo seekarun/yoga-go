@@ -4,17 +4,42 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import type { FeedbackRequest } from "@/types";
+// TODO: Uncomment when Google Business Profile API access is approved
+// import GoogleReviewsList from "@/components/reviews/GoogleReviewsList";
 
 type TabFilter = "all" | "pending" | "submitted" | "approved";
+// TODO: Uncomment when Google Business Profile API access is approved
+// type ReviewSection = "cally" | "google";
 
 export default function FeedbackDashboardPage() {
   const params = useParams();
   const expertId = params.expertId as string;
 
+  // TODO: Uncomment when Google Business Profile API access is approved
+  // const [section, setSection] = useState<ReviewSection>("cally");
+  // const [googleConnected, setGoogleConnected] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabFilter>("all");
+
+  // TODO: Uncomment when Google Business Profile API access is approved
+  // Check Google Business connection status
+  // useEffect(() => {
+  //   fetch("/api/data/app/google-business/status")
+  //     .then((res) => res.json())
+  //     .then((data) => {
+  //       if (data.success) {
+  //         setGoogleConnected(data.data.connected);
+  //       }
+  //     })
+  //     .catch((err) =>
+  //       console.error(
+  //         "[DBG][feedbackDashboard] Failed to fetch Google Business status:",
+  //         err,
+  //       ),
+  //     );
+  // }, []);
 
   const fetchFeedback = useCallback(async () => {
     try {
@@ -162,7 +187,68 @@ export default function FeedbackDashboardPage() {
         Reviews
       </h1>
 
-      {/* Tabs */}
+      {/* TODO: Uncomment Section Toggle when Google Business Profile API access is approved */}
+      {/* <div className="flex gap-1 mb-6 bg-gray-100 rounded-lg p-1 w-fit">
+        <button
+          type="button"
+          onClick={() => setSection("cally")}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            section === "cally"
+              ? "bg-white text-[var(--text-main)] shadow-sm"
+              : "text-[var(--text-muted)] hover:text-[var(--text-main)]"
+          }`}
+        >
+          Cally Reviews
+        </button>
+        <button
+          type="button"
+          onClick={() => setSection("google")}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            section === "google"
+              ? "bg-white text-[var(--text-main)] shadow-sm"
+              : "text-[var(--text-muted)] hover:text-[var(--text-main)]"
+          }`}
+        >
+          Google Reviews
+        </button>
+      </div>
+
+      {section === "google" ? (
+        googleConnected ? (
+          <GoogleReviewsList />
+        ) : (
+          <div className="bg-white rounded-lg border border-[var(--color-border)] p-8 text-center">
+            <svg
+              className="w-12 h-12 mx-auto text-[var(--text-muted)] mb-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z"
+              />
+            </svg>
+            <p className="text-[var(--text-main)] font-medium mb-2">
+              Google Business Profile not connected
+            </p>
+            <p className="text-sm text-[var(--text-muted)] mb-4">
+              Connect your Google Business Profile to view and reply to your
+              Google Reviews.
+            </p>
+            <Link
+              href={`/srv/${expertId}/settings/google-business`}
+              className="inline-block px-6 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary-hover)] transition-colors"
+            >
+              Connect Google Business
+            </Link>
+          </div>
+        )
+      ) : ( */}
+
+      {/* Cally Reviews Tabs */}
       <div className="flex gap-1 mb-6 bg-gray-100 rounded-lg p-1 w-fit">
         {tabs.map((tab) => (
           <button
@@ -217,6 +303,8 @@ export default function FeedbackDashboardPage() {
           ))}
         </div>
       )}
+      {/* TODO: Uncomment closing tags when Google Business Profile API access is approved */}
+      {/* )} */}
     </div>
   );
 }

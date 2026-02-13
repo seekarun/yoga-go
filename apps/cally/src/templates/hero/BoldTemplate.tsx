@@ -73,6 +73,7 @@ export default function BoldTemplate(props: HeroTemplateProps) {
     maxWidth: "600px",
     lineHeight: 1.6,
     letterSpacing: "0.05em",
+    color: "inherit",
   };
 
   const editableBaseStyle: React.CSSProperties = isEditing

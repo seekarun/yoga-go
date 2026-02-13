@@ -1,15 +1,19 @@
 "use client";
 
-import { useState } from "react";
 import { PrimaryButton, SecondaryButton } from "@/components/Button";
-import DomainStatusBadge from "./DomainStatusBadge";
-import DnsRecordStatus from "./DnsRecordStatus";
 import type { EmailConfig, TenantDnsRecord } from "@/types";
+import { useState } from "react";
+import DnsRecordStatus from "./DnsRecordStatus";
+import DomainStatusBadge from "./DomainStatusBadge";
 
 interface EmailSetupCardProps {
   domain: string;
   emailConfig?: EmailConfig;
-  onSetupEmail: (emailPrefix: string, forwardToEmail: string) => Promise<void>;
+  onSetupEmail: (
+    emailPrefix: string,
+    forwardToEmail: string,
+    forwardToCal: boolean,
+  ) => Promise<void>;
   onVerifyEmail: () => Promise<void>;
   onDisableEmail: () => Promise<void>;
   dnsRecords?: TenantDnsRecord[];
@@ -28,20 +32,19 @@ export default function EmailSetupCard({
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [forwardToCal, setForwardToCal] = useState(
+    emailConfig?.forwardToCal ?? true,
+  );
+  const [togglingCal, setTogglingCal] = useState(false);
 
   const hasEmail = !!emailConfig?.domainEmail;
   const isEmailVerified = emailConfig?.sesVerificationStatus === "verified";
 
   const handleSetup = async () => {
-    if (!forwardToEmail.trim()) {
-      setError("Forward-to email is required");
-      return;
-    }
-
     setLoading(true);
     setError(null);
     try {
-      await onSetupEmail(emailPrefix, forwardToEmail);
+      await onSetupEmail(emailPrefix, forwardToEmail, forwardToCal);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to setup email");
     } finally {
@@ -78,6 +81,31 @@ export default function EmailSetupCard({
       setError(err instanceof Error ? err.message : "Failed to disable email");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleForwardToCal = async () => {
+    setTogglingCal(true);
+    setError(null);
+    const newValue = !forwardToCal;
+    try {
+      const response = await fetch(
+        "/api/data/app/domain/email/forward-to-cal",
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ forwardToCal: newValue }),
+        },
+      );
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || "Failed to update setting");
+      }
+      setForwardToCal(newValue);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update setting");
+    } finally {
+      setTogglingCal(false);
     }
   };
 
@@ -125,6 +153,25 @@ export default function EmailSetupCard({
               </span>
             </div>
           </div>
+
+          {/* Forward to Cal checkbox */}
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={forwardToCal}
+              onChange={() => setForwardToCal(!forwardToCal)}
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
+            />
+            <div>
+              <span className="text-sm font-medium text-gray-900">
+                Auto-forward emails to Cal
+              </span>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Emails sent to {emailPrefix}@{domain} will also appear in the AI
+                Assistant inbox, so Cal can gather information from them.
+              </p>
+            </div>
+          </label>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -197,6 +244,26 @@ export default function EmailSetupCard({
             </div>
           </div>
         </div>
+
+        {/* Forward to Cal toggle */}
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={forwardToCal}
+            onChange={handleToggleForwardToCal}
+            disabled={togglingCal}
+            className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[var(--color-primary)] focus:ring-[var(--color-primary)]"
+          />
+          <div>
+            <span className="text-sm font-medium text-gray-900">
+              Auto-forward emails to Cal
+            </span>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Emails sent to {emailConfig.domainEmail} will also appear in the
+              AI Assistant inbox, so Cal can gather information from them.
+            </p>
+          </div>
+        </label>
 
         {!isEmailVerified && dnsRecords.length > 0 && (
           <DnsRecordStatus

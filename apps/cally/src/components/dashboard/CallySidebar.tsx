@@ -138,6 +138,27 @@ export default function CallySidebar({ expertId }: CallySidebarProps) {
         </svg>
       ),
     },
+    // TODO: Uncomment when Meta Business account is set up
+    // {
+    //   id: "ads",
+    //   label: "Ad Campaigns",
+    //   href: `/srv/${expertId}/ads`,
+    //   icon: (
+    //     <svg
+    //       className="w-5 h-5"
+    //       fill="none"
+    //       viewBox="0 0 24 24"
+    //       stroke="currentColor"
+    //     >
+    //       <path
+    //         strokeLinecap="round"
+    //         strokeLinejoin="round"
+    //         strokeWidth={2}
+    //         d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"
+    //       />
+    //     </svg>
+    //   ),
+    // },
     {
       id: "landing-page",
       label: "Landing Page",
@@ -219,6 +240,26 @@ export default function CallySidebar({ expertId }: CallySidebarProps) {
       ),
     },
     {
+      id: "ai-inbox",
+      label: "AI Inbox",
+      href: `/srv/${expertId}/ai-assistant/inbox`,
+      icon: (
+        <svg
+          className="w-5 h-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+          />
+        </svg>
+      ),
+    },
+    {
       id: "domain",
       label: "Domain & Email",
       href: `/srv/${expertId}/settings/domain`,
@@ -286,11 +327,21 @@ export default function CallySidebar({ expertId }: CallySidebarProps) {
     },
   ];
 
+  const allHrefs = menuItems.map((item) => item.href);
+
   const isActive = (href: string) => {
     if (href === `/srv/${expertId}`) {
       return pathname === href;
     }
-    return pathname.startsWith(href);
+    if (!pathname.startsWith(href)) {
+      return false;
+    }
+    // If another menu item has a longer href that also matches, prefer that one
+    const hasMoreSpecificMatch = allHrefs.some(
+      (other) =>
+        other !== href && other.startsWith(href) && pathname.startsWith(other),
+    );
+    return !hasMoreSpecificMatch;
   };
 
   return (

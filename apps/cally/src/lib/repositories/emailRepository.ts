@@ -120,14 +120,23 @@ export async function createEmail(input: CreateEmailInput): Promise<Email> {
 
 /**
  * Get emails by tenant ID with pagination
+ * @param inbox - "main" for the default inbox, "cal" for the AI assistant inbox
  */
 export async function getEmailsByTenant(
   tenantId: string,
   filters?: EmailFilters,
+  inbox: "main" | "cal" = "main",
 ): Promise<EmailListResult> {
-  console.log("[DBG][emailRepository] Getting emails for tenant:", tenantId);
+  console.log(
+    "[DBG][emailRepository] Getting emails for tenant:",
+    tenantId,
+    "inbox:",
+    inbox,
+  );
 
   const limit = filters?.limit ?? 20;
+  const pk =
+    inbox === "cal" ? EmailPK.CAL_INBOX(tenantId) : EmailPK.INBOX(tenantId);
 
   const result = await docClient.send(
     new QueryCommand({
@@ -135,7 +144,7 @@ export async function getEmailsByTenant(
       KeyConditionExpression: "PK = :pk",
       FilterExpression: "attribute_not_exists(isDeleted) OR isDeleted = :false",
       ExpressionAttributeValues: {
-        ":pk": EmailPK.INBOX(tenantId),
+        ":pk": pk,
         ":false": false,
       },
       ScanIndexForward: false, // Most recent first
@@ -416,9 +425,21 @@ export async function getEmailsByContact(
 
 /**
  * Get unread count for tenant
+ * @param inbox - "main" for the default inbox, "cal" for the AI assistant inbox
  */
-export async function getUnreadCount(tenantId: string): Promise<number> {
-  console.log("[DBG][emailRepository] Getting unread count for:", tenantId);
+export async function getUnreadCount(
+  tenantId: string,
+  inbox: "main" | "cal" = "main",
+): Promise<number> {
+  console.log(
+    "[DBG][emailRepository] Getting unread count for:",
+    tenantId,
+    "inbox:",
+    inbox,
+  );
+
+  const pk =
+    inbox === "cal" ? EmailPK.CAL_INBOX(tenantId) : EmailPK.INBOX(tenantId);
 
   const result = await docClient.send(
     new QueryCommand({
@@ -427,7 +448,7 @@ export async function getUnreadCount(tenantId: string): Promise<number> {
       FilterExpression:
         "isRead = :isRead AND (attribute_not_exists(isDeleted) OR isDeleted = :false)",
       ExpressionAttributeValues: {
-        ":pk": EmailPK.INBOX(tenantId),
+        ":pk": pk,
         ":isRead": false,
         ":false": false,
       },

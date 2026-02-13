@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import type { ChatMessage } from "@/types/ai-assistant";
 import { DEFAULT_AI_ASSISTANT_CONFIG } from "@/types/ai-assistant";
 import { useEmbedMessaging } from "@/hooks/useEmbedMessaging";
+import { useOptionalAuth } from "@/contexts/AuthContext";
+import { useVisitorTimezone } from "@/hooks/useVisitorTimezone";
 
 interface EmbedChatWidgetProps {
   tenantId: string;
@@ -15,6 +17,8 @@ interface EmbedChatWidgetProps {
  */
 export default function EmbedChatWidget({ tenantId }: EmbedChatWidgetProps) {
   useEmbedMessaging("chat");
+  const auth = useOptionalAuth();
+  const [visitorTimezone] = useVisitorTimezone();
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
@@ -26,6 +30,19 @@ export default function EmbedChatWidget({ tenantId }: EmbedChatWidgetProps) {
 
   const endpoint = `/api/data/tenants/${tenantId}/ai/chat`;
   const config = DEFAULT_AI_ASSISTANT_CONFIG;
+
+  // Build visitor info from auth state + user-selected timezone
+  const visitorInfo = useMemo(() => {
+    const info: { name?: string; email?: string; timezone?: string } = {};
+    if (auth?.isAuthenticated && auth.user) {
+      if (auth.user.profile.name) info.name = auth.user.profile.name;
+      if (auth.user.profile.email) info.email = auth.user.profile.email;
+    }
+    if (visitorTimezone) {
+      info.timezone = visitorTimezone;
+    }
+    return Object.keys(info).length > 0 ? info : undefined;
+  }, [auth?.isAuthenticated, auth?.user, visitorTimezone]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -60,6 +77,7 @@ export default function EmbedChatWidget({ tenantId }: EmbedChatWidgetProps) {
         body: JSON.stringify({
           message: userMessage,
           sessionMessages: messages,
+          visitorInfo,
         }),
       });
 
@@ -76,7 +94,7 @@ export default function EmbedChatWidget({ tenantId }: EmbedChatWidgetProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [inputValue, isLoading, endpoint, messages]);
+  }, [inputValue, isLoading, endpoint, messages, visitorInfo]);
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {

@@ -31,7 +31,11 @@ import { getStartQuestion } from "@core/lib/survey-flow";
 import { QuestionNode, type QuestionNodeData } from "./QuestionNode";
 import { QuestionEditorPanel } from "./QuestionEditorPanel";
 import { StartNode } from "./StartNode";
-import { AddButtonEdge, type AddButtonEdgeData } from "./AddButtonEdge";
+import {
+  AddButtonEdge,
+  type AddButtonEdgeData,
+  type EdgeAction,
+} from "./AddButtonEdge";
 
 export interface SurveyFlowBuilderProps {
   questions: SurveyQuestion[];
@@ -91,6 +95,58 @@ function generateId(): string {
 }
 
 const DEFAULT_NODE_WIDTH = 250;
+const DEFAULT_NODE_HEIGHT = 120;
+/** Minimum gap between nodes when dragging (collision padding) */
+const NODE_GAP = 10;
+
+/**
+ * Prevent a dragged node from overlapping any other node.
+ * Returns the closest valid position to the proposed (px, py).
+ */
+function preventOverlap(
+  px: number,
+  py: number,
+  w: number,
+  h: number,
+  dragId: string,
+  allNodes: QNode[],
+): { x: number; y: number } {
+  let x = px;
+  let y = py;
+
+  for (const other of allNodes) {
+    if (other.id === dragId) continue;
+    const ow = other.measured?.width ?? DEFAULT_NODE_WIDTH;
+    const oh = other.measured?.height ?? DEFAULT_NODE_HEIGHT;
+    const ox = other.position.x;
+    const oy = other.position.y;
+
+    // Check bounding-box overlap (with gap)
+    const overlapX = x < ox + ow + NODE_GAP && x + w + NODE_GAP > ox;
+    const overlapY = y < oy + oh + NODE_GAP && y + h + NODE_GAP > oy;
+
+    if (overlapX && overlapY) {
+      // Compute the four possible pushes to resolve overlap
+      const pushLeft = ox - NODE_GAP - w - x;
+      const pushRight = ox + ow + NODE_GAP - x;
+      const pushUp = oy - NODE_GAP - h - y;
+      const pushDown = oy + oh + NODE_GAP - y;
+
+      // Pick the axis with the smallest absolute displacement
+      const options = [
+        { dx: pushLeft, dy: 0, dist: Math.abs(pushLeft) },
+        { dx: pushRight, dy: 0, dist: Math.abs(pushRight) },
+        { dx: 0, dy: pushUp, dist: Math.abs(pushUp) },
+        { dx: 0, dy: pushDown, dist: Math.abs(pushDown) },
+      ];
+      options.sort((a, b) => a.dist - b.dist);
+      x += options[0].dx;
+      y += options[0].dy;
+    }
+  }
+
+  return { x, y };
+}
 
 function getNodeSizes(
   nodes: QNode[],
@@ -110,6 +166,7 @@ type InsertHandler = (
   source: string,
   target: string,
   sourceHandle: string | null,
+  action: EdgeAction,
 ) => void;
 
 /**
@@ -149,8 +206,8 @@ function makeEdgeData(
   readOnly: boolean,
 ): AddButtonEdgeData {
   return {
-    onInsert: (edgeId, source, target, sourceHandle) =>
-      insertRef.current?.(edgeId, source, target, sourceHandle),
+    onInsert: (edgeId, source, target, sourceHandle, action) =>
+      insertRef.current?.(edgeId, source, target, sourceHandle, action),
     readOnly,
   };
 }
@@ -237,6 +294,30 @@ function questionsToEdges(
     byTarget.get(p.targetId)!.push(p);
   }
 
+  // Compute sourceSpreadOffset per source group so top options fan out further
+  // right than bottom ones — keeps vertical lines from overlapping.
+  const SPREAD_SPACING = 20;
+  const bySource = new Map<string, typeof pending>();
+  for (const p of pending) {
+    const src = p.edge.source;
+    if (!bySource.has(src)) bySource.set(src, []);
+    bySource.get(src)!.push(p);
+  }
+  const sourceSpreadMap = new Map<string, number>();
+  for (const [, group] of bySource.entries()) {
+    if (group.length <= 1) {
+      for (const p of group) sourceSpreadMap.set(p.edge.id, 0);
+      continue;
+    }
+    // Sort ascending by sourceRank (top option first)
+    group.sort((a, b) => a.sourceRank - b.sourceRank);
+    const last = group.length - 1;
+    group.forEach((p, i) => {
+      // Top option (i=0) gets largest spread, bottom (i=last) gets 0
+      sourceSpreadMap.set(p.edge.id, (last - i) * SPREAD_SPACING);
+    });
+  }
+
   // Look up target question positions for node-top reference
   const qMap = new Map(questions.map((q) => [q.id, q]));
 
@@ -263,6 +344,7 @@ function questionsToEdges(
           targetNodeTop,
           targetNodeRight,
           maxPathOffset: maxPO,
+          sourceSpreadOffset: sourceSpreadMap.get(p.edge.id) ?? 0,
         },
       });
     });
@@ -306,7 +388,7 @@ function SurveyFlowBuilderInner({
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, fitView } = useReactFlow();
 
   // Track the source of a pending connection drag
   const connectStartRef = useRef<{
@@ -340,34 +422,87 @@ function SurveyFlowBuilderInner({
     [questions, onChange],
   );
 
-  /** Insert a new MC question on an edge ("+" button) */
+  /** Insert a new question on an edge (pencil context menu) */
   const handleInsertOnEdge = useCallback(
     (
       _edgeId: string,
       source: string,
       target: string,
       sourceHandle: string | null,
+      action: EdgeAction,
     ) => {
-      const opt1Id = generateId();
-      const opt2Id = generateId();
+      // --- Delete edge action ---
+      if (action === "delete") {
+        const updatedQuestions = questions.map((q) => {
+          if (q.id !== source || source === START_ID) return q;
+          const srcHasOpts =
+            q.type === "multiple-choice" ||
+            (q.type === "text" && q.inference === "process");
+          return {
+            ...q,
+            branches: (q.branches ?? []).filter((b) => {
+              const branchHandle =
+                srcHasOpts && b.optionId ? `option-${b.optionId}` : "default";
+              return !(
+                b.nextQuestionId === target &&
+                branchHandle === (sourceHandle ?? "default")
+              );
+            }),
+          };
+        });
+        setNodes(questionsToNodes(updatedQuestions));
+        setEdges(questionsToEdges(updatedQuestions, insertRef, readOnly));
+        changeWithHistory(updatedQuestions);
+        return;
+      }
+
+      // --- Insert question actions ---
       const newId = generateId();
 
-      const newQ: SurveyQuestion = {
-        id: newId,
-        questionText: "",
-        type: "multiple-choice",
-        required: false,
-        order: questions.length + 1,
-        options: [
-          { id: opt1Id, label: "Option 1" },
-          { id: opt2Id, label: "Option 2" },
-        ],
-        branches: [
-          { optionId: opt1Id, nextQuestionId: target },
-          { optionId: opt2Id, nextQuestionId: target },
-        ],
-        position: { x: 0, y: 0 }, // will be set below
-      };
+      let newQ: SurveyQuestion;
+      if (action === "text") {
+        newQ = {
+          id: newId,
+          questionText: "",
+          type: "text",
+          required: false,
+          order: questions.length + 1,
+          options: [],
+          branches: [{ nextQuestionId: target }],
+          position: { x: 0, y: 0 },
+        };
+      } else if (action === "finish") {
+        newQ = {
+          id: newId,
+          questionText: "Thank you for your time",
+          type: "finish",
+          required: false,
+          order: questions.length + 1,
+          options: [],
+          branches: [],
+          position: { x: 0, y: 0 },
+        };
+      } else {
+        // multiple-choice (default)
+        const opt1Id = generateId();
+        const opt2Id = generateId();
+        newQ = {
+          id: newId,
+          questionText: "",
+          type: "multiple-choice",
+          required: false,
+          order: questions.length + 1,
+          options: [
+            { id: opt1Id, label: "Option 1" },
+            { id: opt2Id, label: "Option 2" },
+          ],
+          branches: [
+            { optionId: opt1Id, nextQuestionId: target },
+            { optionId: opt2Id, nextQuestionId: target },
+          ],
+          position: { x: 0, y: 0 },
+        };
+      }
 
       // Position new node below source, aligned with source X
       const sourceNode = nodes.find(
@@ -390,10 +525,9 @@ function SurveyFlowBuilderInner({
       let updatedQuestions: SurveyQuestion[];
 
       if (source === START_ID) {
-        // Inserting after Start — new question becomes start (no incoming branches needed)
         updatedQuestions = [...questions, newQ];
       } else {
-        // Update the source question's branch that pointed to target → now points to new question
+        // Source branch now points to the new node instead of the old target
         updatedQuestions = questions.map((q) => {
           if (q.id !== source) return q;
           const srcHasOpts =
@@ -423,10 +557,9 @@ function SurveyFlowBuilderInner({
         const minTargetY = newBottom + CASCADE_GAP;
         const pushDown = minTargetY - targetNode.position.y;
 
-        // Dynamic push-right: new MC node has 2 options → target needs routing space
         const newNodeRight =
           newQ.position.x + (sourceNode?.measured?.width ?? DEFAULT_NODE_WIDTH);
-        const routingNeed = newNodeRight + ROUTE_GAP + ROUTE_SPACING; // 2 edges → 1*SPACING
+        const routingNeed = newNodeRight + ROUTE_GAP + ROUTE_SPACING;
         const targetRight =
           targetNode.position.x +
           (targetNode.measured?.width ?? DEFAULT_NODE_WIDTH);
@@ -507,7 +640,7 @@ function SurveyFlowBuilderInner({
       currentNodes: QNode[],
       currentEdges: Edge[],
       updatedQuestions?: SurveyQuestion[],
-    ) => {
+    ): SurveyQuestion[] => {
       const base = updatedQuestions ?? questions;
       const qMap = new Map(base.map((q) => [q.id, q]));
 
@@ -524,9 +657,24 @@ function SurveyFlowBuilderInner({
         });
 
       changeWithHistory(synced);
+      return synced;
     },
     [questions, changeWithHistory],
   );
+
+  /** Collect node measured sizes into a Map */
+  const collectNodeSizes = useCallback((currentNodes: QNode[]) => {
+    const sizes = new Map<string, { width: number; height: number }>();
+    for (const n of currentNodes) {
+      if (n.measured?.width && n.measured?.height) {
+        sizes.set(n.id, {
+          width: n.measured.width,
+          height: n.measured.height,
+        });
+      }
+    }
+    return sizes;
+  }, []);
 
   /** Check whether a question can be deleted (last finish node cannot) */
   const canDeleteQuestion = useCallback(
@@ -684,7 +832,7 @@ function SurveyFlowBuilderInner({
     [questions],
   );
 
-  /** Handle node drag end — persist positions */
+  /** Handle node drag / drag-end — prevent overlap + persist positions */
   const handleNodesChange: OnNodesChange<QNode> = useCallback(
     (changes) => {
       // Block removal of the last finish node (keyboard Backspace)
@@ -692,7 +840,28 @@ function SurveyFlowBuilderInner({
         if (c.type !== "remove") return true;
         return canDeleteQuestion(c.id);
       });
-      onNodesChange(filtered);
+
+      // During drag, prevent the node from overlapping others
+      const adjusted = filtered.map((c) => {
+        if (c.type !== "position" || !c.dragging || !c.position) return c;
+        const draggedNode = nodes.find((n) => n.id === c.id);
+        if (!draggedNode) return c;
+        const w = draggedNode.measured?.width ?? DEFAULT_NODE_WIDTH;
+        const h = draggedNode.measured?.height ?? DEFAULT_NODE_HEIGHT;
+        const corrected = preventOverlap(
+          c.position.x,
+          c.position.y,
+          w,
+          h,
+          c.id,
+          nodes,
+        );
+        if (corrected.x === c.position.x && corrected.y === c.position.y) {
+          return c;
+        }
+        return { ...c, position: corrected };
+      });
+      onNodesChange(adjusted);
       // After position updates, rebuild edges with fresh routing data
       let dragEndId: string | undefined;
       for (const c of changes) {
@@ -739,6 +908,7 @@ function SurveyFlowBuilderInner({
       setNodes,
       setEdges,
       changeWithHistory,
+      nodes,
     ],
   );
 
@@ -750,15 +920,24 @@ function SurveyFlowBuilderInner({
         requestAnimationFrame(() => {
           setNodes((latest) => {
             setEdges((latestEdges) => {
-              syncToParent(latest as QNode[], latestEdges);
-              return latestEdges;
+              const updatedQs = syncToParent(latest as QNode[], latestEdges);
+              // Re-derive edges with proper routing offsets
+              const sizes = collectNodeSizes(latest as QNode[]);
+              return questionsToEdges(updatedQs, insertRef, readOnly, sizes);
             });
             return latest;
           });
         });
       }
     },
-    [onEdgesChange, setNodes, setEdges, syncToParent],
+    [
+      onEdgesChange,
+      setNodes,
+      setEdges,
+      syncToParent,
+      readOnly,
+      collectNodeSizes,
+    ],
   );
 
   /** Handle new edge connection — removes existing edge from same source handle first */
@@ -782,14 +961,17 @@ function SurveyFlowBuilderInner({
         );
         requestAnimationFrame(() => {
           setNodes((latestNodes) => {
-            syncToParent(latestNodes as QNode[], next);
+            const updatedQs = syncToParent(latestNodes as QNode[], next);
+            // Re-derive edges with proper routing offsets
+            const sizes = collectNodeSizes(latestNodes as QNode[]);
+            setEdges(questionsToEdges(updatedQs, insertRef, readOnly, sizes));
             return latestNodes;
           });
         });
         return next;
       });
     },
-    [readOnly, setEdges, setNodes, syncToParent],
+    [readOnly, setEdges, setNodes, syncToParent, collectNodeSizes],
   );
 
   /** Track connection drag start so we know the source on drop */
@@ -878,8 +1060,14 @@ function SurveyFlowBuilderInner({
       requestAnimationFrame(() => {
         setNodes((latestNodes) => {
           setEdges((latestEdges) => {
-            syncToParent(latestNodes as QNode[], latestEdges, updatedQuestions);
-            return latestEdges;
+            const syncedQs = syncToParent(
+              latestNodes as QNode[],
+              latestEdges,
+              updatedQuestions,
+            );
+            // Re-derive edges with proper routing offsets
+            const sizes = collectNodeSizes(latestNodes as QNode[]);
+            return questionsToEdges(syncedQs, insertRef, readOnly, sizes);
           });
           return latestNodes;
         });
@@ -894,6 +1082,7 @@ function SurveyFlowBuilderInner({
       setNodes,
       setEdges,
       syncToParent,
+      collectNodeSizes,
     ],
   );
 
@@ -945,6 +1134,155 @@ function SurveyFlowBuilderInner({
     },
     [questions, changeWithHistory, setNodes],
   );
+
+  /** Auto-arrange all nodes in a layered left-to-right layout */
+  const arrangeNodes = useCallback(() => {
+    // --- Build directed graph ---
+    const childMap = new Map<string, string[]>();
+    const parentMap = new Map<string, string[]>();
+
+    const startQ = getStartQuestion(questions);
+    if (startQ) {
+      childMap.set(START_ID, [startQ.id]);
+      if (!parentMap.has(startQ.id)) parentMap.set(startQ.id, []);
+      parentMap.get(startQ.id)!.push(START_ID);
+    }
+
+    for (const q of questions) {
+      const ch: string[] = [];
+      for (const b of q.branches ?? []) {
+        if (!b.nextQuestionId) continue;
+        ch.push(b.nextQuestionId);
+        if (!parentMap.has(b.nextQuestionId))
+          parentMap.set(b.nextQuestionId, []);
+        parentMap.get(b.nextQuestionId)!.push(q.id);
+      }
+      childMap.set(q.id, ch);
+    }
+
+    // --- BFS layering ---
+    const layerOf = new Map<string, number>();
+    const bfsQueue: string[] = [];
+
+    if (startQ) {
+      layerOf.set(START_ID, 0);
+      bfsQueue.push(START_ID);
+    }
+
+    while (bfsQueue.length > 0) {
+      const id = bfsQueue.shift()!;
+      const depth = layerOf.get(id)!;
+      for (const child of childMap.get(id) ?? []) {
+        if (!layerOf.has(child)) {
+          layerOf.set(child, depth + 1);
+          bfsQueue.push(child);
+        }
+      }
+    }
+
+    // Unreachable nodes get their own layer at the end
+    let maxLayer = 0;
+    for (const l of layerOf.values()) maxLayer = Math.max(maxLayer, l);
+    for (const q of questions) {
+      if (!layerOf.has(q.id)) {
+        maxLayer++;
+        layerOf.set(q.id, maxLayer);
+      }
+    }
+
+    // --- Group by layer (exclude start node — repositioned later) ---
+    const layerGroups = new Map<number, string[]>();
+    for (const [id, layer] of layerOf.entries()) {
+      if (id === START_ID) continue;
+      if (!layerGroups.has(layer)) layerGroups.set(layer, []);
+      layerGroups.get(layer)!.push(id);
+    }
+
+    // --- Position layer by layer (left → right) ---
+    const H_SPACING = 350;
+    const V_GAP = 40;
+    const BASE_X = 200;
+    const BASE_Y = 200;
+
+    // Measured heights for accurate vertical stacking
+    const heightOf = new Map<string, number>();
+    for (const n of nodes) {
+      heightOf.set(n.id, n.measured?.height ?? DEFAULT_NODE_HEIGHT);
+    }
+
+    const positions = new Map<string, { x: number; y: number }>();
+    const sortedLayers = [...layerGroups.keys()].sort((a, b) => a - b);
+
+    for (const layer of sortedLayers) {
+      const ids = layerGroups.get(layer)!;
+      const x = BASE_X + (layer - 1) * H_SPACING;
+
+      // Barycenter heuristic: sort by average parent Y to reduce crossings
+      ids.sort((a, b) => {
+        const avgY = (id: string) => {
+          const pars = (parentMap.get(id) ?? []).filter((p) =>
+            positions.has(p),
+          );
+          if (pars.length === 0) return 0;
+          return (
+            pars.reduce((s, p) => s + positions.get(p)!.y, 0) / pars.length
+          );
+        };
+        return avgY(a) - avgY(b);
+      });
+
+      // Place each node at its ideal Y (barycenter), then resolve overlaps
+      const idealYs: number[] = ids.map((id) => {
+        const pars = (parentMap.get(id) ?? []).filter((p) => positions.has(p));
+        if (pars.length === 0) return BASE_Y;
+        return pars.reduce((s, p) => s + positions.get(p)!.y, 0) / pars.length;
+      });
+
+      // Resolve overlaps — ensure each node sits below the previous one
+      for (let i = 0; i < ids.length; i++) {
+        let y = idealYs[i];
+        if (i > 0) {
+          const prevId = ids[i - 1];
+          const prevBottom =
+            positions.get(prevId)!.y +
+            (heightOf.get(prevId) ?? DEFAULT_NODE_HEIGHT);
+          y = Math.max(y, prevBottom + V_GAP);
+        }
+        positions.set(ids[i], { x, y });
+      }
+    }
+
+    // Position start node relative to first question
+    if (startQ && positions.has(startQ.id)) {
+      const fPos = positions.get(startQ.id)!;
+      positions.set(START_ID, { x: fPos.x + 90, y: fPos.y - 120 });
+    }
+
+    // --- Apply ---
+    const updatedQuestions = questions.map((q) => ({
+      ...q,
+      position: positions.get(q.id) ?? q.position,
+    }));
+
+    const newNodes = questionsToNodes(updatedQuestions);
+    setNodes(newNodes);
+    const sizes = getNodeSizes(nodes as QNode[]);
+    setEdges(questionsToEdges(updatedQuestions, insertRef, readOnly, sizes));
+    changeWithHistory(updatedQuestions);
+
+    // Re-center the viewport after layout
+    requestAnimationFrame(() => {
+      fitView({ padding: 0.2 });
+    });
+  }, [
+    questions,
+    nodes,
+    readOnly,
+    setNodes,
+    setEdges,
+    changeWithHistory,
+    fitView,
+  ]);
 
   /** Update a question from the editor panel */
   const handleQuestionChange = useCallback(
@@ -1009,6 +1347,13 @@ function SurveyFlowBuilderInner({
             style={toolbarBtnStyle}
           >
             + Multiple Choice
+          </button>
+          <button
+            onClick={arrangeNodes}
+            style={toolbarBtnStyle}
+            title="Arrange"
+          >
+            &#x2B26; Arrange
           </button>
           <button
             onClick={undo}

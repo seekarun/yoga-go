@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import type { SimpleLandingPageConfig } from "@/types/landing-page";
 import type { Product } from "@/types";
 import HeroTemplateRenderer from "@/templates/hero";
@@ -32,6 +33,9 @@ export default function LandingPageRenderer({
   currency,
   address,
 }: LandingPageRendererProps) {
+  const searchParams = useSearchParams();
+  const hasWaitlistParam = !!searchParams.get("waitlist");
+
   const [bookingOpen, setBookingOpen] = useState(false);
   const [bookingProductId, setBookingProductId] = useState<
     string | undefined
@@ -39,6 +43,13 @@ export default function LandingPageRenderer({
   const [bookingProductName, setBookingProductName] = useState<
     string | undefined
   >();
+
+  // Auto-open booking widget when returning from waitlist email
+  useEffect(() => {
+    if (hasWaitlistParam) {
+      setBookingOpen(true);
+    }
+  }, [hasWaitlistParam]);
 
   // Load embed.js in popup mode
   useEffect(() => {

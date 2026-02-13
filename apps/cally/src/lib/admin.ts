@@ -9,6 +9,7 @@ import {
   getTenantById,
   deleteDomainLookup,
 } from "./repositories/tenantRepository";
+import { removeDomainFromVercel } from "./vercel";
 
 const LOG_PREFIX = "[DBG][admin]";
 
@@ -26,8 +27,10 @@ export interface DeleteTenantResult {
     products: number;
     emails: number;
     domainLookup: boolean;
+    vercelDomain: boolean;
   };
   totalDeleted: number;
+  warnings: string[];
 }
 
 /**
@@ -104,13 +107,16 @@ export async function deleteTenantData(
     products: 0,
     emails: 0,
     domainLookup: false,
+    vercelDomain: false,
   };
+
+  const warnings: string[] = [];
 
   // 1. Get tenant to check for domain config before deletion
   const tenant = await getTenantById(tenantId);
   if (!tenant) {
     console.log(`${LOG_PREFIX} Tenant not found: ${tenantId}`);
-    return { tenantId, counts, totalDeleted: 0 };
+    return { tenantId, counts, totalDeleted: 0, warnings };
   }
 
   // 2. Query ALL items under this tenant PK in cally-main
@@ -196,6 +202,23 @@ export async function deleteTenantData(
     );
     await deleteDomainLookup(tenant.domainConfig.domain, tenantId);
     counts.domainLookup = true;
+
+    // 6. Remove domain from Vercel project
+    console.log(
+      `${LOG_PREFIX} Removing domain from Vercel: ${tenant.domainConfig.domain}`,
+    );
+    const vercelResult = await removeDomainFromVercel(
+      tenant.domainConfig.domain,
+    );
+    counts.vercelDomain = vercelResult.success;
+    if (!vercelResult.success) {
+      console.warn(
+        `${LOG_PREFIX} Failed to remove Vercel domain: ${vercelResult.error}`,
+      );
+      warnings.push(
+        `Vercel domain "${tenant.domainConfig.domain}" not removed: ${vercelResult.error}. You may need to remove Vercel nameservers from the domain registrar first, then remove the domain from the Vercel dashboard.`,
+      );
+    }
   }
 
   const totalDeleted = coreKeys.length + emailKeys.length;
@@ -203,5 +226,5 @@ export async function deleteTenantData(
     `${LOG_PREFIX} Deletion complete for tenant ${tenantId}. Total: ${totalDeleted}`,
   );
 
-  return { tenantId, counts, totalDeleted };
+  return { tenantId, counts, totalDeleted, warnings };
 }

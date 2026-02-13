@@ -10,7 +10,13 @@ import {
   getTenantByUserId,
   updateTenant,
 } from "@/lib/repositories/tenantRepository";
-import { processSetupChat, type SetupChatMessage } from "@/lib/openai-setup";
+import {
+  processSetupChat,
+  type SetupChatMessage,
+  type KnowledgeEntry,
+} from "@/lib/openai-setup";
+import { createKnowledgeDoc } from "@/lib/repositories/knowledgeRepository";
+import { processKnowledgeDocument } from "@/lib/processKnowledgeDoc";
 import type { BusinessInfo } from "@/types/ai-assistant";
 
 interface SetupChatRequest {
@@ -83,6 +89,17 @@ export async function POST(request: NextRequest) {
       });
 
       console.log("[DBG][ai-setup] Business info saved");
+
+      // Create knowledge documents from extracted entries
+      if (result.knowledgeEntries && result.knowledgeEntries.length > 0) {
+        console.log(
+          "[DBG][ai-setup] Creating",
+          result.knowledgeEntries.length,
+          "knowledge docs",
+        );
+
+        await createKnowledgeDocs(tenant.id, result.knowledgeEntries);
+      }
     }
 
     return NextResponse.json({
@@ -90,6 +107,7 @@ export async function POST(request: NextRequest) {
       data: {
         message: result.message,
         businessInfo: result.businessInfo,
+        knowledgeEntries: result.knowledgeEntries,
         isComplete: result.isComplete,
       },
     });
@@ -101,5 +119,39 @@ export async function POST(request: NextRequest) {
       { success: false, error: `Setup chat failed: ${errorMessage}` },
       { status: 500 },
     );
+  }
+}
+
+/**
+ * Create knowledge documents from setup chat entries.
+ * Processes each entry through the RAG pipeline (chunk → embed → index).
+ */
+async function createKnowledgeDocs(
+  tenantId: string,
+  entries: KnowledgeEntry[],
+): Promise<void> {
+  for (const entry of entries) {
+    try {
+      const doc = await createKnowledgeDoc(tenantId, {
+        title: entry.title,
+        content: entry.content,
+        source: "text",
+      });
+
+      await processKnowledgeDocument(tenantId, doc.id, doc.title, doc.content);
+
+      console.log(
+        "[DBG][ai-setup] Knowledge doc created and processed:",
+        doc.id,
+        "-",
+        entry.title,
+      );
+    } catch (err) {
+      console.error(
+        "[DBG][ai-setup] Error creating knowledge doc:",
+        entry.title,
+        err,
+      );
+    }
   }
 }

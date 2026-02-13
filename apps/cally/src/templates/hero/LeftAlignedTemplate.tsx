@@ -67,6 +67,7 @@ export default function LeftAlignedTemplate(props: HeroTemplateProps) {
     opacity: 0.9,
     maxWidth: "550px",
     lineHeight: 1.7,
+    color: "inherit",
   };
 
   const accentLine: React.CSSProperties = {

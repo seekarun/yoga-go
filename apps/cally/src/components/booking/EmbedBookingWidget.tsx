@@ -316,6 +316,7 @@ export default function EmbedBookingWidget({
             loading={slotsLoading}
             selectedDate={selectedDate}
             timezone={timezone}
+            tenantId={tenantId}
             onDateChange={handleDateChange}
             onSlotSelect={handleSlotSelect}
           />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import Modal, { ModalHeader } from "@/components/Modal";
 import { DEFAULT_BOOKING_CONFIG } from "@/types/booking";
 import type {
@@ -36,6 +37,9 @@ export default function BookingWidget({
   productId,
   productName,
 }: BookingWidgetProps) {
+  const searchParams = useSearchParams();
+  const waitlistDate = searchParams.get("date");
+  const waitlistId = searchParams.get("waitlist");
   const [visitorTimezone] = useVisitorTimezone();
   const [bookingConfig, setBookingConfig] = useState(DEFAULT_BOOKING_CONFIG);
   const [configLoaded, setConfigLoaded] = useState(false);
@@ -46,16 +50,20 @@ export default function BookingWidget({
     [todayStr, bookingConfig.lookaheadDays],
   );
 
-  const initialDate = useMemo(
-    () =>
+  const initialDate = useMemo(() => {
+    // If returning from a waitlist email, use the date from the URL
+    if (waitlistDate && /^\d{4}-\d{2}-\d{2}$/.test(waitlistDate)) {
+      return waitlistDate;
+    }
+    return (
       findFirstBusinessDay(
         todayStr,
         bookingConfig.weeklySchedule,
         todayStr,
         maxDate,
-      ) ?? todayStr,
-    [todayStr, bookingConfig.weeklySchedule, maxDate],
-  );
+      ) ?? todayStr
+    );
+  }, [todayStr, bookingConfig.weeklySchedule, maxDate, waitlistDate]);
 
   const [step, setStep] = useState<BookingStep>("schedule");
   const [selectedDate, setSelectedDate] = useState<string>(initialDate);
@@ -311,6 +319,7 @@ export default function BookingWidget({
           loading={slotsLoading}
           selectedDate={selectedDate}
           timezone={timezone}
+          tenantId={tenantId}
           onDateChange={handleDateChange}
           onSlotSelect={handleSlotSelect}
         />

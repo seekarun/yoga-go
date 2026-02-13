@@ -15,7 +15,11 @@ interface DomainSetupCardProps {
   onAddDomain: (domain: string) => Promise<{ nameservers: string[] }>;
   onVerifyDomain: () => Promise<{ verified: boolean }>;
   onRemoveDomain: () => Promise<void>;
-  onSetupEmail: (emailPrefix: string, forwardToEmail: string) => Promise<void>;
+  onSetupEmail: (
+    emailPrefix: string,
+    forwardToEmail: string,
+    forwardToCal: boolean,
+  ) => Promise<void>;
   onVerifyEmail: () => Promise<void>;
   onDisableEmail: () => Promise<void>;
   emailDnsRecords?: TenantDnsRecord[];

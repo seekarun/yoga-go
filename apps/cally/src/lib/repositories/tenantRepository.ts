@@ -32,6 +32,7 @@ import type { ZoomConfig } from "@/types/zoom";
 import type { OutlookCalendarConfig } from "@/types/outlook-calendar";
 import type { StripeConfig } from "@/types/stripe";
 import type { SubscriptionConfig } from "@/types/subscription";
+import type { GoogleBusinessConfig } from "@/types/google-business";
 
 /**
  * CallyGo Tenant Entity
@@ -56,6 +57,7 @@ export interface CallyTenant {
   outlookCalendarConfig?: OutlookCalendarConfig;
   stripeConfig?: StripeConfig;
   subscriptionConfig?: SubscriptionConfig;
+  googleBusinessConfig?: GoogleBusinessConfig;
   videoCallPreference?: "cally" | "google_meet" | "zoom";
   emailDisplayName?: string;
   timezone?: string;
@@ -477,6 +479,7 @@ export async function clearDomainAndEmailConfig(
     outlookCalendarConfig: tenant.outlookCalendarConfig,
     stripeConfig: tenant.stripeConfig,
     subscriptionConfig: tenant.subscriptionConfig,
+    googleBusinessConfig: tenant.googleBusinessConfig,
     videoCallPreference: tenant.videoCallPreference,
     emailDisplayName: tenant.emailDisplayName,
     timezone: tenant.timezone,
@@ -537,6 +540,47 @@ export async function removeGoogleCalendarConfig(
 
   console.log(
     "[DBG][tenantRepository] Removed Google Calendar config for:",
+    tenantId,
+  );
+  return toTenant(result.Attributes as DynamoDBTenantItem);
+}
+
+// ===================================================================
+// GOOGLE BUSINESS PROFILE OPERATIONS
+// ===================================================================
+
+/**
+ * Remove Google Business config from tenant (uses DynamoDB REMOVE)
+ */
+export async function removeGoogleBusinessConfig(
+  tenantId: string,
+): Promise<CallyTenant> {
+  console.log(
+    "[DBG][tenantRepository] Removing Google Business config:",
+    tenantId,
+  );
+
+  const result = await docClient.send(
+    new UpdateCommand({
+      TableName: Tables.CORE,
+      Key: {
+        PK: TenantPK.TENANT(tenantId),
+        SK: TenantPK.META,
+      },
+      UpdateExpression: "REMOVE #gbConfig SET #updatedAt = :updatedAt",
+      ExpressionAttributeNames: {
+        "#gbConfig": "googleBusinessConfig",
+        "#updatedAt": "updatedAt",
+      },
+      ExpressionAttributeValues: {
+        ":updatedAt": new Date().toISOString(),
+      },
+      ReturnValues: "ALL_NEW",
+    }),
+  );
+
+  console.log(
+    "[DBG][tenantRepository] Removed Google Business config for:",
     tenantId,
   );
   return toTenant(result.Attributes as DynamoDBTenantItem);
@@ -704,6 +748,7 @@ interface DomainLookupEmailConfig {
   forwardToEmail?: string;
   forwardingEnabled: boolean;
   sesVerificationStatus: string;
+  forwardToCal?: boolean;
 }
 
 /**
@@ -768,6 +813,7 @@ export async function createDomainLookup(
             forwardToEmail: emailConfig.forwardToEmail,
             forwardingEnabled: emailConfig.forwardingEnabled,
             sesVerificationStatus: emailConfig.sesVerificationStatus,
+            forwardToCal: emailConfig.forwardToCal ?? true,
           },
           createdAt: now,
           updatedAt: now,
@@ -780,6 +826,43 @@ export async function createDomainLookup(
       tenantId,
     );
   }
+}
+
+/**
+ * Update forwardToCal flag on the domain lookup tenant reference in yoga-go-core
+ * This keeps the SES Lambda in sync when the flag is toggled
+ */
+export async function updateDomainLookupForwardToCal(
+  tenantId: string,
+  forwardToCal: boolean,
+): Promise<void> {
+  console.log(
+    "[DBG][tenantRepository] Updating forwardToCal in domain lookup:",
+    tenantId,
+    "->",
+    forwardToCal,
+  );
+
+  await docClient.send(
+    new UpdateCommand({
+      TableName: Tables.YOGA_CORE,
+      Key: {
+        PK: "TENANT",
+        SK: tenantId,
+      },
+      UpdateExpression:
+        "SET emailConfig.forwardToCal = :forwardToCal, updatedAt = :now",
+      ExpressionAttributeValues: {
+        ":forwardToCal": forwardToCal,
+        ":now": new Date().toISOString(),
+      },
+    }),
+  );
+
+  console.log(
+    "[DBG][tenantRepository] Updated forwardToCal in domain lookup:",
+    tenantId,
+  );
 }
 
 /**

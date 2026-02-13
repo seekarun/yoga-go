@@ -21,7 +21,7 @@ export const PRICING_TIERS: PricingTier[] = [
     name: "Starter",
     price: 12,
     trialDays: 180,
-    trialLabel: "6 months free",
+    trialLabel: "$0 for first six months",
     description: "For professionals getting started online",
     features: [
       "Professional landing page",
@@ -40,9 +40,9 @@ export const PRICING_TIERS: PricingTier[] = [
   {
     tier: "professional",
     name: "Professional",
-    price: 29,
+    price: 30,
     trialDays: 30,
-    trialLabel: "1 month free",
+    trialLabel: "$6 for the first month (80% off)",
     description: "For busy professionals who need video & AI",
     features: [
       "Everything in Starter",
@@ -61,7 +61,7 @@ export const PRICING_TIERS: PricingTier[] = [
     name: "Business",
     price: 120,
     trialDays: 30,
-    trialLabel: "1 month free",
+    trialLabel: "$24 for the first month (80% off)",
     description: "Full AI-powered business on autopilot",
     features: [
       "Everything in Professional",

@@ -22,8 +22,16 @@ import {
   sendBookingCancelledEmailToVisitor,
   sendBookingCancelledEmailToTenant,
 } from "@/lib/email/bookingCancelledEmail";
-import { parseVisitorFromDescription } from "@/lib/email/bookingNotification";
+import {
+  parseVisitorFromDescription,
+  getLandingPageUrl,
+} from "@/lib/email/bookingNotification";
 import { DEFAULT_CANCELLATION_CONFIG } from "@/types/booking";
+import {
+  getNextWaitingEntry,
+  updateWaitlistEntry,
+} from "@/lib/repositories/waitlistRepository";
+import { sendWaitlistSlotAvailableEmail } from "@/lib/email/waitlistNotificationEmail";
 
 interface CancelPreviewData {
   eventId: string;
@@ -319,6 +327,11 @@ export async function POST(request: Request, { params }: RouteParams) {
       );
     }
 
+    // Notify next person on waitlist (fire-and-forget)
+    notifyNextWaitlistEntry(tenantId, event.date, tenant).catch((err) =>
+      console.error("[DBG][booking/cancel] Failed to notify waitlist:", err),
+    );
+
     console.log(
       "[DBG][booking/cancel] Booking cancelled by visitor:",
       event.id,
@@ -343,4 +356,45 @@ export async function POST(request: Request, { params }: RouteParams) {
       { status: 500 },
     );
   }
+}
+
+/**
+ * Notify the next waiting person on the waitlist for a cancelled date.
+ */
+async function notifyNextWaitlistEntry(
+  tenantId: string,
+  date: string,
+  tenant: Awaited<ReturnType<typeof getTenantById>>,
+): Promise<void> {
+  if (!tenant) return;
+
+  const nextEntry = await getNextWaitingEntry(tenantId, date);
+  if (!nextEntry) {
+    console.log("[DBG][booking/cancel] No waitlist entries for date:", date);
+    return;
+  }
+
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + 10 * 60 * 1000).toISOString();
+
+  await updateWaitlistEntry(tenantId, date, nextEntry.id, {
+    status: "notified",
+    notifiedAt: now.toISOString(),
+    expiresAt,
+  });
+
+  const landingPageUrl = getLandingPageUrl(tenant);
+  const bookingUrl = `${landingPageUrl}?date=${date}&waitlist=${nextEntry.id}`;
+
+  await sendWaitlistSlotAvailableEmail({
+    visitorName: nextEntry.visitorName,
+    visitorEmail: nextEntry.visitorEmail,
+    date,
+    tenant,
+    bookingUrl,
+  });
+
+  console.log(
+    `[DBG][booking/cancel] Notified waitlist entry ${nextEntry.id} (${nextEntry.visitorEmail}) for date ${date}`,
+  );
 }

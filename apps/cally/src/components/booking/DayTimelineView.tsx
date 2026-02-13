@@ -9,6 +9,7 @@ import {
   getNextBusinessDay,
   formatDisplayDate,
 } from "./dateUtils";
+import WaitlistForm from "./WaitlistForm";
 
 interface DayTimelineViewProps {
   bookingConfig: BookingConfig;
@@ -16,6 +17,7 @@ interface DayTimelineViewProps {
   loading: boolean;
   selectedDate: string;
   timezone: string;
+  tenantId: string;
   onDateChange: (date: string) => void;
   onSlotSelect: (slot: TimeSlot) => void;
 }
@@ -35,6 +37,7 @@ export default function DayTimelineView({
   loading,
   selectedDate,
   timezone,
+  tenantId,
   onDateChange,
   onSlotSelect,
 }: DayTimelineViewProps) {
@@ -273,15 +276,16 @@ export default function DayTimelineView({
             </div>
           ) : slots.length === 0 || availableCount === 0 ? (
             <div
-              className="flex items-center justify-center h-full rounded-lg bg-gray-50 border border-gray-100"
+              className="flex flex-col items-center justify-center h-full rounded-lg bg-gray-50 border border-gray-100 p-6"
               style={{
                 backgroundImage:
                   "repeating-linear-gradient(135deg, transparent, transparent 8px, rgba(0,0,0,0.03) 8px, rgba(0,0,0,0.03) 9px)",
               }}
             >
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-gray-400 mb-4">
                 No available times for this date.
               </p>
+              <WaitlistForm tenantId={tenantId} selectedDate={selectedDate} />
             </div>
           ) : (
             <div className="space-y-1.5 py-1">

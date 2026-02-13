@@ -134,6 +134,16 @@ export class CallyStack extends cdk.Stack {
       }),
     );
 
+    // Allow public read access to landing page images
+    this.audioBucket.addToResourcePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        principals: [new iam.AnyPrincipal()],
+        actions: ["s3:GetObject"],
+        resources: [`${this.audioBucket.bucketArn}/landing-pages/*`],
+      }),
+    );
+
     // ========================================
     // SQS Queue for Transcription Processing
     // ========================================

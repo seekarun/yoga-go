@@ -72,6 +72,7 @@ export default function CenteredTemplate(props: HeroTemplateProps) {
     maxWidth: "700px",
     lineHeight: 1.6,
     textShadow: "0 1px 5px rgba(0,0,0,0.2)",
+    color: "inherit",
   };
 
   const editableBaseStyle: React.CSSProperties = isEditing

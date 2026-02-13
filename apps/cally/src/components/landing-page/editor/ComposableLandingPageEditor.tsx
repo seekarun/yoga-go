@@ -906,6 +906,7 @@ export default function ComposableLandingPageEditor({
                 : "1/1"
         }
         defaultSearchQuery="professional business"
+        uploadEndpoint="/api/data/app/tenant/landing-page/upload"
       />
 
       {/* Button Editor Overlay */}

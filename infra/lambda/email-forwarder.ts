@@ -67,6 +67,7 @@ const PLATFORM_SYSTEM_EMAILS = ["support", "info", "noreply", "mail"];
 interface ExpertData {
   forwardingEmail?: string;
   emailForwardingEnabled?: boolean;
+  forwardToCal?: boolean;
 }
 
 // Tenant email config for BYOD domains
@@ -75,6 +76,7 @@ interface TenantEmailConfig {
   forwardToEmail?: string;
   forwardingEnabled?: boolean;
   sesVerificationStatus?: string;
+  forwardToCal?: boolean;
 }
 
 interface TenantData {
@@ -151,6 +153,7 @@ async function getTenantByDomain(domain: string): Promise<TenantData | null> {
           forwardToEmail: emailConfigMap.forwardToEmail?.S,
           forwardingEnabled: emailConfigMap.forwardingEnabled?.BOOL ?? true,
           sesVerificationStatus: emailConfigMap.sesVerificationStatus?.S,
+          forwardToCal: emailConfigMap.forwardToCal?.BOOL ?? false,
         }
       : undefined,
   };
@@ -181,14 +184,38 @@ async function getExpert(expertId: string): Promise<ExpertData | null> {
   const item = result.Item;
   const platformPreferences = item.platformPreferences?.M;
 
+  // Check for forwardToCal on the META record first
+  let forwardToCal = item.emailConfig?.M?.forwardToCal?.BOOL;
+
+  // If not on META, check the tenant reference record (PK=TENANT, SK=expertId)
+  // which is created by cally's domain lookup and has emailConfig
+  if (forwardToCal === undefined) {
+    try {
+      const tenantRef = await dynamodb.send(
+        new GetItemCommand({
+          TableName: TABLE_NAME,
+          Key: {
+            PK: { S: "TENANT" },
+            SK: { S: expertId },
+          },
+        }),
+      );
+      forwardToCal =
+        tenantRef.Item?.emailConfig?.M?.forwardToCal?.BOOL ?? false;
+    } catch {
+      forwardToCal = false;
+    }
+  }
+
   console.log(
-    `[DBG][email-forwarder] Found expert: ${expertId}, forwarding: ${platformPreferences?.forwardingEmail?.S}`,
+    `[DBG][email-forwarder] Found expert: ${expertId}, forwarding: ${platformPreferences?.forwardingEmail?.S}, forwardToCal: ${forwardToCal}`,
   );
 
   return {
     forwardingEmail: platformPreferences?.forwardingEmail?.S,
     emailForwardingEnabled:
       platformPreferences?.emailForwardingEnabled?.BOOL ?? true,
+    forwardToCal: forwardToCal ?? false,
   };
 }
 
@@ -681,6 +708,18 @@ async function handlePlatformEmail(
     const parsedEmail = await parseEmailMime(emailContent, mail.messageId);
     await storeEmailToInbox(emailId, expertId, parsedEmail, mail.timestamp);
     console.log(`[DBG][email-forwarder] Stored email to inbox for expert: ${expertId}`);
+
+    // If forwardToCal is enabled, also store to Cal AI inbox
+    if (expert.forwardToCal) {
+      try {
+        const calEmailId = generateId();
+        const calInboxId = `CAL#${expertId}`;
+        await storeEmailToInbox(calEmailId, calInboxId, parsedEmail, mail.timestamp);
+        console.log(`[DBG][email-forwarder] Forwarded platform email to Cal inbox for expert: ${expertId}`);
+      } catch (calError) {
+        console.error(`[DBG][email-forwarder] Failed to forward to Cal inbox:`, calError);
+      }
+    }
   } catch (error) {
     console.error(`[DBG][email-forwarder] Failed to store email to inbox:`, error);
     // Continue with forwarding even if inbox storage fails
@@ -746,13 +785,31 @@ async function handleByodEmail(
   // Get original email from S3
   const emailContent = await getEmailFromS3(mail.messageId);
 
+  // Determine inbox ID based on recipient local part
+  // cal@ emails go to a separate AI inbox, everything else to the main inbox
+  const [localPart] = recipient.toLowerCase().split("@");
+  const inboxId =
+    localPart === "cal" ? `CAL#${tenant.expertId}` : tenant.expertId;
+
   // Parse MIME and store to inbox (always do this for verified tenants)
   if (tenant.expertId) {
     try {
       const emailId = generateId();
       const parsedEmail = await parseEmailMime(emailContent, mail.messageId);
-      await storeEmailToInbox(emailId, tenant.expertId, parsedEmail, mail.timestamp);
-      console.log(`[DBG][email-forwarder] Stored BYOD email to inbox for expert: ${tenant.expertId}`);
+      await storeEmailToInbox(emailId, inboxId, parsedEmail, mail.timestamp);
+      console.log(`[DBG][email-forwarder] Stored BYOD email to inbox (${localPart === "cal" ? "cal" : "main"}) for expert: ${tenant.expertId}`);
+
+      // If forwardToCal is enabled and this is NOT already a cal@ email, also store to Cal inbox
+      if (tenant.emailConfig?.forwardToCal && localPart !== "cal") {
+        try {
+          const calEmailId = generateId();
+          const calInboxId = `CAL#${tenant.expertId}`;
+          await storeEmailToInbox(calEmailId, calInboxId, parsedEmail, mail.timestamp);
+          console.log(`[DBG][email-forwarder] Forwarded BYOD email to Cal inbox for expert: ${tenant.expertId}`);
+        } catch (calError) {
+          console.error(`[DBG][email-forwarder] Failed to forward to Cal inbox:`, calError);
+        }
+      }
     } catch (error) {
       console.error(`[DBG][email-forwarder] Failed to store BYOD email to inbox:`, error);
       // Continue with forwarding even if inbox storage fails

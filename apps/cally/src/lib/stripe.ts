@@ -233,10 +233,24 @@ export function getStripePriceId(tier: SubscriptionTier): string {
 }
 
 /**
- * Get trial period days for a subscription tier
+ * Get trial period days for a subscription tier (starter only)
  */
-export function getTrialDays(tier: SubscriptionTier): number {
-  return tier === "starter" ? 180 : 30;
+export function getTrialDays(tier: SubscriptionTier): number | undefined {
+  return tier === "starter" ? 180 : undefined;
+}
+
+/**
+ * Get the introductory coupon ID for a tier (professional/business: 80% off for 3 months)
+ */
+export function getIntroCouponId(tier: SubscriptionTier): string | undefined {
+  if (tier === "starter") return undefined;
+  const couponId = process.env.STRIPE_COUPON_80_OFF_3M;
+  if (!couponId) {
+    console.warn(
+      "[DBG][stripe] STRIPE_COUPON_80_OFF_3M not set, skipping intro discount",
+    );
+  }
+  return couponId;
 }
 
 /**
@@ -273,11 +287,14 @@ export async function getOrCreateCustomer(params: {
 
 /**
  * Create a Stripe Checkout Session for subscription billing
+ * - Starter: free trial (180 days)
+ * - Professional/Business: 80% off coupon for first 3 months
  */
 export async function createSubscriptionCheckout(params: {
   customerId: string;
   priceId: string;
-  trialDays: number;
+  trialDays?: number;
+  couponId?: string;
   tenantId: string;
   tier: SubscriptionTier;
   successUrl: string;
@@ -289,14 +306,26 @@ export async function createSubscriptionCheckout(params: {
   );
   const stripe = getStripeClient();
 
+  // Build subscription_data conditionally
+  const subscriptionData: Stripe.Checkout.SessionCreateParams["subscription_data"] =
+    {
+      metadata: { tenantId: params.tenantId, tier: params.tier },
+    };
+
+  if (params.trialDays) {
+    subscriptionData.trial_period_days = params.trialDays;
+  }
+
+  // Build discounts for intro coupon (professional/business)
+  const discounts: Stripe.Checkout.SessionCreateParams["discounts"] =
+    params.couponId ? [{ coupon: params.couponId }] : undefined;
+
   return stripe.checkout.sessions.create({
     mode: "subscription",
     customer: params.customerId,
     line_items: [{ price: params.priceId, quantity: 1 }],
-    subscription_data: {
-      trial_period_days: params.trialDays,
-      metadata: { tenantId: params.tenantId, tier: params.tier },
-    },
+    subscription_data: subscriptionData,
+    discounts,
     metadata: { tenantId: params.tenantId, tier: params.tier },
     success_url: params.successUrl,
     cancel_url: params.cancelUrl,

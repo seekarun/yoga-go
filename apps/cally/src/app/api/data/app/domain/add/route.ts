@@ -7,8 +7,13 @@ import { auth } from "@/auth";
 import {
   getTenantByUserId,
   updateDomainConfig,
+  getDomainLookup,
 } from "@/lib/repositories/tenantRepository";
-import { addDomainToVercel, getDomainStatus } from "@/lib/vercel";
+import {
+  addDomainToVercel,
+  getDomainStatus,
+  removeDomainFromVercel,
+} from "@/lib/vercel";
 import type { AddDomainResponse } from "@/types/domain";
 
 export async function POST(request: Request) {
@@ -71,14 +76,80 @@ export async function POST(request: Request) {
     const result = await addDomainToVercel(normalizedDomain);
 
     if (!result.success) {
-      console.error(
-        "[DBG][domain/add] Failed to add domain to Vercel:",
-        result.error,
-      );
-      return NextResponse.json(
-        { success: false, error: result.error || "Failed to add domain" },
-        { status: 400 },
-      );
+      // If Vercel says domain is already in use, check if any tenant in DynamoDB owns it
+      const isAlreadyInUse =
+        result.error?.includes("already in use") ||
+        result.error?.includes("domain_already_in_use");
+
+      if (isAlreadyInUse) {
+        console.log(
+          "[DBG][domain/add] Domain already in Vercel, checking DynamoDB ownership",
+        );
+        const existingLookup = await getDomainLookup(normalizedDomain);
+
+        if (existingLookup) {
+          // Another tenant in DynamoDB still owns this domain — reject
+          console.error(
+            "[DBG][domain/add] Domain owned by tenant:",
+            existingLookup.tenantId,
+          );
+          return NextResponse.json(
+            {
+              success: false,
+              error: "This domain is already associated with another account.",
+            },
+            { status: 400 },
+          );
+        }
+
+        // No tenant owns it in DynamoDB — domain is orphaned in Vercel (previous tenant was deleted)
+        // Try to remove from Vercel then re-add so it's properly assigned to our project
+        console.log(
+          "[DBG][domain/add] Domain orphaned in Vercel, removing and re-adding for tenant:",
+          tenant.id,
+        );
+
+        // Remove may fail (e.g. nameserver issue) — that's OK, try re-add anyway
+        const removeResult = await removeDomainFromVercel(normalizedDomain);
+        console.log(
+          "[DBG][domain/add] Vercel remove result:",
+          removeResult.success,
+          removeResult.error,
+        );
+
+        // Re-add to ensure it's on our project
+        const retryResult = await addDomainToVercel(normalizedDomain);
+        if (!retryResult.success) {
+          // If still failing, check if domain is already on our project
+          const existingStatus = await getDomainStatus(normalizedDomain);
+          if (!existingStatus.exists) {
+            console.error(
+              "[DBG][domain/add] Cannot reclaim orphaned domain:",
+              retryResult.error,
+            );
+            return NextResponse.json(
+              {
+                success: false,
+                error: `Cannot reclaim domain. It may still be registered in Vercel. Try removing it from the Vercel dashboard first.`,
+              },
+              { status: 400 },
+            );
+          }
+          // Domain is already on our project — proceed
+          console.log(
+            "[DBG][domain/add] Domain already on our project, proceeding",
+          );
+        }
+      } else {
+        console.error(
+          "[DBG][domain/add] Failed to add domain to Vercel:",
+          result.error,
+        );
+        return NextResponse.json(
+          { success: false, error: result.error || "Failed to add domain" },
+          { status: 400 },
+        );
+      }
     }
 
     // Get domain status to check if it's already verified

@@ -12,6 +12,7 @@ import {
 import {
   getStripePriceId,
   getTrialDays,
+  getIntroCouponId,
   getOrCreateCustomer,
   createSubscriptionCheckout,
 } from "@/lib/stripe";
@@ -94,6 +95,7 @@ export async function GET(request: NextRequest) {
 
     const priceId = getStripePriceId(tier);
     const trialDays = getTrialDays(tier);
+    const couponId = getIntroCouponId(tier);
     const baseUrl =
       process.env.NEXT_PUBLIC_APP_URL || "https://proj-cally.vercel.app";
 
@@ -101,6 +103,7 @@ export async function GET(request: NextRequest) {
       customerId: customer.id,
       priceId,
       trialDays,
+      couponId,
       tenantId: tenant.id,
       tier,
       successUrl: `${baseUrl}/api/data/app/subscription/success?session_id={CHECKOUT_SESSION_ID}`,

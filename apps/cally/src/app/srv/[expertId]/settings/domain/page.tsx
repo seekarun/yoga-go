@@ -159,11 +159,12 @@ export default function DomainSettingsPage() {
   const handleSetupEmail = async (
     emailPrefix: string,
     forwardToEmail: string,
+    forwardToCal: boolean,
   ): Promise<void> => {
     const response = await fetch("/api/data/app/domain/email/setup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ emailPrefix, forwardToEmail }),
+      body: JSON.stringify({ emailPrefix, forwardToEmail, forwardToCal }),
     });
     const data = await response.json();
 

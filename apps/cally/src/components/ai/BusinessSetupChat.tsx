@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { BusinessInfo } from "@/types/ai-assistant";
+import type { KnowledgeEntry } from "@/lib/openai-setup";
 
 interface SetupMessage {
   role: "user" | "assistant";
@@ -26,6 +27,9 @@ export default function BusinessSetupChat({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [extractedInfo, setExtractedInfo] = useState<BusinessInfo | null>(null);
+  const [extractedKnowledge, setExtractedKnowledge] = useState<
+    KnowledgeEntry[]
+  >([]);
   const [isComplete, setIsComplete] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -115,6 +119,9 @@ export default function BusinessSetupChat({
         // Check if setup is complete
         if (data.data.isComplete && data.data.businessInfo) {
           setExtractedInfo(data.data.businessInfo);
+          if (data.data.knowledgeEntries) {
+            setExtractedKnowledge(data.data.knowledgeEntries);
+          }
           setIsComplete(true);
         }
       } else {
@@ -150,6 +157,7 @@ export default function BusinessSetupChat({
     setInputValue("");
     setError(null);
     setExtractedInfo(null);
+    setExtractedKnowledge([]);
     setIsComplete(false);
     onClose();
   };
@@ -316,6 +324,23 @@ export default function BusinessSetupChat({
                     </li>
                   )}
                 </ul>
+                {extractedKnowledge.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-green-200">
+                    <p className="text-xs font-medium text-green-800">
+                      Knowledge base entries:
+                    </p>
+                    <ul className="mt-1 text-xs text-green-700 space-y-0.5">
+                      {extractedKnowledge.map((entry, idx) => (
+                        <li key={idx}>
+                          <strong>{entry.title}:</strong>{" "}
+                          {entry.content.length > 80
+                            ? `${entry.content.substring(0, 80)}...`
+                            : entry.content}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             </div>
           </div>

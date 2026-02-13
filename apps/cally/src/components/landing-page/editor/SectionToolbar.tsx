@@ -36,8 +36,11 @@ export default function SectionToolbar({
 }: SectionToolbarProps) {
   const [collapsed, setCollapsed] = useState(false);
   // y=null means "use CSS centering"; once dragged, y becomes a pixel value
-  const [position, setPosition] = useState<{ x: number; y: number | null }>({
-    x: 12,
+  const [position, setPosition] = useState<{
+    x: number | null;
+    y: number | null;
+  }>({
+    x: null,
     y: null,
   });
   const [isDragging, setIsDragging] = useState(false);
@@ -49,15 +52,18 @@ export default function SectionToolbar({
       e.preventDefault();
       setIsDragging(true);
 
-      // Resolve CSS-centered position to actual pixels on first drag
+      // Resolve right/bottom position to pixel coordinates on first drag
+      let startX = position.x;
       let startY = position.y;
-      if (startY === null && panelRef.current) {
+      if ((startX === null || startY === null) && panelRef.current) {
         const parentRect =
           panelRef.current.offsetParent?.getBoundingClientRect();
         const panelRect = panelRef.current.getBoundingClientRect();
         if (parentRect) {
+          startX = panelRect.left - parentRect.left;
           startY = panelRect.top - parentRect.top;
         } else {
+          startX = 0;
           startY = 0;
         }
       }
@@ -65,7 +71,7 @@ export default function SectionToolbar({
       dragStartRef.current = {
         mouseX: e.clientX,
         mouseY: e.clientY,
-        elX: position.x,
+        elX: startX ?? 0,
         elY: startY ?? 0,
       };
 
@@ -91,9 +97,9 @@ export default function SectionToolbar({
   );
 
   const positionStyles: React.CSSProperties =
-    position.y === null
-      ? { top: "50%", transform: "translateY(-50%)" }
-      : { top: `${position.y}px` };
+    position.x === null && position.y === null
+      ? { right: "24px", bottom: "12px" }
+      : { left: `${position.x}px`, top: `${position.y}px` };
 
   if (collapsed) {
     return (
@@ -102,7 +108,6 @@ export default function SectionToolbar({
         onClick={() => setCollapsed(false)}
         style={{
           position: "absolute",
-          left: `${position.x}px`,
           ...positionStyles,
           zIndex: 20,
           backgroundColor: "rgba(255, 255, 255, 0.95)",
@@ -126,7 +131,6 @@ export default function SectionToolbar({
 
   const panelStyle: React.CSSProperties = {
     position: "absolute",
-    left: `${position.x}px`,
     ...positionStyles,
     zIndex: 20,
     backgroundColor: "rgba(255, 255, 255, 0.95)",
@@ -136,7 +140,7 @@ export default function SectionToolbar({
     boxShadow: isDragging
       ? "0 8px 24px rgba(0,0,0,0.18)"
       : "0 4px 16px rgba(0,0,0,0.1)",
-    width: "180px",
+    width: "220px",
     userSelect: "none",
   };
 

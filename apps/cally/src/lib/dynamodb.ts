@@ -103,6 +103,27 @@ export const TenantPK = {
   // Products: PK=TENANT#{tenantId}, SK=PRODUCT#{productId}
   PRODUCT: (productId: string) => `PRODUCT#${productId}`,
   PRODUCT_PREFIX: "PRODUCT#",
+
+  // Knowledge Docs: PK=TENANT#{tenantId}, SK=KNOWLEDGE#DOC#{docId}
+  KNOWLEDGE_DOC: (docId: string) => `KNOWLEDGE#DOC#${docId}`,
+  KNOWLEDGE_DOC_PREFIX: "KNOWLEDGE#DOC#",
+
+  // Ad Campaigns: PK=TENANT#{tenantId}, SK=AD_CAMPAIGN#{campaignId}
+  AD_CAMPAIGN: (campaignId: string) => `AD_CAMPAIGN#${campaignId}`,
+  AD_CAMPAIGN_PREFIX: "AD_CAMPAIGN#",
+
+  // Ad Credit: PK=TENANT#{tenantId}, SK=AD_CREDIT#META
+  AD_CREDIT: "AD_CREDIT#META",
+
+  // Ad Transactions: PK=TENANT#{tenantId}, SK=AD_TXN#{timestamp}#{txnId}
+  AD_TRANSACTION: (timestamp: string, txnId: string) =>
+    `AD_TXN#${timestamp}#${txnId}`,
+  AD_TRANSACTION_PREFIX: "AD_TXN#",
+
+  // Waitlist: PK=TENANT#{tenantId}, SK=WAITLIST#{date}#{entryId}
+  WAITLIST: (date: string, entryId: string) => `WAITLIST#${date}#${entryId}`,
+  WAITLIST_DATE_PREFIX: (date: string) => `WAITLIST#${date}#`,
+  WAITLIST_PREFIX: "WAITLIST#",
 } as const;
 
 // Entity type constants
@@ -117,6 +138,25 @@ export const EntityType = {
   SURVEY: "SURVEY",
   SURVEY_RESPONSE: "SURVEY_RESPONSE",
   PRODUCT: "PRODUCT",
+  KNOWLEDGE_DOC: "KNOWLEDGE_DOC",
+  KNOWLEDGE_CHUNK: "KNOWLEDGE_CHUNK",
+  AD_CAMPAIGN: "AD_CAMPAIGN",
+  AD_CREDIT: "AD_CREDIT",
+  AD_TRANSACTION: "AD_TRANSACTION",
+  WAITLIST: "WAITLIST",
+} as const;
+
+// ============================================
+// Knowledge Chunk PK/SK Prefixes (separate PK namespace for efficient retrieval)
+// ============================================
+
+export const KnowledgePK = {
+  // Chunks: PK=KNOWLEDGE#{tenantId}, SK=CHUNK#{0000-padded-index}#{docId}
+  CHUNKS: (tenantId: string) => `KNOWLEDGE#${tenantId}`,
+  CHUNK: (chunkIndex: number, docId: string) =>
+    `CHUNK#${String(chunkIndex).padStart(4, "0")}#${docId}`,
+  CHUNK_PREFIX: "CHUNK#",
+  CHUNK_DOC_SUFFIX: (docId: string) => `#${docId}`,
 } as const;
 
 // ============================================
@@ -127,6 +167,8 @@ export const EmailPK = {
   // Inbox by owner: PK=INBOX#{ownerId}, SK={receivedAt}#{emailId}
   // ownerId is tenantId for cally (matches expertId pattern in yoga)
   INBOX: (ownerId: string) => `INBOX#${ownerId}`,
+  // AI assistant inbox: PK=INBOX#CAL#{ownerId}, SK={receivedAt}#{emailId}
+  CAL_INBOX: (ownerId: string) => `INBOX#CAL#${ownerId}`,
   // Thread grouping: PK=THREAD#{threadId}, SK={emailId}
   THREAD: (threadId: string) => `THREAD#${threadId}`,
 } as const;

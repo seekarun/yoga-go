@@ -33,6 +33,8 @@ export interface EmailConfig {
   forwardingEnabled: boolean;
   enabledAt?: string;
   verifiedAt?: string;
+  aiEmail?: string; // e.g. "cal@mymusic.guru"
+  forwardToCal?: boolean; // forward domain emails to Cal AI inbox
 }
 
 /**
