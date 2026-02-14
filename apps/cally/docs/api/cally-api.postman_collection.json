@@ -814,6 +814,67 @@
             },
             "description": "Delete a knowledge base document and all its embedding chunks."
           }
+        },
+        {
+          "name": "Voice - Start Session",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/ai/voice/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "ai", "voice", "start"]
+            },
+            "description": "Start a voice assistant session. Returns Vapi assistant config and public key for the web SDK."
+          }
+        },
+        {
+          "name": "Voice - Function Call Handler",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-vapi-secret",
+                "value": "your-vapi-server-secret"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": {\n    \"type\": \"function-call\",\n    \"functionCall\": {\n      \"name\": \"search_knowledge\",\n      \"parameters\": {\n        \"query\": \"pricing\"\n      }\n    },\n    \"call\": {\n      \"id\": \"call_xxx\",\n      \"metadata\": {\n        \"tenantId\": \"01HXYZ...\"\n      }\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/ai/voice/function",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "ai", "voice", "function"]
+            },
+            "description": "Handles Vapi function call webhooks (search_knowledge, get_todays_schedule, save_business_info, reschedule_appointment, cancel_appointment). Authenticated via x-vapi-secret header."
+          }
+        },
+        {
+          "name": "Knowledge - Search",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"pricing\",\n  \"topK\": 3\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/ai/knowledge/search",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "ai", "knowledge", "search"]
+            },
+            "description": "Search the knowledge base for relevant chunks. Returns scored text chunks matching the query."
+          }
         }
       ]
     },

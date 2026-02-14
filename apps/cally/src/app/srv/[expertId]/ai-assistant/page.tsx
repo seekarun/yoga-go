@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import ChatWidget from "@/components/ai/ChatWidget";
+import { VoiceAssistantModal } from "@/components/ai";
 import type { AiAssistantConfig } from "@/types";
 import { DEFAULT_AI_ASSISTANT_CONFIG } from "@/types/ai-assistant";
 
@@ -19,6 +20,7 @@ export default function AiAssistantPage() {
   );
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
 
   // Fetch settings
   const fetchSettings = useCallback(async () => {
@@ -120,6 +122,44 @@ export default function AiAssistantPage() {
       )}
 
       <div className="max-w-4xl space-y-6">
+        {/* Voice Assistant Card */}
+        <div className="bg-gradient-to-r from-[var(--color-primary,#6366f1)] to-[var(--color-primary,#6366f1)]/80 rounded-xl p-6 text-white">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold">
+                  Talk to your AI Assistant
+                </h2>
+                <p className="text-sm text-white/80">
+                  Set up your business by voice — describe your services, hours,
+                  and more
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsVoiceModalOpen(true)}
+              className="px-5 py-2.5 bg-white text-[var(--color-primary,#6366f1)] rounded-lg text-sm font-semibold hover:bg-white/90 transition-colors"
+            >
+              Start Voice Chat
+            </button>
+          </div>
+        </div>
+
         {/* Enable/Disable Card */}
         <div className="bg-white rounded-xl border border-[var(--color-border)] p-6">
           <div className="flex items-center justify-between">
@@ -262,6 +302,12 @@ export default function AiAssistantPage() {
           </div>
         </div>
       </div>
+
+      {/* Voice Assistant Modal */}
+      <VoiceAssistantModal
+        isOpen={isVoiceModalOpen}
+        onClose={() => setIsVoiceModalOpen(false)}
+      />
     </div>
   );
 }
