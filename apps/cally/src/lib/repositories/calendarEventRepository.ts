@@ -271,8 +271,14 @@ export async function getCalendarEventsForMonth(
 export async function getUpcomingCalendarEvents(
   tenantId: string,
   limit: number = 10,
+  timezone?: string,
 ): Promise<CalendarEvent[]> {
-  const today = new Date().toISOString().substring(0, 10);
+  // Events are stored with UTC-based dates in SK. When a timezone is ahead
+  // of UTC (e.g. Australia/Sydney +11), "today local" may be tomorrow in UTC,
+  // so we start the query from yesterday-UTC to avoid missing events.
+  const now = new Date();
+  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const today = yesterday.toISOString().substring(0, 10);
 
   console.log(
     "[DBG][calendarEventRepository] Getting upcoming events from:",
@@ -281,19 +287,19 @@ export async function getUpcomingCalendarEvents(
     tenantId,
   );
 
-  // Get events from today onwards
+  // Get events from today onwards (CALEVENT# range only)
   const result = await docClient.send(
     new QueryCommand({
       TableName: Tables.CORE,
-      KeyConditionExpression: "PK = :pk AND SK >= :skStart",
-      FilterExpression: "begins_with(SK, :prefix) AND #status = :scheduled",
+      KeyConditionExpression: "PK = :pk AND SK BETWEEN :skStart AND :skEnd",
+      FilterExpression: "#status = :scheduled",
       ExpressionAttributeNames: {
         "#status": "status",
       },
       ExpressionAttributeValues: {
         ":pk": TenantPK.TENANT(tenantId),
         ":skStart": `CALEVENT#${today}`,
-        ":prefix": TenantPK.CALENDAR_EVENT_PREFIX,
+        ":skEnd": "CALEVENT#9999-12-31",
         ":scheduled": "scheduled",
       },
     }),
@@ -326,16 +332,16 @@ export async function updateEventColorByProductId(
     `[DBG][calendarEventRepository] Updating color for product ${productId} events from ${today}`,
   );
 
-  // Query future events and filter by productId
+  // Query future events and filter by productId (CALEVENT# range only)
   const result = await docClient.send(
     new QueryCommand({
       TableName: Tables.CORE,
-      KeyConditionExpression: "PK = :pk AND SK >= :skStart",
-      FilterExpression: "begins_with(SK, :prefix) AND productId = :productId",
+      KeyConditionExpression: "PK = :pk AND SK BETWEEN :skStart AND :skEnd",
+      FilterExpression: "productId = :productId",
       ExpressionAttributeValues: {
         ":pk": TenantPK.TENANT(tenantId),
         ":skStart": `CALEVENT#${today}`,
-        ":prefix": TenantPK.CALENDAR_EVENT_PREFIX,
+        ":skEnd": "CALEVENT#9999-12-31",
         ":productId": productId,
       },
     }),

@@ -17,7 +17,10 @@ export type TemplateId =
   | "left-aligned"
   | "split"
   | "minimal"
-  | "bold";
+  | "bold"
+  | "apple"
+  | "bayside"
+  | "therapist";
 
 /**
  * Image aspect ratio configuration for a template
@@ -92,6 +95,39 @@ export const TEMPLATES: TemplateInfo[] = [
     id: "bold",
     name: "Bold",
     description: "Large typography with strong visual impact",
+    imageConfig: {
+      heroBackground: "16/9",
+      aboutImage: "1/1",
+      featureCardImage: "16/9",
+    },
+  },
+  {
+    id: "apple",
+    name: "Apple",
+    description:
+      "Clean, spacious design with large typography and minimal CTAs",
+    imageConfig: {
+      heroBackground: "16/9",
+      aboutImage: "1/1",
+      featureCardImage: "16/9",
+    },
+  },
+  {
+    id: "bayside",
+    name: "Bayside",
+    description:
+      "Boutique luxury aesthetic with serif headings and editorial styling",
+    imageConfig: {
+      heroBackground: "9/16",
+      aboutImage: "4/5",
+      featureCardImage: "16/9",
+    },
+  },
+  {
+    id: "therapist",
+    name: "Therapist",
+    description:
+      "Warm, empathetic wellness aesthetic with soft shapes and serif headings",
     imageConfig: {
       heroBackground: "16/9",
       aboutImage: "1/1",
@@ -308,7 +344,8 @@ export const DEFAULT_LANDING_PAGE_CONFIG: SimpleLandingPageConfig = {
   template: "centered",
   title: "Welcome",
   subtitle: "Book a session with me",
-  backgroundImage: undefined,
+  backgroundImage:
+    "https://images.pexels.com/photos/28461041/pexels-photo-28461041.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2",
   imagePosition: "50% 50%",
   imageZoom: 100,
   button: {
@@ -316,7 +353,8 @@ export const DEFAULT_LANDING_PAGE_CONFIG: SimpleLandingPageConfig = {
     action: "booking",
   },
   about: {
-    image: undefined,
+    image:
+      "https://images.pexels.com/photos/29852895/pexels-photo-29852895.jpeg?auto=compress&cs=tinysrgb&w=800",
     imagePosition: "50% 50%",
     imageZoom: 100,
     paragraph:
@@ -328,18 +366,24 @@ export const DEFAULT_LANDING_PAGE_CONFIG: SimpleLandingPageConfig = {
     cards: [
       {
         id: "feature-1",
+        image:
+          "https://images.pexels.com/photos/7699526/pexels-photo-7699526.jpeg?auto=compress&cs=tinysrgb&w=800",
         title: "One-on-One Sessions",
         description:
           "Personalized sessions designed to address your specific goals and challenges.",
       },
       {
         id: "feature-2",
+        image:
+          "https://images.pexels.com/photos/15189552/pexels-photo-15189552.jpeg?auto=compress&cs=tinysrgb&w=800",
         title: "Group Workshops",
         description:
           "Interactive group sessions that foster community learning and shared growth.",
       },
       {
         id: "feature-3",
+        image:
+          "https://images.pexels.com/photos/4225881/pexels-photo-4225881.jpeg?auto=compress&cs=tinysrgb&w=800",
         title: "Online Consultations",
         description:
           "Flexible virtual meetings that fit your schedule, from anywhere in the world.",
@@ -399,7 +443,28 @@ export const DEFAULT_LANDING_PAGE_CONFIG: SimpleLandingPageConfig = {
   gallery: {
     heading: "Gallery",
     subheading: "",
-    images: [],
+    images: [
+      {
+        id: "gallery-default-1",
+        url: "https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=800",
+        caption: "",
+      },
+      {
+        id: "gallery-default-2",
+        url: "https://images.pexels.com/photos/30234387/pexels-photo-30234387.jpeg?auto=compress&cs=tinysrgb&w=800",
+        caption: "",
+      },
+      {
+        id: "gallery-default-3",
+        url: "https://images.pexels.com/photos/3822864/pexels-photo-3822864.jpeg?auto=compress&cs=tinysrgb&w=800",
+        caption: "",
+      },
+      {
+        id: "gallery-default-4",
+        url: "https://images.pexels.com/photos/7851906/pexels-photo-7851906.jpeg?auto=compress&cs=tinysrgb&w=800",
+        caption: "",
+      },
+    ],
   },
   footer: {
     text: "\u00a9 2026 All rights reserved.",

@@ -8,7 +8,7 @@ import { getTenantById } from "@/lib/repositories/tenantRepository";
 import { getApprovedFeedback } from "@/lib/repositories/feedbackRepository";
 import { getActiveProducts } from "@/lib/repositories/productRepository";
 import { DEFAULT_LANDING_PAGE_CONFIG } from "@/types/landing-page";
-import type { Testimonial } from "@/types/landing-page";
+import type { Testimonial, GalleryImage } from "@/types/landing-page";
 import LandingPageRenderer from "@/components/landing-page/LandingPageRenderer";
 import { ChatWidgetWrapper } from "@/components/ai";
 
@@ -104,6 +104,40 @@ export default async function TenantLandingPage({ params }: PageProps) {
           s.id === "testimonials" ? { ...s, enabled: true } : s,
         );
       }
+    }
+  }
+
+  // If gallery has no user-curated images, populate from product images.
+  // Treat default placeholder images (id starts with "gallery-default-") as empty.
+  const galleryImages = landingPage.gallery?.images || [];
+  const hasOnlyDefaults =
+    galleryImages.length > 0 &&
+    galleryImages.every((img) => img.id.startsWith("gallery-default-"));
+  if (
+    (galleryImages.length === 0 || hasOnlyDefaults) &&
+    activeProducts.length > 0
+  ) {
+    const productGalleryImages: GalleryImage[] = activeProducts.flatMap((p) => {
+      const imgs =
+        p.images && p.images.length > 0
+          ? p.images.map((img) => ({
+              id: `product-${p.id}-${img.id}`,
+              url: img.url,
+              caption: p.name,
+            }))
+          : p.image
+            ? [{ id: `product-${p.id}-legacy`, url: p.image, caption: p.name }]
+            : [];
+      return imgs;
+    });
+
+    if (productGalleryImages.length > 0) {
+      landingPage.gallery = {
+        ...landingPage.gallery,
+        heading: landingPage.gallery?.heading || "Gallery",
+        subheading: landingPage.gallery?.subheading || "",
+        images: productGalleryImages,
+      };
     }
   }
 

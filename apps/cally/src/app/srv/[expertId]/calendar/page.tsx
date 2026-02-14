@@ -248,14 +248,18 @@ export default function CalendarPage() {
       };
     }
 
+    const isCancelled = event.extendedProps?.status === "cancelled";
+
     return {
       id: event.id,
       title: event.title,
       start: event.start,
       end: event.end,
       allDay: event.allDay,
-      backgroundColor: event.color,
-      borderColor: event.color,
+      backgroundColor: isCancelled ? "#e5e7eb" : event.color,
+      borderColor: isCancelled ? "#9ca3af" : event.color,
+      textColor: isCancelled ? "#9ca3af" : undefined,
+      classNames: isCancelled ? ["fc-event-cancelled"] : [],
       extendedProps: event.extendedProps,
     };
   });

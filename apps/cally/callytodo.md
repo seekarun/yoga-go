@@ -19,16 +19,18 @@ x tenant subscription
 
 - more templates
 - super admin console
-
 - booking wait list
+- feat: add images for products
+-
 - AI chat to look up user's past interactions
 - video call recording and AI feed
 - review DB structure for scaling
-- backups
-- add images for products
+- tech: backups
 - chat for video calls 100ms
 - add phone number + whatsapp support for booking
-- alerts
+- tech: alerts
+- AI security review
+- use existing domain host - set records only
 
 - production deployment.
 

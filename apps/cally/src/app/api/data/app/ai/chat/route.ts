@@ -1,19 +1,24 @@
 /**
  * POST /api/data/app/ai/chat
- * Demo chat endpoint (authenticated)
- * Used for testing AI in the dashboard
+ * Authenticated chat endpoint — Agent Assistant (tenant-facing)
+ * Supports tool calling for daily brief, appointments, emails, etc.
  */
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getTenantByUserId } from "@/lib/repositories/tenantRepository";
 import {
-  createChatCompletion,
+  createChatCompletionWithTools,
   generateMessageId,
   buildSystemPrompt,
 } from "@/lib/openai";
 import type { ChatMessage, ChatCompletionRequest } from "@/types/ai-assistant";
 import { searchKnowledge } from "@/lib/rag";
+import {
+  ASSISTANT_TOOL_DEFINITIONS,
+  executeAssistantToolCall,
+  buildAssistantSystemPrompt,
+} from "@/lib/ai/assistant-tools";
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,9 +32,9 @@ export async function POST(request: NextRequest) {
     }
 
     const cognitoSub = session.user.cognitoSub;
-    console.log("[DBG][ai-chat] Demo chat for user:", cognitoSub);
+    console.log("[DBG][ai-chat] Assistant chat for user:", cognitoSub);
 
-    // Get tenant to access custom system prompt
+    // Get tenant
     const tenant = await getTenantByUserId(cognitoSub);
     if (!tenant) {
       return NextResponse.json(
@@ -58,18 +63,38 @@ export async function POST(request: NextRequest) {
     };
     messages.push(userMessage);
 
-    // Retrieve relevant knowledge base context
+    // Build the assistant system prompt
+    const assistantPrompt = buildAssistantSystemPrompt(tenant);
+
+    // Retrieve relevant knowledge base context and append to prompt
     const relevantChunks = await searchKnowledge(tenant.id, body.message, 3);
+    let systemPrompt = assistantPrompt;
+    if (relevantChunks && relevantChunks.length > 0) {
+      const ragContext = relevantChunks
+        .map((chunk) => `---\n${chunk.text}\n---`)
+        .join("\n");
+      systemPrompt += `\n\nRelevant Knowledge Base Information:\n${ragContext}\nUse the above knowledge base information to answer when relevant.`;
+    }
 
-    // Build system prompt from tenant config (includes business info + RAG context)
-    const systemPrompt = buildSystemPrompt(
-      tenant.aiAssistantConfig?.systemPrompt,
-      tenant.aiAssistantConfig?.businessInfo,
-      relevantChunks,
+    // Also include custom business info from tenant config
+    if (tenant.aiAssistantConfig?.businessInfo) {
+      const bizPrompt = buildSystemPrompt(
+        undefined,
+        tenant.aiAssistantConfig.businessInfo,
+      );
+      systemPrompt += `\n\n${bizPrompt}`;
+    }
+
+    // Call OpenAI with tool calling (5 iterations to support multi-step flows
+    // like: get_appointments → update_appointment → final response)
+    const result = await createChatCompletionWithTools(
+      messages,
+      systemPrompt,
+      ASSISTANT_TOOL_DEFINITIONS,
+      (toolName, toolArgs) =>
+        executeAssistantToolCall(tenant.id, toolName, toolArgs, tenant),
+      5,
     );
-
-    // Call OpenAI
-    const result = await createChatCompletion(messages, systemPrompt);
 
     // Create assistant message
     const assistantMessage: ChatMessage = {
@@ -80,7 +105,7 @@ export async function POST(request: NextRequest) {
     };
 
     console.log(
-      "[DBG][ai-chat] Demo response generated for tenant:",
+      "[DBG][ai-chat] Assistant response generated for tenant:",
       tenant.id,
     );
 
@@ -95,7 +120,10 @@ export async function POST(request: NextRequest) {
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { success: false, error: `Failed to generate response: ${errorMessage}` },
+      {
+        success: false,
+        error: `Failed to generate response: ${errorMessage}`,
+      },
       { status: 500 },
     );
   }

@@ -160,6 +160,8 @@ export async function PUT(
     if (body.imagePosition !== undefined)
       updates.imagePosition = body.imagePosition;
     if (body.imageZoom !== undefined) updates.imageZoom = body.imageZoom;
+    if (body.images !== undefined)
+      updates.images = Array.isArray(body.images) ? body.images : undefined;
     if (body.isActive !== undefined) updates.isActive = !!body.isActive;
     if (body.sortOrder !== undefined)
       updates.sortOrder = Number(body.sortOrder);

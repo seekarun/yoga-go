@@ -394,7 +394,20 @@ export default function CalendarEventModal({
       padding={false}
     >
       <ModalHeader onClose={onClose} className="px-6 pt-6">
-        {isEditing ? "Edit Event" : event.title}
+        {isEditing ? (
+          "Edit Event"
+        ) : (
+          <span className="flex items-center gap-2">
+            <span className={isCancelled ? "line-through text-gray-400" : ""}>
+              {event.title}
+            </span>
+            {isCancelled && (
+              <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-600 no-underline">
+                Cancelled
+              </span>
+            )}
+          </span>
+        )}
       </ModalHeader>
 
       <div className="px-6 pb-2 space-y-4">

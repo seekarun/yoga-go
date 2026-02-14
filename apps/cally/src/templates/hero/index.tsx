@@ -7,6 +7,9 @@ import LeftAlignedTemplate from "./LeftAlignedTemplate";
 import SplitTemplate from "./SplitTemplate";
 import MinimalTemplate from "./MinimalTemplate";
 import BoldTemplate from "./BoldTemplate";
+import AppleTemplate from "./AppleTemplate";
+import BaysideTemplate from "./BaysideTemplate";
+import TherapistTemplate from "./TherapistTemplate";
 
 /**
  * Template registry mapping template IDs to their components
@@ -17,6 +20,9 @@ const TEMPLATE_COMPONENTS: Record<TemplateId, React.FC<HeroTemplateProps>> = {
   split: SplitTemplate,
   minimal: MinimalTemplate,
   bold: BoldTemplate,
+  apple: AppleTemplate,
+  bayside: BaysideTemplate,
+  therapist: TherapistTemplate,
 };
 
 /**
@@ -37,4 +43,7 @@ export {
   SplitTemplate,
   MinimalTemplate,
   BoldTemplate,
+  AppleTemplate,
+  BaysideTemplate,
+  TherapistTemplate,
 };

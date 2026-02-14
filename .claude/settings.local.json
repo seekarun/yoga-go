@@ -142,7 +142,9 @@
       "WebFetch(domain:openai.com)",
       "Bash(vercel env ls:*)",
       "Bash(vercel logs:*)",
-      "WebFetch(domain:docs.vapi.ai)"
+      "WebFetch(domain:docs.vapi.ai)",
+      "WebFetch(domain:www.pexels.com)",
+      "WebFetch(domain:images.pexels.com)"
     ],
     "deny": [],
     "ask": []

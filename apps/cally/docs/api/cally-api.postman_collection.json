@@ -699,7 +699,7 @@
           }
         },
         {
-          "name": "Demo Chat",
+          "name": "Assistant Chat (Tool Calling)",
           "request": {
             "method": "POST",
             "header": [
@@ -710,14 +710,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"message\": \"Hello, tell me about your services.\",\n  \"sessionMessages\": []\n}"
+              "raw": "{\n  \"message\": \"Give me a daily brief\",\n  \"sessionMessages\": []\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/data/app/ai/chat",
               "host": ["{{baseUrl}}"],
               "path": ["api", "data", "app", "ai", "chat"]
             },
-            "description": "Demo chat endpoint for testing AI in dashboard. Uses the tenant's custom system prompt if configured."
+            "description": "Authenticated assistant chat endpoint with tool calling. Supports: get_daily_brief, get_appointments, update_appointment, get_recent_emails, get_email_detail. Uses the tenant's AI assistant system prompt + RAG knowledge base."
           }
         },
         {
@@ -1377,8 +1377,14 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "data", "app", "calendar"],
               "query": [
-                { "key": "start", "value": "2026-02-01T00:00:00Z" },
-                { "key": "end", "value": "2026-02-28T23:59:59Z" }
+                {
+                  "key": "start",
+                  "value": "2026-02-01T00:00:00Z"
+                },
+                {
+                  "key": "end",
+                  "value": "2026-02-28T23:59:59Z"
+                }
               ]
             },
             "description": "Get calendar events for a date range. Returns CalendarItem[] including Cally events, Google Calendar events, and Outlook events. Recurring events include recurrenceGroupId in extendedProps."
@@ -1389,8 +1395,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Cookie", "value": "session={{sessionToken}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "session={{sessionToken}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1409,8 +1421,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Cookie", "value": "session={{sessionToken}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "session={{sessionToken}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1429,7 +1447,10 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Cookie", "value": "session={{sessionToken}}" }
+              {
+                "key": "Cookie",
+                "value": "session={{sessionToken}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/api/data/app/calendar/events/{{eventId}}",
@@ -1451,8 +1472,14 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Cookie", "value": "session={{sessionToken}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "session={{sessionToken}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1478,8 +1505,14 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Cookie", "value": "session={{sessionToken}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "session={{sessionToken}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1496,7 +1529,12 @@
                 "events",
                 "{{eventId}}"
               ],
-              "query": [{ "key": "updateFuture", "value": "true" }]
+              "query": [
+                {
+                  "key": "updateFuture",
+                  "value": "true"
+                }
+              ]
             },
             "description": "Update a recurring calendar event and apply time changes to all future events in the series. Computes the time delta from the clicked event and shifts all future events by the same amount. Also applies title, description, and location changes to future events."
           }
@@ -1506,7 +1544,10 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "Cookie", "value": "session={{sessionToken}}" }
+              {
+                "key": "Cookie",
+                "value": "session={{sessionToken}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/api/data/app/calendar/events/{{eventId}}",
@@ -1528,7 +1569,10 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "Cookie", "value": "session={{sessionToken}}" }
+              {
+                "key": "Cookie",
+                "value": "session={{sessionToken}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/api/data/app/calendar/events/{{eventId}}?deleteAll=true",
@@ -1541,7 +1585,12 @@
                 "events",
                 "{{eventId}}"
               ],
-              "query": [{ "key": "deleteAll", "value": "true" }]
+              "query": [
+                {
+                  "key": "deleteAll",
+                  "value": "true"
+                }
+              ]
             },
             "description": "Delete all events in a recurrence series. Uses the event's recurrenceGroupId to find and batch-delete all instances. Returns { deleted: true, count: N }. Also removes each instance from Google/Outlook Calendar."
           }
@@ -1965,7 +2014,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Hair Cut\",\n  \"description\": \"Professional haircut service\",\n  \"durationMinutes\": 30,\n  \"price\": 4000,\n  \"color\": \"#6366f1\",\n  \"isActive\": true,\n  \"sortOrder\": 0\n}"
+              "raw": "{\n  \"name\": \"Hair Cut\",\n  \"description\": \"Professional haircut service\",\n  \"durationMinutes\": 30,\n  \"price\": 4000,\n  \"color\": \"#6366f1\",\n  \"isActive\": true,\n  \"sortOrder\": 0,\n  \"images\": [{\"id\": \"img-1\", \"url\": \"https://example.com/photo.jpg\", \"position\": \"50% 50%\", \"zoom\": 100}]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/data/app/products",
@@ -2006,7 +2055,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Premium Hair Cut\",\n  \"price\": 5000,\n  \"durationMinutes\": 45,\n  \"color\": \"#3b82f6\"\n}"
+              "raw": "{\n  \"name\": \"Premium Hair Cut\",\n  \"price\": 5000,\n  \"durationMinutes\": 45,\n  \"color\": \"#3b82f6\",\n  \"images\": [{\"id\": \"img-1\", \"url\": \"https://example.com/photo.jpg\", \"position\": \"50% 50%\", \"zoom\": 100}]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/data/app/products/:productId",
@@ -2295,7 +2344,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "data", "app", "outlook-calendar", "connect"]
             },
-            "description": "Redirects to Microsoft OAuth consent screen. Opens in browser — not callable from Postman directly."
+            "description": "Redirects to Microsoft OAuth consent screen. Opens in browser \u2014 not callable from Postman directly."
           }
         },
         {
@@ -2318,7 +2367,7 @@
                 }
               ]
             },
-            "description": "OAuth callback handler. Exchanges code for tokens and stores config. Called by Microsoft — not directly."
+            "description": "OAuth callback handler. Exchanges code for tokens and stores config. Called by Microsoft \u2014 not directly."
           }
         },
         {
@@ -2397,7 +2446,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "data", "app", "zoom", "connect"]
             },
-            "description": "Redirects to Zoom OAuth consent screen. Opens in browser — not callable from Postman directly."
+            "description": "Redirects to Zoom OAuth consent screen. Opens in browser \u2014 not callable from Postman directly."
           }
         },
         {
@@ -2420,7 +2469,7 @@
                 }
               ]
             },
-            "description": "OAuth callback handler. Exchanges code for tokens and stores config. Called by Zoom — not directly."
+            "description": "OAuth callback handler. Exchanges code for tokens and stores config. Called by Zoom \u2014 not directly."
           }
         },
         {

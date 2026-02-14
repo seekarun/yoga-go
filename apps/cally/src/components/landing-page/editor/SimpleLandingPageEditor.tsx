@@ -110,6 +110,7 @@ export default function SimpleLandingPageEditor({
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const savedIndicatorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialLoadRef = useRef(true);
+  const galleryBackfilledRef = useRef(false);
 
   // Close colour picker on outside click
   useEffect(() => {
@@ -280,27 +281,66 @@ export default function SimpleLandingPageEditor({
           finalSections = DEFAULT_LANDING_PAGE_CONFIG.sections || [];
         }
 
+        // Backfill default images for sections that have never had images set.
+        // This is a one-time migration: once saved, the images persist in the config.
+        const defaultCards = DEFAULT_LANDING_PAGE_CONFIG.features?.cards || [];
+        const loadedFeatures =
+          landingPage.features || DEFAULT_LANDING_PAGE_CONFIG.features;
+        const noCardsHaveImages =
+          loadedFeatures?.cards?.length > 0 &&
+          loadedFeatures.cards.every((c: FeatureCard) => !c.image);
+        const backfilledFeatures = noCardsHaveImages
+          ? {
+              ...loadedFeatures,
+              cards: loadedFeatures.cards.map(
+                (card: FeatureCard, idx: number) => ({
+                  ...card,
+                  image: defaultCards[idx]?.image || card.image,
+                }),
+              ),
+            }
+          : loadedFeatures;
+
+        const loadedGallery =
+          landingPage.gallery || DEFAULT_LANDING_PAGE_CONFIG.gallery;
+        // Gallery backfill is deferred — a separate effect will populate from
+        // product images (preferred) or default Pexels images once products load.
+        const backfilledGallery = loadedGallery;
+
+        const loadedAbout =
+          landingPage.about || DEFAULT_LANDING_PAGE_CONFIG.about;
+        const backfilledAbout =
+          loadedAbout && !loadedAbout.image
+            ? {
+                ...loadedAbout,
+                image: DEFAULT_LANDING_PAGE_CONFIG.about?.image,
+              }
+            : loadedAbout;
+
+        const backfilledBgImage =
+          landingPage.backgroundImage ??
+          DEFAULT_LANDING_PAGE_CONFIG.backgroundImage;
+
         setConfig({
           template: landingPage.template || "centered",
           title: landingPage.title || "Welcome",
           subtitle: landingPage.subtitle || "Book a session with me",
-          backgroundImage: landingPage.backgroundImage,
+          backgroundImage: backfilledBgImage,
           imagePosition: landingPage.imagePosition || "50% 50%",
           imageZoom: landingPage.imageZoom || 100,
           button: landingPage.button || {
             label: "Book Now",
             action: "booking",
           },
-          about: landingPage.about || DEFAULT_LANDING_PAGE_CONFIG.about,
-          features:
-            landingPage.features || DEFAULT_LANDING_PAGE_CONFIG.features,
+          about: backfilledAbout,
+          features: backfilledFeatures,
           testimonials:
             landingPage.testimonials ||
             DEFAULT_LANDING_PAGE_CONFIG.testimonials,
           faq: landingPage.faq || DEFAULT_LANDING_PAGE_CONFIG.faq,
           location:
             landingPage.location || DEFAULT_LANDING_PAGE_CONFIG.location,
-          gallery: landingPage.gallery || DEFAULT_LANDING_PAGE_CONFIG.gallery,
+          gallery: backfilledGallery,
           footer: landingPage.footer || DEFAULT_LANDING_PAGE_CONFIG.footer,
           heroEnabled: landingPage.heroEnabled ?? true,
           footerEnabled: landingPage.footerEnabled ?? true,
@@ -352,6 +392,65 @@ export default function SimpleLandingPageEditor({
     };
     fetchProducts();
   }, []);
+
+  // Backfill gallery images: prefer product images, fallback to Pexels defaults.
+  // Runs once after both config and products have loaded.
+  useEffect(() => {
+    if (galleryBackfilledRef.current) return;
+    const galleryImages = config.gallery?.images || [];
+    // Treat default placeholder images as "empty" so product images take priority
+    const hasOnlyDefaults =
+      galleryImages.length > 0 &&
+      galleryImages.every((img) => img.id.startsWith("gallery-default-"));
+    if (galleryImages.length > 0 && !hasOnlyDefaults) {
+      // Gallery has user-curated images — nothing to backfill
+      galleryBackfilledRef.current = true;
+      return;
+    }
+    // Wait until products have been fetched (empty array is fine — means no products)
+    // We detect "not yet fetched" vs "fetched but empty" via isInitialLoadRef
+    if (isInitialLoadRef.current) return;
+
+    galleryBackfilledRef.current = true;
+
+    // Collect all images from products
+    const productGalleryImages: GalleryImage[] = products.flatMap((p) => {
+      if (p.images && p.images.length > 0) {
+        return p.images.map((img) => ({
+          id: `product-${p.id}-${img.id}`,
+          url: img.url,
+          caption: p.name,
+        }));
+      }
+      if (p.image) {
+        return [
+          { id: `product-${p.id}-legacy`, url: p.image, caption: p.name },
+        ];
+      }
+      return [];
+    });
+
+    if (productGalleryImages.length > 0) {
+      setConfig((prev) => ({
+        ...prev,
+        gallery: {
+          ...prev.gallery,
+          heading: prev.gallery?.heading || "Gallery",
+          subheading: prev.gallery?.subheading || "",
+          images: productGalleryImages,
+        } as GalleryConfig,
+      }));
+    } else {
+      // No product images — fall back to default Pexels gallery
+      const defaultGallery = DEFAULT_LANDING_PAGE_CONFIG.gallery;
+      if (defaultGallery) {
+        setConfig((prev) => ({
+          ...prev,
+          gallery: defaultGallery,
+        }));
+      }
+    }
+  }, [config.gallery?.images, products]);
 
   // Auto-save effect
   useEffect(() => {
@@ -1605,28 +1704,32 @@ export default function SimpleLandingPageEditor({
 
         <div className="absolute inset-0 overflow-auto">
           <div className="mx-auto" style={{ maxWidth: "1200px" }}>
-            <div className="m-4 bg-white shadow-lg overflow-hidden relative">
-              {/* Image Edit Button - Top Right */}
-              <button
-                onClick={() => setShowImageEditor(true)}
-                className="absolute top-4 right-4 z-10 p-3 bg-white/90 hover:bg-white rounded-full shadow-lg transition-all hover:scale-105"
-                title="Edit background image"
-              >
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+            <div
+              className={`m-4 shadow-lg overflow-hidden relative ${config.template === "apple" ? "bg-[#f5f5f7]" : config.template === "bayside" ? "bg-[#FAF9F6]" : config.template === "therapist" ? "bg-[#faf9f8]" : "bg-white"}`}
+            >
+              {/* Image Edit Button - Top Right (hidden for templates that ignore hero image) */}
+              {config.template !== "minimal" && (
+                <button
+                  onClick={() => setShowImageEditor(true)}
+                  className="absolute top-4 right-4 z-10 p-3 bg-white/90 hover:bg-white rounded-full shadow-lg transition-all hover:scale-105"
+                  title="Edit background image"
                 >
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                  <circle cx="8.5" cy="8.5" r="1.5" />
-                  <polyline points="21 15 16 10 5 21" />
-                </svg>
-              </button>
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <polyline points="21 15 16 10 5 21" />
+                  </svg>
+                </button>
+              )}
 
               <LandingPageThemeProvider palette={config.theme?.palette}>
                 <HeroTemplateRenderer

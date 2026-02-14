@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Modal, { ModalHeader } from "@/components/Modal";
-import type { Product } from "@/types";
+import type { Product, ProductImage } from "@/types";
+import { ImageEditorOverlay } from "@core/components";
 
 interface ProductFormModalProps {
   isOpen: boolean;
@@ -45,6 +46,8 @@ export default function ProductFormModal({
   const [displayPrice, setDisplayPrice] = useState("0");
   const [color, setColor] = useState(PRODUCT_COLORS[0].value);
   const [isActive, setIsActive] = useState(true);
+  const [images, setImages] = useState<ProductImage[]>([]);
+  const [showImageEditor, setShowImageEditor] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,6 +63,21 @@ export default function ProductFormModal({
       setDisplayPrice((product.price / 100).toFixed(2));
       setColor(product.color || PRODUCT_COLORS[0].value);
       setIsActive(product.isActive);
+      // Load images: prefer images array, fallback to legacy image field
+      if (product.images && product.images.length > 0) {
+        setImages(product.images);
+      } else if (product.image) {
+        setImages([
+          {
+            id: `legacy-${product.id}`,
+            url: product.image,
+            position: product.imagePosition,
+            zoom: product.imageZoom,
+          },
+        ]);
+      } else {
+        setImages([]);
+      }
     } else {
       setName("");
       setDescription("");
@@ -67,9 +85,28 @@ export default function ProductFormModal({
       setDisplayPrice("0");
       setColor(PRODUCT_COLORS[0].value);
       setIsActive(true);
+      setImages([]);
     }
     setError(null);
   }, [product, isOpen]);
+
+  const handleAddImage = useCallback(
+    (data: { imageUrl: string; imagePosition: string; imageZoom: number }) => {
+      if (!data.imageUrl) return;
+      const newImage: ProductImage = {
+        id: `img-${Date.now()}`,
+        url: data.imageUrl,
+        position: data.imagePosition,
+        zoom: data.imageZoom,
+      };
+      setImages((prev) => [...prev, newImage]);
+    },
+    [],
+  );
+
+  const handleRemoveImage = useCallback((imageId: string) => {
+    setImages((prev) => prev.filter((img) => img.id !== imageId));
+  }, []);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -103,6 +140,11 @@ export default function ProductFormModal({
           price: priceInCents,
           color,
           isActive,
+          images,
+          // Set legacy image field to first image for backward compat
+          image: images.length > 0 ? images[0].url : undefined,
+          imagePosition: images.length > 0 ? images[0].position : undefined,
+          imageZoom: images.length > 0 ? images[0].zoom : undefined,
         };
 
         const url = isEditing
@@ -137,6 +179,7 @@ export default function ProductFormModal({
       displayPrice,
       color,
       isActive,
+      images,
       isEditing,
       product,
       onSaved,
@@ -192,6 +235,65 @@ export default function ProductFormModal({
             rows={3}
             className="w-full border border-[var(--color-border)] rounded-lg px-3 py-2 text-[var(--text-main)] bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] resize-none"
           />
+        </div>
+
+        {/* Images */}
+        <div>
+          <label className="block text-sm font-medium text-[var(--text-muted)] mb-2">
+            Images
+          </label>
+          <div className="flex gap-2 flex-wrap">
+            {images.map((img) => (
+              <div
+                key={img.id}
+                className="relative w-20 h-20 rounded-lg overflow-hidden border border-[var(--color-border)] group"
+              >
+                <div
+                  className="absolute inset-0 bg-cover bg-center"
+                  style={{
+                    backgroundImage: `url(${img.url})`,
+                    backgroundPosition: img.position || "50% 50%",
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => handleRemoveImage(img.id)}
+                  className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Remove image"
+                >
+                  <svg
+                    width="10"
+                    height="10"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                  >
+                    <path d="M18 6L6 18M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => setShowImageEditor(true)}
+              className="w-20 h-20 rounded-lg border-2 border-dashed border-[var(--color-border)] flex flex-col items-center justify-center text-[var(--text-muted)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] transition-colors"
+              title="Add image"
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              <span className="text-[10px] mt-0.5">Add</span>
+            </button>
+          </div>
         </div>
 
         {/* Duration and Price row */}
@@ -307,6 +409,20 @@ export default function ProductFormModal({
           </button>
         </div>
       </form>
+
+      {/* Image Editor Overlay */}
+      <ImageEditorOverlay
+        isOpen={showImageEditor}
+        onClose={() => setShowImageEditor(false)}
+        onSave={handleAddImage}
+        currentImage={undefined}
+        currentPosition={undefined}
+        currentZoom={undefined}
+        title="Add Product Image"
+        aspectRatio="16/9"
+        defaultSearchQuery={name.trim() || "professional service"}
+        uploadEndpoint="/api/data/app/tenant/landing-page/upload"
+      />
     </Modal>
   );
 }

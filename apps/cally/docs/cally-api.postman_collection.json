@@ -250,6 +250,72 @@
           }
         },
         {
+          "name": "Cancel Booking - Preview (Public)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/data/tenants/:tenantId/booking/cancel?token=eyJ0ZW5hbnRJZCI6IjAxSFhZWi4uLiIsImV2ZW50SWQiOiJldnRfMTIzIiwiZGF0ZSI6IjIwMjYtMDItMTAifQ.abc123",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "tenants",
+                ":tenantId",
+                "booking",
+                "cancel"
+              ],
+              "query": [
+                {
+                  "key": "token",
+                  "value": "eyJ0ZW5hbnRJZCI6IjAxSFhZWi4uLiIsImV2ZW50SWQiOiJldnRfMTIzIiwiZGF0ZSI6IjIwMjYtMDItMTAifQ.abc123"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "tenantId",
+                  "value": "01HXYZ..."
+                }
+              ]
+            },
+            "description": "Preview cancellation details for a booking. Returns event info, refund calculation based on cancellation policy, and deadline status. Requires a valid HMAC cancel token from the booking confirmation email."
+          }
+        },
+        {
+          "name": "Cancel Booking - Execute (Public)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"eyJ0ZW5hbnRJZCI6IjAxSFhZWi4uLiIsImV2ZW50SWQiOiJldnRfMTIzIiwiZGF0ZSI6IjIwMjYtMDItMTAifQ.abc123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/tenants/:tenantId/booking/cancel",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "tenants",
+                ":tenantId",
+                "booking",
+                "cancel"
+              ],
+              "variable": [
+                {
+                  "key": "tenantId",
+                  "value": "01HXYZ..."
+                }
+              ]
+            },
+            "description": "Execute booking cancellation. Verifies token, processes Stripe refund (full/partial based on cancellation policy), updates event status, and sends cancellation emails to visitor and tenant."
+          }
+        },
+        {
           "name": "Submit Contact Form",
           "request": {
             "method": "POST",
@@ -344,6 +410,77 @@
               ]
             },
             "description": "Public endpoint to join a video meeting. Returns 100ms auth token, room ID, and role. If the caller is authenticated as the tenant owner, they get the 'host' role; otherwise 'guest'. Guests must provide a name in the request body."
+          }
+        },
+        {
+          "name": "Join Waitlist (Public)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2026-02-20\",\n  \"visitorName\": \"Jane Smith\",\n  \"visitorEmail\": \"jane@example.com\",\n  \"visitorPhone\": \"+61412345678\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/tenants/:tenantId/booking/waitlist",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "tenants",
+                ":tenantId",
+                "booking",
+                "waitlist"
+              ],
+              "variable": [
+                {
+                  "key": "tenantId",
+                  "value": "01HXYZ..."
+                }
+              ]
+            },
+            "description": "Join the waitlist for a specific date when all slots are booked. Returns position in the queue."
+          }
+        },
+        {
+          "name": "Check Waitlist Status (Public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/tenants/:tenantId/booking/waitlist?date=2026-02-20&email=jane@example.com",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "tenants",
+                ":tenantId",
+                "booking",
+                "waitlist"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2026-02-20"
+                },
+                {
+                  "key": "email",
+                  "value": "jane@example.com"
+                }
+              ],
+              "variable": [
+                {
+                  "key": "tenantId",
+                  "value": "01HXYZ..."
+                }
+              ]
+            },
+            "description": "Check waitlist status for a date + email. Returns position and status if on waitlist."
           }
         }
       ]
@@ -562,7 +699,7 @@
           }
         },
         {
-          "name": "Demo Chat",
+          "name": "Assistant Chat (Tool Calling)",
           "request": {
             "method": "POST",
             "header": [
@@ -573,14 +710,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"message\": \"Hello, tell me about your services.\",\n  \"sessionMessages\": []\n}"
+              "raw": "{\n  \"message\": \"Give me a daily brief\",\n  \"sessionMessages\": []\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/data/app/ai/chat",
               "host": ["{{baseUrl}}"],
               "path": ["api", "data", "app", "ai", "chat"]
             },
-            "description": "Demo chat endpoint for testing AI in dashboard. Uses the tenant's custom system prompt if configured."
+            "description": "Authenticated assistant chat endpoint with tool calling. Supports: get_daily_brief, get_appointments, update_appointment, get_recent_emails, get_email_detail. Uses the tenant's AI assistant system prompt + RAG knowledge base."
           }
         },
         {
@@ -603,6 +740,140 @@
               "path": ["api", "data", "app", "ai", "setup"]
             },
             "description": "AI-driven business setup chat. Uses function calling to extract structured business info from conversation. Set saveIfComplete to true to auto-save when setup is complete."
+          }
+        },
+        {
+          "name": "List Knowledge Documents",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/ai/knowledge",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "ai", "knowledge"]
+            },
+            "description": "List all knowledge base documents for the authenticated tenant."
+          }
+        },
+        {
+          "name": "Create Knowledge Document",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Pricing\",\n  \"content\": \"Our pricing plans:\\n\\nBasic - $50/month: 4 classes per week\\nPro - $80/month: Unlimited classes\\nPrivate - $120/session: 1-on-1 sessions\\n\\nAll plans include a free trial class.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/ai/knowledge",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "ai", "knowledge"]
+            },
+            "description": "Create a new knowledge base document. Content is chunked, embedded, and indexed for RAG retrieval."
+          }
+        },
+        {
+          "name": "Get Knowledge Document",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/ai/knowledge/:docId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "ai", "knowledge", ":docId"],
+              "variable": [
+                {
+                  "key": "docId",
+                  "value": "kdoc_xxx"
+                }
+              ]
+            },
+            "description": "Get a single knowledge base document by ID."
+          }
+        },
+        {
+          "name": "Delete Knowledge Document",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/ai/knowledge/:docId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "ai", "knowledge", ":docId"],
+              "variable": [
+                {
+                  "key": "docId",
+                  "value": "kdoc_xxx"
+                }
+              ]
+            },
+            "description": "Delete a knowledge base document and all its embedding chunks."
+          }
+        },
+        {
+          "name": "Voice - Start Session",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/ai/voice/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "ai", "voice", "start"]
+            },
+            "description": "Start a voice assistant session. Returns Vapi assistant config and public key for the web SDK."
+          }
+        },
+        {
+          "name": "Voice - Function Call Handler",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "x-vapi-secret",
+                "value": "your-vapi-server-secret"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": {\n    \"type\": \"function-call\",\n    \"functionCall\": {\n      \"name\": \"search_knowledge\",\n      \"parameters\": {\n        \"query\": \"pricing\"\n      }\n    },\n    \"call\": {\n      \"id\": \"call_xxx\",\n      \"metadata\": {\n        \"tenantId\": \"01HXYZ...\"\n      }\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/ai/voice/function",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "ai", "voice", "function"]
+            },
+            "description": "Handles Vapi function call webhooks (search_knowledge, get_todays_schedule, save_business_info, reschedule_appointment, cancel_appointment). Authenticated via x-vapi-secret header."
+          }
+        },
+        {
+          "name": "Knowledge - Search",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"pricing\",\n  \"topK\": 3\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/ai/knowledge/search",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "ai", "knowledge", "search"]
+            },
+            "description": "Search the knowledge base for relevant chunks. Returns scored text chunks matching the query."
           }
         }
       ]
@@ -799,7 +1070,7 @@
     },
     {
       "name": "Preferences - Authenticated",
-      "description": "Tenant preferences (timezone, email display name, default event duration, regional settings)",
+      "description": "Tenant preferences (timezone, email display name, default event duration, regional settings, business address)",
       "item": [
         {
           "name": "Get Preferences",
@@ -811,7 +1082,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "data", "app", "preferences"]
             },
-            "description": "Get tenant preferences including timezone, emailDisplayName, videoCallPreference, and defaultEventDuration (minutes, default 30). Falls back to bookingConfig.timezone then Australia/Sydney."
+            "description": "Get tenant preferences including timezone, emailDisplayName, videoCallPreference, defaultEventDuration (minutes, default 30), and address. Falls back to bookingConfig.timezone then Australia/Sydney."
           }
         },
         {
@@ -826,14 +1097,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"timezone\": \"Australia/Sydney\",\n  \"emailDisplayName\": \"My Studio Name\",\n  \"defaultEventDuration\": 30,\n  \"currency\": \"AUD\"\n}"
+              "raw": "{\n  \"timezone\": \"Australia/Sydney\",\n  \"emailDisplayName\": \"My Studio Name\",\n  \"defaultEventDuration\": 30,\n  \"currency\": \"AUD\",\n  \"address\": \"123 Main St, Sydney NSW 2000\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/data/app/preferences",
               "host": ["{{baseUrl}}"],
               "path": ["api", "data", "app", "preferences"]
             },
-            "description": "Update tenant preferences. Timezone must be a valid IANA timezone string. emailDisplayName (max 100 chars) customizes the sender name on outgoing emails; send empty string to clear. defaultEventDuration must be one of: 15, 30, 45, 60, 90, 120 (minutes). currency must be one of: AUD, USD, GBP, EUR, INR, NZD, CAD, SGD."
+            "description": "Update tenant preferences. Timezone must be a valid IANA timezone string. emailDisplayName (max 100 chars) customizes the sender name on outgoing emails; send empty string to clear. defaultEventDuration must be one of: 15, 30, 45, 60, 90, 120 (minutes). currency must be one of: AUD, USD, GBP, EUR, INR, NZD, CAD, SGD. address (max 300 chars) is the business address displayed on the landing page location section."
           }
         }
       ]
@@ -1106,8 +1377,14 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "data", "app", "calendar"],
               "query": [
-                { "key": "start", "value": "2026-02-01T00:00:00Z" },
-                { "key": "end", "value": "2026-02-28T23:59:59Z" }
+                {
+                  "key": "start",
+                  "value": "2026-02-01T00:00:00Z"
+                },
+                {
+                  "key": "end",
+                  "value": "2026-02-28T23:59:59Z"
+                }
               ]
             },
             "description": "Get calendar events for a date range. Returns CalendarItem[] including Cally events, Google Calendar events, and Outlook events. Recurring events include recurrenceGroupId in extendedProps."
@@ -1118,8 +1395,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Cookie", "value": "session={{sessionToken}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "session={{sessionToken}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1138,8 +1421,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Cookie", "value": "session={{sessionToken}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "session={{sessionToken}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1158,7 +1447,10 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Cookie", "value": "session={{sessionToken}}" }
+              {
+                "key": "Cookie",
+                "value": "session={{sessionToken}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/api/data/app/calendar/events/{{eventId}}",
@@ -1180,8 +1472,14 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Cookie", "value": "session={{sessionToken}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "session={{sessionToken}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1207,8 +1505,14 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Cookie", "value": "session={{sessionToken}}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Cookie",
+                "value": "session={{sessionToken}}"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -1225,7 +1529,12 @@
                 "events",
                 "{{eventId}}"
               ],
-              "query": [{ "key": "updateFuture", "value": "true" }]
+              "query": [
+                {
+                  "key": "updateFuture",
+                  "value": "true"
+                }
+              ]
             },
             "description": "Update a recurring calendar event and apply time changes to all future events in the series. Computes the time delta from the clicked event and shifts all future events by the same amount. Also applies title, description, and location changes to future events."
           }
@@ -1235,7 +1544,10 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "Cookie", "value": "session={{sessionToken}}" }
+              {
+                "key": "Cookie",
+                "value": "session={{sessionToken}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/api/data/app/calendar/events/{{eventId}}",
@@ -1257,7 +1569,10 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "Cookie", "value": "session={{sessionToken}}" }
+              {
+                "key": "Cookie",
+                "value": "session={{sessionToken}}"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/api/data/app/calendar/events/{{eventId}}?deleteAll=true",
@@ -1270,7 +1585,12 @@
                 "events",
                 "{{eventId}}"
               ],
-              "query": [{ "key": "deleteAll", "value": "true" }]
+              "query": [
+                {
+                  "key": "deleteAll",
+                  "value": "true"
+                }
+              ]
             },
             "description": "Delete all events in a recurrence series. Uses the event's recurrenceGroupId to find and batch-delete all instances. Returns { deleted: true, count: N }. Also removes each instance from Google/Outlook Calendar."
           }
@@ -1694,7 +2014,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Hair Cut\",\n  \"description\": \"Professional haircut service\",\n  \"durationMinutes\": 30,\n  \"price\": 4000,\n  \"color\": \"#6366f1\",\n  \"isActive\": true,\n  \"sortOrder\": 0\n}"
+              "raw": "{\n  \"name\": \"Hair Cut\",\n  \"description\": \"Professional haircut service\",\n  \"durationMinutes\": 30,\n  \"price\": 4000,\n  \"color\": \"#6366f1\",\n  \"isActive\": true,\n  \"sortOrder\": 0,\n  \"images\": [{\"id\": \"img-1\", \"url\": \"https://example.com/photo.jpg\", \"position\": \"50% 50%\", \"zoom\": 100}]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/data/app/products",
@@ -1735,7 +2055,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Premium Hair Cut\",\n  \"price\": 5000,\n  \"durationMinutes\": 45,\n  \"color\": \"#3b82f6\"\n}"
+              "raw": "{\n  \"name\": \"Premium Hair Cut\",\n  \"price\": 5000,\n  \"durationMinutes\": 45,\n  \"color\": \"#3b82f6\",\n  \"images\": [{\"id\": \"img-1\", \"url\": \"https://example.com/photo.jpg\", \"position\": \"50% 50%\", \"zoom\": 100}]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/data/app/products/:productId",
@@ -1862,6 +2182,156 @@
       ]
     },
     {
+      "name": "Google Business Profile - Authenticated",
+      "item": [
+        {
+          "name": "Connect Google Business",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/google-business/connect",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "google-business", "connect"]
+            },
+            "description": "Redirects to Google OAuth consent screen for Business Profile API. Opens in browser \u2014 not callable from Postman directly."
+          }
+        },
+        {
+          "name": "Google Business Callback",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/google-business/callback?code=AUTH_CODE&state=BASE64_STATE",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "google-business", "callback"],
+              "query": [
+                {
+                  "key": "code",
+                  "value": "AUTH_CODE"
+                },
+                {
+                  "key": "state",
+                  "value": "BASE64_STATE"
+                }
+              ]
+            },
+            "description": "OAuth callback handler. Exchanges code for tokens, fetches account/location, and stores config. Called by Google \u2014 not directly."
+          }
+        },
+        {
+          "name": "Get Google Business Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/google-business/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "google-business", "status"]
+            },
+            "description": "Returns Google Business Profile connection status: connected, email, locationName, connectedAt."
+          }
+        },
+        {
+          "name": "Disconnect Google Business",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/google-business/disconnect",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "google-business", "disconnect"]
+            },
+            "description": "Revokes Google OAuth token and removes Google Business Profile config from tenant."
+          }
+        },
+        {
+          "name": "List Google Reviews",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/google-business/reviews",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "google-business", "reviews"],
+              "query": [
+                {
+                  "key": "pageToken",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List Google Reviews for the connected business location. Supports pagination via pageToken query param."
+          }
+        },
+        {
+          "name": "Reply to Google Review",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"comment\": \"Thank you for your review!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/google-business/reviews/:reviewId/reply",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "app",
+                "google-business",
+                "reviews",
+                ":reviewId",
+                "reply"
+              ],
+              "variable": [
+                {
+                  "key": "reviewId",
+                  "value": "REVIEW_ID"
+                }
+              ]
+            },
+            "description": "Reply to a Google Review or update an existing reply."
+          }
+        },
+        {
+          "name": "Delete Google Review Reply",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/google-business/reviews/:reviewId/reply",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "app",
+                "google-business",
+                "reviews",
+                ":reviewId",
+                "reply"
+              ],
+              "variable": [
+                {
+                  "key": "reviewId",
+                  "value": "REVIEW_ID"
+                }
+              ]
+            },
+            "description": "Delete an existing reply to a Google Review."
+          }
+        }
+      ]
+    },
+    {
       "name": "Outlook Calendar - Authenticated",
       "item": [
         {
@@ -1874,7 +2344,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "data", "app", "outlook-calendar", "connect"]
             },
-            "description": "Redirects to Microsoft OAuth consent screen. Opens in browser — not callable from Postman directly."
+            "description": "Redirects to Microsoft OAuth consent screen. Opens in browser \u2014 not callable from Postman directly."
           }
         },
         {
@@ -1897,7 +2367,7 @@
                 }
               ]
             },
-            "description": "OAuth callback handler. Exchanges code for tokens and stores config. Called by Microsoft — not directly."
+            "description": "OAuth callback handler. Exchanges code for tokens and stores config. Called by Microsoft \u2014 not directly."
           }
         },
         {
@@ -1976,7 +2446,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "data", "app", "zoom", "connect"]
             },
-            "description": "Redirects to Zoom OAuth consent screen. Opens in browser — not callable from Postman directly."
+            "description": "Redirects to Zoom OAuth consent screen. Opens in browser \u2014 not callable from Postman directly."
           }
         },
         {
@@ -1999,7 +2469,7 @@
                 }
               ]
             },
-            "description": "OAuth callback handler. Exchanges code for tokens and stores config. Called by Zoom — not directly."
+            "description": "OAuth callback handler. Exchanges code for tokens and stores config. Called by Zoom \u2014 not directly."
           }
         },
         {
@@ -2235,6 +2705,42 @@
             },
             "description": "Send event reminder emails to attendees. Checks events starting in ~24h and ~10m windows. Runs every 5 minutes via Vercel Cron. Returns { checked, reminded24h, reminded10m, errors, durationMs }."
           }
+        },
+        {
+          "name": "Mark Completed Cron",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cronSecret}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cron/mark-completed",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "cron", "mark-completed"]
+            },
+            "description": "Mark past scheduled events as completed. Scans events from 30 days ago to yesterday with status 'scheduled' and updates them to 'completed'. Runs daily at 2 AM UTC via Vercel Cron. Returns { tenantsProcessed, eventsChecked, eventsCompleted, errors, durationMs }."
+          }
+        },
+        {
+          "name": "Waitlist Notify Cron",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cronSecret}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cron/waitlist-notify",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "cron", "waitlist-notify"]
+            },
+            "description": "Handle waitlist expiry and cascade notifications. Runs every 5 min via Vercel Cron. Expires notifications older than 10 minutes and notifies the next person in line. Also cleans up entries for past dates. Returns { expired, pastDateCleaned, notified, errors, durationMs }."
+          }
         }
       ]
     },
@@ -2359,6 +2865,423 @@
               "path": ["api", "stripe", "webhook"]
             },
             "description": "Public Stripe webhook. Handles checkout.session.completed (confirms booking) and checkout.session.expired (frees slot)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Subscription",
+      "item": [
+        {
+          "name": "Checkout Redirect",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/subscription/checkout-redirect?tier=professional",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "app",
+                "subscription",
+                "checkout-redirect"
+              ],
+              "query": [
+                {
+                  "key": "tier",
+                  "value": "professional",
+                  "description": "Subscription tier: starter, professional, or business"
+                }
+              ]
+            },
+            "description": "Authenticated. Creates Stripe Customer + Checkout Session and redirects (302) to Stripe Checkout. If already subscribed, redirects to settings."
+          }
+        },
+        {
+          "name": "Success Callback",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/subscription/success?session_id=cs_test_xxx",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "subscription", "success"],
+              "query": [
+                {
+                  "key": "session_id",
+                  "value": "cs_test_xxx",
+                  "description": "Stripe Checkout session ID"
+                }
+              ]
+            },
+            "description": "Authenticated. Callback from Stripe Checkout. Saves subscription config and redirects to settings page."
+          }
+        },
+        {
+          "name": "Get Status",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/subscription/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "subscription", "status"]
+            },
+            "description": "Authenticated. Returns tenant subscription config or { hasSubscription: false }."
+          }
+        },
+        {
+          "name": "Customer Portal",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/subscription/portal",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "subscription", "portal"]
+            },
+            "description": "Authenticated. Creates Stripe Customer Portal session and returns portalUrl for billing management."
+          }
+        },
+        {
+          "name": "Subscription Webhook",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "stripe-signature",
+                "value": "{{stripeSignature}}",
+                "description": "Stripe webhook signature"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/stripe/subscription-webhook",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stripe", "subscription-webhook"]
+            },
+            "description": "Public Stripe webhook for subscription lifecycle events. Handles customer.subscription.created/updated/deleted, trial_will_end, and invoice.payment_failed."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin (Localhost Only)",
+      "item": [
+        {
+          "name": "List Tenants",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/supa/tenants",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "supa", "tenants"]
+            },
+            "description": "List all tenants with basic info. Localhost only."
+          }
+        },
+        {
+          "name": "Delete Tenant",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenantId\": \"TENANT_ID_HERE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/supa/delete-tenant",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "supa", "delete-tenant"]
+            },
+            "description": "Delete all data for a tenant (main table, emails, domain lookups). Localhost only. Returns deletion counts per entity type."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ad Campaigns",
+      "item": [
+        {
+          "name": "List Campaigns",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/ads/campaigns",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "ads", "campaigns"]
+            },
+            "description": "List all ad campaigns for the authenticated tenant."
+          }
+        },
+        {
+          "name": "Create Campaign",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"goal\": \"traffic\",\n  \"platform\": \"both\",\n  \"bundleId\": \"bundle_50\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/ads/campaigns",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "ads", "campaigns"]
+            },
+            "description": "Create a new ad campaign. AI generates targeting and creative. Returns draft campaign. Goal: traffic | lead_generation. Platform: facebook | instagram | both. BundleId: bundle_50 | bundle_100 | bundle_200."
+          }
+        },
+        {
+          "name": "Get Campaign",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/ads/campaigns/CAMPAIGN_ID",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "ads", "campaigns", "CAMPAIGN_ID"]
+            },
+            "description": "Get a single ad campaign by ID."
+          }
+        },
+        {
+          "name": "Update Campaign",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Campaign Name\",\n  \"creative\": {\n    \"headline\": \"New Headline\",\n    \"primaryText\": \"New primary text\",\n    \"description\": \"New description\",\n    \"callToAction\": \"LEARN_MORE\",\n    \"linkUrl\": \"https://example.com\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/ads/campaigns/CAMPAIGN_ID",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "ads", "campaigns", "CAMPAIGN_ID"]
+            },
+            "description": "Update a draft campaign (name, targeting, creative). Only draft campaigns can be edited."
+          }
+        },
+        {
+          "name": "Delete Campaign",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/ads/campaigns/CAMPAIGN_ID",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "ads", "campaigns", "CAMPAIGN_ID"]
+            },
+            "description": "Delete a campaign. Only draft or failed campaigns can be deleted."
+          }
+        },
+        {
+          "name": "Approve Campaign",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/ads/campaigns/CAMPAIGN_ID/approve",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "app",
+                "ads",
+                "campaigns",
+                "CAMPAIGN_ID",
+                "approve"
+              ]
+            },
+            "description": "Approve and launch a draft campaign. Deducts balance, submits to Meta, sets status to active."
+          }
+        },
+        {
+          "name": "Pause Campaign",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/ads/campaigns/CAMPAIGN_ID/pause",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "app",
+                "ads",
+                "campaigns",
+                "CAMPAIGN_ID",
+                "pause"
+              ]
+            },
+            "description": "Pause an active campaign on Meta."
+          }
+        },
+        {
+          "name": "Resume Campaign",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/ads/campaigns/CAMPAIGN_ID/resume",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "app",
+                "ads",
+                "campaigns",
+                "CAMPAIGN_ID",
+                "resume"
+              ]
+            },
+            "description": "Resume a paused campaign on Meta."
+          }
+        },
+        {
+          "name": "Regenerate Creative",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"feedback\": \"Make it more exciting and action-oriented\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/ads/campaigns/CAMPAIGN_ID/regenerate",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "app",
+                "ads",
+                "campaigns",
+                "CAMPAIGN_ID",
+                "regenerate"
+              ]
+            },
+            "description": "AI regenerate creative for a draft campaign. Optional feedback to guide regeneration."
+          }
+        },
+        {
+          "name": "Get Balance",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/ads/balance",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "ads", "balance"]
+            },
+            "description": "Get current ad credit balance and recent transactions."
+          }
+        },
+        {
+          "name": "Purchase Ad Bundle",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bundleId\": \"bundle_50\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/ads/purchase",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "ads", "purchase"]
+            },
+            "description": "Create Stripe Checkout session for an ad bundle purchase. Returns checkout URL. BundleId: bundle_50 ($50), bundle_100 ($100), bundle_200 ($200)."
+          }
+        },
+        {
+          "name": "Get Transactions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/ads/transactions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "ads", "transactions"]
+            },
+            "description": "List ad credit transaction history."
+          }
+        },
+        {
+          "name": "Search Interests",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/ads/targeting/interests?q=yoga",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "ads", "targeting", "interests"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "yoga"
+                }
+              ]
+            },
+            "description": "Search Meta interest targeting options."
+          }
+        },
+        {
+          "name": "Search Locations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/ads/targeting/locations?q=sydney",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "ads", "targeting", "locations"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "sydney"
+                }
+              ]
+            },
+            "description": "Search Meta location targeting options."
+          }
+        },
+        {
+          "name": "Ad Metrics Sync (Cron)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cronSecret}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/cron/ad-metrics-sync",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "cron", "ad-metrics-sync"]
+            },
+            "description": "Cron job: syncs metrics from Meta for all active campaigns. Runs every 6 hours."
           }
         }
       ]

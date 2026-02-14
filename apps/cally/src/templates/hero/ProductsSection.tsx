@@ -1,6 +1,183 @@
 "use client";
 
-import type { Product } from "@/types";
+import { useState, useCallback } from "react";
+import type { Product, ProductImage } from "@/types";
+
+/**
+ * Tiny image carousel for product cards.
+ * Shows prev/next arrows + dot indicators when there are 2+ images.
+ */
+function ProductImageCarousel({
+  images,
+  fallbackImage,
+  fallbackPosition,
+  fallbackZoom,
+  imageBg,
+}: {
+  images: ProductImage[];
+  fallbackImage?: string;
+  fallbackPosition?: string;
+  fallbackZoom?: number;
+  imageBg: string;
+}) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Build a unified slide list: prefer images array, fallback to legacy single image
+  const slides =
+    images.length > 0
+      ? images
+      : fallbackImage
+        ? [
+            {
+              id: "legacy",
+              url: fallbackImage,
+              position: fallbackPosition,
+              zoom: fallbackZoom,
+            },
+          ]
+        : [];
+
+  const hasMultiple = slides.length > 1;
+
+  const goNext = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setCurrentIndex((prev) => (prev + 1) % slides.length);
+    },
+    [slides.length],
+  );
+
+  const goPrev = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      setCurrentIndex((prev) => (prev - 1 + slides.length) % slides.length);
+    },
+    [slides.length],
+  );
+
+  if (slides.length === 0) return null;
+
+  const current = slides[currentIndex];
+
+  const containerStyle: React.CSSProperties = {
+    position: "relative",
+    width: "100%",
+    paddingTop: "56.25%",
+    backgroundColor: imageBg,
+    overflow: "hidden",
+  };
+
+  const imageStyle: React.CSSProperties = {
+    position: "absolute",
+    inset: 0,
+    backgroundImage: `url(${current.url})`,
+    backgroundPosition: current.position || "50% 50%",
+    backgroundSize: "cover",
+    backgroundRepeat: "no-repeat",
+    transform: current.zoom ? `scale(${current.zoom / 100})` : undefined,
+    transition: "background-image 0.3s ease",
+  };
+
+  const arrowStyle = (side: "left" | "right"): React.CSSProperties => ({
+    position: "absolute",
+    top: "50%",
+    [side]: "8px",
+    transform: "translateY(-50%)",
+    width: "28px",
+    height: "28px",
+    borderRadius: "50%",
+    backgroundColor: "rgba(0,0,0,0.45)",
+    color: "#fff",
+    border: "none",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    opacity: 0,
+    transition: "opacity 0.2s",
+    zIndex: 2,
+  });
+
+  const dotsContainerStyle: React.CSSProperties = {
+    position: "absolute",
+    bottom: "8px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    display: "flex",
+    gap: "5px",
+    zIndex: 2,
+  };
+
+  return (
+    <div style={containerStyle} className="product-carousel-container">
+      <div style={imageStyle} />
+      {hasMultiple && (
+        <>
+          <button
+            type="button"
+            className="product-carousel-arrow"
+            style={arrowStyle("left")}
+            onClick={goPrev}
+            aria-label="Previous image"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+            >
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="product-carousel-arrow"
+            style={arrowStyle("right")}
+            onClick={goNext}
+            aria-label="Next image"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+            >
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+          <div style={dotsContainerStyle}>
+            {slides.map((slide, idx) => (
+              <button
+                key={slide.id}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentIndex(idx);
+                }}
+                style={{
+                  width: "7px",
+                  height: "7px",
+                  borderRadius: "50%",
+                  border: "none",
+                  cursor: "pointer",
+                  backgroundColor:
+                    idx === currentIndex ? "#fff" : "rgba(255,255,255,0.5)",
+                  transition: "background-color 0.2s",
+                  padding: 0,
+                }}
+                aria-label={`Go to image ${idx + 1}`}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 interface ProductsSectionProps {
   products: Product[];
@@ -140,31 +317,6 @@ export default function ProductsSection({
     flexDirection: "column",
   };
 
-  const cardImageContainerStyle: React.CSSProperties = {
-    position: "relative",
-    width: "100%",
-    paddingTop: "56.25%",
-    backgroundColor: theme.imageBg,
-    overflow: "hidden",
-  };
-
-  const cardImageStyle = (
-    image?: string,
-    position?: string,
-    zoom?: number,
-  ): React.CSSProperties => ({
-    position: "absolute",
-    inset: 0,
-    backgroundImage: image ? `url(${image})` : undefined,
-    backgroundPosition: position || "50% 50%",
-    backgroundSize: "cover",
-    backgroundRepeat: "no-repeat",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    transform: image ? `scale(${(zoom || 100) / 100})` : undefined,
-  });
-
   const cardContentStyle: React.CSSProperties = {
     padding: "20px",
     flex: 1,
@@ -235,6 +387,9 @@ export default function ProductsSection({
         .product-book-btn:hover {
           opacity: 0.9;
         }
+        .product-carousel-container:hover .product-carousel-arrow {
+          opacity: 1 !important;
+        }
       `}</style>
       <div style={containerStyle}>
         <div style={headerStyle}>
@@ -245,61 +400,64 @@ export default function ProductsSection({
         </div>
 
         <div style={gridStyle}>
-          {products.map((product) => (
-            <div key={product.id} className="product-card" style={cardStyle}>
-              {/* Card Image */}
-              {product.image && (
-                <div style={cardImageContainerStyle}>
-                  <div
-                    style={cardImageStyle(
-                      product.image,
-                      product.imagePosition,
-                      product.imageZoom,
-                    )}
-                  />
-                </div>
-              )}
+          {products.map((product) => {
+            const productImages = product.images || [];
+            const hasAnyImage = productImages.length > 0 || !!product.image;
 
-              {/* Card Content */}
-              <div style={cardContentStyle}>
-                <h3 style={cardTitleStyle}>{product.name}</h3>
-                {product.description && (
-                  <p style={cardDescStyle}>{product.description}</p>
+            return (
+              <div key={product.id} className="product-card" style={cardStyle}>
+                {/* Card Image Carousel */}
+                {hasAnyImage && (
+                  <ProductImageCarousel
+                    images={productImages}
+                    fallbackImage={product.image}
+                    fallbackPosition={product.imagePosition}
+                    fallbackZoom={product.imageZoom}
+                    imageBg={theme.imageBg}
+                  />
                 )}
 
-                {/* Duration + Price */}
-                <div style={metaRowStyle}>
-                  <span style={badgeStyle}>
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <circle cx="12" cy="12" r="10" />
-                      <polyline points="12 6 12 12 16 14" />
-                    </svg>
-                    {formatDuration(product.durationMinutes)}
-                  </span>
-                  <span style={priceStyle}>
-                    {formatPrice(product.price, currency)}
-                  </span>
-                </div>
+                {/* Card Content */}
+                <div style={cardContentStyle}>
+                  <h3 style={cardTitleStyle}>{product.name}</h3>
+                  {product.description && (
+                    <p style={cardDescStyle}>{product.description}</p>
+                  )}
 
-                {/* Book Now Button */}
-                <button
-                  type="button"
-                  className="product-book-btn"
-                  style={buttonStyle}
-                  onClick={() => onBookProduct?.(product.id)}
-                >
-                  Book Now
-                </button>
+                  {/* Duration + Price */}
+                  <div style={metaRowStyle}>
+                    <span style={badgeStyle}>
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12 6 12 12 16 14" />
+                      </svg>
+                      {formatDuration(product.durationMinutes)}
+                    </span>
+                    <span style={priceStyle}>
+                      {formatPrice(product.price, currency)}
+                    </span>
+                  </div>
+
+                  {/* Book Now Button */}
+                  <button
+                    type="button"
+                    className="product-book-btn"
+                    style={buttonStyle}
+                    onClick={() => onBookProduct?.(product.id)}
+                  >
+                    Book Now
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>

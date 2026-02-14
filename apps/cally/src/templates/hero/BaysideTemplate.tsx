@@ -1,0 +1,634 @@
+"use client";
+
+import type { HeroTemplateProps } from "./types";
+import FeaturesSection from "./FeaturesSection";
+import ProductsSection from "./ProductsSection";
+import TestimonialsSection from "./TestimonialsSection";
+import FAQSection from "./FAQSection";
+import LocationSection from "./LocationSection";
+import GallerySection from "./GallerySection";
+import FooterSection from "./FooterSection";
+
+/**
+ * Bayside Template
+ * Boutique / luxury aesthetic with serif headings, clean sans-serif body,
+ * generous spacing, and editorial styling throughout.
+ * Uses Approach 2 (custom layout, bypasses SectionsRenderer) for full
+ * control over section rendering with alternating backgrounds and
+ * Playfair Display typography.
+ *
+ * Hero: split layout — content left, image right (stacked on mobile).
+ * About: custom split layout — image fills entire left, text right.
+ *
+ * Palette usage:
+ * - --brand-secondary: section backgrounds (alternating with white)
+ * - --brand-highlight: section headings colour
+ * - --brand-500: CTA hover fill, accents
+ * - --brand-100/200/300: hero gradient fallback
+ */
+export default function BaysideTemplate(props: HeroTemplateProps) {
+  const {
+    config,
+    isEditing = false,
+    onTitleChange,
+    onSubtitleChange,
+    onButtonClick,
+    onAboutParagraphChange,
+    onAboutImageClick,
+    onFeaturesHeadingChange,
+    onFeaturesSubheadingChange,
+    onFeatureCardChange,
+    onFeatureCardImageClick,
+    onAddFeatureCard,
+    onRemoveFeatureCard,
+    products,
+    currency,
+    onBookProduct,
+    onTestimonialsHeadingChange,
+    onTestimonialsSubheadingChange,
+    onTestimonialChange,
+    onAddTestimonial,
+    onRemoveTestimonial,
+    onFAQHeadingChange,
+    onFAQSubheadingChange,
+    onFAQItemChange,
+    onAddFAQItem,
+    onRemoveFAQItem,
+    address,
+    onLocationHeadingChange,
+    onLocationSubheadingChange,
+    onGalleryHeadingChange,
+    onGallerySubheadingChange,
+    onGalleryAddImage,
+    onGalleryRemoveImage,
+    onFooterTextChange,
+    onFooterLinkChange,
+    onAddFooterLink,
+    onRemoveFooterLink,
+  } = props;
+  const { title, subtitle, backgroundImage, imagePosition, imageZoom, button } =
+    config;
+
+  const hasImage = !!backgroundImage;
+
+  const sections = config.sections || [
+    { id: "about" as const, enabled: true },
+    { id: "features" as const, enabled: true },
+    { id: "testimonials" as const, enabled: false },
+    { id: "faq" as const, enabled: false },
+  ];
+
+  // Typography
+  const playfair = '"Playfair Display", Georgia, "Times New Roman", serif';
+  const inter =
+    'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+
+  // Fallback colours (used when palette CSS vars are unavailable)
+  const offWhite = "#FAF9F6";
+  const darkText = "#1a1a1a";
+
+  // --- Hero Styles ---
+  const titleStyle: React.CSSProperties = {
+    fontFamily: playfair,
+    fontSize: "clamp(2.5rem, 5vw, 4.5rem)",
+    fontWeight: 700,
+    lineHeight: 1.1,
+    color: darkText,
+    margin: 0,
+    marginBottom: "24px",
+  };
+
+  const subtitleStyle: React.CSSProperties = {
+    fontFamily: inter,
+    fontSize: "clamp(0.8rem, 1.2vw, 0.95rem)",
+    fontWeight: 500,
+    color: "#666",
+    textTransform: "uppercase",
+    letterSpacing: "0.1em",
+    lineHeight: 1.6,
+    margin: 0,
+    marginBottom: "40px",
+    maxWidth: "480px",
+  };
+
+  const editableBaseStyle: React.CSSProperties = isEditing
+    ? {
+        cursor: "text",
+        outline: "none",
+        borderRadius: "8px",
+        padding: "8px 14px",
+        transition: "background 0.2s, outline 0.2s",
+      }
+    : {};
+
+  const buttonStyle: React.CSSProperties = {
+    display: "inline-block",
+    padding: "16px 40px",
+    border: "1.5px solid #1a1a1a",
+    background: "transparent",
+    color: darkText,
+    fontFamily: inter,
+    fontSize: "0.85rem",
+    fontWeight: 500,
+    textTransform: "uppercase",
+    letterSpacing: "0.08em",
+    cursor: "pointer",
+    transition: "all 0.3s ease",
+  };
+
+  const editButtonStyle: React.CSSProperties = {
+    ...buttonStyle,
+    position: "relative",
+  };
+
+  // Image style for split hero
+  const heroImageStyle: React.CSSProperties = {
+    backgroundImage: hasImage
+      ? `url(${backgroundImage})`
+      : `linear-gradient(135deg, var(--brand-100, #e8e4df) 0%, var(--brand-200, #d4cfc7) 50%, var(--brand-300, #c0b9ad) 100%)`,
+    backgroundPosition: imagePosition || "50% 50%",
+    backgroundSize: "cover",
+    backgroundRepeat: "no-repeat",
+    transform: hasImage ? `scale(${(imageZoom || 100) / 100})` : undefined,
+  };
+
+  // --- Custom About Section (split layout with full-height image) ---
+  const aboutSection = (() => {
+    if (!config.about) return null;
+    const about = config.about;
+    const hasAboutImage = !!about.image;
+
+    const aboutImageStyle: React.CSSProperties = {
+      backgroundImage: hasAboutImage ? `url(${about.image})` : undefined,
+      backgroundPosition: about.imagePosition || "50% 50%",
+      backgroundSize: "cover",
+      backgroundRepeat: "no-repeat",
+      backgroundColor: hasAboutImage ? undefined : "var(--brand-100, #f3f4f6)",
+      transform: hasAboutImage
+        ? `scale(${(about.imageZoom || 100) / 100})`
+        : undefined,
+    };
+
+    const aboutTextStyle: React.CSSProperties = {
+      fontSize: "1.1rem",
+      lineHeight: 1.8,
+      color: "#4b5563",
+      fontFamily: inter,
+    };
+
+    const aboutEditableStyle: React.CSSProperties = isEditing
+      ? {
+          cursor: "text",
+          outline: "none",
+          borderRadius: "4px",
+          padding: "12px",
+          transition: "background 0.2s, outline 0.2s",
+        }
+      : {};
+
+    return (
+      <div className="bayside-about">
+        {/* Left: Full-height image */}
+        <div className="bayside-about-image">
+          <div className="bayside-about-image-inner" style={aboutImageStyle}>
+            {!hasAboutImage && (
+              <svg
+                width="48"
+                height="48"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#9ca3af"
+                strokeWidth="1.5"
+              >
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <polyline points="21 15 16 10 5 21" />
+              </svg>
+            )}
+          </div>
+          {isEditing && (
+            <button
+              type="button"
+              onClick={onAboutImageClick}
+              style={{
+                position: "absolute",
+                top: "12px",
+                right: "12px",
+                width: "36px",
+                height: "36px",
+                backgroundColor: "white",
+                borderRadius: "50%",
+                border: "none",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                zIndex: 2,
+              }}
+            >
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#374151"
+                strokeWidth="2"
+              >
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <polyline points="21 15 16 10 5 21" />
+              </svg>
+            </button>
+          )}
+        </div>
+
+        {/* Right: Text content */}
+        <div className="bayside-about-content">
+          {isEditing ? (
+            <div
+              className="bayside-editable"
+              contentEditable
+              suppressContentEditableWarning
+              style={{ ...aboutTextStyle, ...aboutEditableStyle }}
+              onBlur={(e) =>
+                onAboutParagraphChange?.(e.currentTarget.textContent || "")
+              }
+            >
+              {about.paragraph}
+            </div>
+          ) : (
+            <p style={aboutTextStyle}>{about.paragraph}</p>
+          )}
+        </div>
+      </div>
+    );
+  })();
+
+  // --- Section rendering (all full-width, no max-width constraint) ---
+  const sectionElements = sections
+    .filter((s) => s.enabled)
+    .map((section) => {
+      const wrapperStyle: React.CSSProperties = {
+        padding: section.id === "about" ? "0" : "96px 0",
+      };
+
+      switch (section.id) {
+        case "about":
+          return config.about ? (
+            <div
+              key="about"
+              className="bayside-section bayside-section-secondary"
+              style={wrapperStyle}
+            >
+              {aboutSection}
+            </div>
+          ) : null;
+
+        case "features":
+          return config.features && config.features.cards.length > 0 ? (
+            <div
+              key="features"
+              className="bayside-section bayside-section-secondary"
+              style={wrapperStyle}
+            >
+              <FeaturesSection
+                features={config.features}
+                isEditing={isEditing}
+                variant="light"
+                onHeadingChange={onFeaturesHeadingChange}
+                onSubheadingChange={onFeaturesSubheadingChange}
+                onCardChange={onFeatureCardChange}
+                onCardImageClick={onFeatureCardImageClick}
+                onAddCard={onAddFeatureCard}
+                onRemoveCard={onRemoveFeatureCard}
+              />
+            </div>
+          ) : null;
+
+        case "products":
+          return products && products.length > 0 ? (
+            <div
+              key="products"
+              className="bayside-section bayside-section-secondary"
+              style={wrapperStyle}
+            >
+              <ProductsSection
+                products={products}
+                currency={currency || "AUD"}
+                variant="light"
+                onBookProduct={onBookProduct}
+              />
+            </div>
+          ) : null;
+
+        case "testimonials":
+          return config.testimonials ? (
+            <div
+              key="testimonials"
+              className="bayside-section bayside-section-secondary"
+              style={wrapperStyle}
+            >
+              <TestimonialsSection
+                testimonials={config.testimonials}
+                isEditing={isEditing}
+                variant="light"
+                onHeadingChange={onTestimonialsHeadingChange}
+                onSubheadingChange={onTestimonialsSubheadingChange}
+                onTestimonialChange={onTestimonialChange}
+                onAddTestimonial={onAddTestimonial}
+                onRemoveTestimonial={onRemoveTestimonial}
+              />
+            </div>
+          ) : null;
+
+        case "faq":
+          return config.faq ? (
+            <div
+              key="faq"
+              className="bayside-section bayside-section-secondary"
+              style={wrapperStyle}
+            >
+              <FAQSection
+                faq={config.faq}
+                isEditing={isEditing}
+                variant="light"
+                onHeadingChange={onFAQHeadingChange}
+                onSubheadingChange={onFAQSubheadingChange}
+                onItemChange={onFAQItemChange}
+                onAddItem={onAddFAQItem}
+                onRemoveItem={onRemoveFAQItem}
+              />
+            </div>
+          ) : null;
+
+        case "location":
+          return config.location ? (
+            <div
+              key="location"
+              className="bayside-section bayside-section-secondary"
+              style={wrapperStyle}
+            >
+              <LocationSection
+                location={config.location}
+                address={address}
+                isEditing={isEditing}
+                variant="light"
+                onHeadingChange={onLocationHeadingChange}
+                onSubheadingChange={onLocationSubheadingChange}
+              />
+            </div>
+          ) : null;
+
+        case "gallery":
+          return config.gallery ? (
+            <div
+              key="gallery"
+              className="bayside-section bayside-section-secondary"
+              style={wrapperStyle}
+            >
+              <GallerySection
+                gallery={config.gallery}
+                isEditing={isEditing}
+                variant="light"
+                onHeadingChange={onGalleryHeadingChange}
+                onSubheadingChange={onGallerySubheadingChange}
+                onAddImage={onGalleryAddImage}
+                onRemoveImage={onGalleryRemoveImage}
+              />
+            </div>
+          ) : null;
+
+        default:
+          return null;
+      }
+    })
+    .filter(Boolean);
+
+  return (
+    <div style={{ fontFamily: inter, backgroundColor: offWhite }}>
+      {/* Google Fonts */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+        .bayside-hero {
+          display: flex;
+          min-height: 90vh;
+        }
+        .bayside-hero-content {
+          flex: 1;
+          padding: 80px 8%;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          background-color: ${offWhite};
+        }
+        .bayside-hero-image {
+          flex: 1;
+          position: relative;
+          overflow: hidden;
+        }
+        .bayside-hero-image-inner {
+          position: absolute;
+          inset: 0;
+        }
+        .bayside-cta:hover {
+          background-color: var(--brand-500, #1a1a1a) !important;
+          color: var(--brand-500-contrast, #fff) !important;
+          border-color: var(--brand-500, #1a1a1a) !important;
+        }
+
+        /* All sections share the brand secondary background for a seamless flow */
+        .bayside-section-secondary {
+          background-color: var(--brand-secondary, ${offWhite});
+        }
+
+        /* Strip inner section backgrounds and collapse their padding so
+           the bayside wrapper controls spacing seamlessly */
+        .bayside-section-secondary > section {
+          background-color: transparent !important;
+          padding-top: 0 !important;
+          padding-bottom: 0 !important;
+        }
+
+        /* Section headings use highlight colour */
+        .bayside-section h2 {
+          color: var(--brand-highlight, #1a1a1a) !important;
+          font-family: ${playfair} !important;
+        }
+
+        /* About: split layout with full-height image */
+        .bayside-about {
+          display: flex;
+          min-height: 500px;
+        }
+        .bayside-about-image {
+          flex: 1;
+          position: relative;
+          overflow: hidden;
+          min-height: 400px;
+        }
+        .bayside-about-image-inner {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .bayside-about-content {
+          flex: 1;
+          padding: 80px 8%;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+        }
+
+        @media (max-width: 768px) {
+          .bayside-hero {
+            flex-direction: column-reverse;
+            min-height: auto;
+          }
+          .bayside-hero-content {
+            padding: 48px 24px;
+          }
+          .bayside-hero-image {
+            min-height: 50vh;
+            flex: none;
+          }
+          .bayside-about {
+            flex-direction: column;
+            min-height: auto;
+          }
+          .bayside-about-image {
+            min-height: 50vh;
+            flex: none;
+          }
+          .bayside-about-content {
+            padding: 48px 24px;
+          }
+        }
+
+        ${
+          isEditing
+            ? `
+          .bayside-editable:focus {
+            background: rgba(0, 0, 0, 0.04) !important;
+            outline: 2px solid rgba(0, 0, 0, 0.2) !important;
+          }
+          .bayside-editable:hover:not(:focus) {
+            background: rgba(0, 0, 0, 0.02);
+          }
+        `
+            : ""
+        }
+      `}</style>
+
+      {/* Hero Section */}
+      {config.heroEnabled !== false && (
+        <div className="bayside-hero">
+          {/* Left: Content */}
+          <div className="bayside-hero-content">
+            {isEditing ? (
+              <>
+                <div
+                  className="bayside-editable"
+                  contentEditable
+                  suppressContentEditableWarning
+                  style={{ ...titleStyle, ...editableBaseStyle }}
+                  onBlur={(e) =>
+                    onTitleChange?.(e.currentTarget.textContent || "")
+                  }
+                >
+                  {title}
+                </div>
+                <div
+                  className="bayside-editable"
+                  contentEditable
+                  suppressContentEditableWarning
+                  style={{ ...subtitleStyle, ...editableBaseStyle }}
+                  onBlur={(e) =>
+                    onSubtitleChange?.(e.currentTarget.textContent || "")
+                  }
+                >
+                  {subtitle}
+                </div>
+                {button && (
+                  <button
+                    type="button"
+                    onClick={onButtonClick}
+                    style={editButtonStyle}
+                    className="bayside-cta"
+                  >
+                    {button.label}
+                    <span
+                      style={{
+                        position: "absolute",
+                        top: "-8px",
+                        right: "-8px",
+                        width: "24px",
+                        height: "24px",
+                        backgroundColor: "#2563eb",
+                        borderRadius: "50%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="white"
+                        strokeWidth="2"
+                      >
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                      </svg>
+                    </span>
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                <h1 style={titleStyle}>{title}</h1>
+                <p style={subtitleStyle}>{subtitle}</p>
+                {button && (
+                  <button
+                    type="button"
+                    style={buttonStyle}
+                    className="bayside-cta"
+                    onClick={onButtonClick}
+                  >
+                    {button.label}
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Right: Image */}
+          <div className="bayside-hero-image">
+            <div className="bayside-hero-image-inner" style={heroImageStyle} />
+          </div>
+        </div>
+      )}
+
+      {/* Sections with palette-driven backgrounds */}
+      {sectionElements}
+
+      {/* Footer */}
+      {config.footerEnabled !== false && config.footer && (
+        <FooterSection
+          footer={config.footer}
+          isEditing={isEditing}
+          onTextChange={onFooterTextChange}
+          onLinkChange={onFooterLinkChange}
+          onAddLink={onAddFooterLink}
+          onRemoveLink={onRemoveFooterLink}
+        />
+      )}
+    </div>
+  );
+}

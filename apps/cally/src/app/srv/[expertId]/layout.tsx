@@ -1,6 +1,7 @@
 "use client";
 
 import CallySidebar from "@/components/dashboard/CallySidebar";
+import { DashboardChatWidget } from "@/components/ai";
 import { useAuth } from "@/contexts/AuthContext";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -83,6 +84,7 @@ export default function DashboardLayout({
       >
         {children}
       </main>
+      <DashboardChatWidget />
     </div>
   );
 }

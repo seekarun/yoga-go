@@ -1,5 +1,5 @@
 /**
- * AI Booking Tools for CallyGo
+ * Agent: Receptionist (visitor-facing)
  *
  * Tool definitions, executors, and system prompt builder for
  * visitor chat tool calling (list services, check availability, create bookings).

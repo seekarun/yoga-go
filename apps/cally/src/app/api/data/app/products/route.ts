@@ -88,6 +88,7 @@ export async function POST(
       image,
       imagePosition,
       imageZoom,
+      images,
       isActive,
       sortOrder,
     } = body;
@@ -143,6 +144,7 @@ export async function POST(
       image,
       imagePosition,
       imageZoom,
+      images: Array.isArray(images) ? images : undefined,
       isActive: isActive ?? true,
       sortOrder: sortOrder ?? 0,
     };

@@ -5,7 +5,9 @@ import SectionsRenderer from "./SectionsRenderer";
 
 /**
  * Minimal Template
- * Clean and simple with subtle background
+ * Clean and simple with pure white background.
+ * Intentionally ignores: backgroundImage, imagePosition, imageZoom
+ * (image data has no visual effect — hero is always white)
  */
 export default function MinimalTemplate(props: HeroTemplateProps) {
   const {
@@ -15,8 +17,7 @@ export default function MinimalTemplate(props: HeroTemplateProps) {
     onSubtitleChange,
     onButtonClick,
   } = props;
-  const { title, subtitle, backgroundImage, imagePosition, imageZoom, button } =
-    config;
+  const { title, subtitle, button } = config;
 
   const containerStyle: React.CSSProperties = {
     minHeight: "100vh",
@@ -30,22 +31,7 @@ export default function MinimalTemplate(props: HeroTemplateProps) {
     position: "relative",
     overflow: "hidden",
     color: "#1a1a1a",
-  };
-
-  const backgroundStyle: React.CSSProperties = {
-    position: "absolute",
-    inset: 0,
     backgroundColor: "#ffffff",
-    backgroundImage: backgroundImage
-      ? `linear-gradient(rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.92)), url(${backgroundImage})`
-      : undefined,
-    backgroundPosition: imagePosition || "50% 50%",
-    backgroundSize: "cover",
-    backgroundRepeat: "no-repeat",
-    transform: backgroundImage
-      ? `scale(${(imageZoom || 100) / 100})`
-      : undefined,
-    zIndex: 0,
   };
 
   const contentStyle: React.CSSProperties = {
@@ -113,9 +99,6 @@ export default function MinimalTemplate(props: HeroTemplateProps) {
       {/* Hero Section */}
       {config.heroEnabled !== false && (
         <div style={containerStyle}>
-          {/* Background Layer */}
-          <div style={backgroundStyle} />
-
           {isEditing && (
             <style>{`
               .editable-field-dark:focus {
