@@ -34,7 +34,10 @@ export async function POST() {
 
     const aiConfig = tenant.aiAssistantConfig || DEFAULT_AI_ASSISTANT_CONFIG;
 
-    const today = new Date().toISOString().substring(0, 10);
+    const tenantTz = tenant.timezone || "UTC";
+    const today = new Date()
+      .toLocaleDateString("en-CA", { timeZone: tenantTz })
+      .substring(0, 10);
 
     // Construct the function call handler URL.
     // Vapi needs a publicly reachable URL for webhooks.
@@ -103,6 +106,7 @@ export async function POST() {
             hour: "numeric",
             minute: "2-digit",
             hour12: true,
+            timeZone: tenantTz,
           });
           const eventDate = e.startTime.substring(0, 10);
           const duration = e.duration ? `, ${e.duration} min` : "";
@@ -141,7 +145,14 @@ IMPORTANT: Never make up or guess appointment details, names, times, or business
 Today's date is ${today}.${scheduleContext}`;
 
     // Build a natural, human greeting based on time of day and schedule
-    const hour = new Date().getHours();
+    const hour = parseInt(
+      new Date().toLocaleTimeString("en-US", {
+        hour: "numeric",
+        hour12: false,
+        timeZone: tenantTz,
+      }),
+      10,
+    );
     const timeGreeting =
       hour < 12
         ? "Good morning"

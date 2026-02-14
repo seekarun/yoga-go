@@ -79,6 +79,15 @@ function validateSecret(request: NextRequest): boolean {
 }
 
 /**
+ * Resolve the tenant's IANA timezone (e.g. "Australia/Sydney").
+ * Falls back to UTC if not set.
+ */
+async function getTenantTimezone(tenantId: string): Promise<string> {
+  const tenant = await getTenantById(tenantId);
+  return tenant?.timezone || "UTC";
+}
+
+/**
  * Execute a tool call and return the result string.
  */
 async function executeTool(
@@ -145,13 +154,23 @@ export async function POST(request: NextRequest) {
         message.toolCallList.map(async (toolCall) => {
           const fnName = toolCall.function.name;
           let parameters: Record<string, unknown> = {};
-          try {
-            parameters = JSON.parse(toolCall.function.arguments || "{}");
-          } catch {
-            console.error(
-              "[DBG][voice-fn] Failed to parse arguments for:",
-              fnName,
-            );
+          const rawArgs = toolCall.function.arguments;
+          if (typeof rawArgs === "string") {
+            try {
+              parameters = JSON.parse(rawArgs || "{}");
+            } catch (parseErr) {
+              console.error(
+                "[DBG][voice-fn] Failed to parse arguments for:",
+                fnName,
+                "raw:",
+                rawArgs?.substring(0, 200),
+                "error:",
+                parseErr,
+              );
+            }
+          } else if (rawArgs && typeof rawArgs === "object") {
+            // Vapi may send arguments as already-parsed object
+            parameters = rawArgs as Record<string, unknown>;
           }
 
           console.log(
@@ -238,10 +257,13 @@ async function handleGetTodaysSchedule(
   tenantId: string,
   parameters: Record<string, unknown>,
 ): Promise<string> {
+  const tz = await getTenantTimezone(tenantId);
   const date =
     typeof parameters.date === "string" && parameters.date.trim()
       ? parameters.date.trim()
-      : new Date().toISOString().substring(0, 10);
+      : new Date()
+          .toLocaleDateString("en-CA", { timeZone: tz })
+          .substring(0, 10);
 
   console.log("[DBG][voice-fn] Getting schedule for:", date);
   const events = await getCalendarEventsByDateRange(tenantId, date, date);
@@ -269,6 +291,7 @@ async function handleGetTodaysSchedule(
         hour: "numeric",
         minute: "2-digit",
         hour12: true,
+        timeZone: tz,
       });
       const duration = e.duration ? `${e.duration} min` : "";
       const attendees =
@@ -399,10 +422,12 @@ async function handleRescheduleAppointment(
     return "Failed to reschedule the appointment. Please try again.";
   }
 
+  const tz = await getTenantTimezone(tenantId);
   const newTime = new Date(newStartTime).toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
+    timeZone: tz,
   });
 
   const attendees =
