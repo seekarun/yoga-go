@@ -35,6 +35,7 @@ export async function POST() {
     const aiConfig = tenant.aiAssistantConfig || DEFAULT_AI_ASSISTANT_CONFIG;
 
     const tenantTz = tenant.timezone || "UTC";
+    console.log("[DBG][voice-start] Tenant timezone:", tenantTz);
     const today = new Date()
       .toLocaleDateString("en-CA", { timeZone: tenantTz })
       .substring(0, 10);
@@ -142,7 +143,7 @@ Keep responses short and conversational — this is a voice call, not a text cha
 
 IMPORTANT: Never make up or guess appointment details, names, times, or business data. Only state facts from your context or retrieved from tools. If a tool call fails or returns no data, just say you couldn't pull it up right now.
 
-Today's date is ${today}.${scheduleContext}`;
+Today's date is ${today}. All times are in the ${tenantTz} timezone. Always refer to times in this timezone.${scheduleContext}`;
 
     // Build a natural, human greeting based on time of day and schedule
     const hour = parseInt(
