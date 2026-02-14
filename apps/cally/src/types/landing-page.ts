@@ -20,7 +20,9 @@ export type TemplateId =
   | "bold"
   | "apple"
   | "bayside"
-  | "therapist";
+  | "therapist"
+  | "parallax"
+  | "animated";
 
 /**
  * Image aspect ratio configuration for a template
@@ -131,6 +133,28 @@ export const TEMPLATES: TemplateInfo[] = [
     imageConfig: {
       heroBackground: "16/9",
       aboutImage: "1/1",
+      featureCardImage: "16/9",
+    },
+  },
+  {
+    id: "parallax",
+    name: "Parallax",
+    description:
+      "Immersive scroll-driven depth effect with fixed background layers",
+    imageConfig: {
+      heroBackground: "16/9",
+      aboutImage: "4/5",
+      featureCardImage: "16/9",
+    },
+  },
+  {
+    id: "animated",
+    name: "Animated",
+    description:
+      "Scroll-triggered fade-in animations with smooth element transitions",
+    imageConfig: {
+      heroBackground: "16/9",
+      aboutImage: "4/5",
       featureCardImage: "16/9",
     },
   },

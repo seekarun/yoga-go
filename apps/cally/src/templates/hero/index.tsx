@@ -10,6 +10,8 @@ import BoldTemplate from "./BoldTemplate";
 import AppleTemplate from "./AppleTemplate";
 import BaysideTemplate from "./BaysideTemplate";
 import TherapistTemplate from "./TherapistTemplate";
+import ParallaxTemplate from "./ParallaxTemplate";
+import AnimatedTemplate from "./AnimatedTemplate";
 
 /**
  * Template registry mapping template IDs to their components
@@ -23,6 +25,8 @@ const TEMPLATE_COMPONENTS: Record<TemplateId, React.FC<HeroTemplateProps>> = {
   apple: AppleTemplate,
   bayside: BaysideTemplate,
   therapist: TherapistTemplate,
+  parallax: ParallaxTemplate,
+  animated: AnimatedTemplate,
 };
 
 /**
@@ -46,4 +50,6 @@ export {
   AppleTemplate,
   BaysideTemplate,
   TherapistTemplate,
+  ParallaxTemplate,
+  AnimatedTemplate,
 };

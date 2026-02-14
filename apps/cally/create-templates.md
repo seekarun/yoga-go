@@ -29,7 +29,7 @@ The template **bypasses SectionsRenderer** and renders section components direct
 
 The template must destructure all props from `HeroTemplateProps` and pass them to the individual section components. It must also handle the `config.sections` array for ordering and `enabled` filtering.
 
-**Templates using this approach**: Apple (tile grid layout), Bayside (split hero, editorial sections), Therapist (centered blurred hero, circle portrait, organic shapes)
+**Templates using this approach**: Apple (tile grid layout), Bayside (split hero, editorial sections), Therapist (centered blurred hero, circle portrait, organic shapes), Parallax (fixed bg hero, parallax dividers, scroll-driven depth), Animated (scroll-triggered fade-in animations)
 
 ## Files to Modify When Adding a Template
 
@@ -232,16 +232,18 @@ Choose the variant that contrasts with your hero:
 
 ## Existing Templates Reference
 
-| Template     | Hero Background                 | Text Color             | Variant | Key Feature                                                                                       |
-| ------------ | ------------------------------- | ---------------------- | ------- | ------------------------------------------------------------------------------------------------- |
-| Centered     | Gradient/image overlay          | White                  | gray    | Classic centered, gradient fallback                                                               |
-| Left Aligned | Dark gradient (#1a1a2e)         | White                  | dark    | Left-aligned, accent line                                                                         |
-| Split        | Two halves (light+image)        | Dark left, white right | light   | Side-by-side layout                                                                               |
-| Minimal      | White with subtle image wash    | Dark (#1a1a1a)         | light   | Divider between title/subtitle                                                                    |
-| Bold         | Black (#000) with heavy overlay | White                  | dark    | Huge uppercase text, 900 weight                                                                   |
-| Apple        | Off-white (#fbfbfd) / image     | Dark (#1d1d1f) / white | light   | **Custom layout**: tile grid, compact 70vh hero, #f5f5f7 page bg                                  |
-| Bayside      | Off-white (#FAF9F6) split       | Dark (#1a1a1a)         | light   | **Custom layout**: split hero, Playfair Display serif, boutique luxury                            |
-| Therapist    | Blurred image / soft gradient   | White / Dark           | light   | **Custom layout**: centered blurred hero, Lora serif, circle portrait, organic blob, soft shadows |
+| Template     | Hero Background                 | Text Color             | Variant | Key Feature                                                                                               |
+| ------------ | ------------------------------- | ---------------------- | ------- | --------------------------------------------------------------------------------------------------------- |
+| Centered     | Gradient/image overlay          | White                  | gray    | Classic centered, gradient fallback                                                                       |
+| Left Aligned | Dark gradient (#1a1a2e)         | White                  | dark    | Left-aligned, accent line                                                                                 |
+| Split        | Two halves (light+image)        | Dark left, white right | light   | Side-by-side layout                                                                                       |
+| Minimal      | White with subtle image wash    | Dark (#1a1a1a)         | light   | Divider between title/subtitle                                                                            |
+| Bold         | Black (#000) with heavy overlay | White                  | dark    | Huge uppercase text, 900 weight                                                                           |
+| Apple        | Off-white (#fbfbfd) / image     | Dark (#1d1d1f) / white | light   | **Custom layout**: tile grid, compact 70vh hero, #f5f5f7 page bg                                          |
+| Bayside      | Off-white (#FAF9F6) split       | Dark (#1a1a1a)         | light   | **Custom layout**: split hero, Playfair Display serif, boutique luxury                                    |
+| Therapist    | Blurred image / soft gradient   | White / Dark           | light   | **Custom layout**: centered blurred hero, Lora serif, circle portrait, organic blob, soft shadows         |
+| Parallax     | Fixed bg image / dark gradient  | White                  | light   | **Custom layout**: full-screen fixed bg hero, parallax dividers, Playfair Display serif, scroll indicator |
+| Animated     | Gradient/image overlay          | White                  | light   | **Custom layout**: scroll-triggered fade-in animations, Inter sans-serif, staggered card reveals          |
 
 ## Section Components Reference
 

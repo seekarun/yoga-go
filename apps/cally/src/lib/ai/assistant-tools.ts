@@ -15,13 +15,19 @@ import {
   getCalendarEventByIdOnly,
   updateCalendarEvent,
   getUpcomingCalendarEvents,
+  getTenantCalendarEvents,
 } from "@/lib/repositories/calendarEventRepository";
 import {
   getEmailsByTenant,
   getUnreadCount,
   findEmailById,
+  getEmailsByContact,
 } from "@/lib/repositories/emailRepository";
 import { getSubscribersByTenant } from "@/lib/repositories/subscriberRepository";
+import { getContactsByEmail } from "@/lib/repositories/contactRepository";
+import { getFeedbackByTenant } from "@/lib/repositories/feedbackRepository";
+import { mergeSubscribersAndVisitors } from "@/lib/users/mergeUsers";
+import { parseVisitorFromDescription } from "@/lib/email/bookingNotification";
 import { pushUpdateToGoogle } from "@/lib/google-calendar-sync";
 
 /**
@@ -173,12 +179,37 @@ const GET_EMAIL_DETAIL_TOOL: ToolDefinition = {
   },
 };
 
+const GET_CUSTOMER_CONTEXT_TOOL: ToolDefinition = {
+  type: "function",
+  function: {
+    name: "get_customer_context",
+    description:
+      "Get comprehensive context about a customer: profile, booking history, emails, reviews/feedback, and contact submissions. Provide either a customer email or an event/booking ID to look up the customer.",
+    parameters: {
+      type: "object",
+      properties: {
+        customerEmail: {
+          type: "string",
+          description: "The customer's email address. Provide this OR eventId.",
+        },
+        eventId: {
+          type: "string",
+          description:
+            "A calendar event/booking ID to resolve the customer from. Provide this OR customerEmail.",
+        },
+      },
+      required: [],
+    },
+  },
+};
+
 export const ASSISTANT_TOOL_DEFINITIONS: ToolDefinition[] = [
   GET_DAILY_BRIEF_TOOL,
   GET_APPOINTMENTS_TOOL,
   UPDATE_APPOINTMENT_TOOL,
   GET_RECENT_EMAILS_TOOL,
   GET_EMAIL_DETAIL_TOOL,
+  GET_CUSTOMER_CONTEXT_TOOL,
 ];
 
 // ============================================================
@@ -212,6 +243,8 @@ export async function executeAssistantToolCall(
         return await executeGetRecentEmails(tenantId, toolArgs, tz);
       case "get_email_detail":
         return await executeGetEmailDetail(tenantId, toolArgs, tz);
+      case "get_customer_context":
+        return await executeGetCustomerContext(tenantId, toolArgs, tz);
       default:
         return JSON.stringify({ error: `Unknown tool: ${toolName}` });
     }
@@ -491,6 +524,225 @@ async function executeGetEmailDetail(
   });
 }
 
+/**
+ * get_customer_context — aggregate a customer's full profile and history
+ */
+async function executeGetCustomerContext(
+  tenantId: string,
+  toolArgs: string,
+  timezone: string,
+): Promise<string> {
+  const args = JSON.parse(toolArgs) as {
+    customerEmail?: string;
+    eventId?: string;
+  };
+
+  // Resolve the customer email
+  let email: string | null = null;
+
+  if (args.eventId) {
+    const event = await getCalendarEventByIdOnly(tenantId, args.eventId);
+    if (!event) {
+      return JSON.stringify({
+        error: `Event with ID "${args.eventId}" not found.`,
+      });
+    }
+    const visitor = parseVisitorFromDescription(event.description);
+    if (!visitor) {
+      return JSON.stringify({
+        error:
+          "This event does not have visitor/booking information. Try providing a customerEmail instead.",
+      });
+    }
+    email = visitor.visitorEmail;
+  } else if (args.customerEmail) {
+    email = args.customerEmail;
+  }
+
+  if (!email) {
+    return JSON.stringify({
+      error:
+        "Please provide either a customerEmail or an eventId to look up the customer.",
+    });
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+
+  console.log(
+    `[DBG][assistant-tools] get_customer_context: fetching data for ${normalizedEmail}`,
+  );
+
+  // Fetch all data in parallel
+  const [subscribers, events, emails, contacts, allFeedback] =
+    await Promise.all([
+      getSubscribersByTenant(tenantId),
+      getTenantCalendarEvents(tenantId),
+      getEmailsByContact(tenantId, normalizedEmail),
+      getContactsByEmail(tenantId, normalizedEmail),
+      getFeedbackByTenant(tenantId),
+    ]);
+
+  // Build CallyUser profile via merge
+  const users = mergeSubscribersAndVisitors(subscribers, events, contacts);
+  const user = users.find(
+    (u) => u.email.toLowerCase().trim() === normalizedEmail,
+  );
+
+  // Filter bookings for this customer
+  const bookings = events
+    .filter((e) => {
+      if (!e.title.startsWith("Booking:")) return false;
+      const visitor = parseVisitorFromDescription(e.description);
+      return visitor?.visitorEmail.toLowerCase().trim() === normalizedEmail;
+    })
+    .sort((a, b) => b.startTime.localeCompare(a.startTime));
+
+  // Filter feedback for this customer
+  const feedback = allFeedback.filter(
+    (f) => f.recipientEmail.toLowerCase().trim() === normalizedEmail,
+  );
+
+  // Determine relationship
+  const totalBookings = bookings.length;
+  let relationship: "prospect" | "new" | "occasional" | "regular";
+  if (totalBookings === 0) relationship = "prospect";
+  else if (totalBookings === 1) relationship = "new";
+  else if (totalBookings <= 3) relationship = "occasional";
+  else relationship = "regular";
+
+  // Compute sentiment from submitted feedback
+  const submittedFeedback = feedback.filter(
+    (f) => f.status === "submitted" && f.rating !== undefined,
+  );
+  const totalReviews = submittedFeedback.length;
+  let sentiment: {
+    overall: string;
+    averageRating: number | null;
+    totalReviews: number;
+    ratingBreakdown: Record<string, number>;
+  };
+
+  if (totalReviews === 0) {
+    sentiment = {
+      overall: "no_feedback",
+      averageRating: null,
+      totalReviews: 0,
+      ratingBreakdown: {},
+    };
+  } else {
+    const sum = submittedFeedback.reduce((acc, f) => acc + (f.rating || 0), 0);
+    const avg = sum / totalReviews;
+    const breakdown: Record<string, number> = {};
+    for (const f of submittedFeedback) {
+      const key = String(f.rating);
+      breakdown[key] = (breakdown[key] || 0) + 1;
+    }
+    sentiment = {
+      overall: avg >= 4 ? "positive" : avg >= 3 ? "neutral" : "negative",
+      averageRating: Math.round(avg * 10) / 10,
+      totalReviews,
+      ratingBreakdown: breakdown,
+    };
+  }
+
+  // Last appointment
+  const lastBooking = bookings[0] || null;
+  const lastAppointment = lastBooking
+    ? {
+        date: formatDateTimeInTimezone(lastBooking.startTime, timezone),
+        status: lastBooking.status,
+        notes: lastBooking.notes || "",
+        visitorNote:
+          parseVisitorFromDescription(lastBooking.description)?.note || "",
+      }
+    : null;
+
+  // Booking history (format each)
+  const bookingHistory = bookings.map((e) => {
+    const visitor = parseVisitorFromDescription(e.description);
+    return {
+      id: e.id,
+      date: new Date(e.startTime).toLocaleDateString("en-CA", {
+        timeZone: timezone,
+      }),
+      startTime: formatTimeInTimezone(e.startTime, timezone),
+      endTime: formatTimeInTimezone(e.endTime, timezone),
+      status: e.status,
+      title: e.title,
+      notes: e.notes || "",
+      visitorNote: visitor?.note || "",
+    };
+  });
+
+  // Recent emails (max 10)
+  const recentEmails = emails.slice(0, 10).map((e) => {
+    const isFromCustomer =
+      e.from.email.toLowerCase().trim() === normalizedEmail;
+    return {
+      id: e.id,
+      direction: isFromCustomer ? ("inbound" as const) : ("outbound" as const),
+      from: e.from.name ? `${e.from.name} <${e.from.email}>` : e.from.email,
+      subject: e.subject,
+      snippet: e.bodyText.slice(0, 150),
+      receivedAt: formatDateTimeInTimezone(e.receivedAt, timezone),
+    };
+  });
+
+  // Feedback list
+  const feedbackList = feedback.map((f) => ({
+    id: f.id,
+    status: f.status,
+    rating: f.rating ?? null,
+    message: f.message || "",
+    createdAt: formatDateTimeInTimezone(f.createdAt, timezone),
+    submittedAt: f.submittedAt
+      ? formatDateTimeInTimezone(f.submittedAt, timezone)
+      : null,
+  }));
+
+  // Contact submissions
+  const contactSubmissions = contacts.map((c) => ({
+    id: c.id,
+    name: c.name,
+    message: c.message,
+    submittedAt: formatDateTimeInTimezone(c.submittedAt, timezone),
+  }));
+
+  const result = {
+    profile: user
+      ? {
+          email: user.email,
+          name: user.name,
+          type: user.userType,
+          subscribedAt: user.subscribedAt || null,
+          source: user.source || null,
+        }
+      : {
+          email: normalizedEmail,
+          name: "Unknown",
+          type: "unknown",
+          subscribedAt: null,
+          source: null,
+        },
+    relationship,
+    totalBookings,
+    sentiment,
+    lastAppointment,
+    bookingHistory,
+    recentEmails,
+    feedback: feedbackList,
+    contactSubmissions,
+    totalEmails: emails.length,
+    totalContacts: contacts.length,
+  };
+
+  console.log(
+    `[DBG][assistant-tools] get_customer_context: ${normalizedEmail} — ${relationship}, ${totalBookings} bookings, ${emails.length} emails, ${feedback.length} feedback, ${contacts.length} contacts`,
+  );
+
+  return JSON.stringify(result);
+}
+
 // ============================================================
 // System Prompt Builder
 // ============================================================
@@ -615,6 +867,9 @@ export function buildAssistantSystemPrompt(tenant: CallyTenant): string {
   parts.push(
     `5. **get_email_detail** — Get the full content of a specific email by ID.`,
   );
+  parts.push(
+    `6. **get_customer_context** — Get comprehensive context about a customer: profile, booking history, emails, reviews/feedback, and contact submissions. Accepts a customer email or event/booking ID.`,
+  );
 
   // Instructions
   parts.push(`\nINSTRUCTIONS:`);
@@ -629,6 +884,18 @@ export function buildAssistantSystemPrompt(tenant: CallyTenant): string {
   );
   parts.push(
     `- When asked about emails or the inbox, call get_recent_emails. If the user wants to read a specific email, call get_email_detail.`,
+  );
+  parts.push(
+    `- When asked about a customer or to prepare for an appointment, call get_customer_context with their email or the event ID.`,
+  );
+  parts.push(
+    `- When appointment results include attendee info, proactively offer to look up the customer's history using get_customer_context.`,
+  );
+  parts.push(
+    `- After fetching customer context, use the returned data for follow-up questions without re-calling the tool.`,
+  );
+  parts.push(
+    `- Classify customers as: prospect (0 bookings), new (1), occasional (2-3), regular (4+).`,
   );
   parts.push(
     `- Present information in a clear, concise format. Use bullet points for lists.`,
@@ -662,6 +929,11 @@ function formatEventSummary(event: CalendarEvent, timezone: string) {
     timeZone: timezone,
   });
 
+  const isBooking = event.title.startsWith("Booking:");
+  const visitor = isBooking
+    ? parseVisitorFromDescription(event.description)
+    : null;
+
   return {
     id: event.id,
     title: event.title,
@@ -673,6 +945,13 @@ function formatEventSummary(event: CalendarEvent, timezone: string) {
     status: event.status,
     description: event.description || "",
     notes: event.notes || "",
+    ...(visitor && {
+      attendee: {
+        name: visitor.visitorName,
+        email: visitor.visitorEmail,
+        note: visitor.note || "",
+      },
+    }),
   };
 }
 

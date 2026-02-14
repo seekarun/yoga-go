@@ -16,8 +16,8 @@ x SEO help
 x user preferences (password, email)
 x accept payments for calendar events
 x tenant subscription
+x more templates
 
-- more templates
 - super admin console
 - booking wait list
 - feat: add images for products
