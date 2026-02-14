@@ -35,7 +35,12 @@ export async function POST() {
     const aiConfig = tenant.aiAssistantConfig || DEFAULT_AI_ASSISTANT_CONFIG;
 
     const tenantTz = tenant.timezone || "UTC";
-    console.log("[DBG][voice-start] Tenant timezone:", tenantTz);
+    console.log(
+      "[DBG][voice-start] Tenant timezone raw:",
+      JSON.stringify(tenant.timezone),
+      "→ using:",
+      tenantTz,
+    );
     const today = new Date()
       .toLocaleDateString("en-CA", { timeZone: tenantTz })
       .substring(0, 10);
