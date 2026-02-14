@@ -1,7 +1,7 @@
 /**
  * POST /api/data/app/ai/voice/function
- * Handles Vapi function call webhooks.
- * Vapi sends function call requests here when the AI invokes tools
+ * Handles Vapi tool call webhooks.
+ * Vapi sends tool-calls requests here when the AI invokes tools
  * during a voice conversation.
  *
  * Auth: Validated via x-vapi-secret header (not user session).
@@ -24,13 +24,24 @@ import type { BusinessInfo } from "@/types/ai-assistant";
 import type { CalendarEvent } from "@core/types";
 
 /**
- * Vapi sends server messages with this shape.
+ * Vapi "tool-calls" server message shape.
  * See: https://docs.vapi.ai/server-url
- * The metadata can be at call level or assistant level depending on Vapi version.
  */
+interface VapiToolCall {
+  id: string;
+  type: string;
+  function: {
+    name: string;
+    arguments: string; // JSON string
+  };
+}
+
 interface VapiServerMessage {
   message: {
     type: string;
+    // "tool-calls" format (current Vapi)
+    toolCallList?: VapiToolCall[];
+    // Legacy "function-call" format
     functionCall?: {
       name: string;
       parameters: Record<string, unknown>;
@@ -58,6 +69,31 @@ function validateSecret(request: NextRequest): boolean {
   return secret === expected;
 }
 
+/**
+ * Execute a tool call and return the result string.
+ */
+async function executeTool(
+  name: string,
+  parameters: Record<string, unknown>,
+  tenantId: string,
+): Promise<string> {
+  switch (name) {
+    case "search_knowledge":
+      return handleSearchKnowledge(tenantId, parameters);
+    case "get_todays_schedule":
+      return handleGetTodaysSchedule(tenantId, parameters);
+    case "reschedule_appointment":
+      return handleRescheduleAppointment(tenantId, parameters);
+    case "cancel_appointment":
+      return handleCancelAppointment(tenantId, parameters);
+    case "save_business_info":
+      return handleSaveBusinessInfo(tenantId, parameters);
+    default:
+      console.warn("[DBG][voice-fn] Unknown function:", name);
+      return `Unknown function: ${name}`;
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     if (!validateSecret(request)) {
@@ -71,110 +107,131 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as VapiServerMessage;
     const { message } = body;
 
-    // Only handle function-call messages
-    if (message.type !== "function-call") {
-      console.log("[DBG][voice-fn] Ignoring message type:", message.type);
-      return NextResponse.json({ success: true });
-    }
+    console.log("[DBG][voice-fn] Received message type:", message.type);
 
-    if (!message.functionCall) {
-      console.error(
-        "[DBG][voice-fn] function-call message missing functionCall",
-      );
-      return NextResponse.json({ result: "Invalid request" });
-    }
-
-    const { name, parameters } = message.functionCall;
-    // Metadata may be at call level or nested under assistant
+    // Extract tenantId from call metadata
     const tenantId =
       message.call?.metadata?.tenantId ||
       message.call?.assistant?.metadata?.tenantId;
 
-    console.log("[DBG][voice-fn] Function call:", name, "tenantId:", tenantId);
-
-    if (!tenantId) {
-      console.error("[DBG][voice-fn] No tenantId in call metadata");
-      return NextResponse.json({
-        result: "Error: Unable to identify the business. Please try again.",
-      });
-    }
-
-    switch (name) {
-      case "search_knowledge":
-        return handleSearchKnowledge(tenantId, parameters);
-      case "get_todays_schedule":
-        return handleGetTodaysSchedule(tenantId, parameters);
-      case "reschedule_appointment":
-        return handleRescheduleAppointment(tenantId, parameters);
-      case "cancel_appointment":
-        return handleCancelAppointment(tenantId, parameters);
-      case "save_business_info":
-        return handleSaveBusinessInfo(tenantId, parameters);
-      default:
-        console.warn("[DBG][voice-fn] Unknown function:", name);
+    // Handle "tool-calls" (current Vapi format)
+    if (message.type === "tool-calls" && message.toolCallList) {
+      if (!tenantId) {
+        console.error("[DBG][voice-fn] No tenantId in call metadata");
         return NextResponse.json({
-          result: `Unknown function: ${name}`,
+          results: message.toolCallList.map((tc) => ({
+            toolCallId: tc.id,
+            name: tc.function.name,
+            error: "Error: Unable to identify the business. Please try again.",
+          })),
         });
+      }
+
+      const results = await Promise.all(
+        message.toolCallList.map(async (toolCall) => {
+          const fnName = toolCall.function.name;
+          let parameters: Record<string, unknown> = {};
+          try {
+            parameters = JSON.parse(toolCall.function.arguments || "{}");
+          } catch {
+            console.error(
+              "[DBG][voice-fn] Failed to parse arguments for:",
+              fnName,
+            );
+          }
+
+          console.log(
+            "[DBG][voice-fn] Tool call:",
+            fnName,
+            "tenantId:",
+            tenantId,
+          );
+
+          try {
+            const result = await executeTool(fnName, parameters, tenantId);
+            return { toolCallId: toolCall.id, name: fnName, result };
+          } catch (err) {
+            console.error("[DBG][voice-fn] Tool execution error:", err);
+            return {
+              toolCallId: toolCall.id,
+              name: fnName,
+              error: "Sorry, I encountered an error processing that request.",
+            };
+          }
+        }),
+      );
+
+      return NextResponse.json({ results });
     }
+
+    // Handle legacy "function-call" format
+    if (message.type === "function-call" && message.functionCall) {
+      const { name, parameters } = message.functionCall;
+
+      console.log(
+        "[DBG][voice-fn] Legacy function call:",
+        name,
+        "tenantId:",
+        tenantId,
+      );
+
+      if (!tenantId) {
+        console.error("[DBG][voice-fn] No tenantId in call metadata");
+        return NextResponse.json({
+          result: "Error: Unable to identify the business. Please try again.",
+        });
+      }
+
+      const result = await executeTool(name, parameters, tenantId);
+      return NextResponse.json({ result });
+    }
+
+    // Ignore other message types (status updates, transcripts, etc.)
+    console.log("[DBG][voice-fn] Ignoring message type:", message.type);
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error("[DBG][voice-fn] Error:", error);
     return NextResponse.json({
-      result: "Sorry, I encountered an error processing that request.",
+      results: [
+        {
+          error: "Sorry, I encountered an error processing that request.",
+        },
+      ],
     });
   }
 }
 
-/**
- * Handle search_knowledge function call.
- * Searches the tenant's knowledge base and returns relevant chunks.
- */
+// ─── Tool Handlers ───────────────────────────────────────────────
+
 async function handleSearchKnowledge(
   tenantId: string,
   parameters: Record<string, unknown>,
-): Promise<NextResponse> {
+): Promise<string> {
   const query = parameters.query as string;
-  if (!query) {
-    return NextResponse.json({
-      result: "No search query provided.",
-    });
-  }
+  if (!query) return "No search query provided.";
 
   console.log("[DBG][voice-fn] Searching knowledge:", query);
-
   const chunks = await searchKnowledge(tenantId, query, 3);
 
   if (chunks.length === 0) {
-    return NextResponse.json({
-      result:
-        "No relevant information found in the knowledge base for this query.",
-    });
+    return "No relevant information found in the knowledge base for this query.";
   }
 
-  const contextText = chunks.map((c, i) => `[${i + 1}] ${c.text}`).join("\n\n");
-
-  return NextResponse.json({
-    result: contextText,
-  });
+  return chunks.map((c, i) => `[${i + 1}] ${c.text}`).join("\n\n");
 }
 
-/**
- * Handle get_todays_schedule function call.
- * Fetches the tenant's calendar events for a given date (defaults to today).
- */
 async function handleGetTodaysSchedule(
   tenantId: string,
   parameters: Record<string, unknown>,
-): Promise<NextResponse> {
+): Promise<string> {
   const date =
     typeof parameters.date === "string" && parameters.date.trim()
       ? parameters.date.trim()
       : new Date().toISOString().substring(0, 10);
 
   console.log("[DBG][voice-fn] Getting schedule for:", date);
-
   const events = await getCalendarEventsByDateRange(tenantId, date, date);
 
-  // Filter to only scheduled/pending events (not cancelled/completed)
   const activeEvents = events.filter(
     (e: CalendarEvent) =>
       e.status === "scheduled" ||
@@ -183,18 +240,14 @@ async function handleGetTodaysSchedule(
   );
 
   if (activeEvents.length === 0) {
-    return NextResponse.json({
-      result: `No appointments scheduled for ${date}.`,
-    });
+    return `No appointments scheduled for ${date}.`;
   }
 
-  // Sort by start time
   activeEvents.sort(
     (a: CalendarEvent, b: CalendarEvent) =>
       new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
   );
 
-  // Format events for voice readback
   const summary = activeEvents
     .map((e: CalendarEvent) => {
       const start = new Date(e.startTime);
@@ -213,29 +266,18 @@ async function handleGetTodaysSchedule(
     })
     .join("\n");
 
-  return NextResponse.json({
-    result: `Schedule for ${date} (${activeEvents.length} appointment${activeEvents.length === 1 ? "" : "s"}):\n${summary}`,
-  });
+  return `Schedule for ${date} (${activeEvents.length} appointment${activeEvents.length === 1 ? "" : "s"}):\n${summary}`;
 }
 
-/**
- * Handle save_business_info function call.
- * Updates the tenant's business info in the AI assistant config.
- */
 async function handleSaveBusinessInfo(
   tenantId: string,
   parameters: Record<string, unknown>,
-): Promise<NextResponse> {
+): Promise<string> {
   console.log("[DBG][voice-fn] Saving business info for tenant:", tenantId);
 
   const tenant = await getTenantById(tenantId);
-  if (!tenant) {
-    return NextResponse.json({
-      result: "Error: Tenant not found.",
-    });
-  }
+  if (!tenant) return "Error: Tenant not found.";
 
-  // Build clean business info from parameters
   const newInfo: BusinessInfo = {};
   if (
     typeof parameters.businessName === "string" &&
@@ -274,7 +316,6 @@ async function handleSaveBusinessInfo(
     newInfo.additionalNotes = parameters.additionalNotes.trim();
   }
 
-  // Merge with existing config
   const currentConfig = tenant.aiAssistantConfig || {
     enabled: false,
     widgetPosition: "bottom-right" as const,
@@ -295,32 +336,21 @@ async function handleSaveBusinessInfo(
   });
 
   console.log("[DBG][voice-fn] Business info saved for tenant:", tenantId);
-
   const savedFields = Object.keys(newInfo).join(", ");
-  return NextResponse.json({
-    result: `Business information saved successfully. Updated fields: ${savedFields}`,
-  });
+  return `Business information saved successfully. Updated fields: ${savedFields}`;
 }
 
-/**
- * Handle reschedule_appointment function call.
- * Moves an appointment to a new time. If the date changes, the repository
- * handles delete+recreate (DynamoDB SK includes date).
- */
 async function handleRescheduleAppointment(
   tenantId: string,
   parameters: Record<string, unknown>,
-): Promise<NextResponse> {
+): Promise<string> {
   const eventId = parameters.eventId as string;
   const date = parameters.date as string;
   const newStartTime = parameters.newStartTime as string;
   const newEndTime = parameters.newEndTime as string | undefined;
 
   if (!eventId || !date || !newStartTime) {
-    return NextResponse.json({
-      result:
-        "Missing required parameters. I need the eventId, date, and new start time to reschedule.",
-    });
+    return "Missing required parameters. I need the eventId, date, and new start time to reschedule.";
   }
 
   console.log(
@@ -330,18 +360,13 @@ async function handleRescheduleAppointment(
     newStartTime,
   );
 
-  // Fetch the current event to get its duration
   const events = await getCalendarEventsByDateRange(tenantId, date, date);
   const event = events.find((e: CalendarEvent) => e.id === eventId);
 
   if (!event) {
-    return NextResponse.json({
-      result:
-        "Could not find that appointment. It may have been moved or deleted.",
-    });
+    return "Could not find that appointment. It may have been moved or deleted.";
   }
 
-  // Calculate new end time if not provided (preserve original duration)
   let calculatedEndTime = newEndTime;
   if (!calculatedEndTime && event.duration) {
     const newStart = new Date(newStartTime);
@@ -357,9 +382,7 @@ async function handleRescheduleAppointment(
   const updated = await updateCalendarEvent(tenantId, date, eventId, updates);
 
   if (!updated) {
-    return NextResponse.json({
-      result: "Failed to reschedule the appointment. Please try again.",
-    });
+    return "Failed to reschedule the appointment. Please try again.";
   }
 
   const newTime = new Date(newStartTime).toLocaleTimeString("en-US", {
@@ -373,53 +396,35 @@ async function handleRescheduleAppointment(
       ? ` with ${updated.attendees.map((a) => a.name || a.email).join(", ")}`
       : "";
 
-  return NextResponse.json({
-    result: `Done! "${updated.title}"${attendees} has been moved to ${newTime}.`,
-  });
+  return `Done! "${updated.title}"${attendees} has been moved to ${newTime}.`;
 }
 
-/**
- * Handle cancel_appointment function call.
- * Cancels an appointment, processes Stripe refund if applicable,
- * and sends cancellation email to the visitor.
- */
 async function handleCancelAppointment(
   tenantId: string,
   parameters: Record<string, unknown>,
-): Promise<NextResponse> {
+): Promise<string> {
   const eventId = parameters.eventId as string;
   const date = parameters.date as string;
 
   if (!eventId || !date) {
-    return NextResponse.json({
-      result:
-        "Missing required parameters. I need the eventId and date to cancel.",
-    });
+    return "Missing required parameters. I need the eventId and date to cancel.";
   }
 
   console.log("[DBG][voice-fn] Cancelling event:", eventId);
 
-  // Fetch the event to get details for refund/notification
   const events = await getCalendarEventsByDateRange(tenantId, date, date);
   const event = events.find((e: CalendarEvent) => e.id === eventId);
 
   if (!event) {
-    return NextResponse.json({
-      result:
-        "Could not find that appointment. It may have already been cancelled.",
-    });
+    return "Could not find that appointment. It may have already been cancelled.";
   }
 
   if (event.status === "cancelled") {
-    return NextResponse.json({
-      result: "That appointment is already cancelled.",
-    });
+    return "That appointment is already cancelled.";
   }
 
   const tenant = await getTenantById(tenantId);
-  if (!tenant) {
-    return NextResponse.json({ result: "Error: Tenant not found." });
-  }
+  if (!tenant) return "Error: Tenant not found.";
 
   // Process Stripe refund if the event was a paid booking
   let refundAmountCents = 0;
@@ -439,11 +444,9 @@ async function handleCancelAppointment(
       );
     } catch (err) {
       console.error("[DBG][voice-fn] Refund failed:", err);
-      // Continue with cancellation even if refund fails
     }
   }
 
-  // Update event status to cancelled with metadata
   const cancelUpdates: Record<string, unknown> = {
     status: "cancelled",
     cancelledBy: "tenant",
@@ -458,7 +461,7 @@ async function handleCancelAppointment(
 
   await updateCalendarEvent(tenantId, date, eventId, cancelUpdates);
 
-  // Send cancellation email to visitor if we can parse their info
+  // Send cancellation email to visitor
   const visitor = parseVisitorFromDescription(event.description);
   if (visitor) {
     try {
@@ -492,7 +495,5 @@ async function handleCancelAppointment(
       : "";
   const emailNote = visitor ? " The visitor has been notified." : "";
 
-  return NextResponse.json({
-    result: `Cancelled "${event.title}"${attendees}.${refundNote}${emailNote}`,
-  });
+  return `Cancelled "${event.title}"${attendees}.${refundNote}${emailNote}`;
 }
