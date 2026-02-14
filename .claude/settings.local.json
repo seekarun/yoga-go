@@ -139,7 +139,10 @@
       "Bash(cdk list:*)",
       "Bash(git -C /Users/arunsubramaniam/garage/yoga-go status apps/cally/src/app/api/data/tenants/[tenantId]/booking/cancel/route.ts)",
       "WebFetch(domain:platform.openai.com)",
-      "WebFetch(domain:openai.com)"
+      "WebFetch(domain:openai.com)",
+      "Bash(vercel env ls:*)",
+      "Bash(vercel logs:*)",
+      "WebFetch(domain:docs.vapi.ai)"
     ],
     "deny": [],
     "ask": []

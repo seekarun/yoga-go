@@ -60,13 +60,22 @@ interface VapiServerMessage {
  * Validate the Vapi server secret from the request header.
  */
 function validateSecret(request: NextRequest): boolean {
-  const secret = request.headers.get("x-vapi-secret");
-  const expected = process.env.VAPI_SERVER_SECRET;
+  const secret = request.headers.get("x-vapi-secret")?.trim();
+  const expected = process.env.VAPI_SERVER_SECRET?.trim();
   if (!expected) {
     console.error("[DBG][voice-fn] VAPI_SERVER_SECRET not configured");
     return false;
   }
-  return secret === expected;
+  const valid = secret === expected;
+  if (!valid) {
+    console.error(
+      "[DBG][voice-fn] Secret mismatch. Got length:",
+      secret?.length ?? 0,
+      "Expected length:",
+      expected.length,
+    );
+  }
+  return valid;
 }
 
 /**
@@ -95,9 +104,14 @@ async function executeTool(
 }
 
 export async function POST(request: NextRequest) {
+  console.log(
+    "[DBG][voice-fn] Webhook hit from:",
+    request.headers.get("user-agent")?.substring(0, 50),
+  );
+
   try {
     if (!validateSecret(request)) {
-      console.warn("[DBG][voice-fn] Invalid or missing secret");
+      console.warn("[DBG][voice-fn] Invalid or missing secret — returning 401");
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 },
