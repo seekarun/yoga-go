@@ -4,10 +4,11 @@ import type { HeroTemplateProps } from "./types";
 import SectionsRenderer from "./SectionsRenderer";
 
 /**
- * Bold Template
- * Large typography with strong visual impact
+ * DIY Template
+ * Centered layout with full inline editing: contentEditable fields,
+ * drag-to-edit about section, image/button edit overlays.
  */
-export default function BoldTemplate(props: HeroTemplateProps) {
+export default function DIYTemplate(props: HeroTemplateProps) {
   const {
     config,
     isEditing = false,
@@ -35,10 +36,10 @@ export default function BoldTemplate(props: HeroTemplateProps) {
   const backgroundStyle: React.CSSProperties = {
     position: "absolute",
     inset: 0,
-    backgroundColor: "#000000",
+    backgroundColor: backgroundImage ? "#000" : undefined,
     backgroundImage: backgroundImage
-      ? `linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)), url(${backgroundImage})`
-      : undefined,
+      ? `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url(${backgroundImage})`
+      : `linear-gradient(135deg, var(--brand-500, #667eea) 0%, var(--brand-600, #764ba2) 100%)`,
     backgroundPosition: imagePosition || "50% 50%",
     backgroundSize: "cover",
     backgroundRepeat: "no-repeat",
@@ -57,24 +58,23 @@ export default function BoldTemplate(props: HeroTemplateProps) {
   };
 
   const titleStyle: React.CSSProperties = {
-    fontSize: "clamp(3.5rem, 10vw, 8rem)",
-    fontWeight: 900,
+    fontSize: "clamp(2.5rem, 6vw, 4.5rem)",
+    fontWeight: 700,
     fontFamily: config.theme?.headerFont?.family || undefined,
-    marginBottom: "24px",
-    lineHeight: 0.95,
-    letterSpacing: "-0.03em",
-    textTransform: "uppercase",
-    maxWidth: "90%",
+    marginBottom: "20px",
+    lineHeight: 1.1,
+    textShadow: "0 2px 10px rgba(0,0,0,0.3)",
+    maxWidth: "900px",
   };
 
   const subtitleStyle: React.CSSProperties = {
-    fontSize: "clamp(1rem, 2vw, 1.3rem)",
-    fontWeight: 300,
+    fontSize: "clamp(1.1rem, 2.5vw, 1.5rem)",
+    fontWeight: 400,
     fontFamily: config.theme?.bodyFont?.family || undefined,
-    opacity: 0.8,
-    maxWidth: "600px",
+    opacity: 0.95,
+    maxWidth: "700px",
     lineHeight: 1.6,
-    letterSpacing: "0.05em",
+    textShadow: "0 1px 5px rgba(0,0,0,0.2)",
     color: "inherit",
   };
 
@@ -83,24 +83,23 @@ export default function BoldTemplate(props: HeroTemplateProps) {
         cursor: "text",
         outline: "none",
         borderRadius: "4px",
-        padding: "8px 16px",
-        transition: "background 0.2s, outline 0.2s",
+        padding: "8px 12px",
+        transition: "background 0.2s, border 0.2s",
       }
     : {};
 
   const buttonStyle: React.CSSProperties = {
-    marginTop: "40px",
-    padding: "18px 48px",
-    fontSize: "1rem",
-    fontWeight: 700,
+    marginTop: "32px",
+    padding: "16px 40px",
+    fontSize: "1.1rem",
+    fontWeight: 600,
     backgroundColor: "var(--brand-500, #ffffff)",
-    color: "var(--brand-500-contrast, #000000)",
+    color: "var(--brand-500-contrast, #1a1a1a)",
     border: "none",
-    borderRadius: "0",
+    borderRadius: "8px",
     cursor: "pointer",
-    textTransform: "uppercase",
-    letterSpacing: "0.1em",
-    transition: "transform 0.2s, background 0.2s",
+    transition: "transform 0.2s, box-shadow 0.2s",
+    boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
   };
 
   const editButtonStyle: React.CSSProperties = {
@@ -113,9 +112,7 @@ export default function BoldTemplate(props: HeroTemplateProps) {
       {/* Hero Section */}
       {config.heroEnabled !== false && (
         <div style={containerStyle}>
-          {/* Background Layer */}
           <div style={backgroundStyle} />
-
           {isEditing && (
             <style>{`
               .editable-field-light:focus {
@@ -127,7 +124,6 @@ export default function BoldTemplate(props: HeroTemplateProps) {
               }
             `}</style>
           )}
-          {/* Content Layer */}
           <div style={contentStyle}>
             {isEditing ? (
               <>
@@ -158,6 +154,7 @@ export default function BoldTemplate(props: HeroTemplateProps) {
                     type="button"
                     onClick={onButtonClick}
                     style={editButtonStyle}
+                    className="edit-button"
                   >
                     {button.label}
                     <span
@@ -208,8 +205,8 @@ export default function BoldTemplate(props: HeroTemplateProps) {
         </div>
       )}
 
-      {/* Dynamic Sections */}
-      <SectionsRenderer {...props} variant="dark" />
+      {/* Dynamic Sections (about, features, testimonials, faq, footer) */}
+      <SectionsRenderer {...props} variant="gray" />
     </>
   );
 }

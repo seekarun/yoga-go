@@ -93,7 +93,11 @@ export default function LandingPageRenderer({
   );
 
   return (
-    <LandingPageThemeProvider palette={config.theme?.palette}>
+    <LandingPageThemeProvider
+      palette={config.theme?.palette}
+      headerFont={config.theme?.headerFont}
+      bodyFont={config.theme?.bodyFont}
+    >
       <ProfileIconDropdown tenantId={tenantId} />
       <HeroTemplateRenderer
         config={config}

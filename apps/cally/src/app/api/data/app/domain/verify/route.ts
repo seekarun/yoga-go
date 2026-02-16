@@ -7,11 +7,12 @@ import { auth } from "@/auth";
 import {
   getTenantByUserId,
   updateDomainConfig,
+  updateAdditionalDomain,
   createDomainLookup,
 } from "@/lib/repositories/tenantRepository";
 import { verifyDomain, getDomainStatus } from "@/lib/vercel";
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
     // Check authentication
     const session = await auth();
@@ -25,6 +26,15 @@ export async function POST() {
     const cognitoSub = session.user.cognitoSub;
     console.log("[DBG][domain/verify] Verifying domain for user:", cognitoSub);
 
+    // Parse optional domain from body
+    let targetDomain: string | undefined;
+    try {
+      const body = await request.json();
+      targetDomain = body.domain;
+    } catch {
+      // No body or invalid JSON — verify primary domain
+    }
+
     // Get tenant by user ID
     const tenant = await getTenantByUserId(cognitoSub);
     if (!tenant) {
@@ -34,15 +44,27 @@ export async function POST() {
       );
     }
 
-    // Check if tenant has a domain configured
-    if (!tenant.domainConfig?.domain) {
+    // Determine which domain to verify
+    const isAdditionalDomain =
+      targetDomain &&
+      (tenant.additionalDomains || []).some((d) => d.domain === targetDomain);
+    const isPrimaryDomain =
+      !targetDomain || targetDomain === tenant.domainConfig?.domain;
+
+    if (!isPrimaryDomain && !isAdditionalDomain) {
+      return NextResponse.json(
+        { success: false, error: "Domain not found on this account" },
+        { status: 400 },
+      );
+    }
+
+    const domain = targetDomain || tenant.domainConfig?.domain;
+    if (!domain) {
       return NextResponse.json(
         { success: false, error: "No domain configured" },
         { status: 400 },
       );
     }
-
-    const domain = tenant.domainConfig.domain;
 
     // Trigger verification with Vercel
     const verifyResult = await verifyDomain(domain);
@@ -62,20 +84,34 @@ export async function POST() {
     const status = await getDomainStatus(domain);
 
     // Update tenant if newly verified
-    if (status.verified && !tenant.domainConfig.vercelVerified) {
-      await updateDomainConfig(tenant.id, {
-        ...tenant.domainConfig,
-        vercelVerified: true,
-        vercelVerifiedAt: new Date().toISOString(),
-      });
-
-      // Create domain→tenantId lookup record for middleware routing
-      await createDomainLookup(domain, tenant.id);
-
-      console.log(
-        "[DBG][domain/verify] Domain verified and lookup created for tenant:",
-        tenant.id,
-      );
+    if (status.verified) {
+      if (isAdditionalDomain) {
+        const additionalDomainConfig = (tenant.additionalDomains || []).find(
+          (d) => d.domain === domain,
+        );
+        if (additionalDomainConfig && !additionalDomainConfig.vercelVerified) {
+          await updateAdditionalDomain(tenant.id, domain, {
+            vercelVerified: true,
+            vercelVerifiedAt: new Date().toISOString(),
+          });
+          await createDomainLookup(domain, tenant.id);
+          console.log(
+            "[DBG][domain/verify] Additional domain verified and lookup created:",
+            domain,
+          );
+        }
+      } else if (tenant.domainConfig && !tenant.domainConfig.vercelVerified) {
+        await updateDomainConfig(tenant.id, {
+          ...tenant.domainConfig,
+          vercelVerified: true,
+          vercelVerifiedAt: new Date().toISOString(),
+        });
+        await createDomainLookup(domain, tenant.id);
+        console.log(
+          "[DBG][domain/verify] Primary domain verified and lookup created for tenant:",
+          tenant.id,
+        );
+      }
     }
 
     return NextResponse.json({

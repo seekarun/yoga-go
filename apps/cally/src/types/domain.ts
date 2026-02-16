@@ -3,6 +3,20 @@
  */
 
 /**
+ * Purchase metadata stored on tenant for domains bought via GoDaddy
+ */
+export interface DomainPurchaseConfig {
+  domain: string;
+  purchasedAt: string;
+  godaddyOrderId: string;
+  registrar: "godaddy";
+  renewalDate: string;
+  autoRenew: boolean;
+  purchasedBy: "callygo";
+  nameservers: string[];
+}
+
+/**
  * Domain configuration for Vercel hosting
  */
 export interface DomainConfig {
@@ -10,6 +24,7 @@ export interface DomainConfig {
   addedAt: string;
   vercelVerified: boolean;
   vercelVerifiedAt?: string;
+  purchaseConfig?: DomainPurchaseConfig;
 }
 
 /**
@@ -60,6 +75,8 @@ export interface DomainStatusResponse {
   domain?: string;
   domainConfig?: DomainConfig;
   emailConfig?: EmailConfig;
+  isPurchasedDomain?: boolean;
+  additionalDomains?: DomainConfig[];
 }
 
 /**
@@ -95,4 +112,43 @@ export interface EmailVerifyResponse {
     | "NOT_STARTED"
     | "TEMPORARY_FAILURE";
   allVerified: boolean;
+}
+
+/**
+ * GoDaddy domain availability result
+ */
+export interface DomainAvailabilityResult {
+  domain: string;
+  available: boolean;
+  price: number; // micro-units (divide by 1_000_000)
+  currency: string;
+  period: number; // years
+}
+
+/**
+ * Domain name suggestion from GoDaddy
+ */
+export interface DomainSuggestion {
+  domain: string;
+  price?: number;
+  currency?: string;
+}
+
+/**
+ * API response for domain search
+ */
+export interface DomainSearchResponse {
+  query: string;
+  results: DomainAvailabilityResult[];
+  suggestions: DomainSuggestion[];
+}
+
+/**
+ * API response for domain purchase
+ */
+export interface DomainPurchaseResponse {
+  domain: string;
+  orderId: string;
+  vercelAdded: boolean;
+  renewalDate: string;
 }

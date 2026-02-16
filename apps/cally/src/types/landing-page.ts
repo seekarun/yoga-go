@@ -10,6 +10,14 @@
 import type { ColorPalette } from "@/lib/colorPalette";
 
 /**
+ * Brand-level font configuration (header or body)
+ */
+export interface BrandFont {
+  family: string; // e.g. "'Playfair Display', serif" (matches FONT_OPTIONS value)
+  size?: number; // px
+}
+
+/**
  * Template IDs for the 5 available hero templates
  */
 export type TemplateId =
@@ -22,7 +30,8 @@ export type TemplateId =
   | "bayside"
   | "therapist"
   | "parallax"
-  | "animated";
+  | "animated"
+  | "diy";
 
 /**
  * Image aspect ratio configuration for a template
@@ -158,6 +167,17 @@ export const TEMPLATES: TemplateInfo[] = [
       featureCardImage: "16/9",
     },
   },
+  {
+    id: "diy",
+    name: "DIY",
+    description:
+      "Fully customisable centered layout with inline editing and drag-to-resize",
+    imageConfig: {
+      heroBackground: "16/9",
+      aboutImage: "1/1",
+      featureCardImage: "16/9",
+    },
+  },
 ];
 
 /**
@@ -170,11 +190,42 @@ export interface ButtonConfig {
   action: string; // Using string for flexibility, validated against BUTTON_ACTIONS at runtime
 }
 
+export interface AboutStyleOverrides {
+  paddingTop?: number; // px, default 80
+  paddingBottom?: number; // px, default 80
+  paddingLeft?: number; // px, default 0
+  paddingRight?: number; // px, default 0
+  imageWidth?: number; // px, default 320
+  imageHeight?: number; // px, default 320
+  borderRadius?: number; // px, default 16
+  // Body text overrides
+  fontSize?: number; // px, default 18
+  fontFamily?: string; // default: "" (system/inherit)
+  fontWeight?: "normal" | "bold"; // default: "normal"
+  fontStyle?: "normal" | "italic"; // default: "normal"
+  textColor?: string; // hex, default: theme.text
+  textAlign?: "left" | "center" | "right"; // default: "left"
+  // Title text overrides
+  titleFontSize?: number; // px, default 28
+  titleFontFamily?: string; // default: "" (system/inherit)
+  titleFontWeight?: "normal" | "bold"; // default: "bold"
+  titleFontStyle?: "normal" | "italic"; // default: "normal"
+  titleTextColor?: string; // hex, default: theme.text
+  titleTextAlign?: "left" | "center" | "right"; // default: "left"
+  bgColor?: string; // hex, overrides theme.bg
+  bgImage?: string; // URL
+  bgImageBlur?: number; // px, default 0
+  bgImageOpacity?: number; // 0-100, default 100
+  layout?: "image-left" | "image-right" | "stacked"; // default: "image-left"
+}
+
 export interface AboutConfig {
+  title?: string;
   image?: string;
   imagePosition?: string;
   imageZoom?: number;
   paragraph: string;
+  styleOverrides?: AboutStyleOverrides;
 }
 
 /**
@@ -245,6 +296,43 @@ export interface FAQConfig {
   heading?: string;
   subheading?: string;
   items: FAQItem[];
+}
+
+/**
+ * Products section style overrides (bg colour, padding)
+ */
+export interface ProductsStyleOverrides {
+  bgColor?: string;
+  bgImage?: string; // URL
+  bgImageBlur?: number; // px, default 0
+  bgImageOpacity?: number; // 0-100, default 100
+  paddingTop?: number; // px, default 80
+  paddingBottom?: number; // px, default 80
+  paddingLeft?: number; // px, default 0
+  paddingRight?: number; // px, default 0
+  // Heading text overrides
+  headingFontSize?: number; // px
+  headingFontFamily?: string;
+  headingFontWeight?: "normal" | "bold";
+  headingFontStyle?: "normal" | "italic";
+  headingTextColor?: string;
+  headingTextAlign?: "left" | "center" | "right";
+  // Subheading text overrides
+  subheadingFontSize?: number; // px
+  subheadingFontFamily?: string;
+  subheadingFontWeight?: "normal" | "bold";
+  subheadingFontStyle?: "normal" | "italic";
+  subheadingTextColor?: string;
+  subheadingTextAlign?: "left" | "center" | "right";
+}
+
+/**
+ * Products section configuration (heading/subheading text)
+ */
+export interface ProductsConfig {
+  heading?: string;
+  subheading?: string;
+  styleOverrides?: ProductsStyleOverrides;
 }
 
 /**
@@ -336,6 +424,8 @@ export interface SimpleLandingPageConfig {
   about?: AboutConfig;
   /** Features section configuration */
   features?: FeaturesConfig;
+  /** Products section heading/subheading configuration */
+  productsConfig?: ProductsConfig;
   /** Testimonials section configuration */
   testimonials?: TestimonialsConfig;
   /** FAQ section configuration */
@@ -356,7 +446,11 @@ export interface SimpleLandingPageConfig {
   theme?: {
     primaryColor?: string;
     palette?: ColorPalette;
+    headerFont?: BrandFont;
+    bodyFont?: BrandFont;
   };
+  /** User-defined custom colour swatches */
+  customColors?: { name: string; hex: string }[];
   /** SEO configuration */
   seo?: SEOConfig;
 }
@@ -377,6 +471,7 @@ export const DEFAULT_LANDING_PAGE_CONFIG: SimpleLandingPageConfig = {
     action: "booking",
   },
   about: {
+    title: "About Me",
     image:
       "https://images.pexels.com/photos/29852895/pexels-photo-29852895.jpeg?auto=compress&cs=tinysrgb&w=800",
     imagePosition: "50% 50%",

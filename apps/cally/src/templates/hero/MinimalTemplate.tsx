@@ -45,6 +45,7 @@ export default function MinimalTemplate(props: HeroTemplateProps) {
   const titleStyle: React.CSSProperties = {
     fontSize: "clamp(2rem, 4vw, 3rem)",
     fontWeight: 500,
+    fontFamily: config.theme?.headerFont?.family || undefined,
     marginBottom: "16px",
     lineHeight: 1.2,
     color: "#1a1a1a",
@@ -54,6 +55,7 @@ export default function MinimalTemplate(props: HeroTemplateProps) {
   const subtitleStyle: React.CSSProperties = {
     fontSize: "clamp(1rem, 1.8vw, 1.1rem)",
     fontWeight: 400,
+    fontFamily: config.theme?.bodyFont?.family || undefined,
     color: "#666",
     maxWidth: "500px",
     lineHeight: 1.6,

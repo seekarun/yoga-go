@@ -38,6 +38,8 @@ export async function GET() {
       domain: tenant.domainConfig?.domain,
       domainConfig: tenant.domainConfig,
       emailConfig: tenant.emailConfig,
+      isPurchasedDomain: !!tenant.domainConfig?.purchaseConfig,
+      additionalDomains: tenant.additionalDomains,
     };
 
     console.log(

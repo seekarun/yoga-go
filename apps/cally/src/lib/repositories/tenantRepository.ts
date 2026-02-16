@@ -48,6 +48,7 @@ export interface CallyTenant {
   customLandingPage?: SimpleLandingPageConfig;
   isLandingPagePublished?: boolean;
   domainConfig?: DomainConfig;
+  additionalDomains?: DomainConfig[];
   emailConfig?: EmailConfig;
   aiAssistantConfig?: AiAssistantConfig;
   phoneConfig?: PhoneConfig;
@@ -437,6 +438,86 @@ export async function updateEmailConfig(
 }
 
 /**
+ * Add an additional domain to the tenant's additionalDomains array
+ */
+export async function addAdditionalDomain(
+  tenantId: string,
+  domainConfig: DomainConfig,
+): Promise<CallyTenant> {
+  console.log(
+    "[DBG][tenantRepository] Adding additional domain:",
+    domainConfig.domain,
+    "for tenant:",
+    tenantId,
+  );
+
+  const tenant = await getTenantById(tenantId);
+  if (!tenant) {
+    throw new Error("Tenant not found");
+  }
+
+  const existing = tenant.additionalDomains || [];
+  const updated = [...existing, domainConfig];
+
+  return updateTenant(tenantId, { additionalDomains: updated });
+}
+
+/**
+ * Update an additional domain in the tenant's additionalDomains array
+ */
+export async function updateAdditionalDomain(
+  tenantId: string,
+  domain: string,
+  updates: Partial<DomainConfig>,
+): Promise<CallyTenant> {
+  console.log(
+    "[DBG][tenantRepository] Updating additional domain:",
+    domain,
+    "for tenant:",
+    tenantId,
+  );
+
+  const tenant = await getTenantById(tenantId);
+  if (!tenant) {
+    throw new Error("Tenant not found");
+  }
+
+  const existing = tenant.additionalDomains || [];
+  const updated = existing.map((d) =>
+    d.domain === domain ? { ...d, ...updates } : d,
+  );
+
+  return updateTenant(tenantId, { additionalDomains: updated });
+}
+
+/**
+ * Remove an additional domain from the tenant's additionalDomains array
+ */
+export async function removeAdditionalDomain(
+  tenantId: string,
+  domain: string,
+): Promise<CallyTenant> {
+  console.log(
+    "[DBG][tenantRepository] Removing additional domain:",
+    domain,
+    "for tenant:",
+    tenantId,
+  );
+
+  const tenant = await getTenantById(tenantId);
+  if (!tenant) {
+    throw new Error("Tenant not found");
+  }
+
+  const existing = tenant.additionalDomains || [];
+  const updated = existing.filter((d) => d.domain !== domain);
+
+  return updateTenant(tenantId, {
+    additionalDomains: updated.length > 0 ? updated : [],
+  });
+}
+
+/**
  * Clear domain and email configuration (when removing domain)
  */
 export async function clearDomainAndEmailConfig(
@@ -455,38 +536,20 @@ export async function clearDomainAndEmailConfig(
 
   const now = new Date().toISOString();
 
-  // Create the full item without domain/email config
+  // Create the full item without domain/email config but preserve additionalDomains
+  // Spread all existing fields so newly-added tenant properties are never dropped
+  const {
+    domainConfig: _dc,
+    emailConfig: _ec,
+    ...tenantWithoutDomainEmail
+  } = tenant;
   const updatedItem: DynamoDBTenantItem = {
+    ...tenantWithoutDomainEmail,
     PK: TenantPK.TENANT(tenantId),
     SK: TenantPK.META,
     GSI1PK: TenantPK.USER_GSI1PK(tenant.userId),
     GSI1SK: TenantPK.TENANT_GSI1SK(tenantId),
     entityType: EntityType.TENANT,
-    id: tenant.id,
-    userId: tenant.userId,
-    name: tenant.name,
-    email: tenant.email,
-    avatar: tenant.avatar,
-    draftLandingPage: tenant.draftLandingPage,
-    customLandingPage: tenant.customLandingPage,
-    isLandingPagePublished: tenant.isLandingPagePublished,
-    // Intentionally omit domainConfig and emailConfig
-    aiAssistantConfig: tenant.aiAssistantConfig,
-    phoneConfig: tenant.phoneConfig,
-    bookingConfig: tenant.bookingConfig,
-    googleCalendarConfig: tenant.googleCalendarConfig,
-    zoomConfig: tenant.zoomConfig,
-    outlookCalendarConfig: tenant.outlookCalendarConfig,
-    stripeConfig: tenant.stripeConfig,
-    subscriptionConfig: tenant.subscriptionConfig,
-    googleBusinessConfig: tenant.googleBusinessConfig,
-    videoCallPreference: tenant.videoCallPreference,
-    emailDisplayName: tenant.emailDisplayName,
-    timezone: tenant.timezone,
-    defaultEventDuration: tenant.defaultEventDuration,
-    currency: tenant.currency,
-    address: tenant.address,
-    createdAt: tenant.createdAt,
     updatedAt: now,
   };
 

@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import type { FAQConfig } from "@/types/landing-page";
+import type { FAQConfig, BrandFont } from "@/types/landing-page";
 
 interface FAQSectionProps {
   faq: FAQConfig;
   isEditing?: boolean;
   variant?: "light" | "dark" | "gray";
+  brandFonts?: { headerFont?: BrandFont; bodyFont?: BrandFont };
   onHeadingChange?: (heading: string) => void;
   onSubheadingChange?: (subheading: string) => void;
   onItemChange?: (
@@ -22,6 +23,7 @@ export default function FAQSection({
   faq,
   isEditing = false,
   variant = "light",
+  brandFonts,
   onHeadingChange,
   onSubheadingChange,
   onItemChange,
@@ -95,17 +97,23 @@ export default function FAQSection({
   };
 
   const headingStyle: React.CSSProperties = {
-    fontSize: "clamp(1.75rem, 3vw, 2.5rem)",
+    fontSize: brandFonts?.headerFont?.size
+      ? `${brandFonts.headerFont.size}px`
+      : "clamp(1.75rem, 3vw, 2.5rem)",
     fontWeight: 700,
     color: theme.heading,
     marginBottom: "12px",
+    fontFamily: brandFonts?.headerFont?.family || undefined,
   };
 
   const subheadingStyle: React.CSSProperties = {
-    fontSize: "1.1rem",
+    fontSize: brandFonts?.bodyFont?.size
+      ? `${brandFonts.bodyFont.size}px`
+      : "1.1rem",
     color: theme.subheading,
     maxWidth: "600px",
     margin: "0 auto",
+    fontFamily: brandFonts?.bodyFont?.family || undefined,
   };
 
   const itemStyle: React.CSSProperties = {
@@ -131,6 +139,7 @@ export default function FAQSection({
     fontWeight: 600,
     color: theme.question,
     flex: 1,
+    fontFamily: brandFonts?.bodyFont?.family || undefined,
   };
 
   const answerStyle: React.CSSProperties = {
@@ -138,6 +147,7 @@ export default function FAQSection({
     color: theme.answer,
     lineHeight: 1.7,
     padding: "0 24px 20px",
+    fontFamily: brandFonts?.bodyFont?.family || undefined,
   };
 
   const editableStyle: React.CSSProperties = isEditing

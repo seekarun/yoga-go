@@ -31,6 +31,7 @@ x more templates
 - tech: alerts
 - AI security review
 - use existing domain host - set records only
+- clean up all templates - spacings, colours, defaults etc.
 
 - production deployment.
 

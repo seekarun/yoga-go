@@ -221,6 +221,29 @@ export async function deleteTenantData(
     }
   }
 
+  // 7. Clean up additional domains
+  if (tenant.additionalDomains && tenant.additionalDomains.length > 0) {
+    for (const additionalDomain of tenant.additionalDomains) {
+      console.log(
+        `${LOG_PREFIX} Deleting additional domain lookup for: ${additionalDomain.domain}`,
+      );
+      await deleteDomainLookup(additionalDomain.domain);
+
+      console.log(
+        `${LOG_PREFIX} Removing additional domain from Vercel: ${additionalDomain.domain}`,
+      );
+      const adResult = await removeDomainFromVercel(additionalDomain.domain);
+      if (!adResult.success) {
+        console.warn(
+          `${LOG_PREFIX} Failed to remove additional Vercel domain: ${adResult.error}`,
+        );
+        warnings.push(
+          `Vercel domain "${additionalDomain.domain}" not removed: ${adResult.error}.`,
+        );
+      }
+    }
+  }
+
   const totalDeleted = coreKeys.length + emailKeys.length;
   console.log(
     `${LOG_PREFIX} Deletion complete for tenant ${tenantId}. Total: ${totalDeleted}`,

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
-import { DomainSetupCard } from "@/components/domain";
+import { DomainSetupCard, DomainSearchCard } from "@/components/domain";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import type {
   DomainConfig,
@@ -10,6 +10,8 @@ import type {
   DomainStatusResponse,
   TenantDnsRecord,
 } from "@/types";
+
+type DomainTab = "search" | "byod";
 
 /**
  * Generate DNS records for email setup (client-side version)
@@ -64,9 +66,13 @@ export default function DomainSettingsPage() {
 
   const [loading, setLoading] = useState(true);
   const [domainConfig, setDomainConfig] = useState<DomainConfig | undefined>();
+  const [additionalDomains, setAdditionalDomains] = useState<DomainConfig[]>(
+    [],
+  );
   const [emailConfig, setEmailConfig] = useState<EmailConfig | undefined>();
   const [emailDnsRecords, setEmailDnsRecords] = useState<TenantDnsRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<DomainTab>("search");
 
   // Fetch domain status
   const fetchStatus = useCallback(async () => {
@@ -77,6 +83,7 @@ export default function DomainSettingsPage() {
       if (data.success) {
         const statusData = data.data as DomainStatusResponse;
         setDomainConfig(statusData.domainConfig);
+        setAdditionalDomains(statusData.additionalDomains || []);
         setEmailConfig(statusData.emailConfig);
 
         // Generate DNS records if email is configured
@@ -124,10 +131,14 @@ export default function DomainSettingsPage() {
     return { nameservers: data.data.nameservers };
   };
 
-  // Verify domain
-  const handleVerifyDomain = async (): Promise<{ verified: boolean }> => {
+  // Verify domain (optionally specify which domain to verify)
+  const handleVerifyDomain = async (
+    targetDomain?: string,
+  ): Promise<{ verified: boolean }> => {
     const response = await fetch("/api/data/app/domain/verify", {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(targetDomain ? { domain: targetDomain } : {}),
     });
     const data = await response.json();
 
@@ -139,10 +150,12 @@ export default function DomainSettingsPage() {
     return { verified: data.data.verified };
   };
 
-  // Remove domain
-  const handleRemoveDomain = async (): Promise<void> => {
+  // Remove domain (optionally specify which domain to remove)
+  const handleRemoveDomain = async (targetDomain?: string): Promise<void> => {
     const response = await fetch("/api/data/app/domain/remove", {
       method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(targetDomain ? { domain: targetDomain } : {}),
     });
     const data = await response.json();
 
@@ -150,9 +163,8 @@ export default function DomainSettingsPage() {
       throw new Error(data.error || "Failed to remove domain");
     }
 
-    setDomainConfig(undefined);
-    setEmailConfig(undefined);
-    setEmailDnsRecords([]);
+    // Refresh state from server to get updated domain lists
+    await fetchStatus();
   };
 
   // Setup email
@@ -238,6 +250,8 @@ export default function DomainSettingsPage() {
     );
   }
 
+  const hasDomain = !!domainConfig?.domain;
+
   return (
     <div className="p-6">
       <div className="mb-8">
@@ -250,17 +264,67 @@ export default function DomainSettingsPage() {
       </div>
 
       <div className="max-w-2xl">
-        <DomainSetupCard
-          domainConfig={domainConfig}
-          emailConfig={emailConfig}
-          onAddDomain={handleAddDomain}
-          onVerifyDomain={handleVerifyDomain}
-          onRemoveDomain={handleRemoveDomain}
-          onSetupEmail={handleSetupEmail}
-          onVerifyEmail={handleVerifyEmail}
-          onDisableEmail={handleDisableEmail}
-          emailDnsRecords={emailDnsRecords}
-        />
+        {/* Show existing domains first when configured */}
+        {hasDomain && (
+          <div className="mb-8">
+            <DomainSetupCard
+              domainConfig={domainConfig}
+              additionalDomains={additionalDomains}
+              emailConfig={emailConfig}
+              onAddDomain={handleAddDomain}
+              onVerifyDomain={handleVerifyDomain}
+              onRemoveDomain={handleRemoveDomain}
+              onSetupEmail={handleSetupEmail}
+              onVerifyEmail={handleVerifyEmail}
+              onDisableEmail={handleDisableEmail}
+              emailDnsRecords={emailDnsRecords}
+            />
+          </div>
+        )}
+
+        {/* Add domain section — always show tabs */}
+        <div>
+          {hasDomain && (
+            <h2 className="text-lg font-semibold text-[var(--text-main)] mb-4">
+              Add Another Domain
+            </h2>
+          )}
+          <div className="flex border-b border-gray-200 mb-6">
+            <button
+              onClick={() => setActiveTab("search")}
+              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                activeTab === "search"
+                  ? "border-indigo-600 text-indigo-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              Search & Buy
+            </button>
+            <button
+              onClick={() => setActiveTab("byod")}
+              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                activeTab === "byod"
+                  ? "border-indigo-600 text-indigo-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              I Have a Domain
+            </button>
+          </div>
+
+          {activeTab === "search" ? (
+            <DomainSearchCard onPurchaseComplete={fetchStatus} />
+          ) : (
+            <DomainSetupCard
+              onAddDomain={handleAddDomain}
+              onVerifyDomain={handleVerifyDomain}
+              onRemoveDomain={handleRemoveDomain}
+              onSetupEmail={handleSetupEmail}
+              onVerifyEmail={handleVerifyEmail}
+              onDisableEmail={handleDisableEmail}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

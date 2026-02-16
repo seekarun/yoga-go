@@ -5,16 +5,11 @@ import SectionsRenderer from "./SectionsRenderer";
 
 /**
  * Centered Template
- * Classic centered layout with title and subtitle over the background
+ * Classic centered layout with title and subtitle over the background.
+ * Display-only — no inline editing. Use the DIY template for editing.
  */
 export default function CenteredTemplate(props: HeroTemplateProps) {
-  const {
-    config,
-    isEditing = false,
-    onTitleChange,
-    onSubtitleChange,
-    onButtonClick,
-  } = props;
+  const { config } = props;
   const { title, subtitle, backgroundImage, imagePosition, imageZoom, button } =
     config;
 
@@ -59,6 +54,7 @@ export default function CenteredTemplate(props: HeroTemplateProps) {
   const titleStyle: React.CSSProperties = {
     fontSize: "clamp(2.5rem, 6vw, 4.5rem)",
     fontWeight: 700,
+    fontFamily: config.theme?.headerFont?.family || undefined,
     marginBottom: "20px",
     lineHeight: 1.1,
     textShadow: "0 2px 10px rgba(0,0,0,0.3)",
@@ -68,22 +64,13 @@ export default function CenteredTemplate(props: HeroTemplateProps) {
   const subtitleStyle: React.CSSProperties = {
     fontSize: "clamp(1.1rem, 2.5vw, 1.5rem)",
     fontWeight: 400,
+    fontFamily: config.theme?.bodyFont?.family || undefined,
     opacity: 0.95,
     maxWidth: "700px",
     lineHeight: 1.6,
     textShadow: "0 1px 5px rgba(0,0,0,0.2)",
     color: "inherit",
   };
-
-  const editableBaseStyle: React.CSSProperties = isEditing
-    ? {
-        cursor: "text",
-        outline: "none",
-        borderRadius: "4px",
-        padding: "8px 12px",
-        transition: "background 0.2s, border 0.2s",
-      }
-    : {};
 
   const buttonStyle: React.CSSProperties = {
     marginTop: "32px",
@@ -99,111 +86,30 @@ export default function CenteredTemplate(props: HeroTemplateProps) {
     boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
   };
 
-  const editButtonStyle: React.CSSProperties = {
-    ...buttonStyle,
-    position: "relative",
-  };
-
   return (
     <>
       {/* Hero Section */}
       {config.heroEnabled !== false && (
         <div style={containerStyle}>
           <div style={backgroundStyle} />
-          {isEditing && (
-            <style>{`
-              .editable-field-light:focus {
-                background: rgba(255, 255, 255, 0.1) !important;
-                outline: 2px solid rgba(255, 255, 255, 0.5) !important;
-              }
-              .editable-field-light:hover:not(:focus) {
-                background: rgba(255, 255, 255, 0.05);
-              }
-            `}</style>
-          )}
           <div style={contentStyle}>
-            {isEditing ? (
-              <>
-                <div
-                  className="editable-field-light"
-                  contentEditable
-                  suppressContentEditableWarning
-                  style={{ ...titleStyle, ...editableBaseStyle }}
-                  onBlur={(e) =>
-                    onTitleChange?.(e.currentTarget.textContent || "")
-                  }
-                >
-                  {title}
-                </div>
-                <div
-                  className="editable-field-light"
-                  contentEditable
-                  suppressContentEditableWarning
-                  style={{ ...subtitleStyle, ...editableBaseStyle }}
-                  onBlur={(e) =>
-                    onSubtitleChange?.(e.currentTarget.textContent || "")
-                  }
-                >
-                  {subtitle}
-                </div>
-                {button && (
-                  <button
-                    type="button"
-                    onClick={onButtonClick}
-                    style={editButtonStyle}
-                    className="edit-button"
-                  >
-                    {button.label}
-                    <span
-                      style={{
-                        position: "absolute",
-                        top: "-8px",
-                        right: "-8px",
-                        width: "24px",
-                        height: "24px",
-                        backgroundColor: "#2563eb",
-                        borderRadius: "50%",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <svg
-                        width="12"
-                        height="12"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="white"
-                        strokeWidth="2"
-                      >
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                      </svg>
-                    </span>
-                  </button>
-                )}
-              </>
-            ) : (
-              <>
-                <h1 style={titleStyle}>{title}</h1>
-                <p style={subtitleStyle}>{subtitle}</p>
-                {button && (
-                  <button
-                    type="button"
-                    style={buttonStyle}
-                    onClick={onButtonClick}
-                  >
-                    {button.label}
-                  </button>
-                )}
-              </>
+            <h1 style={titleStyle}>{title}</h1>
+            <p style={subtitleStyle}>{subtitle}</p>
+            {button && (
+              <button
+                type="button"
+                style={buttonStyle}
+                onClick={props.onButtonClick}
+              >
+                {button.label}
+              </button>
             )}
           </div>
         </div>
       )}
 
       {/* Dynamic Sections (about, features, testimonials, faq, footer) */}
-      <SectionsRenderer {...props} variant="gray" />
+      <SectionsRenderer {...props} variant="gray" isEditing={false} />
     </>
   );
 }

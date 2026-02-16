@@ -7,11 +7,13 @@ import { auth } from "@/auth";
 import {
   getTenantByUserId,
   clearDomainAndEmailConfig,
+  removeAdditionalDomain,
+  deleteDomainLookup,
 } from "@/lib/repositories/tenantRepository";
 import { removeDomainFromVercel } from "@/lib/vercel";
 import { deleteDomainIdentity } from "@/lib/ses";
 
-export async function DELETE() {
+export async function DELETE(request: Request) {
   try {
     // Check authentication
     const session = await auth();
@@ -25,6 +27,15 @@ export async function DELETE() {
     const cognitoSub = session.user.cognitoSub;
     console.log("[DBG][domain/remove] Removing domain for user:", cognitoSub);
 
+    // Parse optional domain from body
+    let targetDomain: string | undefined;
+    try {
+      const body = await request.json();
+      targetDomain = body.domain;
+    } catch {
+      // No body — remove primary domain
+    }
+
     // Get tenant by user ID
     const tenant = await getTenantByUserId(cognitoSub);
     if (!tenant) {
@@ -34,7 +45,45 @@ export async function DELETE() {
       );
     }
 
-    // Check if tenant has a domain configured
+    // Determine if this is an additional domain removal
+    const isAdditionalDomain =
+      targetDomain &&
+      (tenant.additionalDomains || []).some((d) => d.domain === targetDomain);
+
+    if (isAdditionalDomain && targetDomain) {
+      // Remove additional domain
+      console.log(
+        "[DBG][domain/remove] Removing additional domain:",
+        targetDomain,
+      );
+
+      // Remove from Vercel
+      const result = await removeDomainFromVercel(targetDomain);
+      if (!result.success) {
+        console.error(
+          "[DBG][domain/remove] Failed to remove additional domain from Vercel:",
+          result.error,
+        );
+      }
+
+      // Delete domain lookup record
+      await deleteDomainLookup(targetDomain, tenant.id);
+
+      // Remove from tenant's additionalDomains array
+      await removeAdditionalDomain(tenant.id, targetDomain);
+
+      console.log(
+        "[DBG][domain/remove] Additional domain removed for tenant:",
+        tenant.id,
+      );
+
+      return NextResponse.json({
+        success: true,
+        data: { message: "Domain removed successfully." },
+      });
+    }
+
+    // Primary domain removal
     if (!tenant.domainConfig?.domain) {
       return NextResponse.json(
         { success: false, error: "No domain configured" },
@@ -54,31 +103,29 @@ export async function DELETE() {
           "[DBG][domain/remove] Failed to delete SES identity:",
           sesError,
         );
-        // Continue with domain removal even if SES deletion fails
       }
     }
 
     // Remove domain from Vercel
     const result = await removeDomainFromVercel(domain);
-
     if (!result.success) {
       console.error(
         "[DBG][domain/remove] Failed to remove domain from Vercel:",
         result.error,
       );
-      // Continue to clear config even if Vercel removal fails
     }
 
-    // Clear domain and email config from tenant
+    // Delete domain lookup record (bug fix: was missing before)
+    await deleteDomainLookup(domain, tenant.id);
+
+    // Clear domain and email config from tenant (preserves additionalDomains)
     await clearDomainAndEmailConfig(tenant.id);
 
     console.log("[DBG][domain/remove] Domain removed for tenant:", tenant.id);
 
     return NextResponse.json({
       success: true,
-      data: {
-        message: "Domain removed successfully.",
-      },
+      data: { message: "Domain removed successfully." },
     });
   } catch (error) {
     console.error("[DBG][domain/remove] Error:", error);

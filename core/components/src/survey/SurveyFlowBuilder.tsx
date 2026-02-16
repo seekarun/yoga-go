@@ -67,7 +67,7 @@ const toolbarBtnStyle: CSSProperties = {
   padding: "8px 14px",
   fontSize: "13px",
   fontWeight: 600,
-  background: "var(--color-primary, #6366f1)",
+  background: "var(--color-primary, #008080)",
   color: "#fff",
   border: "none",
   borderRadius: "6px",
@@ -75,9 +75,18 @@ const toolbarBtnStyle: CSSProperties = {
   boxShadow: "0 1px 3px rgba(0,0,0,0.12)",
 };
 
+import { LINE_THICKNESS, LINE_SPACING, LAYER_GAP } from "./constants";
+
 const edgeStyle: CSSProperties = {
-  stroke: "var(--color-primary, #6366f1)",
-  strokeWidth: 2,
+  stroke: "var(--color-primary, #008080)",
+  strokeWidth: LINE_THICKNESS,
+  opacity: 0.35,
+};
+
+const highlightedEdgeStyle: CSSProperties = {
+  stroke: "var(--color-accent, #ff7f50)",
+  strokeWidth: LINE_THICKNESS,
+  opacity: 1,
 };
 
 const nodeTypes: NodeTypes = {
@@ -95,71 +104,6 @@ function generateId(): string {
 }
 
 const DEFAULT_NODE_WIDTH = 250;
-const DEFAULT_NODE_HEIGHT = 120;
-/** Minimum gap between nodes when dragging (collision padding) */
-const NODE_GAP = 10;
-
-/**
- * Prevent a dragged node from overlapping any other node.
- * Returns the closest valid position to the proposed (px, py).
- */
-function preventOverlap(
-  px: number,
-  py: number,
-  w: number,
-  h: number,
-  dragId: string,
-  allNodes: QNode[],
-): { x: number; y: number } {
-  let x = px;
-  let y = py;
-
-  for (const other of allNodes) {
-    if (other.id === dragId) continue;
-    const ow = other.measured?.width ?? DEFAULT_NODE_WIDTH;
-    const oh = other.measured?.height ?? DEFAULT_NODE_HEIGHT;
-    const ox = other.position.x;
-    const oy = other.position.y;
-
-    // Check bounding-box overlap (with gap)
-    const overlapX = x < ox + ow + NODE_GAP && x + w + NODE_GAP > ox;
-    const overlapY = y < oy + oh + NODE_GAP && y + h + NODE_GAP > oy;
-
-    if (overlapX && overlapY) {
-      // Compute the four possible pushes to resolve overlap
-      const pushLeft = ox - NODE_GAP - w - x;
-      const pushRight = ox + ow + NODE_GAP - x;
-      const pushUp = oy - NODE_GAP - h - y;
-      const pushDown = oy + oh + NODE_GAP - y;
-
-      // Pick the axis with the smallest absolute displacement
-      const options = [
-        { dx: pushLeft, dy: 0, dist: Math.abs(pushLeft) },
-        { dx: pushRight, dy: 0, dist: Math.abs(pushRight) },
-        { dx: 0, dy: pushUp, dist: Math.abs(pushUp) },
-        { dx: 0, dy: pushDown, dist: Math.abs(pushDown) },
-      ];
-      options.sort((a, b) => a.dist - b.dist);
-      x += options[0].dx;
-      y += options[0].dy;
-    }
-  }
-
-  return { x, y };
-}
-
-function getNodeSizes(
-  nodes: QNode[],
-): Map<string, { width: number; height: number }> {
-  const sizes = new Map<string, { width: number; height: number }>();
-  for (const n of nodes) {
-    sizes.set(n.id, {
-      width: n.measured?.width ?? DEFAULT_NODE_WIDTH,
-      height: n.measured?.height ?? 120,
-    });
-  }
-  return sizes;
-}
 
 type InsertHandler = (
   edgeId: string,
@@ -176,12 +120,20 @@ function questionsToNodes(questions: SurveyQuestion[]): QNode[] {
   const first = getStartQuestion(questions);
   const firstPos = first?.position ?? { x: 200, y: 200 };
 
+  /** Remove React Flow's default wrapper border — we style borders on the inner div */
+  const wrapperStyle: CSSProperties = { border: "none", boxShadow: "none" };
+
+  // Center START above first question (START width ~48, node ~250)
   const startNode: QNode = {
     id: START_ID,
     type: "start",
-    position: { x: firstPos.x + 90, y: firstPos.y - 120 },
+    position: {
+      x: firstPos.x + DEFAULT_NODE_WIDTH / 2 - 24,
+      y: firstPos.y - LAYER_GAP,
+    },
     deletable: false,
     selectable: false,
+    style: wrapperStyle,
     data: { question: {} as SurveyQuestion },
   };
 
@@ -192,6 +144,7 @@ function questionsToNodes(questions: SurveyQuestion[]): QNode[] {
       x: 100 + (i % 3) * 320,
       y: 80 + Math.floor(i / 3) * 260,
     },
+    style: wrapperStyle,
     data: { question: q },
   }));
 
@@ -220,134 +173,98 @@ function questionsToEdges(
   questions: SurveyQuestion[],
   insertRef: React.MutableRefObject<InsertHandler | null>,
   readOnly: boolean,
-  nodeSizes?: Map<string, { width: number; height: number }>,
 ): Edge[] {
   const edges: Edge[] = [];
   const data = makeEdgeData(insertRef, readOnly);
 
-  // Collect all edges with source position info for global routing
-  const pending: {
-    edge: Omit<Edge, "data">;
-    targetId: string;
-    sourceRank: number;
-  }[] = [];
-
-  // Start → first question edge (included in routing group)
+  // Start → first question edge
   const first = getStartQuestion(questions);
   if (first) {
-    const firstPos = first.position ?? { x: 200, y: 200 };
-    const startY = firstPos.y - 120; // matches questionsToNodes offset
-    pending.push({
-      edge: {
-        id: `${START_ID}-default-${first.id}`,
-        source: START_ID,
-        sourceHandle: "default",
-        target: first.id,
-        targetHandle: "target",
-        animated: true,
-        deletable: false,
-        style: edgeStyle,
-        type: "addButton",
-      },
-      targetId: first.id,
-      sourceRank: startY,
+    edges.push({
+      id: `${START_ID}-default-${first.id}`,
+      source: START_ID,
+      sourceHandle: "default",
+      target: first.id,
+      targetHandle: "target",
+      animated: true,
+      deletable: false,
+      style: edgeStyle,
+      type: "addButton",
+      data: { ...data, turnDirection: "straight" },
     });
   }
 
   for (const q of questions) {
+    const hasOpts =
+      q.type === "multiple-choice" ||
+      (q.type === "text" && q.inference === "process");
+
+    // Check if all branches go to the same target (no fan-out needed)
+    const branchTargets = new Set(
+      (q.branches ?? [])
+        .filter((b) => b.nextQuestionId)
+        .map((b) => b.nextQuestionId),
+    );
+    const allSameTarget = branchTargets.size === 1;
+
     for (const b of q.branches ?? []) {
       if (!b.nextQuestionId) continue;
-      const hasOpts =
-        q.type === "multiple-choice" ||
-        (q.type === "text" && q.inference === "process");
       const sourceHandle =
         hasOpts && b.optionId ? `option-${b.optionId}` : "default";
 
-      // Rank = question Y + option index offset (higher Y = lower on screen)
-      const optIdx =
-        b.optionId && q.options
-          ? q.options.findIndex((o) => o.id === b.optionId)
-          : -1;
-      const sourceRank = (q.position?.y ?? 0) + (optIdx >= 0 ? optIdx * 30 : 0);
+      // Arrow-shaped first segments: outermost lines (left & right) = 2 spacing,
+      // each step inward adds +1 spacing, creating a downward chevron.
+      // Left half turns left, right half turns right, center goes straight.
+      // Exception: if all branches go to the same target, all go straight
+      // to avoid U-turns.
+      let firstSegment = LINE_SPACING;
+      let turnDirection: "left" | "right" | "straight" = allSameTarget
+        ? "straight"
+        : "right";
+      if (hasOpts && b.optionId && q.options) {
+        const optIdx = q.options.findIndex((o) => o.id === b.optionId);
+        if (optIdx >= 0) {
+          const n = q.options.length;
+          const distFromEdge = Math.min(optIdx, n - 1 - optIdx);
+          firstSegment = (2 + distFromEdge) * LINE_SPACING;
 
-      pending.push({
-        edge: {
-          id: `${q.id}-${sourceHandle}-${b.nextQuestionId}`,
-          source: q.id,
-          sourceHandle,
-          target: b.nextQuestionId,
-          targetHandle: "target",
-          animated: true,
-          style: edgeStyle,
-          type: "addButton",
-        },
-        targetId: b.nextQuestionId,
-        sourceRank,
-      });
-    }
-  }
+          if (allSameTarget) {
+            turnDirection = "straight";
+          } else if (n % 2 === 1 && optIdx === Math.floor(n / 2)) {
+            turnDirection = "straight";
+          } else if (optIdx >= n / 2) {
+            turnDirection = "left";
+          } else {
+            turnDirection = "right";
+          }
+        }
+      }
 
-  // Group by target, sort by sourceRank descending (bottom-most source first → smallest offset)
-  const byTarget = new Map<string, typeof pending>();
-  for (const p of pending) {
-    if (!byTarget.has(p.targetId)) byTarget.set(p.targetId, []);
-    byTarget.get(p.targetId)!.push(p);
-  }
-
-  // Compute sourceSpreadOffset per source group so top options fan out further
-  // right than bottom ones — keeps vertical lines from overlapping.
-  const SPREAD_SPACING = 20;
-  const bySource = new Map<string, typeof pending>();
-  for (const p of pending) {
-    const src = p.edge.source;
-    if (!bySource.has(src)) bySource.set(src, []);
-    bySource.get(src)!.push(p);
-  }
-  const sourceSpreadMap = new Map<string, number>();
-  for (const [, group] of bySource.entries()) {
-    if (group.length <= 1) {
-      for (const p of group) sourceSpreadMap.set(p.edge.id, 0);
-      continue;
-    }
-    // Sort ascending by sourceRank (top option first)
-    group.sort((a, b) => a.sourceRank - b.sourceRank);
-    const last = group.length - 1;
-    group.forEach((p, i) => {
-      // Top option (i=0) gets largest spread, bottom (i=last) gets 0
-      sourceSpreadMap.set(p.edge.id, (last - i) * SPREAD_SPACING);
-    });
-  }
-
-  // Look up target question positions for node-top reference
-  const qMap = new Map(questions.map((q) => [q.id, q]));
-
-  const SPACING = 15;
-  for (const [targetId, group] of byTarget.entries()) {
-    group.sort((a, b) => b.sourceRank - a.sourceRank);
-    const last = group.length - 1;
-    const targetQ = qMap.get(targetId);
-    const targetNodeTop = targetQ?.position?.y ?? undefined;
-    const targetNodeWidth =
-      nodeSizes?.get(targetId)?.width ?? DEFAULT_NODE_WIDTH;
-    const targetNodeRight =
-      targetQ?.position?.x != null
-        ? targetQ.position.x + targetNodeWidth
-        : undefined;
-    const maxPO = last * SPACING;
-    group.forEach((p, i) => {
       edges.push({
-        ...p.edge,
-        data: {
-          ...data,
-          pathOffset: i * SPACING,
-          approachOffset: (last - i) * SPACING,
-          targetNodeTop,
-          targetNodeRight,
-          maxPathOffset: maxPO,
-          sourceSpreadOffset: sourceSpreadMap.get(p.edge.id) ?? 0,
-        },
+        id: `${q.id}-${sourceHandle}-${b.nextQuestionId}`,
+        source: q.id,
+        sourceHandle,
+        target: b.nextQuestionId,
+        targetHandle: "target",
+        animated: true,
+        style: edgeStyle,
+        type: "addButton",
+        data: { ...data, firstSegment, turnDirection },
       });
-    });
+    }
+  }
+
+  // For targets with multiple incoming edges, set a shared lastSegment
+  // so the final vertical drop and preceding horizontal are uniform.
+  const incomingCount = new Map<string, number>();
+  for (const e of edges) {
+    incomingCount.set(e.target, (incomingCount.get(e.target) ?? 0) + 1);
+  }
+  const SHARED_LAST_SEGMENT = 2 * LINE_SPACING;
+  for (const e of edges) {
+    if ((incomingCount.get(e.target) ?? 0) > 1) {
+      e.data = { ...e.data, lastSegment: SHARED_LAST_SEGMENT };
+    }
   }
 
   return edges;
@@ -388,6 +305,7 @@ function SurveyFlowBuilderInner({
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const { screenToFlowPosition, fitView } = useReactFlow();
 
   // Track the source of a pending connection drag
@@ -405,6 +323,87 @@ function SurveyFlowBuilderInner({
     () => questions.find((q) => q.id === selectedId) ?? null,
     [questions, selectedId],
   );
+
+  // Highlight edges and neighbor nodes connected to the selected node or edge
+  useEffect(() => {
+    const connectedEdgeIds = new Set<string>();
+    const neighborIds = new Set<string>();
+    // Track which handles on each node are on highlighted edges
+    const nodeHighlightedHandles = new Map<string, Set<string>>();
+
+    const addHandle = (nodeId: string, handle: string) => {
+      let s = nodeHighlightedHandles.get(nodeId);
+      if (!s) {
+        s = new Set();
+        nodeHighlightedHandles.set(nodeId, s);
+      }
+      s.add(handle);
+    };
+
+    if (selectedEdgeId) {
+      for (const e of edges) {
+        if (e.id === selectedEdgeId) {
+          connectedEdgeIds.add(e.id);
+          neighborIds.add(e.source);
+          neighborIds.add(e.target);
+          if (e.sourceHandle) addHandle(e.source, e.sourceHandle);
+          addHandle(e.target, "target");
+          break;
+        }
+      }
+    } else if (selectedId) {
+      for (const e of edges) {
+        if (e.source === selectedId || e.target === selectedId) {
+          connectedEdgeIds.add(e.id);
+          if (e.source === selectedId) {
+            neighborIds.add(e.target);
+            if (e.sourceHandle) addHandle(e.source, e.sourceHandle);
+            addHandle(e.target, "target");
+          }
+          if (e.target === selectedId) {
+            neighborIds.add(e.source);
+            if (e.sourceHandle) addHandle(e.source, e.sourceHandle);
+            addHandle(e.target, "target");
+          }
+        }
+      }
+    }
+
+    setEdges((prev) =>
+      prev.map((e) => {
+        const isHighlighted = connectedEdgeIds.has(e.id);
+        const target = isHighlighted ? highlightedEdgeStyle : edgeStyle;
+        const newData = { ...e.data, highlighted: isHighlighted };
+        return e.style === target && e.data?.highlighted === isHighlighted
+          ? e
+          : { ...e, style: target, data: newData };
+      }),
+    );
+    setNodes((prev) =>
+      prev.map((n) => {
+        const shouldHighlight = neighborIds.has(n.id);
+        const handles = nodeHighlightedHandles.get(n.id);
+        const handleArr = handles ? Array.from(handles) : [];
+        const prevHandles: string[] =
+          (n.data.highlightedHandles as string[]) ?? [];
+        if (
+          (n.data.highlighted ?? false) === shouldHighlight &&
+          prevHandles.length === handleArr.length &&
+          prevHandles.every((h, i) => h === handleArr[i])
+        )
+          return n;
+        return {
+          ...n,
+          data: {
+            ...n.data,
+            highlighted: shouldHighlight,
+            highlightedHandles: handleArr,
+          },
+        };
+      }),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- edges read for neighbor lookup, effect should only re-run on selection change
+  }, [selectedId, selectedEdgeId, setEdges, setNodes]);
 
   /** Wrap onChange to record history before each mutation */
   const changeWithHistory = useCallback(
@@ -504,21 +503,21 @@ function SurveyFlowBuilderInner({
         };
       }
 
-      // Position new node below source, aligned with source X
+      // Position new node midway between source and target
       const sourceNode = nodes.find(
         (n) => n.id === (source === START_ID ? START_ID : source),
       );
       const targetNode = nodes.find((n) => n.id === target);
-      const CASCADE_GAP = 60;
-      const NODE_H = 160;
-      const ROUTE_GAP = 20;
-      const ROUTE_SPACING = 15;
       if (sourceNode && targetNode) {
         const sourceBottom =
-          sourceNode.position.y + (sourceNode.measured?.height ?? NODE_H);
+          sourceNode.position.y + (sourceNode.measured?.height ?? 160);
+        const midY = (sourceBottom + targetNode.position.y) / 2;
+        const sourceCenterX =
+          sourceNode.position.x +
+          (sourceNode.measured?.width ?? DEFAULT_NODE_WIDTH) / 2;
         newQ.position = {
-          x: sourceNode.position.x,
-          y: sourceBottom + CASCADE_GAP,
+          x: sourceCenterX - DEFAULT_NODE_WIDTH / 2,
+          y: midY,
         };
       }
 
@@ -551,43 +550,12 @@ function SurveyFlowBuilderInner({
         updatedQuestions = [...updatedQuestions, newQ];
       }
 
-      // Cascade: push downstream nodes down and right to make room
-      if (targetNode && newQ.position) {
-        const newBottom = newQ.position.y + NODE_H;
-        const minTargetY = newBottom + CASCADE_GAP;
-        const pushDown = minTargetY - targetNode.position.y;
-
-        const newNodeRight =
-          newQ.position.x + (sourceNode?.measured?.width ?? DEFAULT_NODE_WIDTH);
-        const routingNeed = newNodeRight + ROUTE_GAP + ROUTE_SPACING;
-        const targetRight =
-          targetNode.position.x +
-          (targetNode.measured?.width ?? DEFAULT_NODE_WIDTH);
-        const pushRight = Math.max(0, routingNeed - targetRight);
-
-        if (pushDown > 0 || pushRight > 0) {
-          updatedQuestions = updatedQuestions.map((q) => {
-            if (q.id === newId) return q;
-            if (q.position && q.position.y >= targetNode.position.y) {
-              return {
-                ...q,
-                position: {
-                  x: q.position.x + pushRight,
-                  y: q.position.y + Math.max(0, pushDown),
-                },
-              };
-            }
-            return q;
-          });
-        }
-      }
-
-      // Rebuild nodes and edges from the updated questions
       setNodes(questionsToNodes(updatedQuestions));
       setEdges(questionsToEdges(updatedQuestions, insertRef, readOnly));
       changeWithHistory(updatedQuestions);
       setSelectedId(newId);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [questions, nodes, readOnly, setNodes, setEdges, changeWithHistory],
   );
 
@@ -605,6 +573,211 @@ function SurveyFlowBuilderInner({
     setEdges(questionsToEdges(prev, insertRef, readOnly));
     onChange(prev);
   }, [onChange, readOnly, setNodes, setEdges]);
+
+  /** Arrange nodes in a top-down tree layout */
+  const arrangeNodes = useCallback(() => {
+    const H_GAP = 2 * LINE_SPACING;
+
+    const V_GAP = 8 * LINE_SPACING;
+
+    // Build adjacency: source → target[], target → parents[]
+    const children = new Map<string, string[]>();
+    const parents = new Map<string, string[]>();
+    const allIds = new Set<string>();
+
+    for (const n of nodes) {
+      allIds.add(n.id);
+    }
+
+    // Build question option index lookup: questionId → { optionId → index }
+    const qOptIdx = new Map<string, Map<string, number>>();
+    for (const q of questions) {
+      if (q.options) {
+        const m = new Map<string, number>();
+        q.options.forEach((o, i) => m.set(o.id, i));
+        qOptIdx.set(q.id, m);
+      }
+    }
+
+    // Map (source→target) to option index for ordering
+    const edgeOptionIdx = new Map<string, number>();
+
+    for (const e of edges) {
+      if (!allIds.has(e.source) || !allIds.has(e.target)) continue;
+      const c = children.get(e.source) ?? [];
+      if (!c.includes(e.target)) c.push(e.target);
+      children.set(e.source, c);
+      const p = parents.get(e.target) ?? [];
+      if (!p.includes(e.source)) p.push(e.source);
+      parents.set(e.target, p);
+
+      // Record option index for this edge
+      const handle = e.sourceHandle ?? "default";
+      const optId = handle.startsWith("option-")
+        ? handle.replace("option-", "")
+        : null;
+      const idx = optId != null ? (qOptIdx.get(e.source)?.get(optId) ?? 0) : 0;
+      edgeOptionIdx.set(`${e.source}->${e.target}`, idx);
+    }
+
+    // Assign layers via BFS: layer = max(parent layers) + 1
+    const layer = new Map<string, number>();
+    layer.set(START_ID, 0);
+    const queue = [START_ID];
+    let head = 0;
+    while (head < queue.length) {
+      const cur = queue[head++];
+      const curLayer = layer.get(cur) ?? 0;
+      for (const child of children.get(cur) ?? []) {
+        const prev = layer.get(child) ?? -1;
+        if (curLayer + 1 > prev) {
+          layer.set(child, curLayer + 1);
+          queue.push(child);
+        }
+      }
+    }
+
+    // Assign layer 1 to any unconnected nodes
+    for (const n of nodes) {
+      if (!layer.has(n.id) && n.id !== START_ID) {
+        layer.set(n.id, 1);
+      }
+    }
+
+    // Group nodes by layer
+    const layers = new Map<number, string[]>();
+    for (const [id, l] of layer) {
+      const arr = layers.get(l) ?? [];
+      arr.push(id);
+      layers.set(l, arr);
+    }
+
+    // Measure node dimensions from DOM
+    const heights = new Map<string, number>();
+    const widths = new Map<string, number>();
+    for (const n of nodes) {
+      heights.set(n.id, n.measured?.height ?? 80);
+      widths.set(n.id, n.measured?.width ?? DEFAULT_NODE_WIDTH);
+    }
+
+    // Compute Y per node: V_GAP below the bottom of its lowest parent
+    const posY = new Map<string, number>();
+    const maxLayer = Math.max(...layer.values());
+    posY.set(START_ID, 0);
+    for (let l = 1; l <= maxLayer; l++) {
+      for (const id of layers.get(l) ?? []) {
+        const nodeParents = parents.get(id) ?? [];
+        let lowestParentBottom = 0;
+        for (const pid of nodeParents) {
+          const py = posY.get(pid) ?? 0;
+          const ph = heights.get(pid) ?? 80;
+          lowestParentBottom = Math.max(lowestParentBottom, py + ph);
+        }
+        posY.set(id, lowestParentBottom + V_GAP);
+      }
+
+      // Align siblings from the same source to the same Y (max among them)
+      for (const parentId of layers.get(l - 1) ?? []) {
+        const kids = (children.get(parentId) ?? []).filter(
+          (c) => layer.get(c) === l,
+        );
+        if (kids.length < 2) continue;
+        const maxY = Math.max(...kids.map((k) => posY.get(k) ?? 0));
+        for (const k of kids) {
+          posY.set(k, maxY);
+        }
+      }
+    }
+
+    // Compute X: siblings from the same source placed side-by-side,
+    // sorted by handle order (descending option index = left-to-right)
+    const posX = new Map<string, number>();
+    for (let l = 0; l <= maxLayer; l++) {
+      const layerNodes = layers.get(l) ?? [];
+      // Group nodes by their primary parent (first parent)
+      const siblingGroups = new Map<string, string[]>();
+      const orphans: string[] = [];
+      for (const id of layerNodes) {
+        const nodeParents = parents.get(id) ?? [];
+        if (nodeParents.length > 0) {
+          const primaryParent = nodeParents[0];
+          const group = siblingGroups.get(primaryParent) ?? [];
+          group.push(id);
+          siblingGroups.set(primaryParent, group);
+        } else {
+          orphans.push(id);
+        }
+      }
+
+      // Sort each sibling group by descending option index (left-to-right handle order)
+      for (const [parentId, group] of siblingGroups) {
+        group.sort((a, b) => {
+          const aIdx = edgeOptionIdx.get(`${parentId}->${a}`) ?? 0;
+          const bIdx = edgeOptionIdx.get(`${parentId}->${b}`) ?? 0;
+          return bIdx - aIdx;
+        });
+      }
+
+      // Order groups by parent X, then lay out sequentially
+      const sortedParents = [...siblingGroups.keys()].sort(
+        (a, b) => (posX.get(a) ?? 0) - (posX.get(b) ?? 0),
+      );
+
+      let x = 0;
+      // Place orphans first
+      for (const id of orphans) {
+        posX.set(id, x);
+        x += (widths.get(id) ?? DEFAULT_NODE_WIDTH) + H_GAP;
+      }
+      // Place sibling groups
+      for (const parentId of sortedParents) {
+        const group = siblingGroups.get(parentId) ?? [];
+        for (const id of group) {
+          posX.set(id, x);
+          x += (widths.get(id) ?? DEFAULT_NODE_WIDTH) + H_GAP;
+        }
+      }
+    }
+
+    // Multi-parent nodes: left edge flush with leftmost source node's left edge
+    for (const [id, nodeParents] of parents) {
+      if (nodeParents.length < 2) continue;
+      const leftmostParentX = Math.min(
+        ...nodeParents.map((pid) => posX.get(pid) ?? 0),
+      );
+      posX.set(id, leftmostParentX);
+    }
+
+    // Single-parent nodes attached to the leftmost output handle:
+    // flush left edge with source node's left edge
+    for (const [id, nodeParents] of parents) {
+      if (nodeParents.length !== 1) continue;
+      const parentId = nodeParents[0];
+      const optIdx = edgeOptionIdx.get(`${parentId}->${id}`) ?? 0;
+      // Find the parent's max option index (leftmost handle)
+      const parentQ = questions.find((q) => q.id === parentId);
+      const pHasOpts =
+        parentQ &&
+        (parentQ.type === "multiple-choice" ||
+          (parentQ.type === "text" && parentQ.inference === "process"));
+      const pOptCount = pHasOpts ? (parentQ?.options?.length ?? 0) : 0;
+      if (pOptCount > 1 && optIdx === pOptCount - 1) {
+        posX.set(id, posX.get(parentId) ?? 0);
+      }
+    }
+
+    // Apply positions
+    setNodes((prev) =>
+      prev.map((n) => {
+        const x = posX.get(n.id) ?? n.position.x;
+        const y = posY.get(n.id) ?? n.position.y;
+        return { ...n, position: { x, y } };
+      }),
+    );
+
+    // Fit view after layout
+    setTimeout(() => fitView({ padding: 0.2 }), 50);
+  }, [nodes, edges, setNodes, fitView]);
 
   /** Keyboard shortcut: Ctrl/Cmd+Z for undo */
   useEffect(() => {
@@ -662,20 +835,6 @@ function SurveyFlowBuilderInner({
     [questions, changeWithHistory],
   );
 
-  /** Collect node measured sizes into a Map */
-  const collectNodeSizes = useCallback((currentNodes: QNode[]) => {
-    const sizes = new Map<string, { width: number; height: number }>();
-    for (const n of currentNodes) {
-      if (n.measured?.width && n.measured?.height) {
-        sizes.set(n.id, {
-          width: n.measured.width,
-          height: n.measured.height,
-        });
-      }
-    }
-    return sizes;
-  }, []);
-
   /** Check whether a question can be deleted (last finish node cannot) */
   const canDeleteQuestion = useCallback(
     (questionId: string) => {
@@ -687,152 +846,7 @@ function SurveyFlowBuilderInner({
     [questions],
   );
 
-  /**
-   * After drag end, cascade node positions in topological order.
-   * Ensures vertical spacing for routing lines, horizontal cascade indent,
-   * and repositions the start node to follow the first question.
-   * The anchorId (dragged node) keeps its position; everything else adjusts.
-   */
-  const autoSpaceNodes = useCallback(
-    (currentNodes: QNode[], anchorId?: string): QNode[] => {
-      const ROUTE_GAP = 20;
-      const ROUTE_SPACING = 15;
-      const START_H = 60;
-
-      // Mutable position map — updated as we process in topological order
-      const posMap = new Map(
-        currentNodes.map((n) => [n.id, { x: n.position.x, y: n.position.y }]),
-      );
-      const sizeMap = new Map(
-        currentNodes.map((n) => [
-          n.id,
-          {
-            w: n.measured?.width ?? DEFAULT_NODE_WIDTH,
-            h: n.measured?.height ?? (n.id === START_ID ? START_H : 160),
-          },
-        ]),
-      );
-
-      // Build graph from question branches
-      const parentSet = new Map<string, Set<string>>();
-      const edgeCount = new Map<string, number>();
-      const childSet = new Map<string, Set<string>>();
-
-      for (const q of questions) {
-        for (const b of q.branches ?? []) {
-          if (!b.nextQuestionId) continue;
-          if (!parentSet.has(b.nextQuestionId))
-            parentSet.set(b.nextQuestionId, new Set());
-          parentSet.get(b.nextQuestionId)!.add(q.id);
-          edgeCount.set(
-            b.nextQuestionId,
-            (edgeCount.get(b.nextQuestionId) ?? 0) + 1,
-          );
-          if (!childSet.has(q.id)) childSet.set(q.id, new Set());
-          childSet.get(q.id)!.add(b.nextQuestionId);
-        }
-      }
-
-      // Include start → first question
-      const startQ = getStartQuestion(questions);
-      if (startQ) {
-        if (!parentSet.has(startQ.id)) parentSet.set(startQ.id, new Set());
-        parentSet.get(startQ.id)!.add(START_ID);
-        edgeCount.set(startQ.id, (edgeCount.get(startQ.id) ?? 0) + 1);
-        if (!childSet.has(START_ID)) childSet.set(START_ID, new Set());
-        childSet.get(START_ID)!.add(startQ.id);
-      }
-
-      // BFS topological order
-      const order: string[] = [];
-      const visited = new Set<string>();
-      if (startQ) {
-        const queue = [START_ID];
-        visited.add(START_ID);
-        while (queue.length > 0) {
-          const id = queue.shift()!;
-          order.push(id);
-          for (const cid of childSet.get(id) ?? []) {
-            if (!visited.has(cid)) {
-              visited.add(cid);
-              queue.push(cid);
-            }
-          }
-        }
-      }
-      for (const n of currentNodes) {
-        if (!visited.has(n.id)) order.push(n.id);
-      }
-
-      let changed = false;
-
-      for (const nodeId of order) {
-        if (nodeId === START_ID || nodeId === anchorId) continue;
-
-        const pos = posMap.get(nodeId);
-        const size = sizeMap.get(nodeId);
-        if (!pos || !size) continue;
-
-        const parents = [...(parentSet.get(nodeId) ?? [])];
-        if (parents.length === 0) continue;
-
-        const edges = edgeCount.get(nodeId) ?? 0;
-        let maxPBottom = 0;
-        let maxPRight = 0;
-
-        for (const pid of parents) {
-          const pPos = posMap.get(pid);
-          const pSize = sizeMap.get(pid);
-          if (!pPos || !pSize) continue;
-          maxPBottom = Math.max(maxPBottom, pPos.y + pSize.h);
-          maxPRight = Math.max(maxPRight, pPos.x + pSize.w);
-        }
-
-        let { x, y } = pos;
-
-        // Vertical: enough gap for routing lines
-        const minY = maxPBottom + ROUTE_GAP * 2 + edges * ROUTE_SPACING;
-        if (y < minY) {
-          changed = true;
-          y = minY;
-        }
-
-        // Right edge must fit vertical routing lines
-        const maxPO = Math.max(0, (edges - 1) * ROUTE_SPACING);
-        const reqRight = maxPRight + ROUTE_GAP + maxPO;
-        if (x + size.w < reqRight) {
-          changed = true;
-          x = reqRight - size.w;
-        }
-
-        posMap.set(nodeId, { x, y });
-      }
-
-      // Reposition start node relative to first question
-      if (startQ) {
-        const fPos = posMap.get(startQ.id);
-        const sPos = posMap.get(START_ID);
-        if (fPos && sPos) {
-          const sx = fPos.x + 90;
-          const sy = fPos.y - 120;
-          if (sPos.x !== sx || sPos.y !== sy) {
-            changed = true;
-            posMap.set(START_ID, { x: sx, y: sy });
-          }
-        }
-      }
-
-      if (!changed) return currentNodes;
-      return currentNodes.map((n) => {
-        const np = posMap.get(n.id);
-        if (!np || (np.x === n.position.x && np.y === n.position.y)) return n;
-        return { ...n, position: np };
-      });
-    },
-    [questions],
-  );
-
-  /** Handle node drag / drag-end — prevent overlap + persist positions */
+  /** Handle node drag / drag-end — persist positions */
   const handleNodesChange: OnNodesChange<QNode> = useCallback(
     (changes) => {
       // Block removal of the last finish node (keyboard Backspace)
@@ -841,45 +855,17 @@ function SurveyFlowBuilderInner({
         return canDeleteQuestion(c.id);
       });
 
-      // During drag, prevent the node from overlapping others
-      const adjusted = filtered.map((c) => {
-        if (c.type !== "position" || !c.dragging || !c.position) return c;
-        const draggedNode = nodes.find((n) => n.id === c.id);
-        if (!draggedNode) return c;
-        const w = draggedNode.measured?.width ?? DEFAULT_NODE_WIDTH;
-        const h = draggedNode.measured?.height ?? DEFAULT_NODE_HEIGHT;
-        const corrected = preventOverlap(
-          c.position.x,
-          c.position.y,
-          w,
-          h,
-          c.id,
-          nodes,
-        );
-        if (corrected.x === c.position.x && corrected.y === c.position.y) {
-          return c;
-        }
-        return { ...c, position: corrected };
-      });
-      onNodesChange(adjusted);
-      // After position updates, rebuild edges with fresh routing data
-      let dragEndId: string | undefined;
-      for (const c of changes) {
-        if (c.type === "position" && !c.dragging) {
-          dragEndId = c.id;
-          break;
-        }
-      }
-      if (dragEndId) {
-        const anchorId = dragEndId;
+      onNodesChange(filtered);
+
+      // On drag end, sync positions back to questions and rebuild edges
+      const hasDragEnd = filtered.some(
+        (c) => c.type === "position" && !c.dragging,
+      );
+      if (hasDragEnd) {
         requestAnimationFrame(() => {
           setNodes((latest) => {
-            // Cascade node positions (dragged node stays, others adjust)
-            const spaced = autoSpaceNodes(latest as QNode[], anchorId);
-
-            // Build updated questions with current positions
             const qMap = new Map(questions.map((q) => [q.id, q]));
-            const updatedQs: SurveyQuestion[] = (spaced as QNode[])
+            const updatedQs: SurveyQuestion[] = (latest as QNode[])
               .filter((n) => n.id !== START_ID)
               .map((n) => {
                 const existing = qMap.get(n.id) ?? n.data.question;
@@ -889,12 +875,9 @@ function SurveyFlowBuilderInner({
                 };
               });
 
-            // Rebuild edges with fresh routing data
-            const sizes = getNodeSizes(spaced as QNode[]);
-            setEdges(questionsToEdges(updatedQs, insertRef, readOnly, sizes));
+            setEdges(questionsToEdges(updatedQs, insertRef, readOnly));
             changeWithHistory(updatedQs);
-
-            return spaced;
+            return latest;
           });
         });
       }
@@ -902,13 +885,11 @@ function SurveyFlowBuilderInner({
     [
       onNodesChange,
       canDeleteQuestion,
-      autoSpaceNodes,
       questions,
       readOnly,
       setNodes,
       setEdges,
       changeWithHistory,
-      nodes,
     ],
   );
 
@@ -921,23 +902,14 @@ function SurveyFlowBuilderInner({
           setNodes((latest) => {
             setEdges((latestEdges) => {
               const updatedQs = syncToParent(latest as QNode[], latestEdges);
-              // Re-derive edges with proper routing offsets
-              const sizes = collectNodeSizes(latest as QNode[]);
-              return questionsToEdges(updatedQs, insertRef, readOnly, sizes);
+              return questionsToEdges(updatedQs, insertRef, readOnly);
             });
             return latest;
           });
         });
       }
     },
-    [
-      onEdgesChange,
-      setNodes,
-      setEdges,
-      syncToParent,
-      readOnly,
-      collectNodeSizes,
-    ],
+    [onEdgesChange, setNodes, setEdges, syncToParent, readOnly],
   );
 
   /** Handle new edge connection — removes existing edge from same source handle first */
@@ -962,16 +934,14 @@ function SurveyFlowBuilderInner({
         requestAnimationFrame(() => {
           setNodes((latestNodes) => {
             const updatedQs = syncToParent(latestNodes as QNode[], next);
-            // Re-derive edges with proper routing offsets
-            const sizes = collectNodeSizes(latestNodes as QNode[]);
-            setEdges(questionsToEdges(updatedQs, insertRef, readOnly, sizes));
+            setEdges(questionsToEdges(updatedQs, insertRef, readOnly));
             return latestNodes;
           });
         });
         return next;
       });
     },
-    [readOnly, setEdges, setNodes, syncToParent, collectNodeSizes],
+    [readOnly, setEdges, setNodes, syncToParent],
   );
 
   /** Track connection drag start so we know the source on drop */
@@ -1065,9 +1035,7 @@ function SurveyFlowBuilderInner({
               latestEdges,
               updatedQuestions,
             );
-            // Re-derive edges with proper routing offsets
-            const sizes = collectNodeSizes(latestNodes as QNode[]);
-            return questionsToEdges(syncedQs, insertRef, readOnly, sizes);
+            return questionsToEdges(syncedQs, insertRef, readOnly);
           });
           return latestNodes;
         });
@@ -1082,7 +1050,6 @@ function SurveyFlowBuilderInner({
       setNodes,
       setEdges,
       syncToParent,
-      collectNodeSizes,
     ],
   );
 
@@ -1090,10 +1057,23 @@ function SurveyFlowBuilderInner({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- React Flow onNodeClick types are loosely generic
   const onNodeClick = useCallback(
     (_event: React.MouseEvent, node: QNode) => {
+      setSelectedEdgeId(null);
       if (!readOnly && node.id !== START_ID) setSelectedId(node.id);
     },
     [readOnly],
   );
+
+  /** Handle edge click to highlight single line */
+  const onEdgeClick = useCallback((_event: React.MouseEvent, edge: Edge) => {
+    setSelectedId(null);
+    setSelectedEdgeId(edge.id);
+  }, []);
+
+  /** Clear selection on pane click */
+  const onPaneClick = useCallback(() => {
+    setSelectedId(null);
+    setSelectedEdgeId(null);
+  }, []);
 
   /** Add a new question */
   const addQuestion = useCallback(
@@ -1135,155 +1115,6 @@ function SurveyFlowBuilderInner({
     [questions, changeWithHistory, setNodes],
   );
 
-  /** Auto-arrange all nodes in a layered left-to-right layout */
-  const arrangeNodes = useCallback(() => {
-    // --- Build directed graph ---
-    const childMap = new Map<string, string[]>();
-    const parentMap = new Map<string, string[]>();
-
-    const startQ = getStartQuestion(questions);
-    if (startQ) {
-      childMap.set(START_ID, [startQ.id]);
-      if (!parentMap.has(startQ.id)) parentMap.set(startQ.id, []);
-      parentMap.get(startQ.id)!.push(START_ID);
-    }
-
-    for (const q of questions) {
-      const ch: string[] = [];
-      for (const b of q.branches ?? []) {
-        if (!b.nextQuestionId) continue;
-        ch.push(b.nextQuestionId);
-        if (!parentMap.has(b.nextQuestionId))
-          parentMap.set(b.nextQuestionId, []);
-        parentMap.get(b.nextQuestionId)!.push(q.id);
-      }
-      childMap.set(q.id, ch);
-    }
-
-    // --- BFS layering ---
-    const layerOf = new Map<string, number>();
-    const bfsQueue: string[] = [];
-
-    if (startQ) {
-      layerOf.set(START_ID, 0);
-      bfsQueue.push(START_ID);
-    }
-
-    while (bfsQueue.length > 0) {
-      const id = bfsQueue.shift()!;
-      const depth = layerOf.get(id)!;
-      for (const child of childMap.get(id) ?? []) {
-        if (!layerOf.has(child)) {
-          layerOf.set(child, depth + 1);
-          bfsQueue.push(child);
-        }
-      }
-    }
-
-    // Unreachable nodes get their own layer at the end
-    let maxLayer = 0;
-    for (const l of layerOf.values()) maxLayer = Math.max(maxLayer, l);
-    for (const q of questions) {
-      if (!layerOf.has(q.id)) {
-        maxLayer++;
-        layerOf.set(q.id, maxLayer);
-      }
-    }
-
-    // --- Group by layer (exclude start node — repositioned later) ---
-    const layerGroups = new Map<number, string[]>();
-    for (const [id, layer] of layerOf.entries()) {
-      if (id === START_ID) continue;
-      if (!layerGroups.has(layer)) layerGroups.set(layer, []);
-      layerGroups.get(layer)!.push(id);
-    }
-
-    // --- Position layer by layer (left → right) ---
-    const H_SPACING = 350;
-    const V_GAP = 40;
-    const BASE_X = 200;
-    const BASE_Y = 200;
-
-    // Measured heights for accurate vertical stacking
-    const heightOf = new Map<string, number>();
-    for (const n of nodes) {
-      heightOf.set(n.id, n.measured?.height ?? DEFAULT_NODE_HEIGHT);
-    }
-
-    const positions = new Map<string, { x: number; y: number }>();
-    const sortedLayers = [...layerGroups.keys()].sort((a, b) => a - b);
-
-    for (const layer of sortedLayers) {
-      const ids = layerGroups.get(layer)!;
-      const x = BASE_X + (layer - 1) * H_SPACING;
-
-      // Barycenter heuristic: sort by average parent Y to reduce crossings
-      ids.sort((a, b) => {
-        const avgY = (id: string) => {
-          const pars = (parentMap.get(id) ?? []).filter((p) =>
-            positions.has(p),
-          );
-          if (pars.length === 0) return 0;
-          return (
-            pars.reduce((s, p) => s + positions.get(p)!.y, 0) / pars.length
-          );
-        };
-        return avgY(a) - avgY(b);
-      });
-
-      // Place each node at its ideal Y (barycenter), then resolve overlaps
-      const idealYs: number[] = ids.map((id) => {
-        const pars = (parentMap.get(id) ?? []).filter((p) => positions.has(p));
-        if (pars.length === 0) return BASE_Y;
-        return pars.reduce((s, p) => s + positions.get(p)!.y, 0) / pars.length;
-      });
-
-      // Resolve overlaps — ensure each node sits below the previous one
-      for (let i = 0; i < ids.length; i++) {
-        let y = idealYs[i];
-        if (i > 0) {
-          const prevId = ids[i - 1];
-          const prevBottom =
-            positions.get(prevId)!.y +
-            (heightOf.get(prevId) ?? DEFAULT_NODE_HEIGHT);
-          y = Math.max(y, prevBottom + V_GAP);
-        }
-        positions.set(ids[i], { x, y });
-      }
-    }
-
-    // Position start node relative to first question
-    if (startQ && positions.has(startQ.id)) {
-      const fPos = positions.get(startQ.id)!;
-      positions.set(START_ID, { x: fPos.x + 90, y: fPos.y - 120 });
-    }
-
-    // --- Apply ---
-    const updatedQuestions = questions.map((q) => ({
-      ...q,
-      position: positions.get(q.id) ?? q.position,
-    }));
-
-    const newNodes = questionsToNodes(updatedQuestions);
-    setNodes(newNodes);
-    const sizes = getNodeSizes(nodes as QNode[]);
-    setEdges(questionsToEdges(updatedQuestions, insertRef, readOnly, sizes));
-    changeWithHistory(updatedQuestions);
-
-    // Re-center the viewport after layout
-    requestAnimationFrame(() => {
-      fitView({ padding: 0.2 });
-    });
-  }, [
-    questions,
-    nodes,
-    readOnly,
-    setNodes,
-    setEdges,
-    changeWithHistory,
-    fitView,
-  ]);
-
   /** Update a question from the editor panel */
   const handleQuestionChange = useCallback(
     (updated: SurveyQuestion) => {
@@ -1296,10 +1127,7 @@ function SurveyFlowBuilderInner({
           n.id === updated.id ? { ...n, data: { question: updated } } : n,
         );
         // Rebuild edges from branches so handle changes (e.g. MC→text) are reflected
-        const sizes = getNodeSizes(updatedNodes as QNode[]);
-        setEdges(
-          questionsToEdges(updatedQuestions, insertRef, readOnly, sizes),
-        );
+        setEdges(questionsToEdges(updatedQuestions, insertRef, readOnly));
         return updatedNodes;
       });
       changeWithHistory(updatedQuestions);
@@ -1349,24 +1177,20 @@ function SurveyFlowBuilderInner({
             + Multiple Choice
           </button>
           <button
-            onClick={arrangeNodes}
-            style={toolbarBtnStyle}
-            title="Arrange"
-          >
-            &#x2B26; Arrange
-          </button>
-          <button
             onClick={undo}
             disabled={!canUndo}
             style={{
               ...toolbarBtnStyle,
-              background: canUndo ? "var(--color-primary, #6366f1)" : "#9ca3af",
+              background: canUndo ? "var(--color-primary, #008080)" : "#9ca3af",
               cursor: canUndo ? "pointer" : "not-allowed",
               opacity: canUndo ? 1 : 0.6,
             }}
             title="Undo (Ctrl+Z)"
           >
             &#x21a9; Undo
+          </button>
+          <button onClick={arrangeNodes} style={toolbarBtnStyle}>
+            Arrange
           </button>
         </div>
       )}
@@ -1380,6 +1204,8 @@ function SurveyFlowBuilderInner({
         onConnectStart={readOnly ? undefined : onConnectStart}
         onConnectEnd={readOnly ? undefined : onConnectEnd}
         onNodeClick={onNodeClick}
+        onEdgeClick={onEdgeClick}
+        onPaneClick={onPaneClick}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView

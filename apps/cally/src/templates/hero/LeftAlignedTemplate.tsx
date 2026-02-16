@@ -55,6 +55,7 @@ export default function LeftAlignedTemplate(props: HeroTemplateProps) {
   const titleStyle: React.CSSProperties = {
     fontSize: "clamp(2.5rem, 5vw, 4rem)",
     fontWeight: 800,
+    fontFamily: config.theme?.headerFont?.family || undefined,
     marginBottom: "24px",
     lineHeight: 1.1,
     maxWidth: "700px",
@@ -64,6 +65,7 @@ export default function LeftAlignedTemplate(props: HeroTemplateProps) {
   const subtitleStyle: React.CSSProperties = {
     fontSize: "clamp(1rem, 2vw, 1.3rem)",
     fontWeight: 400,
+    fontFamily: config.theme?.bodyFont?.family || undefined,
     opacity: 0.9,
     maxWidth: "550px",
     lineHeight: 1.7,

@@ -1,6 +1,7 @@
 "use client";
 
 import type { HeroTemplateProps } from "./types";
+import type { BrandFont } from "@/types/landing-page";
 import FeaturesSection from "./FeaturesSection";
 import ProductsSection from "./ProductsSection";
 import TestimonialsSection from "./TestimonialsSection";
@@ -36,6 +37,7 @@ export default function TherapistTemplate(props: HeroTemplateProps) {
     onButtonClick,
     onAboutParagraphChange,
     onAboutImageClick,
+    onAboutBgImageClick: _onAboutBgImageClick,
     onFeaturesHeadingChange,
     onFeaturesSubheadingChange,
     onFeatureCardChange,
@@ -45,6 +47,11 @@ export default function TherapistTemplate(props: HeroTemplateProps) {
     products,
     currency,
     onBookProduct,
+    onProductsHeadingChange,
+    onProductsSubheadingChange,
+    onProductsStyleOverrideChange,
+    onProductsBgImageClick,
+    onCustomColorsChange,
     onTestimonialsHeadingChange,
     onTestimonialsSubheadingChange,
     onTestimonialChange,
@@ -79,6 +86,11 @@ export default function TherapistTemplate(props: HeroTemplateProps) {
     { id: "faq" as const, enabled: false },
   ];
 
+  const brandFonts: { headerFont?: BrandFont; bodyFont?: BrandFont } = {
+    headerFont: config.theme?.headerFont,
+    bodyFont: config.theme?.bodyFont,
+  };
+
   // Typography
   const lora = '"Lora", Georgia, "Times New Roman", serif';
   const openSans =
@@ -86,7 +98,7 @@ export default function TherapistTemplate(props: HeroTemplateProps) {
 
   // --- Hero Styles ---
   const titleStyle: React.CSSProperties = {
-    fontFamily: lora,
+    fontFamily: config.theme?.headerFont?.family || lora,
     fontSize: "clamp(2.2rem, 5vw, 4rem)",
     fontWeight: 700,
     lineHeight: 1.15,
@@ -98,7 +110,7 @@ export default function TherapistTemplate(props: HeroTemplateProps) {
   };
 
   const subtitleStyle: React.CSSProperties = {
-    fontFamily: openSans,
+    fontFamily: config.theme?.bodyFont?.family || openSans,
     fontSize: "clamp(1rem, 1.5vw, 1.2rem)",
     fontWeight: 400,
     color: hasImage ? "rgba(255,255,255,0.9)" : "#666",
@@ -345,6 +357,7 @@ export default function TherapistTemplate(props: HeroTemplateProps) {
                 features={config.features}
                 isEditing={isEditing}
                 variant="light"
+                brandFonts={brandFonts}
                 onHeadingChange={onFeaturesHeadingChange}
                 onSubheadingChange={onFeaturesSubheadingChange}
                 onCardChange={onFeatureCardChange}
@@ -366,7 +379,17 @@ export default function TherapistTemplate(props: HeroTemplateProps) {
                 products={products}
                 currency={currency || "AUD"}
                 variant="light"
+                brandFonts={brandFonts}
+                productsConfig={config.productsConfig}
+                isEditing={isEditing}
+                palette={config.theme?.palette}
+                customColors={config.customColors}
+                onHeadingChange={onProductsHeadingChange}
+                onSubheadingChange={onProductsSubheadingChange}
                 onBookProduct={onBookProduct}
+                onStyleOverrideChange={onProductsStyleOverrideChange}
+                onBgImageClick={onProductsBgImageClick}
+                onCustomColorsChange={onCustomColorsChange}
               />
             </div>
           ) : null;
@@ -382,6 +405,7 @@ export default function TherapistTemplate(props: HeroTemplateProps) {
                 testimonials={config.testimonials}
                 isEditing={isEditing}
                 variant="light"
+                brandFonts={brandFonts}
                 onHeadingChange={onTestimonialsHeadingChange}
                 onSubheadingChange={onTestimonialsSubheadingChange}
                 onTestimonialChange={onTestimonialChange}
@@ -398,6 +422,7 @@ export default function TherapistTemplate(props: HeroTemplateProps) {
                 faq={config.faq}
                 isEditing={isEditing}
                 variant="light"
+                brandFonts={brandFonts}
                 onHeadingChange={onFAQHeadingChange}
                 onSubheadingChange={onFAQSubheadingChange}
                 onItemChange={onFAQItemChange}
@@ -419,6 +444,7 @@ export default function TherapistTemplate(props: HeroTemplateProps) {
                 address={address}
                 isEditing={isEditing}
                 variant="light"
+                brandFonts={brandFonts}
                 onHeadingChange={onLocationHeadingChange}
                 onSubheadingChange={onLocationSubheadingChange}
               />
@@ -436,6 +462,7 @@ export default function TherapistTemplate(props: HeroTemplateProps) {
                 gallery={config.gallery}
                 isEditing={isEditing}
                 variant="light"
+                brandFonts={brandFonts}
                 onHeadingChange={onGalleryHeadingChange}
                 onSubheadingChange={onGallerySubheadingChange}
                 onAddImage={onGalleryAddImage}
@@ -728,6 +755,7 @@ export default function TherapistTemplate(props: HeroTemplateProps) {
         <FooterSection
           footer={config.footer}
           isEditing={isEditing}
+          brandFonts={brandFonts}
           onTextChange={onFooterTextChange}
           onLinkChange={onFooterLinkChange}
           onAddLink={onAddFooterLink}

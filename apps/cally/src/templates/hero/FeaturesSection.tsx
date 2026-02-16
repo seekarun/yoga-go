@@ -1,11 +1,13 @@
 "use client";
 
 import type { FeaturesConfig } from "@/types/landing-page";
+import type { BrandFont } from "@/types/landing-page";
 
 interface FeaturesSectionProps {
   features: FeaturesConfig;
   isEditing?: boolean;
   variant?: "light" | "dark" | "gray";
+  brandFonts?: { headerFont?: BrandFont; bodyFont?: BrandFont };
   onHeadingChange?: (heading: string) => void;
   onSubheadingChange?: (subheading: string) => void;
   onCardChange?: (
@@ -26,6 +28,7 @@ export default function FeaturesSection({
   features,
   isEditing = false,
   variant = "light",
+  brandFonts,
   onHeadingChange,
   onSubheadingChange,
   onCardChange,
@@ -75,7 +78,7 @@ export default function FeaturesSection({
   };
 
   const containerStyle: React.CSSProperties = {
-    maxWidth: "1200px",
+    maxWidth: "1440px",
     margin: "0 auto",
   };
 
@@ -85,17 +88,23 @@ export default function FeaturesSection({
   };
 
   const headingStyle: React.CSSProperties = {
-    fontSize: "clamp(1.75rem, 3vw, 2.5rem)",
+    fontSize: brandFonts?.headerFont?.size
+      ? `${brandFonts.headerFont.size}px`
+      : "clamp(1.75rem, 3vw, 2.5rem)",
     fontWeight: 700,
     color: theme.heading,
     marginBottom: "12px",
+    fontFamily: brandFonts?.headerFont?.family || undefined,
   };
 
   const subheadingStyle: React.CSSProperties = {
-    fontSize: "1.1rem",
+    fontSize: brandFonts?.bodyFont?.size
+      ? `${brandFonts.bodyFont.size}px`
+      : "1.1rem",
     color: theme.subheading,
     maxWidth: "600px",
     margin: "0 auto",
+    fontFamily: brandFonts?.bodyFont?.family || undefined,
   };
 
   const gridStyle: React.CSSProperties = {
@@ -146,12 +155,14 @@ export default function FeaturesSection({
     fontWeight: 600,
     color: theme.cardTitle,
     marginBottom: "8px",
+    fontFamily: brandFonts?.headerFont?.family || undefined,
   };
 
   const cardDescStyle: React.CSSProperties = {
     fontSize: "0.95rem",
     color: theme.cardText,
     lineHeight: 1.6,
+    fontFamily: brandFonts?.bodyFont?.family || undefined,
   };
 
   const editableStyle: React.CSSProperties = isEditing

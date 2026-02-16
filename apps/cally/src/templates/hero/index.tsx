@@ -12,6 +12,7 @@ import BaysideTemplate from "./BaysideTemplate";
 import TherapistTemplate from "./TherapistTemplate";
 import ParallaxTemplate from "./ParallaxTemplate";
 import AnimatedTemplate from "./AnimatedTemplate";
+import DIYTemplate from "./DIYTemplate";
 
 /**
  * Template registry mapping template IDs to their components
@@ -27,6 +28,7 @@ const TEMPLATE_COMPONENTS: Record<TemplateId, React.FC<HeroTemplateProps>> = {
   therapist: TherapistTemplate,
   parallax: ParallaxTemplate,
   animated: AnimatedTemplate,
+  diy: DIYTemplate,
 };
 
 /**
@@ -52,4 +54,5 @@ export {
   TherapistTemplate,
   ParallaxTemplate,
   AnimatedTemplate,
+  DIYTemplate,
 };

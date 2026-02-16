@@ -1,6 +1,7 @@
 "use client";
 
 import type { HeroTemplateProps } from "./types";
+import type { BrandFont } from "@/types/landing-page";
 import AboutSection from "./AboutSection";
 import FeaturesSection from "./FeaturesSection";
 import ProductsSection from "./ProductsSection";
@@ -23,8 +24,14 @@ export default function AppleTemplate(props: HeroTemplateProps) {
     onTitleChange,
     onSubtitleChange,
     onButtonClick,
+    onAboutTitleChange,
     onAboutParagraphChange,
     onAboutImageClick,
+    onAboutStyleOverrideChange,
+    onAboutBgImageClick,
+    onAboutImagePositionChange,
+    onAboutImageZoomChange,
+    onCustomColorsChange,
     onFeaturesHeadingChange,
     onFeaturesSubheadingChange,
     onFeatureCardChange,
@@ -34,6 +41,10 @@ export default function AppleTemplate(props: HeroTemplateProps) {
     products,
     currency,
     onBookProduct,
+    onProductsHeadingChange,
+    onProductsSubheadingChange,
+    onProductsStyleOverrideChange,
+    onProductsBgImageClick,
     onTestimonialsHeadingChange,
     onTestimonialsSubheadingChange,
     onTestimonialChange,
@@ -67,6 +78,11 @@ export default function AppleTemplate(props: HeroTemplateProps) {
     { id: "testimonials" as const, enabled: false },
     { id: "faq" as const, enabled: false },
   ];
+
+  const brandFonts: { headerFont?: BrandFont; bodyFont?: BrandFont } = {
+    headerFont: config.theme?.headerFont,
+    bodyFont: config.theme?.bodyFont,
+  };
 
   const sfProDisplay =
     '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
@@ -118,7 +134,7 @@ export default function AppleTemplate(props: HeroTemplateProps) {
     lineHeight: 1.07,
     letterSpacing: "-0.04em",
     color: hasImage ? "#ffffff" : "#1d1d1f",
-    fontFamily: sfProDisplay,
+    fontFamily: config.theme?.headerFont?.family || sfProDisplay,
   };
 
   const subtitleStyle: React.CSSProperties = {
@@ -128,7 +144,7 @@ export default function AppleTemplate(props: HeroTemplateProps) {
     maxWidth: "580px",
     lineHeight: 1.5,
     letterSpacing: "-0.01em",
-    fontFamily: sfProText,
+    fontFamily: config.theme?.bodyFont?.family || sfProText,
   };
 
   const editableBaseStyle: React.CSSProperties = isEditing
@@ -216,8 +232,17 @@ export default function AppleTemplate(props: HeroTemplateProps) {
                 about={config.about}
                 isEditing={isEditing}
                 variant="light"
+                palette={config.theme?.palette}
+                customColors={config.customColors}
+                brandFonts={brandFonts}
+                onCustomColorsChange={onCustomColorsChange}
+                onTitleChange={onAboutTitleChange}
                 onParagraphChange={onAboutParagraphChange}
                 onImageClick={onAboutImageClick}
+                onStyleOverrideChange={onAboutStyleOverrideChange}
+                onBgImageClick={onAboutBgImageClick}
+                onImagePositionChange={onAboutImagePositionChange}
+                onImageZoomChange={onAboutImageZoomChange}
               />
             </div>
           ) : null;
@@ -233,6 +258,7 @@ export default function AppleTemplate(props: HeroTemplateProps) {
                 features={config.features}
                 isEditing={isEditing}
                 variant="light"
+                brandFonts={brandFonts}
                 onHeadingChange={onFeaturesHeadingChange}
                 onSubheadingChange={onFeaturesSubheadingChange}
                 onCardChange={onFeatureCardChange}
@@ -254,7 +280,17 @@ export default function AppleTemplate(props: HeroTemplateProps) {
                 products={products}
                 currency={currency || "AUD"}
                 variant="light"
+                brandFonts={brandFonts}
+                productsConfig={config.productsConfig}
+                isEditing={isEditing}
+                palette={config.theme?.palette}
+                customColors={config.customColors}
+                onHeadingChange={onProductsHeadingChange}
+                onSubheadingChange={onProductsSubheadingChange}
                 onBookProduct={onBookProduct}
+                onStyleOverrideChange={onProductsStyleOverrideChange}
+                onBgImageClick={onProductsBgImageClick}
+                onCustomColorsChange={onCustomColorsChange}
               />
             </div>
           ) : null;
@@ -270,6 +306,7 @@ export default function AppleTemplate(props: HeroTemplateProps) {
                 testimonials={config.testimonials}
                 isEditing={isEditing}
                 variant="light"
+                brandFonts={brandFonts}
                 onHeadingChange={onTestimonialsHeadingChange}
                 onSubheadingChange={onTestimonialsSubheadingChange}
                 onTestimonialChange={onTestimonialChange}
@@ -290,6 +327,7 @@ export default function AppleTemplate(props: HeroTemplateProps) {
                 faq={config.faq}
                 isEditing={isEditing}
                 variant="light"
+                brandFonts={brandFonts}
                 onHeadingChange={onFAQHeadingChange}
                 onSubheadingChange={onFAQSubheadingChange}
                 onItemChange={onFAQItemChange}
@@ -311,6 +349,7 @@ export default function AppleTemplate(props: HeroTemplateProps) {
                 address={address}
                 isEditing={isEditing}
                 variant="light"
+                brandFonts={brandFonts}
                 onHeadingChange={onLocationHeadingChange}
                 onSubheadingChange={onLocationSubheadingChange}
               />
@@ -328,6 +367,7 @@ export default function AppleTemplate(props: HeroTemplateProps) {
                 gallery={config.gallery}
                 isEditing={isEditing}
                 variant="light"
+                brandFonts={brandFonts}
                 onHeadingChange={onGalleryHeadingChange}
                 onSubheadingChange={onGallerySubheadingChange}
                 onAddImage={onGalleryAddImage}
@@ -350,7 +390,7 @@ export default function AppleTemplate(props: HeroTemplateProps) {
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 20px;
-          max-width: 1200px;
+          max-width: 1440px;
           margin: 0 auto;
           padding: 40px 20px 60px;
         }
@@ -479,6 +519,7 @@ export default function AppleTemplate(props: HeroTemplateProps) {
         <FooterSection
           footer={config.footer}
           isEditing={isEditing}
+          brandFonts={brandFonts}
           onTextChange={onFooterTextChange}
           onLinkChange={onFooterLinkChange}
           onAddLink={onAddFooterLink}

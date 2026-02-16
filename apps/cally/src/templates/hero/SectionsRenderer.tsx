@@ -1,6 +1,11 @@
 "use client";
 
-import type { SimpleLandingPageConfig } from "@/types/landing-page";
+import type {
+  SimpleLandingPageConfig,
+  AboutStyleOverrides,
+  ProductsStyleOverrides,
+  BrandFont,
+} from "@/types/landing-page";
 import type { Product } from "@/types";
 import AboutSection from "./AboutSection";
 import FeaturesSection from "./FeaturesSection";
@@ -16,8 +21,14 @@ interface SectionsRendererProps {
   isEditing?: boolean;
   variant?: "light" | "dark" | "gray";
   // About callbacks
+  onAboutTitleChange?: (title: string) => void;
   onAboutParagraphChange?: (paragraph: string) => void;
   onAboutImageClick?: () => void;
+  onAboutStyleOverrideChange?: (overrides: AboutStyleOverrides) => void;
+  onAboutBgImageClick?: () => void;
+  onAboutImagePositionChange?: (position: string) => void;
+  onAboutImageZoomChange?: (zoom: number) => void;
+  onCustomColorsChange?: (colors: { name: string; hex: string }[]) => void;
   // Features callbacks
   onFeaturesHeadingChange?: (heading: string) => void;
   onFeaturesSubheadingChange?: (subheading: string) => void;
@@ -29,10 +40,14 @@ interface SectionsRendererProps {
   onFeatureCardImageClick?: (cardId: string) => void;
   onAddFeatureCard?: () => void;
   onRemoveFeatureCard?: (cardId: string) => void;
-  // Products data
+  // Products data & callbacks
   products?: Product[];
   currency?: string;
   onBookProduct?: (productId: string) => void;
+  onProductsHeadingChange?: (heading: string) => void;
+  onProductsSubheadingChange?: (subheading: string) => void;
+  onProductsStyleOverrideChange?: (overrides: ProductsStyleOverrides) => void;
+  onProductsBgImageClick?: () => void;
   // Testimonials callbacks
   onTestimonialsHeadingChange?: (heading: string) => void;
   onTestimonialsSubheadingChange?: (subheading: string) => void;
@@ -77,8 +92,14 @@ export default function SectionsRenderer({
   config,
   isEditing = false,
   variant = "light",
+  onAboutTitleChange,
   onAboutParagraphChange,
   onAboutImageClick,
+  onAboutStyleOverrideChange,
+  onAboutBgImageClick,
+  onAboutImagePositionChange,
+  onAboutImageZoomChange,
+  onCustomColorsChange,
   onFeaturesHeadingChange,
   onFeaturesSubheadingChange,
   onFeatureCardChange,
@@ -88,6 +109,10 @@ export default function SectionsRenderer({
   products,
   currency,
   onBookProduct,
+  onProductsHeadingChange,
+  onProductsSubheadingChange,
+  onProductsStyleOverrideChange,
+  onProductsBgImageClick,
   address,
   onLocationHeadingChange,
   onLocationSubheadingChange,
@@ -117,6 +142,11 @@ export default function SectionsRenderer({
     { id: "faq" as const, enabled: false },
   ];
 
+  const brandFonts: { headerFont?: BrandFont; bodyFont?: BrandFont } = {
+    headerFont: config.theme?.headerFont,
+    bodyFont: config.theme?.bodyFont,
+  };
+
   return (
     <>
       {sections
@@ -130,8 +160,17 @@ export default function SectionsRenderer({
                   about={config.about}
                   isEditing={isEditing}
                   variant={variant}
+                  palette={config.theme?.palette}
+                  customColors={config.customColors}
+                  brandFonts={brandFonts}
+                  onCustomColorsChange={onCustomColorsChange}
+                  onTitleChange={onAboutTitleChange}
                   onParagraphChange={onAboutParagraphChange}
                   onImageClick={onAboutImageClick}
+                  onStyleOverrideChange={onAboutStyleOverrideChange}
+                  onBgImageClick={onAboutBgImageClick}
+                  onImagePositionChange={onAboutImagePositionChange}
+                  onImageZoomChange={onAboutImageZoomChange}
                 />
               ) : null;
 
@@ -142,6 +181,7 @@ export default function SectionsRenderer({
                   features={config.features}
                   isEditing={isEditing}
                   variant={variant}
+                  brandFonts={brandFonts}
                   onHeadingChange={onFeaturesHeadingChange}
                   onSubheadingChange={onFeaturesSubheadingChange}
                   onCardChange={onFeatureCardChange}
@@ -158,7 +198,17 @@ export default function SectionsRenderer({
                   products={products}
                   currency={currency || "AUD"}
                   variant={variant}
+                  brandFonts={brandFonts}
+                  productsConfig={config.productsConfig}
+                  isEditing={isEditing}
+                  palette={config.theme?.palette}
+                  customColors={config.customColors}
+                  onHeadingChange={onProductsHeadingChange}
+                  onSubheadingChange={onProductsSubheadingChange}
                   onBookProduct={onBookProduct}
+                  onStyleOverrideChange={onProductsStyleOverrideChange}
+                  onCustomColorsChange={onCustomColorsChange}
+                  onBgImageClick={onProductsBgImageClick}
                 />
               ) : null;
 
@@ -169,6 +219,7 @@ export default function SectionsRenderer({
                   testimonials={config.testimonials}
                   isEditing={isEditing}
                   variant={variant}
+                  brandFonts={brandFonts}
                   onHeadingChange={onTestimonialsHeadingChange}
                   onSubheadingChange={onTestimonialsSubheadingChange}
                   onTestimonialChange={onTestimonialChange}
@@ -184,6 +235,7 @@ export default function SectionsRenderer({
                   faq={config.faq}
                   isEditing={isEditing}
                   variant={variant}
+                  brandFonts={brandFonts}
                   onHeadingChange={onFAQHeadingChange}
                   onSubheadingChange={onFAQSubheadingChange}
                   onItemChange={onFAQItemChange}
@@ -200,6 +252,7 @@ export default function SectionsRenderer({
                   address={address}
                   isEditing={isEditing}
                   variant={variant}
+                  brandFonts={brandFonts}
                   onHeadingChange={onLocationHeadingChange}
                   onSubheadingChange={onLocationSubheadingChange}
                 />
@@ -212,6 +265,7 @@ export default function SectionsRenderer({
                   gallery={config.gallery}
                   isEditing={isEditing}
                   variant={variant}
+                  brandFonts={brandFonts}
                   onHeadingChange={onGalleryHeadingChange}
                   onSubheadingChange={onGallerySubheadingChange}
                   onAddImage={onGalleryAddImage}
@@ -229,6 +283,7 @@ export default function SectionsRenderer({
         <FooterSection
           footer={config.footer}
           isEditing={isEditing}
+          brandFonts={brandFonts}
           onTextChange={onFooterTextChange}
           onLinkChange={onFooterLinkChange}
           onAddLink={onAddFooterLink}

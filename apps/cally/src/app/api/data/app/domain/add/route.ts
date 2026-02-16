@@ -7,6 +7,7 @@ import { auth } from "@/auth";
 import {
   getTenantByUserId,
   updateDomainConfig,
+  addAdditionalDomain,
   getDomainLookup,
 } from "@/lib/repositories/tenantRepository";
 import {
@@ -60,17 +61,23 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check if tenant already has a domain configured
-    if (tenant.domainConfig?.domain) {
+    // Check for duplicate across primary + additional domains
+    const allDomains = [
+      tenant.domainConfig?.domain,
+      ...(tenant.additionalDomains || []).map((d) => d.domain),
+    ].filter(Boolean);
+
+    if (allDomains.includes(normalizedDomain)) {
       return NextResponse.json(
         {
           success: false,
-          error:
-            "A domain is already configured. Remove it first before adding a new one.",
+          error: "This domain is already configured on your account.",
         },
         { status: 400 },
       );
     }
+
+    const hasPrimaryDomain = !!tenant.domainConfig?.domain;
 
     // Add domain to Vercel
     const result = await addDomainToVercel(normalizedDomain);
@@ -155,13 +162,19 @@ export async function POST(request: Request) {
     // Get domain status to check if it's already verified
     const status = await getDomainStatus(normalizedDomain);
 
-    // Save domain config to tenant
-    await updateDomainConfig(tenant.id, {
+    // Save domain config — primary if first domain, otherwise additional
+    const newDomainConfig = {
       domain: normalizedDomain,
       addedAt: new Date().toISOString(),
       vercelVerified: status.verified,
       vercelVerifiedAt: status.verified ? new Date().toISOString() : undefined,
-    });
+    };
+
+    if (!hasPrimaryDomain) {
+      await updateDomainConfig(tenant.id, newDomainConfig);
+    } else {
+      await addAdditionalDomain(tenant.id, newDomainConfig);
+    }
 
     console.log(
       "[DBG][domain/add] Domain added for tenant:",

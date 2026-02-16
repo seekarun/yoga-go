@@ -1,12 +1,13 @@
 "use client";
 
-import type { LocationConfig } from "@/types/landing-page";
+import type { LocationConfig, BrandFont } from "@/types/landing-page";
 
 interface LocationSectionProps {
   location: LocationConfig;
   address?: string;
   isEditing?: boolean;
   variant?: "light" | "dark" | "gray";
+  brandFonts?: { headerFont?: BrandFont; bodyFont?: BrandFont };
   onHeadingChange?: (heading: string) => void;
   onSubheadingChange?: (subheading: string) => void;
 }
@@ -20,6 +21,7 @@ export default function LocationSection({
   address,
   isEditing = false,
   variant = "light",
+  brandFonts,
   onHeadingChange,
   onSubheadingChange,
 }: LocationSectionProps) {
@@ -62,7 +64,7 @@ export default function LocationSection({
   };
 
   const containerStyle: React.CSSProperties = {
-    maxWidth: "1200px",
+    maxWidth: "1440px",
     margin: "0 auto",
   };
 
@@ -72,14 +74,20 @@ export default function LocationSection({
   };
 
   const headingStyle: React.CSSProperties = {
-    fontSize: "clamp(1.75rem, 3vw, 2.5rem)",
+    fontFamily: brandFonts?.headerFont?.family || undefined,
+    fontSize: brandFonts?.headerFont?.size
+      ? `${brandFonts.headerFont.size}px`
+      : "clamp(1.75rem, 3vw, 2.5rem)",
     fontWeight: 700,
     color: theme.heading,
     marginBottom: "12px",
   };
 
   const subheadingStyle: React.CSSProperties = {
-    fontSize: "1.1rem",
+    fontFamily: brandFonts?.bodyFont?.family || undefined,
+    fontSize: brandFonts?.bodyFont?.size
+      ? `${brandFonts.bodyFont.size}px`
+      : "1.1rem",
     color: theme.subheading,
     maxWidth: "600px",
     margin: "0 auto",

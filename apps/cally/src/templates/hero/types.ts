@@ -2,7 +2,11 @@
  * Hero Template Types
  */
 
-import type { SimpleLandingPageConfig } from "@/types/landing-page";
+import type {
+  SimpleLandingPageConfig,
+  AboutStyleOverrides,
+  ProductsStyleOverrides,
+} from "@/types/landing-page";
 import type { Product } from "@/types";
 
 export interface HeroTemplateProps {
@@ -11,8 +15,14 @@ export interface HeroTemplateProps {
   onTitleChange?: (title: string) => void;
   onSubtitleChange?: (subtitle: string) => void;
   onButtonClick?: () => void;
+  onAboutTitleChange?: (title: string) => void;
   onAboutParagraphChange?: (paragraph: string) => void;
   onAboutImageClick?: () => void;
+  onAboutStyleOverrideChange?: (overrides: AboutStyleOverrides) => void;
+  onAboutBgImageClick?: () => void;
+  onAboutImagePositionChange?: (position: string) => void;
+  onAboutImageZoomChange?: (zoom: number) => void;
+  onCustomColorsChange?: (colors: { name: string; hex: string }[]) => void;
   // Features callbacks
   onFeaturesHeadingChange?: (heading: string) => void;
   onFeaturesSubheadingChange?: (subheading: string) => void;
@@ -24,10 +34,14 @@ export interface HeroTemplateProps {
   onFeatureCardImageClick?: (cardId: string) => void;
   onAddFeatureCard?: () => void;
   onRemoveFeatureCard?: (cardId: string) => void;
-  // Products data
+  // Products data & callbacks
   products?: Product[];
   currency?: string;
   onBookProduct?: (productId: string) => void;
+  onProductsHeadingChange?: (heading: string) => void;
+  onProductsSubheadingChange?: (subheading: string) => void;
+  onProductsStyleOverrideChange?: (overrides: ProductsStyleOverrides) => void;
+  onProductsBgImageClick?: () => void;
   // Testimonials callbacks
   onTestimonialsHeadingChange?: (heading: string) => void;
   onTestimonialsSubheadingChange?: (subheading: string) => void;

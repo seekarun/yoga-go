@@ -7,21 +7,21 @@ const nodeStyle: CSSProperties = {
   width: 48,
   height: 48,
   borderRadius: "50%",
-  background: "var(--color-primary, #6366f1)",
+  background: "var(--color-primary, #008080)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   color: "#fff",
   fontWeight: 700,
   fontSize: "13px",
-  boxShadow: "0 2px 6px rgba(99,102,241,0.35)",
+  boxShadow: "0 2px 6px rgba(0,128,128,0.35)",
 };
 
 const handleStyle: CSSProperties = {
   width: 10,
   height: 10,
   borderRadius: "50%",
-  border: "2px solid var(--color-primary, #6366f1)",
+  border: "2px solid var(--color-primary, #008080)",
   background: "#fff",
 };
 
@@ -31,7 +31,7 @@ function StartNodeComponent() {
       Start
       <Handle
         type="source"
-        position={Position.Right}
+        position={Position.Bottom}
         id="default"
         style={handleStyle}
       />

@@ -1,23 +1,38 @@
 "use client";
 
-import { memo, type CSSProperties } from "react";
+import {
+  memo,
+  useRef,
+  useLayoutEffect,
+  useState,
+  type CSSProperties,
+} from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import type { SurveyQuestion } from "@core/types";
+import { LINE_SPACING } from "./constants";
 
 const nodeStyle: CSSProperties = {
-  border: "1px solid var(--color-border, #e5e7eb)",
+  position: "relative",
+  border: "1px solid #d1d5db",
+  borderColor: "#d1d5db",
   borderRadius: "8px",
   background: "#fff",
-  minWidth: 220,
-  maxWidth: 280,
+  minWidth: 300,
+  maxWidth: 380,
   fontSize: "13px",
   boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
 };
 
 const selectedStyle: CSSProperties = {
   ...nodeStyle,
-  borderColor: "var(--color-primary, #6366f1)",
-  boxShadow: "0 0 0 2px var(--color-primary, #6366f1)",
+  borderColor: "var(--color-accent, #ff7f50)",
+  boxShadow: "0 0 0 2px var(--color-accent, #ff7f50)",
+};
+
+/** Subtle highlight for neighbor nodes — primary border, no outer ring */
+const highlightedStyle: CSSProperties = {
+  ...nodeStyle,
+  borderColor: "var(--color-primary, #008080)",
 };
 
 const finishNodeStyle: CSSProperties = {
@@ -27,6 +42,11 @@ const finishNodeStyle: CSSProperties = {
 
 const finishSelectedStyle: CSSProperties = {
   ...selectedStyle,
+  borderRadius: "4px",
+};
+
+const finishHighlightedStyle: CSSProperties = {
+  ...highlightedStyle,
   borderRadius: "4px",
 };
 
@@ -91,27 +111,43 @@ const optionListStyle: CSSProperties = {
 };
 
 const optionItemStyle: CSSProperties = {
-  position: "relative",
   fontSize: "12px",
   color: "var(--text-muted, #6b7280)",
   padding: "4px 8px",
   background: "#f9fafb",
   borderRadius: "4px",
+  border: "1px solid #d1d5db",
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
+  overflow: "hidden",
+};
+
+const optionLabelStyle: CSSProperties = {
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
 };
 
 const handleStyle: CSSProperties = {
   width: 10,
   height: 10,
   borderRadius: "50%",
-  border: "2px solid var(--color-primary, #6366f1)",
+  border: "2px solid var(--color-primary, #008080)",
   background: "#fff",
 };
 
+const handleAccentStyle: CSSProperties = {
+  ...handleStyle,
+  border: "2px solid var(--color-accent, #ff7f50)",
+};
+
+const ACCENT_COLOR = "var(--color-accent, #ff7f50)";
+
 export interface QuestionNodeData {
   question: SurveyQuestion;
+  highlighted?: boolean;
+  highlightedHandles?: string[];
   [key: string]: unknown;
 }
 
@@ -134,8 +170,21 @@ function getBadge(
   }
 }
 
-function QuestionNodeComponent({ data, selected }: QuestionNodeProps) {
-  const { question } = data;
+/** Connector line color */
+const CONNECTOR_COLOR = "#d1d5db";
+
+const draggingStyle: CSSProperties = {
+  boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
+  cursor: "grabbing",
+};
+
+function QuestionNodeComponent({
+  data,
+  selected,
+  dragging,
+}: QuestionNodeProps) {
+  const { question, highlighted, highlightedHandles = [] } = data;
+  const hlSet = new Set(highlightedHandles);
   const isMC = question.type === "multiple-choice";
   const isFinish = question.type === "finish";
   const hasOptions =
@@ -145,24 +194,69 @@ function QuestionNodeComponent({ data, selected }: QuestionNodeProps) {
     question.questionText.length > 80
       ? question.questionText.slice(0, 80) + "..."
       : question.questionText;
+  const getStyle = (): CSSProperties => {
+    let base: CSSProperties;
+    if (isFinish) {
+      if (selected) base = finishSelectedStyle;
+      else if (highlighted) base = finishHighlightedStyle;
+      else base = finishNodeStyle;
+    } else if (selected) base = selectedStyle;
+    else if (highlighted) base = highlightedStyle;
+    else base = nodeStyle;
+    return dragging ? { ...base, ...draggingStyle } : base;
+  };
+
+  const cardRef = useRef<HTMLDivElement>(null);
+  const optionRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  // Connector lines stored as local-space coords (transform-independent)
+  const [connectors, setConnectors] = useState<
+    {
+      optionRight: number;
+      optionCenterY: number;
+      handleX: number;
+      cardH: number;
+    }[]
+  >([]);
+
+  const optCount = hasOptions ? (question.options?.length ?? 0) : 0;
+
+  useLayoutEffect(() => {
+    if (!hasOptions || optCount === 0 || !cardRef.current) {
+      setConnectors([]);
+      return;
+    }
+    const card = cardRef.current;
+    const cardW = card.offsetWidth;
+    const cardH = card.offsetHeight;
+    const lines: typeof connectors = [];
+
+    for (let i = 0; i < optCount; i++) {
+      const el = optionRefs.current[i];
+      if (!el) continue;
+      // offset* values are relative to card (nearest positioned ancestor)
+      const optionRight = el.offsetLeft + el.offsetWidth;
+      const optionCenterY = el.offsetTop + el.offsetHeight / 2;
+      // Option 0 → rightmost lane, option N-1 → leftmost lane (no crossing)
+      const handleX = cardW - (i + 1) * LINE_SPACING;
+      lines.push({ optionRight, optionCenterY, handleX, cardH });
+    }
+
+    setConnectors(lines);
+    // Re-measure when card dimensions or option count change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasOptions, optCount, question.questionText]);
 
   return (
-    <div
-      style={
-        isFinish
-          ? selected
-            ? finishSelectedStyle
-            : finishNodeStyle
-          : selected
-            ? selectedStyle
-            : nodeStyle
-      }
-    >
-      {/* Target handle (left) */}
+    <div ref={cardRef} style={getStyle()}>
+      {/* Target handle (top-left) */}
       <Handle
         type="target"
-        position={Position.Left}
-        style={handleStyle}
+        position={Position.Top}
+        style={{
+          ...(hlSet.has("target") ? handleAccentStyle : handleStyle),
+          left: LINE_SPACING,
+        }}
         id="target"
       />
 
@@ -174,8 +268,14 @@ function QuestionNodeComponent({ data, selected }: QuestionNodeProps) {
         <span style={badge.style}>{badge.label}</span>
       </div>
 
-      {/* Body */}
-      <div style={bodyStyle}>
+      {/* Body — extra right padding when options need connector lanes */}
+      <div
+        style={
+          optCount > 0
+            ? { ...bodyStyle, paddingRight: (optCount + 1) * LINE_SPACING }
+            : bodyStyle
+        }
+      >
         <div style={questionTextStyle}>
           {truncated ||
             (isFinish ? "Thank you for your time" : "Untitled question")}
@@ -196,34 +296,92 @@ function QuestionNodeComponent({ data, selected }: QuestionNodeProps) {
                 Inference:
               </span>
             )}
-            {question.options.map((opt) => (
-              <div key={opt.id} style={optionItemStyle}>
-                <span>{opt.label || "Option"}</span>
-                {/* Source handle per option */}
-                <Handle
-                  type="source"
-                  position={Position.Right}
-                  id={`option-${opt.id}`}
-                  style={{
-                    ...handleStyle,
-                    position: "absolute",
-                    right: -6,
-                    top: "50%",
-                    transform: "translateY(-50%)",
+            {question.options.map((opt, i) => {
+              const optHl = hlSet.has(`option-${opt.id}`);
+              return (
+                <div
+                  key={opt.id}
+                  ref={(el) => {
+                    optionRefs.current[i] = el;
                   }}
-                />
-              </div>
-            ))}
+                  style={
+                    optHl
+                      ? { ...optionItemStyle, borderColor: ACCENT_COLOR }
+                      : optionItemStyle
+                  }
+                >
+                  <span style={optionLabelStyle}>{opt.label || "Option"}</span>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
 
-      {/* Source handle (right) — only when no per-option handles and not finish */}
+      {/* SVG connector lines from options to handles */}
+      {connectors.length > 0 && cardRef.current && (
+        <svg
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            pointerEvents: "none",
+            overflow: "visible",
+          }}
+        >
+          {connectors.map((c, i) => {
+            const optId = question.options?.[i]?.id;
+            const lineHl = optId ? hlSet.has(`option-${optId}`) : false;
+            return (
+              <path
+                key={i}
+                d={`M ${c.optionRight} ${c.optionCenterY} H ${c.handleX} V ${c.cardH}`}
+                fill="none"
+                stroke={lineHl ? ACCENT_COLOR : CONNECTOR_COLOR}
+                strokeWidth={1.5}
+              />
+            );
+          })}
+        </svg>
+      )}
+
+      {/* Per-option source handles at bottom-right (option 0 = rightmost) */}
+      {hasOptions &&
+        question.options &&
+        question.options.length > 0 &&
+        question.options.map((opt, i) => {
+          const hId = `option-${opt.id}`;
+          return (
+            <Handle
+              key={opt.id}
+              type="source"
+              position={Position.Bottom}
+              id={hId}
+              style={{
+                ...(hlSet.has(hId) ? handleAccentStyle : handleStyle),
+                position: "absolute",
+                right: (i + 1) * LINE_SPACING,
+                left: "auto",
+                bottom: -6,
+                transform: "translateX(50%)",
+              }}
+            />
+          );
+        })}
+
+      {/* Source handle (bottom-right) — only when no per-option handles and not finish */}
       {!hasOptions && !isFinish && (
         <Handle
           type="source"
-          position={Position.Right}
-          style={handleStyle}
+          position={Position.Bottom}
+          style={{
+            ...(hlSet.has("default") ? handleAccentStyle : handleStyle),
+            right: LINE_SPACING,
+            left: "auto",
+            transform: "translateX(50%)",
+          }}
           id="default"
         />
       )}

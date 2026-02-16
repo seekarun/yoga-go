@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import type { HeroTemplateProps } from "./types";
+import type { BrandFont } from "@/types/landing-page";
 import FeaturesSection from "./FeaturesSection";
 import ProductsSection from "./ProductsSection";
 import TestimonialsSection from "./TestimonialsSection";
@@ -49,6 +50,7 @@ export default function AnimatedTemplate(props: HeroTemplateProps) {
     onButtonClick,
     onAboutParagraphChange,
     onAboutImageClick,
+    onAboutBgImageClick: _onAboutBgImageClick,
     onFeaturesHeadingChange,
     onFeaturesSubheadingChange,
     onFeatureCardChange,
@@ -58,6 +60,11 @@ export default function AnimatedTemplate(props: HeroTemplateProps) {
     products,
     currency,
     onBookProduct,
+    onProductsHeadingChange,
+    onProductsSubheadingChange,
+    onProductsStyleOverrideChange,
+    onProductsBgImageClick,
+    onCustomColorsChange,
     onTestimonialsHeadingChange,
     onTestimonialsSubheadingChange,
     onTestimonialChange,
@@ -94,6 +101,11 @@ export default function AnimatedTemplate(props: HeroTemplateProps) {
     { id: "testimonials" as const, enabled: false },
     { id: "faq" as const, enabled: false },
   ];
+
+  const brandFonts: { headerFont?: BrandFont; bodyFont?: BrandFont } = {
+    headerFont: config.theme?.headerFont,
+    bodyFont: config.theme?.bodyFont,
+  };
 
   // Typography
   const interFont =
@@ -156,7 +168,7 @@ export default function AnimatedTemplate(props: HeroTemplateProps) {
 
   // --- Hero Styles ---
   const titleStyle: React.CSSProperties = {
-    fontFamily: interFont,
+    fontFamily: config.theme?.headerFont?.family || interFont,
     fontSize: "clamp(2.4rem, 5vw, 4.5rem)",
     fontWeight: 700,
     lineHeight: 1.1,
@@ -168,7 +180,7 @@ export default function AnimatedTemplate(props: HeroTemplateProps) {
   };
 
   const subtitleStyle: React.CSSProperties = {
-    fontFamily: interFont,
+    fontFamily: config.theme?.bodyFont?.family || interFont,
     fontSize: "clamp(1rem, 1.5vw, 1.25rem)",
     fontWeight: 400,
     color: "rgba(255,255,255,0.9)",
@@ -408,6 +420,7 @@ export default function AnimatedTemplate(props: HeroTemplateProps) {
                 features={config.features}
                 isEditing={isEditing}
                 variant="light"
+                brandFonts={brandFonts}
                 onHeadingChange={onFeaturesHeadingChange}
                 onSubheadingChange={onFeaturesSubheadingChange}
                 onCardChange={onFeatureCardChange}
@@ -432,7 +445,17 @@ export default function AnimatedTemplate(props: HeroTemplateProps) {
                 products={products}
                 currency={currency || "AUD"}
                 variant="light"
+                brandFonts={brandFonts}
+                productsConfig={config.productsConfig}
+                isEditing={isEditing}
+                palette={config.theme?.palette}
+                customColors={config.customColors}
+                onHeadingChange={onProductsHeadingChange}
+                onSubheadingChange={onProductsSubheadingChange}
                 onBookProduct={onBookProduct}
+                onStyleOverrideChange={onProductsStyleOverrideChange}
+                onBgImageClick={onProductsBgImageClick}
+                onCustomColorsChange={onCustomColorsChange}
               />
             </div>
           ) : null;
@@ -450,6 +473,7 @@ export default function AnimatedTemplate(props: HeroTemplateProps) {
               testimonials={config.testimonials}
               isEditing={isEditing}
               variant="light"
+              brandFonts={brandFonts}
               onHeadingChange={onTestimonialsHeadingChange}
               onSubheadingChange={onTestimonialsSubheadingChange}
               onTestimonialChange={onTestimonialChange}
@@ -472,6 +496,7 @@ export default function AnimatedTemplate(props: HeroTemplateProps) {
               faq={config.faq}
               isEditing={isEditing}
               variant="light"
+              brandFonts={brandFonts}
               onHeadingChange={onFAQHeadingChange}
               onSubheadingChange={onFAQSubheadingChange}
               onItemChange={onFAQItemChange}
@@ -494,6 +519,7 @@ export default function AnimatedTemplate(props: HeroTemplateProps) {
               address={address}
               isEditing={isEditing}
               variant="light"
+              brandFonts={brandFonts}
               onHeadingChange={onLocationHeadingChange}
               onSubheadingChange={onLocationSubheadingChange}
             />
@@ -513,6 +539,7 @@ export default function AnimatedTemplate(props: HeroTemplateProps) {
               gallery={config.gallery}
               isEditing={isEditing}
               variant="light"
+              brandFonts={brandFonts}
               onHeadingChange={onGalleryHeadingChange}
               onSubheadingChange={onGallerySubheadingChange}
               onAddImage={onGalleryAddImage}
@@ -876,6 +903,7 @@ export default function AnimatedTemplate(props: HeroTemplateProps) {
         <FooterSection
           footer={config.footer}
           isEditing={isEditing}
+          brandFonts={brandFonts}
           onTextChange={onFooterTextChange}
           onLinkChange={onFooterLinkChange}
           onAddLink={onAddFooterLink}

@@ -1,10 +1,11 @@
 "use client";
 
-import type { FooterConfig } from "@/types/landing-page";
+import type { FooterConfig, BrandFont } from "@/types/landing-page";
 
 interface FooterSectionProps {
   footer: FooterConfig;
   isEditing?: boolean;
+  brandFonts?: { headerFont?: BrandFont; bodyFont?: BrandFont };
   onTextChange?: (text: string) => void;
   onLinkChange?: (index: number, field: "label" | "url", value: string) => void;
   onAddLink?: () => void;
@@ -14,6 +15,7 @@ interface FooterSectionProps {
 export default function FooterSection({
   footer,
   isEditing = false,
+  brandFonts,
   onTextChange,
   onLinkChange,
   onAddLink,
@@ -27,7 +29,7 @@ export default function FooterSection({
   };
 
   const containerStyle: React.CSSProperties = {
-    maxWidth: "1200px",
+    maxWidth: "1440px",
     margin: "0 auto",
     display: "flex",
     flexDirection: "column",
@@ -44,6 +46,7 @@ export default function FooterSection({
   };
 
   const linkStyle: React.CSSProperties = {
+    fontFamily: brandFonts?.bodyFont?.family || undefined,
     color: "var(--brand-300, #d1d5db)",
     fontSize: "0.85rem",
     textDecoration: "none",
@@ -51,6 +54,7 @@ export default function FooterSection({
   };
 
   const textStyle: React.CSSProperties = {
+    fontFamily: brandFonts?.bodyFont?.family || undefined,
     fontSize: "0.85rem",
     color: "#6b7280",
     textAlign: "center",

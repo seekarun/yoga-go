@@ -1,7 +1,15 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import type { Product, ProductImage } from "@/types";
+import type {
+  BrandFont,
+  ProductsConfig,
+  ProductsStyleOverrides,
+} from "@/types/landing-page";
+import type { ColorPalette } from "@/lib/colorPalette";
+import ProductsSectionToolbar from "./ProductsSectionToolbar";
+import TextToolbar from "./TextToolbar";
 
 /**
  * Tiny image carousel for product cards.
@@ -183,7 +191,17 @@ interface ProductsSectionProps {
   products: Product[];
   currency: string;
   variant?: "light" | "dark" | "gray";
+  brandFonts?: { headerFont?: BrandFont; bodyFont?: BrandFont };
+  productsConfig?: ProductsConfig;
+  isEditing?: boolean;
+  palette?: ColorPalette;
+  customColors?: { name: string; hex: string }[];
+  onHeadingChange?: (heading: string) => void;
+  onSubheadingChange?: (subheading: string) => void;
   onBookProduct?: (productId: string) => void;
+  onStyleOverrideChange?: (overrides: ProductsStyleOverrides) => void;
+  onCustomColorsChange?: (colors: { name: string; hex: string }[]) => void;
+  onBgImageClick?: () => void;
 }
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
@@ -220,9 +238,230 @@ export default function ProductsSection({
   products,
   currency,
   variant = "light",
+  brandFonts,
+  productsConfig,
+  isEditing = false,
+  palette,
+  customColors,
+  onHeadingChange,
+  onSubheadingChange,
   onBookProduct,
+  onStyleOverrideChange,
+  onCustomColorsChange,
+  onBgImageClick,
 }: ProductsSectionProps) {
+  const overrides = productsConfig?.styleOverrides;
+
+  // Track whether the section is selected (click to select, click outside to deselect)
+  const [sectionSelected, setSectionSelected] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
+
+  // Track whether the heading text is selected
+  const [headingSelected, setHeadingSelected] = useState(false);
+  const headingContainerRef = useRef<HTMLDivElement>(null);
+
+  // Track whether the subheading text is selected
+  const [subheadingSelected, setSubheadingSelected] = useState(false);
+  const subheadingContainerRef = useRef<HTMLDivElement>(null);
+
+  // Click-outside listener to deselect section
+  useEffect(() => {
+    if (!sectionSelected) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        sectionRef.current &&
+        !sectionRef.current.contains(e.target as Node)
+      ) {
+        setSectionSelected(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [sectionSelected]);
+
+  // Click-outside listener to deselect heading
+  useEffect(() => {
+    if (!headingSelected) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        headingContainerRef.current &&
+        !headingContainerRef.current.contains(e.target as Node)
+      ) {
+        setHeadingSelected(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [headingSelected]);
+
+  // Click-outside listener to deselect subheading
+  useEffect(() => {
+    if (!subheadingSelected) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        subheadingContainerRef.current &&
+        !subheadingContainerRef.current.contains(e.target as Node)
+      ) {
+        setSubheadingSelected(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [subheadingSelected]);
+
+  const showHandles = isEditing && !!onStyleOverrideChange;
+
+  // Section toolbar handlers
+  const handleBgImageRemove = useCallback(() => {
+    onStyleOverrideChange?.({
+      ...overrides,
+      bgImage: undefined,
+      bgImageBlur: undefined,
+      bgImageOpacity: undefined,
+    });
+  }, [overrides, onStyleOverrideChange]);
+
+  const handleBgImageBlurChange = useCallback(
+    (val: number) => {
+      onStyleOverrideChange?.({ ...overrides, bgImageBlur: val });
+    },
+    [overrides, onStyleOverrideChange],
+  );
+
+  const handleBgImageOpacityChange = useCallback(
+    (val: number) => {
+      onStyleOverrideChange?.({ ...overrides, bgImageOpacity: val });
+    },
+    [overrides, onStyleOverrideChange],
+  );
+
+  const handleBgColorChange = useCallback(
+    (val: string) => {
+      onStyleOverrideChange?.({ ...overrides, bgColor: val });
+    },
+    [overrides, onStyleOverrideChange],
+  );
+
+  const handlePaddingTopChange = useCallback(
+    (val: number) => {
+      onStyleOverrideChange?.({ ...overrides, paddingTop: val });
+    },
+    [overrides, onStyleOverrideChange],
+  );
+
+  const handlePaddingBottomChange = useCallback(
+    (val: number) => {
+      onStyleOverrideChange?.({ ...overrides, paddingBottom: val });
+    },
+    [overrides, onStyleOverrideChange],
+  );
+
+  const handlePaddingLeftChange = useCallback(
+    (val: number) => {
+      onStyleOverrideChange?.({ ...overrides, paddingLeft: val });
+    },
+    [overrides, onStyleOverrideChange],
+  );
+
+  const handlePaddingRightChange = useCallback(
+    (val: number) => {
+      onStyleOverrideChange?.({ ...overrides, paddingRight: val });
+    },
+    [overrides, onStyleOverrideChange],
+  );
+
+  // Heading text toolbar handlers
+  const handleHeadingFontSizeChange = useCallback(
+    (val: number) => {
+      onStyleOverrideChange?.({ ...overrides, headingFontSize: val });
+    },
+    [overrides, onStyleOverrideChange],
+  );
+
+  const handleHeadingFontFamilyChange = useCallback(
+    (val: string) => {
+      onStyleOverrideChange?.({ ...overrides, headingFontFamily: val });
+    },
+    [overrides, onStyleOverrideChange],
+  );
+
+  const handleHeadingFontWeightChange = useCallback(
+    (val: "normal" | "bold") => {
+      onStyleOverrideChange?.({ ...overrides, headingFontWeight: val });
+    },
+    [overrides, onStyleOverrideChange],
+  );
+
+  const handleHeadingFontStyleChange = useCallback(
+    (val: "normal" | "italic") => {
+      onStyleOverrideChange?.({ ...overrides, headingFontStyle: val });
+    },
+    [overrides, onStyleOverrideChange],
+  );
+
+  const handleHeadingTextColorChange = useCallback(
+    (val: string) => {
+      onStyleOverrideChange?.({ ...overrides, headingTextColor: val });
+    },
+    [overrides, onStyleOverrideChange],
+  );
+
+  const handleHeadingTextAlignChange = useCallback(
+    (val: "left" | "center" | "right") => {
+      onStyleOverrideChange?.({ ...overrides, headingTextAlign: val });
+    },
+    [overrides, onStyleOverrideChange],
+  );
+
+  // Subheading text toolbar handlers
+  const handleSubheadingFontSizeChange = useCallback(
+    (val: number) => {
+      onStyleOverrideChange?.({ ...overrides, subheadingFontSize: val });
+    },
+    [overrides, onStyleOverrideChange],
+  );
+
+  const handleSubheadingFontFamilyChange = useCallback(
+    (val: string) => {
+      onStyleOverrideChange?.({ ...overrides, subheadingFontFamily: val });
+    },
+    [overrides, onStyleOverrideChange],
+  );
+
+  const handleSubheadingFontWeightChange = useCallback(
+    (val: "normal" | "bold") => {
+      onStyleOverrideChange?.({ ...overrides, subheadingFontWeight: val });
+    },
+    [overrides, onStyleOverrideChange],
+  );
+
+  const handleSubheadingFontStyleChange = useCallback(
+    (val: "normal" | "italic") => {
+      onStyleOverrideChange?.({ ...overrides, subheadingFontStyle: val });
+    },
+    [overrides, onStyleOverrideChange],
+  );
+
+  const handleSubheadingTextColorChange = useCallback(
+    (val: string) => {
+      onStyleOverrideChange?.({ ...overrides, subheadingTextColor: val });
+    },
+    [overrides, onStyleOverrideChange],
+  );
+
+  const handleSubheadingTextAlignChange = useCallback(
+    (val: "left" | "center" | "right") => {
+      onStyleOverrideChange?.({ ...overrides, subheadingTextAlign: val });
+    },
+    [overrides, onStyleOverrideChange],
+  );
+
   if (products.length === 0) return null;
+
+  const resolvedPaddingTop = overrides?.paddingTop ?? 80;
+  const resolvedPaddingBottom = overrides?.paddingBottom ?? 80;
+  const resolvedPaddingLeft = overrides?.paddingLeft ?? 0;
+  const resolvedPaddingRight = overrides?.paddingRight ?? 0;
 
   const colors = {
     light: {
@@ -273,13 +512,39 @@ export default function ProductsSection({
 
   const sectionStyle: React.CSSProperties = {
     width: "100%",
-    padding: "80px 8%",
-    backgroundColor: theme.bg,
+    paddingTop: `${resolvedPaddingTop}px`,
+    paddingBottom: `${resolvedPaddingBottom}px`,
+    paddingLeft: 0,
+    paddingRight: 0,
+    backgroundColor: overrides?.bgColor || theme.bg,
+    position: "relative",
+    overflow:
+      sectionSelected || headingSelected || subheadingSelected
+        ? "visible"
+        : "hidden",
+    ...(showHandles
+      ? {
+          outline: "2px dashed rgba(59, 130, 246, 0.25)",
+          outlineOffset: "-2px",
+          zIndex:
+            sectionSelected || headingSelected || subheadingSelected
+              ? 10
+              : undefined,
+        }
+      : {}),
   };
 
+  /** Base horizontal padding that's always applied for comfortable reading */
+  const BASE_HORIZONTAL_PADDING = 24;
+
   const containerStyle: React.CSSProperties = {
-    maxWidth: "1200px",
+    maxWidth: "1440px",
     margin: "0 auto",
+    paddingLeft: `${BASE_HORIZONTAL_PADDING + resolvedPaddingLeft}px`,
+    paddingRight: `${BASE_HORIZONTAL_PADDING + resolvedPaddingRight}px`,
+    boxSizing: "border-box",
+    position: "relative",
+    zIndex: 1,
   };
 
   const headerStyle: React.CSSProperties = {
@@ -288,18 +553,52 @@ export default function ProductsSection({
   };
 
   const headingStyle: React.CSSProperties = {
-    fontSize: "clamp(1.75rem, 3vw, 2.5rem)",
-    fontWeight: 700,
-    color: theme.heading,
+    fontSize: overrides?.headingFontSize
+      ? `${overrides.headingFontSize}px`
+      : brandFonts?.headerFont?.size
+        ? `${brandFonts.headerFont.size}px`
+        : "clamp(1.75rem, 3vw, 2.5rem)",
+    fontFamily:
+      overrides?.headingFontFamily ||
+      brandFonts?.headerFont?.family ||
+      undefined,
+    fontWeight: overrides?.headingFontWeight ?? 700,
+    fontStyle: overrides?.headingFontStyle || undefined,
+    color: overrides?.headingTextColor || theme.heading,
+    textAlign: overrides?.headingTextAlign || "center",
     marginBottom: "12px",
   };
 
   const subheadingStyle: React.CSSProperties = {
-    fontSize: "1.1rem",
-    color: theme.subheading,
+    fontSize: overrides?.subheadingFontSize
+      ? `${overrides.subheadingFontSize}px`
+      : brandFonts?.bodyFont?.size
+        ? `${brandFonts.bodyFont.size}px`
+        : "1.1rem",
+    fontFamily:
+      overrides?.subheadingFontFamily ||
+      brandFonts?.bodyFont?.family ||
+      undefined,
+    fontWeight: overrides?.subheadingFontWeight || undefined,
+    fontStyle: overrides?.subheadingFontStyle || undefined,
+    color: overrides?.subheadingTextColor || theme.subheading,
+    textAlign: overrides?.subheadingTextAlign || "center",
     maxWidth: "600px",
     margin: "0 auto",
   };
+
+  const editableStyle: React.CSSProperties = isEditing
+    ? {
+        cursor: "text",
+        outline: "none",
+        borderRadius: "4px",
+        padding: "4px 8px",
+        transition: "background 0.2s, outline 0.2s",
+      }
+    : {};
+
+  const editableClass =
+    variant === "dark" ? "editable-field-light" : "editable-field-dark";
 
   const gridStyle: React.CSSProperties = {
     display: "grid",
@@ -326,6 +625,7 @@ export default function ProductsSection({
 
   const cardTitleStyle: React.CSSProperties = {
     fontSize: "1.15rem",
+    fontFamily: brandFonts?.headerFont?.family || undefined,
     fontWeight: 600,
     color: theme.cardTitle,
     marginBottom: "8px",
@@ -333,6 +633,7 @@ export default function ProductsSection({
 
   const cardDescStyle: React.CSSProperties = {
     fontSize: "0.95rem",
+    fontFamily: brandFonts?.bodyFont?.family || undefined,
     color: theme.cardText,
     lineHeight: 1.6,
     marginBottom: "16px",
@@ -378,7 +679,71 @@ export default function ProductsSection({
   };
 
   return (
-    <section style={sectionStyle}>
+    <section
+      ref={sectionRef}
+      style={sectionStyle}
+      onClick={
+        showHandles
+          ? (e) => {
+              // Only activate section selection if click is NOT inside heading or subheading
+              if (
+                headingContainerRef.current?.contains(e.target as Node) ||
+                subheadingContainerRef.current?.contains(e.target as Node)
+              )
+                return;
+              setSectionSelected(true);
+              setHeadingSelected(false);
+              setSubheadingSelected(false);
+            }
+          : undefined
+      }
+    >
+      {/* Products section toolbar — anchored to section top */}
+      {showHandles && sectionSelected && (
+        <ProductsSectionToolbar
+          bgColor={overrides?.bgColor || theme.bg}
+          bgImage={overrides?.bgImage}
+          bgImageBlur={overrides?.bgImageBlur ?? 0}
+          bgImageOpacity={overrides?.bgImageOpacity ?? 100}
+          paddingTop={overrides?.paddingTop ?? 80}
+          paddingBottom={overrides?.paddingBottom ?? 80}
+          paddingLeft={overrides?.paddingLeft ?? 0}
+          paddingRight={overrides?.paddingRight ?? 0}
+          palette={palette}
+          customColors={customColors}
+          onBgColorChange={handleBgColorChange}
+          onBgImageClick={onBgImageClick}
+          onBgImageRemove={handleBgImageRemove}
+          onBgImageBlurChange={handleBgImageBlurChange}
+          onBgImageOpacityChange={handleBgImageOpacityChange}
+          onPaddingTopChange={handlePaddingTopChange}
+          onPaddingBottomChange={handlePaddingBottomChange}
+          onPaddingLeftChange={handlePaddingLeftChange}
+          onPaddingRightChange={handlePaddingRightChange}
+          onCustomColorsChange={onCustomColorsChange}
+        />
+      )}
+
+      {/* Background image layer */}
+      {overrides?.bgImage && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            backgroundImage: `url(${overrides.bgImage})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            backgroundRepeat: "no-repeat",
+            filter: `blur(${overrides.bgImageBlur ?? 0}px)`,
+            opacity: (overrides.bgImageOpacity ?? 100) / 100,
+            zIndex: 0,
+            // Slight scale to prevent blur white edges
+            transform:
+              (overrides.bgImageBlur ?? 0) > 0 ? "scale(1.05)" : undefined,
+          }}
+        />
+      )}
+
       <style>{`
         .product-card:hover {
           transform: translateY(-2px);
@@ -390,13 +755,158 @@ export default function ProductsSection({
         .product-carousel-container:hover .product-carousel-arrow {
           opacity: 1 !important;
         }
+        ${
+          isEditing
+            ? `
+          .editable-field-dark:focus {
+            background: rgba(0, 0, 0, 0.05) !important;
+            outline: 2px solid rgba(0, 0, 0, 0.3) !important;
+          }
+          .editable-field-dark:hover:not(:focus) {
+            background: rgba(0, 0, 0, 0.02);
+          }
+          .editable-field-light:focus {
+            background: rgba(255, 255, 255, 0.1) !important;
+            outline: 2px solid rgba(255, 255, 255, 0.5) !important;
+          }
+          .editable-field-light:hover:not(:focus) {
+            background: rgba(255, 255, 255, 0.05);
+          }
+        `
+            : ""
+        }
       `}</style>
       <div style={containerStyle}>
         <div style={headerStyle}>
-          <h2 style={headingStyle}>Our Services</h2>
-          <p style={subheadingStyle}>
-            Browse our offerings and book your appointment
-          </p>
+          {/* Heading — independently selectable */}
+          <div
+            ref={headingContainerRef}
+            style={{
+              position: "relative",
+              ...(showHandles && headingSelected
+                ? {
+                    outline: "2px solid #3b82f6",
+                    outlineOffset: "4px",
+                    borderRadius: "4px",
+                  }
+                : {}),
+              ...(showHandles ? { cursor: "pointer" } : {}),
+            }}
+            onClick={
+              showHandles
+                ? () => {
+                    setHeadingSelected(true);
+                    setSubheadingSelected(false);
+                    setSectionSelected(false);
+                  }
+                : undefined
+            }
+          >
+            {showHandles && headingSelected && (
+              <TextToolbar
+                fontSize={overrides?.headingFontSize ?? 28}
+                fontFamily={overrides?.headingFontFamily ?? ""}
+                fontWeight={overrides?.headingFontWeight ?? "bold"}
+                fontStyle={overrides?.headingFontStyle ?? "normal"}
+                color={overrides?.headingTextColor ?? theme.heading}
+                textAlign={overrides?.headingTextAlign ?? "center"}
+                palette={palette}
+                customColors={customColors}
+                onFontSizeChange={handleHeadingFontSizeChange}
+                onFontFamilyChange={handleHeadingFontFamilyChange}
+                onFontWeightChange={handleHeadingFontWeightChange}
+                onFontStyleChange={handleHeadingFontStyleChange}
+                onColorChange={handleHeadingTextColorChange}
+                onTextAlignChange={handleHeadingTextAlignChange}
+                onCustomColorsChange={onCustomColorsChange}
+              />
+            )}
+            {isEditing ? (
+              <div
+                className={editableClass}
+                contentEditable
+                suppressContentEditableWarning
+                style={{
+                  ...headingStyle,
+                  ...editableStyle,
+                  display: "inline-block",
+                }}
+                onBlur={(e) =>
+                  onHeadingChange?.(e.currentTarget.textContent || "")
+                }
+              >
+                {productsConfig?.heading || "Our Services"}
+              </div>
+            ) : (
+              <h2 style={headingStyle}>
+                {productsConfig?.heading || "Our Services"}
+              </h2>
+            )}
+          </div>
+
+          {/* Subheading — independently selectable */}
+          <div
+            ref={subheadingContainerRef}
+            style={{
+              position: "relative",
+              ...(showHandles && subheadingSelected
+                ? {
+                    outline: "2px solid #3b82f6",
+                    outlineOffset: "4px",
+                    borderRadius: "4px",
+                  }
+                : {}),
+              ...(showHandles ? { cursor: "pointer" } : {}),
+            }}
+            onClick={
+              showHandles
+                ? () => {
+                    setSubheadingSelected(true);
+                    setHeadingSelected(false);
+                    setSectionSelected(false);
+                  }
+                : undefined
+            }
+          >
+            {showHandles && subheadingSelected && (
+              <TextToolbar
+                fontSize={overrides?.subheadingFontSize ?? 18}
+                fontFamily={overrides?.subheadingFontFamily ?? ""}
+                fontWeight={overrides?.subheadingFontWeight ?? "normal"}
+                fontStyle={overrides?.subheadingFontStyle ?? "normal"}
+                color={overrides?.subheadingTextColor ?? theme.subheading}
+                textAlign={overrides?.subheadingTextAlign ?? "center"}
+                palette={palette}
+                customColors={customColors}
+                onFontSizeChange={handleSubheadingFontSizeChange}
+                onFontFamilyChange={handleSubheadingFontFamilyChange}
+                onFontWeightChange={handleSubheadingFontWeightChange}
+                onFontStyleChange={handleSubheadingFontStyleChange}
+                onColorChange={handleSubheadingTextColorChange}
+                onTextAlignChange={handleSubheadingTextAlignChange}
+                onCustomColorsChange={onCustomColorsChange}
+              />
+            )}
+            {isEditing ? (
+              <div
+                className={editableClass}
+                contentEditable
+                suppressContentEditableWarning
+                style={{ ...subheadingStyle, ...editableStyle }}
+                onBlur={(e) =>
+                  onSubheadingChange?.(e.currentTarget.textContent || "")
+                }
+              >
+                {productsConfig?.subheading ||
+                  "Browse our offerings and book your appointment"}
+              </div>
+            ) : (
+              <p style={subheadingStyle}>
+                {productsConfig?.subheading ||
+                  "Browse our offerings and book your appointment"}
+              </p>
+            )}
+          </div>
         </div>
 
         <div style={gridStyle}>

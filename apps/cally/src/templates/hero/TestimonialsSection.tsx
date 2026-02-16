@@ -1,11 +1,13 @@
 "use client";
 
 import type { TestimonialsConfig } from "@/types/landing-page";
+import type { BrandFont } from "@/types/landing-page";
 
 interface TestimonialsSectionProps {
   testimonials: TestimonialsConfig;
   isEditing?: boolean;
   variant?: "light" | "dark" | "gray";
+  brandFonts?: { headerFont?: BrandFont; bodyFont?: BrandFont };
   onHeadingChange?: (heading: string) => void;
   onSubheadingChange?: (subheading: string) => void;
   onTestimonialChange?: (
@@ -21,6 +23,7 @@ export default function TestimonialsSection({
   testimonials,
   isEditing = false,
   variant = "light",
+  brandFonts,
   onHeadingChange,
   onSubheadingChange,
   onTestimonialChange,
@@ -75,7 +78,7 @@ export default function TestimonialsSection({
   };
 
   const containerStyle: React.CSSProperties = {
-    maxWidth: "1200px",
+    maxWidth: "1440px",
     margin: "0 auto",
   };
 
@@ -85,17 +88,23 @@ export default function TestimonialsSection({
   };
 
   const headingStyle: React.CSSProperties = {
-    fontSize: "clamp(1.75rem, 3vw, 2.5rem)",
+    fontSize: brandFonts?.headerFont?.size
+      ? `${brandFonts.headerFont.size}px`
+      : "clamp(1.75rem, 3vw, 2.5rem)",
     fontWeight: 700,
     color: theme.heading,
     marginBottom: "12px",
+    fontFamily: brandFonts?.headerFont?.family || undefined,
   };
 
   const subheadingStyle: React.CSSProperties = {
-    fontSize: "1.1rem",
+    fontSize: brandFonts?.bodyFont?.size
+      ? `${brandFonts.bodyFont.size}px`
+      : "1.1rem",
     color: theme.subheading,
     maxWidth: "600px",
     margin: "0 auto",
+    fontFamily: brandFonts?.bodyFont?.family || undefined,
   };
 
   const gridStyle: React.CSSProperties = {
@@ -118,12 +127,14 @@ export default function TestimonialsSection({
     lineHeight: 1.7,
     marginBottom: "20px",
     fontStyle: "italic",
+    fontFamily: brandFonts?.bodyFont?.family || undefined,
   };
 
   const authorNameStyle: React.CSSProperties = {
     fontSize: "0.95rem",
     fontWeight: 600,
     color: theme.authorName,
+    fontFamily: brandFonts?.bodyFont?.family || undefined,
   };
 
   const authorTitleStyle: React.CSSProperties = {

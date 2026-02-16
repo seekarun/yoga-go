@@ -7,14 +7,16 @@ import type { InlineToastType } from "@/components/InlineToast";
 import DomainStatusBadge from "./DomainStatusBadge";
 import NameserverInstructions from "./NameserverInstructions";
 import EmailSetupCard from "./EmailSetupCard";
+import PurchasedDomainBanner from "./PurchasedDomainBanner";
 import type { DomainConfig, EmailConfig, TenantDnsRecord } from "@/types";
 
 interface DomainSetupCardProps {
   domainConfig?: DomainConfig;
+  additionalDomains?: DomainConfig[];
   emailConfig?: EmailConfig;
   onAddDomain: (domain: string) => Promise<{ nameservers: string[] }>;
-  onVerifyDomain: () => Promise<{ verified: boolean }>;
-  onRemoveDomain: () => Promise<void>;
+  onVerifyDomain: (domain?: string) => Promise<{ verified: boolean }>;
+  onRemoveDomain: (domain?: string) => Promise<void>;
   onSetupEmail: (
     emailPrefix: string,
     forwardToEmail: string,
@@ -27,6 +29,7 @@ interface DomainSetupCardProps {
 
 export default function DomainSetupCard({
   domainConfig,
+  additionalDomains = [],
   emailConfig,
   onAddDomain,
   onVerifyDomain,
@@ -40,6 +43,9 @@ export default function DomainSetupCard({
   const [nameservers, setNameservers] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [additionalDomainLoading, setAdditionalDomainLoading] = useState<
+    string | null
+  >(null);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{
     message: string;
@@ -108,6 +114,47 @@ export default function DomainSetupCard({
       setError(err instanceof Error ? err.message : "Failed to remove domain");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleVerifyAdditionalDomain = async (domainName: string) => {
+    setAdditionalDomainLoading(domainName);
+    setError(null);
+    setToast(null);
+    try {
+      const result = await onVerifyDomain(domainName);
+      if (result.verified) {
+        setToast({
+          message: `${domainName} verified successfully!`,
+          type: "success",
+        });
+      } else {
+        setToast({
+          message:
+            "DNS changes haven't propagated yet. This can take up to 48 hours.",
+          type: "warning",
+        });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Verification failed");
+    } finally {
+      setAdditionalDomainLoading(null);
+    }
+  };
+
+  const handleRemoveAdditionalDomain = async (domainName: string) => {
+    if (!confirm(`Are you sure you want to remove ${domainName}?`)) {
+      return;
+    }
+
+    setAdditionalDomainLoading(domainName);
+    setError(null);
+    try {
+      await onRemoveDomain(domainName);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to remove domain");
+    } finally {
+      setAdditionalDomainLoading(null);
     }
   };
 
@@ -219,6 +266,12 @@ export default function DomainSetupCard({
             )}
           </div>
 
+          {domainConfig.purchaseConfig && (
+            <PurchasedDomainBanner
+              purchaseConfig={domainConfig.purchaseConfig}
+            />
+          )}
+
           {!isDomainVerified && (
             <NameserverInstructions
               nameservers={["ns1.vercel-dns.com", "ns2.vercel-dns.com"]}
@@ -252,6 +305,54 @@ export default function DomainSetupCard({
           )}
         </div>
       </div>
+
+      {/* Additional Domains */}
+      {additionalDomains.length > 0 && (
+        <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            Additional Domains
+          </h3>
+          <div className="space-y-3">
+            {additionalDomains.map((d) => (
+              <div
+                key={d.domain}
+                className="flex items-center justify-between bg-gray-50 rounded-lg p-4"
+              >
+                <div>
+                  <p className="font-medium text-gray-900">{d.domain}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <DomainStatusBadge
+                      verified={d.vercelVerified}
+                      pending={!d.vercelVerified}
+                    />
+                    {d.purchaseConfig && (
+                      <span className="text-xs text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
+                        Purchased
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  {!d.vercelVerified && (
+                    <PrimaryButton
+                      onClick={() => handleVerifyAdditionalDomain(d.domain)}
+                      loading={additionalDomainLoading === d.domain}
+                    >
+                      Verify
+                    </PrimaryButton>
+                  )}
+                  <SecondaryButton
+                    onClick={() => handleRemoveAdditionalDomain(d.domain)}
+                    loading={additionalDomainLoading === d.domain}
+                  >
+                    Remove
+                  </SecondaryButton>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Email Setup Card - only show if domain is verified */}
       {isDomainVerified && (

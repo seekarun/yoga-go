@@ -61,6 +61,7 @@ export default function SplitTemplate(props: HeroTemplateProps) {
   const titleStyle: React.CSSProperties = {
     fontSize: "clamp(2rem, 4vw, 3.5rem)",
     fontWeight: 700,
+    fontFamily: config.theme?.headerFont?.family || undefined,
     marginBottom: "20px",
     lineHeight: 1.15,
     color: "#1a1a1a",
@@ -69,6 +70,7 @@ export default function SplitTemplate(props: HeroTemplateProps) {
   const subtitleStyle: React.CSSProperties = {
     fontSize: "clamp(1rem, 1.8vw, 1.2rem)",
     fontWeight: 400,
+    fontFamily: config.theme?.bodyFont?.family || undefined,
     color: "#666",
     maxWidth: "450px",
     lineHeight: 1.7,
