@@ -306,6 +306,7 @@ function SurveyFlowBuilderInner({
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+  const [highlightTick, setHighlightTick] = useState(0);
   const { screenToFlowPosition, fitView } = useReactFlow();
 
   // Track the source of a pending connection drag
@@ -402,8 +403,8 @@ function SurveyFlowBuilderInner({
         };
       }),
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- edges read for neighbor lookup, effect should only re-run on selection change
-  }, [selectedId, selectedEdgeId, setEdges, setNodes]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- edges read for neighbor lookup, highlightTick forces re-run after edge rebuilds
+  }, [selectedId, selectedEdgeId, setEdges, setNodes, highlightTick]);
 
   /** Wrap onChange to record history before each mutation */
   const changeWithHistory = useCallback(
@@ -451,6 +452,7 @@ function SurveyFlowBuilderInner({
         });
         setNodes(questionsToNodes(updatedQuestions));
         setEdges(questionsToEdges(updatedQuestions, insertRef, readOnly));
+        setHighlightTick((t) => t + 1);
         changeWithHistory(updatedQuestions);
         return;
       }
@@ -552,6 +554,7 @@ function SurveyFlowBuilderInner({
 
       setNodes(questionsToNodes(updatedQuestions));
       setEdges(questionsToEdges(updatedQuestions, insertRef, readOnly));
+      setHighlightTick((t) => t + 1);
       changeWithHistory(updatedQuestions);
       setSelectedId(newId);
     },
@@ -571,6 +574,7 @@ function SurveyFlowBuilderInner({
     isUndoingRef.current = true;
     setNodes(questionsToNodes(prev));
     setEdges(questionsToEdges(prev, insertRef, readOnly));
+    setHighlightTick((t) => t + 1);
     onChange(prev);
   }, [onChange, readOnly, setNodes, setEdges]);
 
@@ -876,6 +880,7 @@ function SurveyFlowBuilderInner({
               });
 
             setEdges(questionsToEdges(updatedQs, insertRef, readOnly));
+            setHighlightTick((t) => t + 1);
             changeWithHistory(updatedQs);
             return latest;
           });
@@ -906,6 +911,7 @@ function SurveyFlowBuilderInner({
             });
             return latest;
           });
+          setHighlightTick((t) => t + 1);
         });
       }
     },
@@ -935,6 +941,7 @@ function SurveyFlowBuilderInner({
           setNodes((latestNodes) => {
             const updatedQs = syncToParent(latestNodes as QNode[], next);
             setEdges(questionsToEdges(updatedQs, insertRef, readOnly));
+            setHighlightTick((t) => t + 1);
             return latestNodes;
           });
         });
@@ -1039,6 +1046,7 @@ function SurveyFlowBuilderInner({
           });
           return latestNodes;
         });
+        setHighlightTick((t) => t + 1);
       });
 
       setSelectedId(id);
@@ -1128,6 +1136,7 @@ function SurveyFlowBuilderInner({
         );
         // Rebuild edges from branches so handle changes (e.g. MC→text) are reflected
         setEdges(questionsToEdges(updatedQuestions, insertRef, readOnly));
+        setHighlightTick((t) => t + 1);
         return updatedNodes;
       });
       changeWithHistory(updatedQuestions);
