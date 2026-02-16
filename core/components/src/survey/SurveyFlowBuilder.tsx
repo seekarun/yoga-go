@@ -123,12 +123,12 @@ function questionsToNodes(questions: SurveyQuestion[]): QNode[] {
   /** Remove React Flow's default wrapper border — we style borders on the inner div */
   const wrapperStyle: CSSProperties = { border: "none", boxShadow: "none" };
 
-  // Center START above first question (START width ~48, node ~250)
+  // Align START handle with first question's target handle (left: LINE_SPACING)
   const startNode: QNode = {
     id: START_ID,
     type: "start",
     position: {
-      x: firstPos.x + DEFAULT_NODE_WIDTH / 2 - 24,
+      x: firstPos.x + LINE_SPACING - 24,
       y: firstPos.y - LAYER_GAP,
     },
     deletable: false,
@@ -190,7 +190,7 @@ function questionsToEdges(
       deletable: false,
       style: edgeStyle,
       type: "addButton",
-      data: { ...data, turnDirection: "straight" },
+      data: { ...data, turnDirection: "straight", startEdge: true },
     });
   }
 
@@ -770,18 +770,44 @@ function SurveyFlowBuilderInner({
       }
     }
 
-    // Apply positions
-    setNodes((prev) =>
-      prev.map((n) => {
+    // Apply positions and persist to parent
+    setNodes((prev) => {
+      const updated = prev.map((n) => {
         const x = posX.get(n.id) ?? n.position.x;
         const y = posY.get(n.id) ?? n.position.y;
         return { ...n, position: { x, y } };
-      }),
-    );
+      });
+
+      // Sync arranged positions back to questions so they persist on save
+      const qMap = new Map(questions.map((q) => [q.id, q]));
+      const arrangedQs: SurveyQuestion[] = (updated as QNode[])
+        .filter((n) => n.id !== START_ID)
+        .map((n) => {
+          const existing = qMap.get(n.id) ?? n.data.question;
+          return {
+            ...existing,
+            position: { x: n.position.x, y: n.position.y },
+          };
+        });
+      setEdges(questionsToEdges(arrangedQs, insertRef, readOnly));
+      setHighlightTick((t) => t + 1);
+      changeWithHistory(arrangedQs);
+
+      return updated;
+    });
 
     // Fit view after layout
     setTimeout(() => fitView({ padding: 0.2 }), 50);
-  }, [nodes, edges, setNodes, fitView]);
+  }, [
+    nodes,
+    edges,
+    questions,
+    readOnly,
+    setNodes,
+    setEdges,
+    changeWithHistory,
+    fitView,
+  ]);
 
   /** Keyboard shortcut: Ctrl/Cmd+Z for undo */
   useEffect(() => {
@@ -860,6 +886,15 @@ function SurveyFlowBuilderInner({
       });
 
       onNodesChange(filtered);
+
+      // Select the node being dragged so it highlights immediately
+      for (const c of filtered) {
+        if (c.type === "position" && c.dragging && c.id !== START_ID) {
+          setSelectedEdgeId(null);
+          setSelectedId(c.id);
+          break;
+        }
+      }
 
       // On drag end, sync positions back to questions and rebuild edges
       const hasDragEnd = filtered.some(

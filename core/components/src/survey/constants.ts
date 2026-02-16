@@ -5,6 +5,6 @@ export const LINE_SPACING = 24;
 /** Half the target handle width — accounts for handle protrusion in alignment */
 export const HANDLE_RADIUS = 5;
 /** Vertical gap between layers in tree layout */
-export const LAYER_GAP = 80;
+export const LAYER_GAP = 100;
 /** Horizontal gap between sibling nodes in tree layout */
 export const NODE_H_GAP = 40;

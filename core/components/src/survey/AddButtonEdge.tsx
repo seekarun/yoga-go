@@ -17,6 +17,7 @@ export interface AddButtonEdgeData {
   ) => void;
   readOnly: boolean;
   highlighted?: boolean;
+  startEdge?: boolean;
   firstSegment?: number;
   turnDirection?: "left" | "right" | "straight";
   lastSegment?: number;
@@ -234,6 +235,17 @@ function buildVerticalRoutedPath(
   targetNodeLeft?: number,
 ): [string, number, number] {
   const verticalGap = targetY - sourceY;
+
+  // Straight vertical line when handles are aligned and target is below source
+  if (
+    Math.abs(sourceX - targetX) < 1 &&
+    verticalGap > 0 &&
+    lastSegment == null
+  ) {
+    const path = `M ${sourceX},${sourceY} V ${targetY}`;
+    return [path, sourceX, sourceY + LINE_SPACING];
+  }
+
   if (verticalGap > 2 * BASE_GAP) {
     return buildVerticalDirectPath(
       sourceX,
@@ -390,19 +402,27 @@ export function AddButtonEdge({
 
   const turnDirection = edgeData?.turnDirection ?? "right";
   const lastSegment = edgeData?.lastSegment;
+  const isStartEdge = edgeData?.startEdge === true;
 
-  const [edgePath, labelX, labelY] = buildVerticalRoutedPath(
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
-    pathOffset,
-    approachOffset,
-    firstSegment,
-    turnDirection,
-    lastSegment,
-    targetNodeLeft,
-  );
+  // Start edge: always a direct line from source handle to target handle
+  const [edgePath, labelX, labelY] = isStartEdge
+    ? [
+        `M ${sourceX},${sourceY} L ${targetX},${targetY}`,
+        sourceX,
+        sourceY + LINE_SPACING,
+      ]
+    : buildVerticalRoutedPath(
+        sourceX,
+        sourceY,
+        targetX,
+        targetY,
+        pathOffset,
+        approachOffset,
+        firstSegment,
+        turnDirection,
+        lastSegment,
+        targetNodeLeft,
+      );
   const readOnly = edgeData?.readOnly ?? true;
   const highlighted = edgeData?.highlighted ?? false;
 
