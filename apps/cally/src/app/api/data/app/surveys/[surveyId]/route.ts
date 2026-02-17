@@ -11,6 +11,7 @@ import type {
   Survey,
   SurveyQuestion,
   SurveyContactInfo,
+  EditorLayout,
 } from "@/types";
 import { auth } from "@/auth";
 import { getTenantByUserId } from "@/lib/repositories/tenantRepository";
@@ -77,6 +78,7 @@ interface UpdateBody {
   description?: string;
   questions?: SurveyQuestion[];
   contactInfo?: SurveyContactInfo;
+  editorLayout?: EditorLayout;
 }
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {
@@ -114,6 +116,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       description: body.description,
       questions: body.questions,
       contactInfo: body.contactInfo,
+      editorLayout: body.editorLayout,
     });
 
     console.log(`[DBG][surveys/id] Survey ${surveyId} updated`);

@@ -10,6 +10,7 @@ import type {
   SurveyStatus,
   SurveyResponse,
   ApiResponse,
+  EditorLayout,
 } from "@/types";
 
 const AUTO_SAVE_DELAY = 1500;
@@ -50,6 +51,7 @@ export default function SurveyBuilderPage() {
   const savedIndicatorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialLoadRef = useRef(true);
   const questionsRef = useRef<SurveyQuestion[]>([]);
+  const editorLayoutRef = useRef<EditorLayout>({});
 
   const fetchSurvey = useCallback(async () => {
     try {
@@ -58,6 +60,7 @@ export default function SurveyBuilderPage() {
       if (json.success && json.data) {
         setSurvey(json.data);
         questionsRef.current = json.data.questions;
+        editorLayoutRef.current = json.data.editorLayout ?? {};
         setTitleDraft(json.data.title);
       } else {
         setError(json.error || "Survey not found");
@@ -106,6 +109,7 @@ export default function SurveyBuilderPage() {
           createdAt: survey.createdAt,
           title: survey.title,
           questions: questionsRef.current,
+          editorLayout: editorLayoutRef.current,
         }),
       });
       const json = await res.json();
@@ -128,9 +132,12 @@ export default function SurveyBuilderPage() {
 
   /** Trigger auto-save on question changes */
   const handleQuestionsChange = useCallback(
-    (updated: SurveyQuestion[]) => {
+    (updated: SurveyQuestion[], layout: EditorLayout) => {
       questionsRef.current = updated;
-      setSurvey((prev) => (prev ? { ...prev, questions: updated } : prev));
+      editorLayoutRef.current = layout;
+      setSurvey((prev) =>
+        prev ? { ...prev, questions: updated, editorLayout: layout } : prev,
+      );
 
       if (isInitialLoadRef.current) {
         isInitialLoadRef.current = false;
@@ -538,6 +545,7 @@ export default function SurveyBuilderPage() {
         {activeTab === "builder" && (
           <SurveyFlowBuilder
             questions={survey.questions}
+            editorLayout={survey.editorLayout ?? {}}
             onChange={handleQuestionsChange}
             readOnly={isReadOnly}
           />

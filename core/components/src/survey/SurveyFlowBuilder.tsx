@@ -26,9 +26,13 @@ import {
   type NodeTypes,
   type EdgeTypes,
 } from "@xyflow/react";
-import type { SurveyQuestion, QuestionBranch } from "@core/types";
+import type { SurveyQuestion, QuestionBranch, EditorLayout } from "@core/types";
 import { getStartQuestion } from "@core/lib/survey-flow";
-import { QuestionNode, type QuestionNodeData } from "./QuestionNode";
+import {
+  QuestionNode,
+  FlowSelectionContext,
+  type QuestionNodeData,
+} from "./QuestionNode";
 import { QuestionEditorPanel } from "./QuestionEditorPanel";
 import { StartNode } from "./StartNode";
 import {
@@ -39,7 +43,8 @@ import {
 
 export interface SurveyFlowBuilderProps {
   questions: SurveyQuestion[];
-  onChange: (questions: SurveyQuestion[]) => void;
+  editorLayout: EditorLayout;
+  onChange: (questions: SurveyQuestion[], layout: EditorLayout) => void;
   readOnly?: boolean;
 }
 
@@ -89,6 +94,12 @@ const highlightedEdgeStyle: CSSProperties = {
   opacity: 1,
 };
 
+const dimmedEdgeStyle: CSSProperties = {
+  stroke: "#d1d5db",
+  strokeWidth: LINE_THICKNESS,
+  opacity: 0.12,
+};
+
 const nodeTypes: NodeTypes = {
   question: QuestionNode,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- StartNode ignores data, cast is safe
@@ -116,9 +127,15 @@ type InsertHandler = (
 /**
  * Convert SurveyQuestion[] → React Flow nodes (prepends virtual Start node)
  */
-function questionsToNodes(questions: SurveyQuestion[]): QNode[] {
+function questionsToNodes(
+  questions: SurveyQuestion[],
+  layout: EditorLayout,
+): QNode[] {
   const first = getStartQuestion(questions);
-  const firstPos = first?.position ?? { x: 200, y: 200 };
+  const firstPos = (first ? layout[first.id] : undefined) ?? {
+    x: 200,
+    y: 200,
+  };
 
   /** Remove React Flow's default wrapper border — we style borders on the inner div */
   const wrapperStyle: CSSProperties = { border: "none", boxShadow: "none" };
@@ -140,7 +157,7 @@ function questionsToNodes(questions: SurveyQuestion[]): QNode[] {
   const questionNodes: QNode[] = questions.map((q, i) => ({
     id: q.id,
     type: "question" as const,
-    position: q.position ?? {
+    position: layout[q.id] ?? {
       x: 100 + (i % 3) * 320,
       y: 80 + Math.floor(i / 3) * 260,
     },
@@ -198,6 +215,46 @@ function questionsToEdges(
     const hasOpts =
       q.type === "multiple-choice" ||
       (q.type === "text" && q.inference === "process");
+
+    // Check if all option branches go to the same target → use single "any" edge
+    if (hasOpts && q.options && q.options.length >= 2) {
+      const optBranches = (q.branches ?? []).filter((b) => b.optionId);
+      const optTargets = new Set(
+        optBranches
+          .filter((b) => b.nextQuestionId)
+          .map((b) => b.nextQuestionId),
+      );
+      if (optTargets.size === 1 && optBranches.length === q.options.length) {
+        const anyTarget = [...optTargets][0]!;
+        edges.push({
+          id: `${q.id}-any-${anyTarget}`,
+          source: q.id,
+          sourceHandle: "any",
+          target: anyTarget,
+          targetHandle: "target",
+          animated: true,
+          style: edgeStyle,
+          type: "addButton",
+          data: { ...data, turnDirection: "straight" as const },
+        });
+        // Also emit non-option branches (if any)
+        for (const b of q.branches ?? []) {
+          if (b.optionId || !b.nextQuestionId) continue;
+          edges.push({
+            id: `${q.id}-default-${b.nextQuestionId}`,
+            source: q.id,
+            sourceHandle: "default",
+            target: b.nextQuestionId,
+            targetHandle: "target",
+            animated: true,
+            style: edgeStyle,
+            type: "addButton",
+            data: { ...data, turnDirection: "straight" as const },
+          });
+        }
+        continue; // skip per-option edges for this question
+      }
+    }
 
     // Check if all branches go to the same target (no fan-out needed)
     const branchTargets = new Set(
@@ -271,31 +328,64 @@ function questionsToEdges(
 }
 
 /**
- * Re-derive branches from edges (filters out Start node edges)
+ * Re-derive branches from edges (filters out Start node edges).
+ * Handles "any" edges by expanding them to all option branches.
+ * Individual option edges override "any" expansions.
  */
-function edgesToBranches(edges: Edge[], questionId: string): QuestionBranch[] {
-  return edges
-    .filter((e) => e.source === questionId && e.source !== START_ID)
-    .map((e) => {
-      const optionId = e.sourceHandle?.startsWith("option-")
-        ? e.sourceHandle.replace("option-", "")
-        : undefined;
-      return {
-        optionId,
-        nextQuestionId: e.target,
-      };
-    });
+function edgesToBranches(
+  edges: Edge[],
+  question: SurveyQuestion,
+): QuestionBranch[] {
+  const hasOpts =
+    question.type === "multiple-choice" ||
+    (question.type === "text" && question.inference === "process");
+
+  const filtered = edges.filter(
+    (e) => e.source === question.id && e.source !== START_ID,
+  );
+
+  // Use a map to deduplicate: optionId → nextQuestionId
+  const branchMap = new Map<string | undefined, string>();
+
+  // 1) "any" edges set all options (low priority)
+  for (const e of filtered) {
+    if (e.sourceHandle === "any" && hasOpts && question.options) {
+      for (const opt of question.options) {
+        branchMap.set(opt.id, e.target);
+      }
+    }
+  }
+
+  // 2) Individual edges override "any" expansions
+  for (const e of filtered) {
+    if (e.sourceHandle?.startsWith("option-")) {
+      const optionId = e.sourceHandle.replace("option-", "");
+      branchMap.set(optionId, e.target);
+    } else if (e.sourceHandle !== "any") {
+      // default branch (non-MC, non-AI questions)
+      branchMap.set(undefined, e.target);
+    }
+  }
+
+  return [...branchMap.entries()].map(([optionId, nextQuestionId]) => ({
+    optionId,
+    nextQuestionId,
+  }));
 }
 
 function SurveyFlowBuilderInner({
   questions,
+  editorLayout,
   onChange,
   readOnly = false,
 }: SurveyFlowBuilderProps) {
   // Stable ref for the insert handler (avoids stale closures in edge data)
   const insertRef = useRef<InsertHandler | null>(null);
 
-  const initialNodes = useMemo(() => questionsToNodes(questions), [questions]);
+  const initialNodes = useMemo(
+    () => questionsToNodes(questions, editorLayout),
+    [questions, editorLayout],
+  );
   const initialEdges = useMemo(
     () => questionsToEdges(questions, insertRef, readOnly),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- insertRef is stable, readOnly rarely changes
@@ -315,10 +405,15 @@ function SurveyFlowBuilderInner({
     handleId: string | null;
   } | null>(null);
 
-  // Undo history
-  const historyRef = useRef<SurveyQuestion[][]>([]);
+  // Undo history — stores (questions, layout) tuples
+  const historyRef = useRef<
+    { questions: SurveyQuestion[]; layout: EditorLayout }[]
+  >([]);
   const isUndoingRef = useRef(false);
   const [canUndo, setCanUndo] = useState(false);
+
+  // Track the current layout (kept in sync via ref for perf)
+  const layoutRef = useRef<EditorLayout>(editorLayout);
 
   const selectedQuestion = useMemo(
     () => questions.find((q) => q.id === selectedId) ?? null,
@@ -326,6 +421,7 @@ function SurveyFlowBuilderInner({
   );
 
   // Highlight edges and neighbor nodes connected to the selected node or edge
+  // Also dim nodes/edges NOT on any path through the selected node
   useEffect(() => {
     const connectedEdgeIds = new Set<string>();
     const neighborIds = new Set<string>();
@@ -341,6 +437,9 @@ function SurveyFlowBuilderInner({
       s.add(handle);
     };
 
+    // Build on-path set: upstream + selected + downstream via BFS
+    const onPath = new Set<string>();
+
     if (selectedEdgeId) {
       for (const e of edges) {
         if (e.id === selectedEdgeId) {
@@ -353,6 +452,46 @@ function SurveyFlowBuilderInner({
         }
       }
     } else if (selectedId) {
+      // Build forward and reverse adjacency maps
+      const fwd = new Map<string, string[]>();
+      const rev = new Map<string, string[]>();
+      for (const e of edges) {
+        fwd.set(e.source, [...(fwd.get(e.source) ?? []), e.target]);
+        rev.set(e.target, [...(rev.get(e.target) ?? []), e.source]);
+      }
+
+      // BFS downstream from selected node
+      const downstream = new Set<string>();
+      const dQueue = [selectedId];
+      while (dQueue.length > 0) {
+        const cur = dQueue.pop()!;
+        for (const next of fwd.get(cur) ?? []) {
+          if (!downstream.has(next)) {
+            downstream.add(next);
+            dQueue.push(next);
+          }
+        }
+      }
+
+      // BFS upstream from selected node
+      const upstream = new Set<string>();
+      const uQueue = [selectedId];
+      while (uQueue.length > 0) {
+        const cur = uQueue.pop()!;
+        for (const prev of rev.get(cur) ?? []) {
+          if (!upstream.has(prev)) {
+            upstream.add(prev);
+            uQueue.push(prev);
+          }
+        }
+      }
+
+      // Combine: upstream + selected + downstream
+      for (const id of upstream) onPath.add(id);
+      onPath.add(selectedId);
+      for (const id of downstream) onPath.add(id);
+
+      // Existing neighbor/handle highlight logic (accent borders for direct neighbors)
       for (const e of edges) {
         if (e.source === selectedId || e.target === selectedId) {
           connectedEdgeIds.add(e.id);
@@ -370,10 +509,40 @@ function SurveyFlowBuilderInner({
       }
     }
 
+    // Compute on-path handles: source handles whose edge connects two on-path nodes
+    // (excludes handles already in highlightedHandles — those get accent treatment)
+    const nodeOnPathHandles = new Map<string, Set<string>>();
+    if (selectedId && !selectedEdgeId) {
+      for (const e of edges) {
+        if (onPath.has(e.source) && onPath.has(e.target) && e.sourceHandle) {
+          // Skip handles that are already accent-highlighted (direct neighbors)
+          const hlHandles = nodeHighlightedHandles.get(e.source);
+          if (hlHandles?.has(e.sourceHandle)) continue;
+          let s = nodeOnPathHandles.get(e.source);
+          if (!s) {
+            s = new Set();
+            nodeOnPathHandles.set(e.source, s);
+          }
+          s.add(e.sourceHandle);
+        }
+      }
+    }
+
+    const hasSelection = !!(selectedId || selectedEdgeId);
+
     setEdges((prev) =>
       prev.map((e) => {
         const isHighlighted = connectedEdgeIds.has(e.id);
-        const target = isHighlighted ? highlightedEdgeStyle : edgeStyle;
+        // Dim edges where either endpoint is not on path (only when a node is selected)
+        const isDimmed =
+          selectedId && !selectedEdgeId
+            ? !onPath.has(e.source) || !onPath.has(e.target)
+            : false;
+        const target = isHighlighted
+          ? highlightedEdgeStyle
+          : isDimmed
+            ? dimmedEdgeStyle
+            : edgeStyle;
         const newData = { ...e.data, highlighted: isHighlighted };
         return e.style === target && e.data?.highlighted === isHighlighted
           ? e
@@ -383,14 +552,25 @@ function SurveyFlowBuilderInner({
     setNodes((prev) =>
       prev.map((n) => {
         const shouldHighlight = neighborIds.has(n.id);
+        const shouldDim =
+          hasSelection && selectedId && !selectedEdgeId
+            ? !onPath.has(n.id)
+            : false;
         const handles = nodeHighlightedHandles.get(n.id);
         const handleArr = handles ? Array.from(handles) : [];
+        const pathHandles = nodeOnPathHandles.get(n.id);
+        const pathArr = pathHandles ? Array.from(pathHandles) : [];
         const prevHandles: string[] =
           (n.data.highlightedHandles as string[]) ?? [];
+        const prevPathHandles: string[] =
+          (n.data.onPathHandles as string[]) ?? [];
         if (
           (n.data.highlighted ?? false) === shouldHighlight &&
+          (n.data.dimmed ?? false) === shouldDim &&
           prevHandles.length === handleArr.length &&
-          prevHandles.every((h, i) => h === handleArr[i])
+          prevHandles.every((h, i) => h === handleArr[i]) &&
+          prevPathHandles.length === pathArr.length &&
+          prevPathHandles.every((h, i) => h === pathArr[i])
         )
           return n;
         return {
@@ -399,6 +579,8 @@ function SurveyFlowBuilderInner({
             ...n.data,
             highlighted: shouldHighlight,
             highlightedHandles: handleArr,
+            onPathHandles: pathArr,
+            dimmed: shouldDim,
           },
         };
       }),
@@ -408,16 +590,20 @@ function SurveyFlowBuilderInner({
 
   /** Wrap onChange to record history before each mutation */
   const changeWithHistory = useCallback(
-    (newQuestions: SurveyQuestion[]) => {
+    (newQuestions: SurveyQuestion[], newLayout: EditorLayout) => {
       if (!isUndoingRef.current) {
-        historyRef.current = [...historyRef.current, questions];
+        historyRef.current = [
+          ...historyRef.current,
+          { questions, layout: layoutRef.current },
+        ];
         if (historyRef.current.length > 50) {
           historyRef.current = historyRef.current.slice(-50);
         }
         setCanUndo(true);
       }
       isUndoingRef.current = false;
-      onChange(newQuestions);
+      layoutRef.current = newLayout;
+      onChange(newQuestions, newLayout);
     },
     [questions, onChange],
   );
@@ -433,6 +619,7 @@ function SurveyFlowBuilderInner({
     ) => {
       // --- Delete edge action ---
       if (action === "delete") {
+        const isAnyEdge = sourceHandle === "any";
         const updatedQuestions = questions.map((q) => {
           if (q.id !== source || source === START_ID) return q;
           const srcHasOpts =
@@ -441,6 +628,10 @@ function SurveyFlowBuilderInner({
           return {
             ...q,
             branches: (q.branches ?? []).filter((b) => {
+              // "any" edge → remove all option branches pointing to target
+              if (isAnyEdge) {
+                return b.nextQuestionId !== target;
+              }
               const branchHandle =
                 srcHasOpts && b.optionId ? `option-${b.optionId}` : "default";
               return !(
@@ -450,10 +641,11 @@ function SurveyFlowBuilderInner({
             }),
           };
         });
-        setNodes(questionsToNodes(updatedQuestions));
+        const curLayout = layoutRef.current;
+        setNodes(questionsToNodes(updatedQuestions, curLayout));
         setEdges(questionsToEdges(updatedQuestions, insertRef, readOnly));
         setHighlightTick((t) => t + 1);
-        changeWithHistory(updatedQuestions);
+        changeWithHistory(updatedQuestions, curLayout);
         return;
       }
 
@@ -470,7 +662,6 @@ function SurveyFlowBuilderInner({
           order: questions.length + 1,
           options: [],
           branches: [{ nextQuestionId: target }],
-          position: { x: 0, y: 0 },
         };
       } else if (action === "finish") {
         newQ = {
@@ -481,7 +672,6 @@ function SurveyFlowBuilderInner({
           order: questions.length + 1,
           options: [],
           branches: [],
-          position: { x: 0, y: 0 },
         };
       } else {
         // multiple-choice (default)
@@ -501,11 +691,11 @@ function SurveyFlowBuilderInner({
             { optionId: opt1Id, nextQuestionId: target },
             { optionId: opt2Id, nextQuestionId: target },
           ],
-          position: { x: 0, y: 0 },
         };
       }
 
-      // Position new node midway between source and target
+      // Position new node midway between source and target → layout map
+      let newPos = { x: 0, y: 0 };
       const sourceNode = nodes.find(
         (n) => n.id === (source === START_ID ? START_ID : source),
       );
@@ -517,13 +707,16 @@ function SurveyFlowBuilderInner({
         const sourceCenterX =
           sourceNode.position.x +
           (sourceNode.measured?.width ?? DEFAULT_NODE_WIDTH) / 2;
-        newQ.position = {
+        newPos = {
           x: sourceCenterX - DEFAULT_NODE_WIDTH / 2,
           y: midY,
         };
       }
+      const newLayout = { ...layoutRef.current, [newId]: newPos };
 
       let updatedQuestions: SurveyQuestion[];
+
+      const isAnyInsert = sourceHandle === "any";
 
       if (source === START_ID) {
         updatedQuestions = [...questions, newQ];
@@ -537,6 +730,10 @@ function SurveyFlowBuilderInner({
           return {
             ...q,
             branches: (q.branches ?? []).map((b) => {
+              // "any" edge → redirect all option branches pointing to target
+              if (isAnyInsert && b.nextQuestionId === target) {
+                return { ...b, nextQuestionId: newId };
+              }
               const branchHandle =
                 srcHasOpts && b.optionId ? `option-${b.optionId}` : "default";
               if (
@@ -552,10 +749,10 @@ function SurveyFlowBuilderInner({
         updatedQuestions = [...updatedQuestions, newQ];
       }
 
-      setNodes(questionsToNodes(updatedQuestions));
+      setNodes(questionsToNodes(updatedQuestions, newLayout));
       setEdges(questionsToEdges(updatedQuestions, insertRef, readOnly));
       setHighlightTick((t) => t + 1);
-      changeWithHistory(updatedQuestions);
+      changeWithHistory(updatedQuestions, newLayout);
       setSelectedId(newId);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -572,10 +769,11 @@ function SurveyFlowBuilderInner({
     historyRef.current = historyRef.current.slice(0, -1);
     setCanUndo(historyRef.current.length > 0);
     isUndoingRef.current = true;
-    setNodes(questionsToNodes(prev));
-    setEdges(questionsToEdges(prev, insertRef, readOnly));
+    layoutRef.current = prev.layout;
+    setNodes(questionsToNodes(prev.questions, prev.layout));
+    setEdges(questionsToEdges(prev.questions, insertRef, readOnly));
     setHighlightTick((t) => t + 1);
-    onChange(prev);
+    onChange(prev.questions, prev.layout);
   }, [onChange, readOnly, setNodes, setEdges]);
 
   /** Arrange nodes in a top-down tree layout */
@@ -770,7 +968,7 @@ function SurveyFlowBuilderInner({
       }
     }
 
-    // Apply positions and persist to parent
+    // Apply positions and persist to parent via layout map
     setNodes((prev) => {
       const updated = prev.map((n) => {
         const x = posX.get(n.id) ?? n.position.x;
@@ -778,20 +976,17 @@ function SurveyFlowBuilderInner({
         return { ...n, position: { x, y } };
       });
 
-      // Sync arranged positions back to questions so they persist on save
-      const qMap = new Map(questions.map((q) => [q.id, q]));
-      const arrangedQs: SurveyQuestion[] = (updated as QNode[])
-        .filter((n) => n.id !== START_ID)
-        .map((n) => {
-          const existing = qMap.get(n.id) ?? n.data.question;
-          return {
-            ...existing,
-            position: { x: n.position.x, y: n.position.y },
-          };
-        });
-      setEdges(questionsToEdges(arrangedQs, insertRef, readOnly));
+      // Build layout map from arranged node positions
+      const newLayout: EditorLayout = {};
+      for (const n of updated) {
+        if (n.id !== START_ID) {
+          newLayout[n.id] = { x: n.position.x, y: n.position.y };
+        }
+      }
+
+      setEdges(questionsToEdges(questions, insertRef, readOnly));
       setHighlightTick((t) => t + 1);
-      changeWithHistory(arrangedQs);
+      changeWithHistory(questions, newLayout);
 
       return updated;
     });
@@ -847,6 +1042,14 @@ function SurveyFlowBuilderInner({
       const base = updatedQuestions ?? questions;
       const qMap = new Map(base.map((q) => [q.id, q]));
 
+      // Extract layout from node positions
+      const newLayout: EditorLayout = { ...layoutRef.current };
+      for (const n of currentNodes) {
+        if (n.id !== START_ID) {
+          newLayout[n.id] = { x: n.position.x, y: n.position.y };
+        }
+      }
+
       // Filter out the virtual Start node before syncing
       const synced: SurveyQuestion[] = currentNodes
         .filter((n) => n.id !== START_ID)
@@ -854,12 +1057,11 @@ function SurveyFlowBuilderInner({
           const existing = qMap.get(n.id) ?? n.data.question;
           return {
             ...existing,
-            position: { x: n.position.x, y: n.position.y },
-            branches: edgesToBranches(currentEdges, n.id),
+            branches: edgesToBranches(currentEdges, existing),
           };
         });
 
-      changeWithHistory(synced);
+      changeWithHistory(synced, newLayout);
       return synced;
     },
     [questions, changeWithHistory],
@@ -896,27 +1098,24 @@ function SurveyFlowBuilderInner({
         }
       }
 
-      // On drag end, sync positions back to questions and rebuild edges
+      // On drag end, sync positions back to layout and rebuild edges
       const hasDragEnd = filtered.some(
         (c) => c.type === "position" && !c.dragging,
       );
       if (hasDragEnd) {
         requestAnimationFrame(() => {
           setNodes((latest) => {
-            const qMap = new Map(questions.map((q) => [q.id, q]));
-            const updatedQs: SurveyQuestion[] = (latest as QNode[])
-              .filter((n) => n.id !== START_ID)
-              .map((n) => {
-                const existing = qMap.get(n.id) ?? n.data.question;
-                return {
-                  ...existing,
-                  position: { x: n.position.x, y: n.position.y },
-                };
-              });
+            // Build updated layout from current node positions
+            const newLayout: EditorLayout = { ...layoutRef.current };
+            for (const n of latest) {
+              if (n.id !== START_ID) {
+                newLayout[n.id] = { x: n.position.x, y: n.position.y };
+              }
+            }
 
-            setEdges(questionsToEdges(updatedQs, insertRef, readOnly));
+            setEdges(questionsToEdges(questions, insertRef, readOnly));
             setHighlightTick((t) => t + 1);
-            changeWithHistory(updatedQs);
+            changeWithHistory(questions, newLayout);
             return latest;
           });
         });
@@ -957,11 +1156,22 @@ function SurveyFlowBuilderInner({
   const onConnect = useCallback(
     (conn: Connection) => {
       setEdges((prev) => {
-        // Remove any existing edge from the same source handle (one edge per handle)
-        const filtered = prev.filter(
-          (e) =>
-            !(e.source === conn.source && e.sourceHandle === conn.sourceHandle),
-        );
+        const isAnyHandle = conn.sourceHandle === "any";
+        const isOptionHandle = conn.sourceHandle?.startsWith("option-");
+        // Remove conflicting edges from the same source
+        const filtered = prev.filter((e) => {
+          if (e.source !== conn.source) return true;
+          // "any" replaces all option-* and previous "any" from this source
+          if (isAnyHandle) {
+            return (
+              e.sourceHandle !== "any" && !e.sourceHandle?.startsWith("option-")
+            );
+          }
+          // Connecting individual option removes existing "any" edge
+          if (isOptionHandle && e.sourceHandle === "any") return false;
+          // Normal: remove edge from same handle
+          return e.sourceHandle !== conn.sourceHandle;
+        });
         const next = addEdge(
           {
             ...conn,
@@ -1034,16 +1244,20 @@ function SurveyFlowBuilderInner({
           { id: generateId(), label: "Option 1" },
           { id: generateId(), label: "Option 2" },
         ],
-        position: { x: position.x, y: position.y },
         branches: [],
       };
+
+      // Store the position in the layout map, not on the question
+      const newPos = { x: position.x, y: position.y };
 
       const newNode: QNode = {
         id,
         type: "question",
-        position: newQ.position!,
+        position: newPos,
         data: { question: newQ },
       };
+
+      layoutRef.current = { ...layoutRef.current, [id]: newPos };
 
       // Create the edge from source handle → new node
       const newEdge: Edge = {
@@ -1059,12 +1273,20 @@ function SurveyFlowBuilderInner({
       };
 
       setNodes((prev) => [...prev, newNode]);
-      // Remove any existing edge from the same source handle before adding new one
+      // Remove conflicting edges from same source before adding new one
+      const isAnyDrag = origin.handleId === "any";
+      const isOptionDrag = origin.handleId?.startsWith("option-");
       setEdges((prev) => [
-        ...prev.filter(
-          (e) =>
-            !(e.source === origin.nodeId && e.sourceHandle === origin.handleId),
-        ),
+        ...prev.filter((e) => {
+          if (e.source !== origin.nodeId) return true;
+          if (isAnyDrag) {
+            return (
+              e.sourceHandle !== "any" && !e.sourceHandle?.startsWith("option-")
+            );
+          }
+          if (isOptionDrag && e.sourceHandle === "any") return false;
+          return e.sourceHandle !== origin.handleId;
+        }),
         newEdge,
       ]);
 
@@ -1106,17 +1328,47 @@ function SurveyFlowBuilderInner({
     [readOnly],
   );
 
+  /** Synchronously clear highlight/dimmed data from all nodes so the next
+   *  render never shows stale accent borders (useEffect would be one frame late). */
+  const clearNodeHighlights = useCallback(() => {
+    setNodes((prev) =>
+      prev.map((n) => {
+        const hl = n.data.highlighted ?? false;
+        const dm = n.data.dimmed ?? false;
+        const handles = (n.data.highlightedHandles as string[]) ?? [];
+        const pathHandles = (n.data.onPathHandles as string[]) ?? [];
+        if (!hl && !dm && handles.length === 0 && pathHandles.length === 0)
+          return n;
+        return {
+          ...n,
+          data: {
+            ...n.data,
+            highlighted: false,
+            highlightedHandles: [],
+            onPathHandles: [],
+            dimmed: false,
+          },
+        };
+      }),
+    );
+  }, [setNodes]);
+
   /** Handle edge click to highlight single line */
-  const onEdgeClick = useCallback((_event: React.MouseEvent, edge: Edge) => {
-    setSelectedId(null);
-    setSelectedEdgeId(edge.id);
-  }, []);
+  const onEdgeClick = useCallback(
+    (_event: React.MouseEvent, edge: Edge) => {
+      setSelectedId(null);
+      setSelectedEdgeId(edge.id);
+      clearNodeHighlights();
+    },
+    [clearNodeHighlights],
+  );
 
   /** Clear selection on pane click */
   const onPaneClick = useCallback(() => {
     setSelectedId(null);
     setSelectedEdgeId(null);
-  }, []);
+    clearNodeHighlights();
+  }, [clearNodeHighlights]);
 
   /** Add a new question */
   const addQuestion = useCallback(
@@ -1136,23 +1388,25 @@ function SurveyFlowBuilderInner({
                 { id: generateId(), label: "Option 2" },
               ]
             : undefined,
-        position: {
-          x: 100 + (questions.length % 3) * 320,
-          y: 80 + Math.floor(questions.length / 3) * 260,
-        },
         branches: [],
       };
+
+      const newPos = {
+        x: 100 + (questions.length % 3) * 320,
+        y: 80 + Math.floor(questions.length / 3) * 260,
+      };
+      const newLayout = { ...layoutRef.current, [id]: newPos };
 
       const newNode: QNode = {
         id,
         type: "question",
-        position: newQ.position!,
+        position: newPos,
         data: { question: newQ },
       };
 
       setNodes((prev) => [...prev, newNode]);
       const updated = [...questions, newQ];
-      changeWithHistory(updated);
+      changeWithHistory(updated, newLayout);
       setSelectedId(id);
     },
     [questions, changeWithHistory, setNodes],
@@ -1174,7 +1428,7 @@ function SurveyFlowBuilderInner({
         setHighlightTick((t) => t + 1);
         return updatedNodes;
       });
-      changeWithHistory(updatedQuestions);
+      changeWithHistory(updatedQuestions, layoutRef.current);
     },
     [questions, setNodes, setEdges, readOnly, changeWithHistory],
   );
@@ -1192,8 +1446,11 @@ function SurveyFlowBuilderInner({
       const updated = questions.filter((q) => q.id !== questionId);
       if (selectedId === questionId) setSelectedId(null);
 
+      // Remove deleted question from layout
+      const { [questionId]: _removed, ...remainingLayout } = layoutRef.current;
+
       requestAnimationFrame(() => {
-        changeWithHistory(updated);
+        changeWithHistory(updated, remainingLayout);
       });
     },
     [
@@ -1239,27 +1496,29 @@ function SurveyFlowBuilderInner({
         </div>
       )}
 
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={readOnly ? undefined : handleNodesChange}
-        onEdgesChange={readOnly ? undefined : handleEdgesChange}
-        onConnect={readOnly ? undefined : onConnect}
-        onConnectStart={readOnly ? undefined : onConnectStart}
-        onConnectEnd={readOnly ? undefined : onConnectEnd}
-        onNodeClick={onNodeClick}
-        onEdgeClick={onEdgeClick}
-        onPaneClick={onPaneClick}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        fitView
-        fitViewOptions={{ padding: 0.2 }}
-        deleteKeyCode={readOnly ? null : "Backspace"}
-        proOptions={{ hideAttribution: true }}
-      >
-        <Background gap={20} size={1} color="#f0f0f0" />
-        <Controls showInteractive={false} />
-      </ReactFlow>
+      <FlowSelectionContext.Provider value={!!selectedId}>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={readOnly ? undefined : handleNodesChange}
+          onEdgesChange={readOnly ? undefined : handleEdgesChange}
+          onConnect={readOnly ? undefined : onConnect}
+          onConnectStart={readOnly ? undefined : onConnectStart}
+          onConnectEnd={readOnly ? undefined : onConnectEnd}
+          onNodeClick={onNodeClick}
+          onEdgeClick={onEdgeClick}
+          onPaneClick={onPaneClick}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          fitView
+          fitViewOptions={{ padding: 0.2 }}
+          deleteKeyCode={readOnly ? null : "Backspace"}
+          proOptions={{ hideAttribution: true }}
+        >
+          <Background gap={20} size={1} color="#f0f0f0" />
+          <Controls showInteractive={false} />
+        </ReactFlow>
+      </FlowSelectionContext.Provider>
 
       {/* Editor panel */}
       {!readOnly && selectedQuestion && (

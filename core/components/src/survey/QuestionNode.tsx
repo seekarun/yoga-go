@@ -2,6 +2,8 @@
 
 import {
   memo,
+  createContext,
+  useContext,
   useRef,
   useLayoutEffect,
   useState,
@@ -93,7 +95,7 @@ const inferenceBadge: CSSProperties = {
 };
 
 const bodyStyle: CSSProperties = {
-  padding: "8px 12px",
+  padding: "8px 12px 14px",
 };
 
 const questionTextStyle: CSSProperties = {
@@ -144,10 +146,15 @@ const handleAccentStyle: CSSProperties = {
 
 const ACCENT_COLOR = "var(--color-accent, #ff7f50)";
 
+/** true when any node is selected — drives option-border accents */
+export const FlowSelectionContext = createContext(false);
+
 export interface QuestionNodeData {
   question: SurveyQuestion;
   highlighted?: boolean;
   highlightedHandles?: string[];
+  onPathHandles?: string[];
+  dimmed?: boolean;
   [key: string]: unknown;
 }
 
@@ -172,6 +179,8 @@ function getBadge(
 
 /** Connector line color */
 const CONNECTOR_COLOR = "#d1d5db";
+/** Darker grey for on-path (but not direct-neighbor) connectors/options */
+const ON_PATH_COLOR = "#6b7280";
 
 const draggingStyle: CSSProperties = {
   boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
@@ -183,8 +192,20 @@ function QuestionNodeComponent({
   selected,
   dragging,
 }: QuestionNodeProps) {
-  const { question, highlighted, highlightedHandles = [] } = data;
-  const hlSet = new Set(highlightedHandles);
+  const {
+    question,
+    highlighted,
+    highlightedHandles = [],
+    onPathHandles = [],
+    dimmed,
+  } = data;
+  const selectionActive = useContext(FlowSelectionContext);
+  // Accent handles only when a node selection is active AND this node is relevant
+  const hlSet = new Set(
+    selectionActive && (selected || highlighted) ? highlightedHandles : [],
+  );
+  // On-path (but not direct-neighbor) handles — dark grey visual
+  const pathSet = new Set(selectionActive ? onPathHandles : []);
   const isMC = question.type === "multiple-choice";
   const isFinish = question.type === "finish";
   const hasOptions =
@@ -203,7 +224,9 @@ function QuestionNodeComponent({
     } else if (selected) base = selectedStyle;
     else if (highlighted) base = highlightedStyle;
     else base = nodeStyle;
-    return dragging ? { ...base, ...draggingStyle } : base;
+    if (dragging) base = { ...base, ...draggingStyle };
+    if (dimmed && !selected) base = { ...base, opacity: 0.2 };
+    return base;
   };
 
   const cardRef = useRef<HTMLDivElement>(null);
@@ -297,18 +320,21 @@ function QuestionNodeComponent({
               </span>
             )}
             {question.options.map((opt, i) => {
-              const optHl = hlSet.has(`option-${opt.id}`);
+              const hId = `option-${opt.id}`;
+              const optHl = hlSet.has(hId);
+              const optOnPath = !optHl && pathSet.has(hId);
+              const borderColor = optHl
+                ? ACCENT_COLOR
+                : optOnPath
+                  ? ON_PATH_COLOR
+                  : "#d1d5db";
               return (
                 <div
                   key={opt.id}
                   ref={(el) => {
                     optionRefs.current[i] = el;
                   }}
-                  style={
-                    optHl
-                      ? { ...optionItemStyle, borderColor: ACCENT_COLOR }
-                      : optionItemStyle
-                  }
+                  style={{ ...optionItemStyle, borderColor }}
                 >
                   <span style={optionLabelStyle}>{opt.label || "Option"}</span>
                 </div>
@@ -333,13 +359,20 @@ function QuestionNodeComponent({
         >
           {connectors.map((c, i) => {
             const optId = question.options?.[i]?.id;
-            const lineHl = optId ? hlSet.has(`option-${optId}`) : false;
+            const hId = optId ? `option-${optId}` : "";
+            const lineHl = hlSet.has(hId);
+            const lineOnPath = !lineHl && pathSet.has(hId);
+            const lineColor = lineHl
+              ? ACCENT_COLOR
+              : lineOnPath
+                ? ON_PATH_COLOR
+                : CONNECTOR_COLOR;
             return (
               <path
                 key={i}
                 d={`M ${c.optionRight} ${c.optionCenterY} H ${c.handleX} V ${c.cardH}`}
                 fill="none"
-                stroke={lineHl ? ACCENT_COLOR : CONNECTOR_COLOR}
+                stroke={lineColor}
                 strokeWidth={1.5}
               />
             );
@@ -370,6 +403,38 @@ function QuestionNodeComponent({
             />
           );
         })}
+
+      {/* "Any" handle — capsule at bottom center, acts as the source handle */}
+      {hasOptions && optCount >= 2 && (
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          id="any"
+          style={{
+            position: "absolute",
+            bottom: -14,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "auto",
+            height: "auto",
+            padding: "1px 8px",
+            borderRadius: "8px",
+            border: hlSet.has("any")
+              ? "2px solid var(--color-accent, #ff7f50)"
+              : "2px solid var(--color-primary, #008080)",
+            background: "#fff",
+            fontSize: "10px",
+            fontWeight: 700,
+            color: hlSet.has("any")
+              ? "var(--color-accent, #ff7f50)"
+              : "var(--color-primary, #008080)",
+            lineHeight: "14px",
+            cursor: "crosshair",
+          }}
+        >
+          Any
+        </Handle>
+      )}
 
       {/* Source handle (bottom-right) — only when no per-option handles and not finish */}
       {!hasOptions && !isFinish && (

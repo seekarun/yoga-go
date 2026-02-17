@@ -27,6 +27,7 @@ import type {
   SurveyAnswer,
   SurveyResponseContactInfo,
   SurveyResponseMetadata,
+  EditorLayout,
 } from "@/types";
 
 /* ─────────────────────── Helpers ─────────────────────── */
@@ -64,6 +65,42 @@ function generateId(): string {
   return Math.random().toString(36).substring(2, 10);
 }
 
+/**
+ * Migrate legacy `position` fields from questions into an EditorLayout map.
+ * If `editorLayout` already exists and is non-empty, returns it as-is.
+ * Also strips the legacy `position` field from each question.
+ */
+function migrateLegacyLayout(
+  questions: SurveyQuestion[],
+  existingLayout?: EditorLayout,
+): { questions: SurveyQuestion[]; editorLayout: EditorLayout } {
+  if (existingLayout && Object.keys(existingLayout).length > 0) {
+    // Strip any leftover legacy position fields
+    const cleaned = questions.map((q) => {
+      const { position: _pos, ...rest } = q as SurveyQuestion & {
+        position?: { x: number; y: number };
+      };
+      return rest;
+    });
+    return { questions: cleaned, editorLayout: existingLayout };
+  }
+
+  const layout: EditorLayout = {};
+  const cleaned = questions.map((q) => {
+    const legacy = q as SurveyQuestion & {
+      position?: { x: number; y: number };
+    };
+    if (legacy.position) {
+      layout[q.id] = { x: legacy.position.x, y: legacy.position.y };
+    }
+
+    const { position: _pos, ...rest } = legacy;
+    return rest;
+  });
+
+  return { questions: cleaned, editorLayout: layout };
+}
+
 /* ─────────────────────── Surveys ─────────────────────── */
 
 /**
@@ -84,6 +121,7 @@ export async function createSurvey(
     `[DBG][surveyRepository] Creating survey "${data.title}" for tenant ${tenantId}`,
   );
 
+  const finishId = generateId();
   const survey: Survey = {
     id,
     expertId: data.expertId,
@@ -91,15 +129,15 @@ export async function createSurvey(
     description: data.description,
     questions: [
       {
-        id: generateId(),
+        id: finishId,
         questionText: "Thank you for your time",
         type: "finish",
         required: false,
         order: 1,
         branches: [],
-        position: { x: 200, y: 200 },
       },
     ],
+    editorLayout: { [finishId]: { x: 200, y: 200 } },
     status: "draft",
     createdAt,
   };
@@ -129,6 +167,7 @@ export async function updateSurvey(
     description?: string;
     questions?: SurveyQuestion[];
     contactInfo?: SurveyContactInfo;
+    editorLayout?: EditorLayout;
   },
 ): Promise<void> {
   console.log(
@@ -156,6 +195,10 @@ export async function updateSurvey(
   if (data.contactInfo !== undefined) {
     expressionParts.push("contactInfo = :ci");
     attrValues[":ci"] = data.contactInfo;
+  }
+  if (data.editorLayout !== undefined) {
+    expressionParts.push("editorLayout = :el");
+    attrValues[":el"] = data.editorLayout;
   }
 
   await docClient.send(
@@ -196,9 +239,15 @@ export async function getSurveysByTenant(tenantId: string): Promise<Survey[]> {
     }),
   );
 
-  const items = (result.Items || []).map((item) =>
-    toSurvey(item as DynamoDBSurveyItem),
-  );
+  const items = (result.Items || []).map((item) => {
+    const survey = toSurvey(item as DynamoDBSurveyItem);
+    const migrated = migrateLegacyLayout(survey.questions, survey.editorLayout);
+    return {
+      ...survey,
+      questions: migrated.questions,
+      editorLayout: migrated.editorLayout,
+    };
+  });
   console.log(`[DBG][surveyRepository] Found ${items.length} surveys`);
   return items;
 }
@@ -233,7 +282,13 @@ export async function getSurveyById(
     return null;
   }
 
-  return toSurvey(items[0] as DynamoDBSurveyItem);
+  const survey = toSurvey(items[0] as DynamoDBSurveyItem);
+  const migrated = migrateLegacyLayout(survey.questions, survey.editorLayout);
+  return {
+    ...survey,
+    questions: migrated.questions,
+    editorLayout: migrated.editorLayout,
+  };
 }
 
 /**
@@ -352,6 +407,17 @@ export async function duplicateSurvey(
     })),
   }));
 
+  // Remap editor layout keys using the question ID map
+  const newLayout: EditorLayout = {};
+  if (source.editorLayout) {
+    for (const [oldId, pos] of Object.entries(source.editorLayout)) {
+      const newQId = questionIdMap.get(oldId);
+      if (newQId) {
+        newLayout[newQId] = { ...pos };
+      }
+    }
+  }
+
   const id = generateId();
   const createdAt = new Date().toISOString();
 
@@ -362,6 +428,7 @@ export async function duplicateSurvey(
     description: source.description,
     contactInfo: source.contactInfo,
     questions: newQuestions,
+    editorLayout: newLayout,
     status: "draft",
     createdAt,
   };

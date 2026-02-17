@@ -41,9 +41,14 @@ export interface SurveyQuestion {
   required: boolean;
   order: number;
   branches?: QuestionBranch[];
-  position?: { x: number; y: number };
   inference?: "none" | "process";
 }
+
+/**
+ * Editor layout — maps question IDs to their canvas positions.
+ * Stored separately from core question data so public APIs never leak editor state.
+ */
+export type EditorLayout = Record<string, { x: number; y: number }>;
 
 /**
  * Survey contact info settings
@@ -66,6 +71,7 @@ export interface Survey extends BaseEntity {
   description?: string;
   contactInfo?: SurveyContactInfo;
   questions: SurveyQuestion[];
+  editorLayout?: EditorLayout;
   status: SurveyStatus;
   closedAt?: string;
   archivedAt?: string;
