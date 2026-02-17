@@ -17,10 +17,10 @@ x user preferences (password, email)
 x accept payments for calendar events
 x tenant subscription
 x more templates
+x feat: add images for products
 
 - super admin console
 - booking wait list
-- feat: add images for products
 -
 - AI chat to look up user's past interactions
 - video call recording and AI feed

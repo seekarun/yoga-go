@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, type CSSProperties } from "react";
+import { useState, useCallback, useMemo, type CSSProperties } from "react";
 import type { SurveyQuestion, QuestionType, QuestionOption } from "@core/types";
 
 interface QuestionEditorPanelProps {
@@ -258,6 +258,46 @@ export function QuestionEditorPanel({
     commitChanges({ options: updated, branches: updatedBranches });
   };
 
+  // Fallback dropdown value for inference text questions
+  const fallbackValue = useMemo(() => {
+    if (type !== "text" || inference !== "process") return "";
+    const branches = question.branches ?? [];
+    const defaultBranch = branches.find((b) => !b.optionId);
+    if (!defaultBranch) return "";
+    if (!defaultBranch.nextQuestionId) return "custom";
+    // Check if default branch target matches any option's branch target
+    for (const opt of options) {
+      const optBranch = branches.find((b) => b.optionId === opt.id);
+      if (optBranch?.nextQuestionId === defaultBranch.nextQuestionId) {
+        return opt.id;
+      }
+    }
+    return "custom";
+  }, [type, inference, question.branches, options]);
+
+  const handleFallbackChange = (val: string) => {
+    const branches = question.branches ?? [];
+    if (val === "") {
+      // Remove default branch
+      const updated = branches.filter((b) => b.optionId);
+      commitChanges({ branches: updated });
+    } else if (val === "custom") {
+      // Upsert default branch with null target (for manual wiring via Fallback handle)
+      const withoutDefault = branches.filter((b) => b.optionId);
+      commitChanges({
+        branches: [...withoutDefault, { nextQuestionId: null }],
+      });
+    } else {
+      // val is an option id — set default branch target to same as that option's target
+      const optBranch = branches.find((b) => b.optionId === val);
+      const target = optBranch?.nextQuestionId ?? null;
+      const withoutDefault = branches.filter((b) => b.optionId);
+      commitChanges({
+        branches: [...withoutDefault, { nextQuestionId: target }],
+      });
+    }
+  };
+
   return (
     <div style={panelStyle}>
       {/* Header */}
@@ -383,6 +423,43 @@ export function QuestionEditorPanel({
                 + Add Option
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Fallback dropdown — only for text questions with inference */}
+        {type === "text" && inference === "process" && (
+          <div>
+            <label style={labelStyle}>Fallback (unable to infer)</label>
+            <select
+              value={fallbackValue}
+              onChange={(e) => handleFallbackChange(e.target.value)}
+              style={selectStyle}
+            >
+              <option value="">No fallback</option>
+              {options.map((opt) => {
+                const optBranch = (question.branches ?? []).find(
+                  (b) => b.optionId === opt.id,
+                );
+                const connected = !!optBranch?.nextQuestionId;
+                return (
+                  <option key={opt.id} value={opt.id} disabled={!connected}>
+                    Same as {opt.label || "Option"}
+                    {!connected ? " (not connected)" : ""}
+                  </option>
+                );
+              })}
+              <option value="custom">Additional output</option>
+            </select>
+            <span
+              style={{
+                display: "block",
+                fontSize: "11px",
+                color: "var(--text-muted, #6b7280)",
+                marginTop: "4px",
+              }}
+            >
+              Route when AI matches none of the options
+            </span>
           </div>
         )}
 

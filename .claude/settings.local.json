@@ -144,7 +144,8 @@
       "Bash(vercel logs:*)",
       "WebFetch(domain:docs.vapi.ai)",
       "WebFetch(domain:www.pexels.com)",
-      "WebFetch(domain:images.pexels.com)"
+      "WebFetch(domain:images.pexels.com)",
+      "Bash(pgrep:*)"
     ],
     "deny": [],
     "ask": []

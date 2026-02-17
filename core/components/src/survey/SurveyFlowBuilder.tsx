@@ -47,6 +47,11 @@ export interface SurveyFlowBuilderProps {
   editorLayout: EditorLayout;
   onChange: (questions: SurveyQuestion[], layout: EditorLayout) => void;
   readOnly?: boolean;
+  onInfer?: (
+    question: string,
+    answer: string,
+    options: { id: string; label: string }[],
+  ) => Promise<string | null>;
 }
 
 type QNode = Node<QuestionNodeData>;
@@ -291,7 +296,10 @@ function questionsToEdges(
       let turnDirection: "left" | "right" | "straight" = allSameTarget
         ? "straight"
         : "right";
-      if (hasOpts && b.optionId && q.options) {
+      // Default/fallback branch on options questions → always straight
+      if (hasOpts && !b.optionId) {
+        turnDirection = "straight";
+      } else if (hasOpts && b.optionId && q.options) {
         const optIdx = q.options.findIndex((o) => o.id === b.optionId);
         if (optIdx >= 0) {
           const n = q.options.length;
@@ -391,6 +399,7 @@ function SurveyFlowBuilderInner({
   editorLayout,
   onChange,
   readOnly = false,
+  onInfer,
 }: SurveyFlowBuilderProps) {
   // Stable ref for the insert handler (avoids stale closures in edge data)
   const insertRef = useRef<InsertHandler | null>(null);
@@ -1568,6 +1577,7 @@ function SurveyFlowBuilderInner({
         <SurveyPreviewOverlay
           questions={questions}
           onClose={() => setShowPreview(false)}
+          onInfer={onInfer}
         />
       )}
     </div>

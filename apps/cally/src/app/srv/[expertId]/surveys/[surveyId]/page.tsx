@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { SurveyFlowBuilder } from "@core/components";
+import { inferSurveyAnswer } from "@/lib/survey-infer";
 import "@xyflow/react/dist/style.css";
 import type {
   Survey,
@@ -548,6 +549,7 @@ export default function SurveyBuilderPage() {
             editorLayout={survey.editorLayout ?? {}}
             onChange={handleQuestionsChange}
             readOnly={isReadOnly}
+            onInfer={inferSurveyAnswer}
           />
         )}
 

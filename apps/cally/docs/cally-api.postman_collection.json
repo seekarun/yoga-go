@@ -1935,6 +1935,28 @@
           }
         },
         {
+          "name": "Infer Survey Answer (Auth)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"What is your primary fitness goal?\",\n  \"answer\": \"I want to lose some weight and get healthier\",\n  \"options\": [\n    { \"id\": \"opt1\", \"label\": \"Weight Loss\" },\n    { \"id\": \"opt2\", \"label\": \"Muscle Building\" },\n    { \"id\": \"opt3\", \"label\": \"Flexibility\" },\n    { \"id\": \"opt4\", \"label\": \"Stress Relief\" }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/surveys/infer",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "surveys", "infer"]
+            },
+            "description": "Classify a text survey answer against a set of options using AI inference. Returns the best matching optionId (or null if none match)."
+          }
+        },
+        {
           "name": "Get Public Survey",
           "request": {
             "method": "GET",

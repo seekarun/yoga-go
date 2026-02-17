@@ -208,9 +208,26 @@ function QuestionNodeComponent({
   const pathSet = new Set(selectionActive ? onPathHandles : []);
   const isMC = question.type === "multiple-choice";
   const isFinish = question.type === "finish";
-  const hasOptions =
-    isMC || (question.type === "text" && question.inference === "process");
+  const isInference =
+    question.type === "text" && question.inference === "process";
+  const hasOptions = isMC || isInference;
   const badge = getBadge(question.type, question.inference);
+
+  // Determine if fallback is a "custom" output (target doesn't match any option)
+  const hasCustomFallback = (() => {
+    if (!isInference) return false;
+    const defaultBranch = (question.branches ?? []).find((b) => !b.optionId);
+    if (!defaultBranch) return false;
+    if (!defaultBranch.nextQuestionId) return true;
+    for (const opt of question.options ?? []) {
+      const optBranch = (question.branches ?? []).find(
+        (b) => b.optionId === opt.id,
+      );
+      if (optBranch?.nextQuestionId === defaultBranch.nextQuestionId)
+        return false;
+    }
+    return true;
+  })();
   const truncated =
     question.questionText.length > 80
       ? question.questionText.slice(0, 80) + "..."
@@ -243,9 +260,11 @@ function QuestionNodeComponent({
   >([]);
 
   const optCount = hasOptions ? (question.options?.length ?? 0) : 0;
+  // Total lanes = options + fallback row (if custom)
+  const laneCount = optCount + (hasCustomFallback ? 1 : 0);
 
   useLayoutEffect(() => {
-    if (!hasOptions || optCount === 0 || !cardRef.current) {
+    if (!hasOptions || laneCount === 0 || !cardRef.current) {
       setConnectors([]);
       return;
     }
@@ -254,7 +273,7 @@ function QuestionNodeComponent({
     const cardH = card.offsetHeight;
     const lines: typeof connectors = [];
 
-    for (let i = 0; i < optCount; i++) {
+    for (let i = 0; i < laneCount; i++) {
       const el = optionRefs.current[i];
       if (!el) continue;
       // offset* values are relative to card (nearest positioned ancestor)
@@ -268,7 +287,7 @@ function QuestionNodeComponent({
     setConnectors(lines);
     // Re-measure when card dimensions or option count change
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasOptions, optCount, question.questionText]);
+  }, [hasOptions, laneCount, question.questionText]);
 
   return (
     <div ref={cardRef} style={getStyle()}>
@@ -294,8 +313,8 @@ function QuestionNodeComponent({
       {/* Body — extra right padding when options need connector lanes */}
       <div
         style={
-          optCount > 0
-            ? { ...bodyStyle, paddingRight: (optCount + 1) * LINE_SPACING }
+          laneCount > 0
+            ? { ...bodyStyle, paddingRight: (laneCount + 1) * LINE_SPACING }
             : bodyStyle
         }
       >
@@ -340,6 +359,22 @@ function QuestionNodeComponent({
                 </div>
               );
             })}
+            {hasCustomFallback && (
+              <div
+                ref={(el) => {
+                  optionRefs.current[optCount] = el;
+                }}
+                style={{
+                  ...optionItemStyle,
+                  borderColor:
+                    hlSet.has("default") || pathSet.has("default")
+                      ? ACCENT_COLOR
+                      : "#d1d5db",
+                }}
+              >
+                <span style={optionLabelStyle}>Fallback</span>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -358,8 +393,13 @@ function QuestionNodeComponent({
           }}
         >
           {connectors.map((c, i) => {
-            const optId = question.options?.[i]?.id;
-            const hId = optId ? `option-${optId}` : "";
+            const isFallbackLane = hasCustomFallback && i === optCount;
+            const optId = isFallbackLane ? null : question.options?.[i]?.id;
+            const hId = isFallbackLane
+              ? "default"
+              : optId
+                ? `option-${optId}`
+                : "";
             const lineHl = hlSet.has(hId);
             const lineOnPath = !lineHl && pathSet.has(hId);
             const lineColor = lineHl
@@ -404,37 +444,60 @@ function QuestionNodeComponent({
           );
         })}
 
-      {/* "Any" handle — capsule at bottom center, acts as the source handle */}
-      {hasOptions && optCount >= 2 && (
+      {/* Fallback handle — circle at bottom-right, next lane after options */}
+      {hasCustomFallback && (
         <Handle
           type="source"
           position={Position.Bottom}
-          id="any"
+          id="default"
           style={{
+            ...(hlSet.has("default") || pathSet.has("default")
+              ? handleAccentStyle
+              : handleStyle),
             position: "absolute",
-            bottom: -14,
-            left: "50%",
-            transform: "translateX(-50%)",
-            width: "auto",
-            height: "auto",
-            padding: "1px 8px",
-            borderRadius: "8px",
-            border: hlSet.has("any")
-              ? "2px solid var(--color-accent, #ff7f50)"
-              : "2px solid var(--color-primary, #008080)",
-            background: "#fff",
-            fontSize: "10px",
-            fontWeight: 700,
-            color: hlSet.has("any")
-              ? "var(--color-accent, #ff7f50)"
-              : "var(--color-primary, #008080)",
-            lineHeight: "14px",
-            cursor: "crosshair",
+            right: (optCount + 1) * LINE_SPACING,
+            left: "auto",
+            bottom: -6,
+            transform: "translateX(50%)",
           }}
-        >
-          Any
-        </Handle>
+        />
       )}
+
+      {/* "Any" handle — capsule at bottom center, acts as the source handle */}
+      {hasOptions &&
+        optCount >= 2 &&
+        (() => {
+          return (
+            <Handle
+              type="source"
+              position={Position.Bottom}
+              id="any"
+              style={{
+                position: "absolute",
+                bottom: -14,
+                left: "50%",
+                transform: "translateX(-50%)",
+                width: "auto",
+                height: "auto",
+                padding: "1px 8px",
+                borderRadius: "8px",
+                border: hlSet.has("any")
+                  ? "2px solid var(--color-accent, #ff7f50)"
+                  : "2px solid var(--color-primary, #008080)",
+                background: "#fff",
+                fontSize: "10px",
+                fontWeight: 700,
+                color: hlSet.has("any")
+                  ? "var(--color-accent, #ff7f50)"
+                  : "var(--color-primary, #008080)",
+                lineHeight: "14px",
+                cursor: "crosshair",
+              }}
+            >
+              Any
+            </Handle>
+          );
+        })()}
 
       {/* Source handle (bottom-right) — only when no per-option handles and not finish */}
       {!hasOptions && !isFinish && (
