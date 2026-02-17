@@ -6,3 +6,5 @@ export { QuestionEditorPanel } from "./QuestionEditorPanel";
 export { StartNode } from "./StartNode";
 export { AddButtonEdge } from "./AddButtonEdge";
 export type { AddButtonEdgeData } from "./AddButtonEdge";
+export { SurveyPreviewOverlay } from "./SurveyPreviewOverlay";
+export type { SurveyPreviewOverlayProps } from "./SurveyPreviewOverlay";

@@ -40,6 +40,7 @@ import {
   type AddButtonEdgeData,
   type EdgeAction,
 } from "./AddButtonEdge";
+import { SurveyPreviewOverlay } from "./SurveyPreviewOverlay";
 
 export interface SurveyFlowBuilderProps {
   questions: SurveyQuestion[];
@@ -75,6 +76,18 @@ const toolbarBtnStyle: CSSProperties = {
   background: "var(--color-primary, #008080)",
   color: "#fff",
   border: "none",
+  borderRadius: "6px",
+  cursor: "pointer",
+  boxShadow: "0 1px 3px rgba(0,0,0,0.12)",
+};
+
+const tryNowBtnStyle: CSSProperties = {
+  padding: "8px 14px",
+  fontSize: "13px",
+  fontWeight: 600,
+  background: "#fff",
+  color: "var(--color-primary, #008080)",
+  border: "2px solid var(--color-primary, #008080)",
   borderRadius: "6px",
   cursor: "pointer",
   boxShadow: "0 1px 3px rgba(0,0,0,0.12)",
@@ -396,6 +409,7 @@ function SurveyFlowBuilderInner({
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
   const [highlightTick, setHighlightTick] = useState(0);
   const { screenToFlowPosition, fitView } = useReactFlow();
 
@@ -439,6 +453,8 @@ function SurveyFlowBuilderInner({
 
     // Build on-path set: upstream + selected + downstream via BFS
     const onPath = new Set<string>();
+    const upstream = new Set<string>();
+    const downstream = new Set<string>();
 
     if (selectedEdgeId) {
       for (const e of edges) {
@@ -461,7 +477,6 @@ function SurveyFlowBuilderInner({
       }
 
       // BFS downstream from selected node
-      const downstream = new Set<string>();
       const dQueue = [selectedId];
       while (dQueue.length > 0) {
         const cur = dQueue.pop()!;
@@ -474,7 +489,6 @@ function SurveyFlowBuilderInner({
       }
 
       // BFS upstream from selected node
-      const upstream = new Set<string>();
       const uQueue = [selectedId];
       while (uQueue.length > 0) {
         const cur = uQueue.pop()!;
@@ -509,22 +523,32 @@ function SurveyFlowBuilderInner({
       }
     }
 
-    // Compute on-path handles: source handles whose edge connects two on-path nodes
-    // (excludes handles already in highlightedHandles — those get accent treatment)
+    // Helper: does an edge truly lie on a path *through* the selected node?
+    // Edges from an upstream node directly to a downstream node bypass the
+    // selected node and should be treated as off-path even though both
+    // endpoints are in `onPath`.
+    const isEdgeOnPath = (src: string, tgt: string): boolean => {
+      if (!onPath.has(src) || !onPath.has(tgt)) return false;
+      // upstream → downstream (bypasses selected) is NOT on-path
+      if (upstream.has(src) && downstream.has(tgt)) return false;
+      return true;
+    };
+
+    // Compute on-path handles: source handles whose edge truly lies on the
+    // path through the selected node (excludes accent-highlighted handles)
     const nodeOnPathHandles = new Map<string, Set<string>>();
     if (selectedId && !selectedEdgeId) {
       for (const e of edges) {
-        if (onPath.has(e.source) && onPath.has(e.target) && e.sourceHandle) {
-          // Skip handles that are already accent-highlighted (direct neighbors)
-          const hlHandles = nodeHighlightedHandles.get(e.source);
-          if (hlHandles?.has(e.sourceHandle)) continue;
-          let s = nodeOnPathHandles.get(e.source);
-          if (!s) {
-            s = new Set();
-            nodeOnPathHandles.set(e.source, s);
-          }
-          s.add(e.sourceHandle);
+        if (!e.sourceHandle || !isEdgeOnPath(e.source, e.target)) continue;
+        // Skip handles that are already accent-highlighted (direct neighbors)
+        const hlHandles = nodeHighlightedHandles.get(e.source);
+        if (hlHandles?.has(e.sourceHandle)) continue;
+        let s = nodeOnPathHandles.get(e.source);
+        if (!s) {
+          s = new Set();
+          nodeOnPathHandles.set(e.source, s);
         }
+        s.add(e.sourceHandle);
       }
     }
 
@@ -533,10 +557,10 @@ function SurveyFlowBuilderInner({
     setEdges((prev) =>
       prev.map((e) => {
         const isHighlighted = connectedEdgeIds.has(e.id);
-        // Dim edges where either endpoint is not on path (only when a node is selected)
+        // Dim edges not truly on the path through the selected node
         const isDimmed =
           selectedId && !selectedEdgeId
-            ? !onPath.has(e.source) || !onPath.has(e.target)
+            ? !isEdgeOnPath(e.source, e.target)
             : false;
         const target = isHighlighted
           ? highlightedEdgeStyle
@@ -1466,35 +1490,42 @@ function SurveyFlowBuilderInner({
   return (
     <div style={containerStyle}>
       {/* Toolbar */}
-      {!readOnly && (
-        <div style={toolbarStyle}>
-          <button onClick={() => addQuestion("text")} style={toolbarBtnStyle}>
-            + Text Question
-          </button>
-          <button
-            onClick={() => addQuestion("multiple-choice")}
-            style={toolbarBtnStyle}
-          >
-            + Multiple Choice
-          </button>
-          <button
-            onClick={undo}
-            disabled={!canUndo}
-            style={{
-              ...toolbarBtnStyle,
-              background: canUndo ? "var(--color-primary, #008080)" : "#9ca3af",
-              cursor: canUndo ? "pointer" : "not-allowed",
-              opacity: canUndo ? 1 : 0.6,
-            }}
-            title="Undo (Ctrl+Z)"
-          >
-            &#x21a9; Undo
-          </button>
-          <button onClick={arrangeNodes} style={toolbarBtnStyle}>
-            Arrange
-          </button>
-        </div>
-      )}
+      <div style={toolbarStyle}>
+        {!readOnly && (
+          <>
+            <button onClick={() => addQuestion("text")} style={toolbarBtnStyle}>
+              + Text Question
+            </button>
+            <button
+              onClick={() => addQuestion("multiple-choice")}
+              style={toolbarBtnStyle}
+            >
+              + Multiple Choice
+            </button>
+            <button
+              onClick={undo}
+              disabled={!canUndo}
+              style={{
+                ...toolbarBtnStyle,
+                background: canUndo
+                  ? "var(--color-primary, #008080)"
+                  : "#9ca3af",
+                cursor: canUndo ? "pointer" : "not-allowed",
+                opacity: canUndo ? 1 : 0.6,
+              }}
+              title="Undo (Ctrl+Z)"
+            >
+              &#x21a9; Undo
+            </button>
+            <button onClick={arrangeNodes} style={toolbarBtnStyle}>
+              Arrange
+            </button>
+          </>
+        )}
+        <button onClick={() => setShowPreview(true)} style={tryNowBtnStyle}>
+          &#9654; Try Now
+        </button>
+      </div>
 
       <FlowSelectionContext.Provider value={!!selectedId}>
         <ReactFlow
@@ -1529,6 +1560,14 @@ function SurveyFlowBuilderInner({
           onDelete={handleDeleteQuestion}
           onClose={() => setSelectedId(null)}
           canDelete={canDeleteQuestion(selectedQuestion.id)}
+        />
+      )}
+
+      {/* Preview overlay */}
+      {showPreview && (
+        <SurveyPreviewOverlay
+          questions={questions}
+          onClose={() => setShowPreview(false)}
         />
       )}
     </div>

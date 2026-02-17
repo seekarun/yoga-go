@@ -328,6 +328,13 @@ const btnHighlightedStyle: CSSProperties = {
   border: "1.5px solid var(--color-accent, #ff7f50)",
 };
 
+const btnDimmedStyle: CSSProperties = {
+  ...btnStyle,
+  color: "#d1d5db",
+  border: "1.5px solid #d1d5db",
+  opacity: 0.12,
+};
+
 const menuStyle: CSSProperties = {
   position: "fixed",
   background: "#fff",
@@ -425,6 +432,7 @@ export function AddButtonEdge({
       );
   const readOnly = edgeData?.readOnly ?? true;
   const highlighted = edgeData?.highlighted ?? false;
+  const dimmed = (style as CSSProperties | undefined)?.opacity === 0.12;
 
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -477,7 +485,13 @@ export function AddButtonEdge({
           >
             <button
               ref={btnRef}
-              style={highlighted ? btnHighlightedStyle : btnStyle}
+              style={
+                highlighted
+                  ? btnHighlightedStyle
+                  : dimmed
+                    ? btnDimmedStyle
+                    : btnStyle
+              }
               title="Edit edge"
               onClick={() => setMenuOpen((prev) => !prev)}
             >
