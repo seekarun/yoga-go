@@ -651,6 +651,32 @@ export default function SimpleLandingPageEditor({
     setIsDirty(true);
   }, []);
 
+  // Handle about image background removal complete
+  const handleAboutRemoveBgComplete = useCallback((newUrl: string) => {
+    setConfig((prev) => ({
+      ...prev,
+      about: { ...prev.about, image: newUrl } as AboutConfig,
+    }));
+    setIsDirty(true);
+  }, []);
+
+  // Handle feature card background removal complete
+  const handleFeatureCardRemoveBg = useCallback(
+    (cardId: string, newUrl: string) => {
+      setConfig((prev) => ({
+        ...prev,
+        features: {
+          ...prev.features,
+          cards: (prev.features?.cards || []).map((c) =>
+            c.id === cardId ? { ...c, image: newUrl } : c,
+          ),
+        } as FeaturesConfig,
+      }));
+      setIsDirty(true);
+    },
+    [],
+  );
+
   // Handle features heading change
   const handleFeaturesHeadingChange = useCallback((heading: string) => {
     setConfig((prev) => ({
@@ -2283,6 +2309,7 @@ export default function SimpleLandingPageEditor({
                   onAboutBgImageClick={() => setShowAboutBgImageEditor(true)}
                   onAboutImagePositionChange={handleAboutImagePositionChange}
                   onAboutImageZoomChange={handleAboutImageZoomChange}
+                  onAboutRemoveBgComplete={handleAboutRemoveBgComplete}
                   onCustomColorsChange={handleCustomColorsChange}
                   onFeaturesHeadingChange={handleFeaturesHeadingChange}
                   onFeaturesSubheadingChange={handleFeaturesSubheadingChange}
@@ -2290,6 +2317,7 @@ export default function SimpleLandingPageEditor({
                   onFeatureCardImageClick={handleFeatureCardImageClick}
                   onAddFeatureCard={handleAddFeatureCard}
                   onRemoveFeatureCard={handleRemoveFeatureCard}
+                  onFeatureCardRemoveBg={handleFeatureCardRemoveBg}
                   onTestimonialsHeadingChange={handleTestimonialsHeadingChange}
                   onTestimonialsSubheadingChange={
                     handleTestimonialsSubheadingChange

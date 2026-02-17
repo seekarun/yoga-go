@@ -11,6 +11,7 @@ import DragHandle from "./DragHandle";
 import ImageToolbar from "./ImageToolbar";
 import TextToolbar from "./TextToolbar";
 import AboutSectionToolbar from "./AboutSectionToolbar";
+import RemoveBackgroundButton from "./RemoveBackgroundButton";
 
 const DEFAULTS = {
   paddingTop: 80,
@@ -46,6 +47,7 @@ interface AboutSectionProps {
   onBgImageClick?: () => void;
   onImagePositionChange?: (position: string) => void;
   onImageZoomChange?: (zoom: number) => void;
+  onRemoveBgComplete?: (newUrl: string) => void;
 }
 
 export default function AboutSection({
@@ -63,6 +65,7 @@ export default function AboutSection({
   onBgImageClick,
   onImagePositionChange,
   onImageZoomChange,
+  onRemoveBgComplete,
 }: AboutSectionProps) {
   const overrides = about.styleOverrides;
 
@@ -584,7 +587,7 @@ export default function AboutSection({
     borderRadius: `${resolvedBorderRadius}px`,
     overflow: showHandles ? "visible" : "hidden",
     flexShrink: 0,
-    backgroundColor: theme.imageBg,
+    backgroundColor: about.image ? "transparent" : theme.imageBg,
     ...(resolvedLayout === "image-right" ? { order: 2 } : {}),
     ...(showHandles && imageSelected
       ? {
@@ -797,39 +800,52 @@ export default function AboutSection({
             </div>
           </div>
           {isEditing && (
-            <button
-              type="button"
-              onClick={onImageClick}
+            <div
               style={{
                 position: "absolute",
                 top: "12px",
                 right: "12px",
-                width: "36px",
-                height: "36px",
-                backgroundColor: "white",
-                borderRadius: "50%",
-                border: "none",
-                cursor: "pointer",
                 display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                gap: "8px",
                 zIndex: 5,
               }}
             >
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#374151"
-                strokeWidth="2"
+              {about.image && onRemoveBgComplete && (
+                <RemoveBackgroundButton
+                  imageUrl={about.image}
+                  onComplete={onRemoveBgComplete}
+                />
+              )}
+              <button
+                type="button"
+                onClick={onImageClick}
+                style={{
+                  width: "36px",
+                  height: "36px",
+                  backgroundColor: "white",
+                  borderRadius: "50%",
+                  border: "none",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                }}
               >
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                <circle cx="8.5" cy="8.5" r="1.5" />
-                <polyline points="21 15 16 10 5 21" />
-              </svg>
-            </button>
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#374151"
+                  strokeWidth="2"
+                >
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" />
+                  <polyline points="21 15 16 10 5 21" />
+                </svg>
+              </button>
+            </div>
           )}
 
           {/* Image toolbar — floating above image when selected */}

@@ -38,6 +38,8 @@ export default function AppleTemplate(props: HeroTemplateProps) {
     onFeatureCardImageClick,
     onAddFeatureCard,
     onRemoveFeatureCard,
+    onAboutRemoveBgComplete,
+    onFeatureCardRemoveBg,
     products,
     currency,
     onBookProduct,
@@ -243,6 +245,7 @@ export default function AppleTemplate(props: HeroTemplateProps) {
                 onBgImageClick={onAboutBgImageClick}
                 onImagePositionChange={onAboutImagePositionChange}
                 onImageZoomChange={onAboutImageZoomChange}
+                onRemoveBgComplete={onAboutRemoveBgComplete}
               />
             </div>
           ) : null;
@@ -265,6 +268,7 @@ export default function AppleTemplate(props: HeroTemplateProps) {
                 onCardImageClick={onFeatureCardImageClick}
                 onAddCard={onAddFeatureCard}
                 onRemoveCard={onRemoveFeatureCard}
+                onCardRemoveBg={onFeatureCardRemoveBg}
               />
             </div>
           ) : null;

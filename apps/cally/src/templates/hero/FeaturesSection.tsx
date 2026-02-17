@@ -2,6 +2,7 @@
 
 import type { FeaturesConfig } from "@/types/landing-page";
 import type { BrandFont } from "@/types/landing-page";
+import RemoveBackgroundButton from "./RemoveBackgroundButton";
 
 interface FeaturesSectionProps {
   features: FeaturesConfig;
@@ -18,6 +19,7 @@ interface FeaturesSectionProps {
   onCardImageClick?: (cardId: string) => void;
   onAddCard?: () => void;
   onRemoveCard?: (cardId: string) => void;
+  onCardRemoveBg?: (cardId: string, newUrl: string) => void;
 }
 
 /**
@@ -35,6 +37,7 @@ export default function FeaturesSection({
   onCardImageClick,
   onAddCard,
   onRemoveCard,
+  onCardRemoveBg,
 }: FeaturesSectionProps) {
   const colors = {
     light: {
@@ -291,47 +294,63 @@ export default function FeaturesSection({
                 </div>
                 {isEditing && (
                   <>
-                    {/* Image edit button */}
-                    <button
-                      type="button"
-                      onClick={() => onCardImageClick?.(card.id)}
+                    {/* Image buttons container */}
+                    <div
                       style={{
                         position: "absolute",
                         top: "8px",
                         right: "8px",
-                        width: "32px",
-                        height: "32px",
-                        backgroundColor: "white",
-                        borderRadius: "50%",
-                        border: "none",
-                        cursor: "pointer",
                         display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+                        gap: "6px",
                         zIndex: 1,
                       }}
                     >
-                      <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="#374151"
-                        strokeWidth="2"
-                      >
-                        <rect
-                          x="3"
-                          y="3"
-                          width="18"
-                          height="18"
-                          rx="2"
-                          ry="2"
+                      {card.image && onCardRemoveBg && (
+                        <RemoveBackgroundButton
+                          imageUrl={card.image}
+                          onComplete={(newUrl) =>
+                            onCardRemoveBg(card.id, newUrl)
+                          }
+                          size={32}
                         />
-                        <circle cx="8.5" cy="8.5" r="1.5" />
-                        <polyline points="21 15 16 10 5 21" />
-                      </svg>
-                    </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => onCardImageClick?.(card.id)}
+                        style={{
+                          width: "32px",
+                          height: "32px",
+                          backgroundColor: "white",
+                          borderRadius: "50%",
+                          border: "none",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+                        }}
+                      >
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="#374151"
+                          strokeWidth="2"
+                        >
+                          <rect
+                            x="3"
+                            y="3"
+                            width="18"
+                            height="18"
+                            rx="2"
+                            ry="2"
+                          />
+                          <circle cx="8.5" cy="8.5" r="1.5" />
+                          <polyline points="21 15 16 10 5 21" />
+                        </svg>
+                      </button>
+                    </div>
                     {/* Remove card button */}
                     {features.cards.length > 1 && (
                       <button

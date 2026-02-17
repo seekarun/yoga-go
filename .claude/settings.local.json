@@ -145,7 +145,8 @@
       "WebFetch(domain:docs.vapi.ai)",
       "WebFetch(domain:www.pexels.com)",
       "WebFetch(domain:images.pexels.com)",
-      "Bash(pgrep:*)"
+      "Bash(pgrep:*)",
+      "WebFetch(domain:www.npmjs.com)"
     ],
     "deny": [],
     "ask": []

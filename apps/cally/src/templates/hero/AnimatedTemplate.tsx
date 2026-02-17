@@ -57,6 +57,8 @@ export default function AnimatedTemplate(props: HeroTemplateProps) {
     onFeatureCardImageClick,
     onAddFeatureCard,
     onRemoveFeatureCard,
+    onAboutRemoveBgComplete: _onAboutRemoveBgComplete,
+    onFeatureCardRemoveBg,
     products,
     currency,
     onBookProduct,
@@ -427,6 +429,7 @@ export default function AnimatedTemplate(props: HeroTemplateProps) {
                 onCardImageClick={onFeatureCardImageClick}
                 onAddCard={onAddFeatureCard}
                 onRemoveCard={onRemoveFeatureCard}
+                onCardRemoveBg={onFeatureCardRemoveBg}
               />
             </div>
           ) : null;

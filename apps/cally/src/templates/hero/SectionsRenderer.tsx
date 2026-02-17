@@ -40,6 +40,9 @@ interface SectionsRendererProps {
   onFeatureCardImageClick?: (cardId: string) => void;
   onAddFeatureCard?: () => void;
   onRemoveFeatureCard?: (cardId: string) => void;
+  // Background removal callbacks
+  onAboutRemoveBgComplete?: (newUrl: string) => void;
+  onFeatureCardRemoveBg?: (cardId: string, newUrl: string) => void;
   // Products data & callbacks
   products?: Product[];
   currency?: string;
@@ -106,6 +109,8 @@ export default function SectionsRenderer({
   onFeatureCardImageClick,
   onAddFeatureCard,
   onRemoveFeatureCard,
+  onAboutRemoveBgComplete,
+  onFeatureCardRemoveBg,
   products,
   currency,
   onBookProduct,
@@ -171,6 +176,7 @@ export default function SectionsRenderer({
                   onBgImageClick={onAboutBgImageClick}
                   onImagePositionChange={onAboutImagePositionChange}
                   onImageZoomChange={onAboutImageZoomChange}
+                  onRemoveBgComplete={onAboutRemoveBgComplete}
                 />
               ) : null;
 
@@ -188,6 +194,7 @@ export default function SectionsRenderer({
                   onCardImageClick={onFeatureCardImageClick}
                   onAddCard={onAddFeatureCard}
                   onRemoveCard={onRemoveFeatureCard}
+                  onCardRemoveBg={onFeatureCardRemoveBg}
                 />
               ) : null;
 

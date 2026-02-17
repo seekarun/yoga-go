@@ -34,6 +34,9 @@ export interface HeroTemplateProps {
   onFeatureCardImageClick?: (cardId: string) => void;
   onAddFeatureCard?: () => void;
   onRemoveFeatureCard?: (cardId: string) => void;
+  // Background removal callbacks
+  onAboutRemoveBgComplete?: (newUrl: string) => void;
+  onFeatureCardRemoveBg?: (cardId: string, newUrl: string) => void;
   // Products data & callbacks
   products?: Product[];
   currency?: string;
