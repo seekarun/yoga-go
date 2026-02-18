@@ -227,6 +227,14 @@ export interface HeroStyleOverrides {
   buttonX?: number; // default 50
   buttonY?: number; // default 72
   sectionHeight?: number; // px, default 600
+  // Mobile freeform position overrides (% of container, 0-100)
+  mobileTitleX?: number;
+  mobileTitleY?: number;
+  mobileSubtitleX?: number;
+  mobileSubtitleY?: number;
+  mobileButtonX?: number;
+  mobileButtonY?: number;
+  mobileSectionHeight?: number; // px
 }
 
 export interface AboutConfig {

@@ -199,6 +199,27 @@ export default function useHeroToolbarState({
     [mergeOverride],
   );
 
+  // Mobile freeform position callbacks
+  const onMobileTitlePositionChange = useCallback(
+    (px: number, py: number) =>
+      mergeOverride({ mobileTitleX: px, mobileTitleY: py }),
+    [mergeOverride],
+  );
+  const onMobileSubtitlePositionChange = useCallback(
+    (px: number, py: number) =>
+      mergeOverride({ mobileSubtitleX: px, mobileSubtitleY: py }),
+    [mergeOverride],
+  );
+  const onMobileButtonPositionChange = useCallback(
+    (px: number, py: number) =>
+      mergeOverride({ mobileButtonX: px, mobileButtonY: py }),
+    [mergeOverride],
+  );
+  const onMobileSectionHeightChange = useCallback(
+    (v: number) => mergeOverride({ mobileSectionHeight: v }),
+    [mergeOverride],
+  );
+
   return {
     // Selection state
     titleSelected,
@@ -239,5 +260,10 @@ export default function useHeroToolbarState({
     onSubtitlePositionChange,
     onButtonPositionChange,
     onSectionHeightChange,
+    // Mobile freeform position callbacks
+    onMobileTitlePositionChange,
+    onMobileSubtitlePositionChange,
+    onMobileButtonPositionChange,
+    onMobileSectionHeightChange,
   };
 }

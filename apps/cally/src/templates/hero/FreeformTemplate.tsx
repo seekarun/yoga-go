@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import type { HeroTemplateProps } from "./types";
+import type { HeroStyleOverrides } from "@/types/landing-page";
 import SectionsRenderer from "./SectionsRenderer";
 import useHeroToolbarState from "./useHeroToolbarState";
 import HeroSectionToolbar from "./HeroSectionToolbar";
@@ -25,9 +26,31 @@ const DEFAULT_BUTTON_Y = 72;
 // Fallback container width used before ResizeObserver fires
 const CANVAS_REF_WIDTH = 1200;
 
-// Mobile CSS override for stacked layout
-const MOBILE_CSS = `
-@media (max-width: 768px) {
+/**
+ * Build dynamic mobile CSS.
+ * If mobile-specific positions exist, use them for freeform positioning.
+ * Otherwise, fall back to stacked centered layout.
+ */
+function buildMobileCSS(
+  h: HeroStyleOverrides | undefined,
+  defaults: {
+    sectionHeight: number;
+    titleX: number;
+    titleY: number;
+    subtitleX: number;
+    subtitleY: number;
+    buttonX: number;
+    buttonY: number;
+  },
+): string {
+  const hasMobilePositions =
+    h?.mobileTitleX != null ||
+    h?.mobileSubtitleX != null ||
+    h?.mobileButtonX != null;
+
+  if (!hasMobilePositions) {
+    // Stacked fallback (current behavior)
+    return `@media (max-width: 768px) {
   .freeform-hero-section {
     height: auto !important;
     min-height: 400px !important;
@@ -52,6 +75,29 @@ const MOBILE_CSS = `
     text-align: center !important;
   }
 }`;
+  }
+
+  // Freeform mobile with custom positions
+  const mH = h?.mobileSectionHeight ?? defaults.sectionHeight;
+  return `@media (max-width: 768px) {
+  .freeform-hero-section {
+    height: ${mH}px !important;
+    min-height: 400px !important;
+  }
+  .freeform-title {
+    left: ${h?.mobileTitleX ?? defaults.titleX}% !important;
+    top: ${h?.mobileTitleY ?? defaults.titleY}% !important;
+  }
+  .freeform-subtitle {
+    left: ${h?.mobileSubtitleX ?? defaults.subtitleX}% !important;
+    top: ${h?.mobileSubtitleY ?? defaults.subtitleY}% !important;
+  }
+  .freeform-button {
+    left: ${h?.mobileButtonX ?? defaults.buttonX}% !important;
+    top: ${h?.mobileButtonY ?? defaults.buttonY}% !important;
+  }
+}`;
+}
 
 /**
  * Freeform Template
@@ -62,6 +108,7 @@ export default function FreeformTemplate(props: HeroTemplateProps) {
   const {
     config,
     isEditing = false,
+    editingFormFactor = "desktop",
     onTitleChange,
     onSubtitleChange,
     onButtonClick,
@@ -104,6 +151,10 @@ export default function FreeformTemplate(props: HeroTemplateProps) {
     onSubtitlePositionChange,
     onButtonPositionChange,
     onSectionHeightChange,
+    onMobileTitlePositionChange,
+    onMobileSubtitlePositionChange,
+    onMobileButtonPositionChange,
+    onMobileSectionHeightChange,
   } = useHeroToolbarState({
     isEditing,
     heroStyleOverrides: h,
@@ -112,20 +163,54 @@ export default function FreeformTemplate(props: HeroTemplateProps) {
 
   const [buttonSelected, setButtonSelected] = useState(false);
 
+  const isMobileEdit = isEditing && editingFormFactor === "mobile";
+
+  // Desktop positions (always computed)
+  const titleXPct = h?.titleX ?? DEFAULT_TITLE_X;
+  const titleYPct = h?.titleY ?? DEFAULT_TITLE_Y;
+  const subtitleXPct = h?.subtitleX ?? DEFAULT_SUBTITLE_X;
+  const subtitleYPct = h?.subtitleY ?? DEFAULT_SUBTITLE_Y;
+  const buttonXPct = h?.buttonX ?? DEFAULT_BUTTON_X;
+  const buttonYPct = h?.buttonY ?? DEFAULT_BUTTON_Y;
+  const desktopSectionHeight = h?.sectionHeight ?? DEFAULT_SECTION_HEIGHT;
+
+  // Active positions (what the editor reads/writes based on form factor)
+  const activeTitleX = isMobileEdit
+    ? (h?.mobileTitleX ?? titleXPct)
+    : titleXPct;
+  const activeTitleY = isMobileEdit
+    ? (h?.mobileTitleY ?? titleYPct)
+    : titleYPct;
+  const activeSubtitleX = isMobileEdit
+    ? (h?.mobileSubtitleX ?? subtitleXPct)
+    : subtitleXPct;
+  const activeSubtitleY = isMobileEdit
+    ? (h?.mobileSubtitleY ?? subtitleYPct)
+    : subtitleYPct;
+  const activeButtonX = isMobileEdit
+    ? (h?.mobileButtonX ?? buttonXPct)
+    : buttonXPct;
+  const activeButtonY = isMobileEdit
+    ? (h?.mobileButtonY ?? buttonYPct)
+    : buttonYPct;
+  const activeSectionHeight = isMobileEdit
+    ? (h?.mobileSectionHeight ?? desktopSectionHeight)
+    : desktopSectionHeight;
+
   // Section height resize
-  const sectionHeight = h?.sectionHeight ?? DEFAULT_SECTION_HEIGHT;
-  const baseHeightRef = useRef(sectionHeight);
+  const baseHeightRef = useRef(activeSectionHeight);
 
   const handleHeightDragStart = useCallback(() => {
-    baseHeightRef.current = sectionHeight;
-  }, [sectionHeight]);
+    baseHeightRef.current = activeSectionHeight;
+  }, [activeSectionHeight]);
 
   const handleHeightDrag = useCallback(
     (_dx: number, dy: number) => {
       const clamped = Math.max(200, baseHeightRef.current + dy);
-      onSectionHeightChange(clamped);
+      if (isMobileEdit) onMobileSectionHeightChange(clamped);
+      else onSectionHeightChange(clamped);
     },
-    [onSectionHeightChange],
+    [isMobileEdit, onSectionHeightChange, onMobileSectionHeightChange],
   );
 
   const handleHeightDragEnd = useCallback(() => {}, []);
@@ -147,47 +232,54 @@ export default function FreeformTemplate(props: HeroTemplateProps) {
     return () => observer.disconnect();
   }, [isEditing, sectionRef]);
 
-  // Stored positions are percentages (0-100)
-  const titleXPct = h?.titleX ?? DEFAULT_TITLE_X;
-  const titleYPct = h?.titleY ?? DEFAULT_TITLE_Y;
-  const subtitleXPct = h?.subtitleX ?? DEFAULT_SUBTITLE_X;
-  const subtitleYPct = h?.subtitleY ?? DEFAULT_SUBTITLE_Y;
-  const buttonXPct = h?.buttonX ?? DEFAULT_BUTTON_X;
-  const buttonYPct = h?.buttonY ?? DEFAULT_BUTTON_Y;
-
   // In edit mode: convert % → px for DraggableItem
   const pctToPxX = (pct: number) => (pct / 100) * containerSize.width;
   const pctToPxY = (pct: number) => (pct / 100) * containerSize.height;
 
-  // Wrap position-change handlers to convert px → % before persisting
+  // Wrap position-change handlers to convert px → % and dispatch to desktop or mobile
   const handleTitlePositionChange = useCallback(
     (px: number, py: number) => {
-      onTitlePositionChange(
-        (px / containerSize.width) * 100,
-        (py / containerSize.height) * 100,
-      );
+      const xPct = (px / containerSize.width) * 100;
+      const yPct = (py / containerSize.height) * 100;
+      if (isMobileEdit) onMobileTitlePositionChange(xPct, yPct);
+      else onTitlePositionChange(xPct, yPct);
     },
-    [containerSize, onTitlePositionChange],
+    [
+      containerSize,
+      isMobileEdit,
+      onTitlePositionChange,
+      onMobileTitlePositionChange,
+    ],
   );
 
   const handleSubtitlePositionChange = useCallback(
     (px: number, py: number) => {
-      onSubtitlePositionChange(
-        (px / containerSize.width) * 100,
-        (py / containerSize.height) * 100,
-      );
+      const xPct = (px / containerSize.width) * 100;
+      const yPct = (py / containerSize.height) * 100;
+      if (isMobileEdit) onMobileSubtitlePositionChange(xPct, yPct);
+      else onSubtitlePositionChange(xPct, yPct);
     },
-    [containerSize, onSubtitlePositionChange],
+    [
+      containerSize,
+      isMobileEdit,
+      onSubtitlePositionChange,
+      onMobileSubtitlePositionChange,
+    ],
   );
 
   const handleButtonPositionChange = useCallback(
     (px: number, py: number) => {
-      onButtonPositionChange(
-        (px / containerSize.width) * 100,
-        (py / containerSize.height) * 100,
-      );
+      const xPct = (px / containerSize.width) * 100;
+      const yPct = (py / containerSize.height) * 100;
+      if (isMobileEdit) onMobileButtonPositionChange(xPct, yPct);
+      else onButtonPositionChange(xPct, yPct);
     },
-    [containerSize, onButtonPositionChange],
+    [
+      containerSize,
+      isMobileEdit,
+      onButtonPositionChange,
+      onMobileButtonPositionChange,
+    ],
   );
 
   const overlayAlpha = (h?.overlayOpacity ?? DEFAULT_OVERLAY) / 100;
@@ -284,6 +376,30 @@ export default function FreeformTemplate(props: HeroTemplateProps) {
     handleSectionClick();
   }, [handleSectionClick]);
 
+  // Dynamic mobile CSS (always injected, not just in edit mode)
+  const mobileCss = useMemo(
+    () =>
+      buildMobileCSS(h, {
+        sectionHeight: desktopSectionHeight,
+        titleX: titleXPct,
+        titleY: titleYPct,
+        subtitleX: subtitleXPct,
+        subtitleY: subtitleYPct,
+        buttonX: buttonXPct,
+        buttonY: buttonYPct,
+      }),
+    [
+      h,
+      desktopSectionHeight,
+      titleXPct,
+      titleYPct,
+      subtitleXPct,
+      subtitleYPct,
+      buttonXPct,
+      buttonYPct,
+    ],
+  );
+
   return (
     <>
       {config.heroEnabled !== false && (
@@ -292,7 +408,7 @@ export default function FreeformTemplate(props: HeroTemplateProps) {
           className="freeform-hero-section"
           style={{
             position: "relative",
-            height: `${sectionHeight}px`,
+            height: `${activeSectionHeight}px`,
             width: "100%",
             overflow: isEditing ? "visible" : "hidden",
             color: "#ffffff",
@@ -302,8 +418,8 @@ export default function FreeformTemplate(props: HeroTemplateProps) {
         >
           <div style={backgroundStyle} />
 
-          {/* Mobile responsive + editor styles */}
-          <style>{MOBILE_CSS}</style>
+          {/* Mobile responsive CSS (skip in editor to avoid interfering with mobile editing) */}
+          {!isEditing && <style>{mobileCss}</style>}
           {isEditing && (
             <style>{`
               [contenteditable]:focus {
@@ -350,14 +466,14 @@ export default function FreeformTemplate(props: HeroTemplateProps) {
           <div className="freeform-hero-content">
             {/* Title */}
             <DraggableItem
-              x={isEditing ? pctToPxX(titleXPct) : titleXPct}
-              y={isEditing ? pctToPxY(titleYPct) : titleYPct}
+              x={isEditing ? pctToPxX(activeTitleX) : titleXPct}
+              y={isEditing ? pctToPxY(activeTitleY) : titleYPct}
               isEditing={isEditing}
               selected={titleSelected}
               onSelect={handleTitleSelect}
               onPositionChange={handleTitlePositionChange}
               unit="%"
-              className="freeform-item"
+              className="freeform-item freeform-title"
               style={{ zIndex: titleSelected ? 20 : 1 }}
             >
               <ResizableText
@@ -393,14 +509,14 @@ export default function FreeformTemplate(props: HeroTemplateProps) {
 
             {/* Subtitle */}
             <DraggableItem
-              x={isEditing ? pctToPxX(subtitleXPct) : subtitleXPct}
-              y={isEditing ? pctToPxY(subtitleYPct) : subtitleYPct}
+              x={isEditing ? pctToPxX(activeSubtitleX) : subtitleXPct}
+              y={isEditing ? pctToPxY(activeSubtitleY) : subtitleYPct}
               isEditing={isEditing}
               selected={subtitleSelected}
               onSelect={handleSubtitleSelect}
               onPositionChange={handleSubtitlePositionChange}
               unit="%"
-              className="freeform-item"
+              className="freeform-item freeform-subtitle"
               style={{ zIndex: subtitleSelected ? 20 : 1 }}
             >
               <ResizableText
@@ -437,14 +553,14 @@ export default function FreeformTemplate(props: HeroTemplateProps) {
             {/* Button */}
             {button && (
               <DraggableItem
-                x={isEditing ? pctToPxX(buttonXPct) : buttonXPct}
-                y={isEditing ? pctToPxY(buttonYPct) : buttonYPct}
+                x={isEditing ? pctToPxX(activeButtonX) : buttonXPct}
+                y={isEditing ? pctToPxY(activeButtonY) : buttonYPct}
                 isEditing={isEditing}
                 selected={buttonSelected}
                 onSelect={handleButtonClick}
                 onPositionChange={handleButtonPositionChange}
                 unit="%"
-                className="freeform-item"
+                className="freeform-item freeform-button"
                 style={{ zIndex: buttonSelected ? 20 : 1 }}
               >
                 <button

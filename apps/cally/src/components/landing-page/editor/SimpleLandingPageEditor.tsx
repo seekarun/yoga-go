@@ -2190,8 +2190,8 @@ export default function SimpleLandingPageEditor({
                 }}
               />
             )}
-            {/* Mobile phone frame + callout */}
-            {previewMode === "mobile" && (
+            {/* Mobile phone frame + callout (non-freeform: iframe preview; freeform: handled below via main editor) */}
+            {previewMode === "mobile" && config.template !== "freeform" && (
               <div
                 style={{
                   display: "flex",
@@ -2311,12 +2311,53 @@ export default function SimpleLandingPageEditor({
                 </div>
               </div>
             )}
+            {/* Freeform mobile editing: callout + phone-framed editable content */}
+            {previewMode === "mobile" && config.template === "freeform" && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "6px",
+                  padding: "8px 16px",
+                  color: "#6b7280",
+                  fontSize: "12px",
+                }}
+              >
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="16" x2="12" y2="12" />
+                  <line x1="12" y1="8" x2="12.01" y2="8" />
+                </svg>
+                <span>Drag elements to customise the mobile layout</span>
+              </div>
+            )}
             <div
               className={`shadow-lg relative ${config.template === "apple" ? "bg-[#f5f5f7]" : config.template === "bayside" ? "bg-[#FAF9F6]" : config.template === "therapist" ? "bg-[#faf9f8]" : "bg-white"}`}
               style={{
                 margin: "16px auto",
                 overflow: "hidden",
-                display: previewMode === "mobile" ? "none" : undefined,
+                display:
+                  previewMode === "mobile" && config.template !== "freeform"
+                    ? "none"
+                    : undefined,
+                ...(previewMode === "mobile" &&
+                  config.template === "freeform" && {
+                    maxWidth: "390px",
+                    border: "8px solid #1f2937",
+                    borderRadius: "40px",
+                    boxShadow:
+                      "0 4px 24px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05)",
+                  }),
               }}
             >
               {/* Image Edit + Remove BG Buttons - Top Right (hidden for templates that ignore hero image) */}
@@ -2357,6 +2398,9 @@ export default function SimpleLandingPageEditor({
                 <HeroTemplateRenderer
                   config={config}
                   isEditing={true}
+                  editingFormFactor={
+                    previewMode === "mobile" ? "mobile" : "desktop"
+                  }
                   products={products}
                   currency={editorCurrency}
                   onTitleChange={handleTitleChange}

@@ -13,6 +13,7 @@ import type { Product } from "@/types";
 export interface HeroTemplateProps {
   config: SimpleLandingPageConfig;
   isEditing?: boolean;
+  editingFormFactor?: "desktop" | "mobile";
   onTitleChange?: (title: string) => void;
   onSubtitleChange?: (subtitle: string) => void;
   onButtonClick?: () => void;
