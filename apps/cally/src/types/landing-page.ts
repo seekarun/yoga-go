@@ -22,16 +22,14 @@ export interface BrandFont {
  */
 export type TemplateId =
   | "centered"
-  | "left-aligned"
   | "split"
-  | "minimal"
-  | "bold"
   | "apple"
   | "bayside"
   | "therapist"
   | "parallax"
   | "animated"
-  | "diy";
+  | "diy"
+  | "freeform";
 
 /**
  * Image aspect ratio configuration for a template
@@ -73,42 +71,12 @@ export const TEMPLATES: TemplateInfo[] = [
     },
   },
   {
-    id: "left-aligned",
-    name: "Left Aligned",
-    description: "Content aligned to the left with a modern feel",
-    imageConfig: {
-      heroBackground: "16/9",
-      aboutImage: "4/5",
-      featureCardImage: "16/9",
-    },
-  },
-  {
     id: "split",
     name: "Split",
     description: "Half image, half content side-by-side layout",
     imageConfig: {
       heroBackground: "9/16",
       aboutImage: "4/5",
-      featureCardImage: "16/9",
-    },
-  },
-  {
-    id: "minimal",
-    name: "Minimal",
-    description: "Clean and simple with subtle background",
-    imageConfig: {
-      heroBackground: "16/9",
-      aboutImage: "1/1",
-      featureCardImage: "16/9",
-    },
-  },
-  {
-    id: "bold",
-    name: "Bold",
-    description: "Large typography with strong visual impact",
-    imageConfig: {
-      heroBackground: "16/9",
-      aboutImage: "1/1",
       featureCardImage: "16/9",
     },
   },
@@ -178,6 +146,16 @@ export const TEMPLATES: TemplateInfo[] = [
       featureCardImage: "16/9",
     },
   },
+  {
+    id: "freeform",
+    name: "Freeform",
+    description: "Canvas layout — drag elements anywhere",
+    imageConfig: {
+      heroBackground: "16/9",
+      aboutImage: "1/1",
+      featureCardImage: "16/9",
+    },
+  },
 ];
 
 /**
@@ -197,6 +175,7 @@ export interface AboutStyleOverrides {
   paddingRight?: number; // px, default 0
   imageWidth?: number; // px, default 320
   imageHeight?: number; // px, default 320
+  imageOffsetY?: number; // px, default 0 — negative values push image above section
   borderRadius?: number; // px, default 16
   // Body text overrides
   fontSize?: number; // px, default 18
@@ -212,11 +191,42 @@ export interface AboutStyleOverrides {
   titleFontStyle?: "normal" | "italic"; // default: "normal"
   titleTextColor?: string; // hex, default: theme.text
   titleTextAlign?: "left" | "center" | "right"; // default: "left"
+  titleMaxWidth?: number; // px, default 700 — title text max-width
+  bodyMaxWidth?: number; // px, default 700 — body text max-width
   bgColor?: string; // hex, overrides theme.bg
   bgImage?: string; // URL
   bgImageBlur?: number; // px, default 0
   bgImageOpacity?: number; // 0-100, default 100
   layout?: "image-left" | "image-right" | "stacked"; // default: "image-left"
+}
+
+export interface HeroStyleOverrides {
+  titleFontSize?: number;
+  titleFontFamily?: string;
+  titleFontWeight?: "normal" | "bold";
+  titleFontStyle?: "normal" | "italic";
+  titleTextColor?: string;
+  titleTextAlign?: "left" | "center" | "right";
+  subtitleFontSize?: number;
+  subtitleFontFamily?: string;
+  subtitleFontWeight?: "normal" | "bold";
+  subtitleFontStyle?: "normal" | "italic";
+  subtitleTextColor?: string;
+  subtitleTextAlign?: "left" | "center" | "right";
+  titleMaxWidth?: number; // px, draggable max-width for title wrapper
+  subtitleMaxWidth?: number; // px, draggable max-width for subtitle wrapper
+  overlayOpacity?: number; // 0-100, controls dark overlay on bg image
+  paddingTop?: number; // px
+  paddingBottom?: number; // px
+  bgColor?: string; // hex fallback when no image
+  // Freeform element positions (% of container, 0-100)
+  titleX?: number; // default 50
+  titleY?: number; // default 30
+  subtitleX?: number; // default 50
+  subtitleY?: number; // default 50
+  buttonX?: number; // default 50
+  buttonY?: number; // default 72
+  sectionHeight?: number; // px, default 600
 }
 
 export interface AboutConfig {
@@ -436,6 +446,8 @@ export interface SimpleLandingPageConfig {
   gallery?: GalleryConfig;
   /** Footer section configuration */
   footer?: FooterConfig;
+  /** Hero section style overrides (font, overlay, padding) */
+  heroStyleOverrides?: HeroStyleOverrides;
   /** Whether hero section is visible (default true) */
   heroEnabled?: boolean;
   /** Whether footer section is visible (default true) */

@@ -5,7 +5,12 @@ import { createPortal } from "react-dom";
 import { BaseEdge, EdgeLabelRenderer, type EdgeProps } from "@xyflow/react";
 import { LINE_SPACING } from "./constants";
 
-export type EdgeAction = "multiple-choice" | "text" | "finish" | "delete";
+export type EdgeAction =
+  | "multiple-choice"
+  | "text"
+  | "finish"
+  | "classifier"
+  | "delete";
 
 export interface AddButtonEdgeData {
   onInsert: (
@@ -530,6 +535,16 @@ export function AddButtonEdge({
               onClick={() => handleAction("text")}
             >
               Free text question
+            </button>
+            <button
+              style={menuItemStyle}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.background = "#f3f4f6")
+              }
+              onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+              onClick={() => handleAction("classifier")}
+            >
+              Classifier node
             </button>
             <button
               style={menuItemStyle}

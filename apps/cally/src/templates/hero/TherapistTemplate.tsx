@@ -9,6 +9,9 @@ import FAQSection from "./FAQSection";
 import LocationSection from "./LocationSection";
 import GallerySection from "./GallerySection";
 import FooterSection from "./FooterSection";
+import useHeroToolbarState from "./useHeroToolbarState";
+import HeroSectionToolbar from "./HeroSectionToolbar";
+import ResizableText from "./ResizableText";
 
 /**
  * Therapist Template
@@ -28,6 +31,9 @@ import FooterSection from "./FooterSection";
  * - --brand-500-contrast: CTA text
  * - --brand-highlight: section headings
  */
+const DEFAULT_TITLE_MW = 900;
+const DEFAULT_SUBTITLE_MW = 600;
+
 export default function TherapistTemplate(props: HeroTemplateProps) {
   const {
     config,
@@ -54,6 +60,7 @@ export default function TherapistTemplate(props: HeroTemplateProps) {
     onProductsStyleOverrideChange,
     onProductsBgImageClick,
     onCustomColorsChange,
+    onHeroStyleOverrideChange,
     onTestimonialsHeadingChange,
     onTestimonialsSubheadingChange,
     onTestimonialChange,
@@ -81,6 +88,19 @@ export default function TherapistTemplate(props: HeroTemplateProps) {
 
   const hasImage = !!backgroundImage;
 
+  const h = config.heroStyleOverrides;
+
+  const toolbar = useHeroToolbarState({
+    isEditing,
+    heroStyleOverrides: h,
+    onHeroStyleOverrideChange,
+  });
+
+  const DEFAULT_OVERLAY = 20;
+  const overlayAlpha = (h?.overlayOpacity ?? DEFAULT_OVERLAY) / 100;
+  const padTop = h?.paddingTop ?? 80;
+  const padBottom = h?.paddingBottom ?? 80;
+
   const sections = config.sections || [
     { id: "about" as const, enabled: true },
     { id: "features" as const, enabled: true },
@@ -100,39 +120,44 @@ export default function TherapistTemplate(props: HeroTemplateProps) {
 
   // --- Hero Styles ---
   const titleStyle: React.CSSProperties = {
-    fontFamily: config.theme?.headerFont?.family || lora,
-    fontSize: "clamp(2.2rem, 5vw, 4rem)",
-    fontWeight: 700,
+    fontFamily: h?.titleFontFamily || config.theme?.headerFont?.family || lora,
+    fontSize: h?.titleFontSize
+      ? `${h.titleFontSize}px`
+      : "clamp(2.2rem, 5vw, 4rem)",
+    fontWeight: h?.titleFontWeight === "normal" ? 400 : 700,
+    fontStyle: h?.titleFontStyle || undefined,
     lineHeight: 1.15,
-    color: hasImage ? "#fff" : "var(--brand-highlight, #1a1a1a)",
+    color:
+      h?.titleTextColor ||
+      (hasImage ? "#fff" : "var(--brand-highlight, #1a1a1a)"),
+    textAlign: h?.titleTextAlign || "center",
     margin: 0,
     marginBottom: "20px",
-    textAlign: "center",
     textShadow: hasImage ? "0 2px 12px rgba(0,0,0,0.3)" : undefined,
   };
 
   const subtitleStyle: React.CSSProperties = {
-    fontFamily: config.theme?.bodyFont?.family || openSans,
-    fontSize: "clamp(1rem, 1.5vw, 1.2rem)",
-    fontWeight: 400,
-    color: hasImage ? "rgba(255,255,255,0.9)" : "#666",
+    fontFamily:
+      h?.subtitleFontFamily || config.theme?.bodyFont?.family || openSans,
+    fontSize: h?.subtitleFontSize
+      ? `${h.subtitleFontSize}px`
+      : "clamp(1rem, 1.5vw, 1.2rem)",
+    fontWeight: h?.subtitleFontWeight === "bold" ? 700 : 400,
+    fontStyle: h?.subtitleFontStyle || undefined,
+    color:
+      h?.subtitleTextColor || (hasImage ? "rgba(255,255,255,0.9)" : "#666"),
+    textAlign: h?.subtitleTextAlign || "center",
     lineHeight: 1.7,
     margin: 0,
     marginBottom: "36px",
-    textAlign: "center",
-    maxWidth: "600px",
     textShadow: hasImage ? "0 1px 6px rgba(0,0,0,0.2)" : undefined,
   };
 
-  const editableBaseStyle: React.CSSProperties = isEditing
-    ? {
-        cursor: "text",
-        outline: "none",
-        borderRadius: "8px",
-        padding: "8px 14px",
-        transition: "background 0.2s, outline 0.2s",
-      }
-    : {};
+  const selectedOutline: React.CSSProperties = {
+    outline: "2px solid #3b82f6",
+    outlineOffset: "4px",
+    borderRadius: "6px",
+  };
 
   const pillButtonStyle: React.CSSProperties = {
     display: "inline-block",
@@ -582,16 +607,19 @@ export default function TherapistTemplate(props: HeroTemplateProps) {
         ${
           isEditing
             ? `
+          [contenteditable]:focus {
+            outline: none !important;
+            border: none !important;
+            box-shadow: none !important;
+          }
           .therapist-editable:focus {
             background: rgba(0, 0, 0, 0.04) !important;
-            outline: 2px solid rgba(0, 0, 0, 0.2) !important;
           }
           .therapist-editable:hover:not(:focus) {
             background: rgba(0, 0, 0, 0.02);
           }
           .therapist-editable-light:focus {
             background: rgba(255, 255, 255, 0.15) !important;
-            outline: 2px solid rgba(255, 255, 255, 0.4) !important;
           }
           .therapist-editable-light:hover:not(:focus) {
             background: rgba(255, 255, 255, 0.08);
@@ -604,6 +632,7 @@ export default function TherapistTemplate(props: HeroTemplateProps) {
       {/* Hero Section */}
       {config.heroEnabled !== false && (
         <div
+          ref={toolbar.sectionRef}
           className="therapist-hero"
           style={{
             position: "relative",
@@ -612,9 +641,15 @@ export default function TherapistTemplate(props: HeroTemplateProps) {
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
-            padding: "80px 8%",
+            paddingTop: `${padTop}px`,
+            paddingBottom: `${padBottom}px`,
+            paddingLeft: "8%",
+            paddingRight: "8%",
             overflow: "hidden",
+            backgroundColor: h?.bgColor || undefined,
+            ...(isEditing && toolbar.sectionSelected ? selectedOutline : {}),
           }}
+          onClick={toolbar.handleSectionClick}
         >
           {/* Background layer */}
           {hasImage ? (
@@ -636,8 +671,7 @@ export default function TherapistTemplate(props: HeroTemplateProps) {
                 style={{
                   position: "absolute",
                   inset: 0,
-                  background:
-                    "linear-gradient(rgba(0,0,0,0.15), rgba(0,0,0,0.25))",
+                  background: `linear-gradient(rgba(0,0,0,${overlayAlpha}), rgba(0,0,0,${overlayAlpha}))`,
                   zIndex: 1,
                 }}
               />
@@ -654,45 +688,105 @@ export default function TherapistTemplate(props: HeroTemplateProps) {
             />
           )}
 
+          {/* Section Toolbar */}
+          {isEditing && toolbar.sectionSelected && (
+            <div
+              style={{ position: "absolute", top: 0, left: "50%", zIndex: 50 }}
+            >
+              <HeroSectionToolbar
+                bgColor={h?.bgColor || ""}
+                hasBackgroundImage={hasImage}
+                overlayOpacity={h?.overlayOpacity ?? DEFAULT_OVERLAY}
+                paddingTop={padTop}
+                paddingBottom={padBottom}
+                palette={config.theme?.palette}
+                customColors={config.customColors}
+                onBgColorChange={toolbar.onBgColorChange}
+                onOverlayOpacityChange={toolbar.onOverlayOpacityChange}
+                onPaddingTopChange={toolbar.onPaddingTopChange}
+                onPaddingBottomChange={toolbar.onPaddingBottomChange}
+                onCustomColorsChange={onCustomColorsChange}
+              />
+            </div>
+          )}
+
           {/* Content */}
           <div
             style={{
               position: "relative",
               zIndex: 2,
+              width: "100%",
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              maxWidth: "800px",
             }}
           >
             {isEditing ? (
               <>
-                <div
-                  className={
+                <ResizableText
+                  ref={toolbar.titleRef}
+                  text={title}
+                  isEditing={isEditing}
+                  onTextChange={onTitleChange}
+                  textStyle={titleStyle}
+                  editableClassName={
                     hasImage ? "therapist-editable-light" : "therapist-editable"
                   }
-                  contentEditable
-                  suppressContentEditableWarning
-                  style={{ ...titleStyle, ...editableBaseStyle }}
-                  onBlur={(e) =>
-                    onTitleChange?.(e.currentTarget.textContent || "")
-                  }
-                >
-                  {title}
-                </div>
-                <div
-                  className={
+                  maxWidth={h?.titleMaxWidth ?? DEFAULT_TITLE_MW}
+                  onMaxWidthChange={toolbar.onTitleMaxWidthChange}
+                  selected={toolbar.titleSelected}
+                  onSelect={toolbar.handleTitleClick}
+                  toolbarProps={{
+                    fontSize: h?.titleFontSize || 40,
+                    fontFamily: h?.titleFontFamily || "",
+                    fontWeight: h?.titleFontWeight || "bold",
+                    fontStyle: h?.titleFontStyle || "normal",
+                    color:
+                      h?.titleTextColor || (hasImage ? "#ffffff" : "#1a1a1a"),
+                    textAlign: h?.titleTextAlign || "center",
+                    onFontSizeChange: toolbar.onTitleFontSizeChange,
+                    onFontFamilyChange: toolbar.onTitleFontFamilyChange,
+                    onFontWeightChange: toolbar.onTitleFontWeightChange,
+                    onFontStyleChange: toolbar.onTitleFontStyleChange,
+                    onColorChange: toolbar.onTitleTextColorChange,
+                    onTextAlignChange: toolbar.onTitleTextAlignChange,
+                  }}
+                  palette={config.theme?.palette}
+                  customColors={config.customColors}
+                  onCustomColorsChange={onCustomColorsChange}
+                />
+                <ResizableText
+                  ref={toolbar.subtitleRef}
+                  text={subtitle}
+                  isEditing={isEditing}
+                  onTextChange={onSubtitleChange}
+                  textStyle={subtitleStyle}
+                  editableClassName={
                     hasImage ? "therapist-editable-light" : "therapist-editable"
                   }
-                  contentEditable
-                  suppressContentEditableWarning
-                  style={{ ...subtitleStyle, ...editableBaseStyle }}
-                  onBlur={(e) =>
-                    onSubtitleChange?.(e.currentTarget.textContent || "")
-                  }
-                >
-                  {subtitle}
-                </div>
+                  maxWidth={h?.subtitleMaxWidth ?? DEFAULT_SUBTITLE_MW}
+                  onMaxWidthChange={toolbar.onSubtitleMaxWidthChange}
+                  selected={toolbar.subtitleSelected}
+                  onSelect={toolbar.handleSubtitleClick}
+                  toolbarProps={{
+                    fontSize: h?.subtitleFontSize || 18,
+                    fontFamily: h?.subtitleFontFamily || "",
+                    fontWeight: h?.subtitleFontWeight || "normal",
+                    fontStyle: h?.subtitleFontStyle || "normal",
+                    color:
+                      h?.subtitleTextColor || (hasImage ? "#ffffff" : "#666"),
+                    textAlign: h?.subtitleTextAlign || "center",
+                    onFontSizeChange: toolbar.onSubtitleFontSizeChange,
+                    onFontFamilyChange: toolbar.onSubtitleFontFamilyChange,
+                    onFontWeightChange: toolbar.onSubtitleFontWeightChange,
+                    onFontStyleChange: toolbar.onSubtitleFontStyleChange,
+                    onColorChange: toolbar.onSubtitleTextColorChange,
+                    onTextAlignChange: toolbar.onSubtitleTextAlignChange,
+                  }}
+                  palette={config.theme?.palette}
+                  customColors={config.customColors}
+                  onCustomColorsChange={onCustomColorsChange}
+                />
                 {button && (
                   <button
                     type="button"
@@ -732,8 +826,22 @@ export default function TherapistTemplate(props: HeroTemplateProps) {
               </>
             ) : (
               <>
-                <h1 style={titleStyle}>{title}</h1>
-                <p style={subtitleStyle}>{subtitle}</p>
+                <h1
+                  style={{
+                    ...titleStyle,
+                    maxWidth: `${h?.titleMaxWidth ?? DEFAULT_TITLE_MW}px`,
+                  }}
+                >
+                  {title}
+                </h1>
+                <p
+                  style={{
+                    ...subtitleStyle,
+                    maxWidth: `${h?.subtitleMaxWidth ?? DEFAULT_SUBTITLE_MW}px`,
+                  }}
+                >
+                  {subtitle}
+                </p>
                 {button && (
                   <button
                     type="button"

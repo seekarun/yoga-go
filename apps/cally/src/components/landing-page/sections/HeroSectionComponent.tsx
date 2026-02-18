@@ -40,30 +40,12 @@ export default function HeroSectionComponent({
   // Variant-specific styles
   const getVariantStyles = () => {
     switch (variant) {
-      case "left-aligned":
-        return {
-          textAlign: "left" as const,
-          alignItems: "flex-start" as const,
-          padding: "40px 8%",
-        };
       case "split":
         return {
           textAlign: "left" as const,
           alignItems: "flex-start" as const,
           padding: "40px 5%",
           maxWidth: "50%",
-        };
-      case "minimal":
-        return {
-          textAlign: "center" as const,
-          alignItems: "center" as const,
-          padding: "60px 20px",
-        };
-      case "bold":
-        return {
-          textAlign: "center" as const,
-          alignItems: "center" as const,
-          padding: "40px 20px",
         };
       default: // centered
         return {
@@ -113,14 +95,11 @@ export default function HeroSectionComponent({
     display: "flex",
     flexDirection: "column",
     alignItems: variantStyles.alignItems,
-    maxWidth: variant === "bold" ? "1000px" : "900px",
+    maxWidth: "900px",
   };
 
   const titleStyle: React.CSSProperties = {
-    fontSize:
-      variant === "bold"
-        ? "clamp(3rem, 8vw, 6rem)"
-        : "clamp(2.5rem, 6vw, 4.5rem)",
+    fontSize: "clamp(2.5rem, 6vw, 4.5rem)",
     fontWeight: 700,
     marginBottom: "20px",
     lineHeight: 1.1,
@@ -128,10 +107,7 @@ export default function HeroSectionComponent({
   };
 
   const subtitleStyle: React.CSSProperties = {
-    fontSize:
-      variant === "minimal"
-        ? "clamp(1rem, 2vw, 1.25rem)"
-        : "clamp(1.1rem, 2.5vw, 1.5rem)",
+    fontSize: "clamp(1.1rem, 2.5vw, 1.5rem)",
     fontWeight: 400,
     opacity: 0.95,
     maxWidth: "700px",

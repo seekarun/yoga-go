@@ -5,7 +5,7 @@ import type { BaseEntity } from "./base";
 /**
  * Question type
  */
-export type QuestionType = "multiple-choice" | "text" | "finish";
+export type QuestionType = "multiple-choice" | "text" | "finish" | "classifier";
 
 /**
  * Survey status

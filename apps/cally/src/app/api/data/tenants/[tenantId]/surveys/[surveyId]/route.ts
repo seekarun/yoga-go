@@ -30,7 +30,7 @@ interface RouteParams {
   }>;
 }
 
-export async function GET(_request: NextRequest, { params }: RouteParams) {
+export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { tenantId, surveyId } = await params;
 
@@ -54,6 +54,10 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    // Extract visitor info for classifier nodes (exclude IP for privacy)
+    const visitor = extractVisitorInfo(request.headers);
+    const { ip: _ip, ...visitorInfo } = visitor;
+
     return NextResponse.json({
       success: true,
       data: {
@@ -62,6 +66,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
         description: survey.description,
         questions: survey.questions,
         contactInfo: survey.contactInfo,
+        visitorInfo,
       },
     });
   } catch (error) {

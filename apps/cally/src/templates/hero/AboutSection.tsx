@@ -9,9 +9,9 @@ import type {
 import type { ColorPalette } from "@/lib/colorPalette";
 import DragHandle from "./DragHandle";
 import ImageToolbar from "./ImageToolbar";
-import TextToolbar from "./TextToolbar";
 import AboutSectionToolbar from "./AboutSectionToolbar";
 import RemoveBackgroundButton from "./RemoveBackgroundButton";
+import ResizableText from "./ResizableText";
 
 const DEFAULTS = {
   paddingTop: 80,
@@ -360,6 +360,13 @@ export default function AboutSection({
     [onImageZoomChange],
   );
 
+  const handleOffsetYChange = useCallback(
+    (val: number) => {
+      onStyleOverrideChange?.({ ...overrides, imageOffsetY: val });
+    },
+    [overrides, onStyleOverrideChange],
+  );
+
   // Title toolbar handlers
   const handleTitleFontSizeChange = useCallback(
     (val: number) => {
@@ -442,6 +449,21 @@ export default function AboutSection({
   const handleFontStyleChange = useCallback(
     (val: "normal" | "italic") => {
       onStyleOverrideChange?.({ ...overrides, fontStyle: val });
+    },
+    [overrides, onStyleOverrideChange],
+  );
+
+  // MaxWidth handlers for title/body text
+  const handleTitleMaxWidthChange = useCallback(
+    (val: number) => {
+      onStyleOverrideChange?.({ ...overrides, titleMaxWidth: val });
+    },
+    [overrides, onStyleOverrideChange],
+  );
+
+  const handleBodyMaxWidthChange = useCallback(
+    (val: number) => {
+      onStyleOverrideChange?.({ ...overrides, bodyMaxWidth: val });
     },
     [overrides, onStyleOverrideChange],
   );
@@ -546,7 +568,11 @@ export default function AboutSection({
     backgroundColor: overrides?.bgColor || theme.bg,
     position: "relative",
     overflow:
-      sectionSelected || imageSelected || titleSelected || bodySelected
+      sectionSelected ||
+      imageSelected ||
+      titleSelected ||
+      bodySelected ||
+      (overrides?.imageOffsetY ?? 0) < 0
         ? "visible"
         : "hidden",
     ...(showHandles
@@ -580,6 +606,8 @@ export default function AboutSection({
 
   const resolvedBorderRadius = overrides?.borderRadius ?? 16;
 
+  const resolvedOffsetY = overrides?.imageOffsetY ?? 0;
+
   const imageContainerStyle: React.CSSProperties = {
     position: "relative",
     width: `${resolvedImageWidth}px`,
@@ -588,6 +616,7 @@ export default function AboutSection({
     overflow: showHandles ? "visible" : "hidden",
     flexShrink: 0,
     backgroundColor: about.image ? "transparent" : theme.imageBg,
+    ...(resolvedOffsetY !== 0 ? { marginTop: `${resolvedOffsetY}px` } : {}),
     ...(resolvedLayout === "image-right" ? { order: 2 } : {}),
     ...(showHandles && imageSelected
       ? {
@@ -661,16 +690,6 @@ export default function AboutSection({
     fontWeight: overrides?.fontWeight || undefined,
     fontStyle: overrides?.fontStyle || undefined,
   };
-
-  const editableStyle: React.CSSProperties = isEditing
-    ? {
-        cursor: "text",
-        outline: "none",
-        borderRadius: "4px",
-        padding: "12px",
-        transition: "background 0.2s, outline 0.2s",
-      }
-    : {};
 
   const editableClass =
     variant === "dark" ? "editable-field-light" : "editable-field-dark";
@@ -855,9 +874,11 @@ export default function AboutSection({
               positionX={posX}
               positionY={posY}
               zoom={about.imageZoom || 100}
+              offsetY={resolvedOffsetY}
               onBorderRadiusChange={handleBorderRadiusChange}
               onPositionChange={handlePositionChange}
               onZoomChange={handleZoomChange}
+              onOffsetYChange={handleOffsetYChange}
               onReplaceImage={() => onImageClick?.()}
             />
           )}
@@ -937,128 +958,96 @@ export default function AboutSection({
           }}
         >
           {/* Title — independently selectable */}
-          <div
-            ref={titleContainerRef}
-            style={{
-              position: "relative",
-              ...(showHandles && titleSelected
-                ? {
-                    outline: "2px solid #3b82f6",
-                    outlineOffset: "4px",
-                    borderRadius: "4px",
-                  }
-                : {}),
-              ...(showHandles ? { cursor: "pointer" } : {}),
-            }}
-            onClick={
-              showHandles
-                ? () => {
-                    setTitleSelected(true);
-                    setBodySelected(false);
-                    setImageSelected(false);
-                    setSectionSelected(false);
-                  }
-                : undefined
-            }
-          >
-            {showHandles && titleSelected && (
-              <TextToolbar
-                fontSize={overrides?.titleFontSize ?? 28}
-                fontFamily={overrides?.titleFontFamily ?? ""}
-                fontWeight={overrides?.titleFontWeight ?? "bold"}
-                fontStyle={overrides?.titleFontStyle ?? "normal"}
-                color={overrides?.titleTextColor ?? theme.text}
-                textAlign={overrides?.titleTextAlign ?? "left"}
-                palette={palette}
-                customColors={customColors}
-                onFontSizeChange={handleTitleFontSizeChange}
-                onFontFamilyChange={handleTitleFontFamilyChange}
-                onFontWeightChange={handleTitleFontWeightChange}
-                onFontStyleChange={handleTitleFontStyleChange}
-                onColorChange={handleTitleTextColorChange}
-                onTextAlignChange={handleTitleTextAlignChange}
-                onCustomColorsChange={onCustomColorsChange}
-              />
-            )}
-            {isEditing ? (
-              <div
-                className={editableClass}
-                contentEditable
-                suppressContentEditableWarning
-                style={{ ...titleStyle, ...editableStyle }}
-                onBlur={(e) =>
-                  onTitleChange?.(e.currentTarget.textContent || "")
-                }
-              >
-                {about.title || "About Me"}
-              </div>
-            ) : (
-              (about.title ?? "About Me") && (
-                <h2 style={titleStyle}>{about.title ?? "About Me"}</h2>
-              )
-            )}
-          </div>
+          {isEditing ? (
+            <ResizableText
+              ref={titleContainerRef}
+              text={about.title || "About Me"}
+              isEditing
+              onTextChange={onTitleChange}
+              textStyle={titleStyle}
+              editableClassName={editableClass}
+              maxWidth={overrides?.titleMaxWidth ?? 700}
+              onMaxWidthChange={handleTitleMaxWidthChange}
+              selected={showHandles && titleSelected}
+              onSelect={
+                showHandles
+                  ? () => {
+                      setTitleSelected(true);
+                      setBodySelected(false);
+                      setImageSelected(false);
+                      setSectionSelected(false);
+                    }
+                  : undefined
+              }
+              toolbarProps={{
+                fontSize: overrides?.titleFontSize ?? 28,
+                fontFamily: overrides?.titleFontFamily ?? "",
+                fontWeight: overrides?.titleFontWeight ?? "bold",
+                fontStyle: overrides?.titleFontStyle ?? "normal",
+                color: overrides?.titleTextColor ?? theme.text,
+                textAlign: overrides?.titleTextAlign ?? "left",
+                onFontSizeChange: handleTitleFontSizeChange,
+                onFontFamilyChange: handleTitleFontFamilyChange,
+                onFontWeightChange: handleTitleFontWeightChange,
+                onFontStyleChange: handleTitleFontStyleChange,
+                onColorChange: handleTitleTextColorChange,
+                onTextAlignChange: handleTitleTextAlignChange,
+              }}
+              palette={palette}
+              customColors={customColors}
+              onCustomColorsChange={onCustomColorsChange}
+              wrapperStyle={showHandles ? { cursor: "pointer" } : undefined}
+            />
+          ) : (
+            (about.title ?? "About Me") && (
+              <h2 style={titleStyle}>{about.title ?? "About Me"}</h2>
+            )
+          )}
 
           {/* Body — independently selectable */}
-          <div
-            ref={bodyContainerRef}
-            style={{
-              position: "relative",
-              ...(showHandles && bodySelected
-                ? {
-                    outline: "2px solid #3b82f6",
-                    outlineOffset: "4px",
-                    borderRadius: "4px",
-                  }
-                : {}),
-              ...(showHandles ? { cursor: "pointer" } : {}),
-            }}
-            onClick={
-              showHandles
-                ? () => {
-                    setBodySelected(true);
-                    setTitleSelected(false);
-                    setImageSelected(false);
-                    setSectionSelected(false);
-                  }
-                : undefined
-            }
-          >
-            {showHandles && bodySelected && (
-              <TextToolbar
-                fontSize={overrides?.fontSize ?? 18}
-                fontFamily={overrides?.fontFamily ?? ""}
-                fontWeight={overrides?.fontWeight ?? "normal"}
-                fontStyle={overrides?.fontStyle ?? "normal"}
-                color={overrides?.textColor ?? theme.text}
-                textAlign={overrides?.textAlign ?? "left"}
-                palette={palette}
-                customColors={customColors}
-                onFontSizeChange={handleFontSizeChange}
-                onFontFamilyChange={handleFontFamilyChange}
-                onFontWeightChange={handleFontWeightChange}
-                onFontStyleChange={handleFontStyleChange}
-                onColorChange={handleTextColorChange}
-                onTextAlignChange={handleTextAlignChange}
-                onCustomColorsChange={onCustomColorsChange}
-              />
-            )}
-            {isEditing ? (
-              <div
-                className={editableClass}
-                contentEditable
-                suppressContentEditableWarning
-                style={{ ...paragraphStyle, ...editableStyle }}
-                onBlur={(e) =>
-                  onParagraphChange?.(e.currentTarget.textContent || "")
-                }
-              >
-                {about.paragraph}
-              </div>
-            ) : (
-              <p style={paragraphStyle}>{about.paragraph}</p>
-            )}
-          </div>
+          {isEditing ? (
+            <ResizableText
+              ref={bodyContainerRef}
+              text={about.paragraph || ""}
+              isEditing
+              onTextChange={onParagraphChange}
+              textStyle={paragraphStyle}
+              editableClassName={editableClass}
+              maxWidth={overrides?.bodyMaxWidth ?? 700}
+              onMaxWidthChange={handleBodyMaxWidthChange}
+              selected={showHandles && bodySelected}
+              onSelect={
+                showHandles
+                  ? () => {
+                      setBodySelected(true);
+                      setTitleSelected(false);
+                      setImageSelected(false);
+                      setSectionSelected(false);
+                    }
+                  : undefined
+              }
+              toolbarProps={{
+                fontSize: overrides?.fontSize ?? 18,
+                fontFamily: overrides?.fontFamily ?? "",
+                fontWeight: overrides?.fontWeight ?? "normal",
+                fontStyle: overrides?.fontStyle ?? "normal",
+                color: overrides?.textColor ?? theme.text,
+                textAlign: overrides?.textAlign ?? "left",
+                onFontSizeChange: handleFontSizeChange,
+                onFontFamilyChange: handleFontFamilyChange,
+                onFontWeightChange: handleFontWeightChange,
+                onFontStyleChange: handleFontStyleChange,
+                onColorChange: handleTextColorChange,
+                onTextAlignChange: handleTextAlignChange,
+              }}
+              palette={palette}
+              customColors={customColors}
+              onCustomColorsChange={onCustomColorsChange}
+              wrapperStyle={showHandles ? { cursor: "pointer" } : undefined}
+            />
+          ) : (
+            <p style={paragraphStyle}>{about.paragraph}</p>
+          )}
         </div>
       </div>
     </section>

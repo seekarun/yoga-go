@@ -8,6 +8,7 @@ import HeroTemplateRenderer from "@/templates/hero";
 import { LandingPageThemeProvider } from "@/templates/hero/ThemeProvider";
 import ProfileIconDropdown from "@/components/ProfileIconDropdown";
 import BookingWidget from "@/components/booking/BookingWidget";
+import SurveyOverlay from "@/components/landing-page/SurveyOverlay";
 
 interface LandingPageRendererProps {
   config: SimpleLandingPageConfig;
@@ -43,6 +44,7 @@ export default function LandingPageRenderer({
   const [bookingProductName, setBookingProductName] = useState<
     string | undefined
   >();
+  const [selectedSurveyId, setSelectedSurveyId] = useState<string | null>(null);
 
   // Auto-open booking widget when returning from waitlist email
   useEffect(() => {
@@ -75,6 +77,15 @@ export default function LandingPageRenderer({
 
   const handleButtonClick = useCallback(() => {
     const action = config.button?.action || "booking";
+
+    // If the action is a survey, open the survey overlay
+    if (action.startsWith("survey:")) {
+      const surveyId = action.replace("survey:", "");
+      setSelectedSurveyId(surveyId);
+      return;
+    }
+
+    // Otherwise open CallyEmbed for booking/contact/chat
     if (typeof CallyEmbed !== "undefined") {
       CallyEmbed.open(action);
     } else {
@@ -119,6 +130,15 @@ export default function LandingPageRenderer({
         productId={bookingProductId}
         productName={bookingProductName}
       />
+
+      {/* Survey overlay */}
+      {selectedSurveyId && (
+        <SurveyOverlay
+          tenantId={tenantId}
+          surveyId={selectedSurveyId}
+          onClose={() => setSelectedSurveyId(null)}
+        />
+      )}
     </LandingPageThemeProvider>
   );
 }

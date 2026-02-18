@@ -146,7 +146,9 @@
       "WebFetch(domain:www.pexels.com)",
       "WebFetch(domain:images.pexels.com)",
       "Bash(pgrep:*)",
-      "WebFetch(domain:www.npmjs.com)"
+      "WebFetch(domain:www.npmjs.com)",
+      "Bash(pip3:*)",
+      "Bash(/tmp/rembg-venv/bin/python3:*)"
     ],
     "deny": [],
     "ask": []

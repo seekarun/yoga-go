@@ -10,6 +10,12 @@ import FAQSection from "./FAQSection";
 import LocationSection from "./LocationSection";
 import GallerySection from "./GallerySection";
 import FooterSection from "./FooterSection";
+import useHeroToolbarState from "./useHeroToolbarState";
+import HeroSectionToolbar from "./HeroSectionToolbar";
+import ResizableText from "./ResizableText";
+
+const DEFAULT_TITLE_MW = 900;
+const DEFAULT_SUBTITLE_MW = 600;
 
 /**
  * Parallax Template
@@ -53,6 +59,7 @@ export default function ParallaxTemplate(props: HeroTemplateProps) {
     onProductsStyleOverrideChange,
     onProductsBgImageClick,
     onCustomColorsChange,
+    onHeroStyleOverrideChange,
     onTestimonialsHeadingChange,
     onTestimonialsSubheadingChange,
     onTestimonialChange,
@@ -79,6 +86,19 @@ export default function ParallaxTemplate(props: HeroTemplateProps) {
     config;
 
   const hasImage = !!backgroundImage;
+
+  const h = config.heroStyleOverrides;
+
+  const toolbar = useHeroToolbarState({
+    isEditing,
+    heroStyleOverrides: h,
+    onHeroStyleOverrideChange,
+  });
+
+  const DEFAULT_OVERLAY = 45;
+  const overlayAlpha = (h?.overlayOpacity ?? DEFAULT_OVERLAY) / 100;
+  const padTop = h?.paddingTop ?? 80;
+  const padBottom = h?.paddingBottom ?? 80;
 
   const sections = config.sections || [
     { id: "about" as const, enabled: true },
@@ -154,39 +174,42 @@ export default function ParallaxTemplate(props: HeroTemplateProps) {
 
   // --- Hero Styles ---
   const titleStyle: React.CSSProperties = {
-    fontFamily: config.theme?.headerFont?.family || playfair,
-    fontSize: "clamp(2.4rem, 5vw, 4.5rem)",
-    fontWeight: 700,
+    fontFamily:
+      h?.titleFontFamily || config.theme?.headerFont?.family || playfair,
+    fontSize: h?.titleFontSize
+      ? `${h.titleFontSize}px`
+      : "clamp(2.4rem, 5vw, 4.5rem)",
+    fontWeight: h?.titleFontWeight === "normal" ? 400 : 700,
+    fontStyle: h?.titleFontStyle || undefined,
     lineHeight: 1.1,
-    color: "#fff",
+    color: h?.titleTextColor || "#fff",
+    textAlign: h?.titleTextAlign || "center",
     margin: 0,
     marginBottom: "20px",
-    textAlign: "center",
     textShadow: "0 2px 16px rgba(0,0,0,0.4)",
   };
 
   const subtitleStyle: React.CSSProperties = {
-    fontFamily: config.theme?.bodyFont?.family || systemFont,
-    fontSize: "clamp(1rem, 1.5vw, 1.25rem)",
-    fontWeight: 400,
-    color: "rgba(255,255,255,0.9)",
+    fontFamily:
+      h?.subtitleFontFamily || config.theme?.bodyFont?.family || systemFont,
+    fontSize: h?.subtitleFontSize
+      ? `${h.subtitleFontSize}px`
+      : "clamp(1rem, 1.5vw, 1.25rem)",
+    fontWeight: h?.subtitleFontWeight === "bold" ? 700 : 400,
+    fontStyle: h?.subtitleFontStyle || undefined,
+    color: h?.subtitleTextColor || "rgba(255,255,255,0.9)",
+    textAlign: h?.subtitleTextAlign || "center",
     lineHeight: 1.7,
     margin: 0,
     marginBottom: "40px",
-    textAlign: "center",
-    maxWidth: "600px",
     textShadow: "0 1px 8px rgba(0,0,0,0.3)",
   };
 
-  const editableBaseStyle: React.CSSProperties = isEditing
-    ? {
-        cursor: "text",
-        outline: "none",
-        borderRadius: "8px",
-        padding: "8px 14px",
-        transition: "background 0.2s, outline 0.2s",
-      }
-    : {};
+  const selectedOutline: React.CSSProperties = {
+    outline: "2px solid #3b82f6",
+    outlineOffset: "4px",
+    borderRadius: "6px",
+  };
 
   const pillButtonStyle: React.CSSProperties = {
     display: "inline-block",
@@ -577,7 +600,6 @@ export default function ParallaxTemplate(props: HeroTemplateProps) {
         }
         .parallax-section > section > div > div:first-child .editable-field-dark:focus {
           background: rgba(255, 255, 255, 0.15) !important;
-          outline: 2px solid rgba(255, 255, 255, 0.4) !important;
         }
         .parallax-section > section > div > div:first-child .editable-field-dark:hover:not(:focus) {
           background: rgba(255, 255, 255, 0.08) !important;
@@ -657,16 +679,19 @@ export default function ParallaxTemplate(props: HeroTemplateProps) {
         ${
           isEditing
             ? `
+          [contenteditable]:focus {
+            outline: none !important;
+            border: none !important;
+            box-shadow: none !important;
+          }
           .parallax-editable:focus {
             background: rgba(0, 0, 0, 0.04) !important;
-            outline: 2px solid rgba(0, 0, 0, 0.2) !important;
           }
           .parallax-editable:hover:not(:focus) {
             background: rgba(0, 0, 0, 0.02);
           }
           .parallax-editable-light:focus {
             background: rgba(255, 255, 255, 0.15) !important;
-            outline: 2px solid rgba(255, 255, 255, 0.4) !important;
           }
           .parallax-editable-light:hover:not(:focus) {
             background: rgba(255, 255, 255, 0.08);
@@ -706,7 +731,7 @@ export default function ParallaxTemplate(props: HeroTemplateProps) {
             position: "absolute",
             inset: 0,
             background: hasImage
-              ? "linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.5))"
+              ? `linear-gradient(rgba(0,0,0,${overlayAlpha}), rgba(0,0,0,${overlayAlpha}))`
               : "rgba(0,0,0,0.15)",
           }}
         />
@@ -717,6 +742,7 @@ export default function ParallaxTemplate(props: HeroTemplateProps) {
         {/* Hero Section */}
         {config.heroEnabled !== false && (
           <div
+            ref={toolbar.sectionRef}
             className="parallax-hero"
             style={{
               position: "relative",
@@ -725,44 +751,112 @@ export default function ParallaxTemplate(props: HeroTemplateProps) {
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              padding: "80px 8%",
+              paddingTop: `${padTop}px`,
+              paddingBottom: `${padBottom}px`,
+              paddingLeft: "8%",
+              paddingRight: "8%",
+              ...(isEditing && toolbar.sectionSelected ? selectedOutline : {}),
             }}
+            onClick={toolbar.handleSectionClick}
           >
+            {/* Section Toolbar */}
+            {isEditing && toolbar.sectionSelected && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: "50%",
+                  zIndex: 50,
+                }}
+              >
+                <HeroSectionToolbar
+                  bgColor={h?.bgColor || ""}
+                  hasBackgroundImage={hasImage}
+                  overlayOpacity={h?.overlayOpacity ?? DEFAULT_OVERLAY}
+                  paddingTop={padTop}
+                  paddingBottom={padBottom}
+                  palette={config.theme?.palette}
+                  customColors={config.customColors}
+                  onBgColorChange={toolbar.onBgColorChange}
+                  onOverlayOpacityChange={toolbar.onOverlayOpacityChange}
+                  onPaddingTopChange={toolbar.onPaddingTopChange}
+                  onPaddingBottomChange={toolbar.onPaddingBottomChange}
+                  onCustomColorsChange={onCustomColorsChange}
+                />
+              </div>
+            )}
+
             {/* Content */}
             <div
               style={{
                 position: "relative",
                 zIndex: 2,
+                width: "100%",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                maxWidth: "800px",
               }}
             >
               {isEditing ? (
                 <>
-                  <div
-                    className="parallax-editable-light"
-                    contentEditable
-                    suppressContentEditableWarning
-                    style={{ ...titleStyle, ...editableBaseStyle }}
-                    onBlur={(e) =>
-                      onTitleChange?.(e.currentTarget.textContent || "")
-                    }
-                  >
-                    {title}
-                  </div>
-                  <div
-                    className="parallax-editable-light"
-                    contentEditable
-                    suppressContentEditableWarning
-                    style={{ ...subtitleStyle, ...editableBaseStyle }}
-                    onBlur={(e) =>
-                      onSubtitleChange?.(e.currentTarget.textContent || "")
-                    }
-                  >
-                    {subtitle}
-                  </div>
+                  <ResizableText
+                    ref={toolbar.titleRef}
+                    text={title}
+                    isEditing={isEditing}
+                    onTextChange={onTitleChange}
+                    textStyle={titleStyle}
+                    editableClassName="parallax-editable-light"
+                    maxWidth={h?.titleMaxWidth ?? DEFAULT_TITLE_MW}
+                    onMaxWidthChange={toolbar.onTitleMaxWidthChange}
+                    selected={toolbar.titleSelected}
+                    onSelect={(e) => toolbar.handleTitleClick(e!)}
+                    toolbarProps={{
+                      fontSize: h?.titleFontSize || 48,
+                      fontFamily: h?.titleFontFamily || "",
+                      fontWeight: h?.titleFontWeight || "bold",
+                      fontStyle: h?.titleFontStyle || "normal",
+                      color: h?.titleTextColor || "#ffffff",
+                      textAlign: h?.titleTextAlign || "center",
+                      onFontSizeChange: toolbar.onTitleFontSizeChange,
+                      onFontFamilyChange: toolbar.onTitleFontFamilyChange,
+                      onFontWeightChange: toolbar.onTitleFontWeightChange,
+                      onFontStyleChange: toolbar.onTitleFontStyleChange,
+                      onColorChange: toolbar.onTitleTextColorChange,
+                      onTextAlignChange: toolbar.onTitleTextAlignChange,
+                    }}
+                    palette={config.theme?.palette}
+                    customColors={config.customColors}
+                    onCustomColorsChange={onCustomColorsChange}
+                  />
+                  <ResizableText
+                    ref={toolbar.subtitleRef}
+                    text={subtitle}
+                    isEditing={isEditing}
+                    onTextChange={onSubtitleChange}
+                    textStyle={subtitleStyle}
+                    editableClassName="parallax-editable-light"
+                    maxWidth={h?.subtitleMaxWidth ?? DEFAULT_SUBTITLE_MW}
+                    onMaxWidthChange={toolbar.onSubtitleMaxWidthChange}
+                    selected={toolbar.subtitleSelected}
+                    onSelect={(e) => toolbar.handleSubtitleClick(e!)}
+                    toolbarProps={{
+                      fontSize: h?.subtitleFontSize || 18,
+                      fontFamily: h?.subtitleFontFamily || "",
+                      fontWeight: h?.subtitleFontWeight || "normal",
+                      fontStyle: h?.subtitleFontStyle || "normal",
+                      color: h?.subtitleTextColor || "#ffffff",
+                      textAlign: h?.subtitleTextAlign || "center",
+                      onFontSizeChange: toolbar.onSubtitleFontSizeChange,
+                      onFontFamilyChange: toolbar.onSubtitleFontFamilyChange,
+                      onFontWeightChange: toolbar.onSubtitleFontWeightChange,
+                      onFontStyleChange: toolbar.onSubtitleFontStyleChange,
+                      onColorChange: toolbar.onSubtitleTextColorChange,
+                      onTextAlignChange: toolbar.onSubtitleTextAlignChange,
+                    }}
+                    palette={config.theme?.palette}
+                    customColors={config.customColors}
+                    onCustomColorsChange={onCustomColorsChange}
+                  />
                   {button && (
                     <button
                       type="button"
@@ -802,8 +896,22 @@ export default function ParallaxTemplate(props: HeroTemplateProps) {
                 </>
               ) : (
                 <>
-                  <h1 style={titleStyle}>{title}</h1>
-                  <p style={subtitleStyle}>{subtitle}</p>
+                  <h1
+                    style={{
+                      ...titleStyle,
+                      maxWidth: `${h?.titleMaxWidth ?? DEFAULT_TITLE_MW}px`,
+                    }}
+                  >
+                    {title}
+                  </h1>
+                  <p
+                    style={{
+                      ...subtitleStyle,
+                      maxWidth: `${h?.subtitleMaxWidth ?? DEFAULT_SUBTITLE_MW}px`,
+                    }}
+                  >
+                    {subtitle}
+                  </p>
                   {button && (
                     <button
                       type="button"

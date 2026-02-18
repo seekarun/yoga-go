@@ -53,6 +53,7 @@ export function getNextQuestionId(
 
   const hasOptionBranching =
     question.type === "multiple-choice" ||
+    question.type === "classifier" ||
     (question.type === "text" && question.inference === "process");
   if (hasOptionBranching && answer) {
     // Try to find a branch matching the specific option

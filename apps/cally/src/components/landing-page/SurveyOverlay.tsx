@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useParams } from "next/navigation";
 import type {
   SurveyQuestion,
   SurveyContactInfo,
@@ -23,11 +22,17 @@ interface SurveyData {
 
 type Step = "contact" | "question" | "done";
 
-export default function PublicSurveyPage() {
-  const params = useParams();
-  const tenantId = params.tenantId as string;
-  const surveyId = params.surveyId as string;
+interface SurveyOverlayProps {
+  tenantId: string;
+  surveyId: string;
+  onClose: () => void;
+}
 
+export default function SurveyOverlay({
+  tenantId,
+  surveyId,
+  onClose,
+}: SurveyOverlayProps) {
   const [survey, setSurvey] = useState<SurveyData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,12 +51,11 @@ export default function PublicSurveyPage() {
   const [step, setStep] = useState<Step>("contact");
   const [submitting, setSubmitting] = useState(false);
 
-  // Spam protection fields
+  // Spam protection
   const [formTimestamp] = useState(() => Date.now());
 
   /**
-   * Advance past consecutive classifier nodes, calling AI to resolve each one
-   * against visitorInfo and accumulating their answers.
+   * Advance past consecutive classifier nodes, calling AI to resolve each one.
    */
   const advancePastClassifiers = useCallback(
     async (
@@ -67,7 +71,7 @@ export default function PublicSurveyPage() {
       let acc = [...currentAnswers];
       const seen = new Set<string>();
       while (q && q.type === "classifier") {
-        if (seen.has(q.id)) break; // cycle guard
+        if (seen.has(q.id)) break;
         seen.add(q.id);
         const opts = (q.options ?? []).map((o) => ({
           id: o.id,
@@ -99,7 +103,6 @@ export default function PublicSurveyPage() {
         const data = json.data as SurveyData;
         setSurvey(data);
 
-        // If no contact info to collect, go straight to questions
         const needsContact =
           data.contactInfo &&
           (data.contactInfo.collectName ||
@@ -133,11 +136,27 @@ export default function PublicSurveyPage() {
     fetchSurvey();
   }, [fetchSurvey]);
 
+  // Close on Escape
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
+  // Prevent body scroll when overlay is open
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
+
   const startQuestions = async () => {
     if (!survey) return;
     const ci = survey.contactInfo;
 
-    // Validate required contact fields
     if (ci?.collectName && ci.nameRequired && !contactName.trim()) return;
     if (ci?.collectEmail && ci.emailRequired && !contactEmail.trim()) return;
     if (ci?.collectPhone && ci.phoneRequired && !contactPhone.trim()) return;
@@ -158,16 +177,13 @@ export default function PublicSurveyPage() {
   const handleNext = async () => {
     if (!currentQuestion || !survey) return;
 
-    // Finish nodes don't collect answers — just submit
     if (currentQuestion.type === "finish") {
       submitSurvey(answers);
       return;
     }
 
-    // Validate required
     if (currentQuestion.required && !currentAnswer.trim()) return;
 
-    // Record answer
     const newAnswer: SurveyAnswer = {
       questionId: currentQuestion.id,
       answer: currentAnswer.trim(),
@@ -175,12 +191,10 @@ export default function PublicSurveyPage() {
     const updatedAnswers = [...answers, newAnswer];
     setAnswers(updatedAnswers);
 
-    // Determine next question via branching
     const nextId = getNextQuestionId(currentQuestion, currentAnswer.trim());
     if (nextId) {
       const nextQ = survey.questions.find((q) => q.id === nextId) ?? null;
       if (nextQ) {
-        // Advance past any classifier nodes
         const { question: visibleQ, answers: classifierAnswers } =
           await advancePastClassifiers(
             nextQ,
@@ -196,13 +210,11 @@ export default function PublicSurveyPage() {
           setCurrentAnswer("");
           return;
         }
-        // All remaining nodes were classifiers leading to end
         submitSurvey(classifierAnswers);
         return;
       }
     }
 
-    // No more questions — submit
     submitSurvey(updatedAnswers);
   };
 
@@ -242,7 +254,6 @@ export default function PublicSurveyPage() {
     }
   };
 
-  // Progress: count answered vs total reachable (exclude classifiers)
   const questionCount =
     survey?.questions.filter((q) => q.type !== "classifier").length ?? 0;
   const answeredCount = answers.filter((a) => {
@@ -252,50 +263,171 @@ export default function PublicSurveyPage() {
   const progressPct =
     questionCount > 0 ? Math.round((answeredCount / questionCount) * 100) : 0;
 
-  /* ─────────────── Render states ─────────────── */
+  /* ─────────────── Render ─────────────── */
+
+  const renderCard = (children: React.ReactNode) => (
+    <div style={backdropStyle} onClick={onClose}>
+      <div style={cardStyle} onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          onClick={onClose}
+          style={closeBtnStyle}
+          aria-label="Close survey"
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+        {children}
+      </div>
+    </div>
+  );
 
   if (loading) {
-    return (
-      <div style={containerStyle}>
-        <div style={cardStyle}>
-          <p style={{ color: "#666", textAlign: "center" }}>Loading...</p>
-        </div>
-      </div>
+    return renderCard(
+      <p style={{ color: "#666", textAlign: "center", padding: "40px 0" }}>
+        Loading...
+      </p>,
     );
   }
 
   if (error) {
-    return (
-      <div style={containerStyle}>
-        <div style={cardStyle}>
-          <div style={{ textAlign: "center" }}>
-            <svg
-              width="48"
-              height="48"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#ef4444"
-              strokeWidth="1.5"
-              style={{ margin: "0 auto 16px" }}
-            >
-              <circle cx="12" cy="12" r="10" />
-              <path d="M15 9l-6 6M9 9l6 6" />
-            </svg>
-            <p style={{ color: "#ef4444", fontSize: "16px" }}>{error}</p>
-          </div>
-        </div>
-      </div>
+    return renderCard(
+      <div style={{ textAlign: "center", padding: "20px 0" }}>
+        <svg
+          width="48"
+          height="48"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#ef4444"
+          strokeWidth="1.5"
+          style={{ margin: "0 auto 16px" }}
+        >
+          <circle cx="12" cy="12" r="10" />
+          <path d="M15 9l-6 6M9 9l6 6" />
+        </svg>
+        <p style={{ color: "#ef4444", fontSize: "16px" }}>{error}</p>
+      </div>,
     );
   }
 
   if (step === "done") {
-    return (
-      <div style={containerStyle}>
-        <div style={cardStyle}>
-          <div style={{ textAlign: "center" }}>
+    return renderCard(
+      <div style={{ textAlign: "center", padding: "20px 0" }}>
+        <svg
+          width="64"
+          height="64"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#10b981"
+          strokeWidth="1.5"
+          style={{ margin: "0 auto 16px" }}
+        >
+          <circle cx="12" cy="12" r="10" />
+          <path d="M9 12l2 2 4-4" />
+        </svg>
+        <h2 style={headingStyle}>Thank You!</h2>
+        <p style={{ color: "#666", fontSize: "16px", lineHeight: "1.6" }}>
+          Your response has been submitted. We appreciate your time!
+        </p>
+        <button type="button" onClick={onClose} style={primaryBtnStyle}>
+          Close
+        </button>
+      </div>,
+    );
+  }
+
+  if (!survey) return null;
+
+  /* ─── Contact Info Step ─── */
+  if (step === "contact") {
+    const ci = survey.contactInfo!;
+    return renderCard(
+      <>
+        <h2 style={headingStyle}>{survey.title}</h2>
+        {survey.description && <p style={descStyle}>{survey.description}</p>}
+
+        <p style={{ ...descStyle, marginBottom: "24px" }}>
+          Before we begin, please provide your contact details.
+        </p>
+
+        {ci.collectName && (
+          <div style={fieldWrapperStyle}>
+            <label style={labelStyle}>Name{ci.nameRequired ? " *" : ""}</label>
+            <input
+              type="text"
+              value={contactName}
+              onChange={(e) => setContactName(e.target.value)}
+              style={inputStyle}
+              placeholder="Your name"
+            />
+          </div>
+        )}
+
+        {ci.collectEmail && (
+          <div style={fieldWrapperStyle}>
+            <label style={labelStyle}>
+              Email{ci.emailRequired ? " *" : ""}
+            </label>
+            <input
+              type="email"
+              value={contactEmail}
+              onChange={(e) => setContactEmail(e.target.value)}
+              style={inputStyle}
+              placeholder="you@example.com"
+            />
+          </div>
+        )}
+
+        {ci.collectPhone && (
+          <div style={fieldWrapperStyle}>
+            <label style={labelStyle}>
+              Phone{ci.phoneRequired ? " *" : ""}
+            </label>
+            <input
+              type="tel"
+              value={contactPhone}
+              onChange={(e) => setContactPhone(e.target.value)}
+              style={inputStyle}
+              placeholder="Your phone number"
+            />
+          </div>
+        )}
+
+        <button type="button" onClick={startQuestions} style={primaryBtnStyle}>
+          Continue
+        </button>
+      </>,
+    );
+  }
+
+  /* ─── Question Step ─── */
+  if (!currentQuestion) return null;
+
+  return renderCard(
+    <>
+      {/* Progress bar */}
+      <div style={progressBarBgStyle}>
+        <div style={{ ...progressBarFillStyle, width: `${progressPct}%` }} />
+      </div>
+
+      <p style={{ fontSize: "13px", color: "#999", marginBottom: "8px" }}>
+        Question {answeredCount + 1} of {questionCount}
+      </p>
+
+      {currentQuestion.type === "finish" ? (
+        <>
+          <div style={{ textAlign: "center", marginBottom: "24px" }}>
             <svg
-              width="64"
-              height="64"
+              width="48"
+              height="48"
               viewBox="0 0 24 24"
               fill="none"
               stroke="#10b981"
@@ -305,234 +437,141 @@ export default function PublicSurveyPage() {
               <circle cx="12" cy="12" r="10" />
               <path d="M9 12l2 2 4-4" />
             </svg>
-            <h1 style={headingStyle}>Thank You!</h1>
-            <p style={{ color: "#666", fontSize: "16px", lineHeight: "1.6" }}>
-              Your response has been submitted. We appreciate your time!
+            <p
+              style={{
+                fontSize: "18px",
+                color: "#1a1a1a",
+                lineHeight: "1.6",
+              }}
+            >
+              {currentQuestion.questionText || "Thank you for your time"}
             </p>
           </div>
-        </div>
-      </div>
-    );
-  }
 
-  if (!survey) return null;
+          <button
+            type="button"
+            onClick={handleNext}
+            disabled={submitting}
+            style={primaryBtnStyle}
+          >
+            {submitting ? "Submitting..." : "Submit"}
+          </button>
+        </>
+      ) : (
+        <>
+          <h2 style={questionTextStyle}>
+            {currentQuestion.questionText}
+            {currentQuestion.required && (
+              <span style={{ color: "#ef4444" }}> *</span>
+            )}
+          </h2>
 
-  /* ─── Contact Info Step ─── */
-  if (step === "contact") {
-    const ci = survey.contactInfo!;
-    return (
-      <div style={containerStyle}>
-        <div style={cardStyle}>
-          <h1 style={headingStyle}>{survey.title}</h1>
-          {survey.description && <p style={descStyle}>{survey.description}</p>}
-
-          <p style={{ ...descStyle, marginBottom: "24px" }}>
-            Before we begin, please provide your contact details.
-          </p>
-
-          {ci.collectName && (
-            <div style={fieldWrapperStyle}>
-              <label style={labelStyle}>
-                Name{ci.nameRequired ? " *" : ""}
-              </label>
-              <input
-                type="text"
-                value={contactName}
-                onChange={(e) => setContactName(e.target.value)}
-                style={inputStyle}
-                placeholder="Your name"
-              />
-            </div>
-          )}
-
-          {ci.collectEmail && (
-            <div style={fieldWrapperStyle}>
-              <label style={labelStyle}>
-                Email{ci.emailRequired ? " *" : ""}
-              </label>
-              <input
-                type="email"
-                value={contactEmail}
-                onChange={(e) => setContactEmail(e.target.value)}
-                style={inputStyle}
-                placeholder="you@example.com"
-              />
-            </div>
-          )}
-
-          {ci.collectPhone && (
-            <div style={fieldWrapperStyle}>
-              <label style={labelStyle}>
-                Phone{ci.phoneRequired ? " *" : ""}
-              </label>
-              <input
-                type="tel"
-                value={contactPhone}
-                onChange={(e) => setContactPhone(e.target.value)}
-                style={inputStyle}
-                placeholder="Your phone number"
-              />
+          {currentQuestion.type === "text" ? (
+            <textarea
+              value={currentAnswer}
+              onChange={(e) => setCurrentAnswer(e.target.value)}
+              style={{
+                ...inputStyle,
+                minHeight: 100,
+                resize: "vertical",
+                marginBottom: "24px",
+              }}
+              placeholder="Type your answer..."
+            />
+          ) : (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "10px",
+                marginBottom: "24px",
+              }}
+            >
+              {(currentQuestion.options ?? []).map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setCurrentAnswer(opt.id)}
+                  style={{
+                    ...optionBtnStyle,
+                    borderColor:
+                      currentAnswer === opt.id ? "#8b5cf6" : "#d1d5db",
+                    background: currentAnswer === opt.id ? "#f5f3ff" : "#fff",
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
           )}
 
           <button
             type="button"
-            onClick={startQuestions}
-            style={primaryBtnStyle}
+            onClick={handleNext}
+            disabled={
+              submitting || (currentQuestion.required && !currentAnswer.trim())
+            }
+            style={{
+              ...primaryBtnStyle,
+              opacity:
+                currentQuestion.required && !currentAnswer.trim() ? 0.5 : 1,
+              cursor:
+                currentQuestion.required && !currentAnswer.trim()
+                  ? "not-allowed"
+                  : "pointer",
+            }}
           >
-            Continue
+            {submitting ? "Submitting..." : "Next"}
           </button>
-        </div>
-      </div>
-    );
-  }
-
-  /* ─── Question Step ─── */
-  if (!currentQuestion) return null;
-
-  return (
-    <div style={containerStyle}>
-      <div style={cardStyle}>
-        {/* Progress bar */}
-        <div style={progressBarBgStyle}>
-          <div style={{ ...progressBarFillStyle, width: `${progressPct}%` }} />
-        </div>
-
-        <p style={{ fontSize: "13px", color: "#999", marginBottom: "8px" }}>
-          Question {answeredCount + 1} of {questionCount}
-        </p>
-
-        {currentQuestion.type === "finish" ? (
-          <>
-            {/* Finish message */}
-            <div style={{ textAlign: "center", marginBottom: "24px" }}>
-              <svg
-                width="48"
-                height="48"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="#10b981"
-                strokeWidth="1.5"
-                style={{ margin: "0 auto 16px" }}
-              >
-                <circle cx="12" cy="12" r="10" />
-                <path d="M9 12l2 2 4-4" />
-              </svg>
-              <p
-                style={{
-                  fontSize: "18px",
-                  color: "#1a1a1a",
-                  lineHeight: "1.6",
-                }}
-              >
-                {currentQuestion.questionText || "Thank you for your time"}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleNext}
-              disabled={submitting}
-              style={primaryBtnStyle}
-            >
-              {submitting ? "Submitting..." : "Submit"}
-            </button>
-          </>
-        ) : (
-          <>
-            <h2 style={questionTextStyle}>
-              {currentQuestion.questionText}
-              {currentQuestion.required && (
-                <span style={{ color: "#ef4444" }}> *</span>
-              )}
-            </h2>
-
-            {/* Answer input */}
-            {currentQuestion.type === "text" ? (
-              <textarea
-                value={currentAnswer}
-                onChange={(e) => setCurrentAnswer(e.target.value)}
-                style={{
-                  ...inputStyle,
-                  minHeight: 100,
-                  resize: "vertical",
-                  marginBottom: "24px",
-                }}
-                placeholder="Type your answer..."
-              />
-            ) : (
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "10px",
-                  marginBottom: "24px",
-                }}
-              >
-                {(currentQuestion.options ?? []).map((opt) => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => setCurrentAnswer(opt.id)}
-                    style={{
-                      ...optionBtnStyle,
-                      borderColor:
-                        currentAnswer === opt.id ? "#8b5cf6" : "#d1d5db",
-                      background: currentAnswer === opt.id ? "#f5f3ff" : "#fff",
-                    }}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            <button
-              type="button"
-              onClick={handleNext}
-              disabled={
-                submitting ||
-                (currentQuestion.required && !currentAnswer.trim())
-              }
-              style={{
-                ...primaryBtnStyle,
-                opacity:
-                  currentQuestion.required && !currentAnswer.trim() ? 0.5 : 1,
-                cursor:
-                  currentQuestion.required && !currentAnswer.trim()
-                    ? "not-allowed"
-                    : "pointer",
-              }}
-            >
-              {submitting ? "Submitting..." : "Next"}
-            </button>
-          </>
-        )}
-      </div>
-    </div>
+        </>
+      )}
+    </>,
   );
 }
 
 /* ─────────────── Styles ─────────────── */
 
-const containerStyle: React.CSSProperties = {
-  minHeight: "100vh",
+const backdropStyle: React.CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  background: "rgba(0,0,0,0.5)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   padding: "20px",
-  background: "#f5f5f5",
-  fontFamily:
-    "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+  zIndex: 9999,
+  animation: "surveyOverlayFadeIn 0.2s ease-out",
 };
 
 const cardStyle: React.CSSProperties = {
+  position: "relative",
   width: "100%",
   maxWidth: "520px",
+  maxHeight: "90vh",
+  overflowY: "auto",
   background: "#ffffff",
   borderRadius: "16px",
   padding: "40px",
   boxShadow: "0 4px 24px rgba(0,0,0,0.08)",
+  fontFamily:
+    "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+};
+
+const closeBtnStyle: React.CSSProperties = {
+  position: "absolute",
+  top: "16px",
+  right: "16px",
+  width: "32px",
+  height: "32px",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  border: "none",
+  background: "rgba(0,0,0,0.05)",
+  borderRadius: "50%",
+  cursor: "pointer",
+  color: "#666",
+  transition: "background 0.15s",
 };
 
 const headingStyle: React.CSSProperties = {

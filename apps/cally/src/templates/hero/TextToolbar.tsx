@@ -180,7 +180,7 @@ export default function TextToolbar({
         <input
           type="range"
           min={12}
-          max={64}
+          max={128}
           value={fontSize}
           onChange={(e) => onFontSizeChange(Number(e.target.value))}
           style={sliderStyle}

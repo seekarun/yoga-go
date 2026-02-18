@@ -7,9 +7,11 @@ interface ImageToolbarProps {
   positionX: number;
   positionY: number;
   zoom: number;
+  offsetY?: number;
   onBorderRadiusChange: (value: number) => void;
   onPositionChange: (x: number, y: number) => void;
   onZoomChange: (value: number) => void;
+  onOffsetYChange?: (value: number) => void;
   onReplaceImage: () => void;
 }
 
@@ -18,9 +20,11 @@ export default function ImageToolbar({
   positionX,
   positionY,
   zoom,
+  offsetY = 0,
   onBorderRadiusChange,
   onPositionChange,
   onZoomChange,
+  onOffsetYChange,
   onReplaceImage,
 }: ImageToolbarProps) {
   const dividerStyle: React.CSSProperties = {
@@ -160,6 +164,38 @@ export default function ImageToolbar({
         />
         <span style={labelStyle}>{zoom}%</span>
       </div>
+
+      {/* Offset Y — only shown when callback is provided */}
+      {onOffsetYChange && (
+        <>
+          <div style={dividerStyle} />
+          <div style={groupStyle}>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="12" y1="2" x2="12" y2="22" />
+              <polyline points="8 6 12 2 16 6" />
+              <polyline points="8 18 12 22 16 18" />
+            </svg>
+            <input
+              type="range"
+              min={-200}
+              max={0}
+              value={offsetY}
+              onChange={(e) => onOffsetYChange(Number(e.target.value))}
+              style={sliderStyle}
+            />
+            <span style={labelStyle}>{offsetY}</span>
+          </div>
+        </>
+      )}
 
       <div style={dividerStyle} />
 

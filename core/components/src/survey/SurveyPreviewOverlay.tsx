@@ -231,6 +231,9 @@ export function SurveyPreviewOverlay({
     }
   }, [next, onInfer]);
 
+  // Note: classifier nodes are shown as selectable options in preview
+  // so the user can test each branch manually (no real visitor data available).
+
   // Reset current input when the active question changes, restoring saved value if any
   useEffect(() => {
     if (!next) return;
@@ -279,6 +282,7 @@ export function SurveyPreviewOverlay({
 
   const isComplete = !next;
   const isMC = next?.type === "multiple-choice";
+  const isClassifier = next?.type === "classifier";
   const isText = next?.type === "text";
   const isFinish = next?.type === "finish";
 
@@ -296,13 +300,14 @@ export function SurveyPreviewOverlay({
   const isInferenceQuestion =
     isText && next?.inference === "process" && !!onInfer;
 
-  const canAdvance = isMC
-    ? currentInput !== ""
-    : isText
-      ? isInferenceQuestion
-        ? currentInput.trim() !== "" // inference questions always require input
-        : !next.required || currentInput.trim() !== ""
-      : true;
+  const canAdvance =
+    isMC || isClassifier
+      ? currentInput !== ""
+      : isText
+        ? isInferenceQuestion
+          ? currentInput.trim() !== "" // inference questions always require input
+          : !next.required || currentInput.trim() !== ""
+        : true;
 
   const handleNext = useCallback(async () => {
     if (!next || !canAdvance) return;
@@ -349,7 +354,7 @@ export function SurveyPreviewOverlay({
 
   const handleBack = useCallback(() => {
     if (answers.length === 0) return;
-    // Pop last answer — but skip over auto-advanced AI nodes (only when onInfer not provided)
+    // Pop last answer — but skip over auto-advanced AI nodes
     let newAnswers = [...answers];
     while (newAnswers.length > 0) {
       const lastAnswer = newAnswers[newAnswers.length - 1];
@@ -357,6 +362,7 @@ export function SurveyPreviewOverlay({
       newAnswers = newAnswers.slice(0, -1);
       // Stop if it's a real question (not auto-skipped AI node)
       // When onInfer is provided, inference nodes are real questions too
+      // Classifiers are now user-selectable in preview, so don't skip them
       const isAutoSkippedAI =
         !onInfer && lastQ?.type === "text" && lastQ?.inference === "process";
       if (lastQ && !isAutoSkippedAI) {
@@ -387,9 +393,10 @@ export function SurveyPreviewOverlay({
     return answers
       .filter((a) => {
         const q = qMap.get(a.questionId);
-        // Skip finish nodes from summary
+        // Skip finish and classifier nodes from summary
         if (!q) return false;
         if (q.type === "finish") return false;
+        if (q.type === "classifier") return false;
         // Skip auto-skipped AI nodes (only when onInfer not provided)
         if (!onInfer && q.type === "text" && q.inference === "process")
           return false;
@@ -465,13 +472,29 @@ export function SurveyPreviewOverlay({
           ) : (
             <>
               <div style={questionTextStyle}>
-                {next.questionText || "(No question text)"}
+                {isClassifier
+                  ? "Route by AI"
+                  : next.questionText || "(No question text)"}
                 {next.required && (
                   <span style={{ color: "red", marginLeft: "4px" }}>*</span>
                 )}
               </div>
 
-              {isMC &&
+              {isClassifier && (
+                <div
+                  style={{
+                    fontSize: "12px",
+                    color: "var(--text-muted, #6b7280)",
+                    marginBottom: "12px",
+                    fontStyle: "italic",
+                  }}
+                >
+                  In preview, choose a path to test. In production, AI resolves
+                  this automatically from visitor info.
+                </div>
+              )}
+
+              {(isMC || isClassifier) &&
                 next.options?.map((opt, idx) => (
                   <div
                     key={opt.id}

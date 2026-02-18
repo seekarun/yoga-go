@@ -94,6 +94,12 @@ const inferenceBadge: CSSProperties = {
   color: "#d97706",
 };
 
+const classifierBadge: CSSProperties = {
+  ...badgeStyle,
+  background: "#fce7f3",
+  color: "#db2777",
+};
+
 const bodyStyle: CSSProperties = {
   padding: "8px 12px 14px",
 };
@@ -170,6 +176,8 @@ function getBadge(
   switch (type) {
     case "multiple-choice":
       return { style: mcBadge, label: "MC" };
+    case "classifier":
+      return { style: classifierBadge, label: "Route" };
     case "finish":
       return { style: finishBadge, label: "Finish" };
     default:
@@ -208,14 +216,15 @@ function QuestionNodeComponent({
   const pathSet = new Set(selectionActive ? onPathHandles : []);
   const isMC = question.type === "multiple-choice";
   const isFinish = question.type === "finish";
+  const isClassifier = question.type === "classifier";
   const isInference =
     question.type === "text" && question.inference === "process";
-  const hasOptions = isMC || isInference;
+  const hasOptions = isMC || isClassifier || isInference;
   const badge = getBadge(question.type, question.inference);
 
   // Determine if fallback is a "custom" output (target doesn't match any option)
   const hasCustomFallback = (() => {
-    if (!isInference) return false;
+    if (!isInference && !isClassifier) return false;
     const defaultBranch = (question.branches ?? []).find((b) => !b.optionId);
     if (!defaultBranch) return false;
     if (!defaultBranch.nextQuestionId) return true;
@@ -228,10 +237,9 @@ function QuestionNodeComponent({
     }
     return true;
   })();
+  const displayText = isClassifier ? "Route by AI" : question.questionText;
   const truncated =
-    question.questionText.length > 80
-      ? question.questionText.slice(0, 80) + "..."
-      : question.questionText;
+    displayText.length > 80 ? displayText.slice(0, 80) + "..." : displayText;
   const getStyle = (): CSSProperties => {
     let base: CSSProperties;
     if (isFinish) {
@@ -336,6 +344,19 @@ function QuestionNodeComponent({
                 }}
               >
                 Inference:
+              </span>
+            )}
+            {isClassifier && (
+              <span
+                style={{
+                  fontSize: "10px",
+                  fontWeight: 600,
+                  color: "#db2777",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                }}
+              >
+                Conditions:
               </span>
             )}
             {question.options.map((opt, i) => {

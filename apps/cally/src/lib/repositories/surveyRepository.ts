@@ -253,6 +253,25 @@ export async function getSurveysByTenant(tenantId: string): Promise<Survey[]> {
 }
 
 /**
+ * Get active surveys for a tenant (minimal fields for landing page CTA)
+ */
+export async function getActiveSurveys(
+  tenantId: string,
+): Promise<{ id: string; title: string }[]> {
+  console.log(
+    `[DBG][surveyRepository] Getting active surveys for tenant ${tenantId}`,
+  );
+
+  const all = await getSurveysByTenant(tenantId);
+  const active = all
+    .filter((s) => s.status === "active")
+    .map((s) => ({ id: s.id, title: s.title }));
+
+  console.log(`[DBG][surveyRepository] Found ${active.length} active surveys`);
+  return active;
+}
+
+/**
  * Get a single survey by ID within a tenant
  */
 export async function getSurveyById(

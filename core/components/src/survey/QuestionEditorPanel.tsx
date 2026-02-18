@@ -125,13 +125,17 @@ export function QuestionEditorPanel({
       const effectiveInference = overrides?.inference ?? inference;
       const keepOptions =
         effectiveType === "multiple-choice" ||
+        effectiveType === "classifier" ||
         (effectiveType === "text" && effectiveInference === "process");
       const updated: SurveyQuestion = {
         ...question,
         questionText: text,
         type,
         inference: effectiveType === "text" ? effectiveInference : undefined,
-        required: effectiveType === "finish" ? false : required,
+        required:
+          effectiveType === "finish" || effectiveType === "classifier"
+            ? false
+            : required,
         options: keepOptions ? options : undefined,
         branches: effectiveType === "finish" ? [] : question.branches,
         ...overrides,
@@ -152,13 +156,22 @@ export function QuestionEditorPanel({
     if (val !== "text") {
       setInference("none");
     }
-    const newOpts =
-      val === "multiple-choice" && options.length === 0
-        ? [
-            { id: generateOptionId(), label: "Option 1" },
-            { id: generateOptionId(), label: "Option 2" },
-          ]
-        : options;
+
+    let newOpts: QuestionOption[];
+    if (val === "classifier") {
+      newOpts = [
+        { id: generateOptionId(), label: "Condition 1" },
+        { id: generateOptionId(), label: "Default" },
+      ];
+      setText("Classifier");
+    } else if (val === "multiple-choice" && options.length === 0) {
+      newOpts = [
+        { id: generateOptionId(), label: "Option 1" },
+        { id: generateOptionId(), label: "Option 2" },
+      ];
+    } else {
+      newOpts = options;
+    }
     setOptions(newOpts);
 
     // When switching to text (no inference), consolidate option branches
@@ -173,8 +186,10 @@ export function QuestionEditorPanel({
 
     commitChanges({
       type: val,
+      questionText: val === "classifier" ? "Classifier" : text,
       inference: val === "text" ? "none" : undefined,
-      options: val === "multiple-choice" ? newOpts : undefined,
+      options:
+        val === "multiple-choice" || val === "classifier" ? newOpts : undefined,
       ...(newBranches !== undefined ? { branches: newBranches } : {}),
     });
   };
@@ -258,9 +273,11 @@ export function QuestionEditorPanel({
     commitChanges({ options: updated, branches: updatedBranches });
   };
 
-  // Fallback dropdown value for inference text questions
+  // Fallback dropdown value for inference text questions and classifiers
+  const hasFallback =
+    type === "classifier" || (type === "text" && inference === "process");
   const fallbackValue = useMemo(() => {
-    if (type !== "text" || inference !== "process") return "";
+    if (!hasFallback) return "";
     const branches = question.branches ?? [];
     const defaultBranch = branches.find((b) => !b.optionId);
     if (!defaultBranch) return "";
@@ -273,7 +290,7 @@ export function QuestionEditorPanel({
       }
     }
     return "custom";
-  }, [type, inference, question.branches, options]);
+  }, [hasFallback, question.branches, options]);
 
   const handleFallbackChange = (val: string) => {
     const branches = question.branches ?? [];
@@ -318,22 +335,24 @@ export function QuestionEditorPanel({
 
       {/* Body */}
       <div style={scrollBodyStyle}>
-        {/* Question text / Finish message */}
-        <div>
-          <label style={labelStyle}>
-            {type === "finish" ? "Finish Message" : "Question Text"}
-          </label>
-          <textarea
-            value={text}
-            onChange={(e) => handleTextChange(e.target.value)}
-            style={{ ...inputStyle, minHeight: 72, resize: "vertical" }}
-            placeholder={
-              type === "finish"
-                ? "Thank you for your time"
-                : "Enter your question..."
-            }
-          />
-        </div>
+        {/* Question text / Finish message — hidden for classifier */}
+        {type !== "classifier" && (
+          <div>
+            <label style={labelStyle}>
+              {type === "finish" ? "Finish Message" : "Question Text"}
+            </label>
+            <textarea
+              value={text}
+              onChange={(e) => handleTextChange(e.target.value)}
+              style={{ ...inputStyle, minHeight: 72, resize: "vertical" }}
+              placeholder={
+                type === "finish"
+                  ? "Thank you for your time"
+                  : "Enter your question..."
+              }
+            />
+          </div>
+        )}
 
         {/* Type */}
         <div>
@@ -345,6 +364,7 @@ export function QuestionEditorPanel({
           >
             <option value="text">Text</option>
             <option value="multiple-choice">Multiple Choice</option>
+            <option value="classifier">Classifier</option>
             <option value="finish">Finish</option>
           </select>
         </div>
@@ -366,8 +386,8 @@ export function QuestionEditorPanel({
           </div>
         )}
 
-        {/* Required toggle — not applicable to finish */}
-        {type !== "finish" && (
+        {/* Required toggle — not applicable to finish or classifier */}
+        {type !== "finish" && type !== "classifier" && (
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <input
               type="checkbox"
@@ -384,13 +404,31 @@ export function QuestionEditorPanel({
           </div>
         )}
 
-        {/* Options editor — MC or text with inference */}
+        {/* Options editor — MC, classifier, or text with inference */}
         {(type === "multiple-choice" ||
+          type === "classifier" ||
           (type === "text" && inference === "process")) && (
           <div>
             <label style={labelStyle}>
-              {type === "text" ? "Inference Options" : "Options"}
+              {type === "classifier"
+                ? "Route Conditions"
+                : type === "text"
+                  ? "Inference Options"
+                  : "Options"}
             </label>
+            {type === "classifier" && (
+              <span
+                style={{
+                  display: "block",
+                  fontSize: "11px",
+                  color: "var(--text-muted, #6b7280)",
+                  marginBottom: "6px",
+                }}
+              >
+                Describe each condition in plain language. AI matches visitor
+                info to the best option.
+              </span>
+            )}
             <div
               style={{ display: "flex", flexDirection: "column", gap: "6px" }}
             >
@@ -426,8 +464,8 @@ export function QuestionEditorPanel({
           </div>
         )}
 
-        {/* Fallback dropdown — only for text questions with inference */}
-        {type === "text" && inference === "process" && (
+        {/* Fallback dropdown — for text questions with inference and classifiers */}
+        {hasFallback && (
           <div>
             <label style={labelStyle}>Fallback (unable to infer)</label>
             <select

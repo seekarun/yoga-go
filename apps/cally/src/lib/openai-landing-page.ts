@@ -99,7 +99,7 @@ IMPORTANT:
 - Each section needs a unique "id" field (use format "section-{timestamp}-{random}")
 - Each section needs an "order" field (0-indexed, lower = higher on page)
 - The "type" field must match one of the available section types exactly
-- For hero sections, include variant: "centered" | "left-aligned" | "split" | "minimal" | "bold"
+- For hero sections, include variant: "centered" | "split" | "apple" | "bayside" | "therapist" | "parallax" | "animated" | "diy"
 - For button configs, use action: "booking" or "contact"
 
 Respond with valid JSON only. No markdown, no explanations.`;

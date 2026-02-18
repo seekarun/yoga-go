@@ -8,6 +8,7 @@ import type {
   ButtonConfig,
   AboutConfig,
   AboutStyleOverrides,
+  HeroStyleOverrides,
   ProductsStyleOverrides,
   FeaturesConfig,
   FeatureCard,
@@ -45,6 +46,7 @@ import {
   HARMONY_OPTIONS,
 } from "@/lib/colorPalette";
 import { LandingPageThemeProvider } from "@/templates/hero/ThemeProvider";
+import RemoveBackgroundButton from "@/templates/hero/RemoveBackgroundButton";
 
 interface SimpleLandingPageEditorProps {
   tenantId: string;
@@ -105,6 +107,11 @@ export default function SimpleLandingPageEditor({
   const [products, setProducts] = useState<Product[]>([]);
   const [editorCurrency, setEditorCurrency] = useState("AUD");
   const [editorAddress, setEditorAddress] = useState("");
+
+  // Surveys state (for button action dropdown)
+  const [activeSurveys, setActiveSurveys] = useState<
+    { id: string; title: string }[]
+  >([]);
 
   // Brand colour picker state
   const [showColorPicker, setShowColorPicker] = useState(false);
@@ -409,6 +416,32 @@ export default function SimpleLandingPageEditor({
       }
     };
     fetchProducts();
+
+    // Fetch active surveys for button action dropdown
+    const fetchSurveys = async () => {
+      try {
+        const res = await fetch("/api/data/app/surveys");
+        const json = await res.json();
+        if (json.success && json.data) {
+          const active = json.data
+            .filter(
+              (s: { status: string; id: string; title: string }) =>
+                s.status === "active",
+            )
+            .map((s: { id: string; title: string }) => ({
+              id: s.id,
+              title: s.title,
+            }));
+          setActiveSurveys(active);
+        }
+      } catch (err) {
+        console.error(
+          "[DBG][SimpleLandingPageEditor] Failed to fetch surveys:",
+          err,
+        );
+      }
+    };
+    fetchSurveys();
   }, []);
 
   // Backfill gallery images: prefer product images, fallback to Pexels defaults.
@@ -647,6 +680,27 @@ export default function SimpleLandingPageEditor({
     setConfig((prev) => ({
       ...prev,
       about: { ...prev.about, imageZoom: zoom } as AboutConfig,
+    }));
+    setIsDirty(true);
+  }, []);
+
+  // Handle hero style override change
+  const handleHeroStyleOverrideChange = useCallback(
+    (overrides: HeroStyleOverrides) => {
+      setConfig((prev) => ({
+        ...prev,
+        heroStyleOverrides: overrides,
+      }));
+      setIsDirty(true);
+    },
+    [],
+  );
+
+  // Handle hero background removal complete
+  const handleHeroRemoveBgComplete = useCallback((newUrl: string) => {
+    setConfig((prev) => ({
+      ...prev,
+      backgroundImage: newUrl,
     }));
     setIsDirty(true);
   }, []);
@@ -2265,11 +2319,11 @@ export default function SimpleLandingPageEditor({
                 display: previewMode === "mobile" ? "none" : undefined,
               }}
             >
-              {/* Image Edit Button - Top Right (hidden for templates that ignore hero image) */}
-              {config.template !== "minimal" && (
+              {/* Image Edit + Remove BG Buttons - Top Right (hidden for templates that ignore hero image) */}
+              <div className="absolute top-4 right-4 z-10 flex gap-2">
                 <button
                   onClick={() => setShowImageEditor(true)}
-                  className="absolute top-4 right-4 z-10 p-3 bg-white/90 hover:bg-white rounded-full shadow-lg transition-all hover:scale-105"
+                  className="p-3 bg-white/90 hover:bg-white rounded-full shadow-lg transition-all hover:scale-105"
                   title="Edit background image"
                 >
                   <svg
@@ -2287,7 +2341,13 @@ export default function SimpleLandingPageEditor({
                     <polyline points="21 15 16 10 5 21" />
                   </svg>
                 </button>
-              )}
+                {config.backgroundImage && (
+                  <RemoveBackgroundButton
+                    imageUrl={config.backgroundImage}
+                    onComplete={handleHeroRemoveBgComplete}
+                  />
+                )}
+              </div>
 
               <LandingPageThemeProvider
                 palette={config.theme?.palette}
@@ -2305,6 +2365,8 @@ export default function SimpleLandingPageEditor({
                   onAboutTitleChange={handleAboutTitleChange}
                   onAboutParagraphChange={handleAboutParagraphChange}
                   onAboutImageClick={() => setShowAboutImageEditor(true)}
+                  onHeroStyleOverrideChange={handleHeroStyleOverrideChange}
+                  onHeroRemoveBgComplete={handleHeroRemoveBgComplete}
                   onAboutStyleOverrideChange={handleAboutStyleOverrideChange}
                   onAboutBgImageClick={() => setShowAboutBgImageEditor(true)}
                   onAboutImagePositionChange={handleAboutImagePositionChange}
@@ -2383,7 +2445,14 @@ export default function SimpleLandingPageEditor({
         onSave={handleButtonChange}
         currentConfig={config.button}
         title="Edit Action Button"
-        actions={BUTTON_ACTIONS}
+        actions={[
+          ...BUTTON_ACTIONS,
+          ...activeSurveys.map((s) => ({
+            id: `survey:${s.id}`,
+            name: `Survey: ${s.title}`,
+            description: "Opens this survey as a popup on the landing page",
+          })),
+        ]}
       />
 
       {/* About Background Image Editor Overlay */}

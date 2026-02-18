@@ -13,4 +13,9 @@ export interface VisitorInfo {
   latitude?: string;
   longitude?: string;
   userAgent?: string;
+  deviceType?: string; // "mobile" | "tablet" | "desktop"
+  browser?: string; // e.g., "Chrome", "Safari", "Firefox"
+  os?: string; // e.g., "Windows", "macOS", "iOS", "Android"
+  language?: string; // primary language tag (e.g., "en")
+  referrer?: string; // hostname of referring page
 }

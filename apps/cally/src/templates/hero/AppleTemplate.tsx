@@ -10,6 +10,9 @@ import FAQSection from "./FAQSection";
 import LocationSection from "./LocationSection";
 import GallerySection from "./GallerySection";
 import FooterSection from "./FooterSection";
+import useHeroToolbarState from "./useHeroToolbarState";
+import HeroSectionToolbar from "./HeroSectionToolbar";
+import ResizableText from "./ResizableText";
 
 /**
  * Apple Template
@@ -32,6 +35,7 @@ export default function AppleTemplate(props: HeroTemplateProps) {
     onAboutImagePositionChange,
     onAboutImageZoomChange,
     onCustomColorsChange,
+    onHeroStyleOverrideChange,
     onFeaturesHeadingChange,
     onFeaturesSubheadingChange,
     onFeatureCardChange,
@@ -74,6 +78,22 @@ export default function AppleTemplate(props: HeroTemplateProps) {
 
   const hasImage = !!backgroundImage;
 
+  const h = config.heroStyleOverrides;
+
+  const toolbar = useHeroToolbarState({
+    isEditing,
+    heroStyleOverrides: h,
+    onHeroStyleOverrideChange,
+  });
+
+  const DEFAULT_TITLE_MW = 900;
+  const DEFAULT_SUBTITLE_MW = 700;
+
+  const DEFAULT_OVERLAY = 35;
+  const overlayAlpha = (h?.overlayOpacity ?? DEFAULT_OVERLAY) / 100;
+  const padTop = h?.paddingTop ?? 60;
+  const padBottom = h?.paddingBottom ?? 60;
+
   const sections = config.sections || [
     { id: "about" as const, enabled: true },
     { id: "features" as const, enabled: true },
@@ -100,10 +120,14 @@ export default function AppleTemplate(props: HeroTemplateProps) {
     alignItems: "center",
     justifyContent: "center",
     textAlign: "center",
-    padding: "60px 24px",
+    paddingTop: `${padTop}px`,
+    paddingBottom: `${padBottom}px`,
+    paddingLeft: "24px",
+    paddingRight: "24px",
     position: "relative",
     overflow: "hidden",
     color: hasImage ? "#ffffff" : "#1d1d1f",
+    backgroundColor: h?.bgColor || undefined,
   };
 
   const backgroundStyle: React.CSSProperties = {
@@ -111,7 +135,7 @@ export default function AppleTemplate(props: HeroTemplateProps) {
     inset: 0,
     backgroundColor: hasImage ? "#000" : "#fbfbfd",
     backgroundImage: hasImage
-      ? `linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.45)), url(${backgroundImage})`
+      ? `linear-gradient(rgba(0, 0, 0, ${overlayAlpha}), rgba(0, 0, 0, ${overlayAlpha})), url(${backgroundImage})`
       : undefined,
     backgroundPosition: imagePosition || "50% 50%",
     backgroundSize: "cover",
@@ -123,41 +147,48 @@ export default function AppleTemplate(props: HeroTemplateProps) {
   const contentStyle: React.CSSProperties = {
     position: "relative",
     zIndex: 1,
+    width: "100%",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    maxWidth: "820px",
   };
 
   const titleStyle: React.CSSProperties = {
-    fontSize: "clamp(2.5rem, 7vw, 4.5rem)",
-    fontWeight: 600,
+    fontSize: h?.titleFontSize
+      ? `${h.titleFontSize}px`
+      : "clamp(2.5rem, 7vw, 4.5rem)",
+    fontWeight: h?.titleFontWeight === "normal" ? 400 : 600,
+    fontStyle: h?.titleFontStyle || undefined,
     marginBottom: "16px",
     lineHeight: 1.07,
     letterSpacing: "-0.04em",
-    color: hasImage ? "#ffffff" : "#1d1d1f",
-    fontFamily: config.theme?.headerFont?.family || sfProDisplay,
+    color: h?.titleTextColor || (hasImage ? "#ffffff" : "#1d1d1f"),
+    textAlign: h?.titleTextAlign || undefined,
+    fontFamily:
+      h?.titleFontFamily || config.theme?.headerFont?.family || sfProDisplay,
   };
 
   const subtitleStyle: React.CSSProperties = {
-    fontSize: "clamp(1.05rem, 2vw, 1.35rem)",
-    fontWeight: 400,
-    color: hasImage ? "rgba(255, 255, 255, 0.85)" : "#6e6e73",
-    maxWidth: "580px",
+    fontSize: h?.subtitleFontSize
+      ? `${h.subtitleFontSize}px`
+      : "clamp(1.05rem, 2vw, 1.35rem)",
+    fontWeight: h?.subtitleFontWeight === "bold" ? 700 : 400,
+    fontStyle: h?.subtitleFontStyle || undefined,
+    color:
+      h?.subtitleTextColor ||
+      (hasImage ? "rgba(255, 255, 255, 0.85)" : "#6e6e73"),
+    textAlign: h?.subtitleTextAlign || undefined,
     lineHeight: 1.5,
     letterSpacing: "-0.01em",
-    fontFamily: config.theme?.bodyFont?.family || sfProText,
+    fontFamily:
+      h?.subtitleFontFamily || config.theme?.bodyFont?.family || sfProText,
   };
 
-  const editableBaseStyle: React.CSSProperties = isEditing
-    ? {
-        cursor: "text",
-        outline: "none",
-        borderRadius: "8px",
-        padding: "8px 14px",
-        transition: "background 0.2s, outline 0.2s",
-      }
-    : {};
+  const selectedOutline: React.CSSProperties = {
+    outline: "2px solid #3b82f6",
+    outlineOffset: "4px",
+    borderRadius: "6px",
+  };
 
   const editFieldClass = hasImage
     ? "editable-field-light"
@@ -410,16 +441,19 @@ export default function AppleTemplate(props: HeroTemplateProps) {
         ${
           isEditing
             ? `
+          [contenteditable]:focus {
+            outline: none !important;
+            border: none !important;
+            box-shadow: none !important;
+          }
           .editable-field-light:focus {
             background: rgba(255, 255, 255, 0.12) !important;
-            outline: 2px solid rgba(255, 255, 255, 0.4) !important;
           }
           .editable-field-light:hover:not(:focus) {
             background: rgba(255, 255, 255, 0.06);
           }
           .editable-field-dark:focus {
             background: rgba(0, 0, 0, 0.04) !important;
-            outline: 2px solid rgba(0, 0, 0, 0.2) !important;
           }
           .editable-field-dark:hover:not(:focus) {
             background: rgba(0, 0, 0, 0.02);
@@ -431,33 +465,102 @@ export default function AppleTemplate(props: HeroTemplateProps) {
 
       {/* Compact Hero Section */}
       {config.heroEnabled !== false && (
-        <div style={heroStyle}>
+        <div
+          ref={toolbar.sectionRef}
+          style={{
+            ...heroStyle,
+            ...(isEditing && toolbar.sectionSelected ? selectedOutline : {}),
+          }}
+          onClick={toolbar.handleSectionClick}
+        >
           <div style={backgroundStyle} />
+
+          {/* Section Toolbar */}
+          {isEditing && toolbar.sectionSelected && (
+            <div
+              style={{ position: "absolute", top: 0, left: "50%", zIndex: 50 }}
+            >
+              <HeroSectionToolbar
+                bgColor={h?.bgColor || ""}
+                hasBackgroundImage={hasImage}
+                overlayOpacity={h?.overlayOpacity ?? DEFAULT_OVERLAY}
+                paddingTop={padTop}
+                paddingBottom={padBottom}
+                palette={config.theme?.palette}
+                customColors={config.customColors}
+                onBgColorChange={toolbar.onBgColorChange}
+                onOverlayOpacityChange={toolbar.onOverlayOpacityChange}
+                onPaddingTopChange={toolbar.onPaddingTopChange}
+                onPaddingBottomChange={toolbar.onPaddingBottomChange}
+                onCustomColorsChange={onCustomColorsChange}
+              />
+            </div>
+          )}
+
           <div style={contentStyle}>
             {isEditing ? (
               <>
-                <div
-                  className={editFieldClass}
-                  contentEditable
-                  suppressContentEditableWarning
-                  style={{ ...titleStyle, ...editableBaseStyle }}
-                  onBlur={(e) =>
-                    onTitleChange?.(e.currentTarget.textContent || "")
-                  }
-                >
-                  {title}
-                </div>
-                <div
-                  className={editFieldClass}
-                  contentEditable
-                  suppressContentEditableWarning
-                  style={{ ...subtitleStyle, ...editableBaseStyle }}
-                  onBlur={(e) =>
-                    onSubtitleChange?.(e.currentTarget.textContent || "")
-                  }
-                >
-                  {subtitle}
-                </div>
+                <ResizableText
+                  ref={toolbar.titleRef}
+                  text={title}
+                  isEditing={isEditing}
+                  onTextChange={onTitleChange}
+                  textStyle={titleStyle}
+                  editableClassName={editFieldClass}
+                  maxWidth={h?.titleMaxWidth ?? DEFAULT_TITLE_MW}
+                  onMaxWidthChange={toolbar.onTitleMaxWidthChange}
+                  selected={toolbar.titleSelected}
+                  onSelect={toolbar.handleTitleClick}
+                  toolbarProps={{
+                    fontSize: h?.titleFontSize || 48,
+                    fontFamily: h?.titleFontFamily || "",
+                    fontWeight: h?.titleFontWeight || "bold",
+                    fontStyle: h?.titleFontStyle || "normal",
+                    color:
+                      h?.titleTextColor || (hasImage ? "#ffffff" : "#1d1d1f"),
+                    textAlign: h?.titleTextAlign || "center",
+                    onFontSizeChange: toolbar.onTitleFontSizeChange,
+                    onFontFamilyChange: toolbar.onTitleFontFamilyChange,
+                    onFontWeightChange: toolbar.onTitleFontWeightChange,
+                    onFontStyleChange: toolbar.onTitleFontStyleChange,
+                    onColorChange: toolbar.onTitleTextColorChange,
+                    onTextAlignChange: toolbar.onTitleTextAlignChange,
+                  }}
+                  palette={config.theme?.palette}
+                  customColors={config.customColors}
+                  onCustomColorsChange={onCustomColorsChange}
+                />
+                <ResizableText
+                  ref={toolbar.subtitleRef}
+                  text={subtitle}
+                  isEditing={isEditing}
+                  onTextChange={onSubtitleChange}
+                  textStyle={subtitleStyle}
+                  editableClassName={editFieldClass}
+                  maxWidth={h?.subtitleMaxWidth ?? DEFAULT_SUBTITLE_MW}
+                  onMaxWidthChange={toolbar.onSubtitleMaxWidthChange}
+                  selected={toolbar.subtitleSelected}
+                  onSelect={toolbar.handleSubtitleClick}
+                  toolbarProps={{
+                    fontSize: h?.subtitleFontSize || 18,
+                    fontFamily: h?.subtitleFontFamily || "",
+                    fontWeight: h?.subtitleFontWeight || "normal",
+                    fontStyle: h?.subtitleFontStyle || "normal",
+                    color:
+                      h?.subtitleTextColor ||
+                      (hasImage ? "#ffffff" : "#6e6e73"),
+                    textAlign: h?.subtitleTextAlign || "center",
+                    onFontSizeChange: toolbar.onSubtitleFontSizeChange,
+                    onFontFamilyChange: toolbar.onSubtitleFontFamilyChange,
+                    onFontWeightChange: toolbar.onSubtitleFontWeightChange,
+                    onFontStyleChange: toolbar.onSubtitleFontStyleChange,
+                    onColorChange: toolbar.onSubtitleTextColorChange,
+                    onTextAlignChange: toolbar.onSubtitleTextAlignChange,
+                  }}
+                  palette={config.theme?.palette}
+                  customColors={config.customColors}
+                  onCustomColorsChange={onCustomColorsChange}
+                />
                 {button && (
                   <button
                     type="button"
@@ -496,8 +599,22 @@ export default function AppleTemplate(props: HeroTemplateProps) {
               </>
             ) : (
               <>
-                <h1 style={titleStyle}>{title}</h1>
-                <p style={subtitleStyle}>{subtitle}</p>
+                <h1
+                  style={{
+                    ...titleStyle,
+                    maxWidth: `${h?.titleMaxWidth ?? DEFAULT_TITLE_MW}px`,
+                  }}
+                >
+                  {title}
+                </h1>
+                <p
+                  style={{
+                    ...subtitleStyle,
+                    maxWidth: `${h?.subtitleMaxWidth ?? DEFAULT_SUBTITLE_MW}px`,
+                  }}
+                >
+                  {subtitle}
+                </p>
                 {button && (
                   <button
                     type="button"

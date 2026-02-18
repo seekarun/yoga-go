@@ -5,6 +5,7 @@
 import type {
   SimpleLandingPageConfig,
   AboutStyleOverrides,
+  HeroStyleOverrides,
   ProductsStyleOverrides,
 } from "@/types/landing-page";
 import type { Product } from "@/types";
@@ -34,6 +35,9 @@ export interface HeroTemplateProps {
   onFeatureCardImageClick?: (cardId: string) => void;
   onAddFeatureCard?: () => void;
   onRemoveFeatureCard?: (cardId: string) => void;
+  // Hero style overrides
+  onHeroStyleOverrideChange?: (overrides: HeroStyleOverrides) => void;
+  onHeroRemoveBgComplete?: (newUrl: string) => void;
   // Background removal callbacks
   onAboutRemoveBgComplete?: (newUrl: string) => void;
   onFeatureCardRemoveBg?: (cardId: string, newUrl: string) => void;

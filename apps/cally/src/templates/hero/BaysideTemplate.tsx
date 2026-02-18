@@ -9,6 +9,9 @@ import FAQSection from "./FAQSection";
 import LocationSection from "./LocationSection";
 import GallerySection from "./GallerySection";
 import FooterSection from "./FooterSection";
+import useHeroToolbarState from "./useHeroToolbarState";
+import HeroSectionToolbar from "./HeroSectionToolbar";
+import ResizableText from "./ResizableText";
 
 /**
  * Bayside Template
@@ -27,6 +30,9 @@ import FooterSection from "./FooterSection";
  * - --brand-500: CTA hover fill, accents
  * - --brand-100/200/300: hero gradient fallback
  */
+const DEFAULT_TITLE_MW = 900;
+const DEFAULT_SUBTITLE_MW = 480;
+
 export default function BaysideTemplate(props: HeroTemplateProps) {
   const {
     config,
@@ -53,6 +59,7 @@ export default function BaysideTemplate(props: HeroTemplateProps) {
     onProductsStyleOverrideChange,
     onProductsBgImageClick,
     onCustomColorsChange,
+    onHeroStyleOverrideChange,
     onTestimonialsHeadingChange,
     onTestimonialsSubheadingChange,
     onTestimonialChange,
@@ -80,6 +87,17 @@ export default function BaysideTemplate(props: HeroTemplateProps) {
 
   const hasImage = !!backgroundImage;
 
+  const h = config.heroStyleOverrides;
+
+  const toolbar = useHeroToolbarState({
+    isEditing,
+    heroStyleOverrides: h,
+    onHeroStyleOverrideChange,
+  });
+
+  const padTop = h?.paddingTop ?? 80;
+  const padBottom = h?.paddingBottom ?? 80;
+
   const sections = config.sections || [
     { id: "about" as const, enabled: true },
     { id: "features" as const, enabled: true },
@@ -103,37 +121,42 @@ export default function BaysideTemplate(props: HeroTemplateProps) {
 
   // --- Hero Styles ---
   const titleStyle: React.CSSProperties = {
-    fontFamily: config.theme?.headerFont?.family || playfair,
-    fontSize: "clamp(2.5rem, 5vw, 4.5rem)",
-    fontWeight: 700,
+    fontFamily:
+      h?.titleFontFamily || config.theme?.headerFont?.family || playfair,
+    fontSize: h?.titleFontSize
+      ? `${h.titleFontSize}px`
+      : "clamp(2.5rem, 5vw, 4.5rem)",
+    fontWeight: h?.titleFontWeight === "normal" ? 400 : 700,
+    fontStyle: h?.titleFontStyle || undefined,
     lineHeight: 1.1,
-    color: darkText,
+    color: h?.titleTextColor || darkText,
+    textAlign: h?.titleTextAlign || undefined,
     margin: 0,
     marginBottom: "24px",
   };
 
   const subtitleStyle: React.CSSProperties = {
-    fontFamily: config.theme?.bodyFont?.family || inter,
-    fontSize: "clamp(0.8rem, 1.2vw, 0.95rem)",
-    fontWeight: 500,
-    color: "#666",
+    fontFamily:
+      h?.subtitleFontFamily || config.theme?.bodyFont?.family || inter,
+    fontSize: h?.subtitleFontSize
+      ? `${h.subtitleFontSize}px`
+      : "clamp(0.8rem, 1.2vw, 0.95rem)",
+    fontWeight: h?.subtitleFontWeight === "bold" ? 700 : 500,
+    fontStyle: h?.subtitleFontStyle || undefined,
+    color: h?.subtitleTextColor || "#666",
+    textAlign: h?.subtitleTextAlign || undefined,
     textTransform: "uppercase",
     letterSpacing: "0.1em",
     lineHeight: 1.6,
     margin: 0,
     marginBottom: "40px",
-    maxWidth: "480px",
   };
 
-  const editableBaseStyle: React.CSSProperties = isEditing
-    ? {
-        cursor: "text",
-        outline: "none",
-        borderRadius: "8px",
-        padding: "8px 14px",
-        transition: "background 0.2s, outline 0.2s",
-      }
-    : {};
+  const selectedOutline: React.CSSProperties = {
+    outline: "2px solid #3b82f6",
+    outlineOffset: "4px",
+    borderRadius: "6px",
+  };
 
   const buttonStyle: React.CSSProperties = {
     display: "inline-block",
@@ -448,7 +471,7 @@ export default function BaysideTemplate(props: HeroTemplateProps) {
         }
         .bayside-hero-content {
           flex: 1;
-          padding: 80px 8%;
+          padding: ${padTop}px 8% ${padBottom}px;
           display: flex;
           flex-direction: column;
           justify-content: center;
@@ -542,9 +565,13 @@ export default function BaysideTemplate(props: HeroTemplateProps) {
         ${
           isEditing
             ? `
+          [contenteditable]:focus {
+            outline: none !important;
+            border: none !important;
+            box-shadow: none !important;
+          }
           .bayside-editable:focus {
             background: rgba(0, 0, 0, 0.04) !important;
-            outline: 2px solid rgba(0, 0, 0, 0.2) !important;
           }
           .bayside-editable:hover:not(:focus) {
             background: rgba(0, 0, 0, 0.02);
@@ -556,33 +583,100 @@ export default function BaysideTemplate(props: HeroTemplateProps) {
 
       {/* Hero Section */}
       {config.heroEnabled !== false && (
-        <div className="bayside-hero">
+        <div
+          ref={toolbar.sectionRef}
+          className="bayside-hero"
+          style={{
+            position: "relative",
+            backgroundColor: h?.bgColor || undefined,
+            ...(isEditing && toolbar.sectionSelected ? selectedOutline : {}),
+          }}
+          onClick={toolbar.handleSectionClick}
+        >
+          {/* Section Toolbar */}
+          {isEditing && toolbar.sectionSelected && (
+            <div
+              style={{ position: "absolute", top: 0, left: "25%", zIndex: 50 }}
+            >
+              <HeroSectionToolbar
+                bgColor={h?.bgColor || offWhite}
+                hasBackgroundImage={false}
+                overlayOpacity={0}
+                paddingTop={padTop}
+                paddingBottom={padBottom}
+                palette={config.theme?.palette}
+                customColors={config.customColors}
+                onBgColorChange={toolbar.onBgColorChange}
+                onOverlayOpacityChange={toolbar.onOverlayOpacityChange}
+                onPaddingTopChange={toolbar.onPaddingTopChange}
+                onPaddingBottomChange={toolbar.onPaddingBottomChange}
+                onCustomColorsChange={onCustomColorsChange}
+              />
+            </div>
+          )}
+
           {/* Left: Content */}
           <div className="bayside-hero-content">
             {isEditing ? (
               <>
-                <div
-                  className="bayside-editable"
-                  contentEditable
-                  suppressContentEditableWarning
-                  style={{ ...titleStyle, ...editableBaseStyle }}
-                  onBlur={(e) =>
-                    onTitleChange?.(e.currentTarget.textContent || "")
-                  }
-                >
-                  {title}
-                </div>
-                <div
-                  className="bayside-editable"
-                  contentEditable
-                  suppressContentEditableWarning
-                  style={{ ...subtitleStyle, ...editableBaseStyle }}
-                  onBlur={(e) =>
-                    onSubtitleChange?.(e.currentTarget.textContent || "")
-                  }
-                >
-                  {subtitle}
-                </div>
+                <ResizableText
+                  ref={toolbar.titleRef}
+                  text={title}
+                  isEditing={isEditing}
+                  onTextChange={onTitleChange}
+                  textStyle={titleStyle}
+                  editableClassName="bayside-editable"
+                  maxWidth={h?.titleMaxWidth ?? DEFAULT_TITLE_MW}
+                  onMaxWidthChange={toolbar.onTitleMaxWidthChange}
+                  selected={toolbar.titleSelected}
+                  onSelect={toolbar.handleTitleClick}
+                  toolbarProps={{
+                    fontSize: h?.titleFontSize || 48,
+                    fontFamily: h?.titleFontFamily || "",
+                    fontWeight: h?.titleFontWeight || "bold",
+                    fontStyle: h?.titleFontStyle || "normal",
+                    color: h?.titleTextColor || darkText,
+                    textAlign: h?.titleTextAlign || "left",
+                    onFontSizeChange: toolbar.onTitleFontSizeChange,
+                    onFontFamilyChange: toolbar.onTitleFontFamilyChange,
+                    onFontWeightChange: toolbar.onTitleFontWeightChange,
+                    onFontStyleChange: toolbar.onTitleFontStyleChange,
+                    onColorChange: toolbar.onTitleTextColorChange,
+                    onTextAlignChange: toolbar.onTitleTextAlignChange,
+                  }}
+                  palette={config.theme?.palette}
+                  customColors={config.customColors}
+                  onCustomColorsChange={onCustomColorsChange}
+                />
+                <ResizableText
+                  ref={toolbar.subtitleRef}
+                  text={subtitle}
+                  isEditing={isEditing}
+                  onTextChange={onSubtitleChange}
+                  textStyle={subtitleStyle}
+                  editableClassName="bayside-editable"
+                  maxWidth={h?.subtitleMaxWidth ?? DEFAULT_SUBTITLE_MW}
+                  onMaxWidthChange={toolbar.onSubtitleMaxWidthChange}
+                  selected={toolbar.subtitleSelected}
+                  onSelect={toolbar.handleSubtitleClick}
+                  toolbarProps={{
+                    fontSize: h?.subtitleFontSize || 14,
+                    fontFamily: h?.subtitleFontFamily || "",
+                    fontWeight: h?.subtitleFontWeight || "normal",
+                    fontStyle: h?.subtitleFontStyle || "normal",
+                    color: h?.subtitleTextColor || "#666",
+                    textAlign: h?.subtitleTextAlign || "left",
+                    onFontSizeChange: toolbar.onSubtitleFontSizeChange,
+                    onFontFamilyChange: toolbar.onSubtitleFontFamilyChange,
+                    onFontWeightChange: toolbar.onSubtitleFontWeightChange,
+                    onFontStyleChange: toolbar.onSubtitleFontStyleChange,
+                    onColorChange: toolbar.onSubtitleTextColorChange,
+                    onTextAlignChange: toolbar.onSubtitleTextAlignChange,
+                  }}
+                  palette={config.theme?.palette}
+                  customColors={config.customColors}
+                  onCustomColorsChange={onCustomColorsChange}
+                />
                 {button && (
                   <button
                     type="button"
@@ -622,8 +716,22 @@ export default function BaysideTemplate(props: HeroTemplateProps) {
               </>
             ) : (
               <>
-                <h1 style={titleStyle}>{title}</h1>
-                <p style={subtitleStyle}>{subtitle}</p>
+                <h1
+                  style={{
+                    ...titleStyle,
+                    maxWidth: `${h?.titleMaxWidth ?? DEFAULT_TITLE_MW}px`,
+                  }}
+                >
+                  {title}
+                </h1>
+                <p
+                  style={{
+                    ...subtitleStyle,
+                    maxWidth: `${h?.subtitleMaxWidth ?? DEFAULT_SUBTITLE_MW}px`,
+                  }}
+                >
+                  {subtitle}
+                </p>
                 {button && (
                   <button
                     type="button"

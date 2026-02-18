@@ -232,6 +232,7 @@ function questionsToEdges(
   for (const q of questions) {
     const hasOpts =
       q.type === "multiple-choice" ||
+      q.type === "classifier" ||
       (q.type === "text" && q.inference === "process");
 
     // Check if all option branches go to the same target → use single "any" edge
@@ -359,6 +360,7 @@ function edgesToBranches(
 ): QuestionBranch[] {
   const hasOpts =
     question.type === "multiple-choice" ||
+    question.type === "classifier" ||
     (question.type === "text" && question.inference === "process");
 
   const filtered = edges.filter(
@@ -438,6 +440,9 @@ function SurveyFlowBuilderInner({
   // Track the current layout (kept in sync via ref for perf)
   const layoutRef = useRef<EditorLayout>(editorLayout);
 
+  // Suppress path highlighting during node drag
+  const isDraggingRef = useRef(false);
+
   const selectedQuestion = useMemo(
     () => questions.find((q) => q.id === selectedId) ?? null,
     [questions, selectedId],
@@ -446,6 +451,9 @@ function SurveyFlowBuilderInner({
   // Highlight edges and neighbor nodes connected to the selected node or edge
   // Also dim nodes/edges NOT on any path through the selected node
   useEffect(() => {
+    // Skip highlighting while dragging — re-triggered on drag end via highlightTick
+    if (isDraggingRef.current) return;
+
     const connectedEdgeIds = new Set<string>();
     const neighborIds = new Set<string>();
     // Track which handles on each node are on highlighted edges
@@ -657,6 +665,7 @@ function SurveyFlowBuilderInner({
           if (q.id !== source || source === START_ID) return q;
           const srcHasOpts =
             q.type === "multiple-choice" ||
+            q.type === "classifier" ||
             (q.type === "text" && q.inference === "process");
           return {
             ...q,
@@ -705,6 +714,24 @@ function SurveyFlowBuilderInner({
           order: questions.length + 1,
           options: [],
           branches: [],
+        };
+      } else if (action === "classifier") {
+        const opt1Id = generateId();
+        const opt2Id = generateId();
+        newQ = {
+          id: newId,
+          questionText: "Classifier",
+          type: "classifier",
+          required: false,
+          order: questions.length + 1,
+          options: [
+            { id: opt1Id, label: "Condition 1" },
+            { id: opt2Id, label: "Default" },
+          ],
+          branches: [
+            { optionId: opt1Id, nextQuestionId: target },
+            { optionId: opt2Id, nextQuestionId: target },
+          ],
         };
       } else {
         // multiple-choice (default)
@@ -759,6 +786,7 @@ function SurveyFlowBuilderInner({
           if (q.id !== source) return q;
           const srcHasOpts =
             q.type === "multiple-choice" ||
+            q.type === "classifier" ||
             (q.type === "text" && q.inference === "process");
           return {
             ...q,
@@ -944,7 +972,7 @@ function SurveyFlowBuilderInner({
         }
       }
 
-      // Sort each sibling group by descending option index (left-to-right handle order)
+      // Sort each sibling group by descending option index (bottommost option leftmost, topmost rightmost)
       for (const [parentId, group] of siblingGroups) {
         group.sort((a, b) => {
           const aIdx = edgeOptionIdx.get(`${parentId}->${a}`) ?? 0;
@@ -994,10 +1022,117 @@ function SurveyFlowBuilderInner({
       const pHasOpts =
         parentQ &&
         (parentQ.type === "multiple-choice" ||
+          parentQ.type === "classifier" ||
           (parentQ.type === "text" && parentQ.inference === "process"));
       const pOptCount = pHasOpts ? (parentQ?.options?.length ?? 0) : 0;
       if (pOptCount > 1 && optIdx === pOptCount - 1) {
         posX.set(id, posX.get(parentId) ?? 0);
+      }
+    }
+
+    // Ensure siblings from the same parent have at least H_GAP horizontal
+    // spacing even when placed on different layers, ordered by descending
+    // option index (bottommost option leftmost, topmost rightmost)
+    for (const [parentId, kids] of children) {
+      if (kids.length < 2) continue;
+      const sorted = [...kids].sort((a, b) => {
+        const aIdx = edgeOptionIdx.get(`${parentId}->${a}`) ?? 0;
+        const bIdx = edgeOptionIdx.get(`${parentId}->${b}`) ?? 0;
+        return bIdx - aIdx;
+      });
+      for (let i = 1; i < sorted.length; i++) {
+        const prevId = sorted[i - 1];
+        const currId = sorted[i];
+        const prevRight =
+          (posX.get(prevId) ?? 0) + (widths.get(prevId) ?? DEFAULT_NODE_WIDTH);
+        const currLeft = posX.get(currId) ?? 0;
+        const minLeft = prevRight + H_GAP;
+        if (currLeft < minLeft) {
+          posX.set(currId, minLeft);
+        }
+      }
+    }
+
+    // Ensure children are on the correct side of their source handle.
+    // Right-bending handles: child left edge >= handleX + 2 spacings
+    // Left-bending handles: child right edge <= handleX - 2 spacings
+    for (const [parentId, kids] of children) {
+      if (parentId === START_ID) continue;
+      const parentQ = questions.find((q) => q.id === parentId);
+      if (!parentQ?.options || parentQ.options.length < 2) continue;
+      const pHasOpts =
+        parentQ.type === "multiple-choice" ||
+        parentQ.type === "classifier" ||
+        (parentQ.type === "text" && parentQ.inference === "process");
+      if (!pHasOpts) continue;
+
+      // Skip if all option branches go to the same target (uses "any" edge)
+      const optBranches = (parentQ.branches ?? []).filter((b) => b.optionId);
+      const optTargets = new Set(
+        optBranches
+          .filter((b) => b.nextQuestionId)
+          .map((b) => b.nextQuestionId),
+      );
+      if (optTargets.size <= 1) continue;
+
+      const n = parentQ.options.length;
+      const parentX = posX.get(parentId) ?? 0;
+      const parentW = widths.get(parentId) ?? DEFAULT_NODE_WIDTH;
+
+      for (const kidId of kids) {
+        const optIdx = edgeOptionIdx.get(`${parentId}->${kidId}`) ?? -1;
+        if (optIdx < 0) continue;
+
+        // Determine turn direction (mirrors edge routing logic)
+        let turnDir: "left" | "right" | "straight";
+        if (n % 2 === 1 && optIdx === Math.floor(n / 2)) {
+          turnDir = "straight";
+        } else if (optIdx >= n / 2) {
+          turnDir = "left";
+        } else {
+          turnDir = "right";
+        }
+        if (turnDir === "straight") continue;
+
+        // Handle absolute X = card left + card width - (optIdx + 1) * spacing
+        const handleX = parentX + parentW - (optIdx + 1) * LINE_SPACING;
+        const childX = posX.get(kidId) ?? 0;
+        const childW = widths.get(kidId) ?? DEFAULT_NODE_WIDTH;
+
+        if (turnDir === "right") {
+          const minLeft = handleX + 2 * LINE_SPACING;
+          if (childX < minLeft) {
+            posX.set(kidId, minLeft);
+          }
+        } else {
+          // left: child right edge <= handleX - 2 spacings
+          const maxLeft = handleX - 2 * LINE_SPACING - childW;
+          if (childX > maxLeft) {
+            posX.set(kidId, maxLeft);
+          }
+        }
+      }
+    }
+
+    // Re-run sibling spacing after handle-based positioning to fix overlaps
+    // caused by left-bending children being pushed into each other
+    for (const [parentId, kids] of children) {
+      if (kids.length < 2) continue;
+      const sorted = [...kids].sort((a, b) => {
+        const aIdx = edgeOptionIdx.get(`${parentId}->${a}`) ?? 0;
+        const bIdx = edgeOptionIdx.get(`${parentId}->${b}`) ?? 0;
+        return bIdx - aIdx;
+      });
+      for (let i = 1; i < sorted.length; i++) {
+        const prevId = sorted[i - 1];
+        const currId = sorted[i];
+        const prevRight =
+          (posX.get(prevId) ?? 0) + (widths.get(prevId) ?? DEFAULT_NODE_WIDTH);
+        const currLeft = posX.get(currId) ?? 0;
+        const minLeft = prevRight + H_GAP;
+        if (currLeft < minLeft) {
+          posX.set(currId, minLeft);
+        }
       }
     }
 
@@ -1111,6 +1246,31 @@ function SurveyFlowBuilderInner({
     [questions],
   );
 
+  /** Synchronously clear highlight/dimmed data from all nodes so the next
+   *  render never shows stale accent borders (useEffect would be one frame late). */
+  const clearNodeHighlights = useCallback(() => {
+    setNodes((prev) =>
+      prev.map((n) => {
+        const hl = n.data.highlighted ?? false;
+        const dm = n.data.dimmed ?? false;
+        const handles = (n.data.highlightedHandles as string[]) ?? [];
+        const pathHandles = (n.data.onPathHandles as string[]) ?? [];
+        if (!hl && !dm && handles.length === 0 && pathHandles.length === 0)
+          return n;
+        return {
+          ...n,
+          data: {
+            ...n.data,
+            highlighted: false,
+            highlightedHandles: [],
+            onPathHandles: [],
+            dimmed: false,
+          },
+        };
+      }),
+    );
+  }, [setNodes]);
+
   /** Handle node drag / drag-end — persist positions */
   const handleNodesChange: OnNodesChange<QNode> = useCallback(
     (changes) => {
@@ -1122,7 +1282,27 @@ function SurveyFlowBuilderInner({
 
       onNodesChange(filtered);
 
-      // Select the node being dragged so it highlights immediately
+      // Suppress path highlighting on drag start
+      const hasDragStart = filtered.some(
+        (c) => c.type === "position" && c.dragging,
+      );
+      if (hasDragStart && !isDraggingRef.current) {
+        isDraggingRef.current = true;
+        clearNodeHighlights();
+        setEdges((prev) =>
+          prev.map((e) =>
+            e.style === edgeStyle && !e.data?.highlighted
+              ? e
+              : {
+                  ...e,
+                  style: edgeStyle,
+                  data: { ...e.data, highlighted: false },
+                },
+          ),
+        );
+      }
+
+      // Select the node being dragged so the editor panel opens
       for (const c of filtered) {
         if (c.type === "position" && c.dragging && c.id !== START_ID) {
           setSelectedEdgeId(null);
@@ -1136,6 +1316,9 @@ function SurveyFlowBuilderInner({
         (c) => c.type === "position" && !c.dragging,
       );
       if (hasDragEnd) {
+        isDraggingRef.current = false;
+        setSelectedId(null);
+        setSelectedEdgeId(null);
         requestAnimationFrame(() => {
           setNodes((latest) => {
             // Build updated layout from current node positions
@@ -1149,7 +1332,10 @@ function SurveyFlowBuilderInner({
             setEdges(questionsToEdges(questions, insertRef, readOnly));
             setHighlightTick((t) => t + 1);
             changeWithHistory(questions, newLayout);
-            return latest;
+            // Deselect all nodes in React Flow's internal state
+            return latest.map((n) =>
+              n.selected ? { ...n, selected: false } : n,
+            );
           });
         });
       }
@@ -1162,6 +1348,7 @@ function SurveyFlowBuilderInner({
       setNodes,
       setEdges,
       changeWithHistory,
+      clearNodeHighlights,
     ],
   );
 
@@ -1361,31 +1548,6 @@ function SurveyFlowBuilderInner({
     [readOnly],
   );
 
-  /** Synchronously clear highlight/dimmed data from all nodes so the next
-   *  render never shows stale accent borders (useEffect would be one frame late). */
-  const clearNodeHighlights = useCallback(() => {
-    setNodes((prev) =>
-      prev.map((n) => {
-        const hl = n.data.highlighted ?? false;
-        const dm = n.data.dimmed ?? false;
-        const handles = (n.data.highlightedHandles as string[]) ?? [];
-        const pathHandles = (n.data.onPathHandles as string[]) ?? [];
-        if (!hl && !dm && handles.length === 0 && pathHandles.length === 0)
-          return n;
-        return {
-          ...n,
-          data: {
-            ...n.data,
-            highlighted: false,
-            highlightedHandles: [],
-            onPathHandles: [],
-            dimmed: false,
-          },
-        };
-      }),
-    );
-  }, [setNodes]);
-
   /** Handle edge click to highlight single line */
   const onEdgeClick = useCallback(
     (_event: React.MouseEvent, edge: Edge) => {
@@ -1405,12 +1567,12 @@ function SurveyFlowBuilderInner({
 
   /** Add a new question */
   const addQuestion = useCallback(
-    (type: "text" | "multiple-choice") => {
+    (type: "text" | "multiple-choice" | "classifier") => {
       const id = generateId();
       const order = questions.length + 1;
       const newQ: SurveyQuestion = {
         id,
-        questionText: "",
+        questionText: type === "classifier" ? "Classifier" : "",
         type,
         required: false,
         order,
@@ -1420,7 +1582,12 @@ function SurveyFlowBuilderInner({
                 { id: generateId(), label: "Option 1" },
                 { id: generateId(), label: "Option 2" },
               ]
-            : undefined,
+            : type === "classifier"
+              ? [
+                  { id: generateId(), label: "Condition 1" },
+                  { id: generateId(), label: "Default" },
+                ]
+              : undefined,
         branches: [],
       };
 
@@ -1510,6 +1677,12 @@ function SurveyFlowBuilderInner({
               style={toolbarBtnStyle}
             >
               + Multiple Choice
+            </button>
+            <button
+              onClick={() => addQuestion("classifier")}
+              style={toolbarBtnStyle}
+            >
+              + Classifier
             </button>
             <button
               onClick={undo}
