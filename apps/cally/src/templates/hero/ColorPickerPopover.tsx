@@ -14,6 +14,8 @@ interface ColorPickerPopoverProps {
   palette?: ColorPalette;
   customColors?: CustomColor[];
   onCustomColorsChange?: (colors: CustomColor[]) => void;
+  /** Which direction the popover opens. Default "auto" uses a ref to detect space. */
+  popoverDirection?: "up" | "down" | "auto";
 }
 
 export default function ColorPickerPopover({
@@ -22,12 +24,26 @@ export default function ColorPickerPopover({
   palette,
   customColors = [],
   onCustomColorsChange,
+  popoverDirection = "auto",
 }: ColorPickerPopoverProps) {
   const [open, setOpen] = useState(false);
   const [adding, setAdding] = useState(false);
   const [newHex, setNewHex] = useState("#6b7280");
   const [newName, setNewName] = useState("");
+  const [resolvedDir, setResolvedDir] = useState<"up" | "down">("down");
   const popoverRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // Auto-detect direction based on available viewport space
+  useEffect(() => {
+    if (!open || popoverDirection !== "auto" || !triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    // Popover is ~300px tall max; check if there's space above
+    const spaceAbove = rect.top;
+    setResolvedDir(spaceAbove > 320 ? "up" : "down");
+  }, [open, popoverDirection]);
+
+  const dir = popoverDirection === "auto" ? resolvedDir : popoverDirection;
 
   // Close on click outside
   useEffect(() => {
@@ -111,6 +127,7 @@ export default function ColorPickerPopover({
     <div ref={popoverRef} style={{ position: "relative" }}>
       {/* Single clickable swatch */}
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         style={{
@@ -132,10 +149,11 @@ export default function ColorPickerPopover({
         <div
           style={{
             position: "absolute",
-            bottom: "100%",
+            ...(dir === "up"
+              ? { bottom: "100%", marginBottom: "8px" }
+              : { top: "100%", marginTop: "8px" }),
             left: "50%",
             transform: "translateX(-50%)",
-            marginBottom: "8px",
             backgroundColor: "#ffffff",
             borderRadius: "10px",
             boxShadow: "0 4px 20px rgba(0,0,0,0.18)",

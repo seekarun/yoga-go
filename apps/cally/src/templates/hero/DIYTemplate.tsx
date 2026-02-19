@@ -3,8 +3,10 @@
 import type { HeroTemplateProps } from "./types";
 import SectionsRenderer from "./SectionsRenderer";
 import useHeroToolbarState from "./useHeroToolbarState";
-import HeroSectionToolbar from "./HeroSectionToolbar";
+import SectionToolbar from "./SectionToolbar";
+import { HERO_LAYOUT_OPTIONS, bgFilterToCSS } from "./layoutOptions";
 import ResizableText from "./ResizableText";
+import BgDragOverlay from "./BgDragOverlay";
 
 const DEFAULT_OVERLAY = 50;
 const DEFAULT_PADDING_TOP = 40;
@@ -25,10 +27,25 @@ export default function DIYTemplate(props: HeroTemplateProps) {
     onSubtitleChange,
     onButtonClick,
     onHeroStyleOverrideChange,
+    onHeroBgImageClick,
+    onHeroRemoveBg,
+    heroRemovingBg,
+    heroBgRemoved,
+    onHeroUndoRemoveBg,
+    onImageOffsetChange,
+    onImageZoomChange,
     onCustomColorsChange,
   } = props;
-  const { title, subtitle, backgroundImage, imagePosition, imageZoom, button } =
-    config;
+  const {
+    title,
+    subtitle,
+    backgroundImage,
+    imagePosition,
+    imageZoom,
+    button,
+    imageOffsetX,
+    imageOffsetY,
+  } = config;
   const h = config.heroStyleOverrides;
 
   const toolbar = useHeroToolbarState({
@@ -41,6 +58,13 @@ export default function DIYTemplate(props: HeroTemplateProps) {
   const padTop = h?.paddingTop ?? DEFAULT_PADDING_TOP;
   const padBottom = h?.paddingBottom ?? DEFAULT_PADDING_BOTTOM;
 
+  const contentAlign = h?.contentAlign || "center";
+  const alignMap = {
+    left: "flex-start",
+    center: "center",
+    right: "flex-end",
+  } as const;
+
   const containerStyle: React.CSSProperties = {
     minHeight: "100vh",
     width: "100%",
@@ -48,11 +72,11 @@ export default function DIYTemplate(props: HeroTemplateProps) {
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    textAlign: "center",
+    textAlign: contentAlign,
     paddingTop: `${padTop}px`,
     paddingBottom: `${padBottom}px`,
-    paddingLeft: "20px",
-    paddingRight: "20px",
+    paddingLeft: `${h?.paddingLeft ?? 20}px`,
+    paddingRight: `${h?.paddingRight ?? 20}px`,
     position: "relative",
     overflow: "hidden",
     color: "#ffffff",
@@ -62,7 +86,7 @@ export default function DIYTemplate(props: HeroTemplateProps) {
   const backgroundStyle: React.CSSProperties = {
     position: "absolute",
     inset: 0,
-    backgroundColor: backgroundImage ? "#000" : undefined,
+    backgroundColor: undefined,
     backgroundImage: backgroundImage
       ? `linear-gradient(rgba(0, 0, 0, ${overlayAlpha}), rgba(0, 0, 0, ${overlayAlpha})), url(${backgroundImage})`
       : `linear-gradient(135deg, var(--brand-500, #667eea) 0%, var(--brand-600, #764ba2) 100%)`,
@@ -70,8 +94,17 @@ export default function DIYTemplate(props: HeroTemplateProps) {
     backgroundSize: "cover",
     backgroundRepeat: "no-repeat",
     transform: backgroundImage
-      ? `scale(${(imageZoom || 100) / 100})`
+      ? `translate(${imageOffsetX || 0}px, ${imageOffsetY || 0}px) scale(${((imageZoom || 100) / 100) * ((h?.bgBlur ?? 0) > 0 ? 1.05 : 1)})`
       : undefined,
+    filter: backgroundImage
+      ? [
+          (h?.bgBlur ?? 0) > 0 ? `blur(${h!.bgBlur}px)` : "",
+          bgFilterToCSS(h?.bgFilter) || "",
+        ]
+          .filter(Boolean)
+          .join(" ") || undefined
+      : undefined,
+    opacity: backgroundImage ? (h?.bgOpacity ?? 100) / 100 : undefined,
     zIndex: 0,
   };
 
@@ -81,7 +114,8 @@ export default function DIYTemplate(props: HeroTemplateProps) {
     width: "100%",
     display: "flex",
     flexDirection: "column",
-    alignItems: "center",
+    alignItems: alignMap[contentAlign],
+    maxWidth: `${h?.titleMaxWidth ?? DEFAULT_TITLE_MW}px`,
   };
 
   const titleStyle: React.CSSProperties = {
@@ -92,11 +126,12 @@ export default function DIYTemplate(props: HeroTemplateProps) {
     fontFamily:
       h?.titleFontFamily || config.theme?.headerFont?.family || undefined,
     fontStyle: h?.titleFontStyle || undefined,
-    color: h?.titleTextColor || undefined,
+    color: h?.titleTextColor || "#ffffff",
     textAlign: h?.titleTextAlign || undefined,
     marginBottom: "20px",
     lineHeight: 1.1,
     textShadow: "0 2px 10px rgba(0,0,0,0.3)",
+    whiteSpace: "pre-line",
   };
 
   const subtitleStyle: React.CSSProperties = {
@@ -107,11 +142,12 @@ export default function DIYTemplate(props: HeroTemplateProps) {
     fontFamily:
       h?.subtitleFontFamily || config.theme?.bodyFont?.family || undefined,
     fontStyle: h?.subtitleFontStyle || undefined,
-    color: h?.subtitleTextColor || undefined,
+    color: h?.subtitleTextColor || "#ffffff",
     textAlign: h?.subtitleTextAlign || undefined,
     opacity: 0.95,
     lineHeight: 1.6,
     textShadow: "0 1px 5px rgba(0,0,0,0.2)",
+    whiteSpace: "pre-line",
   };
 
   const selectedOutline: React.CSSProperties = {
@@ -152,6 +188,14 @@ export default function DIYTemplate(props: HeroTemplateProps) {
           onClick={toolbar.handleSectionClick}
         >
           <div style={backgroundStyle} />
+          <BgDragOverlay
+            active={toolbar.bgDragActive && isEditing}
+            offsetX={imageOffsetX || 0}
+            offsetY={imageOffsetY || 0}
+            imageZoom={imageZoom || 100}
+            onOffsetChange={onImageOffsetChange}
+            onZoomChange={onImageZoomChange}
+          />
           {isEditing && (
             <style>{`
               [contenteditable]:focus {
@@ -173,24 +217,45 @@ export default function DIYTemplate(props: HeroTemplateProps) {
             <div
               style={{
                 position: "absolute",
-                top: 0,
+                top: 8,
                 left: "50%",
                 zIndex: 50,
               }}
             >
-              <HeroSectionToolbar
+              <SectionToolbar
                 bgColor={h?.bgColor || ""}
                 hasBackgroundImage={!!backgroundImage}
+                bgImage={backgroundImage}
+                bgImageBlur={h?.bgBlur ?? 0}
+                onBgImageBlurChange={toolbar.onBgBlurChange}
+                bgImageOpacity={h?.bgOpacity ?? 100}
+                onBgImageOpacityChange={toolbar.onBgOpacityChange}
                 overlayOpacity={h?.overlayOpacity ?? DEFAULT_OVERLAY}
+                onOverlayOpacityChange={toolbar.onOverlayOpacityChange}
+                bgFilter={h?.bgFilter}
+                onBgFilterChange={toolbar.onBgFilterChange}
+                onRemoveBgClick={onHeroRemoveBg}
+                removingBg={heroRemovingBg}
+                bgRemoved={heroBgRemoved}
+                onUndoRemoveBg={onHeroUndoRemoveBg}
+                bgDragActive={toolbar.bgDragActive}
+                onBgDragToggle={toolbar.toggleBgDrag}
+                onBgImageClick={onHeroBgImageClick}
                 paddingTop={padTop}
                 paddingBottom={padBottom}
+                paddingLeft={h?.paddingLeft ?? 20}
+                paddingRight={h?.paddingRight ?? 20}
+                onPaddingLeftChange={toolbar.onPaddingLeftChange}
+                onPaddingRightChange={toolbar.onPaddingRightChange}
                 palette={config.theme?.palette}
                 customColors={config.customColors}
                 onBgColorChange={toolbar.onBgColorChange}
-                onOverlayOpacityChange={toolbar.onOverlayOpacityChange}
                 onPaddingTopChange={toolbar.onPaddingTopChange}
                 onPaddingBottomChange={toolbar.onPaddingBottomChange}
                 onCustomColorsChange={onCustomColorsChange}
+                layoutOptions={HERO_LAYOUT_OPTIONS}
+                currentLayout={contentAlign}
+                onLayoutChange={toolbar.onContentAlignChange}
               />
             </div>
           )}

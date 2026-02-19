@@ -49,7 +49,11 @@
     "mobile:start": "npm run start -w yoga-mobile",
     "mobile:ios": "npm run ios -w yoga-mobile",
     "mobile:android": "npm run android -w yoga-mobile",
-    "mobile:typecheck": "npm run typecheck -w yoga-mobile"
+    "mobile:typecheck": "npm run typecheck -w yoga-mobile",
+    "cally-mobile:start": "npm run start -w cally-mobile",
+    "cally-mobile:ios": "npm run ios -w cally-mobile",
+    "cally-mobile:android": "npm run android -w cally-mobile",
+    "cally-mobile:typecheck": "npm run typecheck -w cally-mobile"
   },
   "lint-staged": {
     "apps/**/*.{js,jsx,ts,tsx,json,css,md}": [

@@ -20,6 +20,7 @@ import {
   isLandingPageConfigV2,
   migrateToV2,
   createDefaultSection,
+  getAvailableTemplates,
 } from "@/types/landing-page";
 import { ImageEditorOverlay, ButtonEditorOverlay } from "@core/components";
 import SectionRenderer from "../sections/SectionRenderer";
@@ -46,6 +47,10 @@ export default function ComposableLandingPageEditor({
   const [error, setError] = useState("");
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [showSavedIndicator, setShowSavedIndicator] = useState(false);
+
+  // Dev mode detection — show all templates on localhost
+  const isDev =
+    typeof window !== "undefined" && window.location.hostname === "localhost";
 
   // Publish state
   const [isPublished, setIsPublished] = useState(false);
@@ -825,7 +830,7 @@ export default function ComposableLandingPageEditor({
             </button>
           </div>
           <div className="grid grid-cols-5 gap-3">
-            {TEMPLATES.map((template) => (
+            {getAvailableTemplates(isDev).map((template) => (
               <button
                 key={template.id}
                 onClick={() => handleTemplateChange(template.id)}

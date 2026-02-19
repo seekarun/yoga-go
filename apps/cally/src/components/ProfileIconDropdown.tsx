@@ -8,6 +8,7 @@ import TimezoneSelector from "./TimezoneSelector";
 
 interface ProfileIconDropdownProps {
   tenantId: string;
+  inline?: boolean;
 }
 
 /**
@@ -16,6 +17,7 @@ interface ProfileIconDropdownProps {
  */
 export default function ProfileIconDropdown({
   tenantId,
+  inline = false,
 }: ProfileIconDropdownProps) {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -40,7 +42,7 @@ export default function ProfileIconDropdown({
   // Show "Sign In" link for guests
   if (!isAuthenticated || !user) {
     return (
-      <div className="fixed top-4 right-4 z-40">
+      <div className={inline ? "relative" : "fixed top-4 right-4 z-40"}>
         <a
           href={`/${tenantId}/signup?mode=signin`}
           className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-white/20 backdrop-blur-sm rounded-full hover:bg-white/30 transition-colors shadow-lg"
@@ -61,7 +63,10 @@ export default function ProfileIconDropdown({
     : "?";
 
   return (
-    <div ref={dropdownRef} className="fixed top-4 right-4 z-40">
+    <div
+      ref={dropdownRef}
+      className={inline ? "relative" : "fixed top-4 right-4 z-40"}
+    >
       {/* Avatar button */}
       <button
         type="button"

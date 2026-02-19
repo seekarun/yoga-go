@@ -33,6 +33,7 @@ export interface Email extends BaseEntity {
   from: EmailAddress;
   to: EmailAddress[];
   cc?: EmailAddress[];
+  bcc?: EmailAddress[];
   subject: string;
   bodyText: string;
   bodyHtml?: string;
@@ -45,6 +46,9 @@ export interface Email extends BaseEntity {
   errorMessage?: string;
   isDeleted?: boolean;
   deletedAt?: string;
+  isArchived?: boolean;
+  archivedAt?: string;
+  labels?: string[];
   ttl?: number;
 }
 
@@ -75,6 +79,62 @@ export interface EmailFilters {
   unreadOnly?: boolean;
   starredOnly?: boolean;
   search?: string;
+  folder?: "inbox" | "sent" | "trash" | "archive";
+  labelId?: string;
+  from?: string;
+  to?: string;
+  hasAttachment?: boolean;
+  after?: string;
+  before?: string;
   limit?: number;
   lastKey?: string;
+}
+
+/**
+ * Email draft
+ */
+export interface EmailDraft {
+  id: string;
+  expertId: string;
+  to: EmailAddress[];
+  cc?: EmailAddress[];
+  bcc?: EmailAddress[];
+  subject: string;
+  bodyText: string;
+  bodyHtml?: string;
+  attachments?: EmailAttachment[];
+  mode: "compose" | "reply" | "reply-all" | "forward";
+  replyToEmailId?: string;
+  forwardOfEmailId?: string;
+  lastSavedAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Email draft list result
+ */
+export interface EmailDraftListResult {
+  drafts: EmailDraft[];
+  totalCount: number;
+}
+
+/**
+ * Email signature config
+ */
+export interface EmailSignatureConfig {
+  text: string;
+  html: string;
+  enabled: boolean;
+}
+
+/**
+ * Email label for organizing emails
+ */
+export interface EmailLabel {
+  id: string;
+  name: string;
+  color: string;
+  createdAt: string;
+  updatedAt: string;
 }

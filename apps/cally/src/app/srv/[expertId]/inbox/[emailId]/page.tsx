@@ -4,7 +4,10 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import DOMPurify from "dompurify";
-import type { EmailAttachment, EmailWithThread } from "@/types";
+import type { EmailAttachment, EmailWithThread, Email } from "@/types";
+import EmailComposer, {
+  type ComposerMode,
+} from "@/components/inbox/EmailComposer";
 
 interface ReplyAttachment {
   file: File;
@@ -27,12 +30,14 @@ export default function EmailDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showReply, setShowReply] = useState(false);
+  const [replyMode, setReplyMode] = useState<ComposerMode>("reply");
   const [replyText, setReplyText] = useState("");
   const [replySending, setReplySending] = useState(false);
   const [replyError, setReplyError] = useState<string | null>(null);
   const [replyAttachments, setReplyAttachments] = useState<ReplyAttachment[]>(
     [],
   );
+  const [showComposer, setShowComposer] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchEmail = useCallback(async () => {
@@ -137,7 +142,6 @@ export default function EmailDetailPage() {
     att: ReplyAttachment,
   ): Promise<{ s3Key: string; attachmentId: string } | null> => {
     try {
-      // Get presigned upload URL
       const res = await fetch("/api/data/app/inbox/attachments/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -148,12 +152,8 @@ export default function EmailDetailPage() {
         }),
       });
       const data = await res.json();
-      if (!data.success) {
-        console.error("[DBG][email-detail] Upload URL failed:", data.error);
-        return null;
-      }
+      if (!data.success) return null;
 
-      // Upload file to S3 via presigned URL
       const uploadRes = await fetch(data.data.uploadUrl, {
         method: "PUT",
         headers: {
@@ -162,14 +162,7 @@ export default function EmailDetailPage() {
         body: att.file,
       });
 
-      if (!uploadRes.ok) {
-        console.error(
-          "[DBG][email-detail] S3 upload failed:",
-          uploadRes.status,
-        );
-        return null;
-      }
-
+      if (!uploadRes.ok) return null;
       return { s3Key: data.data.s3Key, attachmentId: data.data.attachmentId };
     } catch (err) {
       console.error("[DBG][email-detail] Upload error:", err);
@@ -183,9 +176,7 @@ export default function EmailDetailPage() {
     try {
       setReplySending(true);
       setReplyError(null);
-      console.log("[DBG][email-detail] Sending reply for email:", emailId);
 
-      // Upload attachments to S3 first
       const uploadedAttachments: Array<{
         filename: string;
         contentType: string;
@@ -238,7 +229,6 @@ export default function EmailDetailPage() {
         setReplyText("");
         setReplyAttachments([]);
         setShowReply(false);
-        // Re-fetch to show updated thread
         await fetchEmail();
       } else {
         setReplyError(data.error || "Failed to send reply");
@@ -248,6 +238,50 @@ export default function EmailDetailPage() {
       setReplyError("Failed to send reply");
     } finally {
       setReplySending(false);
+    }
+  };
+
+  const openComposer = (mode: ComposerMode) => {
+    setReplyMode(mode);
+    setShowComposer(true);
+    setShowReply(false);
+  };
+
+  const getComposerInitialData = () => {
+    if (!email) return {};
+
+    const lastIncoming = email.threadMessages?.length
+      ? [...email.threadMessages].reverse().find((m) => !m.isOutgoing)
+      : undefined;
+    const replyTo = lastIncoming || email;
+
+    switch (replyMode) {
+      case "reply":
+        return {
+          initialTo: [replyTo.from],
+          initialSubject: email.subject.startsWith("Re: ")
+            ? email.subject
+            : `Re: ${email.subject}`,
+        };
+      case "reply-all": {
+        const allRecipients = [...(replyTo.to || []), ...(replyTo.cc || [])];
+        return {
+          initialTo: [replyTo.from],
+          initialCc: allRecipients.length > 0 ? allRecipients : undefined,
+          initialSubject: email.subject.startsWith("Re: ")
+            ? email.subject
+            : `Re: ${email.subject}`,
+        };
+      }
+      case "forward":
+        return {
+          initialSubject: email.subject.startsWith("Fwd: ")
+            ? email.subject
+            : `Fwd: ${email.subject}`,
+          initialBody: `\n\n---------- Forwarded message ----------\nFrom: ${email.from.name || ""} <${email.from.email}>\nDate: ${email.receivedAt}\nSubject: ${email.subject}\n\n${email.bodyText}`,
+        };
+      default:
+        return {};
     }
   };
 
@@ -267,6 +301,21 @@ export default function EmailDetailPage() {
     if (bytes < 1024) return bytes + " B";
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
     return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  };
+
+  const renderRecipients = (msg: Email) => {
+    return (
+      <div className="text-xs text-gray-500 mt-0.5">
+        {msg.cc && msg.cc.length > 0 && (
+          <span>CC: {msg.cc.map((a) => a.name || a.email).join(", ")}</span>
+        )}
+        {msg.bcc && msg.bcc.length > 0 && (
+          <span className="ml-2">
+            BCC: {msg.bcc.map((a) => a.name || a.email).join(", ")}
+          </span>
+        )}
+      </div>
+    );
   };
 
   if (loading) {
@@ -290,6 +339,28 @@ export default function EmailDetailPage() {
             Back to Inbox
           </Link>
         </div>
+      </div>
+    );
+  }
+
+  // Show full composer overlay for reply-all/forward
+  if (showComposer) {
+    const composerData = getComposerInitialData();
+    return (
+      <div className="px-6 lg:px-8 py-6">
+        <EmailComposer
+          mode={replyMode}
+          originalEmailId={emailId}
+          initialTo={composerData.initialTo}
+          initialCc={composerData.initialCc}
+          initialSubject={composerData.initialSubject}
+          initialBody={composerData.initialBody}
+          onSent={() => {
+            setShowComposer(false);
+            fetchEmail();
+          }}
+          onCancel={() => setShowComposer(false)}
+        />
       </div>
     );
   }
@@ -389,6 +460,7 @@ export default function EmailDetailPage() {
                         <p className="text-xs text-gray-500">
                           {formatDate(msg.receivedAt)}
                         </p>
+                        {renderRecipients(msg)}
                       </div>
                     </div>
                     {msg.isOutgoing && (
@@ -477,6 +549,7 @@ export default function EmailDetailPage() {
                             ? `From: ${email.from.email}`
                             : email.from.email}
                         </p>
+                        {renderRecipients(email)}
                       </div>
                     </div>
                     <p className="text-sm text-gray-500 mt-2">
@@ -563,82 +636,151 @@ export default function EmailDetailPage() {
           )}
         </div>
 
-        {/* Reply Section */}
-        {(() => {
-          // Determine reply recipient: last incoming sender in thread, or email sender
-          const replyTo = email.threadMessages?.length
-            ? (() => {
-                const lastIncoming = [...email.threadMessages]
-                  .reverse()
-                  .find((m) => !m.isOutgoing);
-                return lastIncoming?.from || email.from;
-              })()
-            : email.from;
-
-          return (
-            <div className="mt-4">
-              {!showReply ? (
-                <button
-                  onClick={() => setShowReply(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-medium"
+        {/* Reply Action Buttons */}
+        <div className="mt-4">
+          {!showReply ? (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setShowReply(true);
+                  setReplyMode("reply");
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-medium"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                 >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
-                    />
-                  </svg>
-                  Reply
-                </button>
-              ) : (
-                <div className="bg-white rounded-lg shadow p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <svg
-                      className="w-4 h-4 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
-                      />
-                    </svg>
-                    <span className="text-sm text-gray-500">
-                      Replying to{" "}
-                      <strong className="text-gray-700">
-                        {replyTo.name || replyTo.email}
-                      </strong>
-                    </span>
-                  </div>
-                  <textarea
-                    value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
-                    placeholder="Type your reply..."
-                    rows={5}
-                    className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent resize-y"
-                    disabled={replySending}
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
                   />
+                </svg>
+                Reply
+              </button>
+              <button
+                onClick={() => openComposer("reply-all")}
+                className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+                  />
+                </svg>
+                Reply All
+              </button>
+              <button
+                onClick={() => openComposer("forward")}
+                className="flex items-center gap-2 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 7l5 5m0 0l-5 5m5-5H6"
+                  />
+                </svg>
+                Forward
+              </button>
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg shadow p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <svg
+                  className="w-4 h-4 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+                  />
+                </svg>
+                <span className="text-sm text-gray-500">
+                  Replying to{" "}
+                  <strong className="text-gray-700">
+                    {(() => {
+                      const replyTo = email.threadMessages?.length
+                        ? (() => {
+                            const lastIncoming = [...email.threadMessages]
+                              .reverse()
+                              .find((m) => !m.isOutgoing);
+                            return lastIncoming?.from || email.from;
+                          })()
+                        : email.from;
+                      return replyTo.name || replyTo.email;
+                    })()}
+                  </strong>
+                </span>
+              </div>
+              <textarea
+                value={replyText}
+                onChange={(e) => setReplyText(e.target.value)}
+                placeholder="Type your reply..."
+                rows={5}
+                className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent resize-y"
+                disabled={replySending}
+              />
 
-                  {/* Attachment chips */}
-                  {replyAttachments.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {replyAttachments.map((att, idx) => (
-                        <div
-                          key={`${att.file.name}-${idx}`}
-                          className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-100 rounded-lg text-xs"
+              {/* Attachment chips */}
+              {replyAttachments.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {replyAttachments.map((att, idx) => (
+                    <div
+                      key={`${att.file.name}-${idx}`}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 bg-gray-100 rounded-lg text-xs"
+                    >
+                      <svg
+                        className="w-3.5 h-3.5 text-gray-400 flex-shrink-0"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                        />
+                      </svg>
+                      <span className="truncate max-w-[120px] text-gray-700">
+                        {att.file.name}
+                      </span>
+                      <span className="text-gray-400">
+                        ({formatFileSize(att.file.size)})
+                      </span>
+                      {att.uploading && (
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-500" />
+                      )}
+                      {!replySending && (
+                        <button
+                          onClick={() => handleRemoveAttachment(idx)}
+                          className="ml-0.5 text-gray-400 hover:text-red-500 transition-colors"
+                          type="button"
                         >
                           <svg
-                            className="w-3.5 h-3.5 text-gray-400 flex-shrink-0"
+                            className="w-3.5 h-3.5"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -647,71 +789,82 @@ export default function EmailDetailPage() {
                               strokeLinecap="round"
                               strokeLinejoin="round"
                               strokeWidth={2}
-                              d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                              d="M6 18L18 6M6 6l12 12"
                             />
                           </svg>
-                          <span className="truncate max-w-[120px] text-gray-700">
-                            {att.file.name}
-                          </span>
-                          <span className="text-gray-400">
-                            ({formatFileSize(att.file.size)})
-                          </span>
-                          {att.uploading && (
-                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-500" />
-                          )}
-                          {!replySending && (
-                            <button
-                              onClick={() => handleRemoveAttachment(idx)}
-                              className="ml-0.5 text-gray-400 hover:text-red-500 transition-colors"
-                              type="button"
-                            >
-                              <svg
-                                className="w-3.5 h-3.5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M6 18L18 6M6 6l12 12"
-                                />
-                              </svg>
-                            </button>
-                          )}
-                        </div>
-                      ))}
+                        </button>
+                      )}
                     </div>
-                  )}
+                  ))}
+                </div>
+              )}
 
-                  {replyError && (
-                    <p className="text-sm text-red-600 mt-2">{replyError}</p>
-                  )}
-                  <div className="flex items-center justify-between mt-3">
-                    {/* Attach file button */}
-                    <div>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        multiple
-                        className="hidden"
-                        onChange={(e) => handleAddFiles(e.target.files)}
-                        disabled={
-                          replySending ||
-                          replyAttachments.length >= MAX_ATTACHMENTS
-                        }
+              {replyError && (
+                <p className="text-sm text-red-600 mt-2">{replyError}</p>
+              )}
+              <div className="flex items-center justify-between mt-3">
+                {/* Attach file button */}
+                <div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => handleAddFiles(e.target.files)}
+                    disabled={
+                      replySending || replyAttachments.length >= MAX_ATTACHMENTS
+                    }
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={
+                      replySending || replyAttachments.length >= MAX_ATTACHMENTS
+                    }
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    type="button"
+                    title={`Attach files (max ${MAX_ATTACHMENTS}, 10MB each)`}
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
                       />
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={
-                          replySending ||
-                          replyAttachments.length >= MAX_ATTACHMENTS
-                        }
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        type="button"
-                        title={`Attach files (max ${MAX_ATTACHMENTS}, 10MB each)`}
-                      >
+                    </svg>
+                    Attach
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setShowReply(false);
+                      setReplyText("");
+                      setReplyError(null);
+                      setReplyAttachments([]);
+                    }}
+                    className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                    disabled={replySending}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleReply}
+                    disabled={replySending || !replyText.trim()}
+                    className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {replySending ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
                         <svg
                           className="w-4 h-4"
                           fill="none"
@@ -722,61 +875,18 @@ export default function EmailDetailPage() {
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             strokeWidth={2}
-                            d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                            d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
                           />
                         </svg>
-                        Attach
-                      </button>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => {
-                          setShowReply(false);
-                          setReplyText("");
-                          setReplyError(null);
-                          setReplyAttachments([]);
-                        }}
-                        className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
-                        disabled={replySending}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={handleReply}
-                        disabled={replySending || !replyText.trim()}
-                        className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                      >
-                        {replySending ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                            Sending...
-                          </>
-                        ) : (
-                          <>
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-                              />
-                            </svg>
-                            Send Reply
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
+                        Send Reply
+                      </>
+                    )}
+                  </button>
                 </div>
-              )}
+              </div>
             </div>
-          );
-        })()}
+          )}
+        </div>
       </div>
     </>
   );

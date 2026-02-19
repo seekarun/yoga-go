@@ -5,6 +5,8 @@ import { useRef, useLayoutEffect, type ReactNode } from "react";
 interface ToolbarContainerProps {
   children: ReactNode;
   zIndex?: number;
+  /** "above" (default) renders above the anchor; "below" renders below it */
+  placement?: "above" | "below";
 }
 
 /**
@@ -15,6 +17,7 @@ interface ToolbarContainerProps {
 export default function ToolbarContainer({
   children,
   zIndex = 50,
+  placement = "above",
 }: ToolbarContainerProps) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -42,10 +45,11 @@ export default function ToolbarContainer({
       ref={ref}
       style={{
         position: "absolute",
-        bottom: "100%",
+        ...(placement === "below"
+          ? { top: "100%", marginTop: "12px" }
+          : { bottom: "100%", marginBottom: "12px" }),
         left: "50%",
         transform: "translateX(-50%)",
-        marginBottom: "12px",
         backgroundColor: "#ffffff",
         borderRadius: "10px",
         boxShadow: "0 2px 12px rgba(0,0,0,0.15)",

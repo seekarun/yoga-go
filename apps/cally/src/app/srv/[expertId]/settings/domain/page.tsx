@@ -9,6 +9,7 @@ import type {
   EmailConfig,
   DomainStatusResponse,
   TenantDnsRecord,
+  EmailSignatureConfig,
 } from "@/types";
 
 type DomainTab = "search" | "byod";
@@ -73,6 +74,13 @@ export default function DomainSettingsPage() {
   const [emailDnsRecords, setEmailDnsRecords] = useState<TenantDnsRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<DomainTab>("search");
+  const [signature, setSignature] = useState<EmailSignatureConfig>({
+    text: "",
+    html: "",
+    enabled: false,
+  });
+  const [sigSaving, setSigSaving] = useState(false);
+  const [sigMessage, setSigMessage] = useState<string | null>(null);
 
   // Fetch domain status
   const fetchStatus = useCallback(async () => {
@@ -99,6 +107,17 @@ export default function DomainSettingsPage() {
         }
       } else {
         setError(data.error || "Failed to load domain status");
+      }
+
+      // Fetch signature config
+      try {
+        const sigRes = await fetch("/api/data/app/inbox/signature");
+        const sigData = await sigRes.json();
+        if (sigData.success && sigData.data) {
+          setSignature(sigData.data);
+        }
+      } catch {
+        // Signature fetch failed, use defaults
       }
     } catch (err) {
       console.error("[DBG][DomainSettingsPage] Error fetching status:", err);
@@ -214,6 +233,30 @@ export default function DomainSettingsPage() {
     setEmailDnsRecords([]);
   };
 
+  const handleSaveSignature = async () => {
+    setSigSaving(true);
+    setSigMessage(null);
+    try {
+      const res = await fetch("/api/data/app/inbox/signature", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(signature),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSignature(data.data);
+        setSigMessage("Signature saved");
+        setTimeout(() => setSigMessage(null), 3000);
+      } else {
+        setSigMessage("Failed to save signature");
+      }
+    } catch {
+      setSigMessage("Failed to save signature");
+    } finally {
+      setSigSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-6">
@@ -324,6 +367,87 @@ export default function DomainSettingsPage() {
               onDisableEmail={handleDisableEmail}
             />
           )}
+        </div>
+
+        {/* Email Signature Section */}
+        <div className="mt-8">
+          <h2 className="text-lg font-semibold text-[var(--text-main)] mb-4">
+            Email Signature
+          </h2>
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm text-[var(--text-muted)]">
+                Automatically append a signature to outgoing emails.
+              </p>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={signature.enabled}
+                  onChange={(e) =>
+                    setSignature((s) => ({ ...s, enabled: e.target.checked }))
+                  }
+                  className="w-4 h-4 text-[var(--color-primary)] rounded focus:ring-[var(--color-primary)]"
+                />
+                <span className="text-sm text-gray-700">Enabled</span>
+              </label>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Signature Text
+                </label>
+                <textarea
+                  value={signature.text}
+                  onChange={(e) =>
+                    setSignature((s) => ({
+                      ...s,
+                      text: e.target.value,
+                      html: e.target.value.replace(/\n/g, "<br>"),
+                    }))
+                  }
+                  rows={4}
+                  placeholder="e.g. John Smith&#10;CEO, Acme Inc.&#10;(555) 123-4567"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent resize-y"
+                />
+              </div>
+
+              {signature.text && (
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Preview:</p>
+                  <div className="border border-gray-100 rounded-lg p-3 bg-gray-50">
+                    <div
+                      className="text-sm text-gray-600 border-t border-gray-300 pt-2"
+                      style={{ whiteSpace: "pre-line" }}
+                    >
+                      {signature.text}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleSaveSignature}
+                  disabled={sigSaving}
+                  className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90 text-sm font-medium disabled:opacity-50"
+                >
+                  {sigSaving ? "Saving..." : "Save Signature"}
+                </button>
+                {sigMessage && (
+                  <span
+                    className={`text-sm ${
+                      sigMessage.includes("Failed")
+                        ? "text-red-600"
+                        : "text-green-600"
+                    }`}
+                  >
+                    {sigMessage}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

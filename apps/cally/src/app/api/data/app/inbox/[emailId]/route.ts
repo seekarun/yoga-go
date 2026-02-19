@@ -11,8 +11,12 @@ import { getTenantByUserId } from "@/lib/repositories/tenantRepository";
 import {
   findEmailById,
   updateEmailStatus,
+  updateEmailLabels,
   deleteEmail,
   getEmailThread,
+  archiveEmail,
+  unarchiveEmail,
+  restoreEmail,
 } from "@/lib/repositories/emailRepository";
 import type { EmailWithThread } from "@/types";
 
@@ -116,8 +120,58 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     // Parse request body
     const body = await request.json();
-    const { isRead, isStarred } = body;
+    const { isRead, isStarred, isArchived, labels, action } = body;
 
+    // Handle restore action (reverses soft delete)
+    if (action === "restore") {
+      await restoreEmail(
+        emailId,
+        tenant.id,
+        existingEmail.receivedAt,
+        existingEmail.threadId,
+      );
+      console.log("[DBG][inbox/emailId] Restored email:", emailId);
+      return NextResponse.json({
+        success: true,
+        message: "Email restored",
+      });
+    }
+
+    // Handle archive/unarchive
+    if (isArchived !== undefined) {
+      if (isArchived) {
+        await archiveEmail(emailId, tenant.id, existingEmail.receivedAt);
+      } else {
+        await unarchiveEmail(emailId, tenant.id, existingEmail.receivedAt);
+      }
+      console.log(
+        "[DBG][inbox/emailId]",
+        isArchived ? "Archived" : "Unarchived",
+        "email:",
+        emailId,
+      );
+      return NextResponse.json({
+        success: true,
+        message: isArchived ? "Email archived" : "Email unarchived",
+      });
+    }
+
+    // Handle labels update
+    if (labels !== undefined && Array.isArray(labels)) {
+      const updated = await updateEmailLabels(
+        emailId,
+        tenant.id,
+        existingEmail.receivedAt,
+        labels,
+      );
+      console.log("[DBG][inbox/emailId] Updated labels for email:", emailId);
+      return NextResponse.json({
+        success: true,
+        data: updated,
+      });
+    }
+
+    // Handle read/starred updates
     const updatedEmail = await updateEmailStatus(
       emailId,
       tenant.id,

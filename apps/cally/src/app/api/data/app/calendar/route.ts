@@ -17,6 +17,7 @@ import type {
 } from "@/types";
 import { auth } from "@/auth";
 import { getTenantByUserId } from "@/lib/repositories/tenantRepository";
+import { getMobileSession } from "@/lib/mobile-auth";
 import * as calendarEventRepository from "@/lib/repositories/calendarEventRepository";
 import { createHmsRoomForEvent } from "@/lib/100ms-meeting";
 import { is100msConfigured } from "@/lib/100ms-auth";
@@ -50,15 +51,25 @@ export async function GET(request: Request) {
   console.log("[DBG][calendar] GET called");
 
   try {
-    const session = await auth();
-    if (!session?.user?.cognitoSub) {
+    // Check auth — try Bearer token first (mobile), fall back to cookie (web)
+    let cognitoSub: string | undefined;
+
+    const mobileSession = await getMobileSession(request);
+    if (mobileSession) {
+      cognitoSub = mobileSession.cognitoSub;
+    } else {
+      const session = await auth();
+      cognitoSub = session?.user?.cognitoSub;
+    }
+
+    if (!cognitoSub) {
       return NextResponse.json<ApiResponse<CalendarItem[]>>(
         { success: false, error: "Unauthorized" },
         { status: 401 },
       );
     }
 
-    const tenant = await getTenantByUserId(session.user.cognitoSub);
+    const tenant = await getTenantByUserId(cognitoSub);
     if (!tenant) {
       return NextResponse.json<ApiResponse<CalendarItem[]>>(
         { success: false, error: "Tenant not found" },

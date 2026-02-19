@@ -6,7 +6,9 @@ import type { SimpleLandingPageConfig } from "@/types/landing-page";
 import type { Product } from "@/types";
 import HeroTemplateRenderer from "@/templates/hero";
 import { LandingPageThemeProvider } from "@/templates/hero/ThemeProvider";
-import ProfileIconDropdown from "@/components/ProfileIconDropdown";
+import LandingPageHeader, {
+  SECTION_NAV_LABELS,
+} from "@/components/landing-page/LandingPageHeader";
 import BookingWidget from "@/components/booking/BookingWidget";
 import SurveyOverlay from "@/components/landing-page/SurveyOverlay";
 
@@ -16,6 +18,8 @@ interface LandingPageRendererProps {
   products?: Product[];
   currency?: string;
   address?: string;
+  logo?: string;
+  tenantName: string;
 }
 
 declare const CallyEmbed:
@@ -33,6 +37,8 @@ export default function LandingPageRenderer({
   products,
   currency,
   address,
+  logo,
+  tenantName,
 }: LandingPageRendererProps) {
   const searchParams = useSearchParams();
   const hasWaitlistParam = !!searchParams.get("waitlist");
@@ -109,16 +115,28 @@ export default function LandingPageRenderer({
       headerFont={config.theme?.headerFont}
       bodyFont={config.theme?.bodyFont}
     >
-      <ProfileIconDropdown tenantId={tenantId} />
-      <HeroTemplateRenderer
-        config={config}
-        isEditing={false}
-        onButtonClick={handleButtonClick}
-        products={products}
-        currency={currency}
-        onBookProduct={handleBookProduct}
-        address={address}
+      <LandingPageHeader
+        logo={logo}
+        tenantName={tenantName}
+        sections={(config.sections || [])
+          .filter((s) => s.enabled)
+          .map((s) => ({
+            id: s.id,
+            label: SECTION_NAV_LABELS[s.id] || s.id,
+          }))}
+        tenantId={tenantId}
       />
+      <div id="section-hero">
+        <HeroTemplateRenderer
+          config={config}
+          isEditing={false}
+          onButtonClick={handleButtonClick}
+          products={products}
+          currency={currency}
+          onBookProduct={handleBookProduct}
+          address={address}
+        />
+      </div>
       <BookingWidget
         tenantId={tenantId}
         isOpen={bookingOpen}

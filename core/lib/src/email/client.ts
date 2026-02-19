@@ -28,6 +28,8 @@ export function createEmailClient(config: EmailClientConfig): EmailClient {
     async sendEmail(options: EmailOptions): Promise<string | undefined> {
       const {
         to,
+        cc,
+        bcc,
         from = fromEmail,
         subject,
         text,
@@ -37,6 +39,12 @@ export function createEmailClient(config: EmailClientConfig): EmailClient {
       } = options;
 
       const recipients = Array.isArray(to) ? to : [to];
+      const ccRecipients = cc ? (Array.isArray(cc) ? cc : [cc]) : undefined;
+      const bccRecipients = bcc
+        ? Array.isArray(bcc)
+          ? bcc
+          : [bcc]
+        : undefined;
 
       console.log(
         `[DBG][core-email] Sending email to ${recipients.join(", ")}`,
@@ -47,6 +55,12 @@ export function createEmailClient(config: EmailClientConfig): EmailClient {
         Source: from,
         Destination: {
           ToAddresses: recipients,
+          ...(ccRecipients && ccRecipients.length > 0
+            ? { CcAddresses: ccRecipients }
+            : {}),
+          ...(bccRecipients && bccRecipients.length > 0
+            ? { BccAddresses: bccRecipients }
+            : {}),
         },
         Message: {
           Subject: {
@@ -102,15 +116,21 @@ export function createEmailClient(config: EmailClientConfig): EmailClient {
     async sendRawEmail(options: RawEmailOptions): Promise<string | undefined> {
       const {
         to,
+        cc,
+        bcc,
         from = fromEmail,
         subject,
         text,
         html,
         replyTo,
+        inReplyTo,
+        references,
         attachments = [],
       } = options;
 
       const recipients = Array.isArray(to) ? to : [to];
+      const ccRecipients = cc ? (Array.isArray(cc) ? cc : [cc]) : [];
+      const bccRecipients = bcc ? (Array.isArray(bcc) ? bcc : [bcc]) : [];
       const boundary = `----=_Part_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
       console.log(
@@ -121,9 +141,19 @@ export function createEmailClient(config: EmailClientConfig): EmailClient {
       const lines: string[] = [];
       lines.push(`From: ${from}`);
       lines.push(`To: ${recipients.join(", ")}`);
+      if (ccRecipients.length > 0) {
+        lines.push(`Cc: ${ccRecipients.join(", ")}`);
+      }
+      // BCC recipients are NOT added to MIME headers, only to Destinations
       lines.push(`Subject: ${subject}`);
       if (replyTo && replyTo.length > 0) {
         lines.push(`Reply-To: ${replyTo.join(", ")}`);
+      }
+      if (inReplyTo) {
+        lines.push(`In-Reply-To: ${inReplyTo}`);
+      }
+      if (references && references.length > 0) {
+        lines.push(`References: ${references.join(" ")}`);
       }
       lines.push("MIME-Version: 1.0");
       lines.push(`Content-Type: multipart/mixed; boundary="${boundary}"`);
@@ -173,10 +203,18 @@ export function createEmailClient(config: EmailClientConfig): EmailClient {
 
       const rawMessage = lines.join("\r\n");
 
+      // Include all recipients (to + cc + bcc) in Destinations
+      const allDestinations = [
+        ...recipients,
+        ...ccRecipients,
+        ...bccRecipients,
+      ];
+
       const command = new SendRawEmailCommand({
         RawMessage: {
           Data: Buffer.from(rawMessage),
         },
+        Destinations: allDestinations,
       });
 
       try {

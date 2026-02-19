@@ -10,8 +10,10 @@ import LocationSection from "./LocationSection";
 import GallerySection from "./GallerySection";
 import FooterSection from "./FooterSection";
 import useHeroToolbarState from "./useHeroToolbarState";
-import HeroSectionToolbar from "./HeroSectionToolbar";
+import SectionToolbar from "./SectionToolbar";
+import { HERO_LAYOUT_OPTIONS, bgFilterToCSS } from "./layoutOptions";
 import ResizableText from "./ResizableText";
+import BgDragOverlay from "./BgDragOverlay";
 
 /**
  * Bayside Template
@@ -60,6 +62,13 @@ export default function BaysideTemplate(props: HeroTemplateProps) {
     onProductsBgImageClick,
     onCustomColorsChange,
     onHeroStyleOverrideChange,
+    onHeroBgImageClick,
+    onHeroRemoveBg,
+    heroRemovingBg,
+    heroBgRemoved,
+    onHeroUndoRemoveBg,
+    onImageOffsetChange,
+    onImageZoomChange,
     onTestimonialsHeadingChange,
     onTestimonialsSubheadingChange,
     onTestimonialChange,
@@ -82,8 +91,16 @@ export default function BaysideTemplate(props: HeroTemplateProps) {
     onAddFooterLink,
     onRemoveFooterLink,
   } = props;
-  const { title, subtitle, backgroundImage, imagePosition, imageZoom, button } =
-    config;
+  const {
+    title,
+    subtitle,
+    backgroundImage,
+    imagePosition,
+    imageZoom,
+    imageOffsetX,
+    imageOffsetY,
+    button,
+  } = config;
 
   const hasImage = !!backgroundImage;
 
@@ -97,6 +114,7 @@ export default function BaysideTemplate(props: HeroTemplateProps) {
 
   const padTop = h?.paddingTop ?? 80;
   const padBottom = h?.paddingBottom ?? 80;
+  const contentAlign = h?.contentAlign || "left";
 
   const sections = config.sections || [
     { id: "about" as const, enabled: true },
@@ -130,9 +148,11 @@ export default function BaysideTemplate(props: HeroTemplateProps) {
     fontStyle: h?.titleFontStyle || undefined,
     lineHeight: 1.1,
     color: h?.titleTextColor || darkText,
-    textAlign: h?.titleTextAlign || undefined,
+    textAlign:
+      h?.titleTextAlign || (contentAlign as React.CSSProperties["textAlign"]),
     margin: 0,
     marginBottom: "24px",
+    whiteSpace: "pre-line",
   };
 
   const subtitleStyle: React.CSSProperties = {
@@ -144,12 +164,15 @@ export default function BaysideTemplate(props: HeroTemplateProps) {
     fontWeight: h?.subtitleFontWeight === "bold" ? 700 : 500,
     fontStyle: h?.subtitleFontStyle || undefined,
     color: h?.subtitleTextColor || "#666",
-    textAlign: h?.subtitleTextAlign || undefined,
+    textAlign:
+      h?.subtitleTextAlign ||
+      (contentAlign as React.CSSProperties["textAlign"]),
     textTransform: "uppercase",
     letterSpacing: "0.1em",
     lineHeight: 1.6,
     margin: 0,
     marginBottom: "40px",
+    whiteSpace: "pre-line",
   };
 
   const selectedOutline: React.CSSProperties = {
@@ -186,7 +209,18 @@ export default function BaysideTemplate(props: HeroTemplateProps) {
     backgroundPosition: imagePosition || "50% 50%",
     backgroundSize: "cover",
     backgroundRepeat: "no-repeat",
-    transform: hasImage ? `scale(${(imageZoom || 100) / 100})` : undefined,
+    transform: hasImage
+      ? `translate(${imageOffsetX || 0}px, ${imageOffsetY || 0}px) scale(${((imageZoom || 100) / 100) * ((h?.bgBlur ?? 0) > 0 ? 1.05 : 1)})`
+      : undefined,
+    filter: hasImage
+      ? [
+          (h?.bgBlur ?? 0) > 0 ? `blur(${h!.bgBlur}px)` : "",
+          bgFilterToCSS(h?.bgFilter) || "",
+        ]
+          .filter(Boolean)
+          .join(" ") || undefined
+      : undefined,
+    opacity: hasImage ? (h?.bgOpacity ?? 100) / 100 : undefined,
   };
 
   // --- Custom About Section (split layout with full-height image) ---
@@ -596,21 +630,36 @@ export default function BaysideTemplate(props: HeroTemplateProps) {
           {/* Section Toolbar */}
           {isEditing && toolbar.sectionSelected && (
             <div
-              style={{ position: "absolute", top: 0, left: "25%", zIndex: 50 }}
+              style={{ position: "absolute", top: 8, left: "25%", zIndex: 50 }}
             >
-              <HeroSectionToolbar
+              <SectionToolbar
                 bgColor={h?.bgColor || offWhite}
-                hasBackgroundImage={false}
-                overlayOpacity={0}
+                hasBackgroundImage={hasImage}
+                bgImage={backgroundImage}
+                bgImageBlur={h?.bgBlur ?? 0}
+                onBgImageBlurChange={toolbar.onBgBlurChange}
+                bgImageOpacity={h?.bgOpacity ?? 100}
+                onBgImageOpacityChange={toolbar.onBgOpacityChange}
+                bgFilter={h?.bgFilter}
+                onBgFilterChange={toolbar.onBgFilterChange}
+                onRemoveBgClick={onHeroRemoveBg}
+                removingBg={heroRemovingBg}
+                bgRemoved={heroBgRemoved}
+                onUndoRemoveBg={onHeroUndoRemoveBg}
+                bgDragActive={toolbar.bgDragActive}
+                onBgDragToggle={toolbar.toggleBgDrag}
+                onBgImageClick={onHeroBgImageClick}
                 paddingTop={padTop}
                 paddingBottom={padBottom}
                 palette={config.theme?.palette}
                 customColors={config.customColors}
                 onBgColorChange={toolbar.onBgColorChange}
-                onOverlayOpacityChange={toolbar.onOverlayOpacityChange}
                 onPaddingTopChange={toolbar.onPaddingTopChange}
                 onPaddingBottomChange={toolbar.onPaddingBottomChange}
                 onCustomColorsChange={onCustomColorsChange}
+                layoutOptions={HERO_LAYOUT_OPTIONS}
+                currentLayout={contentAlign}
+                onLayoutChange={toolbar.onContentAlignChange}
               />
             </div>
           )}
@@ -749,6 +798,14 @@ export default function BaysideTemplate(props: HeroTemplateProps) {
           {/* Right: Image */}
           <div className="bayside-hero-image">
             <div className="bayside-hero-image-inner" style={heroImageStyle} />
+            <BgDragOverlay
+              active={toolbar.bgDragActive && isEditing}
+              offsetX={imageOffsetX || 0}
+              offsetY={imageOffsetY || 0}
+              imageZoom={imageZoom || 100}
+              onOffsetChange={onImageOffsetChange}
+              onZoomChange={onImageZoomChange}
+            />
           </div>
         </div>
       )}

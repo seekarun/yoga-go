@@ -174,6 +174,8 @@ export default async function TenantLandingPage({ params }: PageProps) {
         products={activeProducts}
         currency={tenant.currency ?? "AUD"}
         address={tenant.address}
+        logo={tenant.logo}
+        tenantName={tenant.name}
       />
       <ChatWidgetWrapper
         tenantId={tenantId}

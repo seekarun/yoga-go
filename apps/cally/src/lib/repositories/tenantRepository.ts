@@ -44,6 +44,7 @@ export interface CallyTenant {
   name: string;
   email: string;
   avatar?: string;
+  logo?: string;
   draftLandingPage?: SimpleLandingPageConfig;
   customLandingPage?: SimpleLandingPageConfig;
   isLandingPagePublished?: boolean;
@@ -89,6 +90,7 @@ export interface CreateTenantInput {
   name: string;
   email: string;
   avatar?: string;
+  logo?: string;
   timezone?: string;
 }
 

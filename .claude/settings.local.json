@@ -148,7 +148,17 @@
       "Bash(pgrep:*)",
       "WebFetch(domain:www.npmjs.com)",
       "Bash(pip3:*)",
-      "Bash(/tmp/rembg-venv/bin/python3:*)"
+      "Bash(/tmp/rembg-venv/bin/python3:*)",
+      "Bash(done)",
+      "WebFetch(domain:docs.mailslurp.com)",
+      "WebFetch(domain:www.mailslurp.com)",
+      "WebFetch(domain:api.mailslurp.com)",
+      "Bash(chmod:*)",
+      "Bash(bash -n /Users/arunsubramaniam/.claude/skills/test-email/mailslurp.sh)",
+      "Bash(/Users/arunsubramaniam/.claude/skills/test-email/mailslurp.sh:*)",
+      "Bash(~/.claude/skills/test-email/mailslurp.sh send:*)",
+      "Bash(aws cognito-idp list-user-pools:*)",
+      "Bash(aws cognito-idp list-user-pool-clients:*)"
     ],
     "deny": [],
     "ask": []

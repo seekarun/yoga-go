@@ -5,10 +5,12 @@ import type { HeroTemplateProps } from "./types";
 import type { HeroStyleOverrides } from "@/types/landing-page";
 import SectionsRenderer from "./SectionsRenderer";
 import useHeroToolbarState from "./useHeroToolbarState";
-import HeroSectionToolbar from "./HeroSectionToolbar";
+import SectionToolbar from "./SectionToolbar";
 import ResizableText from "./ResizableText";
 import DraggableItem from "./DraggableItem";
 import DragHandle from "./DragHandle";
+import { bgFilterToCSS } from "./layoutOptions";
+import BgDragOverlay from "./BgDragOverlay";
 
 const DEFAULT_OVERLAY = 50;
 const DEFAULT_SECTION_HEIGHT = 600;
@@ -113,10 +115,25 @@ export default function FreeformTemplate(props: HeroTemplateProps) {
     onSubtitleChange,
     onButtonClick,
     onHeroStyleOverrideChange,
+    onHeroBgImageClick,
+    onHeroRemoveBg,
+    heroRemovingBg,
+    heroBgRemoved,
+    onHeroUndoRemoveBg,
+    onImageOffsetChange,
+    onImageZoomChange,
     onCustomColorsChange,
   } = props;
-  const { title, subtitle, backgroundImage, imagePosition, imageZoom, button } =
-    config;
+  const {
+    title,
+    subtitle,
+    backgroundImage,
+    imagePosition,
+    imageZoom,
+    imageOffsetX,
+    imageOffsetY,
+    button,
+  } = config;
   const h = config.heroStyleOverrides;
 
   const {
@@ -155,6 +172,11 @@ export default function FreeformTemplate(props: HeroTemplateProps) {
     onMobileSubtitlePositionChange,
     onMobileButtonPositionChange,
     onMobileSectionHeightChange,
+    onBgBlurChange,
+    onBgOpacityChange,
+    onBgFilterChange,
+    bgDragActive,
+    toggleBgDrag,
   } = useHeroToolbarState({
     isEditing,
     heroStyleOverrides: h,
@@ -287,7 +309,7 @@ export default function FreeformTemplate(props: HeroTemplateProps) {
   const backgroundStyle: React.CSSProperties = {
     position: "absolute",
     inset: 0,
-    backgroundColor: backgroundImage ? "#000" : undefined,
+    backgroundColor: undefined,
     backgroundImage: backgroundImage
       ? `linear-gradient(rgba(0, 0, 0, ${overlayAlpha}), rgba(0, 0, 0, ${overlayAlpha})), url(${backgroundImage})`
       : `linear-gradient(135deg, var(--brand-500, #667eea) 0%, var(--brand-600, #764ba2) 100%)`,
@@ -295,8 +317,17 @@ export default function FreeformTemplate(props: HeroTemplateProps) {
     backgroundSize: "cover",
     backgroundRepeat: "no-repeat",
     transform: backgroundImage
-      ? `scale(${(imageZoom || 100) / 100})`
+      ? `translate(${imageOffsetX || 0}px, ${imageOffsetY || 0}px) scale(${((imageZoom || 100) / 100) * ((h?.bgBlur ?? 0) > 0 ? 1.05 : 1)})`
       : undefined,
+    filter: backgroundImage
+      ? [
+          (h?.bgBlur ?? 0) > 0 ? `blur(${h!.bgBlur}px)` : "",
+          bgFilterToCSS(h?.bgFilter) || "",
+        ]
+          .filter(Boolean)
+          .join(" ") || undefined
+      : undefined,
+    opacity: backgroundImage ? (h?.bgOpacity ?? 100) / 100 : undefined,
     zIndex: 0,
   };
 
@@ -313,6 +344,7 @@ export default function FreeformTemplate(props: HeroTemplateProps) {
     marginBottom: 0,
     lineHeight: 1.1,
     textShadow: "0 2px 10px rgba(0,0,0,0.3)",
+    whiteSpace: "pre-line",
   };
 
   const subtitleStyle: React.CSSProperties = {
@@ -328,6 +360,7 @@ export default function FreeformTemplate(props: HeroTemplateProps) {
     opacity: 0.95,
     lineHeight: 1.6,
     textShadow: "0 1px 5px rgba(0,0,0,0.2)",
+    whiteSpace: "pre-line",
   };
 
   const buttonStyle: React.CSSProperties = {
@@ -417,6 +450,14 @@ export default function FreeformTemplate(props: HeroTemplateProps) {
           onClick={handleSectionBgClick}
         >
           <div style={backgroundStyle} />
+          <BgDragOverlay
+            active={bgDragActive && isEditing}
+            offsetX={imageOffsetX || 0}
+            offsetY={imageOffsetY || 0}
+            imageZoom={imageZoom || 100}
+            onOffsetChange={onImageOffsetChange}
+            onZoomChange={onImageZoomChange}
+          />
 
           {/* Mobile responsive CSS (skip in editor to avoid interfering with mobile editing) */}
           {!isEditing && <style>{mobileCss}</style>}
@@ -441,24 +482,44 @@ export default function FreeformTemplate(props: HeroTemplateProps) {
             <div
               style={{
                 position: "absolute",
-                top: 0,
+                top: 8,
                 left: "50%",
                 zIndex: 50,
               }}
             >
-              <HeroSectionToolbar
+              <SectionToolbar
                 bgColor={h?.bgColor || ""}
                 hasBackgroundImage={!!backgroundImage}
+                bgImage={backgroundImage}
+                bgImageBlur={h?.bgBlur ?? 0}
+                onBgImageBlurChange={onBgBlurChange}
+                bgImageOpacity={h?.bgOpacity ?? 100}
+                onBgImageOpacityChange={onBgOpacityChange}
                 overlayOpacity={h?.overlayOpacity ?? DEFAULT_OVERLAY}
+                onOverlayOpacityChange={onOverlayOpacityChange}
+                bgFilter={h?.bgFilter}
+                onBgFilterChange={onBgFilterChange}
+                onRemoveBgClick={onHeroRemoveBg}
+                removingBg={heroRemovingBg}
+                bgRemoved={heroBgRemoved}
+                onUndoRemoveBg={onHeroUndoRemoveBg}
+                bgDragActive={bgDragActive}
+                onBgDragToggle={toggleBgDrag}
+                onBgImageClick={onHeroBgImageClick}
                 paddingTop={0}
                 paddingBottom={0}
                 palette={config.theme?.palette}
                 customColors={config.customColors}
                 onBgColorChange={onBgColorChange}
-                onOverlayOpacityChange={onOverlayOpacityChange}
                 onPaddingTopChange={onPaddingTopChange}
                 onPaddingBottomChange={onPaddingBottomChange}
                 onCustomColorsChange={onCustomColorsChange}
+                sectionHeight={activeSectionHeight}
+                onSectionHeightChange={
+                  isMobileEdit
+                    ? onMobileSectionHeightChange
+                    : onSectionHeightChange
+                }
               />
             </div>
           )}

@@ -7,6 +7,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getTenantByUserId } from "@/lib/repositories/tenantRepository";
+import { getMobileSession } from "@/lib/mobile-auth";
 import {
   createChatCompletionWithTools,
   generateMessageId,
@@ -22,16 +23,23 @@ import {
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication
-    const session = await auth();
-    if (!session?.user?.cognitoSub) {
+    // Check authentication — try Bearer token first (mobile), fall back to cookie (web)
+    let cognitoSub: string | undefined;
+
+    const mobileSession = await getMobileSession(request);
+    if (mobileSession) {
+      cognitoSub = mobileSession.cognitoSub;
+    } else {
+      const session = await auth();
+      cognitoSub = session?.user?.cognitoSub;
+    }
+
+    if (!cognitoSub) {
       return NextResponse.json(
         { success: false, error: "Not authenticated" },
         { status: 401 },
       );
     }
-
-    const cognitoSub = session.user.cognitoSub;
     console.log("[DBG][ai-chat] Assistant chat for user:", cognitoSub);
 
     // Get tenant

@@ -38,7 +38,14 @@ export interface HeroTemplateProps {
   onRemoveFeatureCard?: (cardId: string) => void;
   // Hero style overrides
   onHeroStyleOverrideChange?: (overrides: HeroStyleOverrides) => void;
+  onHeroBgImageClick?: () => void;
+  onImageOffsetChange?: (x: number, y: number) => void;
+  onImageZoomChange?: (zoom: number) => void;
   onHeroRemoveBgComplete?: (newUrl: string) => void;
+  onHeroRemoveBg?: () => void;
+  heroRemovingBg?: boolean;
+  heroBgRemoved?: boolean;
+  onHeroUndoRemoveBg?: () => void;
   // Background removal callbacks
   onAboutRemoveBgComplete?: (newUrl: string) => void;
   onFeatureCardRemoveBg?: (cardId: string, newUrl: string) => void;

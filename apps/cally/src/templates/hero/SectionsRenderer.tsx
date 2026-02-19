@@ -160,124 +160,131 @@ export default function SectionsRenderer({
           switch (section.id) {
             case "about":
               return config.about ? (
-                <AboutSection
-                  key="about"
-                  about={config.about}
-                  isEditing={isEditing}
-                  variant={variant}
-                  palette={config.theme?.palette}
-                  customColors={config.customColors}
-                  brandFonts={brandFonts}
-                  onCustomColorsChange={onCustomColorsChange}
-                  onTitleChange={onAboutTitleChange}
-                  onParagraphChange={onAboutParagraphChange}
-                  onImageClick={onAboutImageClick}
-                  onStyleOverrideChange={onAboutStyleOverrideChange}
-                  onBgImageClick={onAboutBgImageClick}
-                  onImagePositionChange={onAboutImagePositionChange}
-                  onImageZoomChange={onAboutImageZoomChange}
-                  onRemoveBgComplete={onAboutRemoveBgComplete}
-                />
+                <div key="about" id="section-about">
+                  <AboutSection
+                    about={config.about}
+                    isEditing={isEditing}
+                    variant={variant}
+                    palette={config.theme?.palette}
+                    customColors={config.customColors}
+                    brandFonts={brandFonts}
+                    onCustomColorsChange={onCustomColorsChange}
+                    onTitleChange={onAboutTitleChange}
+                    onParagraphChange={onAboutParagraphChange}
+                    onImageClick={onAboutImageClick}
+                    onStyleOverrideChange={onAboutStyleOverrideChange}
+                    onBgImageClick={onAboutBgImageClick}
+                    onImagePositionChange={onAboutImagePositionChange}
+                    onImageZoomChange={onAboutImageZoomChange}
+                    onRemoveBgComplete={onAboutRemoveBgComplete}
+                  />
+                </div>
               ) : null;
 
             case "features":
               return config.features && config.features.cards.length > 0 ? (
-                <FeaturesSection
-                  key="features"
-                  features={config.features}
-                  isEditing={isEditing}
-                  variant={variant}
-                  brandFonts={brandFonts}
-                  onHeadingChange={onFeaturesHeadingChange}
-                  onSubheadingChange={onFeaturesSubheadingChange}
-                  onCardChange={onFeatureCardChange}
-                  onCardImageClick={onFeatureCardImageClick}
-                  onAddCard={onAddFeatureCard}
-                  onRemoveCard={onRemoveFeatureCard}
-                  onCardRemoveBg={onFeatureCardRemoveBg}
-                />
+                <div key="features" id="section-features">
+                  <FeaturesSection
+                    features={config.features}
+                    isEditing={isEditing}
+                    variant={variant}
+                    brandFonts={brandFonts}
+                    onHeadingChange={onFeaturesHeadingChange}
+                    onSubheadingChange={onFeaturesSubheadingChange}
+                    onCardChange={onFeatureCardChange}
+                    onCardImageClick={onFeatureCardImageClick}
+                    onAddCard={onAddFeatureCard}
+                    onRemoveCard={onRemoveFeatureCard}
+                    onCardRemoveBg={onFeatureCardRemoveBg}
+                  />
+                </div>
               ) : null;
 
             case "products":
               return products && products.length > 0 ? (
-                <ProductsSection
-                  key="products"
-                  products={products}
-                  currency={currency || "AUD"}
-                  variant={variant}
-                  brandFonts={brandFonts}
-                  productsConfig={config.productsConfig}
-                  isEditing={isEditing}
-                  palette={config.theme?.palette}
-                  customColors={config.customColors}
-                  onHeadingChange={onProductsHeadingChange}
-                  onSubheadingChange={onProductsSubheadingChange}
-                  onBookProduct={onBookProduct}
-                  onStyleOverrideChange={onProductsStyleOverrideChange}
-                  onCustomColorsChange={onCustomColorsChange}
-                  onBgImageClick={onProductsBgImageClick}
-                />
+                <div key="products" id="section-products">
+                  <ProductsSection
+                    products={products}
+                    currency={currency || "AUD"}
+                    variant={variant}
+                    brandFonts={brandFonts}
+                    productsConfig={config.productsConfig}
+                    isEditing={isEditing}
+                    palette={config.theme?.palette}
+                    customColors={config.customColors}
+                    onHeadingChange={onProductsHeadingChange}
+                    onSubheadingChange={onProductsSubheadingChange}
+                    onBookProduct={onBookProduct}
+                    onStyleOverrideChange={onProductsStyleOverrideChange}
+                    onCustomColorsChange={onCustomColorsChange}
+                    onBgImageClick={onProductsBgImageClick}
+                  />
+                </div>
               ) : null;
 
             case "testimonials":
               return config.testimonials ? (
-                <TestimonialsSection
-                  key="testimonials"
-                  testimonials={config.testimonials}
-                  isEditing={isEditing}
-                  variant={variant}
-                  brandFonts={brandFonts}
-                  onHeadingChange={onTestimonialsHeadingChange}
-                  onSubheadingChange={onTestimonialsSubheadingChange}
-                  onTestimonialChange={onTestimonialChange}
-                  onAddTestimonial={onAddTestimonial}
-                  onRemoveTestimonial={onRemoveTestimonial}
-                />
+                <div key="testimonials" id="section-testimonials">
+                  <TestimonialsSection
+                    testimonials={config.testimonials}
+                    isEditing={isEditing}
+                    variant={variant}
+                    brandFonts={brandFonts}
+                    onHeadingChange={onTestimonialsHeadingChange}
+                    onSubheadingChange={onTestimonialsSubheadingChange}
+                    onTestimonialChange={onTestimonialChange}
+                    onAddTestimonial={onAddTestimonial}
+                    onRemoveTestimonial={onRemoveTestimonial}
+                  />
+                </div>
               ) : null;
 
             case "faq":
               return config.faq ? (
-                <FAQSection
-                  key="faq"
-                  faq={config.faq}
-                  isEditing={isEditing}
-                  variant={variant}
-                  brandFonts={brandFonts}
-                  onHeadingChange={onFAQHeadingChange}
-                  onSubheadingChange={onFAQSubheadingChange}
-                  onItemChange={onFAQItemChange}
-                  onAddItem={onAddFAQItem}
-                  onRemoveItem={onRemoveFAQItem}
-                />
+                <div key="faq" id="section-faq">
+                  <FAQSection
+                    faq={config.faq}
+                    isEditing={isEditing}
+                    variant={variant}
+                    brandFonts={brandFonts}
+                    onHeadingChange={onFAQHeadingChange}
+                    onSubheadingChange={onFAQSubheadingChange}
+                    onItemChange={onFAQItemChange}
+                    onAddItem={onAddFAQItem}
+                    onRemoveItem={onRemoveFAQItem}
+                  />
+                </div>
               ) : null;
 
             case "location":
               return config.location ? (
-                <LocationSection
-                  key="location"
-                  location={config.location}
-                  address={address}
-                  isEditing={isEditing}
-                  variant={variant}
-                  brandFonts={brandFonts}
-                  onHeadingChange={onLocationHeadingChange}
-                  onSubheadingChange={onLocationSubheadingChange}
-                />
+                <div key="location" id="section-location">
+                  <LocationSection
+                    location={config.location}
+                    address={address}
+                    isEditing={isEditing}
+                    variant={variant}
+                    brandFonts={brandFonts}
+                    onHeadingChange={onLocationHeadingChange}
+                    onSubheadingChange={onLocationSubheadingChange}
+                  />
+                </div>
               ) : null;
 
             case "gallery":
               return config.gallery ? (
-                <GallerySection
-                  key="gallery"
-                  gallery={config.gallery}
-                  isEditing={isEditing}
-                  variant={variant}
-                  brandFonts={brandFonts}
-                  onHeadingChange={onGalleryHeadingChange}
-                  onSubheadingChange={onGallerySubheadingChange}
-                  onAddImage={onGalleryAddImage}
-                  onRemoveImage={onGalleryRemoveImage}
-                />
+                <div key="gallery" id="section-gallery">
+                  <GallerySection
+                    gallery={config.gallery}
+                    isEditing={isEditing}
+                    variant={variant}
+                    brandFonts={brandFonts}
+                    onHeadingChange={onGalleryHeadingChange}
+                    onSubheadingChange={onGallerySubheadingChange}
+                    onAddImage={onGalleryAddImage}
+                    onRemoveImage={onGalleryRemoveImage}
+                  />
+                </div>
               ) : null;
 
             default:
@@ -287,15 +294,17 @@ export default function SectionsRenderer({
 
       {/* Footer always last, controlled by footerEnabled */}
       {config.footerEnabled !== false && config.footer && (
-        <FooterSection
-          footer={config.footer}
-          isEditing={isEditing}
-          brandFonts={brandFonts}
-          onTextChange={onFooterTextChange}
-          onLinkChange={onFooterLinkChange}
-          onAddLink={onAddFooterLink}
-          onRemoveLink={onRemoveFooterLink}
-        />
+        <div id="section-footer">
+          <FooterSection
+            footer={config.footer}
+            isEditing={isEditing}
+            brandFonts={brandFonts}
+            onTextChange={onFooterTextChange}
+            onLinkChange={onFooterLinkChange}
+            onAddLink={onAddFooterLink}
+            onRemoveLink={onRemoveFooterLink}
+          />
+        </div>
       )}
     </>
   );

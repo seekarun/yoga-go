@@ -9,7 +9,8 @@ import type {
 import type { ColorPalette } from "@/lib/colorPalette";
 import DragHandle from "./DragHandle";
 import ImageToolbar from "./ImageToolbar";
-import AboutSectionToolbar from "./AboutSectionToolbar";
+import SectionToolbar from "./SectionToolbar";
+import { ABOUT_LAYOUT_OPTIONS } from "./layoutOptions";
 import RemoveBackgroundButton from "./RemoveBackgroundButton";
 import ResizableText from "./ResizableText";
 
@@ -500,8 +501,11 @@ export default function AboutSection({
   );
 
   const handleLayoutChange = useCallback(
-    (val: "image-left" | "image-right" | "stacked") => {
-      onStyleOverrideChange?.({ ...overrides, layout: val });
+    (val: string) => {
+      onStyleOverrideChange?.({
+        ...overrides,
+        layout: val as "image-left" | "image-right" | "stacked",
+      });
     },
     [overrides, onStyleOverrideChange],
   );
@@ -737,29 +741,30 @@ export default function AboutSection({
 
       {/* About section toolbar — anchored to section top so it doesn't move with padding */}
       {showHandles && sectionSelected && (
-        <AboutSectionToolbar
+        <SectionToolbar
           bgColor={overrides?.bgColor || theme.bg}
           bgImage={overrides?.bgImage}
+          onBgImageClick={onBgImageClick}
+          onBgImageRemove={handleBgImageRemove}
           bgImageBlur={overrides?.bgImageBlur ?? 0}
+          onBgImageBlurChange={handleBgImageBlurChange}
           bgImageOpacity={overrides?.bgImageOpacity ?? 100}
-          layout={resolvedLayout}
+          onBgImageOpacityChange={handleBgImageOpacityChange}
           paddingTop={overrides?.paddingTop ?? 80}
           paddingBottom={overrides?.paddingBottom ?? 80}
           paddingLeft={overrides?.paddingLeft ?? 0}
           paddingRight={overrides?.paddingRight ?? 0}
-          palette={palette}
-          customColors={customColors}
-          onBgColorChange={handleBgColorChange}
-          onBgImageClick={onBgImageClick}
-          onBgImageRemove={handleBgImageRemove}
-          onBgImageBlurChange={handleBgImageBlurChange}
-          onBgImageOpacityChange={handleBgImageOpacityChange}
-          onLayoutChange={handleLayoutChange}
           onPaddingTopChange={handleToolbarPaddingTopChange}
           onPaddingBottomChange={handleToolbarPaddingBottomChange}
           onPaddingLeftChange={handleToolbarPaddingLeftChange}
           onPaddingRightChange={handleToolbarPaddingRightChange}
+          palette={palette}
+          customColors={customColors}
+          onBgColorChange={handleBgColorChange}
           onCustomColorsChange={onCustomColorsChange}
+          layoutOptions={ABOUT_LAYOUT_OPTIONS}
+          currentLayout={resolvedLayout}
+          onLayoutChange={handleLayoutChange}
         />
       )}
 

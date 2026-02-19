@@ -8,7 +8,7 @@ import type {
   ProductsStyleOverrides,
 } from "@/types/landing-page";
 import type { ColorPalette } from "@/lib/colorPalette";
-import ProductsSectionToolbar from "./ProductsSectionToolbar";
+import SectionToolbar from "./SectionToolbar";
 import TextToolbar from "./TextToolbar";
 
 /**
@@ -700,26 +700,26 @@ export default function ProductsSection({
     >
       {/* Products section toolbar — anchored to section top */}
       {showHandles && sectionSelected && (
-        <ProductsSectionToolbar
+        <SectionToolbar
           bgColor={overrides?.bgColor || theme.bg}
           bgImage={overrides?.bgImage}
+          onBgImageClick={onBgImageClick}
+          onBgImageRemove={handleBgImageRemove}
           bgImageBlur={overrides?.bgImageBlur ?? 0}
+          onBgImageBlurChange={handleBgImageBlurChange}
           bgImageOpacity={overrides?.bgImageOpacity ?? 100}
+          onBgImageOpacityChange={handleBgImageOpacityChange}
           paddingTop={overrides?.paddingTop ?? 80}
           paddingBottom={overrides?.paddingBottom ?? 80}
           paddingLeft={overrides?.paddingLeft ?? 0}
           paddingRight={overrides?.paddingRight ?? 0}
-          palette={palette}
-          customColors={customColors}
-          onBgColorChange={handleBgColorChange}
-          onBgImageClick={onBgImageClick}
-          onBgImageRemove={handleBgImageRemove}
-          onBgImageBlurChange={handleBgImageBlurChange}
-          onBgImageOpacityChange={handleBgImageOpacityChange}
           onPaddingTopChange={handlePaddingTopChange}
           onPaddingBottomChange={handlePaddingBottomChange}
           onPaddingLeftChange={handlePaddingLeftChange}
           onPaddingRightChange={handlePaddingRightChange}
+          palette={palette}
+          customColors={customColors}
+          onBgColorChange={handleBgColorChange}
           onCustomColorsChange={onCustomColorsChange}
         />
       )}

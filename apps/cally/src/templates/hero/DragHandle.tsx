@@ -82,7 +82,8 @@ function getEdgeStyles(position: HandlePosition): React.CSSProperties {
 }
 
 function getNodeStyles(position: HandlePosition): React.CSSProperties {
-  const offset = -NODE_HIT / 2;
+  // Shift outward by 5px so handles sit on the outline (outlineOffset 4px + 1px half-width)
+  const offset = -(NODE_HIT / 2) - 5;
   const base: React.CSSProperties = {
     position: "absolute",
     zIndex: 10,

@@ -9,6 +9,8 @@ import {
   DEFAULT_BOOKING_CONFIG,
   DEFAULT_CANCELLATION_CONFIG,
 } from "@/types/booking";
+import { ImageEditorOverlay } from "@core/components";
+import type { ImageEditorData } from "@core/components";
 
 /**
  * User preferences/settings page
@@ -19,6 +21,13 @@ export default function PreferencesPage() {
   const { user, logout } = useAuth();
 
   const [name, setName] = useState("");
+  const [logo, setLogo] = useState("");
+  const [showLogoEditor, setShowLogoEditor] = useState(false);
+  const [savingLogo, setSavingLogo] = useState(false);
+  const [logoFeedback, setLogoFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
   const [address, setAddress] = useState("");
   const [timezone, setTimezone] = useState("");
   const [videoCallPreference, setVideoCallPreference] = useState<
@@ -89,6 +98,7 @@ export default function PreferencesPage() {
       const data = await res.json();
       if (data.success && data.data) {
         if (data.data.name) setName(data.data.name);
+        if (data.data.logo !== undefined) setLogo(data.data.logo);
         if (data.data.address !== undefined) setAddress(data.data.address);
         if (data.data.timezone) setTimezone(data.data.timezone);
         if (data.data.videoCallPreference)
@@ -137,6 +147,63 @@ export default function PreferencesPage() {
     } finally {
       setSavingName(false);
       setTimeout(() => setNameFeedback(null), 3000);
+    }
+  };
+
+  const handleLogoSave = async (data: ImageEditorData) => {
+    setSavingLogo(true);
+    setLogoFeedback(null);
+    setShowLogoEditor(false);
+
+    try {
+      const res = await fetch("/api/data/app/preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ logo: data.imageUrl }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setLogo(data.imageUrl);
+        setLogoFeedback({ type: "success", message: "Logo updated" });
+      } else {
+        setLogoFeedback({
+          type: "error",
+          message: json.error || "Failed to update logo",
+        });
+      }
+    } catch {
+      setLogoFeedback({ type: "error", message: "Failed to update logo" });
+    } finally {
+      setSavingLogo(false);
+      setTimeout(() => setLogoFeedback(null), 3000);
+    }
+  };
+
+  const handleLogoRemove = async () => {
+    setSavingLogo(true);
+    setLogoFeedback(null);
+
+    try {
+      const res = await fetch("/api/data/app/preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ logo: "" }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setLogo("");
+        setLogoFeedback({ type: "success", message: "Logo removed" });
+      } else {
+        setLogoFeedback({
+          type: "error",
+          message: json.error || "Failed to remove logo",
+        });
+      }
+    } catch {
+      setLogoFeedback({ type: "error", message: "Failed to remove logo" });
+    } finally {
+      setSavingLogo(false);
+      setTimeout(() => setLogoFeedback(null), 3000);
     }
   };
 
@@ -517,6 +584,67 @@ export default function PreferencesPage() {
             <p className="text-[var(--text-body)]">
               {user?.profile?.email || "Not set"}
             </p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-[var(--text-muted)] mb-1">
+              Logo
+            </label>
+            <p className="text-sm text-[var(--text-muted)] mb-2">
+              Displayed on your landing page header.
+            </p>
+            <div className="flex items-center gap-3">
+              {logo ? (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- tenant logo URL, fixed size */}
+                  <img
+                    src={logo}
+                    alt="Logo"
+                    className="h-12 w-auto rounded border border-[var(--color-border)] object-contain bg-gray-50"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowLogoEditor(true)}
+                    disabled={savingLogo}
+                    className="px-3 py-1.5 text-sm border border-[var(--color-border)] rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  >
+                    Change
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleLogoRemove}
+                    disabled={savingLogo}
+                    className="px-3 py-1.5 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
+                  >
+                    Remove
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowLogoEditor(true)}
+                  disabled={savingLogo}
+                  className="px-3 py-1.5 text-sm border border-[var(--color-border)] rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  Upload Logo
+                </button>
+              )}
+              {savingLogo && (
+                <span className="text-sm text-[var(--text-muted)]">
+                  Saving...
+                </span>
+              )}
+              {logoFeedback && (
+                <span
+                  className={`text-sm ${
+                    logoFeedback.type === "success"
+                      ? "text-green-600"
+                      : "text-red-600"
+                  }`}
+                >
+                  {logoFeedback.message}
+                </span>
+              )}
+            </div>
           </div>
           <div>
             <label
@@ -1218,6 +1346,18 @@ export default function PreferencesPage() {
           </button>
         </div>
       </div>
+
+      {/* Logo Editor Overlay */}
+      <ImageEditorOverlay
+        isOpen={showLogoEditor}
+        onClose={() => setShowLogoEditor(false)}
+        onSave={handleLogoSave}
+        currentImage={logo || undefined}
+        title="Upload Logo"
+        aspectRatio="1/1"
+        defaultSearchQuery="logo icon"
+        uploadEndpoint="/api/data/app/tenant/landing-page/upload"
+      />
     </div>
   );
 }

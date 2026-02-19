@@ -274,6 +274,12 @@ export class CallyStack extends cdk.Stack {
         callbackUrls: [
           "http://localhost:3113/api/auth/google/callback",
           "https://proj-cally.vercel.app/api/auth/google/callback",
+          // Mobile: Expo Go (simulator + physical device)
+          "exp://localhost:8081",
+          "exp://localhost:8081/--/",
+          "exp://10.1.1.195:8081",
+          // Mobile: Dev build with custom scheme
+          "cally-mobile://",
         ],
         logoutUrls: [
           "http://localhost:3113",

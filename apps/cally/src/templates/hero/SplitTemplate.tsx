@@ -3,8 +3,10 @@
 import type { HeroTemplateProps } from "./types";
 import SectionsRenderer from "./SectionsRenderer";
 import useHeroToolbarState from "./useHeroToolbarState";
-import HeroSectionToolbar from "./HeroSectionToolbar";
+import SectionToolbar from "./SectionToolbar";
+import { HERO_LAYOUT_OPTIONS, bgFilterToCSS } from "./layoutOptions";
 import ResizableText from "./ResizableText";
+import BgDragOverlay from "./BgDragOverlay";
 
 const DEFAULT_PADDING_TOP = 60;
 const DEFAULT_PADDING_BOTTOM = 60;
@@ -23,10 +25,25 @@ export default function SplitTemplate(props: HeroTemplateProps) {
     onSubtitleChange,
     onButtonClick,
     onHeroStyleOverrideChange,
+    onHeroBgImageClick,
+    onHeroRemoveBg,
+    heroRemovingBg,
+    heroBgRemoved,
+    onHeroUndoRemoveBg,
+    onImageOffsetChange,
+    onImageZoomChange,
     onCustomColorsChange,
   } = props;
-  const { title, subtitle, backgroundImage, imagePosition, imageZoom, button } =
-    config;
+  const {
+    title,
+    subtitle,
+    backgroundImage,
+    imagePosition,
+    imageZoom,
+    button,
+    imageOffsetX,
+    imageOffsetY,
+  } = config;
   const h = config.heroStyleOverrides;
 
   const toolbar = useHeroToolbarState({
@@ -37,6 +54,7 @@ export default function SplitTemplate(props: HeroTemplateProps) {
 
   const padTop = h?.paddingTop ?? DEFAULT_PADDING_TOP;
   const padBottom = h?.paddingBottom ?? DEFAULT_PADDING_BOTTOM;
+  const contentAlign = h?.contentAlign || "left";
 
   const containerStyle: React.CSSProperties = {
     minHeight: "100vh",
@@ -49,7 +67,13 @@ export default function SplitTemplate(props: HeroTemplateProps) {
     flex: 1,
     display: "flex",
     flexDirection: "column",
-    alignItems: "flex-start",
+    alignItems:
+      contentAlign === "right"
+        ? "flex-end"
+        : contentAlign === "center"
+          ? "center"
+          : "flex-start",
+    textAlign: contentAlign as React.CSSProperties["textAlign"],
     justifyContent: "center",
     paddingTop: `${padTop}px`,
     paddingBottom: `${padBottom}px`,
@@ -62,7 +86,7 @@ export default function SplitTemplate(props: HeroTemplateProps) {
   const imageSide: React.CSSProperties = {
     flex: 1,
     position: "relative",
-    backgroundColor: backgroundImage ? "#000" : undefined,
+    backgroundColor: undefined,
     minHeight: "100vh",
     overflow: "hidden",
   };
@@ -77,8 +101,17 @@ export default function SplitTemplate(props: HeroTemplateProps) {
     backgroundSize: "cover",
     backgroundRepeat: "no-repeat",
     transform: backgroundImage
-      ? `scale(${(imageZoom || 100) / 100})`
+      ? `translate(${imageOffsetX || 0}px, ${imageOffsetY || 0}px) scale(${((imageZoom || 100) / 100) * ((h?.bgBlur ?? 0) > 0 ? 1.05 : 1)})`
       : undefined,
+    filter: backgroundImage
+      ? [
+          (h?.bgBlur ?? 0) > 0 ? `blur(${h!.bgBlur}px)` : "",
+          bgFilterToCSS(h?.bgFilter) || "",
+        ]
+          .filter(Boolean)
+          .join(" ") || undefined
+      : undefined,
+    opacity: backgroundImage ? (h?.bgOpacity ?? 100) / 100 : undefined,
   };
 
   const titleStyle: React.CSSProperties = {
@@ -93,6 +126,7 @@ export default function SplitTemplate(props: HeroTemplateProps) {
     textAlign: h?.titleTextAlign || undefined,
     marginBottom: "20px",
     lineHeight: 1.15,
+    whiteSpace: "pre-line",
   };
 
   const subtitleStyle: React.CSSProperties = {
@@ -106,6 +140,7 @@ export default function SplitTemplate(props: HeroTemplateProps) {
     color: h?.subtitleTextColor || "#666",
     textAlign: h?.subtitleTextAlign || undefined,
     lineHeight: 1.7,
+    whiteSpace: "pre-line",
   };
 
   const selectedOutline: React.CSSProperties = {
@@ -166,24 +201,39 @@ export default function SplitTemplate(props: HeroTemplateProps) {
             <div
               style={{
                 position: "absolute",
-                top: 0,
+                top: 8,
                 left: "25%",
                 zIndex: 50,
               }}
             >
-              <HeroSectionToolbar
+              <SectionToolbar
                 bgColor={h?.bgColor || "#fafafa"}
-                hasBackgroundImage={false}
-                overlayOpacity={0}
+                hasBackgroundImage={!!backgroundImage}
+                bgImage={backgroundImage}
+                bgImageBlur={h?.bgBlur ?? 0}
+                onBgImageBlurChange={toolbar.onBgBlurChange}
+                bgImageOpacity={h?.bgOpacity ?? 100}
+                onBgImageOpacityChange={toolbar.onBgOpacityChange}
+                bgFilter={h?.bgFilter}
+                onBgFilterChange={toolbar.onBgFilterChange}
+                onRemoveBgClick={onHeroRemoveBg}
+                removingBg={heroRemovingBg}
+                bgRemoved={heroBgRemoved}
+                onUndoRemoveBg={onHeroUndoRemoveBg}
+                bgDragActive={toolbar.bgDragActive}
+                onBgDragToggle={toolbar.toggleBgDrag}
+                onBgImageClick={onHeroBgImageClick}
                 paddingTop={padTop}
                 paddingBottom={padBottom}
                 palette={config.theme?.palette}
                 customColors={config.customColors}
                 onBgColorChange={toolbar.onBgColorChange}
-                onOverlayOpacityChange={toolbar.onOverlayOpacityChange}
                 onPaddingTopChange={toolbar.onPaddingTopChange}
                 onPaddingBottomChange={toolbar.onPaddingBottomChange}
                 onCustomColorsChange={onCustomColorsChange}
+                layoutOptions={HERO_LAYOUT_OPTIONS}
+                currentLayout={contentAlign}
+                onLayoutChange={toolbar.onContentAlignChange}
               />
             </div>
           )}
@@ -319,6 +369,14 @@ export default function SplitTemplate(props: HeroTemplateProps) {
           </div>
           <div style={imageSide}>
             <div style={imageSideBackground} />
+            <BgDragOverlay
+              active={toolbar.bgDragActive && isEditing}
+              offsetX={imageOffsetX || 0}
+              offsetY={imageOffsetY || 0}
+              imageZoom={imageZoom || 100}
+              onOffsetChange={onImageOffsetChange}
+              onZoomChange={onImageZoomChange}
+            />
           </div>
         </div>
       )}

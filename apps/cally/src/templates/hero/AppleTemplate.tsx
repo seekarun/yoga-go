@@ -11,8 +11,10 @@ import LocationSection from "./LocationSection";
 import GallerySection from "./GallerySection";
 import FooterSection from "./FooterSection";
 import useHeroToolbarState from "./useHeroToolbarState";
-import HeroSectionToolbar from "./HeroSectionToolbar";
+import SectionToolbar from "./SectionToolbar";
+import { HERO_LAYOUT_OPTIONS, bgFilterToCSS } from "./layoutOptions";
 import ResizableText from "./ResizableText";
+import BgDragOverlay from "./BgDragOverlay";
 
 /**
  * Apple Template
@@ -36,6 +38,13 @@ export default function AppleTemplate(props: HeroTemplateProps) {
     onAboutImageZoomChange,
     onCustomColorsChange,
     onHeroStyleOverrideChange,
+    onHeroBgImageClick,
+    onHeroRemoveBg,
+    heroRemovingBg,
+    heroBgRemoved,
+    onHeroUndoRemoveBg,
+    onImageOffsetChange,
+    onImageZoomChange,
     onFeaturesHeadingChange,
     onFeaturesSubheadingChange,
     onFeatureCardChange,
@@ -73,8 +82,16 @@ export default function AppleTemplate(props: HeroTemplateProps) {
     onAddFooterLink,
     onRemoveFooterLink,
   } = props;
-  const { title, subtitle, backgroundImage, imagePosition, imageZoom, button } =
-    config;
+  const {
+    title,
+    subtitle,
+    backgroundImage,
+    imagePosition,
+    imageZoom,
+    imageOffsetX,
+    imageOffsetY,
+    button,
+  } = config;
 
   const hasImage = !!backgroundImage;
 
@@ -93,6 +110,12 @@ export default function AppleTemplate(props: HeroTemplateProps) {
   const overlayAlpha = (h?.overlayOpacity ?? DEFAULT_OVERLAY) / 100;
   const padTop = h?.paddingTop ?? 60;
   const padBottom = h?.paddingBottom ?? 60;
+  const contentAlign = h?.contentAlign || "center";
+  const alignMap: Record<string, string> = {
+    left: "flex-start",
+    center: "center",
+    right: "flex-end",
+  };
 
   const sections = config.sections || [
     { id: "about" as const, enabled: true },
@@ -119,11 +142,11 @@ export default function AppleTemplate(props: HeroTemplateProps) {
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    textAlign: "center",
+    textAlign: contentAlign as React.CSSProperties["textAlign"],
     paddingTop: `${padTop}px`,
     paddingBottom: `${padBottom}px`,
-    paddingLeft: "24px",
-    paddingRight: "24px",
+    paddingLeft: `${h?.paddingLeft ?? 24}px`,
+    paddingRight: `${h?.paddingRight ?? 24}px`,
     position: "relative",
     overflow: "hidden",
     color: hasImage ? "#ffffff" : "#1d1d1f",
@@ -133,14 +156,25 @@ export default function AppleTemplate(props: HeroTemplateProps) {
   const backgroundStyle: React.CSSProperties = {
     position: "absolute",
     inset: 0,
-    backgroundColor: hasImage ? "#000" : "#fbfbfd",
+    backgroundColor: hasImage ? undefined : "#fbfbfd",
     backgroundImage: hasImage
       ? `linear-gradient(rgba(0, 0, 0, ${overlayAlpha}), rgba(0, 0, 0, ${overlayAlpha})), url(${backgroundImage})`
       : undefined,
     backgroundPosition: imagePosition || "50% 50%",
     backgroundSize: "cover",
     backgroundRepeat: "no-repeat",
-    transform: hasImage ? `scale(${(imageZoom || 100) / 100})` : undefined,
+    transform: hasImage
+      ? `translate(${imageOffsetX || 0}px, ${imageOffsetY || 0}px) scale(${((imageZoom || 100) / 100) * ((h?.bgBlur ?? 0) > 0 ? 1.05 : 1)})`
+      : undefined,
+    filter: hasImage
+      ? [
+          (h?.bgBlur ?? 0) > 0 ? `blur(${h!.bgBlur}px)` : "",
+          bgFilterToCSS(h?.bgFilter) || "",
+        ]
+          .filter(Boolean)
+          .join(" ") || undefined
+      : undefined,
+    opacity: hasImage ? (h?.bgOpacity ?? 100) / 100 : undefined,
     zIndex: 0,
   };
 
@@ -150,7 +184,8 @@ export default function AppleTemplate(props: HeroTemplateProps) {
     width: "100%",
     display: "flex",
     flexDirection: "column",
-    alignItems: "center",
+    alignItems: alignMap[contentAlign],
+    maxWidth: `${h?.titleMaxWidth ?? DEFAULT_TITLE_MW}px`,
   };
 
   const titleStyle: React.CSSProperties = {
@@ -166,6 +201,7 @@ export default function AppleTemplate(props: HeroTemplateProps) {
     textAlign: h?.titleTextAlign || undefined,
     fontFamily:
       h?.titleFontFamily || config.theme?.headerFont?.family || sfProDisplay,
+    whiteSpace: "pre-line",
   };
 
   const subtitleStyle: React.CSSProperties = {
@@ -182,6 +218,7 @@ export default function AppleTemplate(props: HeroTemplateProps) {
     letterSpacing: "-0.01em",
     fontFamily:
       h?.subtitleFontFamily || config.theme?.bodyFont?.family || sfProText,
+    whiteSpace: "pre-line",
   };
 
   const selectedOutline: React.CSSProperties = {
@@ -474,25 +511,54 @@ export default function AppleTemplate(props: HeroTemplateProps) {
           onClick={toolbar.handleSectionClick}
         >
           <div style={backgroundStyle} />
+          <BgDragOverlay
+            active={toolbar.bgDragActive && isEditing}
+            offsetX={imageOffsetX || 0}
+            offsetY={imageOffsetY || 0}
+            imageZoom={imageZoom || 100}
+            onOffsetChange={onImageOffsetChange}
+            onZoomChange={onImageZoomChange}
+          />
 
           {/* Section Toolbar */}
           {isEditing && toolbar.sectionSelected && (
             <div
-              style={{ position: "absolute", top: 0, left: "50%", zIndex: 50 }}
+              style={{ position: "absolute", top: 8, left: "50%", zIndex: 50 }}
             >
-              <HeroSectionToolbar
+              <SectionToolbar
                 bgColor={h?.bgColor || ""}
                 hasBackgroundImage={hasImage}
+                bgImage={backgroundImage}
+                bgImageBlur={h?.bgBlur ?? 0}
+                onBgImageBlurChange={toolbar.onBgBlurChange}
+                bgImageOpacity={h?.bgOpacity ?? 100}
+                onBgImageOpacityChange={toolbar.onBgOpacityChange}
                 overlayOpacity={h?.overlayOpacity ?? DEFAULT_OVERLAY}
+                onOverlayOpacityChange={toolbar.onOverlayOpacityChange}
+                bgFilter={h?.bgFilter}
+                onBgFilterChange={toolbar.onBgFilterChange}
+                onRemoveBgClick={onHeroRemoveBg}
+                removingBg={heroRemovingBg}
+                bgRemoved={heroBgRemoved}
+                onUndoRemoveBg={onHeroUndoRemoveBg}
+                bgDragActive={toolbar.bgDragActive}
+                onBgDragToggle={toolbar.toggleBgDrag}
+                onBgImageClick={onHeroBgImageClick}
                 paddingTop={padTop}
                 paddingBottom={padBottom}
+                paddingLeft={h?.paddingLeft ?? 24}
+                paddingRight={h?.paddingRight ?? 24}
+                onPaddingLeftChange={toolbar.onPaddingLeftChange}
+                onPaddingRightChange={toolbar.onPaddingRightChange}
                 palette={config.theme?.palette}
                 customColors={config.customColors}
                 onBgColorChange={toolbar.onBgColorChange}
-                onOverlayOpacityChange={toolbar.onOverlayOpacityChange}
                 onPaddingTopChange={toolbar.onPaddingTopChange}
                 onPaddingBottomChange={toolbar.onPaddingBottomChange}
                 onCustomColorsChange={onCustomColorsChange}
+                layoutOptions={HERO_LAYOUT_OPTIONS}
+                currentLayout={contentAlign}
+                onLayoutChange={toolbar.onContentAlignChange}
               />
             </div>
           )}

@@ -124,6 +124,10 @@ export const TenantPK = {
   WAITLIST: (date: string, entryId: string) => `WAITLIST#${date}#${entryId}`,
   WAITLIST_DATE_PREFIX: (date: string) => `WAITLIST#${date}#`,
   WAITLIST_PREFIX: "WAITLIST#",
+
+  // Email Labels: PK=TENANT#{tenantId}, SK=EMAIL_LABEL#{labelId}
+  EMAIL_LABEL: (labelId: string) => `EMAIL_LABEL#${labelId}`,
+  EMAIL_LABEL_PREFIX: "EMAIL_LABEL#",
 } as const;
 
 // Entity type constants
@@ -171,6 +175,8 @@ export const EmailPK = {
   CAL_INBOX: (ownerId: string) => `INBOX#CAL#${ownerId}`,
   // Thread grouping: PK=THREAD#{threadId}, SK={emailId}
   THREAD: (threadId: string) => `THREAD#${threadId}`,
+  // Drafts: PK=DRAFT#{ownerId}, SK=#{draftId}
+  DRAFT: (ownerId: string) => `DRAFT#${ownerId}`,
 } as const;
 
 // ============================================

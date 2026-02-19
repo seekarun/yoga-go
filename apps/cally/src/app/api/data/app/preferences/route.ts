@@ -20,6 +20,7 @@ import { isValidTimezone } from "@/lib/timezones";
 
 interface PreferencesData {
   name: string;
+  logo: string;
   address: string;
   timezone: string;
   videoCallPreference: "cally" | "google_meet" | "zoom";
@@ -80,6 +81,7 @@ export async function GET(): Promise<
       success: true,
       data: {
         name: tenant.name,
+        logo: tenant.logo ?? "",
         address: tenant.address ?? "",
         timezone,
         videoCallPreference: tenant.videoCallPreference ?? "cally",
@@ -137,6 +139,7 @@ export async function PUT(
     const body = await request.json();
     const {
       name,
+      logo,
       address,
       timezone,
       videoCallPreference,
@@ -167,6 +170,26 @@ export async function PUT(
         );
       }
       updates.address = address.trim();
+    }
+
+    // Validate logo if provided
+    if (logo !== undefined) {
+      if (typeof logo !== "string") {
+        return NextResponse.json(
+          { success: false, error: "Logo must be a string URL" },
+          { status: 400 },
+        );
+      }
+      if (logo.length > 2000) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Logo URL must be 2000 characters or less",
+          },
+          { status: 400 },
+        );
+      }
+      updates.logo = logo;
     }
 
     // Validate name if provided
@@ -429,6 +452,7 @@ export async function PUT(
       success: true,
       data: {
         name: updated.name,
+        logo: updated.logo ?? "",
         address: updated.address ?? "",
         timezone: updated.timezone || tenant.timezone || DEFAULT_TIMEZONE,
         videoCallPreference: updated.videoCallPreference ?? "cally",

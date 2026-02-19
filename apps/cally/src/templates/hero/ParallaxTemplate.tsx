@@ -11,8 +11,10 @@ import LocationSection from "./LocationSection";
 import GallerySection from "./GallerySection";
 import FooterSection from "./FooterSection";
 import useHeroToolbarState from "./useHeroToolbarState";
-import HeroSectionToolbar from "./HeroSectionToolbar";
+import SectionToolbar from "./SectionToolbar";
+import { HERO_LAYOUT_OPTIONS, bgFilterToCSS } from "./layoutOptions";
 import ResizableText from "./ResizableText";
+import BgDragOverlay from "./BgDragOverlay";
 
 const DEFAULT_TITLE_MW = 900;
 const DEFAULT_SUBTITLE_MW = 600;
@@ -60,6 +62,13 @@ export default function ParallaxTemplate(props: HeroTemplateProps) {
     onProductsBgImageClick,
     onCustomColorsChange,
     onHeroStyleOverrideChange,
+    onHeroBgImageClick,
+    onHeroRemoveBg,
+    heroRemovingBg,
+    heroBgRemoved,
+    onHeroUndoRemoveBg,
+    onImageOffsetChange,
+    onImageZoomChange,
     onTestimonialsHeadingChange,
     onTestimonialsSubheadingChange,
     onTestimonialChange,
@@ -82,8 +91,16 @@ export default function ParallaxTemplate(props: HeroTemplateProps) {
     onAddFooterLink,
     onRemoveFooterLink,
   } = props;
-  const { title, subtitle, backgroundImage, imagePosition, imageZoom, button } =
-    config;
+  const {
+    title,
+    subtitle,
+    backgroundImage,
+    imagePosition,
+    imageZoom,
+    imageOffsetX,
+    imageOffsetY,
+    button,
+  } = config;
 
   const hasImage = !!backgroundImage;
 
@@ -99,6 +116,12 @@ export default function ParallaxTemplate(props: HeroTemplateProps) {
   const overlayAlpha = (h?.overlayOpacity ?? DEFAULT_OVERLAY) / 100;
   const padTop = h?.paddingTop ?? 80;
   const padBottom = h?.paddingBottom ?? 80;
+  const contentAlign = h?.contentAlign || "center";
+  const alignMap = {
+    left: "flex-start",
+    center: "center",
+    right: "flex-end",
+  } as const;
 
   const sections = config.sections || [
     { id: "about" as const, enabled: true },
@@ -187,6 +210,7 @@ export default function ParallaxTemplate(props: HeroTemplateProps) {
     margin: 0,
     marginBottom: "20px",
     textShadow: "0 2px 16px rgba(0,0,0,0.4)",
+    whiteSpace: "pre-line",
   };
 
   const subtitleStyle: React.CSSProperties = {
@@ -203,6 +227,7 @@ export default function ParallaxTemplate(props: HeroTemplateProps) {
     margin: 0,
     marginBottom: "40px",
     textShadow: "0 1px 8px rgba(0,0,0,0.3)",
+    whiteSpace: "pre-line",
   };
 
   const selectedOutline: React.CSSProperties = {
@@ -718,6 +743,16 @@ export default function ParallaxTemplate(props: HeroTemplateProps) {
                 backgroundPosition: `0% ${bgPositionY}`,
                 backgroundSize: `auto ${imageZoom || 100}%`,
                 backgroundRepeat: "no-repeat",
+                filter: hasImage
+                  ? [
+                      (h?.bgBlur ?? 0) > 0 ? `blur(${h!.bgBlur}px)` : "",
+                      bgFilterToCSS(h?.bgFilter) || "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ") || undefined
+                  : undefined,
+                opacity: (h?.bgOpacity ?? 100) / 100,
+                transform: `translate(${imageOffsetX || 0}px, ${imageOffsetY || 0}px)${(h?.bgBlur ?? 0) > 0 ? " scale(1.05)" : ""}`,
               }
             : {
                 background:
@@ -737,6 +772,15 @@ export default function ParallaxTemplate(props: HeroTemplateProps) {
         />
       </div>
 
+      <BgDragOverlay
+        active={toolbar.bgDragActive && isEditing}
+        offsetX={imageOffsetX || 0}
+        offsetY={imageOffsetY || 0}
+        imageZoom={imageZoom || 100}
+        onOffsetChange={onImageOffsetChange}
+        onZoomChange={onImageZoomChange}
+      />
+
       {/* ── Content layer ── */}
       <div style={{ position: "relative", zIndex: 1 }}>
         {/* Hero Section */}
@@ -753,8 +797,9 @@ export default function ParallaxTemplate(props: HeroTemplateProps) {
               justifyContent: "center",
               paddingTop: `${padTop}px`,
               paddingBottom: `${padBottom}px`,
-              paddingLeft: "8%",
-              paddingRight: "8%",
+              paddingLeft: `${h?.paddingLeft ?? 20}px`,
+              paddingRight: `${h?.paddingRight ?? 20}px`,
+              textAlign: contentAlign,
               ...(isEditing && toolbar.sectionSelected ? selectedOutline : {}),
             }}
             onClick={toolbar.handleSectionClick}
@@ -764,24 +809,45 @@ export default function ParallaxTemplate(props: HeroTemplateProps) {
               <div
                 style={{
                   position: "absolute",
-                  top: 0,
+                  top: 8,
                   left: "50%",
                   zIndex: 50,
                 }}
               >
-                <HeroSectionToolbar
+                <SectionToolbar
                   bgColor={h?.bgColor || ""}
                   hasBackgroundImage={hasImage}
+                  bgImage={backgroundImage}
+                  bgImageBlur={h?.bgBlur ?? 0}
+                  onBgImageBlurChange={toolbar.onBgBlurChange}
+                  bgImageOpacity={h?.bgOpacity ?? 100}
+                  onBgImageOpacityChange={toolbar.onBgOpacityChange}
                   overlayOpacity={h?.overlayOpacity ?? DEFAULT_OVERLAY}
+                  onOverlayOpacityChange={toolbar.onOverlayOpacityChange}
+                  bgFilter={h?.bgFilter}
+                  onBgFilterChange={toolbar.onBgFilterChange}
+                  onRemoveBgClick={onHeroRemoveBg}
+                  removingBg={heroRemovingBg}
+                  bgRemoved={heroBgRemoved}
+                  onUndoRemoveBg={onHeroUndoRemoveBg}
+                  bgDragActive={toolbar.bgDragActive}
+                  onBgDragToggle={toolbar.toggleBgDrag}
+                  onBgImageClick={onHeroBgImageClick}
                   paddingTop={padTop}
                   paddingBottom={padBottom}
+                  paddingLeft={h?.paddingLeft ?? 20}
+                  paddingRight={h?.paddingRight ?? 20}
+                  onPaddingLeftChange={toolbar.onPaddingLeftChange}
+                  onPaddingRightChange={toolbar.onPaddingRightChange}
                   palette={config.theme?.palette}
                   customColors={config.customColors}
                   onBgColorChange={toolbar.onBgColorChange}
-                  onOverlayOpacityChange={toolbar.onOverlayOpacityChange}
                   onPaddingTopChange={toolbar.onPaddingTopChange}
                   onPaddingBottomChange={toolbar.onPaddingBottomChange}
                   onCustomColorsChange={onCustomColorsChange}
+                  layoutOptions={HERO_LAYOUT_OPTIONS}
+                  currentLayout={contentAlign}
+                  onLayoutChange={toolbar.onContentAlignChange}
                 />
               </div>
             )}
@@ -794,7 +860,8 @@ export default function ParallaxTemplate(props: HeroTemplateProps) {
                 width: "100%",
                 display: "flex",
                 flexDirection: "column",
-                alignItems: "center",
+                alignItems: alignMap[contentAlign],
+                maxWidth: `${h?.titleMaxWidth ?? DEFAULT_TITLE_MW}px`,
               }}
             >
               {isEditing ? (

@@ -14,12 +14,16 @@ export interface EmailClientConfig {
  */
 export interface EmailOptions {
   to: string | string[];
+  cc?: string | string[];
+  bcc?: string | string[];
   from?: string;
   subject: string;
   text: string;
   html?: string;
   tags?: Array<{ Name: string; Value: string }>;
   replyTo?: string[];
+  inReplyTo?: string;
+  references?: string[];
 }
 
 /**

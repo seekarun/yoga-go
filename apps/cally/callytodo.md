@@ -24,6 +24,7 @@ x feat: add images for products
 -
 - AI chat to look up user's past interactions
 - video call recording and AI feed
+
 - review DB structure for scaling
 - tech: backups
 - chat for video calls 100ms

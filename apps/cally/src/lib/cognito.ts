@@ -1,6 +1,7 @@
 /**
  * AWS Cognito Configuration for CallyGo
  */
+import { CognitoJwtVerifier } from "aws-jwt-verify";
 
 export const cognitoConfig = {
   userPoolId: process.env.COGNITO_USER_POOL_ID || "",
@@ -14,6 +15,25 @@ export const cognitoConfig = {
 export const getCognitoIssuer = () => {
   return `https://cognito-idp.${cognitoConfig.region}.amazonaws.com/${cognitoConfig.userPoolId}`;
 };
+
+// JWT Verifier for validating Cognito Access tokens (used for mobile Bearer auth)
+let accessTokenVerifier: ReturnType<typeof CognitoJwtVerifier.create> | null =
+  null;
+
+export function getAccessTokenVerifier() {
+  if (
+    !accessTokenVerifier &&
+    cognitoConfig.userPoolId &&
+    cognitoConfig.clientId
+  ) {
+    accessTokenVerifier = CognitoJwtVerifier.create({
+      userPoolId: cognitoConfig.userPoolId,
+      tokenUse: "access",
+      clientId: cognitoConfig.clientId,
+    });
+  }
+  return accessTokenVerifier;
+}
 
 // Cognito Hosted UI URLs
 export const getCognitoUrls = () => {

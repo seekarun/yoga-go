@@ -39,6 +39,7 @@ export interface CreateEmailInput {
   from: EmailAddress;
   to: EmailAddress[];
   cc?: EmailAddress[];
+  bcc?: EmailAddress[];
   subject: string;
   bodyText: string;
   bodyHtml?: string;
@@ -77,6 +78,7 @@ export async function createEmail(input: CreateEmailInput): Promise<Email> {
     from: input.from,
     to: input.to,
     cc: input.cc,
+    bcc: input.bcc,
     subject: input.subject,
     bodyText: input.bodyText,
     bodyHtml: input.bodyHtml,
@@ -135,18 +137,48 @@ export async function getEmailsByTenant(
   );
 
   const limit = filters?.limit ?? 20;
+  const folder = filters?.folder || "inbox";
   const pk =
     inbox === "cal" ? EmailPK.CAL_INBOX(tenantId) : EmailPK.INBOX(tenantId);
+
+  // Build filter expression based on folder
+  let filterExpression: string;
+  const expressionValues: Record<string, unknown> = { ":pk": pk };
+
+  switch (folder) {
+    case "sent":
+      // Sent: outgoing emails that aren't deleted
+      filterExpression =
+        "isOutgoing = :true AND (attribute_not_exists(isDeleted) OR isDeleted = :false)";
+      expressionValues[":true"] = true;
+      expressionValues[":false"] = false;
+      break;
+    case "trash":
+      // Trash: soft-deleted emails
+      filterExpression = "isDeleted = :true";
+      expressionValues[":true"] = true;
+      break;
+    case "archive":
+      // Archive: archived but not deleted
+      filterExpression =
+        "isArchived = :true AND (attribute_not_exists(isDeleted) OR isDeleted = :false)";
+      expressionValues[":true"] = true;
+      expressionValues[":false"] = false;
+      break;
+    default:
+      // Inbox: not deleted and not archived
+      filterExpression =
+        "(attribute_not_exists(isDeleted) OR isDeleted = :false) AND (attribute_not_exists(isArchived) OR isArchived = :false)";
+      expressionValues[":false"] = false;
+      break;
+  }
 
   const result = await docClient.send(
     new QueryCommand({
       TableName: Tables.EMAILS,
       KeyConditionExpression: "PK = :pk",
-      FilterExpression: "attribute_not_exists(isDeleted) OR isDeleted = :false",
-      ExpressionAttributeValues: {
-        ":pk": pk,
-        ":false": false,
-      },
+      FilterExpression: filterExpression,
+      ExpressionAttributeValues: expressionValues,
       ScanIndexForward: false, // Most recent first
       Limit: limit,
       ExclusiveStartKey: filters?.lastKey
@@ -160,6 +192,11 @@ export async function getEmailsByTenant(
   );
 
   // Apply filters
+  if (filters?.labelId) {
+    emails = emails.filter(
+      (e) => e.labels && e.labels.includes(filters.labelId!),
+    );
+  }
   if (filters?.unreadOnly) {
     emails = emails.filter((e) => !e.isRead);
   }
@@ -172,8 +209,40 @@ export async function getEmailsByTenant(
       (e) =>
         e.subject.toLowerCase().includes(searchLower) ||
         e.from.email.toLowerCase().includes(searchLower) ||
-        e.from.name?.toLowerCase().includes(searchLower),
+        e.from.name?.toLowerCase().includes(searchLower) ||
+        e.bodyText?.toLowerCase().includes(searchLower),
     );
+  }
+  if (filters?.from) {
+    const fromLower = filters.from.toLowerCase();
+    emails = emails.filter(
+      (e) =>
+        e.from.email.toLowerCase().includes(fromLower) ||
+        e.from.name?.toLowerCase().includes(fromLower),
+    );
+  }
+  if (filters?.to) {
+    const toLower = filters.to.toLowerCase();
+    emails = emails.filter((e) =>
+      e.to.some(
+        (addr) =>
+          addr.email.toLowerCase().includes(toLower) ||
+          addr.name?.toLowerCase().includes(toLower),
+      ),
+    );
+  }
+  if (filters?.hasAttachment) {
+    emails = emails.filter((e) => e.attachments && e.attachments.length > 0);
+  }
+  if (filters?.after) {
+    const afterDate = new Date(filters.after);
+    afterDate.setHours(0, 0, 0, 0);
+    emails = emails.filter((e) => new Date(e.receivedAt) >= afterDate);
+  }
+  if (filters?.before) {
+    const beforeDate = new Date(filters.before);
+    beforeDate.setHours(23, 59, 59, 999);
+    emails = emails.filter((e) => new Date(e.receivedAt) <= beforeDate);
   }
 
   const unreadCount = emails.filter((e) => !e.isRead).length;
@@ -600,4 +669,294 @@ export async function deleteEmail(
     new Date(ttl * 1000).toISOString(),
   );
   return true;
+}
+
+/**
+ * Archive an email
+ */
+export async function archiveEmail(
+  emailId: string,
+  tenantId: string,
+  receivedAt: string,
+): Promise<boolean> {
+  console.log("[DBG][emailRepository] Archiving email:", emailId);
+
+  await docClient.send(
+    new UpdateCommand({
+      TableName: Tables.EMAILS,
+      Key: {
+        PK: EmailPK.INBOX(tenantId),
+        SK: `${receivedAt}#${emailId}`,
+      },
+      UpdateExpression:
+        "SET #isArchived = :isArchived, #archivedAt = :archivedAt, #updatedAt = :updatedAt",
+      ExpressionAttributeNames: {
+        "#isArchived": "isArchived",
+        "#archivedAt": "archivedAt",
+        "#updatedAt": "updatedAt",
+      },
+      ExpressionAttributeValues: {
+        ":isArchived": true,
+        ":archivedAt": new Date().toISOString(),
+        ":updatedAt": new Date().toISOString(),
+      },
+    }),
+  );
+
+  console.log("[DBG][emailRepository] Archived email:", emailId);
+  return true;
+}
+
+/**
+ * Unarchive an email
+ */
+export async function unarchiveEmail(
+  emailId: string,
+  tenantId: string,
+  receivedAt: string,
+): Promise<boolean> {
+  console.log("[DBG][emailRepository] Unarchiving email:", emailId);
+
+  await docClient.send(
+    new UpdateCommand({
+      TableName: Tables.EMAILS,
+      Key: {
+        PK: EmailPK.INBOX(tenantId),
+        SK: `${receivedAt}#${emailId}`,
+      },
+      UpdateExpression:
+        "SET #isArchived = :isArchived, #updatedAt = :updatedAt REMOVE #archivedAt",
+      ExpressionAttributeNames: {
+        "#isArchived": "isArchived",
+        "#archivedAt": "archivedAt",
+        "#updatedAt": "updatedAt",
+      },
+      ExpressionAttributeValues: {
+        ":isArchived": false,
+        ":updatedAt": new Date().toISOString(),
+      },
+    }),
+  );
+
+  console.log("[DBG][emailRepository] Unarchived email:", emailId);
+  return true;
+}
+
+/**
+ * Restore a soft-deleted email (reverses delete)
+ */
+export async function restoreEmail(
+  emailId: string,
+  tenantId: string,
+  receivedAt: string,
+  threadId?: string,
+): Promise<boolean> {
+  console.log("[DBG][emailRepository] Restoring email:", emailId);
+
+  await docClient.send(
+    new UpdateCommand({
+      TableName: Tables.EMAILS,
+      Key: {
+        PK: EmailPK.INBOX(tenantId),
+        SK: `${receivedAt}#${emailId}`,
+      },
+      UpdateExpression:
+        "SET #isDeleted = :false, #updatedAt = :updatedAt REMOVE #deletedAt, #ttl",
+      ExpressionAttributeNames: {
+        "#isDeleted": "isDeleted",
+        "#deletedAt": "deletedAt",
+        "#ttl": "ttl",
+        "#updatedAt": "updatedAt",
+      },
+      ExpressionAttributeValues: {
+        ":false": false,
+        ":updatedAt": new Date().toISOString(),
+      },
+    }),
+  );
+
+  if (threadId) {
+    await docClient.send(
+      new UpdateCommand({
+        TableName: Tables.EMAILS,
+        Key: {
+          PK: EmailPK.THREAD(threadId),
+          SK: emailId,
+        },
+        UpdateExpression: "SET #isDeleted = :false REMOVE #ttl",
+        ExpressionAttributeNames: {
+          "#isDeleted": "isDeleted",
+          "#ttl": "ttl",
+        },
+        ExpressionAttributeValues: {
+          ":false": false,
+        },
+      }),
+    );
+  }
+
+  console.log("[DBG][emailRepository] Restored email:", emailId);
+  return true;
+}
+
+/**
+ * Update labels on an email
+ */
+export async function updateEmailLabels(
+  emailId: string,
+  tenantId: string,
+  receivedAt: string,
+  labels: string[],
+): Promise<Email | null> {
+  console.log("[DBG][emailRepository] Updating email labels:", emailId, labels);
+
+  const result = await docClient.send(
+    new UpdateCommand({
+      TableName: Tables.EMAILS,
+      Key: {
+        PK: EmailPK.INBOX(tenantId),
+        SK: `${receivedAt}#${emailId}`,
+      },
+      UpdateExpression: "SET #labels = :labels, #updatedAt = :updatedAt",
+      ExpressionAttributeNames: {
+        "#labels": "labels",
+        "#updatedAt": "updatedAt",
+      },
+      ExpressionAttributeValues: {
+        ":labels": labels,
+        ":updatedAt": new Date().toISOString(),
+      },
+      ReturnValues: "ALL_NEW",
+    }),
+  );
+
+  if (!result.Attributes) {
+    console.log("[DBG][emailRepository] Email not found for label update");
+    return null;
+  }
+
+  console.log("[DBG][emailRepository] Updated email labels:", emailId);
+  return toEmail(result.Attributes as DynamoDBEmailItem);
+}
+
+/**
+ * Bulk action type
+ */
+export type BulkEmailAction =
+  | "markRead"
+  | "markUnread"
+  | "star"
+  | "unstar"
+  | "delete"
+  | "archive"
+  | "restore"
+  | "unarchive"
+  | "addLabel"
+  | "removeLabel";
+
+/**
+ * Bulk update multiple emails
+ */
+export async function bulkUpdateEmails(
+  tenantId: string,
+  emailIds: string[],
+  action: BulkEmailAction,
+  labelId?: string,
+): Promise<{ success: number; failed: number }> {
+  console.log(
+    "[DBG][emailRepository] Bulk update:",
+    action,
+    "on",
+    emailIds.length,
+    "emails",
+  );
+
+  const results = await Promise.allSettled(
+    emailIds.map(async (emailId) => {
+      const email = await findEmailById(emailId, tenantId);
+      if (!email) throw new Error(`Email not found: ${emailId}`);
+
+      switch (action) {
+        case "markRead":
+          await updateEmailStatus(emailId, tenantId, email.receivedAt, {
+            isRead: true,
+          });
+          break;
+        case "markUnread":
+          await updateEmailStatus(emailId, tenantId, email.receivedAt, {
+            isRead: false,
+          });
+          break;
+        case "star":
+          await updateEmailStatus(emailId, tenantId, email.receivedAt, {
+            isStarred: true,
+          });
+          break;
+        case "unstar":
+          await updateEmailStatus(emailId, tenantId, email.receivedAt, {
+            isStarred: false,
+          });
+          break;
+        case "delete":
+          await deleteEmail(
+            emailId,
+            tenantId,
+            email.receivedAt,
+            email.threadId,
+          );
+          break;
+        case "archive":
+          await archiveEmail(emailId, tenantId, email.receivedAt);
+          break;
+        case "restore":
+          await restoreEmail(
+            emailId,
+            tenantId,
+            email.receivedAt,
+            email.threadId,
+          );
+          break;
+        case "unarchive":
+          await unarchiveEmail(emailId, tenantId, email.receivedAt);
+          break;
+        case "addLabel":
+          if (labelId) {
+            const currentLabels = email.labels || [];
+            if (!currentLabels.includes(labelId)) {
+              await updateEmailLabels(emailId, tenantId, email.receivedAt, [
+                ...currentLabels,
+                labelId,
+              ]);
+            }
+          }
+          break;
+        case "removeLabel":
+          if (labelId) {
+            const filteredLabels = (email.labels || []).filter(
+              (l) => l !== labelId,
+            );
+            await updateEmailLabels(
+              emailId,
+              tenantId,
+              email.receivedAt,
+              filteredLabels,
+            );
+          }
+          break;
+      }
+    }),
+  );
+
+  const success = results.filter((r) => r.status === "fulfilled").length;
+  const failed = results.filter((r) => r.status === "rejected").length;
+
+  console.log(
+    "[DBG][emailRepository] Bulk update complete:",
+    success,
+    "success,",
+    failed,
+    "failed",
+  );
+
+  return { success, failed };
 }

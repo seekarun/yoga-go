@@ -116,6 +116,7 @@ const ResizableText = forwardRef<HTMLDivElement, ResizableTextProps>(
         <div
           style={{
             ...textStyle,
+            whiteSpace: "pre-line",
             ...(maxWidth ? { maxWidth: `${maxWidth}px` } : {}),
             ...wrapperStyle,
           }}
@@ -170,8 +171,10 @@ const ResizableText = forwardRef<HTMLDivElement, ResizableTextProps>(
             .join(" ")}
           contentEditable
           suppressContentEditableWarning
-          style={{ ...textStyle, ...editableBaseStyle }}
-          onBlur={(e) => onTextChange?.(e.currentTarget.textContent || "")}
+          style={{ ...textStyle, whiteSpace: "pre-line", ...editableBaseStyle }}
+          onBlur={(e) =>
+            onTextChange?.((e.currentTarget.innerText || "").replace(/\n$/, ""))
+          }
         >
           {text}
         </div>

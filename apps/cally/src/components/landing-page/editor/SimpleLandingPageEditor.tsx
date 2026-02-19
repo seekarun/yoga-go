@@ -29,6 +29,7 @@ import {
   TEMPLATES,
   DEFAULT_LANDING_PAGE_CONFIG,
   BUTTON_ACTIONS,
+  getAvailableTemplates,
 } from "@/types/landing-page";
 import type { Product } from "@/types";
 import { ImageEditorOverlay, ButtonEditorOverlay } from "@core/components";
@@ -46,7 +47,6 @@ import {
   HARMONY_OPTIONS,
 } from "@/lib/colorPalette";
 import { LandingPageThemeProvider } from "@/templates/hero/ThemeProvider";
-import RemoveBackgroundButton from "@/templates/hero/RemoveBackgroundButton";
 
 interface SimpleLandingPageEditorProps {
   tenantId: string;
@@ -67,6 +67,10 @@ export default function SimpleLandingPageEditor({
   const previewAreaRef = useRef<HTMLDivElement>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [showSavedIndicator, setShowSavedIndicator] = useState(false);
+
+  // Dev mode detection — show all templates on localhost
+  const isDev =
+    typeof window !== "undefined" && window.location.hostname === "localhost";
 
   // Publish state
   const [isPublished, setIsPublished] = useState(false);
@@ -121,6 +125,15 @@ export default function SimpleLandingPageEditor({
     useState<ColorHarmonyType>("analogous");
   const colorPickerRef = useRef<HTMLDivElement>(null);
   const colorInputRef = useRef<HTMLInputElement>(null);
+  const paletteSnapshotRef = useRef<{
+    primary?: string;
+    secondary?: string;
+    highlight?: string;
+  }>({});
+
+  // Tenant logo state (persisted via preferences API, not LP config)
+  const [tenantLogo, setTenantLogo] = useState("");
+  const [showLogoEditor, setShowLogoEditor] = useState(false);
 
   const currentBrandColor = config.theme?.primaryColor || "#667eea";
 
@@ -407,6 +420,9 @@ export default function SimpleLandingPageEditor({
         }
         if (prefsJson.success && prefsJson.data?.address) {
           setEditorAddress(prefsJson.data.address);
+        }
+        if (prefsJson.success && prefsJson.data?.logo !== undefined) {
+          setTenantLogo(prefsJson.data.logo);
         }
       } catch (err) {
         console.error(
@@ -697,11 +713,75 @@ export default function SimpleLandingPageEditor({
   );
 
   // Handle hero background removal complete
+  const [heroOriginalBgUrl, setHeroOriginalBgUrl] = useState<string | null>(
+    null,
+  );
   const handleHeroRemoveBgComplete = useCallback((newUrl: string) => {
     setConfig((prev) => ({
       ...prev,
       backgroundImage: newUrl,
     }));
+    setIsDirty(true);
+  }, []);
+
+  // Trigger hero background removal (async WASM)
+  const [heroRemovingBg, setHeroRemovingBg] = useState(false);
+  const handleHeroRemoveBg = useCallback(async () => {
+    if (heroRemovingBg || !config.backgroundImage) return;
+    setHeroOriginalBgUrl(config.backgroundImage);
+    setHeroRemovingBg(true);
+    try {
+      const { removeBackground } = await import("@imgly/background-removal");
+      const response = await fetch(config.backgroundImage);
+      if (!response.ok) throw new Error("Failed to fetch image");
+      const imageBlob = await response.blob();
+      const resultBlob = await removeBackground(imageBlob, {
+        progress: (key: string, current: number, total: number) => {
+          console.log(
+            `[DBG][SimpleLandingPageEditor] Remove BG ${key}: ${current}/${total}`,
+          );
+        },
+      });
+      const formData = new FormData();
+      formData.append(
+        "file",
+        new File([resultBlob], "bg-removed.png", { type: "image/png" }),
+      );
+      const uploadResponse = await fetch(
+        "/api/data/app/tenant/landing-page/upload",
+        { method: "POST", body: formData },
+      );
+      if (!uploadResponse.ok)
+        throw new Error("Failed to upload processed image");
+      const uploadData = await uploadResponse.json();
+      handleHeroRemoveBgComplete(uploadData.data.url);
+    } catch (err) {
+      console.error("[DBG][SimpleLandingPageEditor] Remove BG error:", err);
+      setHeroOriginalBgUrl(null);
+    } finally {
+      setHeroRemovingBg(false);
+    }
+  }, [heroRemovingBg, config.backgroundImage, handleHeroRemoveBgComplete]);
+
+  // Undo hero background removal
+  const handleHeroUndoRemoveBg = useCallback(() => {
+    if (!heroOriginalBgUrl) return;
+    setConfig((prev) => ({
+      ...prev,
+      backgroundImage: heroOriginalBgUrl,
+    }));
+    setHeroOriginalBgUrl(null);
+    setIsDirty(true);
+  }, [heroOriginalBgUrl]);
+
+  // Image offset & zoom (drag mode)
+  const handleImageOffsetChange = useCallback((x: number, y: number) => {
+    setConfig((prev) => ({ ...prev, imageOffsetX: x, imageOffsetY: y }));
+    setIsDirty(true);
+  }, []);
+
+  const handleImageZoomChange = useCallback((zoom: number) => {
+    setConfig((prev) => ({ ...prev, imageZoom: zoom }));
     setIsDirty(true);
   }, []);
 
@@ -1233,6 +1313,7 @@ export default function SimpleLandingPageEditor({
       setConfig((prev) => ({
         ...prev,
         theme: {
+          ...prev.theme,
           primaryColor: color,
           palette: {
             ...palette,
@@ -1336,6 +1417,123 @@ export default function SimpleLandingPageEditor({
       },
     }));
     setIsDirty(true);
+  }, []);
+
+  // --- Apply brand to all sections ---
+  const handleApplyBrandToAllSections = useCallback(() => {
+    const oldPrimary = paletteSnapshotRef.current.primary?.toLowerCase();
+    const oldSecondary = paletteSnapshotRef.current.secondary?.toLowerCase();
+    const oldHighlight = paletteSnapshotRef.current.highlight?.toLowerCase();
+
+    setConfig((prev) => {
+      const newPrimary = prev.theme?.palette?.[500];
+      const newSecondary = prev.theme?.palette?.secondary;
+      const newHighlight = prev.theme?.palette?.highlight;
+
+      const mapColor = (current: string | undefined): string | undefined => {
+        if (!current) return current;
+        const c = current.toLowerCase();
+        if (oldPrimary && c === oldPrimary && newPrimary) return newPrimary;
+        if (oldSecondary && c === oldSecondary && newSecondary)
+          return newSecondary;
+        if (oldHighlight && c === oldHighlight && newHighlight)
+          return newHighlight;
+        return current;
+      };
+
+      // Hero overrides
+      const heroOverrides = prev.heroStyleOverrides
+        ? {
+            ...prev.heroStyleOverrides,
+            titleFontFamily: undefined,
+            subtitleFontFamily: undefined,
+            titleTextColor: mapColor(prev.heroStyleOverrides.titleTextColor),
+            subtitleTextColor: mapColor(
+              prev.heroStyleOverrides.subtitleTextColor,
+            ),
+          }
+        : undefined;
+
+      // About overrides
+      const aboutOverrides = prev.about?.styleOverrides
+        ? {
+            ...prev.about.styleOverrides,
+            titleFontFamily: undefined,
+            fontFamily: undefined,
+            titleTextColor: mapColor(prev.about.styleOverrides.titleTextColor),
+            textColor: mapColor(prev.about.styleOverrides.textColor),
+          }
+        : undefined;
+
+      // Products overrides
+      const productsOverrides = prev.productsConfig?.styleOverrides
+        ? {
+            ...prev.productsConfig.styleOverrides,
+            headingFontFamily: undefined,
+            subheadingFontFamily: undefined,
+            headingTextColor: mapColor(
+              prev.productsConfig.styleOverrides.headingTextColor,
+            ),
+            subheadingTextColor: mapColor(
+              prev.productsConfig.styleOverrides.subheadingTextColor,
+            ),
+          }
+        : undefined;
+
+      return {
+        ...prev,
+        heroStyleOverrides: heroOverrides,
+        about: prev.about
+          ? { ...prev.about, styleOverrides: aboutOverrides }
+          : prev.about,
+        productsConfig: prev.productsConfig
+          ? { ...prev.productsConfig, styleOverrides: productsOverrides }
+          : prev.productsConfig,
+      };
+    });
+
+    // Update snapshot to current palette so subsequent applies work correctly
+    setConfig((prev) => {
+      paletteSnapshotRef.current = {
+        primary: prev.theme?.palette?.[500],
+        secondary: prev.theme?.palette?.secondary,
+        highlight: prev.theme?.palette?.highlight,
+      };
+      return prev;
+    });
+
+    setIsDirty(true);
+  }, []);
+
+  // --- Logo handler (saves to tenant, not LP config) ---
+  const handleLogoChange = useCallback(async (data: { imageUrl: string }) => {
+    setTenantLogo(data.imageUrl);
+    setShowLogoEditor(false);
+    try {
+      await fetch("/api/data/app/preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ logo: data.imageUrl }),
+      });
+    } catch (err) {
+      console.error("[DBG][SimpleLandingPageEditor] Failed to save logo:", err);
+    }
+  }, []);
+
+  const handleLogoRemove = useCallback(async () => {
+    setTenantLogo("");
+    try {
+      await fetch("/api/data/app/preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ logo: "" }),
+      });
+    } catch (err) {
+      console.error(
+        "[DBG][SimpleLandingPageEditor] Failed to remove logo:",
+        err,
+      );
+    }
   }, []);
 
   // --- SEO handlers ---
@@ -1495,7 +1693,16 @@ export default function SimpleLandingPageEditor({
         {/* Brand Colour Picker */}
         <div className="relative" ref={colorPickerRef}>
           <button
-            onClick={() => setShowColorPicker(!showColorPicker)}
+            onClick={() => {
+              if (!showColorPicker) {
+                paletteSnapshotRef.current = {
+                  primary: config.theme?.palette?.[500],
+                  secondary: config.theme?.palette?.secondary,
+                  highlight: config.theme?.palette?.highlight,
+                };
+              }
+              setShowColorPicker(!showColorPicker);
+            }}
             className="px-3 py-2 border border-[var(--color-border)] rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
             title="Brand Color"
           >
@@ -1520,6 +1727,45 @@ export default function SimpleLandingPageEditor({
 
           {showColorPicker && (
             <div className="absolute top-full left-0 mt-1 bg-white border border-[var(--color-border)] rounded-lg shadow-lg p-4 z-50 w-[240px]">
+              {/* Logo Section */}
+              <div className="mb-4 pb-3 border-b border-gray-100">
+                <div className="text-xs font-medium text-gray-700 mb-2">
+                  Logo
+                </div>
+                {tenantLogo ? (
+                  <div className="flex items-center gap-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- tenant logo URL */}
+                    <img
+                      src={tenantLogo}
+                      alt="Logo"
+                      className="h-10 w-auto rounded border border-gray-200 object-contain bg-gray-50"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowLogoEditor(true)}
+                      className="text-[10px] text-blue-600 hover:text-blue-800"
+                    >
+                      Change
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleLogoRemove}
+                      className="text-[10px] text-red-500 hover:text-red-700"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowLogoEditor(true)}
+                    className="w-full px-2 py-1.5 text-xs text-gray-600 border border-dashed border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                  >
+                    + Upload Logo
+                  </button>
+                )}
+              </div>
+
               <div className="text-xs font-medium text-gray-700 mb-3">
                 Your Brand Colour (click to change)
               </div>
@@ -1797,6 +2043,24 @@ export default function SimpleLandingPageEditor({
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* Apply to All Sections */}
+              <div className="mt-4 pt-3 border-t border-gray-100">
+                <button
+                  onClick={handleApplyBrandToAllSections}
+                  disabled={!config.theme?.primaryColor}
+                  className={`w-full px-3 py-2 text-xs font-medium rounded-md transition-colors ${
+                    config.theme?.primaryColor
+                      ? "bg-blue-500 text-white hover:bg-blue-600"
+                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  }`}
+                >
+                  Apply to All Sections
+                </button>
+                <p className="text-[10px] text-gray-400 mt-1.5 text-center">
+                  Updates fonts and palette colours across all sections
+                </p>
               </div>
             </div>
           )}
@@ -2132,7 +2396,7 @@ export default function SimpleLandingPageEditor({
             </button>
           </div>
           <div className="grid grid-cols-5 gap-3">
-            {TEMPLATES.map((template) => (
+            {getAvailableTemplates(isDev).map((template) => (
               <button
                 key={template.id}
                 onClick={() => handleTemplateChange(template.id)}
@@ -2360,36 +2624,6 @@ export default function SimpleLandingPageEditor({
                   }),
               }}
             >
-              {/* Image Edit + Remove BG Buttons - Top Right (hidden for templates that ignore hero image) */}
-              <div className="absolute top-4 right-4 z-10 flex gap-2">
-                <button
-                  onClick={() => setShowImageEditor(true)}
-                  className="p-3 bg-white/90 hover:bg-white rounded-full shadow-lg transition-all hover:scale-105"
-                  title="Edit background image"
-                >
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                    <circle cx="8.5" cy="8.5" r="1.5" />
-                    <polyline points="21 15 16 10 5 21" />
-                  </svg>
-                </button>
-                {config.backgroundImage && (
-                  <RemoveBackgroundButton
-                    imageUrl={config.backgroundImage}
-                    onComplete={handleHeroRemoveBgComplete}
-                  />
-                )}
-              </div>
-
               <LandingPageThemeProvider
                 palette={config.theme?.palette}
                 headerFont={config.theme?.headerFont}
@@ -2410,7 +2644,14 @@ export default function SimpleLandingPageEditor({
                   onAboutParagraphChange={handleAboutParagraphChange}
                   onAboutImageClick={() => setShowAboutImageEditor(true)}
                   onHeroStyleOverrideChange={handleHeroStyleOverrideChange}
+                  onHeroBgImageClick={() => setShowImageEditor(true)}
+                  onImageOffsetChange={handleImageOffsetChange}
+                  onImageZoomChange={handleImageZoomChange}
                   onHeroRemoveBgComplete={handleHeroRemoveBgComplete}
+                  onHeroRemoveBg={handleHeroRemoveBg}
+                  heroRemovingBg={heroRemovingBg}
+                  heroBgRemoved={!!heroOriginalBgUrl}
+                  onHeroUndoRemoveBg={handleHeroUndoRemoveBg}
                   onAboutStyleOverrideChange={handleAboutStyleOverrideChange}
                   onAboutBgImageClick={() => setShowAboutBgImageEditor(true)}
                   onAboutImagePositionChange={handleAboutImagePositionChange}
@@ -2606,6 +2847,18 @@ export default function SimpleLandingPageEditor({
         currentPosition={undefined}
         currentZoom={undefined}
         title="Edit Favicon"
+        aspectRatio="1/1"
+        defaultSearchQuery="logo icon"
+        uploadEndpoint="/api/data/app/tenant/landing-page/upload"
+      />
+
+      {/* Brand Logo Editor Overlay */}
+      <ImageEditorOverlay
+        isOpen={showLogoEditor}
+        onClose={() => setShowLogoEditor(false)}
+        onSave={handleLogoChange}
+        currentImage={tenantLogo || undefined}
+        title="Upload Logo"
         aspectRatio="1/1"
         defaultSearchQuery="logo icon"
         uploadEndpoint="/api/data/app/tenant/landing-page/upload"

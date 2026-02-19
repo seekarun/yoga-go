@@ -99,6 +99,20 @@ export async function GET(request: NextRequest) {
     const starredOnly = searchParams.get("starredOnly") === "true";
     const search = searchParams.get("search") || undefined;
     const lastKey = searchParams.get("lastKey") || undefined;
+    const folder =
+      (searchParams.get("folder") as
+        | "inbox"
+        | "sent"
+        | "trash"
+        | "archive"
+        | null) || undefined;
+    const labelId = searchParams.get("labelId") || undefined;
+    const from = searchParams.get("from") || undefined;
+    const to = searchParams.get("to") || undefined;
+    const hasAttachment =
+      searchParams.get("hasAttachment") === "true" ? true : undefined;
+    const after = searchParams.get("after") || undefined;
+    const before = searchParams.get("before") || undefined;
 
     const result = await getEmailsByTenant(tenant.id, {
       limit,
@@ -106,6 +120,13 @@ export async function GET(request: NextRequest) {
       starredOnly,
       search,
       lastKey,
+      folder,
+      labelId,
+      from,
+      to,
+      hasAttachment,
+      after,
+      before,
     });
 
     // Get total unread count (separate from filtered/paginated results)

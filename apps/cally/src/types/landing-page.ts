@@ -53,6 +53,8 @@ export interface TemplateInfo {
   previewImage?: string;
   /** Image aspect ratio configuration for this template */
   imageConfig: TemplateImageConfig;
+  /** Whether this template is published (user-ready) or still in development */
+  status: "published" | "development";
 }
 
 /**
@@ -69,6 +71,7 @@ export const TEMPLATES: TemplateInfo[] = [
       aboutImage: "1/1",
       featureCardImage: "16/9",
     },
+    status: "published",
   },
   {
     id: "split",
@@ -79,6 +82,7 @@ export const TEMPLATES: TemplateInfo[] = [
       aboutImage: "4/5",
       featureCardImage: "16/9",
     },
+    status: "development",
   },
   {
     id: "apple",
@@ -90,6 +94,7 @@ export const TEMPLATES: TemplateInfo[] = [
       aboutImage: "1/1",
       featureCardImage: "16/9",
     },
+    status: "development",
   },
   {
     id: "bayside",
@@ -101,6 +106,7 @@ export const TEMPLATES: TemplateInfo[] = [
       aboutImage: "4/5",
       featureCardImage: "16/9",
     },
+    status: "development",
   },
   {
     id: "therapist",
@@ -112,6 +118,7 @@ export const TEMPLATES: TemplateInfo[] = [
       aboutImage: "1/1",
       featureCardImage: "16/9",
     },
+    status: "development",
   },
   {
     id: "parallax",
@@ -123,6 +130,7 @@ export const TEMPLATES: TemplateInfo[] = [
       aboutImage: "4/5",
       featureCardImage: "16/9",
     },
+    status: "development",
   },
   {
     id: "animated",
@@ -134,6 +142,7 @@ export const TEMPLATES: TemplateInfo[] = [
       aboutImage: "4/5",
       featureCardImage: "16/9",
     },
+    status: "development",
   },
   {
     id: "diy",
@@ -145,6 +154,7 @@ export const TEMPLATES: TemplateInfo[] = [
       aboutImage: "1/1",
       featureCardImage: "16/9",
     },
+    status: "development",
   },
   {
     id: "freeform",
@@ -155,6 +165,7 @@ export const TEMPLATES: TemplateInfo[] = [
       aboutImage: "1/1",
       featureCardImage: "16/9",
     },
+    status: "development",
   },
 ];
 
@@ -227,6 +238,12 @@ export interface HeroStyleOverrides {
   buttonX?: number; // default 50
   buttonY?: number; // default 72
   sectionHeight?: number; // px, default 600
+  paddingLeft?: number; // px, default 20
+  paddingRight?: number; // px, default 20
+  contentAlign?: "left" | "center" | "right"; // default per template
+  bgBlur?: number; // px, default 0 — blur on hero background image
+  bgOpacity?: number; // 0-100, default 100 — opacity of hero background image
+  bgFilter?: string; // CSS filter preset name: "grayscale" | "sepia" | "saturate" | "contrast" | "brightness" | "invert" | "none"
   // Mobile freeform position overrides (% of container, 0-100)
   mobileTitleX?: number;
   mobileTitleY?: number;
@@ -436,6 +453,10 @@ export interface SimpleLandingPageConfig {
   imagePosition?: string;
   /** Background image zoom level (100-200) */
   imageZoom?: number;
+  /** Drag offset X in pixels (0 = centered per imagePosition) */
+  imageOffsetX?: number;
+  /** Drag offset Y in pixels (0 = centered per imagePosition) */
+  imageOffsetY?: number;
   /** Action button configuration */
   button?: ButtonConfig;
   /** About section configuration */
@@ -629,6 +650,15 @@ export const DEFAULT_LANDING_PAGE_CONFIG: SimpleLandingPageConfig = {
  */
 export function getTemplateInfo(id: TemplateId): TemplateInfo | undefined {
   return TEMPLATES.find((t) => t.id === id);
+}
+
+/**
+ * Get templates available for the template picker.
+ * Returns all templates in dev mode, only published ones in production.
+ */
+export function getAvailableTemplates(isDev: boolean): TemplateInfo[] {
+  if (isDev) return TEMPLATES;
+  return TEMPLATES.filter((t) => t.status === "published");
 }
 
 // ============================================================================

@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import TemplatesTab from "./TemplatesTab";
+
+type AdminTab = "tenants" | "templates";
 
 interface TenantSummary {
   id: string;
@@ -20,6 +23,7 @@ interface DeleteResult {
 }
 
 export default function SupaAdminPage() {
+  const [activeTab, setActiveTab] = useState<AdminTab>("tenants");
   const [tenants, setTenants] = useState<TenantSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -100,7 +104,7 @@ export default function SupaAdminPage() {
           display: "flex",
           alignItems: "center",
           gap: "1rem",
-          marginBottom: "2rem",
+          marginBottom: "1.5rem",
         }}
       >
         <h1 style={{ margin: 0, color: "var(--text-main)" }}>CallyGo Admin</h1>
@@ -118,296 +122,338 @@ export default function SupaAdminPage() {
         </span>
       </div>
 
-      {/* Error */}
-      {error && (
-        <div
-          style={{
-            padding: "1rem",
-            marginBottom: "1rem",
-            background: "#fef2f2",
-            border: "1px solid #fecaca",
-            borderRadius: "0.5rem",
-            color: "#991b1b",
-          }}
-        >
-          {error}
+      {/* Tab Navigation */}
+      <div
+        style={{
+          display: "flex",
+          gap: "0",
+          borderBottom: "2px solid var(--color-border, #e5e7eb)",
+          marginBottom: "1.5rem",
+        }}
+      >
+        {(["tenants", "templates"] as AdminTab[]).map((tab) => (
           <button
-            onClick={() => setError(null)}
-            style={{
-              marginLeft: "1rem",
-              background: "none",
-              border: "none",
-              color: "#991b1b",
-              cursor: "pointer",
-              textDecoration: "underline",
-            }}
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            style={tabStyle(activeTab === tab)}
           >
-            Dismiss
+            {tab.charAt(0).toUpperCase() + tab.slice(1)}
           </button>
-        </div>
-      )}
+        ))}
+      </div>
 
-      {/* Delete Result */}
-      {deleteResult && (
-        <div
-          style={{
-            padding: "1rem",
-            marginBottom: "1rem",
-            background: "#f0fdf4",
-            border: "1px solid #bbf7d0",
-            borderRadius: "0.5rem",
-            color: "#166534",
-          }}
-        >
-          <strong>Deleted tenant {deleteResult.tenantId}</strong>
-          <span style={{ marginLeft: "0.5rem" }}>
-            ({deleteResult.totalDeleted} items)
-          </span>
-          <div
-            style={{
-              marginTop: "0.5rem",
-              fontSize: "0.875rem",
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "0.5rem",
-            }}
-          >
-            {Object.entries(deleteResult.counts).map(([key, val]) => {
-              if (key === "domainLookup") {
-                return val ? (
-                  <span key={key} style={countBadgeStyle}>
-                    Domain lookup: cleaned
-                  </span>
-                ) : null;
-              }
-              if (key === "vercelDomain") {
-                if (val === true) {
-                  return (
-                    <span key={key} style={countBadgeStyle}>
-                      Vercel domain: removed
-                    </span>
-                  );
-                }
-                // false with warning is shown below
-                return null;
-              }
-              if (typeof val === "number" && val > 0) {
-                return (
-                  <span key={key} style={countBadgeStyle}>
-                    {key}: {val}
-                  </span>
-                );
-              }
-              return null;
-            })}
-          </div>
-          {deleteResult.warnings && deleteResult.warnings.length > 0 && (
+      {/* Tab Content */}
+      {activeTab === "tenants" && (
+        <>
+          {/* Error */}
+          {error && (
             <div
               style={{
-                marginTop: "0.75rem",
-                padding: "0.75rem",
-                background: "#fef3c7",
-                border: "1px solid #fbbf24",
-                borderRadius: "0.375rem",
-                fontSize: "0.813rem",
-                color: "#92400e",
+                padding: "1rem",
+                marginBottom: "1rem",
+                background: "#fef2f2",
+                border: "1px solid #fecaca",
+                borderRadius: "0.5rem",
+                color: "#991b1b",
               }}
             >
-              <strong>Warnings:</strong>
-              {deleteResult.warnings.map((w, i) => (
-                <div key={i} style={{ marginTop: "0.25rem" }}>
-                  {w}
-                </div>
-              ))}
-            </div>
-          )}
-          <button
-            onClick={() => setDeleteResult(null)}
-            style={{
-              marginTop: "0.5rem",
-              background: "none",
-              border: "none",
-              color: "#166534",
-              cursor: "pointer",
-              textDecoration: "underline",
-              fontSize: "0.875rem",
-            }}
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
-
-      {/* Confirm Delete Modal */}
-      {confirmTenant && (
-        <div
-          style={{
-            padding: "1.5rem",
-            marginBottom: "1.5rem",
-            background: "#fff7ed",
-            border: "2px solid #fb923c",
-            borderRadius: "0.5rem",
-          }}
-        >
-          <h3 style={{ margin: "0 0 0.5rem 0", color: "#9a3412" }}>
-            Confirm Deletion
-          </h3>
-          <p style={{ margin: "0 0 1rem 0", color: "#9a3412" }}>
-            This will permanently delete <strong>all data</strong> for tenant{" "}
-            <strong>{confirmTenant.name}</strong> ({confirmTenant.id}). This
-            action cannot be undone.
-          </p>
-          <p style={{ margin: "0 0 0.5rem 0", color: "#9a3412" }}>
-            Type <strong>{confirmTenant.name}</strong> to confirm:
-          </p>
-          <div style={{ display: "flex", gap: "0.5rem" }}>
-            <input
-              type="text"
-              value={confirmInput}
-              onChange={(e) => setConfirmInput(e.target.value)}
-              placeholder={confirmTenant.name}
-              style={{
-                flex: 1,
-                padding: "0.5rem 0.75rem",
-                border: "1px solid var(--color-border, #d1d5db)",
-                borderRadius: "0.375rem",
-                fontSize: "0.875rem",
-              }}
-            />
-            <button
-              onClick={handleConfirmDelete}
-              disabled={
-                confirmInput !== confirmTenant.name ||
-                deleting === confirmTenant.id
-              }
-              style={{
-                padding: "0.5rem 1rem",
-                background:
-                  confirmInput === confirmTenant.name ? "#dc2626" : "#9ca3af",
-                color: "#fff",
-                border: "none",
-                borderRadius: "0.375rem",
-                cursor:
-                  confirmInput === confirmTenant.name
-                    ? "pointer"
-                    : "not-allowed",
-                fontSize: "0.875rem",
-                fontWeight: 600,
-              }}
-            >
-              {deleting === confirmTenant.id ? "Deleting..." : "Delete"}
-            </button>
-            <button
-              onClick={handleCancelDelete}
-              style={{
-                padding: "0.5rem 1rem",
-                background: "transparent",
-                border: "1px solid var(--color-border, #d1d5db)",
-                borderRadius: "0.375rem",
-                cursor: "pointer",
-                fontSize: "0.875rem",
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Tenant Table */}
-      <h2 style={{ color: "var(--text-main)", marginBottom: "1rem" }}>
-        Tenants ({tenants.length})
-      </h2>
-
-      {loading ? (
-        <p style={{ color: "var(--text-muted)" }}>Loading tenants...</p>
-      ) : tenants.length === 0 ? (
-        <p style={{ color: "var(--text-muted)" }}>No tenants found.</p>
-      ) : (
-        <div style={{ overflowX: "auto" }}>
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              fontSize: "0.875rem",
-            }}
-          >
-            <thead>
-              <tr
+              {error}
+              <button
+                onClick={() => setError(null)}
                 style={{
-                  borderBottom: "2px solid var(--color-border, #e5e7eb)",
+                  marginLeft: "1rem",
+                  background: "none",
+                  border: "none",
+                  color: "#991b1b",
+                  cursor: "pointer",
+                  textDecoration: "underline",
                 }}
               >
-                <th style={thStyle}>ID</th>
-                <th style={thStyle}>Name</th>
-                <th style={thStyle}>Email</th>
-                <th style={thStyle}>Created</th>
-                <th style={thStyle}>Tier</th>
-                <th style={thStyle}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tenants.map((tenant) => (
-                <tr
-                  key={tenant.id}
+                Dismiss
+              </button>
+            </div>
+          )}
+
+          {/* Delete Result */}
+          {deleteResult && (
+            <div
+              style={{
+                padding: "1rem",
+                marginBottom: "1rem",
+                background: "#f0fdf4",
+                border: "1px solid #bbf7d0",
+                borderRadius: "0.5rem",
+                color: "#166534",
+              }}
+            >
+              <strong>Deleted tenant {deleteResult.tenantId}</strong>
+              <span style={{ marginLeft: "0.5rem" }}>
+                ({deleteResult.totalDeleted} items)
+              </span>
+              <div
+                style={{
+                  marginTop: "0.5rem",
+                  fontSize: "0.875rem",
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: "0.5rem",
+                }}
+              >
+                {Object.entries(deleteResult.counts).map(([key, val]) => {
+                  if (key === "domainLookup") {
+                    return val ? (
+                      <span key={key} style={countBadgeStyle}>
+                        Domain lookup: cleaned
+                      </span>
+                    ) : null;
+                  }
+                  if (key === "vercelDomain") {
+                    if (val === true) {
+                      return (
+                        <span key={key} style={countBadgeStyle}>
+                          Vercel domain: removed
+                        </span>
+                      );
+                    }
+                    return null;
+                  }
+                  if (typeof val === "number" && val > 0) {
+                    return (
+                      <span key={key} style={countBadgeStyle}>
+                        {key}: {val}
+                      </span>
+                    );
+                  }
+                  return null;
+                })}
+              </div>
+              {deleteResult.warnings && deleteResult.warnings.length > 0 && (
+                <div
                   style={{
-                    borderBottom: "1px solid var(--color-border, #e5e7eb)",
+                    marginTop: "0.75rem",
+                    padding: "0.75rem",
+                    background: "#fef3c7",
+                    border: "1px solid #fbbf24",
+                    borderRadius: "0.375rem",
+                    fontSize: "0.813rem",
+                    color: "#92400e",
                   }}
                 >
-                  <td style={tdStyle}>
-                    <code style={{ fontSize: "0.75rem" }}>{tenant.id}</code>
-                  </td>
-                  <td style={tdStyle}>{tenant.name}</td>
-                  <td style={tdStyle}>{tenant.email}</td>
-                  <td style={tdStyle}>
-                    {new Date(tenant.createdAt).toLocaleDateString()}
-                  </td>
-                  <td style={tdStyle}>
-                    <span
+                  <strong>Warnings:</strong>
+                  {deleteResult.warnings.map((w, i) => (
+                    <div key={i} style={{ marginTop: "0.25rem" }}>
+                      {w}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button
+                onClick={() => setDeleteResult(null)}
+                style={{
+                  marginTop: "0.5rem",
+                  background: "none",
+                  border: "none",
+                  color: "#166534",
+                  cursor: "pointer",
+                  textDecoration: "underline",
+                  fontSize: "0.875rem",
+                }}
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
+          {/* Confirm Delete Modal */}
+          {confirmTenant && (
+            <div
+              style={{
+                padding: "1.5rem",
+                marginBottom: "1.5rem",
+                background: "#fff7ed",
+                border: "2px solid #fb923c",
+                borderRadius: "0.5rem",
+              }}
+            >
+              <h3 style={{ margin: "0 0 0.5rem 0", color: "#9a3412" }}>
+                Confirm Deletion
+              </h3>
+              <p style={{ margin: "0 0 1rem 0", color: "#9a3412" }}>
+                This will permanently delete <strong>all data</strong> for
+                tenant <strong>{confirmTenant.name}</strong> ({confirmTenant.id}
+                ). This action cannot be undone.
+              </p>
+              <p style={{ margin: "0 0 0.5rem 0", color: "#9a3412" }}>
+                Type <strong>{confirmTenant.name}</strong> to confirm:
+              </p>
+              <div style={{ display: "flex", gap: "0.5rem" }}>
+                <input
+                  type="text"
+                  value={confirmInput}
+                  onChange={(e) => setConfirmInput(e.target.value)}
+                  placeholder={confirmTenant.name}
+                  style={{
+                    flex: 1,
+                    padding: "0.5rem 0.75rem",
+                    border: "1px solid var(--color-border, #d1d5db)",
+                    borderRadius: "0.375rem",
+                    fontSize: "0.875rem",
+                  }}
+                />
+                <button
+                  onClick={handleConfirmDelete}
+                  disabled={
+                    confirmInput !== confirmTenant.name ||
+                    deleting === confirmTenant.id
+                  }
+                  style={{
+                    padding: "0.5rem 1rem",
+                    background:
+                      confirmInput === confirmTenant.name
+                        ? "#dc2626"
+                        : "#9ca3af",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "0.375rem",
+                    cursor:
+                      confirmInput === confirmTenant.name
+                        ? "pointer"
+                        : "not-allowed",
+                    fontSize: "0.875rem",
+                    fontWeight: 600,
+                  }}
+                >
+                  {deleting === confirmTenant.id ? "Deleting..." : "Delete"}
+                </button>
+                <button
+                  onClick={handleCancelDelete}
+                  style={{
+                    padding: "0.5rem 1rem",
+                    background: "transparent",
+                    border: "1px solid var(--color-border, #d1d5db)",
+                    borderRadius: "0.375rem",
+                    cursor: "pointer",
+                    fontSize: "0.875rem",
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Tenant Table */}
+          <h2 style={{ color: "var(--text-main)", marginBottom: "1rem" }}>
+            Tenants ({tenants.length})
+          </h2>
+
+          {loading ? (
+            <p style={{ color: "var(--text-muted)" }}>Loading tenants...</p>
+          ) : tenants.length === 0 ? (
+            <p style={{ color: "var(--text-muted)" }}>No tenants found.</p>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  fontSize: "0.875rem",
+                }}
+              >
+                <thead>
+                  <tr
+                    style={{
+                      borderBottom: "2px solid var(--color-border, #e5e7eb)",
+                    }}
+                  >
+                    <th style={thStyle}>ID</th>
+                    <th style={thStyle}>Name</th>
+                    <th style={thStyle}>Email</th>
+                    <th style={thStyle}>Created</th>
+                    <th style={thStyle}>Tier</th>
+                    <th style={thStyle}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tenants.map((tenant) => (
+                    <tr
+                      key={tenant.id}
                       style={{
-                        padding: "0.125rem 0.5rem",
-                        borderRadius: "9999px",
-                        fontSize: "0.75rem",
-                        background:
-                          tenant.subscriptionTier === "free"
-                            ? "#f3f4f6"
-                            : "#dbeafe",
-                        color:
-                          tenant.subscriptionTier === "free"
-                            ? "#6b7280"
-                            : "#1d4ed8",
+                        borderBottom: "1px solid var(--color-border, #e5e7eb)",
                       }}
                     >
-                      {tenant.subscriptionTier}
-                    </span>
-                  </td>
-                  <td style={tdStyle}>
-                    <button
-                      onClick={() => handleDeleteClick(tenant.id)}
-                      disabled={deleting === tenant.id}
-                      style={{
-                        padding: "0.25rem 0.75rem",
-                        background: "#fee2e2",
-                        color: "#dc2626",
-                        border: "1px solid #fecaca",
-                        borderRadius: "0.375rem",
-                        cursor: "pointer",
-                        fontSize: "0.75rem",
-                        fontWeight: 600,
-                      }}
-                    >
-                      {deleting === tenant.id ? "Deleting..." : "Delete"}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                      <td style={tdStyle}>
+                        <code style={{ fontSize: "0.75rem" }}>{tenant.id}</code>
+                      </td>
+                      <td style={tdStyle}>{tenant.name}</td>
+                      <td style={tdStyle}>{tenant.email}</td>
+                      <td style={tdStyle}>
+                        {new Date(tenant.createdAt).toLocaleDateString()}
+                      </td>
+                      <td style={tdStyle}>
+                        <span
+                          style={{
+                            padding: "0.125rem 0.5rem",
+                            borderRadius: "9999px",
+                            fontSize: "0.75rem",
+                            background:
+                              tenant.subscriptionTier === "free"
+                                ? "#f3f4f6"
+                                : "#dbeafe",
+                            color:
+                              tenant.subscriptionTier === "free"
+                                ? "#6b7280"
+                                : "#1d4ed8",
+                          }}
+                        >
+                          {tenant.subscriptionTier}
+                        </span>
+                      </td>
+                      <td style={tdStyle}>
+                        <button
+                          onClick={() => handleDeleteClick(tenant.id)}
+                          disabled={deleting === tenant.id}
+                          style={{
+                            padding: "0.25rem 0.75rem",
+                            background: "#fee2e2",
+                            color: "#dc2626",
+                            border: "1px solid #fecaca",
+                            borderRadius: "0.375rem",
+                            cursor: "pointer",
+                            fontSize: "0.75rem",
+                            fontWeight: 600,
+                          }}
+                        >
+                          {deleting === tenant.id ? "Deleting..." : "Delete"}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       )}
+
+      {activeTab === "templates" && <TemplatesTab />}
     </div>
   );
 }
+
+const tabStyle = (isActive: boolean): React.CSSProperties => ({
+  padding: "0.75rem 1.5rem",
+  fontSize: "0.875rem",
+  fontWeight: 600,
+  cursor: "pointer",
+  background: "none",
+  border: "none",
+  borderBottom: isActive
+    ? "2px solid var(--text-main, #111827)"
+    : "2px solid transparent",
+  color: isActive ? "var(--text-main, #111827)" : "var(--text-muted, #6b7280)",
+  marginBottom: "-2px",
+});
 
 const thStyle: React.CSSProperties = {
   textAlign: "left",

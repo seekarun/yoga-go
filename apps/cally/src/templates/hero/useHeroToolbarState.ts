@@ -17,6 +17,7 @@ export default function useHeroToolbarState({
   const [titleSelected, setTitleSelected] = useState(false);
   const [subtitleSelected, setSubtitleSelected] = useState(false);
   const [sectionSelected, setSectionSelected] = useState(false);
+  const [bgDragActive, setBgDragActive] = useState(false);
 
   const titleRef = useRef<HTMLDivElement>(null);
   const subtitleRef = useRef<HTMLDivElement>(null);
@@ -63,6 +64,13 @@ export default function useHeroToolbarState({
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [sectionSelected]);
+
+  // Auto-disable drag mode when section is deselected
+  useEffect(() => {
+    if (!sectionSelected) setBgDragActive(false);
+  }, [sectionSelected]);
+
+  const toggleBgDrag = useCallback(() => setBgDragActive((prev) => !prev), []);
 
   const handleTitleClick = useCallback(
     (e: React.MouseEvent) => {
@@ -180,6 +188,31 @@ export default function useHeroToolbarState({
     (v: string) => mergeOverride({ bgColor: v }),
     [mergeOverride],
   );
+  const onPaddingLeftChange = useCallback(
+    (v: number) => mergeOverride({ paddingLeft: v }),
+    [mergeOverride],
+  );
+  const onPaddingRightChange = useCallback(
+    (v: number) => mergeOverride({ paddingRight: v }),
+    [mergeOverride],
+  );
+  const onContentAlignChange = useCallback(
+    (v: string) =>
+      mergeOverride({ contentAlign: v as "left" | "center" | "right" }),
+    [mergeOverride],
+  );
+  const onBgBlurChange = useCallback(
+    (v: number) => mergeOverride({ bgBlur: v }),
+    [mergeOverride],
+  );
+  const onBgOpacityChange = useCallback(
+    (v: number) => mergeOverride({ bgOpacity: v }),
+    [mergeOverride],
+  );
+  const onBgFilterChange = useCallback(
+    (v: string) => mergeOverride({ bgFilter: v }),
+    [mergeOverride],
+  );
 
   // Freeform position callbacks
   const onTitlePositionChange = useCallback(
@@ -250,11 +283,20 @@ export default function useHeroToolbarState({
     onSubtitleFontStyleChange,
     onSubtitleTextColorChange,
     onSubtitleTextAlignChange,
+    // BG drag mode
+    bgDragActive,
+    toggleBgDrag,
     // Section callbacks
     onOverlayOpacityChange,
     onPaddingTopChange,
     onPaddingBottomChange,
     onBgColorChange,
+    onPaddingLeftChange,
+    onPaddingRightChange,
+    onContentAlignChange,
+    onBgBlurChange,
+    onBgOpacityChange,
+    onBgFilterChange,
     // Freeform position callbacks
     onTitlePositionChange,
     onSubtitlePositionChange,

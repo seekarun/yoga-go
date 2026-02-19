@@ -1,23 +1,29 @@
 /**
  * /api/data/app/inbox/[emailId]/reply
- * POST - Send a reply to an email
+ * POST - Send a reply, reply-all, or forward
  */
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { auth } from "@/auth";
-import { getTenantByUserId } from "@/lib/repositories/tenantRepository";
+import {
+  getTenantByUserId,
+  type CallyTenant,
+} from "@/lib/repositories/tenantRepository";
 import {
   findEmailById,
   createEmail,
   updateEmailThreadId,
 } from "@/lib/repositories/emailRepository";
-import { sendReplyEmail } from "@/lib/email/replyEmail";
+import { sendOutgoingEmail } from "@/lib/email/replyEmail";
 import { getFromEmail } from "@/lib/email/bookingNotification";
 import type { EmailAttachmentInput } from "@core/lib";
-import type { EmailAttachment } from "@/types";
+import type {
+  EmailAddress,
+  EmailAttachment,
+  EmailSignatureConfig,
+} from "@/types";
 
-// S3 client for fetching uploaded reply attachments
 const s3Client = new S3Client({ region: "us-west-2" });
 const EMAIL_BUCKET =
   process.env.EMAIL_BUCKET || "yoga-go-incoming-emails-710735877057";
@@ -40,6 +46,19 @@ interface ReplyRequestBody {
   text?: string;
   html?: string;
   attachments?: ReplyAttachmentMeta[];
+  mode?: "reply" | "reply-all" | "forward";
+  to?: EmailAddress[];
+  cc?: EmailAddress[];
+  bcc?: EmailAddress[];
+}
+
+function getSignatureConfig(
+  tenant: CallyTenant,
+): EmailSignatureConfig | undefined {
+  const sig = (tenant as unknown as Record<string, unknown>)
+    .emailSignatureConfig as EmailSignatureConfig;
+  if (sig?.enabled) return sig;
+  return undefined;
 }
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
@@ -57,7 +76,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     console.log("[DBG][inbox/reply] POST called for email:", emailId);
 
-    // Get tenant for this user
     const tenant = await getTenantByUserId(cognitoSub);
     if (!tenant) {
       return NextResponse.json(
@@ -66,7 +84,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Get original email to reply to
     const originalEmail = await findEmailById(emailId, tenant.id);
     if (!originalEmail) {
       return NextResponse.json(
@@ -75,20 +92,74 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Parse request body
     const reqBody: ReplyRequestBody = await request.json();
+    const mode = reqBody.mode || "reply";
 
-    if (!reqBody.text || reqBody.text.trim() === "") {
+    // Forward requires body text or explicit recipients
+    if (mode === "forward" && (!reqBody.to || reqBody.to.length === 0)) {
+      return NextResponse.json(
+        { success: false, error: "Forward requires at least one recipient" },
+        { status: 400 },
+      );
+    }
+
+    if (mode !== "forward" && (!reqBody.text || reqBody.text.trim() === "")) {
       return NextResponse.json(
         { success: false, error: "Reply text is required" },
         { status: 400 },
       );
     }
 
-    // Build reply subject
-    const replySubject = originalEmail.subject.startsWith("Re: ")
-      ? originalEmail.subject
-      : `Re: ${originalEmail.subject}`;
+    // Determine recipients based on mode
+    const fromEmail = getFromEmail(tenant);
+    const fromEmailAddress = fromEmail.match(/<(.+)>/)?.[1] || fromEmail;
+    let toAddresses: EmailAddress[];
+    let ccAddresses: EmailAddress[] | undefined;
+    let bccAddresses: EmailAddress[] | undefined;
+    let subject: string;
+
+    switch (mode) {
+      case "reply-all": {
+        // Reply to sender
+        toAddresses = reqBody.to || [originalEmail.from];
+        // CC: original to + cc, minus self
+        const allOriginalRecipients = [
+          ...(originalEmail.to || []),
+          ...(originalEmail.cc || []),
+        ].filter(
+          (addr) => addr.email.toLowerCase() !== fromEmailAddress.toLowerCase(),
+        );
+        ccAddresses =
+          reqBody.cc ||
+          (allOriginalRecipients.length > 0
+            ? allOriginalRecipients
+            : undefined);
+        bccAddresses = reqBody.bcc;
+        subject = originalEmail.subject.startsWith("Re: ")
+          ? originalEmail.subject
+          : `Re: ${originalEmail.subject}`;
+        break;
+      }
+      case "forward": {
+        toAddresses = reqBody.to!;
+        ccAddresses = reqBody.cc;
+        bccAddresses = reqBody.bcc;
+        subject = originalEmail.subject.startsWith("Fwd: ")
+          ? originalEmail.subject
+          : `Fwd: ${originalEmail.subject}`;
+        break;
+      }
+      default: {
+        // Simple reply
+        toAddresses = reqBody.to || [originalEmail.from];
+        ccAddresses = reqBody.cc;
+        bccAddresses = reqBody.bcc;
+        subject = originalEmail.subject.startsWith("Re: ")
+          ? originalEmail.subject
+          : `Re: ${originalEmail.subject}`;
+        break;
+      }
+    }
 
     // Fetch attachment files from S3 if present
     const attachmentInputs: EmailAttachmentInput[] = [];
@@ -133,55 +204,109 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    // Send the reply email
+    // For forward, also include original attachments
+    if (mode === "forward" && originalEmail.attachments.length > 0) {
+      for (const att of originalEmail.attachments) {
+        // Skip if already in user-provided attachments
+        if (attachmentMeta.some((a) => a.id === att.id)) continue;
+
+        const command = new GetObjectCommand({
+          Bucket: EMAIL_BUCKET,
+          Key: att.s3Key,
+        });
+        try {
+          const s3Response = await s3Client.send(command);
+          const bodyBytes = await s3Response.Body?.transformToByteArray();
+          if (bodyBytes) {
+            attachmentInputs.push({
+              filename: att.filename,
+              content: Buffer.from(bodyBytes),
+              contentType: att.mimeType,
+            });
+            attachmentMeta.push(att);
+          }
+        } catch (err) {
+          console.error(
+            "[DBG][inbox/reply] Failed to fetch original attachment:",
+            att.s3Key,
+            err,
+          );
+        }
+      }
+    }
+
+    // Build body text for forward (include original message)
+    let bodyText = reqBody.text || "";
+    let bodyHtml = reqBody.html;
+
+    if (mode === "forward") {
+      const fwdHeader = `\n\n---------- Forwarded message ----------\nFrom: ${originalEmail.from.name || ""} <${originalEmail.from.email}>\nDate: ${originalEmail.receivedAt}\nSubject: ${originalEmail.subject}\nTo: ${originalEmail.to.map((t) => t.email).join(", ")}\n\n`;
+      bodyText = bodyText + fwdHeader + originalEmail.bodyText;
+
+      const fwdHeaderHtml = `<br><br><div style="border-left:2px solid #ccc;padding-left:12px;margin-left:4px;color:#555"><p style="margin:0"><b>---------- Forwarded message ----------</b><br>From: ${originalEmail.from.name || ""} &lt;${originalEmail.from.email}&gt;<br>Date: ${originalEmail.receivedAt}<br>Subject: ${originalEmail.subject}<br>To: ${originalEmail.to.map((t) => t.email).join(", ")}</p><br>${originalEmail.bodyHtml || originalEmail.bodyText.replace(/\n/g, "<br>")}</div>`;
+      bodyHtml = (bodyHtml || bodyText.replace(/\n/g, "<br>")) + fwdHeaderHtml;
+    }
+
+    // Get signature config
+    const signature = getSignatureConfig(tenant);
+
+    // Send the email
     console.log(
-      "[DBG][inbox/reply] Sending reply to:",
-      originalEmail.from.email,
+      "[DBG][inbox/reply] Sending",
+      mode,
+      "to:",
+      toAddresses.map((a) => a.email).join(", "),
     );
 
-    const messageId = await sendReplyEmail({
+    const messageId = await sendOutgoingEmail({
       tenant,
-      to: originalEmail.from.email,
-      subject: replySubject,
-      text: reqBody.text,
-      html: reqBody.html,
+      to: toAddresses.map((a) => a.email),
+      cc: ccAddresses?.map((a) => a.email),
+      bcc: bccAddresses?.map((a) => a.email),
+      subject,
+      text: bodyText,
+      html: bodyHtml,
       attachments: attachmentInputs.length > 0 ? attachmentInputs : undefined,
+      signature,
+      inReplyTo: mode !== "forward" ? originalEmail.messageId : undefined,
+      references: mode !== "forward" ? [originalEmail.messageId] : undefined,
     });
 
-    console.log("[DBG][inbox/reply] Reply sent, messageId:", messageId);
+    console.log("[DBG][inbox/reply] Sent, messageId:", messageId);
 
-    // Store the outgoing email in the inbox
+    // Store the outgoing email
     const now = new Date().toISOString();
     const newEmailId = `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
-    // Determine threadId - use original's threadId, or original's id if no thread exists yet
-    const threadId = originalEmail.threadId || originalEmail.id;
-
-    // If original email didn't have a threadId, update it to start the thread
-    if (!originalEmail.threadId) {
-      console.log("[DBG][inbox/reply] Starting new thread with id:", threadId);
-      await updateEmailThreadId(originalEmail.id, tenant.id, threadId);
+    // Thread handling (replies keep thread, forward starts fresh)
+    let threadId: string | undefined;
+    if (mode !== "forward") {
+      threadId = originalEmail.threadId || originalEmail.id;
+      if (!originalEmail.threadId) {
+        console.log(
+          "[DBG][inbox/reply] Starting new thread with id:",
+          threadId,
+        );
+        await updateEmailThreadId(originalEmail.id, tenant.id, threadId);
+      }
     }
-
-    // Get the from email for the stored record
-    const fromEmail = getFromEmail(tenant);
-    // Extract just the email address from "Name <email>" format
-    const fromEmailAddress = fromEmail.match(/<(.+)>/)?.[1] || fromEmail;
 
     const outgoingEmail = await createEmail({
       id: newEmailId,
       expertId: tenant.id,
       messageId,
       threadId,
-      inReplyTo: originalEmail.messageId,
+      inReplyTo: mode !== "forward" ? originalEmail.messageId : undefined,
       from: {
         email: fromEmailAddress,
         name: tenant.emailDisplayName || tenant.name,
       },
-      to: [originalEmail.from],
-      subject: replySubject,
-      bodyText: reqBody.text,
-      bodyHtml: reqBody.html,
+      to: toAddresses,
+      cc: ccAddresses,
+      bcc: bccAddresses,
+      subject,
+      bodyText,
+      bodyHtml,
       attachments: attachmentMeta,
       receivedAt: now,
       isOutgoing: true,
@@ -193,7 +318,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({
       success: true,
       data: outgoingEmail,
-      message: "Reply sent successfully",
+      message: `${mode === "forward" ? "Forward" : "Reply"} sent successfully`,
     });
   } catch (error) {
     console.error("[DBG][inbox/reply] Error:", error);

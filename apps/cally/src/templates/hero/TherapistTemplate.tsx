@@ -10,8 +10,10 @@ import LocationSection from "./LocationSection";
 import GallerySection from "./GallerySection";
 import FooterSection from "./FooterSection";
 import useHeroToolbarState from "./useHeroToolbarState";
-import HeroSectionToolbar from "./HeroSectionToolbar";
+import SectionToolbar from "./SectionToolbar";
+import { HERO_LAYOUT_OPTIONS, bgFilterToCSS } from "./layoutOptions";
 import ResizableText from "./ResizableText";
+import BgDragOverlay from "./BgDragOverlay";
 
 /**
  * Therapist Template
@@ -61,6 +63,13 @@ export default function TherapistTemplate(props: HeroTemplateProps) {
     onProductsBgImageClick,
     onCustomColorsChange,
     onHeroStyleOverrideChange,
+    onHeroBgImageClick,
+    onHeroRemoveBg,
+    heroRemovingBg,
+    heroBgRemoved,
+    onHeroUndoRemoveBg,
+    onImageOffsetChange,
+    onImageZoomChange,
     onTestimonialsHeadingChange,
     onTestimonialsSubheadingChange,
     onTestimonialChange,
@@ -83,8 +92,16 @@ export default function TherapistTemplate(props: HeroTemplateProps) {
     onAddFooterLink,
     onRemoveFooterLink,
   } = props;
-  const { title, subtitle, backgroundImage, imagePosition, imageZoom, button } =
-    config;
+  const {
+    title,
+    subtitle,
+    backgroundImage,
+    imagePosition,
+    imageZoom,
+    imageOffsetX,
+    imageOffsetY,
+    button,
+  } = config;
 
   const hasImage = !!backgroundImage;
 
@@ -100,6 +117,12 @@ export default function TherapistTemplate(props: HeroTemplateProps) {
   const overlayAlpha = (h?.overlayOpacity ?? DEFAULT_OVERLAY) / 100;
   const padTop = h?.paddingTop ?? 80;
   const padBottom = h?.paddingBottom ?? 80;
+  const contentAlign = h?.contentAlign || "center";
+  const alignMap = {
+    left: "flex-start",
+    center: "center",
+    right: "flex-end",
+  } as const;
 
   const sections = config.sections || [
     { id: "about" as const, enabled: true },
@@ -134,6 +157,7 @@ export default function TherapistTemplate(props: HeroTemplateProps) {
     margin: 0,
     marginBottom: "20px",
     textShadow: hasImage ? "0 2px 12px rgba(0,0,0,0.3)" : undefined,
+    whiteSpace: "pre-line",
   };
 
   const subtitleStyle: React.CSSProperties = {
@@ -151,6 +175,7 @@ export default function TherapistTemplate(props: HeroTemplateProps) {
     margin: 0,
     marginBottom: "36px",
     textShadow: hasImage ? "0 1px 6px rgba(0,0,0,0.2)" : undefined,
+    whiteSpace: "pre-line",
   };
 
   const selectedOutline: React.CSSProperties = {
@@ -643,8 +668,9 @@ export default function TherapistTemplate(props: HeroTemplateProps) {
             justifyContent: "center",
             paddingTop: `${padTop}px`,
             paddingBottom: `${padBottom}px`,
-            paddingLeft: "8%",
-            paddingRight: "8%",
+            paddingLeft: `${h?.paddingLeft ?? 20}px`,
+            paddingRight: `${h?.paddingRight ?? 20}px`,
+            textAlign: contentAlign,
             overflow: "hidden",
             backgroundColor: h?.bgColor || undefined,
             ...(isEditing && toolbar.sectionSelected ? selectedOutline : {}),
@@ -662,8 +688,9 @@ export default function TherapistTemplate(props: HeroTemplateProps) {
                   backgroundPosition: imagePosition || "50% 50%",
                   backgroundSize: "cover",
                   backgroundRepeat: "no-repeat",
-                  filter: "blur(8px) brightness(0.85)",
-                  transform: `scale(${((imageZoom || 100) / 100) * 1.05})`,
+                  filter: `blur(${8 + (h?.bgBlur ?? 0)}px) brightness(0.85)${bgFilterToCSS(h?.bgFilter) ? ` ${bgFilterToCSS(h?.bgFilter)}` : ""}`,
+                  opacity: (h?.bgOpacity ?? 100) / 100,
+                  transform: `translate(${imageOffsetX || 0}px, ${imageOffsetY || 0}px) scale(${((imageZoom || 100) / 100) * ((h?.bgBlur ?? 0) > 0 ? 1.05 : 1.05)})`,
                   zIndex: 0,
                 }}
               />
@@ -688,24 +715,54 @@ export default function TherapistTemplate(props: HeroTemplateProps) {
             />
           )}
 
+          <BgDragOverlay
+            active={toolbar.bgDragActive && isEditing}
+            offsetX={imageOffsetX || 0}
+            offsetY={imageOffsetY || 0}
+            imageZoom={imageZoom || 100}
+            onOffsetChange={onImageOffsetChange}
+            onZoomChange={onImageZoomChange}
+          />
+
           {/* Section Toolbar */}
           {isEditing && toolbar.sectionSelected && (
             <div
-              style={{ position: "absolute", top: 0, left: "50%", zIndex: 50 }}
+              style={{ position: "absolute", top: 8, left: "50%", zIndex: 50 }}
             >
-              <HeroSectionToolbar
+              <SectionToolbar
                 bgColor={h?.bgColor || ""}
                 hasBackgroundImage={hasImage}
+                bgImage={backgroundImage}
+                bgImageBlur={h?.bgBlur ?? 0}
+                onBgImageBlurChange={toolbar.onBgBlurChange}
+                bgImageOpacity={h?.bgOpacity ?? 100}
+                onBgImageOpacityChange={toolbar.onBgOpacityChange}
                 overlayOpacity={h?.overlayOpacity ?? DEFAULT_OVERLAY}
+                onOverlayOpacityChange={toolbar.onOverlayOpacityChange}
+                bgFilter={h?.bgFilter}
+                onBgFilterChange={toolbar.onBgFilterChange}
+                onRemoveBgClick={onHeroRemoveBg}
+                removingBg={heroRemovingBg}
+                bgRemoved={heroBgRemoved}
+                onUndoRemoveBg={onHeroUndoRemoveBg}
+                bgDragActive={toolbar.bgDragActive}
+                onBgDragToggle={toolbar.toggleBgDrag}
+                onBgImageClick={onHeroBgImageClick}
                 paddingTop={padTop}
                 paddingBottom={padBottom}
+                paddingLeft={h?.paddingLeft ?? 20}
+                paddingRight={h?.paddingRight ?? 20}
+                onPaddingLeftChange={toolbar.onPaddingLeftChange}
+                onPaddingRightChange={toolbar.onPaddingRightChange}
                 palette={config.theme?.palette}
                 customColors={config.customColors}
                 onBgColorChange={toolbar.onBgColorChange}
-                onOverlayOpacityChange={toolbar.onOverlayOpacityChange}
                 onPaddingTopChange={toolbar.onPaddingTopChange}
                 onPaddingBottomChange={toolbar.onPaddingBottomChange}
                 onCustomColorsChange={onCustomColorsChange}
+                layoutOptions={HERO_LAYOUT_OPTIONS}
+                currentLayout={contentAlign}
+                onLayoutChange={toolbar.onContentAlignChange}
               />
             </div>
           )}
@@ -716,9 +773,10 @@ export default function TherapistTemplate(props: HeroTemplateProps) {
               position: "relative",
               zIndex: 2,
               width: "100%",
+              maxWidth: `${h?.titleMaxWidth ?? DEFAULT_TITLE_MW}px`,
               display: "flex",
               flexDirection: "column",
-              alignItems: "center",
+              alignItems: alignMap[contentAlign],
             }}
           >
             {isEditing ? (
