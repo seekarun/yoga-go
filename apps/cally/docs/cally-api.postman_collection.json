@@ -3307,6 +3307,120 @@
           }
         }
       ]
+    },
+    {
+      "name": "Webinar",
+      "description": "Webinar endpoints — public signup and authenticated signup management",
+      "item": [
+        {
+          "name": "Get Webinar Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/tenants/{{tenantId}}/webinar/{{productId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "tenants",
+                "{{tenantId}}",
+                "webinar",
+                "{{productId}}"
+              ]
+            },
+            "description": "Public endpoint - returns webinar details, session schedule, and signup count"
+          }
+        },
+        {
+          "name": "Signup for Webinar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"visitorName\": \"Jane Smith\",\n  \"visitorEmail\": \"jane@example.com\",\n  \"note\": \"Looking forward to it!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/tenants/{{tenantId}}/webinar/{{productId}}/signup",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "tenants",
+                "{{tenantId}}",
+                "webinar",
+                "{{productId}}",
+                "signup"
+              ]
+            },
+            "description": "Public endpoint - visitor signs up for a webinar"
+          }
+        },
+        {
+          "name": "List Webinar Signups",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/webinar/{{productId}}/signups",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "app",
+                "webinar",
+                "{{productId}}",
+                "signups"
+              ]
+            },
+            "description": "Authenticated - list all signups for a webinar"
+          }
+        },
+        {
+          "name": "Remove Webinar Signup",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"jane@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/webinar/{{productId}}/signups",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "app",
+                "webinar",
+                "{{productId}}",
+                "signups"
+              ]
+            },
+            "description": "Authenticated - remove a participant from a webinar"
+          }
+        }
+      ]
     }
   ]
 }
