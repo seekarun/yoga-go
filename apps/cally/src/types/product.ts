@@ -3,6 +3,10 @@
  * Products/services that tenants offer in their catalog
  */
 
+import type { WebinarSchedule } from "./webinar";
+
+export type ProductType = "service" | "webinar";
+
 export interface ProductImage {
   id: string;
   url: string;
@@ -27,6 +31,9 @@ export interface Product {
   images?: ProductImage[];
   isActive: boolean;
   sortOrder: number;
+  productType?: ProductType; // defaults to 'service' for backward compat
+  maxParticipants?: number; // webinar only — undefined = unlimited
+  webinarSchedule?: WebinarSchedule;
   createdAt: string;
   updatedAt: string;
 }

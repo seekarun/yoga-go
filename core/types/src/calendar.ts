@@ -7,7 +7,7 @@ import type { VisitorInfo } from "./visitor";
 /**
  * Calendar event type
  */
-export type CalendarEventType = "general" | "live_session";
+export type CalendarEventType = "general" | "live_session" | "webinar";
 
 /**
  * Recurrence frequency options
