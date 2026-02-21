@@ -6,15 +6,22 @@
  */
 
 import { NextResponse } from "next/server";
-import type { ApiResponse, Product } from "@/types";
+import type { ApiResponse, Product, WebinarSchedule } from "@/types";
 import { auth } from "@/auth";
+import { getMobileAuthResult } from "@/lib/mobile-auth";
 import { getTenantByUserId } from "@/lib/repositories/tenantRepository";
 import {
   getProductById,
   updateProduct,
   deleteProduct,
 } from "@/lib/repositories/productRepository";
-import { updateEventColorByProductId } from "@/lib/repositories/calendarEventRepository";
+import {
+  updateEventColorByProductId,
+  deleteCalendarEventsByRecurrenceGroup,
+  createCalendarEvent,
+} from "@/lib/repositories/calendarEventRepository";
+import { deleteAllWebinarSignups } from "@/lib/repositories/webinarSignupRepository";
+import { expandWebinarSessions } from "@/lib/webinar/schedule";
 
 const MIN_DURATION = 5;
 const MAX_DURATION = 480;
@@ -26,22 +33,34 @@ interface RouteParams {
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: RouteParams,
 ): Promise<NextResponse<ApiResponse<Product>>> {
   const { productId } = await params;
   console.log("[DBG][products] GET single called:", productId);
 
   try {
-    const session = await auth();
-    if (!session?.user?.cognitoSub) {
+    const mobileAuth = await getMobileAuthResult(request);
+    let cognitoSub: string | undefined;
+    if (mobileAuth.session) {
+      cognitoSub = mobileAuth.session.cognitoSub;
+    } else if (mobileAuth.tokenExpired) {
       return NextResponse.json(
-        { success: false, error: "Unauthorized" },
+        { success: false, error: "Token expired" },
+        { status: 401 },
+      );
+    } else {
+      const session = await auth();
+      cognitoSub = session?.user?.cognitoSub;
+    }
+    if (!cognitoSub) {
+      return NextResponse.json(
+        { success: false, error: "Not authenticated" },
         { status: 401 },
       );
     }
 
-    const tenant = await getTenantByUserId(session.user.cognitoSub);
+    const tenant = await getTenantByUserId(cognitoSub);
     if (!tenant) {
       return NextResponse.json(
         { success: false, error: "Tenant not found" },
@@ -75,15 +94,27 @@ export async function PUT(
   console.log("[DBG][products] PUT called:", productId);
 
   try {
-    const session = await auth();
-    if (!session?.user?.cognitoSub) {
+    const mobileAuth = await getMobileAuthResult(request);
+    let cognitoSub: string | undefined;
+    if (mobileAuth.session) {
+      cognitoSub = mobileAuth.session.cognitoSub;
+    } else if (mobileAuth.tokenExpired) {
       return NextResponse.json(
-        { success: false, error: "Unauthorized" },
+        { success: false, error: "Token expired" },
+        { status: 401 },
+      );
+    } else {
+      const session = await auth();
+      cognitoSub = session?.user?.cognitoSub;
+    }
+    if (!cognitoSub) {
+      return NextResponse.json(
+        { success: false, error: "Not authenticated" },
         { status: 401 },
       );
     }
 
-    const tenant = await getTenantByUserId(session.user.cognitoSub);
+    const tenant = await getTenantByUserId(cognitoSub);
     if (!tenant) {
       return NextResponse.json(
         { success: false, error: "Tenant not found" },
@@ -166,6 +197,14 @@ export async function PUT(
     if (body.sortOrder !== undefined)
       updates.sortOrder = Number(body.sortOrder);
 
+    // Webinar-specific fields
+    if (body.maxParticipants !== undefined)
+      updates.maxParticipants = body.maxParticipants
+        ? Number(body.maxParticipants)
+        : undefined;
+    if (body.webinarSchedule !== undefined)
+      updates.webinarSchedule = body.webinarSchedule as WebinarSchedule;
+
     if (Object.keys(updates).length === 0) {
       return NextResponse.json(
         { success: false, error: "No valid fields to update" },
@@ -192,6 +231,38 @@ export async function PUT(
       );
     }
 
+    // If webinar schedule changed, regenerate session events
+    if (product.productType === "webinar" && body.webinarSchedule) {
+      const timezone = tenant.bookingConfig?.timezone || "Australia/Sydney";
+
+      // Delete old sessions
+      await deleteCalendarEventsByRecurrenceGroup(tenant.id, productId);
+
+      // Generate new sessions
+      const sessions = expandWebinarSessions(
+        product.webinarSchedule!,
+        timezone,
+      );
+      console.log(
+        `[DBG][products] Regenerating ${sessions.length} webinar sessions for product ${productId}`,
+      );
+
+      for (const session of sessions) {
+        await createCalendarEvent(tenant.id, {
+          title: `Webinar: ${product.name}`,
+          description: product.description || "",
+          startTime: session.startTime,
+          endTime: session.endTime,
+          date: session.date,
+          type: "webinar",
+          status: "scheduled",
+          color: product.color,
+          productId: product.id,
+          recurrenceGroupId: product.id,
+        });
+      }
+    }
+
     console.log(
       `[DBG][products] Updated product ${productId} for tenant ${tenant.id}`,
     );
@@ -207,26 +278,48 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: RouteParams,
 ): Promise<NextResponse<ApiResponse<null>>> {
   const { productId } = await params;
   console.log("[DBG][products] DELETE called:", productId);
 
   try {
-    const session = await auth();
-    if (!session?.user?.cognitoSub) {
+    const mobileAuth = await getMobileAuthResult(request);
+    let cognitoSub: string | undefined;
+    if (mobileAuth.session) {
+      cognitoSub = mobileAuth.session.cognitoSub;
+    } else if (mobileAuth.tokenExpired) {
       return NextResponse.json(
-        { success: false, error: "Unauthorized" },
+        { success: false, error: "Token expired" },
+        { status: 401 },
+      );
+    } else {
+      const session = await auth();
+      cognitoSub = session?.user?.cognitoSub;
+    }
+    if (!cognitoSub) {
+      return NextResponse.json(
+        { success: false, error: "Not authenticated" },
         { status: 401 },
       );
     }
 
-    const tenant = await getTenantByUserId(session.user.cognitoSub);
+    const tenant = await getTenantByUserId(cognitoSub);
     if (!tenant) {
       return NextResponse.json(
         { success: false, error: "Tenant not found" },
         { status: 404 },
+      );
+    }
+
+    // Check if this is a webinar — cascade delete sessions and signups
+    const existingProduct = await getProductById(tenant.id, productId);
+    if (existingProduct?.productType === "webinar") {
+      await deleteCalendarEventsByRecurrenceGroup(tenant.id, productId);
+      await deleteAllWebinarSignups(tenant.id, productId);
+      console.log(
+        `[DBG][products] Cascade deleted webinar sessions and signups for product ${productId}`,
       );
     }
 
