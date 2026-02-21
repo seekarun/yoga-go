@@ -193,7 +193,7 @@ export function NotificationProvider({
     }
   }, [tenantId]);
 
-  // Setup Firebase subscription
+  // Setup Firebase subscription + polling fallback
   useEffect(() => {
     if (!tenantId) {
       setNotifications([]);
@@ -210,6 +210,8 @@ export function NotificationProvider({
     // Initial fetch
     fetchNotifications();
 
+    let firebaseConnected = false;
+
     // Firebase real-time subscription
     if (isFirebaseConfigured && database) {
       try {
@@ -218,13 +220,30 @@ export function NotificationProvider({
           `cally-notifications/${tenantId}`,
         );
 
+        console.log(
+          "[DBG][NotificationContext] Subscribing to Firebase path: cally-notifications/" +
+            tenantId,
+        );
+
         onValue(
           notificationsRef,
           (snapshot) => {
+            console.log(
+              "[DBG][NotificationContext] Firebase onValue fired, exists:",
+              snapshot.exists(),
+            );
+
             if (snapshot.exists()) {
               const data = snapshot.val();
               const firebaseNotifications: CallyNotification[] = Object.values(
                 data || {},
+              );
+
+              console.log(
+                "[DBG][NotificationContext] Firebase notifications count:",
+                firebaseNotifications.length,
+                "known IDs:",
+                notificationIdsRef.current.size,
               );
 
               // Only consider recent notifications (within 2 minutes)
@@ -243,7 +262,9 @@ export function NotificationProvider({
 
               if (newNotifications.length > 0) {
                 console.log(
-                  "[DBG][NotificationContext] New notifications detected, refetching",
+                  "[DBG][NotificationContext] New notifications detected:",
+                  newNotifications.length,
+                  "refetching",
                 );
                 fetchNotifications();
               }
@@ -260,7 +281,9 @@ export function NotificationProvider({
         );
 
         firebaseUnsubscribeRef.current = () => off(notificationsRef);
+        firebaseConnected = true;
         setIsRealtime(true);
+        console.log("[DBG][NotificationContext] Firebase subscription active");
       } catch (err) {
         console.error(
           "[DBG][NotificationContext] Failed to setup Firebase:",
@@ -268,9 +291,26 @@ export function NotificationProvider({
         );
         setIsRealtime(false);
       }
+    } else {
+      console.log(
+        "[DBG][NotificationContext] Firebase not available - isConfigured:",
+        isFirebaseConfigured,
+        "database:",
+        !!database,
+      );
     }
 
+    // Polling fallback: poll every 30s regardless of Firebase
+    // Firebase gives instant updates, polling catches anything Firebase misses
+    const pollInterval = setInterval(
+      () => {
+        fetchNotifications();
+      },
+      firebaseConnected ? 60000 : 30000,
+    );
+
     return () => {
+      clearInterval(pollInterval);
       if (firebaseUnsubscribeRef.current) {
         firebaseUnsubscribeRef.current();
         firebaseUnsubscribeRef.current = null;
