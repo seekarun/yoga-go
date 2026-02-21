@@ -7,6 +7,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { auth } from "@/auth";
+import { getMobileAuthResult } from "@/lib/mobile-auth";
 import { getTenantByUserId } from "@/lib/repositories/tenantRepository";
 import {
   findEmailById,
@@ -28,15 +29,29 @@ interface RouteParams {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const session = await auth();
-    if (!session?.user?.cognitoSub) {
+    // Check auth — try Bearer token first (mobile), fall back to cookie (web)
+    let cognitoSub: string | undefined;
+
+    const mobileAuth = await getMobileAuthResult(request);
+    if (mobileAuth.session) {
+      cognitoSub = mobileAuth.session.cognitoSub;
+    } else if (!mobileAuth.tokenExpired) {
+      const session = await auth();
+      cognitoSub = session?.user?.cognitoSub;
+    }
+
+    if (!cognitoSub) {
       return NextResponse.json(
-        { success: false, error: "Not authenticated" },
+        {
+          success: false,
+          error: mobileAuth.tokenExpired
+            ? "Token expired"
+            : "Not authenticated",
+        },
         { status: 401 },
       );
     }
 
-    const cognitoSub = session.user.cognitoSub;
     const { emailId } = await params;
 
     console.log("[DBG][inbox/emailId] Getting email:", emailId);
@@ -87,15 +102,29 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
-    const session = await auth();
-    if (!session?.user?.cognitoSub) {
+    // Check auth — try Bearer token first (mobile), fall back to cookie (web)
+    let cognitoSub: string | undefined;
+
+    const mobileAuth = await getMobileAuthResult(request);
+    if (mobileAuth.session) {
+      cognitoSub = mobileAuth.session.cognitoSub;
+    } else if (!mobileAuth.tokenExpired) {
+      const session = await auth();
+      cognitoSub = session?.user?.cognitoSub;
+    }
+
+    if (!cognitoSub) {
       return NextResponse.json(
-        { success: false, error: "Not authenticated" },
+        {
+          success: false,
+          error: mobileAuth.tokenExpired
+            ? "Token expired"
+            : "Not authenticated",
+        },
         { status: 401 },
       );
     }
 
-    const cognitoSub = session.user.cognitoSub;
     const { emailId } = await params;
 
     console.log("[DBG][inbox/emailId] Updating email:", emailId);
@@ -196,15 +225,29 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    const session = await auth();
-    if (!session?.user?.cognitoSub) {
+    // Check auth — try Bearer token first (mobile), fall back to cookie (web)
+    let cognitoSub: string | undefined;
+
+    const mobileAuth = await getMobileAuthResult(request);
+    if (mobileAuth.session) {
+      cognitoSub = mobileAuth.session.cognitoSub;
+    } else if (!mobileAuth.tokenExpired) {
+      const session = await auth();
+      cognitoSub = session?.user?.cognitoSub;
+    }
+
+    if (!cognitoSub) {
       return NextResponse.json(
-        { success: false, error: "Not authenticated" },
+        {
+          success: false,
+          error: mobileAuth.tokenExpired
+            ? "Token expired"
+            : "Not authenticated",
+        },
         { status: 401 },
       );
     }
 
-    const cognitoSub = session.user.cognitoSub;
     const { emailId } = await params;
 
     console.log("[DBG][inbox/emailId] Deleting email:", emailId);

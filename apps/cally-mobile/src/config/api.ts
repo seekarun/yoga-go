@@ -28,4 +28,12 @@ export const API_ENDPOINTS = {
   // App data endpoints (use Bearer token)
   chat: "/api/data/app/ai/chat",
   calendar: "/api/data/app/calendar",
+  inbox: "/api/data/app/inbox",
+  subscribers: "/api/data/app/subscribers",
+  users: "/api/data/app/users",
+  preferences: "/api/data/app/preferences",
+  products: "/api/data/app/products",
+  imageUpload: "/api/data/app/tenant/landing-page/upload",
+  notifications: "/api/data/app/notifications",
+  pushToken: "/api/data/app/notifications/push-token",
 };

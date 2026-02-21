@@ -6,6 +6,7 @@ import type {
   TimeSlot,
   AvailableSlotsResponse,
   BookingConfig,
+  DateOverride,
 } from "@/types/booking";
 import { useEmbedMessaging } from "@/hooks/useEmbedMessaging";
 import { useVisitorTimezone } from "@/hooks/useVisitorTimezone";
@@ -32,6 +33,9 @@ export default function EmbedBookingWidget({
   const [visitorTimezone] = useVisitorTimezone();
   const [bookingConfig, setBookingConfig] = useState(DEFAULT_BOOKING_CONFIG);
   const [configLoaded, setConfigLoaded] = useState(false);
+  const [dateOverrides, setDateOverrides] = useState<
+    Record<string, DateOverride> | undefined
+  >();
 
   const todayStr = getTodayInTimezone(bookingConfig.timezone);
   const maxDate = useMemo(
@@ -46,8 +50,9 @@ export default function EmbedBookingWidget({
         bookingConfig.weeklySchedule,
         todayStr,
         maxDate,
+        dateOverrides,
       ) ?? todayStr,
-    [todayStr, bookingConfig.weeklySchedule, maxDate],
+    [todayStr, bookingConfig.weeklySchedule, maxDate, dateOverrides],
   );
 
   const [step, setStep] = useState<BookingStep>("schedule");
@@ -127,6 +132,7 @@ export default function EmbedBookingWidget({
             weeklySchedule: json.data.weeklySchedule,
           };
           setBookingConfig(newConfig);
+          setDateOverrides(json.data.dateOverrides);
           setConfigLoaded(true);
         }
       } catch {
@@ -154,6 +160,7 @@ export default function EmbedBookingWidget({
           bookingConfig.weeklySchedule,
           todayStr,
           maxDate,
+          dateOverrides,
         ) ?? todayStr;
       if (newInitial !== selectedDate) {
         setSelectedDate(newInitial);
@@ -319,6 +326,7 @@ export default function EmbedBookingWidget({
             tenantId={tenantId}
             onDateChange={handleDateChange}
             onSlotSelect={handleSlotSelect}
+            dateOverrides={dateOverrides}
           />
         )}
 

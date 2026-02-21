@@ -2,6 +2,8 @@
 
 import CallySidebar from "@/components/dashboard/CallySidebar";
 import { DashboardChatWidget } from "@/components/ai";
+import { NotificationProvider } from "@/contexts/NotificationContext";
+import NotificationToast from "@/components/notifications/NotificationToast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -76,15 +78,18 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg-main)]">
-      <CallySidebar expertId={expertId} />
-      <main
-        className={`transition-all duration-300 ${sidebarCollapsed ? "ml-16" : "ml-56"}`}
-        style={{ minHeight: "100vh" }}
-      >
-        {children}
-      </main>
-      <DashboardChatWidget />
-    </div>
+    <NotificationProvider tenantId={expertId}>
+      <div className="min-h-screen bg-[var(--color-bg-main)]">
+        <CallySidebar expertId={expertId} />
+        <main
+          className={`transition-all duration-300 ${sidebarCollapsed ? "ml-16" : "ml-56"}`}
+          style={{ minHeight: "100vh" }}
+        >
+          {children}
+        </main>
+        <DashboardChatWidget />
+        <NotificationToast />
+      </div>
+    </NotificationProvider>
   );
 }

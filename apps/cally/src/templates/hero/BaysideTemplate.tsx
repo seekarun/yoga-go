@@ -56,6 +56,7 @@ export default function BaysideTemplate(props: HeroTemplateProps) {
     products,
     currency,
     onBookProduct,
+    onSignupWebinar,
     onProductsHeadingChange,
     onProductsSubheadingChange,
     onProductsStyleOverrideChange,
@@ -398,6 +399,7 @@ export default function BaysideTemplate(props: HeroTemplateProps) {
                 onHeadingChange={onProductsHeadingChange}
                 onSubheadingChange={onProductsSubheadingChange}
                 onBookProduct={onBookProduct}
+                onSignupWebinar={onSignupWebinar}
                 onStyleOverrideChange={onProductsStyleOverrideChange}
                 onBgImageClick={onProductsBgImageClick}
                 onCustomColorsChange={onCustomColorsChange}

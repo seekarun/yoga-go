@@ -310,10 +310,16 @@ export class CallyStack extends cdk.Stack {
     // Import Shared Tables (from yoga-go-core-stack)
     // ========================================
     // yoga-go-emails: Shared email storage for SES Lambda compatibility
-    const emailsTable = dynamodb.Table.fromTableName(
+    // Import with stream ARN for notification stream Lambda
+    // Stream ARN is specific to when the stream was enabled on the table
+    const emailsTable = dynamodb.Table.fromTableAttributes(
       this,
       "EmailsTable",
-      "yoga-go-emails",
+      {
+        tableName: "yoga-go-emails",
+        tableStreamArn:
+          "arn:aws:dynamodb:ap-southeast-2:710735877057:table/yoga-go-emails/stream/2026-01-03T11:07:43.856",
+      },
     );
 
     // yoga-go-core: Domain lookups for SES email routing
@@ -420,6 +426,81 @@ export class CallyStack extends cdk.Stack {
     });
 
     vercelUser.addManagedPolicy(vercelPolicy);
+
+    // ========================================
+    // Lambda: Cally Notification Stream (DynamoDB Streams)
+    // ========================================
+    // Triggered when new emails arrive in yoga-go-emails
+    // Checks if the email belongs to a Cally tenant, creates notification
+    // records, pushes to Firebase RTDB, and sends Expo push notifications.
+    // This is stream consumer 2 of 2 on yoga-go-emails.
+    const yogaGoSecret = secretsmanager.Secret.fromSecretNameV2(
+      this,
+      "YogaGoSecret",
+      "yoga-go/production",
+    );
+
+    const callyNotificationStreamLambda = new lambdaNodejs.NodejsFunction(
+      this,
+      "CallyNotificationStreamLambda",
+      {
+        functionName: "cally-notification-stream",
+        entry: path.join(
+          __dirname,
+          "../lambda/cally-notification-stream.ts",
+        ),
+        handler: "handler",
+        runtime: lambda.Runtime.NODEJS_20_X,
+        memorySize: 256,
+        timeout: cdk.Duration.seconds(30),
+        environment: {
+          DYNAMODB_TABLE: this.coreTable.tableName,
+          SECRETS_NAME: "yoga-go/production",
+        },
+        bundling: {
+          minify: true,
+          sourceMap: false,
+          externalModules: ["@aws-sdk/*"],
+        },
+      },
+    );
+
+    // Grant permissions
+    this.coreTable.grantReadWriteData(callyNotificationStreamLambda);
+    emailsTable.grantReadData(callyNotificationStreamLambda);
+    yogaGoSecret.grantRead(callyNotificationStreamLambda);
+
+    // Add DynamoDB Stream event source for incoming emails
+    // Filter: Only INSERT events for incoming emails (not outgoing)
+    callyNotificationStreamLambda.addEventSource(
+      new lambdaEventSources.DynamoEventSource(emailsTable, {
+        startingPosition: lambda.StartingPosition.LATEST,
+        batchSize: 10,
+        retryAttempts: 2,
+        filters: [
+          // Filter 1: isOutgoing is explicitly false
+          lambda.FilterCriteria.filter({
+            eventName: lambda.FilterRule.isEqual("INSERT"),
+            dynamodb: {
+              NewImage: {
+                isOutgoing: {
+                  BOOL: lambda.FilterRule.isEqual(false),
+                },
+              },
+            },
+          }),
+          // Filter 2: isOutgoing field doesn't exist at all
+          lambda.FilterCriteria.filter({
+            eventName: lambda.FilterRule.isEqual("INSERT"),
+            dynamodb: {
+              NewImage: {
+                isOutgoing: lambda.FilterRule.notExists(),
+              },
+            },
+          }),
+        ],
+      }),
+    );
 
     // ========================================
     // Outputs

@@ -199,6 +199,7 @@ interface ProductsSectionProps {
   onHeadingChange?: (heading: string) => void;
   onSubheadingChange?: (subheading: string) => void;
   onBookProduct?: (productId: string) => void;
+  onSignupWebinar?: (productId: string) => void;
   onStyleOverrideChange?: (overrides: ProductsStyleOverrides) => void;
   onCustomColorsChange?: (colors: { name: string; hex: string }[]) => void;
   onBgImageClick?: () => void;
@@ -246,6 +247,7 @@ export default function ProductsSection({
   onHeadingChange,
   onSubheadingChange,
   onBookProduct,
+  onSignupWebinar,
   onStyleOverrideChange,
   onCustomColorsChange,
   onBgImageClick,
@@ -955,14 +957,18 @@ export default function ProductsSection({
                     </span>
                   </div>
 
-                  {/* Book Now Button */}
+                  {/* Book Now / Sign Up Button */}
                   <button
                     type="button"
                     className="product-book-btn"
                     style={buttonStyle}
-                    onClick={() => onBookProduct?.(product.id)}
+                    onClick={() =>
+                      product.productType === "webinar"
+                        ? onSignupWebinar?.(product.id)
+                        : onBookProduct?.(product.id)
+                    }
                   >
-                    Book Now
+                    {product.productType === "webinar" ? "Sign Up" : "Book Now"}
                   </button>
                 </div>
               </div>

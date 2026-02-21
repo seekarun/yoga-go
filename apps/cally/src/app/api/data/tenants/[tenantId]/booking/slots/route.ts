@@ -157,6 +157,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         slots,
         weeklySchedule: bookingConfig.weeklySchedule,
         lookaheadDays: bookingConfig.lookaheadDays,
+        dateOverrides: bookingConfig.dateOverrides,
       },
     });
   } catch (error) {

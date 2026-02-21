@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { auth } from "@/auth";
+import { getMobileAuthResult } from "@/lib/mobile-auth";
 import {
   getTenantByUserId,
   type CallyTenant,
@@ -63,15 +64,28 @@ function getSignatureConfig(
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
-    const session = await auth();
-    if (!session?.user?.cognitoSub) {
+    // Try mobile auth (Bearer token) first, then fall back to cookie auth
+    const mobileAuth = await getMobileAuthResult(request);
+    let cognitoSub: string | undefined;
+
+    if (mobileAuth.session) {
+      cognitoSub = mobileAuth.session.cognitoSub;
+    } else if (mobileAuth.tokenExpired) {
+      return NextResponse.json(
+        { success: false, error: "Token expired" },
+        { status: 401 },
+      );
+    } else {
+      const session = await auth();
+      cognitoSub = session?.user?.cognitoSub;
+    }
+
+    if (!cognitoSub) {
       return NextResponse.json(
         { success: false, error: "Not authenticated" },
         { status: 401 },
       );
     }
-
-    const cognitoSub = session.user.cognitoSub;
     const { emailId } = await params;
 
     console.log("[DBG][inbox/reply] POST called for email:", emailId);

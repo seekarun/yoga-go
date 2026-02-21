@@ -7,8 +7,9 @@
 
 import type { ToolDefinition } from "@/lib/openai";
 import type { CallyTenant } from "@/lib/repositories/tenantRepository";
+import { updateTenant } from "@/lib/repositories/tenantRepository";
 import type { CalendarEvent } from "@/types";
-import type { BookingConfig } from "@/types/booking";
+import type { BookingConfig, DateOverride } from "@/types/booking";
 import { DEFAULT_BOOKING_CONFIG } from "@/types/booking";
 import {
   getCalendarEventsByDateRange,
@@ -473,6 +474,46 @@ const CREATE_DRAFT_TOOL: ToolDefinition = {
   },
 };
 
+const SET_DATE_OVERRIDE_TOOL: ToolDefinition = {
+  type: "function",
+  function: {
+    name: "set_date_override",
+    description:
+      "Set a per-date override for business hours. Use to close shop for a specific date (e.g. public holiday) or set custom hours. Overrides the regular weekly schedule for that date.",
+    parameters: {
+      type: "object",
+      properties: {
+        date: {
+          type: "string",
+          description:
+            "The date to override (YYYY-MM-DD format, e.g. 2026-01-26)",
+        },
+        enabled: {
+          type: "boolean",
+          description:
+            "Whether the business is open on this date. Set to false to close for the day.",
+        },
+        startHour: {
+          type: "number",
+          description:
+            "Custom opening hour (0-23). Only needed if enabled is true and hours differ from normal.",
+        },
+        endHour: {
+          type: "number",
+          description:
+            "Custom closing hour (0-23). Only needed if enabled is true and hours differ from normal.",
+        },
+        reason: {
+          type: "string",
+          description:
+            "Reason for the override (e.g. 'Australia Day', 'Staff training')",
+        },
+      },
+      required: ["date", "enabled"],
+    },
+  },
+};
+
 export const ASSISTANT_TOOL_DEFINITIONS: ToolDefinition[] = [
   GET_DAILY_BRIEF_TOOL,
   GET_APPOINTMENTS_TOOL,
@@ -485,6 +526,7 @@ export const ASSISTANT_TOOL_DEFINITIONS: ToolDefinition[] = [
   SEND_EMAIL_TOOL,
   REPLY_TO_EMAIL_TOOL,
   CREATE_DRAFT_TOOL,
+  SET_DATE_OVERRIDE_TOOL,
 ];
 
 // ============================================================
@@ -530,6 +572,8 @@ export async function executeAssistantToolCall(
         return await executeReplyToEmail(tenantId, toolArgs, tenant);
       case "create_draft":
         return await executeCreateDraft(tenantId, toolArgs);
+      case "set_date_override":
+        return await executeSetDateOverride(tenantId, toolArgs, tenant);
       default:
         return JSON.stringify({ error: `Unknown tool: ${toolName}` });
     }
@@ -1464,6 +1508,72 @@ async function executeCreateDraft(
   });
 }
 
+/**
+ * set_date_override — set per-date business hour overrides
+ */
+async function executeSetDateOverride(
+  tenantId: string,
+  toolArgs: string,
+  tenant: CallyTenant,
+): Promise<string> {
+  const args = JSON.parse(toolArgs) as {
+    date: string;
+    enabled: boolean;
+    startHour?: number;
+    endHour?: number;
+    reason?: string;
+  };
+
+  if (!args.date || !/^\d{4}-\d{2}-\d{2}$/.test(args.date)) {
+    return JSON.stringify({
+      error: "Invalid date format. Please use YYYY-MM-DD.",
+    });
+  }
+
+  if (typeof args.enabled !== "boolean") {
+    return JSON.stringify({ error: "enabled must be a boolean." });
+  }
+
+  const override: DateOverride = {
+    date: args.date,
+    enabled: args.enabled,
+    ...(args.startHour !== undefined && { startHour: args.startHour }),
+    ...(args.endHour !== undefined && { endHour: args.endHour }),
+    ...(args.reason && { reason: args.reason }),
+  };
+
+  const existingConfig = tenant.bookingConfig ?? DEFAULT_BOOKING_CONFIG;
+  const existingOverrides = existingConfig.dateOverrides ?? {};
+
+  const updatedConfig: BookingConfig = {
+    ...existingConfig,
+    dateOverrides: {
+      ...existingOverrides,
+      [args.date]: override,
+    },
+  };
+
+  await updateTenant(tenantId, { bookingConfig: updatedConfig });
+
+  const statusText = args.enabled
+    ? args.startHour !== undefined && args.endHour !== undefined
+      ? `open with custom hours (${formatHour(args.startHour)} – ${formatHour(args.endHour)})`
+      : "open (using regular hours)"
+    : "closed";
+
+  console.log(
+    `[DBG][assistant-tools] set_date_override: ${args.date} → ${statusText}${args.reason ? ` (${args.reason})` : ""}`,
+  );
+
+  return JSON.stringify({
+    success: true,
+    date: args.date,
+    status: statusText,
+    reason: args.reason || null,
+    message: `Date override set for ${args.date}: ${statusText}${args.reason ? ` — ${args.reason}` : ""}. This takes effect immediately for new bookings.`,
+  });
+}
+
 // ============================================================
 // System Prompt Builder
 // ============================================================
@@ -1478,7 +1588,15 @@ export function buildAssistantSystemPrompt(tenant: CallyTenant): string {
     tenant.name ||
     "your business";
   const timezone = resolveTenantTimezone(tenant);
-  const today = new Date().toLocaleDateString("en-CA", { timeZone: timezone });
+  const now = new Date();
+  const today = now.toLocaleDateString("en-CA", { timeZone: timezone });
+  const todayFull = now.toLocaleDateString("en-US", {
+    timeZone: timezone,
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 
   const parts: string[] = [];
 
@@ -1491,7 +1609,7 @@ export function buildAssistantSystemPrompt(tenant: CallyTenant): string {
   parts.push(`\nCONTEXT:`);
   parts.push(`- Business name: ${businessName}`);
   parts.push(`- Owner: ${tenant.name} (${tenant.email})`);
-  parts.push(`- Today's date: ${today}`);
+  parts.push(`- Today's date: ${todayFull} (${today})`);
   if (tenant.currency) parts.push(`- Currency: ${tenant.currency}`);
   if (tenant.address) parts.push(`- Address: ${tenant.address}`);
   if (tenant.defaultEventDuration) {
@@ -1606,6 +1724,9 @@ export function buildAssistantSystemPrompt(tenant: CallyTenant): string {
   parts.push(
     `11. **create_draft** — Save an email draft for the owner to review in the Drafts folder. Requires to, subject, bodyText.`,
   );
+  parts.push(
+    `12. **set_date_override** — Set a per-date override for business hours. Use when the user wants to close shop, modify hours for a specific date, or mark a public holiday. Requires date (YYYY-MM-DD) and enabled (boolean). Optional: startHour, endHour, reason. Setting enabled to false blocks all bookings for that date.`,
+  );
 
   // Instructions
   parts.push(`\nINSTRUCTIONS:`);
@@ -1635,6 +1756,9 @@ export function buildAssistantSystemPrompt(tenant: CallyTenant): string {
   );
   parts.push(
     `- Classify customers as: prospect (0 bookings), new (1), occasional (2-3), regular (4+).`,
+  );
+  parts.push(
+    `- When the user wants to close shop, modify hours for a specific date, or mark a public holiday, use set_date_override. Always confirm the date and action before calling. Setting enabled to false blocks all new bookings for that date.`,
   );
 
   // Email workflow instructions

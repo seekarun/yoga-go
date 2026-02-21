@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import type { EmailWithThread, EmailDraft, EmailLabel } from "@/types";
+import { useNotificationContextOptional } from "@/contexts/NotificationContext";
 import EmailComposer from "@/components/inbox/EmailComposer";
 import BulkActionBar from "@/components/inbox/BulkActionBar";
 import LabelPicker from "@/components/inbox/LabelPicker";
@@ -82,6 +83,7 @@ export default function InboxPage() {
   const params = useParams();
   const router = useRouter();
   const expertId = params.expertId as string;
+  const notifContext = useNotificationContextOptional();
   const [emails, setEmails] = useState<EmailWithThread[]>([]);
   const [drafts, setDrafts] = useState<EmailDraft[]>([]);
   const [loading, setLoading] = useState(true);
@@ -254,6 +256,22 @@ export default function InboxPage() {
     fetchEmails(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter, debouncedQuery, folder, activeLabelId]);
+
+  // Auto-refresh inbox when new email notifications arrive
+  const prevUnreadEmailCountRef = useRef(0);
+  useEffect(() => {
+    const currentCount = notifContext?.unreadEmailCount ?? 0;
+    if (
+      currentCount > prevUnreadEmailCountRef.current &&
+      prevUnreadEmailCountRef.current > 0
+    ) {
+      console.log(
+        "[DBG][inbox] New email notification detected, auto-refreshing",
+      );
+      fetchEmails(false);
+    }
+    prevUnreadEmailCountRef.current = currentCount;
+  }, [notifContext?.unreadEmailCount, fetchEmails]);
 
   const handleEmailClick = async (email: EmailWithThread) => {
     if (!email.isRead && !email.isOutgoing) {

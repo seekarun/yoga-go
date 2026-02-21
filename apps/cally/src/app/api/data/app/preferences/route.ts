@@ -12,6 +12,7 @@ import {
   DEFAULT_CANCELLATION_CONFIG,
 } from "@/types/booking";
 import { auth } from "@/auth";
+import { getMobileAuthResult } from "@/lib/mobile-auth";
 import {
   getTenantByUserId,
   updateTenant,
@@ -52,21 +53,35 @@ const DEFAULT_TIMEZONE = "Australia/Sydney";
  * GET /api/data/app/preferences
  * Returns the tenant's preferences
  */
-export async function GET(): Promise<
-  NextResponse<ApiResponse<PreferencesData>>
-> {
+export async function GET(
+  request: Request,
+): Promise<NextResponse<ApiResponse<PreferencesData>>> {
   console.log("[DBG][preferences] GET called");
 
   try {
-    const session = await auth();
-    if (!session?.user?.cognitoSub) {
+    const mobileAuth = await getMobileAuthResult(request);
+    let cognitoSub: string | undefined;
+
+    if (mobileAuth.session) {
+      cognitoSub = mobileAuth.session.cognitoSub;
+    } else if (mobileAuth.tokenExpired) {
+      return NextResponse.json(
+        { success: false, error: "Token expired" },
+        { status: 401 },
+      );
+    } else {
+      const session = await auth();
+      cognitoSub = session?.user?.cognitoSub;
+    }
+
+    if (!cognitoSub) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 },
       );
     }
 
-    const tenant = await getTenantByUserId(session.user.cognitoSub);
+    const tenant = await getTenantByUserId(cognitoSub);
     if (!tenant) {
       return NextResponse.json(
         { success: false, error: "Tenant not found" },
@@ -120,15 +135,29 @@ export async function PUT(
   console.log("[DBG][preferences] PUT called");
 
   try {
-    const session = await auth();
-    if (!session?.user?.cognitoSub) {
+    const mobileAuth = await getMobileAuthResult(request);
+    let cognitoSub: string | undefined;
+
+    if (mobileAuth.session) {
+      cognitoSub = mobileAuth.session.cognitoSub;
+    } else if (mobileAuth.tokenExpired) {
+      return NextResponse.json(
+        { success: false, error: "Token expired" },
+        { status: 401 },
+      );
+    } else {
+      const session = await auth();
+      cognitoSub = session?.user?.cognitoSub;
+    }
+
+    if (!cognitoSub) {
       return NextResponse.json(
         { success: false, error: "Unauthorized" },
         { status: 401 },
       );
     }
 
-    const tenant = await getTenantByUserId(session.user.cognitoSub);
+    const tenant = await getTenantByUserId(cognitoSub);
     if (!tenant) {
       return NextResponse.json(
         { success: false, error: "Tenant not found" },

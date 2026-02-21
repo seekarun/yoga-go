@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState, useCallback } from "react";
-import type { BookingConfig, TimeSlot } from "@/types/booking";
+import type { BookingConfig, TimeSlot, DateOverride } from "@/types/booking";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import {
   getTodayInTimezone,
@@ -20,6 +20,7 @@ interface DayTimelineViewProps {
   tenantId: string;
   onDateChange: (date: string) => void;
   onSlotSelect: (slot: TimeSlot) => void;
+  dateOverrides?: Record<string, DateOverride>;
 }
 
 function formatTime(isoStr: string, tz: string): string {
@@ -40,6 +41,7 @@ export default function DayTimelineView({
   tenantId,
   onDateChange,
   onSlotSelect,
+  dateOverrides,
 }: DayTimelineViewProps) {
   const todayStr = getTodayInTimezone(bookingConfig.timezone);
   const maxDate = useMemo(
@@ -55,8 +57,15 @@ export default function DayTimelineView({
         bookingConfig.weeklySchedule,
         todayStr,
         maxDate,
+        dateOverrides,
       ) !== null,
-    [selectedDate, bookingConfig.weeklySchedule, todayStr, maxDate],
+    [
+      selectedDate,
+      bookingConfig.weeklySchedule,
+      todayStr,
+      maxDate,
+      dateOverrides,
+    ],
   );
 
   const canGoNext = useMemo(
@@ -67,8 +76,15 @@ export default function DayTimelineView({
         bookingConfig.weeklySchedule,
         todayStr,
         maxDate,
+        dateOverrides,
       ) !== null,
-    [selectedDate, bookingConfig.weeklySchedule, todayStr, maxDate],
+    [
+      selectedDate,
+      bookingConfig.weeklySchedule,
+      todayStr,
+      maxDate,
+      dateOverrides,
+    ],
   );
 
   const handlePrev = () => {
@@ -78,6 +94,7 @@ export default function DayTimelineView({
       bookingConfig.weeklySchedule,
       todayStr,
       maxDate,
+      dateOverrides,
     );
     if (prev) onDateChange(prev);
   };
@@ -89,6 +106,7 @@ export default function DayTimelineView({
       bookingConfig.weeklySchedule,
       todayStr,
       maxDate,
+      dateOverrides,
     );
     if (next) onDateChange(next);
   };

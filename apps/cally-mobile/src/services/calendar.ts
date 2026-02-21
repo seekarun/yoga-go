@@ -25,6 +25,28 @@ interface CalendarResponse {
 }
 
 /**
+ * Fetch calendar events for a date range
+ */
+export async function fetchCalendarEvents(
+  accessToken: string,
+  start: Date,
+  end: Date,
+): Promise<CalendarResponse> {
+  const response = await fetch(
+    `${API_BASE_URL}${API_ENDPOINTS.calendar}?start=${encodeURIComponent(start.toISOString())}&end=${encodeURIComponent(end.toISOString())}`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  );
+
+  return response.json();
+}
+
+/**
  * Fetch today's calendar events
  */
 export async function fetchTodayEvents(
@@ -37,20 +59,5 @@ export async function fetchTodayEvents(
   const endOfDay = new Date(today);
   endOfDay.setHours(23, 59, 59, 999);
 
-  const start = startOfDay.toISOString();
-  const end = endOfDay.toISOString();
-
-  const response = await fetch(
-    `${API_BASE_URL}${API_ENDPOINTS.calendar}?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`,
-    {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-    },
-  );
-
-  const data = await response.json();
-  return data;
+  return fetchCalendarEvents(accessToken, startOfDay, endOfDay);
 }

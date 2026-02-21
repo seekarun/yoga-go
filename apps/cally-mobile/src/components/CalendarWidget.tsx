@@ -62,7 +62,11 @@ export default function CalendarWidget() {
       let response = await fetchTodayEvents(accessToken);
 
       // If unauthorized, try refreshing the token
-      if (!response.success && response.error?.includes("expired")) {
+      if (
+        !response.success &&
+        (response.error?.includes("expired") ||
+          response.error?.includes("authenticated"))
+      ) {
         const newToken = await refreshAccessToken();
         if (newToken) {
           response = await fetchTodayEvents(newToken);

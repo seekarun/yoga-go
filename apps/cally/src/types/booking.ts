@@ -19,6 +19,18 @@ export interface DaySchedule {
 export type WeeklySchedule = Record<number, DaySchedule>;
 
 /**
+ * Per-date override for business hours.
+ * Takes precedence over weeklySchedule for the specified date.
+ */
+export interface DateOverride {
+  date: string; // "YYYY-MM-DD"
+  enabled: boolean; // false = closed for the day
+  startHour?: number; // optional modified hours (0-23)
+  endHour?: number; // optional modified hours (0-23)
+  reason?: string; // e.g. "Australia Day"
+}
+
+/**
  * Cancellation policy configuration
  */
 export interface CancellationConfig {
@@ -40,6 +52,7 @@ export interface BookingConfig {
   lookaheadDays: number;
   weeklySchedule: WeeklySchedule;
   cancellationConfig?: CancellationConfig;
+  dateOverrides?: Record<string, DateOverride>; // keyed by "YYYY-MM-DD"
 }
 
 /**
@@ -60,6 +73,7 @@ export interface AvailableSlotsResponse {
   slots: TimeSlot[];
   weeklySchedule?: WeeklySchedule;
   lookaheadDays?: number;
+  dateOverrides?: Record<string, DateOverride>;
 }
 
 /**

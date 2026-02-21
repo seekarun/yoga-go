@@ -8,6 +8,7 @@ import type {
   TimeSlot,
   AvailableSlotsResponse,
   BookingConfig,
+  DateOverride,
 } from "@/types/booking";
 import { useVisitorTimezone } from "@/hooks/useVisitorTimezone";
 import DayTimelineView from "./DayTimelineView";
@@ -43,6 +44,9 @@ export default function BookingWidget({
   const [visitorTimezone] = useVisitorTimezone();
   const [bookingConfig, setBookingConfig] = useState(DEFAULT_BOOKING_CONFIG);
   const [configLoaded, setConfigLoaded] = useState(false);
+  const [dateOverrides, setDateOverrides] = useState<
+    Record<string, DateOverride> | undefined
+  >();
 
   const todayStr = getTodayInTimezone(bookingConfig.timezone);
   const maxDate = useMemo(
@@ -61,9 +65,16 @@ export default function BookingWidget({
         bookingConfig.weeklySchedule,
         todayStr,
         maxDate,
+        dateOverrides,
       ) ?? todayStr
     );
-  }, [todayStr, bookingConfig.weeklySchedule, maxDate, waitlistDate]);
+  }, [
+    todayStr,
+    bookingConfig.weeklySchedule,
+    maxDate,
+    waitlistDate,
+    dateOverrides,
+  ]);
 
   const [step, setStep] = useState<BookingStep>("schedule");
   const [selectedDate, setSelectedDate] = useState<string>(initialDate);
@@ -134,6 +145,7 @@ export default function BookingWidget({
             weeklySchedule: json.data.weeklySchedule,
           };
           setBookingConfig(newConfig);
+          setDateOverrides(json.data.dateOverrides);
           setConfigLoaded(true);
         }
       } catch {
@@ -163,6 +175,7 @@ export default function BookingWidget({
           bookingConfig.weeklySchedule,
           todayStr,
           maxDate,
+          dateOverrides,
         ) ?? todayStr;
       if (newInitial !== selectedDate) {
         setSelectedDate(newInitial);
@@ -322,6 +335,7 @@ export default function BookingWidget({
           tenantId={tenantId}
           onDateChange={handleDateChange}
           onSlotSelect={handleSlotSelect}
+          dateOverrides={dateOverrides}
         />
       )}
 

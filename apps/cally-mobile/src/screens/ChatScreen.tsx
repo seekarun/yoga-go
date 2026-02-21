@@ -9,10 +9,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Markdown from "react-native-markdown-display";
-import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "../contexts/AuthContext";
 import { sendChatMessage } from "../services/chat";
 import type { ChatMessage } from "../services/chat";
@@ -29,12 +29,18 @@ function generateId(): string {
 }
 
 export default function ChatScreen() {
-  const navigation = useNavigation();
   const { accessToken, refreshAccessToken } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setMessages([]);
+    setRefreshing(false);
+  }, []);
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => {
@@ -70,7 +76,11 @@ export default function ChatScreen() {
       let response = await sendChatMessage(text, sessionMessages, accessToken);
 
       // If token expired, try refreshing
-      if (!response.success && response.error?.includes("authenticated")) {
+      if (
+        !response.success &&
+        (response.error?.includes("expired") ||
+          response.error?.includes("authenticated"))
+      ) {
         const newToken = await refreshAccessToken();
         if (newToken) {
           response = await sendChatMessage(text, sessionMessages, newToken);
@@ -135,14 +145,7 @@ export default function ChatScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        >
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
         <Text style={styles.headerTitle}>AI Assistant</Text>
-        <View style={styles.backButton} />
       </View>
 
       <KeyboardAvoidingView
@@ -158,6 +161,14 @@ export default function ChatScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.messagesList}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
+            />
+          }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyTitle}>Hi! I'm your AI assistant</Text>
@@ -268,22 +279,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgMain,
   },
   header: {
-    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm + 4,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-  },
-  backButton: {
-    width: 60,
-  },
-  backText: {
-    fontSize: fontSize.md,
-    color: colors.primary,
-    fontWeight: fontWeight.medium,
   },
   headerTitle: {
     fontSize: fontSize.lg,

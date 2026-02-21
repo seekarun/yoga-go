@@ -53,6 +53,7 @@ export interface HeroTemplateProps {
   products?: Product[];
   currency?: string;
   onBookProduct?: (productId: string) => void;
+  onSignupWebinar?: (productId: string) => void;
   onProductsHeadingChange?: (heading: string) => void;
   onProductsSubheadingChange?: (subheading: string) => void;
   onProductsStyleOverrideChange?: (overrides: ProductsStyleOverrides) => void;

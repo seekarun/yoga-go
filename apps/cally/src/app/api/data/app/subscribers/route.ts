@@ -4,28 +4,45 @@
  */
 
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 import type { CallyUser } from "@/types";
 import type { ApiResponse } from "@/types";
 import { auth } from "@/auth";
+import { getMobileAuthResult } from "@/lib/mobile-auth";
 import { getTenantByUserId } from "@/lib/repositories/tenantRepository";
 import * as subscriberRepository from "@/lib/repositories/subscriberRepository";
 import { getTenantCalendarEvents } from "@/lib/repositories/calendarEventRepository";
 import { getContactsByTenant } from "@/lib/repositories/contactRepository";
 import { mergeSubscribersAndVisitors } from "@/lib/users/mergeUsers";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   console.log("[DBG][subscribers] GET called");
 
   try {
-    const session = await auth();
-    if (!session?.user?.cognitoSub) {
+    // Try mobile auth (Bearer token) first, then fall back to cookie auth
+    const mobileAuth = await getMobileAuthResult(request);
+    let cognitoSub: string | undefined;
+
+    if (mobileAuth.session) {
+      cognitoSub = mobileAuth.session.cognitoSub;
+    } else if (mobileAuth.tokenExpired) {
+      return NextResponse.json<ApiResponse<CallyUser[]>>(
+        { success: false, error: "Token expired" },
+        { status: 401 },
+      );
+    } else {
+      const session = await auth();
+      cognitoSub = session?.user?.cognitoSub;
+    }
+
+    if (!cognitoSub) {
       return NextResponse.json<ApiResponse<CallyUser[]>>(
         { success: false, error: "Unauthorized" },
         { status: 401 },
       );
     }
 
-    const tenant = await getTenantByUserId(session.user.cognitoSub);
+    const tenant = await getTenantByUserId(cognitoSub);
     if (!tenant) {
       return NextResponse.json<ApiResponse<CallyUser[]>>(
         { success: false, error: "Tenant not found" },

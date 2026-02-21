@@ -158,7 +158,12 @@
       "Bash(/Users/arunsubramaniam/.claude/skills/test-email/mailslurp.sh:*)",
       "Bash(~/.claude/skills/test-email/mailslurp.sh send:*)",
       "Bash(aws cognito-idp list-user-pools:*)",
-      "Bash(aws cognito-idp list-user-pool-clients:*)"
+      "Bash(aws cognito-idp list-user-pool-clients:*)",
+      "Bash(NODE_OPTIONS=\"--max-old-space-size=4096\" npx tsc:*)",
+      "Bash(NODE_OPTIONS=\"--max-old-space-size=4096\" npm run build:cally:*)",
+      "Bash(npx expo install:*)",
+      "Bash(git -C /Users/arunsubramaniam/garage/yoga-go status -- apps/cally/src/lib/webinar/)",
+      "Bash(git -C /Users/arunsubramaniam/garage/yoga-go log --oneline -1)"
     ],
     "deny": [],
     "ask": []

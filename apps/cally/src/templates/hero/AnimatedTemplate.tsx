@@ -70,6 +70,7 @@ export default function AnimatedTemplate(props: HeroTemplateProps) {
     products,
     currency,
     onBookProduct,
+    onSignupWebinar,
     onProductsHeadingChange,
     onProductsSubheadingChange,
     onProductsStyleOverrideChange,
@@ -506,6 +507,7 @@ export default function AnimatedTemplate(props: HeroTemplateProps) {
                 onHeadingChange={onProductsHeadingChange}
                 onSubheadingChange={onProductsSubheadingChange}
                 onBookProduct={onBookProduct}
+                onSignupWebinar={onSignupWebinar}
                 onStyleOverrideChange={onProductsStyleOverrideChange}
                 onBgImageClick={onProductsBgImageClick}
                 onCustomColorsChange={onCustomColorsChange}

@@ -1,4 +1,4 @@
-import type { WeeklySchedule } from "@/types/booking";
+import type { WeeklySchedule, DateOverride } from "@/types/booking";
 
 /**
  * Get YYYY-MM-DD string for a Date in a given timezone
@@ -49,6 +49,7 @@ export function getNextBusinessDay(
   weeklySchedule: WeeklySchedule,
   todayStr: string,
   maxDate: string,
+  dateOverrides?: Record<string, DateOverride>,
 ): string | null {
   const d = new Date(dateStr + "T12:00:00Z");
   for (let i = 0; i < 60; i++) {
@@ -56,6 +57,9 @@ export function getNextBusinessDay(
     const candidate = formatDateInTimezone(d, "UTC");
 
     if (candidate < todayStr || candidate > maxDate) return null;
+
+    // Skip dates explicitly closed by override
+    if (dateOverrides?.[candidate]?.enabled === false) continue;
 
     const dow = d.getUTCDay();
     if (weeklySchedule[dow]?.enabled) return candidate;
@@ -80,12 +84,22 @@ export function findFirstBusinessDay(
   weeklySchedule: WeeklySchedule,
   todayStr: string,
   maxDate: string,
+  dateOverrides?: Record<string, DateOverride>,
 ): string | null {
   const d = new Date(startDate + "T12:00:00Z");
   // Check the start date itself first
   if (startDate >= todayStr && startDate <= maxDate) {
-    const dow = d.getUTCDay();
-    if (weeklySchedule[dow]?.enabled) return startDate;
+    if (dateOverrides?.[startDate]?.enabled !== false) {
+      const dow = d.getUTCDay();
+      if (weeklySchedule[dow]?.enabled) return startDate;
+    }
   }
-  return getNextBusinessDay(startDate, 1, weeklySchedule, todayStr, maxDate);
+  return getNextBusinessDay(
+    startDate,
+    1,
+    weeklySchedule,
+    todayStr,
+    maxDate,
+    dateOverrides,
+  );
 }

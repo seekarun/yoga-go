@@ -105,15 +105,23 @@ export function generateAvailableSlots(
 ): TimeSlot[] {
   const { timezone, slotDurationMinutes, weeklySchedule } = config;
 
-  // 1. Check if the day-of-week is enabled in business hours
-  const dayOfWeek = getDayOfWeekInTimezone(date, timezone);
-  const daySchedule = weeklySchedule[dayOfWeek];
-
-  if (!daySchedule || !daySchedule.enabled) {
+  // 1. Check date overrides first (takes priority over weeklySchedule)
+  const dateOverride = config.dateOverrides?.[date];
+  if (dateOverride && !dateOverride.enabled) {
     return [];
   }
 
-  const { startHour, endHour } = daySchedule;
+  // 2. Check if the day-of-week is enabled in business hours
+  const dayOfWeek = getDayOfWeekInTimezone(date, timezone);
+  const daySchedule = weeklySchedule[dayOfWeek];
+
+  if (!dateOverride && (!daySchedule || !daySchedule.enabled)) {
+    return [];
+  }
+
+  // Use override hours if provided, otherwise fall back to weekly schedule
+  const startHour = dateOverride?.startHour ?? daySchedule?.startHour ?? 9;
+  const endHour = dateOverride?.endHour ?? daySchedule?.endHour ?? 17;
   const slots: TimeSlot[] = [];
 
   // 2. Generate slot windows within business hours

@@ -57,6 +57,7 @@ export default function TherapistTemplate(props: HeroTemplateProps) {
     products,
     currency,
     onBookProduct,
+    onSignupWebinar,
     onProductsHeadingChange,
     onProductsSubheadingChange,
     onProductsStyleOverrideChange,
@@ -440,6 +441,7 @@ export default function TherapistTemplate(props: HeroTemplateProps) {
                 onHeadingChange={onProductsHeadingChange}
                 onSubheadingChange={onProductsSubheadingChange}
                 onBookProduct={onBookProduct}
+                onSignupWebinar={onSignupWebinar}
                 onStyleOverrideChange={onProductsStyleOverrideChange}
                 onBgImageClick={onProductsBgImageClick}
                 onCustomColorsChange={onCustomColorsChange}

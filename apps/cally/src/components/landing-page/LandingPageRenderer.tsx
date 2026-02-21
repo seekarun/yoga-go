@@ -10,6 +10,7 @@ import LandingPageHeader, {
   SECTION_NAV_LABELS,
 } from "@/components/landing-page/LandingPageHeader";
 import BookingWidget from "@/components/booking/BookingWidget";
+import WebinarSignup from "@/components/webinar/WebinarSignup";
 import SurveyOverlay from "@/components/landing-page/SurveyOverlay";
 
 interface LandingPageRendererProps {
@@ -48,6 +49,10 @@ export default function LandingPageRenderer({
     string | undefined
   >();
   const [bookingProductName, setBookingProductName] = useState<
+    string | undefined
+  >();
+  const [webinarOpen, setWebinarOpen] = useState(false);
+  const [webinarProductId, setWebinarProductId] = useState<
     string | undefined
   >();
   const [selectedSurveyId, setSelectedSurveyId] = useState<string | null>(null);
@@ -102,12 +107,23 @@ export default function LandingPageRenderer({
   const handleBookProduct = useCallback(
     (productId: string) => {
       const product = products?.find((p) => p.id === productId);
+      // If it's a webinar, open the webinar signup instead
+      if (product?.productType === "webinar") {
+        setWebinarProductId(productId);
+        setWebinarOpen(true);
+        return;
+      }
       setBookingProductId(productId);
       setBookingProductName(product?.name);
       setBookingOpen(true);
     },
     [products],
   );
+
+  const handleSignupWebinar = useCallback((productId: string) => {
+    setWebinarProductId(productId);
+    setWebinarOpen(true);
+  }, []);
 
   return (
     <LandingPageThemeProvider
@@ -134,6 +150,7 @@ export default function LandingPageRenderer({
           products={products}
           currency={currency}
           onBookProduct={handleBookProduct}
+          onSignupWebinar={handleSignupWebinar}
           address={address}
         />
       </div>
@@ -147,6 +164,15 @@ export default function LandingPageRenderer({
         }}
         productId={bookingProductId}
         productName={bookingProductName}
+      />
+      <WebinarSignup
+        tenantId={tenantId}
+        productId={webinarProductId}
+        isOpen={webinarOpen}
+        onClose={() => {
+          setWebinarOpen(false);
+          setWebinarProductId(undefined);
+        }}
       />
 
       {/* Survey overlay */}

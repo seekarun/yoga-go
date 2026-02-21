@@ -17,7 +17,7 @@ import type {
 } from "@/types";
 import { auth } from "@/auth";
 import { getTenantByUserId } from "@/lib/repositories/tenantRepository";
-import { getMobileSession } from "@/lib/mobile-auth";
+import { getMobileAuthResult } from "@/lib/mobile-auth";
 import * as calendarEventRepository from "@/lib/repositories/calendarEventRepository";
 import { createHmsRoomForEvent } from "@/lib/100ms-meeting";
 import { is100msConfigured } from "@/lib/100ms-auth";
@@ -54,17 +54,22 @@ export async function GET(request: Request) {
     // Check auth — try Bearer token first (mobile), fall back to cookie (web)
     let cognitoSub: string | undefined;
 
-    const mobileSession = await getMobileSession(request);
-    if (mobileSession) {
-      cognitoSub = mobileSession.cognitoSub;
-    } else {
+    const mobileAuth = await getMobileAuthResult(request);
+    if (mobileAuth.session) {
+      cognitoSub = mobileAuth.session.cognitoSub;
+    } else if (!mobileAuth.tokenExpired) {
       const session = await auth();
       cognitoSub = session?.user?.cognitoSub;
     }
 
     if (!cognitoSub) {
       return NextResponse.json<ApiResponse<CalendarItem[]>>(
-        { success: false, error: "Unauthorized" },
+        {
+          success: false,
+          error: mobileAuth.tokenExpired
+            ? "Token expired"
+            : "Not authenticated",
+        },
         { status: 401 },
       );
     }

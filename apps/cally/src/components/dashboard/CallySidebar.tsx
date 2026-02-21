@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
+import NotificationBell from "@/components/notifications/NotificationBell";
 
 interface CallySidebarProps {
   expertId: string;
@@ -357,25 +358,28 @@ export default function CallySidebar({ expertId }: CallySidebarProps) {
             CallyGo
           </span>
         )}
-        <button
-          onClick={toggleCollapsed}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          <svg
-            className={`w-5 h-5 text-gray-500 transition-transform ${collapsed ? "rotate-180" : ""}`}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
+        <div className="flex items-center gap-1">
+          <NotificationBell />
+          <button
+            onClick={toggleCollapsed}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
-            />
-          </svg>
-        </button>
+            <svg
+              className={`w-5 h-5 text-gray-500 transition-transform ${collapsed ? "rotate-180" : ""}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
+              />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Navigation */}

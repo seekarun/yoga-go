@@ -13,6 +13,7 @@ import type {
   ApiResponse,
 } from "@/types";
 import { auth } from "@/auth";
+import { getMobileAuthResult } from "@/lib/mobile-auth";
 import { getTenantByUserId } from "@/lib/repositories/tenantRepository";
 import * as subscriberRepository from "@/lib/repositories/subscriberRepository";
 import { getTenantCalendarEvents } from "@/lib/repositories/calendarEventRepository";
@@ -31,7 +32,7 @@ interface UserFileData {
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ userEmail: string }> },
 ) {
   const { userEmail } = await params;
@@ -40,15 +41,30 @@ export async function GET(
   console.log("[DBG][userFile] GET called for:", decodedEmail);
 
   try {
-    const session = await auth();
-    if (!session?.user?.cognitoSub) {
+    // Try mobile auth (Bearer token) first, then fall back to cookie auth
+    const mobileAuth = await getMobileAuthResult(request);
+    let cognitoSub: string | undefined;
+
+    if (mobileAuth.session) {
+      cognitoSub = mobileAuth.session.cognitoSub;
+    } else if (mobileAuth.tokenExpired) {
+      return NextResponse.json<ApiResponse<UserFileData>>(
+        { success: false, error: "Token expired" },
+        { status: 401 },
+      );
+    } else {
+      const session = await auth();
+      cognitoSub = session?.user?.cognitoSub;
+    }
+
+    if (!cognitoSub) {
       return NextResponse.json<ApiResponse<UserFileData>>(
         { success: false, error: "Unauthorized" },
         { status: 401 },
       );
     }
 
-    const tenant = await getTenantByUserId(session.user.cognitoSub);
+    const tenant = await getTenantByUserId(cognitoSub);
     if (!tenant) {
       return NextResponse.json<ApiResponse<UserFileData>>(
         { success: false, error: "Tenant not found" },

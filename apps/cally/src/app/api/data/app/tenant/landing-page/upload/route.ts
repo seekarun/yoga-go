@@ -5,6 +5,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { auth } from "@/auth";
+import { getMobileAuthResult } from "@/lib/mobile-auth";
 import { getTenantByUserId } from "@/lib/repositories/tenantRepository";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { nanoid } from "nanoid";
@@ -36,16 +37,26 @@ function getExtension(contentType: string): string {
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication
-    const session = await auth();
-    if (!session?.user?.cognitoSub) {
+    // Check authentication (mobile Bearer token or web session)
+    const mobileAuth = await getMobileAuthResult(request);
+    let cognitoSub: string | undefined;
+    if (mobileAuth.session) {
+      cognitoSub = mobileAuth.session.cognitoSub;
+    } else if (mobileAuth.tokenExpired) {
+      return NextResponse.json(
+        { success: false, error: "Token expired" },
+        { status: 401 },
+      );
+    } else {
+      const session = await auth();
+      cognitoSub = session?.user?.cognitoSub;
+    }
+    if (!cognitoSub) {
       return NextResponse.json(
         { success: false, error: "Not authenticated" },
         { status: 401 },
       );
     }
-
-    const cognitoSub = session.user.cognitoSub;
     console.log(
       "[DBG][landing-page-upload] Upload request from user:",
       cognitoSub,

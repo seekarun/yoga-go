@@ -7,7 +7,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getTenantByUserId } from "@/lib/repositories/tenantRepository";
-import { getMobileSession } from "@/lib/mobile-auth";
+import { getMobileAuthResult } from "@/lib/mobile-auth";
 import {
   createChatCompletionWithTools,
   generateMessageId,
@@ -26,17 +26,22 @@ export async function POST(request: NextRequest) {
     // Check authentication — try Bearer token first (mobile), fall back to cookie (web)
     let cognitoSub: string | undefined;
 
-    const mobileSession = await getMobileSession(request);
-    if (mobileSession) {
-      cognitoSub = mobileSession.cognitoSub;
-    } else {
+    const mobileAuth = await getMobileAuthResult(request);
+    if (mobileAuth.session) {
+      cognitoSub = mobileAuth.session.cognitoSub;
+    } else if (!mobileAuth.tokenExpired) {
       const session = await auth();
       cognitoSub = session?.user?.cognitoSub;
     }
 
     if (!cognitoSub) {
       return NextResponse.json(
-        { success: false, error: "Not authenticated" },
+        {
+          success: false,
+          error: mobileAuth.tokenExpired
+            ? "Token expired"
+            : "Not authenticated",
+        },
         { status: 401 },
       );
     }
