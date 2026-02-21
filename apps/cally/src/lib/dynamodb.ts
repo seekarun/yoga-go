@@ -128,6 +128,21 @@ export const TenantPK = {
   // Email Labels: PK=TENANT#{tenantId}, SK=EMAIL_LABEL#{labelId}
   EMAIL_LABEL: (labelId: string) => `EMAIL_LABEL#${labelId}`,
   EMAIL_LABEL_PREFIX: "EMAIL_LABEL#",
+
+  // Notifications: PK=TENANT#{tenantId}, SK=NOTIF#{createdAt}#{notifId}
+  NOTIFICATION: (createdAt: string, id: string) => `NOTIF#${createdAt}#${id}`,
+  NOTIFICATION_PREFIX: "NOTIF#",
+
+  // Push Tokens: PK=TENANT#{tenantId}, SK=PUSH_TOKEN#{tokenHash}
+  PUSH_TOKEN: (tokenHash: string) => `PUSH_TOKEN#${tokenHash}`,
+  PUSH_TOKEN_PREFIX: "PUSH_TOKEN#",
+
+  // Webinar Signups: PK=TENANT#{tenantId}, SK=WEBINAR_SIGNUP#{productId}#EMAIL#{email}
+  WEBINAR_SIGNUP: (productId: string, email: string) =>
+    `WEBINAR_SIGNUP#${productId}#EMAIL#${email.toLowerCase().trim()}`,
+  WEBINAR_SIGNUP_PRODUCT_PREFIX: (productId: string) =>
+    `WEBINAR_SIGNUP#${productId}#`,
+  WEBINAR_SIGNUP_PREFIX: "WEBINAR_SIGNUP#",
 } as const;
 
 // Entity type constants
@@ -148,6 +163,9 @@ export const EntityType = {
   AD_CREDIT: "AD_CREDIT",
   AD_TRANSACTION: "AD_TRANSACTION",
   WAITLIST: "WAITLIST",
+  NOTIFICATION: "NOTIFICATION",
+  PUSH_TOKEN: "PUSH_TOKEN",
+  WEBINAR_SIGNUP: "WEBINAR_SIGNUP",
 } as const;
 
 // ============================================
