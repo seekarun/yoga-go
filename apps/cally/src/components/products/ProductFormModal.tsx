@@ -2,8 +2,16 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Modal, { ModalHeader } from "@/components/Modal";
-import type { Product, ProductImage } from "@/types";
+import type {
+  Product,
+  ProductImage,
+  ProductType,
+  WebinarSchedule,
+} from "@/types";
+import type { RecurrenceRule } from "@core/types";
 import { ImageEditorOverlay } from "@core/components";
+import RecurrenceSelector from "@/components/calendar/RecurrenceSelector";
+import WebinarSchedulePreview from "@/components/webinar/WebinarSchedulePreview";
 
 interface ProductFormModalProps {
   isOpen: boolean;
@@ -33,6 +41,12 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
   SGD: "$",
 };
 
+function computeDurationFromTimes(start: string, end: string): number {
+  const [sh, sm] = start.split(":").map(Number);
+  const [eh, em] = end.split(":").map(Number);
+  return eh * 60 + em - (sh * 60 + sm);
+}
+
 export default function ProductFormModal({
   isOpen,
   onClose,
@@ -51,6 +65,16 @@ export default function ProductFormModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Webinar state
+  const [productType, setProductType] = useState<ProductType>("service");
+  const [maxParticipants, setMaxParticipants] = useState<string>("");
+  const [webinarStartDate, setWebinarStartDate] = useState("");
+  const [webinarStartTime, setWebinarStartTime] = useState("09:00");
+  const [webinarEndTime, setWebinarEndTime] = useState("10:00");
+  const [recurrenceRule, setRecurrenceRule] = useState<RecurrenceRule | null>(
+    null,
+  );
+
   const isEditing = !!product;
   const currencySymbol = CURRENCY_SYMBOLS[currency] || "$";
 
@@ -63,7 +87,7 @@ export default function ProductFormModal({
       setDisplayPrice((product.price / 100).toFixed(2));
       setColor(product.color || PRODUCT_COLORS[0].value);
       setIsActive(product.isActive);
-      // Load images: prefer images array, fallback to legacy image field
+      // Load images
       if (product.images && product.images.length > 0) {
         setImages(product.images);
       } else if (product.image) {
@@ -78,6 +102,24 @@ export default function ProductFormModal({
       } else {
         setImages([]);
       }
+      // Webinar fields
+      if (product.productType === "webinar") {
+        setProductType("webinar");
+        setMaxParticipants(product.maxParticipants?.toString() || "");
+        if (product.webinarSchedule) {
+          setWebinarStartDate(product.webinarSchedule.startDate);
+          setWebinarStartTime(product.webinarSchedule.startTime);
+          setWebinarEndTime(product.webinarSchedule.endTime);
+          setRecurrenceRule(product.webinarSchedule.recurrenceRule || null);
+        }
+      } else {
+        setProductType(product.productType || "service");
+        setMaxParticipants("");
+        setWebinarStartDate("");
+        setWebinarStartTime("09:00");
+        setWebinarEndTime("10:00");
+        setRecurrenceRule(null);
+      }
     } else {
       setName("");
       setDescription("");
@@ -86,6 +128,12 @@ export default function ProductFormModal({
       setColor(PRODUCT_COLORS[0].value);
       setIsActive(true);
       setImages([]);
+      setProductType("service");
+      setMaxParticipants("");
+      setWebinarStartDate("");
+      setWebinarStartTime("09:00");
+      setWebinarEndTime("10:00");
+      setRecurrenceRule(null);
     }
     setError(null);
   }, [product, isOpen]);
@@ -118,10 +166,28 @@ export default function ProductFormModal({
         return;
       }
 
-      const duration = Number(durationMinutes);
-      if (!Number.isInteger(duration) || duration < 5 || duration > 480) {
-        setError("Duration must be between 5 and 480 minutes");
-        return;
+      // Webinar validation
+      if (productType === "webinar") {
+        if (!webinarStartDate) {
+          setError("Start date is required for webinars");
+          return;
+        }
+        if (!webinarStartTime || !webinarEndTime) {
+          setError("Start and end times are required for webinars");
+          return;
+        }
+        const dur = computeDurationFromTimes(webinarStartTime, webinarEndTime);
+        if (dur <= 0) {
+          setError("End time must be after start time");
+          return;
+        }
+      } else {
+        // Service duration validation
+        const duration = Number(durationMinutes);
+        if (!Number.isInteger(duration) || duration < 5 || duration > 480) {
+          setError("Duration must be between 5 and 480 minutes");
+          return;
+        }
       }
 
       const priceInCents = Math.round(parseFloat(displayPrice) * 100);
@@ -133,18 +199,37 @@ export default function ProductFormModal({
       setSaving(true);
 
       try {
+        // Build webinar schedule if applicable
+        let webinarSchedule: WebinarSchedule | undefined;
+        if (productType === "webinar") {
+          webinarSchedule = {
+            startDate: webinarStartDate,
+            startTime: webinarStartTime,
+            endTime: webinarEndTime,
+            recurrenceRule: recurrenceRule || undefined,
+            sessionCount: 1, // Computed server-side
+          };
+        }
+
         const body = {
           name: name.trim(),
           description: description.trim() || undefined,
-          durationMinutes: duration,
+          durationMinutes:
+            productType === "webinar"
+              ? computeDurationFromTimes(webinarStartTime, webinarEndTime)
+              : Number(durationMinutes),
           price: priceInCents,
           color,
           isActive,
           images,
-          // Set legacy image field to first image for backward compat
           image: images.length > 0 ? images[0].url : undefined,
           imagePosition: images.length > 0 ? images[0].position : undefined,
           imageZoom: images.length > 0 ? images[0].zoom : undefined,
+          productType,
+          maxParticipants: maxParticipants
+            ? Number(maxParticipants)
+            : undefined,
+          webinarSchedule,
         };
 
         const url = isEditing
@@ -184,8 +269,17 @@ export default function ProductFormModal({
       product,
       onSaved,
       onClose,
+      productType,
+      maxParticipants,
+      webinarStartDate,
+      webinarStartTime,
+      webinarEndTime,
+      recurrenceRule,
     ],
   );
+
+  const inputClasses =
+    "w-full border border-[var(--color-border)] rounded-lg px-3 py-2 text-[var(--text-main)] bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]";
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} maxWidth="max-w-lg">
@@ -197,6 +291,31 @@ export default function ProductFormModal({
         {error && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
             {error}
+          </div>
+        )}
+
+        {/* Product Type Toggle (only for new products) */}
+        {!isEditing && (
+          <div>
+            <label className="block text-sm font-medium text-[var(--text-muted)] mb-2">
+              Type
+            </label>
+            <div className="flex gap-2">
+              {(["service", "webinar"] as const).map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setProductType(type)}
+                  className={`px-4 py-2 text-sm rounded-lg border transition-colors ${
+                    productType === type
+                      ? "bg-[var(--color-primary)] text-white border-[var(--color-primary)]"
+                      : "bg-white text-[var(--text-muted)] border-[var(--color-border)] hover:bg-gray-50"
+                  }`}
+                >
+                  {type === "service" ? "Service" : "Webinar"}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -213,8 +332,12 @@ export default function ProductFormModal({
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Hair Cut, Yoga Session"
-            className="w-full border border-[var(--color-border)] rounded-lg px-3 py-2 text-[var(--text-main)] bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+            placeholder={
+              productType === "webinar"
+                ? "e.g. Intro to Meditation"
+                : "e.g. Hair Cut, Yoga Session"
+            }
+            className={inputClasses}
             required
           />
         </div>
@@ -231,9 +354,13 @@ export default function ProductFormModal({
             id="product-description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Brief description of this service"
+            placeholder={
+              productType === "webinar"
+                ? "Describe what participants will learn"
+                : "Brief description of this service"
+            }
             rows={3}
-            className="w-full border border-[var(--color-border)] rounded-lg px-3 py-2 text-[var(--text-main)] bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] resize-none"
+            className={`${inputClasses} resize-none`}
           />
         </div>
 
@@ -296,46 +423,174 @@ export default function ProductFormModal({
           </div>
         </div>
 
-        {/* Duration and Price row */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label
-              htmlFor="product-duration"
-              className="block text-sm font-medium text-[var(--text-muted)] mb-1"
-            >
-              Duration (minutes) *
-            </label>
-            <input
-              id="product-duration"
-              type="number"
-              min={5}
-              max={480}
-              step={1}
-              value={durationMinutes}
-              onChange={(e) => setDurationMinutes(Number(e.target.value))}
-              className="w-full border border-[var(--color-border)] rounded-lg px-3 py-2 text-[var(--text-main)] bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
-              required
+        {/* Conditional: Webinar schedule OR Service duration */}
+        {productType === "webinar" ? (
+          <>
+            {/* Max Participants */}
+            <div>
+              <label
+                htmlFor="product-max-participants"
+                className="block text-sm font-medium text-[var(--text-muted)] mb-1"
+              >
+                Max Participants
+              </label>
+              <input
+                id="product-max-participants"
+                type="number"
+                min={1}
+                value={maxParticipants}
+                onChange={(e) => setMaxParticipants(e.target.value)}
+                placeholder="Unlimited"
+                className={inputClasses}
+              />
+              <p className="text-xs text-[var(--text-muted)] mt-1">
+                Leave empty for unlimited
+              </p>
+            </div>
+
+            {/* Start Date */}
+            <div>
+              <label
+                htmlFor="webinar-start-date"
+                className="block text-sm font-medium text-[var(--text-muted)] mb-1"
+              >
+                Start Date *
+              </label>
+              <input
+                id="webinar-start-date"
+                type="date"
+                value={webinarStartDate}
+                onChange={(e) => setWebinarStartDate(e.target.value)}
+                className={inputClasses}
+                required
+              />
+            </div>
+
+            {/* Start/End Time */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label
+                  htmlFor="webinar-start-time"
+                  className="block text-sm font-medium text-[var(--text-muted)] mb-1"
+                >
+                  Start Time *
+                </label>
+                <input
+                  id="webinar-start-time"
+                  type="time"
+                  value={webinarStartTime}
+                  onChange={(e) => setWebinarStartTime(e.target.value)}
+                  className={inputClasses}
+                  required
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="webinar-end-time"
+                  className="block text-sm font-medium text-[var(--text-muted)] mb-1"
+                >
+                  End Time *
+                </label>
+                <input
+                  id="webinar-end-time"
+                  type="time"
+                  value={webinarEndTime}
+                  onChange={(e) => setWebinarEndTime(e.target.value)}
+                  className={inputClasses}
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Price */}
+            <div>
+              <label
+                htmlFor="product-price-webinar"
+                className="block text-sm font-medium text-[var(--text-muted)] mb-1"
+              >
+                Price ({currencySymbol}) *
+              </label>
+              <input
+                id="product-price-webinar"
+                type="number"
+                min={0}
+                step="0.01"
+                value={displayPrice}
+                onChange={(e) => setDisplayPrice(e.target.value)}
+                className={inputClasses}
+                required
+              />
+              <p className="text-xs text-[var(--text-muted)] mt-1">
+                Set to 0 for a free webinar
+              </p>
+            </div>
+
+            {/* Recurrence */}
+            <RecurrenceSelector
+              startDate={
+                webinarStartDate
+                  ? new Date(webinarStartDate + "T00:00:00")
+                  : null
+              }
+              value={recurrenceRule}
+              onChange={setRecurrenceRule}
             />
+
+            {/* Session Preview */}
+            {webinarStartDate && webinarStartTime && webinarEndTime && (
+              <WebinarSchedulePreview
+                schedule={{
+                  startDate: webinarStartDate,
+                  startTime: webinarStartTime,
+                  endTime: webinarEndTime,
+                  recurrenceRule: recurrenceRule || undefined,
+                  sessionCount: 0,
+                }}
+                timezone="Australia/Sydney"
+              />
+            )}
+          </>
+        ) : (
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label
+                htmlFor="product-duration"
+                className="block text-sm font-medium text-[var(--text-muted)] mb-1"
+              >
+                Duration (minutes) *
+              </label>
+              <input
+                id="product-duration"
+                type="number"
+                min={5}
+                max={480}
+                step={1}
+                value={durationMinutes}
+                onChange={(e) => setDurationMinutes(Number(e.target.value))}
+                className={inputClasses}
+                required
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="product-price"
+                className="block text-sm font-medium text-[var(--text-muted)] mb-1"
+              >
+                Price ({currencySymbol}) *
+              </label>
+              <input
+                id="product-price"
+                type="number"
+                min={0}
+                step="0.01"
+                value={displayPrice}
+                onChange={(e) => setDisplayPrice(e.target.value)}
+                className={inputClasses}
+                required
+              />
+            </div>
           </div>
-          <div>
-            <label
-              htmlFor="product-price"
-              className="block text-sm font-medium text-[var(--text-muted)] mb-1"
-            >
-              Price ({currencySymbol}) *
-            </label>
-            <input
-              id="product-price"
-              type="number"
-              min={0}
-              step="0.01"
-              value={displayPrice}
-              onChange={(e) => setDisplayPrice(e.target.value)}
-              className="w-full border border-[var(--color-border)] rounded-lg px-3 py-2 text-[var(--text-main)] bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
-              required
-            />
-          </div>
-        </div>
+        )}
 
         {/* Color */}
         <div>
@@ -405,12 +660,17 @@ export default function ProductFormModal({
             disabled={saving}
             className="px-4 py-2 text-sm font-medium text-white bg-[var(--color-primary)] rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
           >
-            {saving ? "Saving..." : isEditing ? "Save Changes" : "Add Product"}
+            {saving
+              ? "Saving..."
+              : isEditing
+                ? "Save Changes"
+                : productType === "webinar"
+                  ? "Create Webinar"
+                  : "Add Product"}
           </button>
         </div>
       </form>
 
-      {/* Image Editor Overlay */}
       <ImageEditorOverlay
         isOpen={showImageEditor}
         onClose={() => setShowImageEditor(false)}
