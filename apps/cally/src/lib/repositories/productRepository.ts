@@ -16,7 +16,12 @@ import {
   DeleteCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { docClient, Tables, TenantPK, EntityType } from "../dynamodb";
-import type { Product, ProductImage } from "@/types";
+import type {
+  Product,
+  ProductImage,
+  ProductType,
+  WebinarSchedule,
+} from "@/types";
 import { randomUUID } from "crypto";
 
 /**
@@ -51,6 +56,9 @@ export interface CreateProductInput {
   images?: ProductImage[];
   isActive?: boolean;
   sortOrder?: number;
+  productType?: ProductType;
+  maxParticipants?: number;
+  webinarSchedule?: WebinarSchedule;
 }
 
 /**
@@ -80,6 +88,9 @@ export async function createProduct(
     images: input.images,
     isActive: input.isActive ?? true,
     sortOrder: input.sortOrder ?? 0,
+    productType: input.productType,
+    maxParticipants: input.maxParticipants,
+    webinarSchedule: input.webinarSchedule,
     createdAt: now,
     updatedAt: now,
   };
