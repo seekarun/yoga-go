@@ -19,12 +19,13 @@ x tenant subscription
 x more templates
 x feat: add images for products
 x tech: alerts
+x booking wait list
 
 - super admin console
-- booking wait list
-- AI chat to look up user's past interactions
+  - dashboard
+  - analytics
 - video call recording and AI feed
-- Analytics
+- Analytics for tenants
 - review DB structure for scaling
 - tech: backups
 - chat for video calls 100ms
@@ -42,8 +43,9 @@ x tech: alerts
   - The accountant on FB
   - Anusha?
   - Ramya
-  - the real estate guy?
+  - the real estate guy? - Brij
 
+- AI chat to look up user's past interactions
 - search for cally.live and replace with domain everywehre
 - facebook login
 - buy domain option
