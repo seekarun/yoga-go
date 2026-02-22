@@ -203,10 +203,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       visitorName: signup.visitorName,
       visitorEmail: signup.visitorEmail,
       webinarName: product.name,
-      sessions: sessions.map((s) => ({
+      sessions: sessions.map((s, i) => ({
         date: s.date,
-        startTime: product.webinarSchedule!.startTime,
-        endTime: product.webinarSchedule!.endTime,
+        startTime: product.webinarSchedule!.sessions[i]?.startTime ?? "",
+        endTime: product.webinarSchedule!.sessions[i]?.endTime ?? "",
       })),
       tenant,
       cancelUrl,

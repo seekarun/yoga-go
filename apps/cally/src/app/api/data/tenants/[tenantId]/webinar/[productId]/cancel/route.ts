@@ -337,10 +337,11 @@ export async function POST(request: Request, { params }: RouteParams) {
     );
 
     // Build session info for email (HH:mm format expected by email template)
-    const emailSessions = sessions.map((s) => ({
+    const schedSessions = product.webinarSchedule?.sessions ?? [];
+    const emailSessions = sessions.map((s, i) => ({
       date: s.date,
-      startTime: product.webinarSchedule?.startTime ?? "",
-      endTime: product.webinarSchedule?.endTime ?? "",
+      startTime: schedSessions[i]?.startTime ?? "",
+      endTime: schedSessions[i]?.endTime ?? "",
     }));
 
     // Send cancellation emails (fire-and-forget)
