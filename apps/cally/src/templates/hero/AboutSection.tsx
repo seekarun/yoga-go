@@ -10,7 +10,8 @@ import type { ColorPalette } from "@/lib/colorPalette";
 import DragHandle from "./DragHandle";
 import ImageToolbar from "./ImageToolbar";
 import SectionToolbar from "./SectionToolbar";
-import { ABOUT_LAYOUT_OPTIONS } from "./layoutOptions";
+import BgDragOverlay from "./BgDragOverlay";
+import { ABOUT_LAYOUT_OPTIONS, bgFilterToCSS } from "./layoutOptions";
 import RemoveBackgroundButton from "./RemoveBackgroundButton";
 import ResizableText from "./ResizableText";
 
@@ -85,6 +86,17 @@ export default function AboutSection({
   // Track whether the section background is selected
   const [sectionSelected, setSectionSelected] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
+
+  // Background drag / remove-bg state
+  const [bgDragActive, setBgDragActive] = useState(false);
+  const [removingBg, setRemovingBg] = useState(false);
+  const [bgRemoved, setBgRemoved] = useState(false);
+  const [originalBgImage, setOriginalBgImage] = useState<string | null>(null);
+
+  // Auto-disable drag mode when section is deselected
+  useEffect(() => {
+    if (!sectionSelected) setBgDragActive(false);
+  }, [sectionSelected]);
 
   // Click-outside listener to deselect image
   useEffect(() => {
@@ -476,7 +488,14 @@ export default function AboutSection({
       bgImage: undefined,
       bgImageBlur: undefined,
       bgImageOpacity: undefined,
+      overlayOpacity: undefined,
+      bgFilter: undefined,
+      bgImageOffsetX: undefined,
+      bgImageOffsetY: undefined,
+      bgImageZoom: undefined,
     });
+    setBgRemoved(false);
+    setOriginalBgImage(null);
   }, [overrides, onStyleOverrideChange]);
 
   const handleBgImageBlurChange = useCallback(
@@ -538,6 +557,94 @@ export default function AboutSection({
     [overrides, onStyleOverrideChange],
   );
 
+  const handleOverlayOpacityChange = useCallback(
+    (val: number) => {
+      onStyleOverrideChange?.({ ...overrides, overlayOpacity: val });
+    },
+    [overrides, onStyleOverrideChange],
+  );
+
+  const handleBgFilterChange = useCallback(
+    (val: string) => {
+      onStyleOverrideChange?.({ ...overrides, bgFilter: val });
+    },
+    [overrides, onStyleOverrideChange],
+  );
+
+  const handleSectionHeightChange = useCallback(
+    (val: number) => {
+      onStyleOverrideChange?.({ ...overrides, sectionHeight: val });
+    },
+    [overrides, onStyleOverrideChange],
+  );
+
+  const toggleBgDrag = useCallback(() => {
+    setBgDragActive((prev) => !prev);
+  }, []);
+
+  const handleBgImageOffsetChange = useCallback(
+    (x: number, y: number) => {
+      onStyleOverrideChange?.({
+        ...overrides,
+        bgImageOffsetX: x,
+        bgImageOffsetY: y,
+      });
+    },
+    [overrides, onStyleOverrideChange],
+  );
+
+  const handleBgImageZoomChange = useCallback(
+    (val: number) => {
+      onStyleOverrideChange?.({ ...overrides, bgImageZoom: val });
+    },
+    [overrides, onStyleOverrideChange],
+  );
+
+  const handleRemoveBgClick = useCallback(async () => {
+    if (removingBg || !overrides?.bgImage) return;
+    setOriginalBgImage(overrides.bgImage);
+    setRemovingBg(true);
+    try {
+      const { removeBackground } = await import("@imgly/background-removal");
+      const response = await fetch(overrides.bgImage);
+      if (!response.ok) throw new Error("Failed to fetch image");
+      const imageBlob = await response.blob();
+      const resultBlob = await removeBackground(imageBlob, {
+        progress: (key: string, current: number, total: number) => {
+          console.log(
+            `[DBG][AboutSection] Remove BG ${key}: ${current}/${total}`,
+          );
+        },
+      });
+      const formData = new FormData();
+      formData.append(
+        "file",
+        new File([resultBlob], "bg-removed.png", { type: "image/png" }),
+      );
+      const uploadResponse = await fetch(
+        "/api/data/app/tenant/landing-page/upload",
+        { method: "POST", body: formData },
+      );
+      if (!uploadResponse.ok)
+        throw new Error("Failed to upload processed image");
+      const uploadData = await uploadResponse.json();
+      onStyleOverrideChange?.({ ...overrides, bgImage: uploadData.data.url });
+      setBgRemoved(true);
+    } catch (err) {
+      console.error("[DBG][AboutSection] Remove bg failed:", err);
+      setOriginalBgImage(null);
+    } finally {
+      setRemovingBg(false);
+    }
+  }, [removingBg, overrides, onStyleOverrideChange]);
+
+  const handleUndoRemoveBg = useCallback(() => {
+    if (!originalBgImage) return;
+    onStyleOverrideChange?.({ ...overrides, bgImage: originalBgImage });
+    setBgRemoved(false);
+    setOriginalBgImage(null);
+  }, [overrides, onStyleOverrideChange, originalBgImage]);
+
   const resolvedLayout = overrides?.layout ?? "image-left";
 
   const colors = {
@@ -571,6 +678,9 @@ export default function AboutSection({
     paddingRight: 0,
     backgroundColor: overrides?.bgColor || theme.bg,
     position: "relative",
+    ...(overrides?.sectionHeight
+      ? { minHeight: `${overrides.sectionHeight}px` }
+      : {}),
     overflow:
       sectionSelected ||
       imageSelected ||
@@ -762,6 +872,19 @@ export default function AboutSection({
           customColors={customColors}
           onBgColorChange={handleBgColorChange}
           onCustomColorsChange={onCustomColorsChange}
+          hasBackgroundImage={!!overrides?.bgImage}
+          overlayOpacity={overrides?.overlayOpacity ?? 0}
+          onOverlayOpacityChange={handleOverlayOpacityChange}
+          bgFilter={overrides?.bgFilter}
+          onBgFilterChange={handleBgFilterChange}
+          onRemoveBgClick={handleRemoveBgClick}
+          removingBg={removingBg}
+          bgRemoved={bgRemoved}
+          onUndoRemoveBg={handleUndoRemoveBg}
+          bgDragActive={bgDragActive}
+          onBgDragToggle={toggleBgDrag}
+          sectionHeight={overrides?.sectionHeight}
+          onSectionHeightChange={handleSectionHeightChange}
           layoutOptions={ABOUT_LAYOUT_OPTIONS}
           currentLayout={resolvedLayout}
           onLayoutChange={handleLayoutChange}
@@ -778,12 +901,52 @@ export default function AboutSection({
             backgroundSize: "cover",
             backgroundPosition: "center",
             backgroundRepeat: "no-repeat",
-            filter: `blur(${overrides.bgImageBlur ?? 0}px)`,
+            filter:
+              [
+                (overrides.bgImageBlur ?? 0) > 0
+                  ? `blur(${overrides.bgImageBlur}px)`
+                  : "",
+                bgFilterToCSS(overrides.bgFilter) || "",
+              ]
+                .filter(Boolean)
+                .join(" ") || undefined,
             opacity: (overrides.bgImageOpacity ?? 100) / 100,
             zIndex: 0,
             transform:
-              (overrides.bgImageBlur ?? 0) > 0 ? "scale(1.05)" : undefined,
+              [
+                (overrides.bgImageBlur ?? 0) > 0 ? "scale(1.05)" : "",
+                `translate(${overrides.bgImageOffsetX ?? 0}px, ${overrides.bgImageOffsetY ?? 0}px)`,
+                (overrides.bgImageZoom ?? 100) !== 100
+                  ? `scale(${(overrides.bgImageZoom ?? 100) / 100})`
+                  : "",
+              ]
+                .filter(Boolean)
+                .join(" ") || undefined,
           }}
+        />
+      )}
+
+      {/* Dark overlay */}
+      {overrides?.bgImage && (overrides.overlayOpacity ?? 0) > 0 && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            backgroundColor: `rgba(0, 0, 0, ${(overrides.overlayOpacity ?? 0) / 100})`,
+            zIndex: 0,
+          }}
+        />
+      )}
+
+      {/* Background drag overlay */}
+      {overrides?.bgImage && (
+        <BgDragOverlay
+          active={bgDragActive && isEditing}
+          offsetX={overrides.bgImageOffsetX ?? 0}
+          offsetY={overrides.bgImageOffsetY ?? 0}
+          imageZoom={overrides.bgImageZoom ?? 100}
+          onOffsetChange={handleBgImageOffsetChange}
+          onZoomChange={handleBgImageZoomChange}
         />
       )}
 
