@@ -19,6 +19,9 @@ import { checkSpamProtection } from "@core/lib";
 import { Tables } from "@/lib/dynamodb";
 import { createCheckoutSession } from "@/lib/stripe";
 import { getLandingPageUrl } from "@/lib/email/bookingNotification";
+import { buildWebinarCancelUrl } from "@/lib/cancel-token";
+import { expandWebinarSessions } from "@/lib/webinar/schedule";
+import { sendWebinarSignupConfirmationEmail } from "@/lib/email/webinarSignupEmail";
 import type { WebinarSignup, EventAttendee } from "@/types";
 
 interface RouteParams {
@@ -80,7 +83,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       const currentCount = await countWebinarSignups(tenantId, productId);
       if (currentCount >= product.maxParticipants) {
         return NextResponse.json(
-          { success: false, error: "This webinar is full" },
+          {
+            success: false,
+            error: "This webinar is full",
+            waitlistAvailable: true,
+          },
           { status: 409 },
         );
       }
@@ -182,6 +189,34 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Suppress unused variable warning — note is accepted in body but not stored directly
     void note;
+
+    // Send confirmation email (fire-and-forget)
+    const timezone = tenant.bookingConfig?.timezone || "Australia/Sydney";
+    const cancelUrl = buildWebinarCancelUrl(tenant, {
+      tenantId,
+      productId,
+      email: signup.visitorEmail,
+    });
+    const sessions = expandWebinarSessions(product.webinarSchedule!, timezone);
+
+    sendWebinarSignupConfirmationEmail({
+      visitorName: signup.visitorName,
+      visitorEmail: signup.visitorEmail,
+      webinarName: product.name,
+      sessions: sessions.map((s) => ({
+        date: s.date,
+        startTime: product.webinarSchedule!.startTime,
+        endTime: product.webinarSchedule!.endTime,
+      })),
+      tenant,
+      cancelUrl,
+      timezone,
+    }).catch((err) =>
+      console.error(
+        "[DBG][webinarSignup] Failed to send confirmation email:",
+        err,
+      ),
+    );
 
     return NextResponse.json({
       success: true,
