@@ -7,6 +7,7 @@ import { constructWebhookEvent } from "@/lib/stripe";
 import { getTenantById } from "@/lib/repositories/tenantRepository";
 import {
   getCalendarEventById,
+  getCalendarEventsByRecurrenceGroup,
   updateCalendarEvent,
   deleteCalendarEvent,
 } from "@/lib/repositories/calendarEventRepository";
@@ -14,7 +15,17 @@ import {
   sendBookingNotificationEmail,
   parseVisitorFromDescription,
 } from "@/lib/email/bookingNotification";
+import {
+  updateWebinarSignupPayment,
+  getWebinarSignup,
+  deleteWebinarSignup,
+} from "@/lib/repositories/webinarSignupRepository";
+import { getProductById } from "@/lib/repositories/productRepository";
+import { buildWebinarCancelUrl } from "@/lib/cancel-token";
+import { expandWebinarSessions } from "@/lib/webinar/schedule";
+import { sendWebinarSignupConfirmationEmail } from "@/lib/email/webinarSignupEmail";
 import type Stripe from "stripe";
+import type { EventAttendee } from "@/types";
 
 export const dynamic = "force-dynamic";
 
@@ -72,11 +83,18 @@ export async function POST(request: Request) {
 }
 
 /**
- * Handle checkout.session.completed — confirm the booking
+ * Handle checkout.session.completed — confirm the booking or webinar signup
  */
 async function handleCheckoutCompleted(
   session: Stripe.Checkout.Session,
 ): Promise<void> {
+  const metadataType = session.metadata?.type;
+
+  if (metadataType === "webinar_signup") {
+    await handleWebinarCheckoutCompleted(session);
+    return;
+  }
+
   const { tenantId, eventId, date } = session.metadata || {};
 
   if (!tenantId || !eventId || !date) {
@@ -132,11 +150,18 @@ async function handleCheckoutCompleted(
 }
 
 /**
- * Handle checkout.session.expired — free the reserved slot
+ * Handle checkout.session.expired — free the reserved slot or webinar signup
  */
 async function handleCheckoutExpired(
   session: Stripe.Checkout.Session,
 ): Promise<void> {
+  const metadataType = session.metadata?.type;
+
+  if (metadataType === "webinar_signup") {
+    await handleWebinarCheckoutExpired(session);
+    return;
+  }
+
   const { tenantId, eventId, date } = session.metadata || {};
 
   if (!tenantId || !eventId || !date) {
@@ -169,5 +194,114 @@ async function handleCheckoutExpired(
   await deleteCalendarEvent(tenantId, date, eventId);
   console.log(
     `[DBG][stripe/webhook] Deleted expired pending_payment event: ${eventId}`,
+  );
+}
+
+/**
+ * Handle checkout.session.completed for webinar signups
+ * Updates payment status, adds attendee to calendar events, sends confirmation email
+ */
+async function handleWebinarCheckoutCompleted(
+  session: Stripe.Checkout.Session,
+): Promise<void> {
+  const { tenantId, productId, visitorName, visitorEmail } =
+    session.metadata || {};
+
+  if (!tenantId || !productId || !visitorEmail) {
+    console.error(
+      "[DBG][stripe/webhook] Missing webinar metadata:",
+      session.id,
+    );
+    return;
+  }
+
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : session.payment_intent?.id;
+
+  // Update signup payment status
+  await updateWebinarSignupPayment(
+    tenantId,
+    productId,
+    visitorEmail,
+    "paid",
+    paymentIntentId,
+  );
+
+  // Add attendee to all session calendar events
+  const sessionEvents = await getCalendarEventsByRecurrenceGroup(
+    tenantId,
+    productId,
+  );
+
+  const newAttendee: EventAttendee = {
+    email: visitorEmail.toLowerCase().trim(),
+    name: (visitorName || "Guest").trim(),
+  };
+
+  for (const event of sessionEvents) {
+    const existingAttendees = event.attendees || [];
+    await updateCalendarEvent(tenantId, event.date, event.id, {
+      attendees: [...existingAttendees, newAttendee],
+    });
+  }
+
+  // Send confirmation email with cancel link
+  const tenant = await getTenantById(tenantId);
+  if (tenant) {
+    const product = await getProductById(tenantId, productId);
+    if (product?.webinarSchedule) {
+      const timezone = tenant.bookingConfig?.timezone || "Australia/Sydney";
+      const cancelUrl = buildWebinarCancelUrl(tenant, {
+        tenantId,
+        productId,
+        email: visitorEmail,
+      });
+      const sessions = expandWebinarSessions(product.webinarSchedule, timezone);
+
+      sendWebinarSignupConfirmationEmail({
+        visitorName: visitorName || "Guest",
+        visitorEmail,
+        webinarName: product.name,
+        sessions: sessions.map((s) => ({
+          date: s.date,
+          startTime: product.webinarSchedule!.startTime,
+          endTime: product.webinarSchedule!.endTime,
+        })),
+        tenant,
+        cancelUrl,
+        timezone,
+      }).catch((err) =>
+        console.error(
+          "[DBG][stripe/webhook] Failed to send webinar confirmation:",
+          err,
+        ),
+      );
+    }
+  }
+
+  console.log(
+    `[DBG][stripe/webhook] Webinar signup confirmed: product=${productId} email=${visitorEmail}`,
+  );
+}
+
+/**
+ * Handle checkout.session.expired for webinar signups
+ * Deletes the pending signup to free the spot
+ */
+async function handleWebinarCheckoutExpired(
+  session: Stripe.Checkout.Session,
+): Promise<void> {
+  const { tenantId, productId, visitorEmail } = session.metadata || {};
+  if (!tenantId || !productId || !visitorEmail) return;
+
+  // Verify signup exists and is pending payment
+  const signup = await getWebinarSignup(tenantId, productId, visitorEmail);
+  if (!signup || signup.paymentStatus !== "pending_payment") return;
+
+  await deleteWebinarSignup(tenantId, productId, visitorEmail);
+  console.log(
+    `[DBG][stripe/webhook] Deleted expired webinar signup: product=${productId} email=${visitorEmail}`,
   );
 }
