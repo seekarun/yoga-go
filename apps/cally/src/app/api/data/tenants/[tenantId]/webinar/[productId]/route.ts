@@ -5,6 +5,7 @@
 import { NextResponse } from "next/server";
 import { getProductById } from "@/lib/repositories/productRepository";
 import { countWebinarSignups } from "@/lib/repositories/webinarSignupRepository";
+import { getWebinarWaitlistByProduct } from "@/lib/repositories/webinarWaitlistRepository";
 import { expandWebinarSessions } from "@/lib/webinar/schedule";
 import { getTenantById } from "@/lib/repositories/tenantRepository";
 
@@ -33,6 +34,27 @@ export async function GET(_request: Request, { params }: RouteParams) {
 
     const signupCount = await countWebinarSignups(tenantId, productId);
 
+    const spotsRemaining = product.maxParticipants
+      ? Math.max(0, product.maxParticipants - signupCount)
+      : null; // null means unlimited
+
+    let waitlistAvailable = false;
+    let waitlistCount = 0;
+
+    if (spotsRemaining === 0) {
+      waitlistAvailable = true;
+      const waitlistEntries = await getWebinarWaitlistByProduct(
+        tenantId,
+        productId,
+      );
+      waitlistCount = waitlistEntries.filter(
+        (e) => e.status === "waiting" || e.status === "notified",
+      ).length;
+      console.log(
+        `[DBG][webinar] Webinar ${productId} is full — waitlist count: ${waitlistCount}`,
+      );
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -46,9 +68,9 @@ export async function GET(_request: Request, { params }: RouteParams) {
         imagePosition: product.imagePosition,
         maxParticipants: product.maxParticipants,
         signupCount,
-        spotsRemaining: product.maxParticipants
-          ? Math.max(0, product.maxParticipants - signupCount)
-          : null, // null means unlimited
+        spotsRemaining,
+        waitlistAvailable,
+        waitlistCount,
         sessions,
         timezone,
       },
