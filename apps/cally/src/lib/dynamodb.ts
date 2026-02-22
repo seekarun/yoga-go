@@ -143,6 +143,13 @@ export const TenantPK = {
   WEBINAR_SIGNUP_PRODUCT_PREFIX: (productId: string) =>
     `WEBINAR_SIGNUP#${productId}#`,
   WEBINAR_SIGNUP_PREFIX: "WEBINAR_SIGNUP#",
+
+  // Webinar Waitlist: PK=TENANT#{tenantId}, SK=WEBINAR_WAITLIST#{productId}#{entryId}
+  WEBINAR_WAITLIST: (productId: string, entryId: string) =>
+    `WEBINAR_WAITLIST#${productId}#${entryId}`,
+  WEBINAR_WAITLIST_PRODUCT_PREFIX: (productId: string) =>
+    `WEBINAR_WAITLIST#${productId}#`,
+  WEBINAR_WAITLIST_PREFIX: "WEBINAR_WAITLIST#",
 } as const;
 
 // Entity type constants
@@ -166,6 +173,7 @@ export const EntityType = {
   NOTIFICATION: "NOTIFICATION",
   PUSH_TOKEN: "PUSH_TOKEN",
   WEBINAR_SIGNUP: "WEBINAR_SIGNUP",
+  WEBINAR_WAITLIST: "WEBINAR_WAITLIST",
 } as const;
 
 // ============================================

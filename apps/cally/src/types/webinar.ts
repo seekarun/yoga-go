@@ -31,4 +31,34 @@ export interface WebinarSignup {
   paymentStatus: WebinarSignupPaymentStatus;
   stripeCheckoutSessionId?: string;
   stripePaymentIntentId?: string;
+  cancelledAt?: string; // ISO 8601
+  cancelledBy?: "visitor" | "tenant";
+  refundAmountCents?: number;
+  stripeRefundId?: string;
+}
+
+/**
+ * Status for a webinar waitlist entry
+ */
+export type WebinarWaitlistStatus =
+  | "waiting"
+  | "notified"
+  | "booked"
+  | "expired";
+
+/**
+ * Webinar waitlist entry — tracks a visitor waiting for a spot in a webinar
+ */
+export interface WebinarWaitlistEntry {
+  id: string;
+  tenantId: string;
+  productId: string;
+  visitorName: string;
+  visitorEmail: string;
+  status: WebinarWaitlistStatus;
+  position: number;
+  createdAt: string; // ISO 8601
+  notifiedAt?: string; // ISO 8601
+  expiresAt?: string; // ISO 8601
+  bookedAt?: string; // ISO 8601
 }
