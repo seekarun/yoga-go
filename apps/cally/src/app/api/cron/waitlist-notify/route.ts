@@ -4,9 +4,14 @@
  *
  * Runs every 5 minutes via Vercel Cron.
  *
+ * Booking waitlist:
  * 1. Expired notifications: entries where status="notified" and expiresAt < now
  *    → Mark as "expired", then notify the next person in line (if slots still available).
  * 2. Past-date cleanup: entries for dates that have passed → mark as "expired".
+ *
+ * Webinar waitlist:
+ * 3. Past webinar cleanup: if all sessions are in the past → mark as "expired".
+ * 4. Expired notifications: if status="notified" and expiresAt < now → expire and cascade.
  */
 
 import { NextResponse } from "next/server";
@@ -22,6 +27,15 @@ import { generateAvailableSlots } from "@/lib/booking/availability";
 import { DEFAULT_BOOKING_CONFIG } from "@/types/booking";
 import { getLandingPageUrl } from "@/lib/email/bookingNotification";
 import { sendWaitlistSlotAvailableEmail } from "@/lib/email/waitlistNotificationEmail";
+import {
+  getActiveWebinarWaitlistItems,
+  updateWebinarWaitlistEntry,
+  getNextWaitingWebinarEntry,
+} from "@/lib/repositories/webinarWaitlistRepository";
+import { countWebinarSignups } from "@/lib/repositories/webinarSignupRepository";
+import { getProductById } from "@/lib/repositories/productRepository";
+import { expandWebinarSessions } from "@/lib/webinar/schedule";
+import { sendWebinarWaitlistSlotAvailableEmail } from "@/lib/email/webinarWaitlistEmail";
 
 const CRON_SECRET = process.env.CRON_SECRET;
 
@@ -106,6 +120,10 @@ export async function GET(request: Request) {
     pastDateCleaned: 0,
     notified: 0,
     errors: 0,
+    webinarExpired: 0,
+    webinarPastCleaned: 0,
+    webinarNotified: 0,
+    webinarErrors: 0,
   };
 
   try {
@@ -200,6 +218,118 @@ export async function GET(request: Request) {
           err,
         );
         results.errors++;
+      }
+    }
+
+    // ─── WEBINAR WAITLIST PROCESSING ───────────────────────────────
+    const webinarEntries = await getActiveWebinarWaitlistItems();
+    console.log(
+      `[DBG][waitlist-notify] Processing ${webinarEntries.length} active webinar waitlist entries`,
+    );
+
+    // Track products we've already notified someone for (avoid double-notify in same cron run)
+    const notifiedProducts = new Set<string>();
+
+    for (const wEntry of webinarEntries) {
+      try {
+        const product = await getProductById(wEntry.tenantId, wEntry.productId);
+        if (!product || !product.webinarSchedule) {
+          continue;
+        }
+
+        const tenant = await getTenantById(wEntry.tenantId);
+        const timezone = tenant?.bookingConfig?.timezone || "Australia/Sydney";
+
+        // 1. Past webinar cleanup — if all sessions are in the past, expire entry
+        const sessions = expandWebinarSessions(
+          product.webinarSchedule,
+          timezone,
+        );
+        if (sessions.length > 0) {
+          const lastSession = sessions[sessions.length - 1];
+          const allSessionsPast = new Date(lastSession.endTime) < now;
+
+          if (allSessionsPast) {
+            await updateWebinarWaitlistEntry(
+              wEntry.tenantId,
+              wEntry.productId,
+              wEntry.entryId,
+              { status: "expired" },
+            );
+            results.webinarPastCleaned++;
+            continue;
+          }
+        }
+
+        // 2. Handle expired notifications — cascade to next person
+        if (
+          wEntry.status === "notified" &&
+          wEntry.expiresAt &&
+          new Date(wEntry.expiresAt) < now
+        ) {
+          await updateWebinarWaitlistEntry(
+            wEntry.tenantId,
+            wEntry.productId,
+            wEntry.entryId,
+            { status: "expired" },
+          );
+          results.webinarExpired++;
+
+          // Cascade: notify the next person if spots available
+          const productKey = `${wEntry.tenantId}:${wEntry.productId}`;
+          if (!notifiedProducts.has(productKey)) {
+            const hasSpotsAvailable =
+              product.maxParticipants != null &&
+              (await countWebinarSignups(wEntry.tenantId, wEntry.productId)) <
+                product.maxParticipants;
+
+            if (hasSpotsAvailable) {
+              const nextEntry = await getNextWaitingWebinarEntry(
+                wEntry.tenantId,
+                wEntry.productId,
+              );
+              if (nextEntry && tenant) {
+                const expiresAt = new Date(
+                  now.getTime() + 10 * 60 * 1000,
+                ).toISOString();
+                await updateWebinarWaitlistEntry(
+                  wEntry.tenantId,
+                  wEntry.productId,
+                  nextEntry.id,
+                  {
+                    status: "notified",
+                    notifiedAt: now.toISOString(),
+                    expiresAt,
+                  },
+                );
+
+                const landingPageUrl = getLandingPageUrl(tenant);
+                const signupUrl = `${landingPageUrl}/webinar/${wEntry.productId}`;
+
+                await sendWebinarWaitlistSlotAvailableEmail({
+                  visitorName: nextEntry.visitorName,
+                  visitorEmail: nextEntry.visitorEmail,
+                  webinarName: product.name,
+                  tenant,
+                  signupUrl,
+                });
+
+                results.webinarNotified++;
+                notifiedProducts.add(productKey);
+
+                console.log(
+                  `[DBG][waitlist-notify] Webinar: notified ${nextEntry.visitorEmail} for product ${wEntry.productId}`,
+                );
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error(
+          `[DBG][waitlist-notify] Webinar: error processing entry ${wEntry.entryId}:`,
+          err,
+        );
+        results.webinarErrors++;
       }
     }
 

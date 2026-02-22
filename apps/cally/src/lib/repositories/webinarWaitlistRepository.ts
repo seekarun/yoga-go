@@ -238,8 +238,16 @@ export async function getNextWaitingWebinarEntry(
  * Get all tenants + products that have waiting entries (for cron).
  * Returns unique { tenantId, productId, entryId } tuples.
  */
+export interface ActiveWebinarWaitlistItem {
+  tenantId: string;
+  productId: string;
+  entryId: string;
+  status: string;
+  expiresAt?: string;
+}
+
 export async function getActiveWebinarWaitlistItems(): Promise<
-  Array<{ tenantId: string; productId: string; entryId: string }>
+  ActiveWebinarWaitlistItem[]
 > {
   console.log(
     "[DBG][webinarWaitlistRepository] Scanning for active webinar waitlist items",
@@ -278,5 +286,7 @@ export async function getActiveWebinarWaitlistItems(): Promise<
     tenantId: item.tenantId,
     productId: item.productId,
     entryId: item.id,
+    status: item.status,
+    expiresAt: item.expiresAt,
   }));
 }
