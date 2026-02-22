@@ -18,21 +18,21 @@ x accept payments for calendar events
 x tenant subscription
 x more templates
 x feat: add images for products
+x tech: alerts
 
 - super admin console
 - booking wait list
--
 - AI chat to look up user's past interactions
 - video call recording and AI feed
-
+- Analytics
 - review DB structure for scaling
 - tech: backups
 - chat for video calls 100ms
 - add phone number + whatsapp support for booking
-- tech: alerts
+
 - AI security review
 - use existing domain host - set records only
-- clean up all templates - spacings, colours, defaults etc.
+- Fix templates - small available options, hardy. delete all boring ones.
 
 - production deployment.
 
@@ -69,6 +69,7 @@ x feat: add images for products
 - can zoom calls be recorded and transcribed?
 - remove account and move out all data.
 - set up people for multi-user support in tenants
+- Canva api?
 
   Sections That Could Be Added
   ┌──────────────────────┬───────────────────────────────────────────────────────────────────┐
