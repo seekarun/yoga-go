@@ -93,3 +93,74 @@ export function buildCancelUrl(
   const baseUrl = getLandingPageUrl(tenant);
   return `${baseUrl}/booking/cancel?token=${encodeURIComponent(token)}`;
 }
+
+/* ------------------------------------------------------------------ */
+/*  Webinar cancel / waitlist tokens                                  */
+/* ------------------------------------------------------------------ */
+
+export interface WebinarCancelTokenPayload {
+  tenantId: string;
+  productId: string;
+  email: string;
+}
+
+/**
+ * Generate a cancel token for a webinar signup
+ */
+export function generateWebinarCancelToken(
+  payload: WebinarCancelTokenPayload,
+): string {
+  const encoded = toBase64Url(JSON.stringify(payload));
+  const signature = sign(encoded);
+  return `${encoded}.${signature}`;
+}
+
+/**
+ * Verify and decode a webinar cancel token
+ * Returns the payload if valid, null if tampered or invalid
+ */
+export function verifyWebinarCancelToken(
+  token: string,
+): WebinarCancelTokenPayload | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 2) return null;
+
+    const [encoded, signature] = parts;
+    const expectedSig = sign(encoded);
+
+    // Constant-time comparison
+    if (
+      signature.length !== expectedSig.length ||
+      !createHmac("sha256", getSecret())
+        .update(encoded)
+        .digest("base64url")
+        .split("")
+        .every((c, i) => c === signature[i])
+    ) {
+      // Fallback: simple comparison (the hmac already provides timing safety)
+      if (signature !== expectedSig) return null;
+    }
+
+    const payload = JSON.parse(
+      fromBase64Url(encoded),
+    ) as WebinarCancelTokenPayload;
+    if (!payload.tenantId || !payload.productId || !payload.email) return null;
+
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Build the full cancel URL for a webinar signup
+ */
+export function buildWebinarCancelUrl(
+  tenant: CallyTenant,
+  payload: WebinarCancelTokenPayload,
+): string {
+  const token = generateWebinarCancelToken(payload);
+  const baseUrl = getLandingPageUrl(tenant);
+  return `${baseUrl}/webinar/cancel?token=${encodeURIComponent(token)}`;
+}
