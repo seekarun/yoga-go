@@ -13,6 +13,10 @@ interface ImageToolbarProps {
   onZoomChange: (value: number) => void;
   onOffsetYChange?: (value: number) => void;
   onReplaceImage: () => void;
+  onRemoveBgClick?: () => void;
+  removingBg?: boolean;
+  bgRemoved?: boolean;
+  onUndoRemoveBg?: () => void;
 }
 
 export default function ImageToolbar({
@@ -26,6 +30,10 @@ export default function ImageToolbar({
   onZoomChange,
   onOffsetYChange,
   onReplaceImage,
+  onRemoveBgClick,
+  removingBg = false,
+  bgRemoved = false,
+  onUndoRemoveBg,
 }: ImageToolbarProps) {
   const dividerStyle: React.CSSProperties = {
     width: "1px",
@@ -228,6 +236,100 @@ export default function ImageToolbar({
           <polyline points="21 15 16 10 5 21" />
         </svg>
       </button>
+
+      {/* Remove BG / Undo button */}
+      {onRemoveBgClick && (
+        <>
+          {removingBg && (
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          )}
+          <div style={dividerStyle} />
+          {bgRemoved && onUndoRemoveBg ? (
+            <button
+              type="button"
+              onClick={onUndoRemoveBg}
+              title="Undo background removal"
+              style={{
+                background: "rgba(245,158,11,0.1)",
+                border: "1px solid #fbbf24",
+                borderRadius: "4px",
+                cursor: "pointer",
+                padding: "3px 6px",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                fontSize: "10px",
+                color: "#d97706",
+              }}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <polyline points="1 4 1 10 7 10" />
+                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+              </svg>
+              Undo
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onRemoveBgClick}
+              disabled={removingBg}
+              title="Remove image background"
+              style={{
+                background: removingBg ? "rgba(59,130,246,0.1)" : "none",
+                border: "1px solid #e5e7eb",
+                borderRadius: "4px",
+                cursor: removingBg ? "not-allowed" : "pointer",
+                padding: "3px 6px",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                fontSize: "10px",
+                color: removingBg ? "#3b82f6" : "#374151",
+              }}
+            >
+              {removingBg ? (
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  style={{ animation: "spin 1s linear infinite" }}
+                >
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                </svg>
+              ) : (
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M5 3l14 18" />
+                  <path d="M3 7h1.5l2.7 3.2" />
+                  <path d="M17.8 7H21l-5 6" />
+                  <rect x="2" y="17" width="20" height="4" rx="1" />
+                </svg>
+              )}
+              {removingBg ? "Removing..." : "Remove BG"}
+            </button>
+          )}
+        </>
+      )}
     </ToolbarContainer>
   );
 }

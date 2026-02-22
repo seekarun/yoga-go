@@ -12,7 +12,6 @@ import ImageToolbar from "./ImageToolbar";
 import SectionToolbar from "./SectionToolbar";
 import BgDragOverlay from "./BgDragOverlay";
 import { ABOUT_LAYOUT_OPTIONS, bgFilterToCSS } from "./layoutOptions";
-import RemoveBackgroundButton from "./RemoveBackgroundButton";
 import ResizableText from "./ResizableText";
 
 const DEFAULTS = {
@@ -92,6 +91,13 @@ export default function AboutSection({
   const [removingBg, setRemovingBg] = useState(false);
   const [bgRemoved, setBgRemoved] = useState(false);
   const [originalBgImage, setOriginalBgImage] = useState<string | null>(null);
+
+  // Image (foreground) remove-bg state
+  const [imageRemovingBg, setImageRemovingBg] = useState(false);
+  const [imageBgRemoved, setImageBgRemoved] = useState(false);
+  const [originalAboutImage, setOriginalAboutImage] = useState<string | null>(
+    null,
+  );
 
   // Auto-disable drag mode when section is deselected
   useEffect(() => {
@@ -645,6 +651,52 @@ export default function AboutSection({
     setOriginalBgImage(null);
   }, [overrides, onStyleOverrideChange, originalBgImage]);
 
+  // Image (foreground) remove-bg handlers
+  const handleImageRemoveBgClick = useCallback(async () => {
+    if (imageRemovingBg || !about.image) return;
+    setOriginalAboutImage(about.image);
+    setImageRemovingBg(true);
+    try {
+      const { removeBackground } = await import("@imgly/background-removal");
+      const response = await fetch(about.image);
+      if (!response.ok) throw new Error("Failed to fetch image");
+      const imageBlob = await response.blob();
+      const resultBlob = await removeBackground(imageBlob, {
+        progress: (key: string, current: number, total: number) => {
+          console.log(
+            `[DBG][AboutSection] Image Remove BG ${key}: ${current}/${total}`,
+          );
+        },
+      });
+      const formData = new FormData();
+      formData.append(
+        "file",
+        new File([resultBlob], "bg-removed.png", { type: "image/png" }),
+      );
+      const uploadResponse = await fetch(
+        "/api/data/app/tenant/landing-page/upload",
+        { method: "POST", body: formData },
+      );
+      if (!uploadResponse.ok)
+        throw new Error("Failed to upload processed image");
+      const uploadData = await uploadResponse.json();
+      onRemoveBgComplete?.(uploadData.data.url);
+      setImageBgRemoved(true);
+    } catch (err) {
+      console.error("[DBG][AboutSection] Image remove bg failed:", err);
+      setOriginalAboutImage(null);
+    } finally {
+      setImageRemovingBg(false);
+    }
+  }, [imageRemovingBg, about.image, onRemoveBgComplete]);
+
+  const handleImageUndoRemoveBg = useCallback(() => {
+    if (!originalAboutImage) return;
+    onRemoveBgComplete?.(originalAboutImage);
+    setImageBgRemoved(false);
+    setOriginalAboutImage(null);
+  }, [originalAboutImage, onRemoveBgComplete]);
+
   const resolvedLayout = overrides?.layout ?? "image-left";
 
   const colors = {
@@ -986,55 +1038,6 @@ export default function AboutSection({
               )}
             </div>
           </div>
-          {isEditing && (
-            <div
-              style={{
-                position: "absolute",
-                top: "12px",
-                right: "12px",
-                display: "flex",
-                gap: "8px",
-                zIndex: 5,
-              }}
-            >
-              {about.image && onRemoveBgComplete && (
-                <RemoveBackgroundButton
-                  imageUrl={about.image}
-                  onComplete={onRemoveBgComplete}
-                />
-              )}
-              <button
-                type="button"
-                onClick={onImageClick}
-                style={{
-                  width: "36px",
-                  height: "36px",
-                  backgroundColor: "white",
-                  borderRadius: "50%",
-                  border: "none",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-                }}
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#374151"
-                  strokeWidth="2"
-                >
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                  <circle cx="8.5" cy="8.5" r="1.5" />
-                  <polyline points="21 15 16 10 5 21" />
-                </svg>
-              </button>
-            </div>
-          )}
-
           {/* Image toolbar — floating above image when selected */}
           {showHandles && imageSelected && (
             <ImageToolbar
@@ -1048,6 +1051,14 @@ export default function AboutSection({
               onZoomChange={handleZoomChange}
               onOffsetYChange={handleOffsetYChange}
               onReplaceImage={() => onImageClick?.()}
+              onRemoveBgClick={
+                about.image && onRemoveBgComplete
+                  ? handleImageRemoveBgClick
+                  : undefined
+              }
+              removingBg={imageRemovingBg}
+              bgRemoved={imageBgRemoved}
+              onUndoRemoveBg={handleImageUndoRemoveBg}
             />
           )}
 
