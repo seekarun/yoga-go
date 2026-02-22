@@ -192,14 +192,11 @@ export async function POST(
         : undefined;
       input.webinarSchedule = webinarSchedule as WebinarSchedule;
 
-      // For webinars, duration is derived from schedule times, so compute it
-      if (webinarSchedule) {
-        const [sh, sm] = (webinarSchedule.startTime || "09:00")
-          .split(":")
-          .map(Number);
-        const [eh, em] = (webinarSchedule.endTime || "10:00")
-          .split(":")
-          .map(Number);
+      // For webinars, derive duration from first session's times
+      if (webinarSchedule?.sessions?.length > 0) {
+        const first = webinarSchedule.sessions[0];
+        const [sh, sm] = (first.startTime || "09:00").split(":").map(Number);
+        const [eh, em] = (first.endTime || "10:00").split(":").map(Number);
         const computedDuration = eh * 60 + em - (sh * 60 + sm);
         input.durationMinutes = computedDuration > 0 ? computedDuration : 60;
       }

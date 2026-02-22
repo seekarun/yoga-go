@@ -1,19 +1,14 @@
 "use client";
 
-import type { WebinarSchedule } from "@/types";
-import { expandWebinarSessions } from "@/lib/webinar/schedule";
+import type { WebinarSessionInput } from "@/types";
 
 interface WebinarSchedulePreviewProps {
-  schedule: WebinarSchedule;
-  timezone: string;
+  sessions: WebinarSessionInput[];
 }
 
 export default function WebinarSchedulePreview({
-  schedule,
-  timezone,
+  sessions,
 }: WebinarSchedulePreviewProps) {
-  const sessions = expandWebinarSessions(schedule, timezone);
-
   if (sessions.length === 0) return null;
 
   const formatDate = (dateStr: string) => {
@@ -26,14 +21,11 @@ export default function WebinarSchedulePreview({
     });
   };
 
-  const formatTime = (isoStr: string) => {
-    const date = new Date(isoStr);
-    return date.toLocaleTimeString("en-AU", {
-      timeZone: timezone,
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
+  const formatTime = (time: string) => {
+    const [h, m] = time.split(":").map(Number);
+    const period = h >= 12 ? "pm" : "am";
+    const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return `${hour12}:${String(m).padStart(2, "0")} ${period}`;
   };
 
   return (
@@ -44,7 +36,7 @@ export default function WebinarSchedulePreview({
       <div className="max-h-40 overflow-y-auto space-y-1">
         {sessions.map((session, i) => (
           <div
-            key={session.date}
+            key={`${session.date}-${i}`}
             className="flex items-center gap-2 text-xs text-[var(--text-main)] py-1 px-2 bg-gray-50 rounded"
           >
             <span className="font-medium text-[var(--text-muted)] w-5">
@@ -52,7 +44,8 @@ export default function WebinarSchedulePreview({
             </span>
             <span>{formatDate(session.date)}</span>
             <span className="text-[var(--text-muted)]">
-              {formatTime(session.startTime)} – {formatTime(session.endTime)}
+              {formatTime(session.startTime)} &ndash;{" "}
+              {formatTime(session.endTime)}
             </span>
           </div>
         ))}

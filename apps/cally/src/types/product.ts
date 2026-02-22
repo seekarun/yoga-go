@@ -34,6 +34,8 @@ export interface Product {
   productType?: ProductType; // defaults to 'service' for backward compat
   maxParticipants?: number; // webinar only — undefined = unlimited
   webinarSchedule?: WebinarSchedule;
+  /** Computed at read-time for webinars — not stored in DynamoDB */
+  signupCount?: number;
   createdAt: string;
   updatedAt: string;
 }

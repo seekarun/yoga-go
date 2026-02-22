@@ -231,6 +231,22 @@ function formatDuration(minutes: number): string {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
+function formatSessionDate(dateStr: string): string {
+  const date = new Date(dateStr + "T00:00:00");
+  return date.toLocaleDateString("en-AU", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+}
+
+function formatTime12(time: string): string {
+  const [h, m] = time.split(":").map(Number);
+  const period = h >= 12 ? "pm" : "am";
+  const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${hour12}:${String(m).padStart(2, "0")}${period}`;
+}
+
 /**
  * Products Section Component
  * Displays product catalog cards on the landing page
@@ -936,26 +952,189 @@ export default function ProductsSection({
                     <p style={cardDescStyle}>{product.description}</p>
                   )}
 
-                  {/* Duration + Price */}
-                  <div style={metaRowStyle}>
-                    <span style={badgeStyle}>
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
+                  {product.productType === "webinar" &&
+                  product.webinarSchedule?.sessions?.length ? (
+                    <>
+                      {/* Webinar: total hours + session count */}
+                      <div
+                        style={{
+                          marginBottom: "12px",
+                          fontSize: "0.8rem",
+                          fontWeight: 600,
+                          color: theme.cardText,
+                        }}
                       >
-                        <circle cx="12" cy="12" r="10" />
-                        <polyline points="12 6 12 12 16 14" />
-                      </svg>
-                      {formatDuration(product.durationMinutes)}
-                    </span>
-                    <span style={priceStyle}>
-                      {formatPrice(product.price, currency)}
-                    </span>
-                  </div>
+                        {(() => {
+                          const sessions = product.webinarSchedule!.sessions;
+                          const totalMins = sessions.reduce((sum, s) => {
+                            const [sh, sm] = s.startTime.split(":").map(Number);
+                            const [eh, em] = s.endTime.split(":").map(Number);
+                            return sum + (eh * 60 + em - (sh * 60 + sm));
+                          }, 0);
+                          const hours = totalMins / 60;
+                          const hoursLabel =
+                            hours === Math.floor(hours)
+                              ? `${hours}`
+                              : `${hours.toFixed(1)}`;
+                          const count = sessions.length;
+                          return `Total ${hoursLabel} hour${hours !== 1 ? "s" : ""} (${count} session${count !== 1 ? "s" : ""})`;
+                        })()}
+                      </div>
+                      <div
+                        style={{
+                          marginBottom: "16px",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "4px",
+                          maxHeight: "120px",
+                          overflowY: "auto",
+                        }}
+                      >
+                        {product.webinarSchedule.sessions.map((session, i) => (
+                          <div
+                            key={`${session.date}-${i}`}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "8px",
+                              padding: "4px 8px",
+                              borderRadius: "6px",
+                              backgroundColor: theme.badgeBg,
+                              fontSize: "0.78rem",
+                            }}
+                          >
+                            <svg
+                              width="12"
+                              height="12"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke={theme.badgeText}
+                              strokeWidth="2"
+                            >
+                              <rect
+                                x="3"
+                                y="4"
+                                width="18"
+                                height="18"
+                                rx="2"
+                                ry="2"
+                              />
+                              <line x1="16" y1="2" x2="16" y2="6" />
+                              <line x1="8" y1="2" x2="8" y2="6" />
+                              <line x1="3" y1="10" x2="21" y2="10" />
+                            </svg>
+                            <span
+                              style={{
+                                fontWeight: 500,
+                                color: theme.cardTitle,
+                              }}
+                            >
+                              {formatSessionDate(session.date)}
+                            </span>
+                            <span style={{ color: theme.badgeText }}>
+                              {formatTime12(session.startTime)} &ndash;{" "}
+                              {formatTime12(session.endTime)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Seats + Price */}
+                      <div style={metaRowStyle}>
+                        {product.maxParticipants ? (
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "6px",
+                            }}
+                          >
+                            <span
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "4px",
+                                padding: "4px 10px",
+                                borderRadius: "20px",
+                                fontSize: "0.8rem",
+                                fontWeight: 600,
+                                backgroundColor:
+                                  "var(--brand-50, rgba(102, 126, 234, 0.1))",
+                                color: "var(--brand-500, #667eea)",
+                              }}
+                            >
+                              <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                              >
+                                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
+                                <circle cx="9" cy="7" r="4" />
+                                <path d="M23 21v-2a4 4 0 00-3-3.87" />
+                                <path d="M16 3.13a4 4 0 010 7.75" />
+                              </svg>
+                              {Math.max(
+                                0,
+                                product.maxParticipants -
+                                  (product.signupCount || 0),
+                              )}{" "}
+                              seats
+                            </span>
+                            {product.signupCount != null &&
+                              product.maxParticipants -
+                                (product.signupCount || 0) >
+                                0 &&
+                              product.maxParticipants -
+                                (product.signupCount || 0) <=
+                                product.maxParticipants * 0.25 && (
+                                <span
+                                  style={{
+                                    fontSize: "0.75rem",
+                                    fontWeight: 600,
+                                    color: "#dc2626",
+                                  }}
+                                >
+                                  Almost full
+                                </span>
+                              )}
+                          </div>
+                        ) : (
+                          <span />
+                        )}
+                        <span style={priceStyle}>
+                          {product.price > 0
+                            ? formatPrice(product.price, currency)
+                            : "Free"}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Service: duration + price */}
+                      <div style={metaRowStyle}>
+                        <span style={badgeStyle}>
+                          <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
+                            <circle cx="12" cy="12" r="10" />
+                            <polyline points="12 6 12 12 16 14" />
+                          </svg>
+                          {formatDuration(product.durationMinutes)}
+                        </span>
+                        <span style={priceStyle}>
+                          {formatPrice(product.price, currency)}
+                        </span>
+                      </div>
+                    </>
+                  )}
 
                   {/* Book Now / Sign Up Button */}
                   <button
@@ -968,7 +1147,9 @@ export default function ProductsSection({
                         : onBookProduct?.(product.id)
                     }
                   >
-                    {product.productType === "webinar" ? "Sign Up" : "Book Now"}
+                    {product.productType === "webinar"
+                      ? "Register"
+                      : "Book Now"}
                   </button>
                 </div>
               </div>

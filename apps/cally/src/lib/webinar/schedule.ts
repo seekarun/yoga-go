@@ -1,16 +1,14 @@
 /**
- * Webinar schedule expansion utility
+ * Webinar schedule utility
  *
- * Pure functions to expand a WebinarSchedule + RecurrenceRule into
- * concrete session date/time pairs (ISO 8601 timestamps).
+ * Converts explicit WebinarSessionInput entries (local date + times)
+ * into concrete ISO 8601 UTC timestamps for CalendarEvent creation.
  */
 
 import type { WebinarSchedule } from "@/types/webinar";
 
-import { expandRecurrence } from "@/lib/recurrence";
-
 /**
- * A single expanded webinar session with concrete timestamps.
+ * A single expanded webinar session with concrete UTC timestamps.
  */
 export interface WebinarSession {
   /** Session date in YYYY-MM-DD format */
@@ -80,13 +78,10 @@ function localTimeToISO(
 }
 
 /**
- * Expand a WebinarSchedule into an array of concrete WebinarSession objects.
+ * Convert a WebinarSchedule (explicit sessions with local times) into
+ * an array of WebinarSession objects with ISO 8601 UTC timestamps.
  *
- * - If no recurrenceRule, returns a single session for startDate.
- * - If recurrenceRule exists, delegates to expandRecurrence (rrule-based)
- *   to generate all session dates, then converts each to ISO timestamps.
- *
- * @param schedule - The webinar schedule configuration
+ * @param schedule - The webinar schedule with explicit sessions
  * @param timezone - IANA timezone string (e.g. "Australia/Sydney")
  * @returns Array of WebinarSession with ISO 8601 UTC timestamps
  */
@@ -94,32 +89,9 @@ export function expandWebinarSessions(
   schedule: WebinarSchedule,
   timezone: string,
 ): WebinarSession[] {
-  const { startDate, startTime, endTime, recurrenceRule } = schedule;
-
-  // Determine all session dates
-  const dates: string[] = recurrenceRule
-    ? expandRecurrence(startDate, recurrenceRule)
-    : [startDate];
-
-  // Convert each date to a full session with ISO timestamps
-  return dates.map((date) => ({
-    date,
-    startTime: localTimeToISO(date, startTime, timezone),
-    endTime: localTimeToISO(date, endTime, timezone),
+  return schedule.sessions.map((session) => ({
+    date: session.date,
+    startTime: localTimeToISO(session.date, session.startTime, timezone),
+    endTime: localTimeToISO(session.date, session.endTime, timezone),
   }));
-}
-
-/**
- * Convenience function returning the total number of sessions
- * for a given webinar schedule.
- *
- * @param schedule - The webinar schedule configuration
- * @param timezone - IANA timezone string (e.g. "Australia/Sydney")
- * @returns Number of sessions
- */
-export function computeSessionCount(
-  schedule: WebinarSchedule,
-  timezone: string,
-): number {
-  return expandWebinarSessions(schedule, timezone).length;
 }

@@ -2,17 +2,21 @@
  * Webinar Types for CallyGo
  */
 
-import type { RecurrenceRule } from "@core/types";
-
 /**
- * Webinar schedule configuration — stored on the Product entity
+ * A single webinar session as configured by the tenant (local times).
  */
-export interface WebinarSchedule {
-  startDate: string; // YYYY-MM-DD
+export interface WebinarSessionInput {
+  date: string; // YYYY-MM-DD
   startTime: string; // HH:mm (in tenant's timezone)
   endTime: string; // HH:mm (in tenant's timezone)
-  recurrenceRule?: RecurrenceRule; // reuse existing type
-  sessionCount: number; // total number of sessions
+}
+
+/**
+ * Webinar schedule configuration — stored on the Product entity.
+ * Sessions are explicitly defined by the tenant (no recurrence rules).
+ */
+export interface WebinarSchedule {
+  sessions: WebinarSessionInput[];
 }
 
 /**

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import type { Product } from "@/types";
+import type { Product, ProductType } from "@/types";
 import ProductFormModal from "@/components/products/ProductFormModal";
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
@@ -27,12 +27,205 @@ function formatDuration(minutes: number): string {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
+function formatWebinarMeta(product: Product): string {
+  const parts: string[] = [];
+  if (product.webinarSchedule?.sessions) {
+    const count = product.webinarSchedule.sessions.length;
+    parts.push(`${count} session${count !== 1 ? "s" : ""}`);
+  }
+  if (product.maxParticipants) {
+    parts.push(`Max ${product.maxParticipants} participants`);
+  }
+  return parts.join(" \u00b7 ");
+}
+
+interface ProductCardProps {
+  product: Product;
+  currency: string;
+  deletingId: string | null;
+  onToggleActive: (product: Product) => void;
+  onEdit: (product: Product) => void;
+  onDelete: (productId: string) => void;
+}
+
+function ProductCard({
+  product,
+  currency,
+  deletingId,
+  onToggleActive,
+  onEdit,
+  onDelete,
+}: ProductCardProps) {
+  const isWebinar = product.productType === "webinar";
+
+  return (
+    <div className="bg-white rounded-lg border border-[var(--color-border)] p-4 flex items-center gap-4 hover:shadow-sm transition-shadow">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          {product.color && (
+            <span
+              className="w-3 h-3 rounded-full flex-shrink-0"
+              style={{ backgroundColor: product.color }}
+            />
+          )}
+          <h3 className="font-semibold text-[var(--text-main)] truncate">
+            {product.name}
+          </h3>
+          {!product.isActive && (
+            <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">
+              Inactive
+            </span>
+          )}
+        </div>
+        {product.description && (
+          <p className="text-sm text-[var(--text-muted)] truncate mb-1">
+            {product.description}
+          </p>
+        )}
+        <div className="flex items-center gap-3 text-sm text-[var(--text-muted)]">
+          {isWebinar ? (
+            <span className="flex items-center gap-1">
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+              </svg>
+              {formatWebinarMeta(product)}
+            </span>
+          ) : (
+            <span className="flex items-center gap-1">
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              {formatDuration(product.durationMinutes)}
+            </span>
+          )}
+          <span className="font-medium text-[var(--text-main)]">
+            {product.price > 0 ? formatPrice(product.price, currency) : "Free"}
+          </span>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <button
+          type="button"
+          onClick={() => onToggleActive(product)}
+          className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
+          style={{
+            backgroundColor: product.isActive
+              ? "var(--color-primary)"
+              : "#d1d5db",
+          }}
+          title={product.isActive ? "Deactivate" : "Activate"}
+        >
+          <span
+            className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow"
+            style={{
+              transform: product.isActive
+                ? "translateX(24px)"
+                : "translateX(4px)",
+            }}
+          />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onEdit(product)}
+          className="p-2 text-[var(--text-muted)] hover:text-[var(--color-primary)] hover:bg-gray-100 rounded-lg transition-colors"
+          title="Edit"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+            />
+          </svg>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onDelete(product.id)}
+          disabled={deletingId === product.id}
+          className="p-2 text-[var(--text-muted)] hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+          title="Delete"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+            />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+interface SectionEmptyStateProps {
+  type: "service" | "webinar";
+  onAdd: () => void;
+}
+
+function SectionEmptyState({ type, onAdd }: SectionEmptyStateProps) {
+  const isWebinar = type === "webinar";
+  return (
+    <div className="bg-white rounded-lg border border-[var(--color-border)] border-dashed p-8 text-center">
+      <p className="text-sm text-[var(--text-muted)] mb-3">
+        {isWebinar
+          ? "No webinars yet. Create one with a fixed schedule for visitors to sign up."
+          : "No services yet. Add a bookable service for your visitors."}
+      </p>
+      <button
+        onClick={onAdd}
+        className="px-3 py-1.5 text-sm font-medium text-[var(--color-primary)] border border-[var(--color-primary)] rounded-lg hover:bg-[var(--color-primary)] hover:text-white transition-colors"
+      >
+        Add {isWebinar ? "Webinar" : "Service"}
+      </button>
+    </div>
+  );
+}
+
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [currency, setCurrency] = useState("AUD");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [modalDefaultType, setModalDefaultType] =
+    useState<ProductType>("service");
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -107,11 +300,13 @@ export default function ProductsPage() {
 
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
+    setModalDefaultType(product.productType || "service");
     setShowModal(true);
   };
 
-  const handleAdd = () => {
+  const handleAdd = (type: ProductType) => {
     setEditingProduct(null);
+    setModalDefaultType(type);
     setShowModal(true);
   };
 
@@ -119,6 +314,9 @@ export default function ProductsPage() {
     setShowModal(false);
     setEditingProduct(null);
   };
+
+  const services = products.filter((p) => p.productType !== "webinar");
+  const webinars = products.filter((p) => p.productType === "webinar");
 
   if (loading) {
     return (
@@ -133,35 +331,12 @@ export default function ProductsPage() {
 
   return (
     <div className="p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--text-main)]">
-            Products
-          </h1>
-          <p className="text-[var(--text-muted)] mt-1">
-            Manage your services and pricing.
-          </p>
-        </div>
-        <button
-          onClick={handleAdd}
-          className="px-4 py-2 text-sm font-medium text-white bg-[var(--color-primary)] rounded-lg hover:opacity-90 transition-opacity flex items-center gap-2"
-        >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-          Add Product
-        </button>
+      {/* Page header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-[var(--text-main)]">Products</h1>
+        <p className="text-[var(--text-muted)] mt-1">
+          Manage your services and webinars.
+        </p>
       </div>
 
       {error && (
@@ -170,158 +345,101 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {/* Product List */}
-      {products.length === 0 ? (
-        <div className="bg-white rounded-lg border border-[var(--color-border)] p-12 text-center">
-          <svg
-            className="w-12 h-12 mx-auto mb-4 text-gray-300"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-            />
-          </svg>
-          <p className="text-[var(--text-muted)] mb-4">
-            No products yet. Add your first product to get started.
-          </p>
+      {/* Services Section */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold text-[var(--text-main)]">
+            Services
+          </h2>
           <button
-            onClick={handleAdd}
-            className="px-4 py-2 text-sm font-medium text-white bg-[var(--color-primary)] rounded-lg hover:opacity-90 transition-opacity"
+            onClick={() => handleAdd("service")}
+            className="px-3 py-1.5 text-sm font-medium text-white bg-[var(--color-primary)] rounded-lg hover:opacity-90 transition-opacity flex items-center gap-1.5"
           >
-            Add Product
+            <svg
+              className="w-3.5 h-3.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            Add Service
           </button>
         </div>
-      ) : (
-        <div className="space-y-3">
-          {products.map((product) => (
-            <div
-              key={product.id}
-              className="bg-white rounded-lg border border-[var(--color-border)] p-4 flex items-center gap-4 hover:shadow-sm transition-shadow"
+        {services.length === 0 ? (
+          <SectionEmptyState
+            type="service"
+            onAdd={() => handleAdd("service")}
+          />
+        ) : (
+          <div className="space-y-3">
+            {services.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                currency={currency}
+                deletingId={deletingId}
+                onToggleActive={handleToggleActive}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Webinars Section */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold text-[var(--text-main)]">
+            Webinars
+          </h2>
+          <button
+            onClick={() => handleAdd("webinar")}
+            className="px-3 py-1.5 text-sm font-medium text-white bg-[var(--color-primary)] rounded-lg hover:opacity-90 transition-opacity flex items-center gap-1.5"
+          >
+            <svg
+              className="w-3.5 h-3.5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
             >
-              {/* Product info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  {product.color && (
-                    <span
-                      className="w-3 h-3 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: product.color }}
-                    />
-                  )}
-                  <h3 className="font-semibold text-[var(--text-main)] truncate">
-                    {product.name}
-                  </h3>
-                  {!product.isActive && (
-                    <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">
-                      Inactive
-                    </span>
-                  )}
-                </div>
-                {product.description && (
-                  <p className="text-sm text-[var(--text-muted)] truncate mb-1">
-                    {product.description}
-                  </p>
-                )}
-                <div className="flex items-center gap-3 text-sm text-[var(--text-muted)]">
-                  <span className="flex items-center gap-1">
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                    {formatDuration(product.durationMinutes)}
-                  </span>
-                  <span className="font-medium text-[var(--text-main)]">
-                    {formatPrice(product.price, currency)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-2 flex-shrink-0">
-                {/* Active toggle */}
-                <button
-                  type="button"
-                  onClick={() => handleToggleActive(product)}
-                  className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
-                  style={{
-                    backgroundColor: product.isActive
-                      ? "var(--color-primary)"
-                      : "#d1d5db",
-                  }}
-                  title={product.isActive ? "Deactivate" : "Activate"}
-                >
-                  <span
-                    className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow"
-                    style={{
-                      transform: product.isActive
-                        ? "translateX(24px)"
-                        : "translateX(4px)",
-                    }}
-                  />
-                </button>
-
-                {/* Edit */}
-                <button
-                  type="button"
-                  onClick={() => handleEdit(product)}
-                  className="p-2 text-[var(--text-muted)] hover:text-[var(--color-primary)] hover:bg-gray-100 rounded-lg transition-colors"
-                  title="Edit"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                    />
-                  </svg>
-                </button>
-
-                {/* Delete */}
-                <button
-                  type="button"
-                  onClick={() => handleDelete(product.id)}
-                  disabled={deletingId === product.id}
-                  className="p-2 text-[var(--text-muted)] hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                  title="Delete"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          ))}
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            Add Webinar
+          </button>
         </div>
-      )}
+        {webinars.length === 0 ? (
+          <SectionEmptyState
+            type="webinar"
+            onAdd={() => handleAdd("webinar")}
+          />
+        ) : (
+          <div className="space-y-3">
+            {webinars.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                currency={currency}
+                deletingId={deletingId}
+                onToggleActive={handleToggleActive}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Product Form Modal */}
       <ProductFormModal
@@ -330,6 +448,7 @@ export default function ProductsPage() {
         onSaved={fetchProducts}
         product={editingProduct}
         currency={currency}
+        defaultProductType={modalDefaultType}
       />
     </div>
   );

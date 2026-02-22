@@ -7,6 +7,7 @@ import type { Metadata } from "next";
 import { getTenantById } from "@/lib/repositories/tenantRepository";
 import { getApprovedFeedback } from "@/lib/repositories/feedbackRepository";
 import { getActiveProducts } from "@/lib/repositories/productRepository";
+import { countWebinarSignups } from "@/lib/repositories/webinarSignupRepository";
 import { DEFAULT_LANDING_PAGE_CONFIG } from "@/types/landing-page";
 import type { Testimonial, GalleryImage } from "@/types/landing-page";
 import LandingPageRenderer from "@/components/landing-page/LandingPageRenderer";
@@ -77,10 +78,21 @@ export default async function TenantLandingPage({ params }: PageProps) {
   };
 
   // Fetch active products and feedback in parallel
-  const [approvedFeedback, activeProducts] = await Promise.all([
+  const [approvedFeedback, activeProductsRaw] = await Promise.all([
     getApprovedFeedback(tenantId),
     getActiveProducts(tenantId),
   ]);
+
+  // Enrich webinar products with signup counts
+  const activeProducts = await Promise.all(
+    activeProductsRaw.map(async (p) => {
+      if (p.productType === "webinar") {
+        const signupCount = await countWebinarSignups(tenantId, p.id);
+        return { ...p, signupCount };
+      }
+      return p;
+    }),
+  );
   if (approvedFeedback.length > 0) {
     const feedbackTestimonials: Testimonial[] = approvedFeedback
       .filter((f) => f.message && f.recipientName)

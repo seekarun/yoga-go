@@ -6,11 +6,9 @@ import type {
   Product,
   ProductImage,
   ProductType,
-  WebinarSchedule,
+  WebinarSessionInput,
 } from "@/types";
-import type { RecurrenceRule } from "@core/types";
 import { ImageEditorOverlay } from "@core/components";
-import RecurrenceSelector from "@/components/calendar/RecurrenceSelector";
 import WebinarSchedulePreview from "@/components/webinar/WebinarSchedulePreview";
 
 interface ProductFormModalProps {
@@ -19,6 +17,7 @@ interface ProductFormModalProps {
   onSaved: () => void;
   product?: Product | null;
   currency: string;
+  defaultProductType?: ProductType;
 }
 
 const PRODUCT_COLORS = [
@@ -53,6 +52,7 @@ export default function ProductFormModal({
   onSaved,
   product,
   currency,
+  defaultProductType = "service",
 }: ProductFormModalProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -68,11 +68,8 @@ export default function ProductFormModal({
   // Webinar state
   const [productType, setProductType] = useState<ProductType>("service");
   const [maxParticipants, setMaxParticipants] = useState<string>("");
-  const [webinarStartDate, setWebinarStartDate] = useState("");
-  const [webinarStartTime, setWebinarStartTime] = useState("09:00");
-  const [webinarEndTime, setWebinarEndTime] = useState("10:00");
-  const [recurrenceRule, setRecurrenceRule] = useState<RecurrenceRule | null>(
-    null,
+  const [webinarSessions, setWebinarSessions] = useState<WebinarSessionInput[]>(
+    [],
   );
 
   const isEditing = !!product;
@@ -106,19 +103,11 @@ export default function ProductFormModal({
       if (product.productType === "webinar") {
         setProductType("webinar");
         setMaxParticipants(product.maxParticipants?.toString() || "");
-        if (product.webinarSchedule) {
-          setWebinarStartDate(product.webinarSchedule.startDate);
-          setWebinarStartTime(product.webinarSchedule.startTime);
-          setWebinarEndTime(product.webinarSchedule.endTime);
-          setRecurrenceRule(product.webinarSchedule.recurrenceRule || null);
-        }
+        setWebinarSessions(product.webinarSchedule?.sessions || []);
       } else {
         setProductType(product.productType || "service");
         setMaxParticipants("");
-        setWebinarStartDate("");
-        setWebinarStartTime("09:00");
-        setWebinarEndTime("10:00");
-        setRecurrenceRule(null);
+        setWebinarSessions([]);
       }
     } else {
       setName("");
@@ -128,15 +117,12 @@ export default function ProductFormModal({
       setColor(PRODUCT_COLORS[0].value);
       setIsActive(true);
       setImages([]);
-      setProductType("service");
+      setProductType(defaultProductType);
       setMaxParticipants("");
-      setWebinarStartDate("");
-      setWebinarStartTime("09:00");
-      setWebinarEndTime("10:00");
-      setRecurrenceRule(null);
+      setWebinarSessions([]);
     }
     setError(null);
-  }, [product, isOpen]);
+  }, [product, isOpen, defaultProductType]);
 
   const handleAddImage = useCallback(
     (data: { imageUrl: string; imagePosition: string; imageZoom: number }) => {
@@ -168,18 +154,21 @@ export default function ProductFormModal({
 
       // Webinar validation
       if (productType === "webinar") {
-        if (!webinarStartDate) {
-          setError("Start date is required for webinars");
+        if (webinarSessions.length === 0) {
+          setError("Add at least one session");
           return;
         }
-        if (!webinarStartTime || !webinarEndTime) {
-          setError("Start and end times are required for webinars");
-          return;
-        }
-        const dur = computeDurationFromTimes(webinarStartTime, webinarEndTime);
-        if (dur <= 0) {
-          setError("End time must be after start time");
-          return;
+        for (let i = 0; i < webinarSessions.length; i++) {
+          const s = webinarSessions[i];
+          if (!s.date || !s.startTime || !s.endTime) {
+            setError(`Session ${i + 1} is missing date or times`);
+            return;
+          }
+          const dur = computeDurationFromTimes(s.startTime, s.endTime);
+          if (dur <= 0) {
+            setError(`Session ${i + 1}: end time must be after start time`);
+            return;
+          }
         }
       } else {
         // Service duration validation
@@ -200,23 +189,24 @@ export default function ProductFormModal({
 
       try {
         // Build webinar schedule if applicable
-        let webinarSchedule: WebinarSchedule | undefined;
-        if (productType === "webinar") {
-          webinarSchedule = {
-            startDate: webinarStartDate,
-            startTime: webinarStartTime,
-            endTime: webinarEndTime,
-            recurrenceRule: recurrenceRule || undefined,
-            sessionCount: 1, // Computed server-side
-          };
-        }
+        const webinarSchedule =
+          productType === "webinar" ? { sessions: webinarSessions } : undefined;
+
+        // For webinars, derive duration from first session
+        const webinarDuration =
+          productType === "webinar" && webinarSessions.length > 0
+            ? computeDurationFromTimes(
+                webinarSessions[0].startTime,
+                webinarSessions[0].endTime,
+              )
+            : 60;
 
         const body = {
           name: name.trim(),
           description: description.trim() || undefined,
           durationMinutes:
             productType === "webinar"
-              ? computeDurationFromTimes(webinarStartTime, webinarEndTime)
+              ? webinarDuration
               : Number(durationMinutes),
           price: priceInCents,
           color,
@@ -271,10 +261,7 @@ export default function ProductFormModal({
       onClose,
       productType,
       maxParticipants,
-      webinarStartDate,
-      webinarStartTime,
-      webinarEndTime,
-      recurrenceRule,
+      webinarSessions,
     ],
   );
 
@@ -284,38 +271,15 @@ export default function ProductFormModal({
   return (
     <Modal isOpen={isOpen} onClose={onClose} maxWidth="max-w-lg">
       <ModalHeader onClose={onClose}>
-        {isEditing ? "Edit Product" : "Add Product"}
+        {isEditing
+          ? `Edit ${productType === "webinar" ? "Webinar" : "Service"}`
+          : `Add ${productType === "webinar" ? "Webinar" : "Service"}`}
       </ModalHeader>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
             {error}
-          </div>
-        )}
-
-        {/* Product Type Toggle (only for new products) */}
-        {!isEditing && (
-          <div>
-            <label className="block text-sm font-medium text-[var(--text-muted)] mb-2">
-              Type
-            </label>
-            <div className="flex gap-2">
-              {(["service", "webinar"] as const).map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => setProductType(type)}
-                  className={`px-4 py-2 text-sm rounded-lg border transition-colors ${
-                    productType === type
-                      ? "bg-[var(--color-primary)] text-white border-[var(--color-primary)]"
-                      : "bg-white text-[var(--text-muted)] border-[var(--color-border)] hover:bg-gray-50"
-                  }`}
-                >
-                  {type === "service" ? "Service" : "Webinar"}
-                </button>
-              ))}
-            </div>
           </div>
         )}
 
@@ -448,60 +412,6 @@ export default function ProductFormModal({
               </p>
             </div>
 
-            {/* Start Date */}
-            <div>
-              <label
-                htmlFor="webinar-start-date"
-                className="block text-sm font-medium text-[var(--text-muted)] mb-1"
-              >
-                Start Date *
-              </label>
-              <input
-                id="webinar-start-date"
-                type="date"
-                value={webinarStartDate}
-                onChange={(e) => setWebinarStartDate(e.target.value)}
-                className={inputClasses}
-                required
-              />
-            </div>
-
-            {/* Start/End Time */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label
-                  htmlFor="webinar-start-time"
-                  className="block text-sm font-medium text-[var(--text-muted)] mb-1"
-                >
-                  Start Time *
-                </label>
-                <input
-                  id="webinar-start-time"
-                  type="time"
-                  value={webinarStartTime}
-                  onChange={(e) => setWebinarStartTime(e.target.value)}
-                  className={inputClasses}
-                  required
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="webinar-end-time"
-                  className="block text-sm font-medium text-[var(--text-muted)] mb-1"
-                >
-                  End Time *
-                </label>
-                <input
-                  id="webinar-end-time"
-                  type="time"
-                  value={webinarEndTime}
-                  onChange={(e) => setWebinarEndTime(e.target.value)}
-                  className={inputClasses}
-                  required
-                />
-              </div>
-            </div>
-
             {/* Price */}
             <div>
               <label
@@ -525,30 +435,132 @@ export default function ProductFormModal({
               </p>
             </div>
 
-            {/* Recurrence */}
-            <RecurrenceSelector
-              startDate={
-                webinarStartDate
-                  ? new Date(webinarStartDate + "T00:00:00")
-                  : null
-              }
-              value={recurrenceRule}
-              onChange={setRecurrenceRule}
-            />
+            {/* Sessions */}
+            <div>
+              <label className="block text-sm font-medium text-[var(--text-muted)] mb-2">
+                Sessions *
+              </label>
 
-            {/* Session Preview */}
-            {webinarStartDate && webinarStartTime && webinarEndTime && (
-              <WebinarSchedulePreview
-                schedule={{
-                  startDate: webinarStartDate,
-                  startTime: webinarStartTime,
-                  endTime: webinarEndTime,
-                  recurrenceRule: recurrenceRule || undefined,
-                  sessionCount: 0,
+              {webinarSessions.length > 0 && (
+                <div className="space-y-2 mb-3">
+                  {webinarSessions.map((session, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg border border-[var(--color-border)]"
+                    >
+                      <span className="text-xs font-medium text-[var(--text-muted)] w-5 flex-shrink-0">
+                        {i + 1}.
+                      </span>
+                      <input
+                        type="date"
+                        value={session.date}
+                        onChange={(e) => {
+                          const updated = [...webinarSessions];
+                          updated[i] = { ...updated[i], date: e.target.value };
+                          setWebinarSessions(updated);
+                        }}
+                        className="border border-[var(--color-border)] rounded px-2 py-1 text-sm bg-white flex-1 min-w-0"
+                      />
+                      <input
+                        type="time"
+                        value={session.startTime}
+                        onChange={(e) => {
+                          const updated = [...webinarSessions];
+                          updated[i] = {
+                            ...updated[i],
+                            startTime: e.target.value,
+                          };
+                          setWebinarSessions(updated);
+                        }}
+                        className="border border-[var(--color-border)] rounded px-2 py-1 text-sm bg-white w-[100px]"
+                      />
+                      <span className="text-xs text-[var(--text-muted)]">
+                        to
+                      </span>
+                      <input
+                        type="time"
+                        value={session.endTime}
+                        onChange={(e) => {
+                          const updated = [...webinarSessions];
+                          updated[i] = {
+                            ...updated[i],
+                            endTime: e.target.value,
+                          };
+                          setWebinarSessions(updated);
+                        }}
+                        className="border border-[var(--color-border)] rounded px-2 py-1 text-sm bg-white w-[100px]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setWebinarSessions((prev) =>
+                            prev.filter((_, idx) => idx !== i),
+                          )
+                        }
+                        className="p-1 text-[var(--text-muted)] hover:text-red-500 flex-shrink-0"
+                        title="Remove session"
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  const last =
+                    webinarSessions.length > 0
+                      ? webinarSessions[webinarSessions.length - 1]
+                      : null;
+                  // Default new session: next day after last, same times
+                  const nextDate = last
+                    ? (() => {
+                        const d = new Date(last.date + "T00:00:00");
+                        d.setDate(d.getDate() + 1);
+                        return d.toISOString().split("T")[0];
+                      })()
+                    : new Date().toISOString().split("T")[0];
+                  setWebinarSessions((prev) => [
+                    ...prev,
+                    {
+                      date: nextDate,
+                      startTime: last?.startTime || "09:00",
+                      endTime: last?.endTime || "10:00",
+                    },
+                  ]);
                 }}
-                timezone="Australia/Sydney"
-              />
-            )}
+                className="w-full py-2 text-sm font-medium text-[var(--color-primary)] border border-dashed border-[var(--color-primary)] rounded-lg hover:bg-[var(--color-primary)] hover:text-white transition-colors flex items-center justify-center gap-1.5"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
+                Add Session
+              </button>
+            </div>
           </>
         ) : (
           <div className="grid grid-cols-2 gap-4">
@@ -666,7 +678,7 @@ export default function ProductFormModal({
                 ? "Save Changes"
                 : productType === "webinar"
                   ? "Create Webinar"
-                  : "Add Product"}
+                  : "Create Service"}
           </button>
         </div>
       </form>
