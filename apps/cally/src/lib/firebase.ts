@@ -1,7 +1,9 @@
 /**
  * Firebase Client Configuration for Cally
  *
- * Provides Firebase Realtime Database client for real-time notifications.
+ * Provides Firebase Realtime Database and Auth clients.
+ * Auth is used to sign in with custom tokens so RTDB security
+ * rules can enforce per-tenant access (auth.uid === tenantId).
  */
 
 import { initializeApp, getApps } from "firebase/app";
@@ -14,7 +16,13 @@ import {
   orderByChild,
   limitToLast,
 } from "firebase/database";
+import {
+  getAuth,
+  signInWithCustomToken,
+  onAuthStateChanged,
+} from "firebase/auth";
 import type { DatabaseReference, Query } from "firebase/database";
+import type { Auth } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -34,6 +42,7 @@ export const isFirebaseConfigured =
 
 // Initialize Firebase (only once, only if configured)
 let database: ReturnType<typeof getDatabase> | null = null;
+let firebaseAuth: Auth | null = null;
 
 if (typeof window !== "undefined") {
   console.log(
@@ -51,6 +60,7 @@ if (typeof window !== "undefined") {
       const app =
         getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
       database = getDatabase(app);
+      firebaseAuth = getAuth(app);
       console.log("[DBG][firebase] Firebase initialized successfully");
     } catch (error) {
       console.error("[DBG][firebase] Failed to initialize Firebase:", error);
@@ -58,5 +68,16 @@ if (typeof window !== "undefined") {
   }
 }
 
-export { database, ref, onValue, off, query, orderByChild, limitToLast };
+export {
+  database,
+  firebaseAuth,
+  ref,
+  onValue,
+  off,
+  query,
+  orderByChild,
+  limitToLast,
+  signInWithCustomToken,
+  onAuthStateChanged,
+};
 export type { DatabaseReference, Query };

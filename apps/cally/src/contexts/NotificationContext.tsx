@@ -4,7 +4,9 @@
  * NotificationContext for Cally
  *
  * Global context for real-time notifications.
- * Uses Firebase RTDB for real-time delivery with API polling fallback.
+ * Signs into Firebase Auth with a custom token (uid = tenantId)
+ * then subscribes to RTDB for real-time delivery.
+ * Falls back to polling if Firebase is unavailable.
  */
 
 import {
@@ -18,10 +20,12 @@ import {
 import type { CallyNotification } from "@/types";
 import {
   database,
+  firebaseAuth,
   ref,
   onValue,
   off,
   isFirebaseConfigured,
+  signInWithCustomToken,
 } from "@/lib/firebase";
 
 interface NotificationContextValue {
@@ -43,6 +47,34 @@ const NotificationContext = createContext<NotificationContextValue | null>(
 interface NotificationProviderProps {
   children: React.ReactNode;
   tenantId: string;
+}
+
+/**
+ * Fetch a Firebase custom token from the backend,
+ * then sign into Firebase Auth so RTDB rules work.
+ */
+async function signInToFirebase(): Promise<boolean> {
+  if (!firebaseAuth) return false;
+
+  try {
+    const response = await fetch("/api/data/app/notifications/firebase-token");
+    const data = await response.json();
+
+    if (!data.success || !data.data?.token) {
+      console.error(
+        "[DBG][NotificationContext] Failed to get Firebase token:",
+        data.error,
+      );
+      return false;
+    }
+
+    await signInWithCustomToken(firebaseAuth, data.data.token);
+    console.log("[DBG][NotificationContext] Signed into Firebase Auth");
+    return true;
+  } catch (error) {
+    console.error("[DBG][NotificationContext] Firebase sign-in failed:", error);
+    return false;
+  }
 }
 
 export function NotificationProvider({
@@ -193,7 +225,78 @@ export function NotificationProvider({
     }
   }, [tenantId]);
 
-  // Setup Firebase subscription + polling fallback
+  // Subscribe to Firebase RTDB (called after Firebase Auth sign-in succeeds)
+  const subscribeToFirebase = useCallback(() => {
+    if (!database || !tenantId) return false;
+
+    try {
+      const notificationsRef = ref(database, `cally-notifications/${tenantId}`);
+
+      console.log(
+        "[DBG][NotificationContext] Subscribing to Firebase: cally-notifications/" +
+          tenantId,
+      );
+
+      onValue(
+        notificationsRef,
+        (snapshot) => {
+          console.log(
+            "[DBG][NotificationContext] Firebase onValue fired, exists:",
+            snapshot.exists(),
+          );
+
+          if (snapshot.exists()) {
+            const data = snapshot.val();
+            const firebaseNotifications: CallyNotification[] = Object.values(
+              data || {},
+            );
+
+            // Only consider recent notifications (within 2 minutes)
+            const twoMinutesAgo = Date.now() - 2 * 60 * 1000;
+            const recentNotifications = firebaseNotifications.filter((n) => {
+              const createdAt = new Date(n.createdAt || "").getTime();
+              return createdAt > twoMinutesAgo;
+            });
+
+            // Check for truly new notifications
+            const newNotifications = recentNotifications.filter(
+              (n) =>
+                !notificationIdsRef.current.has(n.id) &&
+                !markedAsReadIdsRef.current.has(n.id),
+            );
+
+            if (newNotifications.length > 0) {
+              console.log(
+                "[DBG][NotificationContext] New notifications:",
+                newNotifications.length,
+              );
+              fetchNotifications();
+            }
+          }
+          setIsLoading(false);
+        },
+        (firebaseError) => {
+          console.error(
+            "[DBG][NotificationContext] Firebase error:",
+            firebaseError,
+          );
+          setIsRealtime(false);
+        },
+      );
+
+      firebaseUnsubscribeRef.current = () => off(notificationsRef);
+      setIsRealtime(true);
+      return true;
+    } catch (err) {
+      console.error(
+        "[DBG][NotificationContext] Firebase subscription failed:",
+        err,
+      );
+      return false;
+    }
+  }, [tenantId, fetchNotifications]);
+
+  // Main setup effect: authenticate with Firebase, subscribe, start polling
   useEffect(() => {
     if (!tenantId) {
       setNotifications([]);
@@ -210,113 +313,55 @@ export function NotificationProvider({
     // Initial fetch
     fetchNotifications();
 
-    let firebaseConnected = false;
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+    let cancelled = false;
 
-    // Firebase real-time subscription
-    if (isFirebaseConfigured && database) {
-      try {
-        const notificationsRef = ref(
-          database,
-          `cally-notifications/${tenantId}`,
-        );
+    const setup = async () => {
+      let firebaseConnected = false;
 
+      // Sign into Firebase Auth, then subscribe to RTDB
+      if (isFirebaseConfigured && database && firebaseAuth) {
+        const signedIn = await signInToFirebase();
+        if (signedIn && !cancelled) {
+          firebaseConnected = subscribeToFirebase();
+        } else if (!cancelled) {
+          console.log(
+            "[DBG][NotificationContext] Firebase auth failed, polling only",
+          );
+        }
+      } else {
         console.log(
-          "[DBG][NotificationContext] Subscribing to Firebase path: cally-notifications/" +
-            tenantId,
+          "[DBG][NotificationContext] Firebase not available - isConfigured:",
+          isFirebaseConfigured,
+          "database:",
+          !!database,
+          "auth:",
+          !!firebaseAuth,
         );
-
-        onValue(
-          notificationsRef,
-          (snapshot) => {
-            console.log(
-              "[DBG][NotificationContext] Firebase onValue fired, exists:",
-              snapshot.exists(),
-            );
-
-            if (snapshot.exists()) {
-              const data = snapshot.val();
-              const firebaseNotifications: CallyNotification[] = Object.values(
-                data || {},
-              );
-
-              console.log(
-                "[DBG][NotificationContext] Firebase notifications count:",
-                firebaseNotifications.length,
-                "known IDs:",
-                notificationIdsRef.current.size,
-              );
-
-              // Only consider recent notifications (within 2 minutes)
-              const twoMinutesAgo = Date.now() - 2 * 60 * 1000;
-              const recentNotifications = firebaseNotifications.filter((n) => {
-                const createdAt = new Date(n.createdAt || "").getTime();
-                return createdAt > twoMinutesAgo;
-              });
-
-              // Check for truly new notifications
-              const newNotifications = recentNotifications.filter(
-                (n) =>
-                  !notificationIdsRef.current.has(n.id) &&
-                  !markedAsReadIdsRef.current.has(n.id),
-              );
-
-              if (newNotifications.length > 0) {
-                console.log(
-                  "[DBG][NotificationContext] New notifications detected:",
-                  newNotifications.length,
-                  "refetching",
-                );
-                fetchNotifications();
-              }
-            }
-            setIsLoading(false);
-          },
-          (firebaseError) => {
-            console.error(
-              "[DBG][NotificationContext] Firebase error:",
-              firebaseError,
-            );
-            setIsRealtime(false);
-          },
-        );
-
-        firebaseUnsubscribeRef.current = () => off(notificationsRef);
-        firebaseConnected = true;
-        setIsRealtime(true);
-        console.log("[DBG][NotificationContext] Firebase subscription active");
-      } catch (err) {
-        console.error(
-          "[DBG][NotificationContext] Failed to setup Firebase:",
-          err,
-        );
-        setIsRealtime(false);
       }
-    } else {
-      console.log(
-        "[DBG][NotificationContext] Firebase not available - isConfigured:",
-        isFirebaseConfigured,
-        "database:",
-        !!database,
-      );
-    }
 
-    // Polling fallback: poll every 30s regardless of Firebase
-    // Firebase gives instant updates, polling catches anything Firebase misses
-    const pollInterval = setInterval(
-      () => {
-        fetchNotifications();
-      },
-      firebaseConnected ? 60000 : 30000,
-    );
+      if (cancelled) return;
+
+      // Polling fallback: faster when Firebase isn't connected
+      pollInterval = setInterval(
+        () => {
+          fetchNotifications();
+        },
+        firebaseConnected ? 60000 : 30000,
+      );
+    };
+
+    setup();
 
     return () => {
-      clearInterval(pollInterval);
+      cancelled = true;
+      if (pollInterval) clearInterval(pollInterval);
       if (firebaseUnsubscribeRef.current) {
         firebaseUnsubscribeRef.current();
         firebaseUnsubscribeRef.current = null;
       }
     };
-  }, [tenantId, fetchNotifications]);
+  }, [tenantId, fetchNotifications, subscribeToFirebase]);
 
   const value: NotificationContextValue = {
     notifications,
