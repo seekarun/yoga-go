@@ -208,6 +208,12 @@ export interface AboutStyleOverrides {
   bgImage?: string; // URL
   bgImageBlur?: number; // px, default 0
   bgImageOpacity?: number; // 0-100, default 100
+  overlayOpacity?: number; // 0-100, dark overlay on bg image
+  bgFilter?: string; // CSS filter preset: "grayscale" | "sepia" | etc.
+  sectionHeight?: number; // px, optional fixed height
+  bgImageOffsetX?: number; // px, drag reposition X
+  bgImageOffsetY?: number; // px, drag reposition Y
+  bgImageZoom?: number; // 100-300, scroll zoom during drag
   layout?: "image-left" | "image-right" | "stacked"; // default: "image-left"
 }
 
