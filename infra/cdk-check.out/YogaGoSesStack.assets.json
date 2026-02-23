@@ -1,0 +1,51 @@
+{
+  "version": "48.0.0",
+  "files": {
+    "faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6": {
+      "displayName": "YogaGoSesStack/Custom::S3AutoDeleteObjectsCustomResourceProvider Code",
+      "source": {
+        "path": "asset.faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6",
+        "packaging": "zip"
+      },
+      "destinations": {
+        "710735877057-us-west-2-77adca10": {
+          "bucketName": "cdk-hnb659fds-assets-710735877057-us-west-2",
+          "objectKey": "faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6.zip",
+          "region": "us-west-2",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::710735877057:role/cdk-hnb659fds-file-publishing-role-710735877057-us-west-2"
+        }
+      }
+    },
+    "bf18d6d0b4c956b3deb0040926601998559df09db7fcb12614ec935d4dd3b9c5": {
+      "displayName": "EmailForwarderLambda/Code",
+      "source": {
+        "path": "asset.bf18d6d0b4c956b3deb0040926601998559df09db7fcb12614ec935d4dd3b9c5",
+        "packaging": "zip"
+      },
+      "destinations": {
+        "710735877057-us-west-2-649c60ce": {
+          "bucketName": "cdk-hnb659fds-assets-710735877057-us-west-2",
+          "objectKey": "bf18d6d0b4c956b3deb0040926601998559df09db7fcb12614ec935d4dd3b9c5.zip",
+          "region": "us-west-2",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::710735877057:role/cdk-hnb659fds-file-publishing-role-710735877057-us-west-2"
+        }
+      }
+    },
+    "7e6160b7c4393568058f2255e464e087febe7fa32534765ca4a21cf407d63408": {
+      "displayName": "YogaGoSesStack Template",
+      "source": {
+        "path": "YogaGoSesStack.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "710735877057-us-west-2-ea072a48": {
+          "bucketName": "cdk-hnb659fds-assets-710735877057-us-west-2",
+          "objectKey": "7e6160b7c4393568058f2255e464e087febe7fa32534765ca4a21cf407d63408.json",
+          "region": "us-west-2",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::710735877057:role/cdk-hnb659fds-file-publishing-role-710735877057-us-west-2"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

@@ -97,234 +97,372 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 
 This application uses AWS CDK for infrastructure management. All resources are defined as code in the `infra/` directory.
 
-### Fresh AWS Account Setup
+### Domain Configuration
 
-To deploy to a new AWS account, follow these steps:
+Two domains are managed, each with a Cognito custom domain for authentication:
 
-**Prerequisites:**
-- AWS CLI configured with appropriate credentials
-- Node.js and npm installed
-- CDK CLI installed (`npm install -g aws-cdk`)
+| Domain        | App     | Cognito Subdomain (Dev) | Cognito Subdomain (Prod) |
+| ------------- | ------- | ----------------------- | ------------------------ |
+| `myyoga.guru` | Yoga Go | `login.myyoga.guru`     | `secure.myyoga.guru`     |
+| `callygo.com` | Cally   | `login.callygo.com`     | `secure.callygo.com`     |
 
-**Step 1: Bootstrap CDK (one-time per account/region)**
+The subdomain is controlled via context params:
 
 ```bash
-# Bootstrap ap-southeast-2 (main region)
-AWS_PROFILE=myg npx cdk bootstrap aws://<ACCOUNT_ID>/ap-southeast-2
+# Dev (profile: myg)
+-c cognitoSubdomain=login -c callySubdomain=login
 
-# Bootstrap us-east-1 (required for Cognito certificate)
-AWS_PROFILE=myg npx cdk bootstrap aws://<ACCOUNT_ID>/us-east-1
+# Prod (profile: myg-prod) - defaults to "secure", no override needed
 ```
 
-**Step 2: Deploy Certificate Stack (us-east-1)**
+DNS for both domains is managed in Vercel.
 
-Cognito custom domains require ACM certificates in us-east-1.
+### Context Parameters (always required)
 
-```bash
-cd infra
-AWS_PROFILE=myg npx cdk deploy CognitoCertStack
-```
-
-After deployment:
-1. Go to AWS ACM Console in us-east-1
-2. Find the certificate for `signin.myyoga.guru`
-3. Copy the DNS validation CNAME record
-4. Add the CNAME to Vercel DNS
-5. Wait for certificate status to change to "Issued" (can take 5-30 minutes)
-6. Note the Certificate ARN from the stack output
-
-**Step 3: Deploy Main Stack (ap-southeast-2)**
+CDK synthesizes ALL stacks even when deploying just one. Some stacks throw errors if context params are missing. Always pass all required context params (use `placeholder` for values you don't have yet):
 
 ```bash
-AWS_PROFILE=myg npx cdk deploy YogaGoStack -c cognitoCertificateArn=<CERTIFICATE_ARN>
-```
-
-Example:
-```bash
-AWS_PROFILE=myg npx cdk deploy YogaGoStack -c cognitoCertificateArn=arn:aws:acm:us-east-1:123456789:certificate/abc-123-def
-```
-
-After deployment:
-1. Note the `CognitoCloudFrontDomain` from the stack output
-2. Add CNAME to Vercel DNS: `signin` -> `<cloudfront-domain>.cloudfront.net`
-
-**Step 4: Deploy Other Stacks (if needed)**
-
-```bash
-# SES Stack for email
-AWS_PROFILE=myg npx cdk deploy YogaGoSesStack
-
-# Calel Stack (if applicable)
-AWS_PROFILE=myg npx cdk deploy CalelStack
+# Required for every cdk command (deploy, synth, diff, etc.)
+-c cognitoCertificateArn=<ARN_or_placeholder> \
+-c callyCertificateArn=<ARN_or_placeholder> \
+-c emailsStreamArn=<ARN_or_placeholder> \
+-c cognitoSubdomain=login \
+-c callySubdomain=login
 ```
 
 ### CDK Stacks Overview
 
-| Stack | Region | Purpose |
-|-------|--------|---------|
-| `CognitoCertStack` | us-east-1 | ACM certificate for Cognito custom domain |
-| `YogaGoStack` | ap-southeast-2 | Main infrastructure (Cognito, DynamoDB, S3, etc.) |
-| `YogaGoSesStack` | ap-southeast-2 | SES email configuration |
-| `CalelStack` | ap-southeast-2 | Additional services |
+| Stack              | Region         | Purpose                                        | Depends on                                  |
+| ------------------ | -------------- | ---------------------------------------------- | ------------------------------------------- |
+| `CognitoCertStack` | us-east-1      | ACM certificate for `login.myyoga.guru`        | -                                           |
+| `CallyCertStack`   | us-east-1      | ACM certificate for `login.callygo.com`        | -                                           |
+| `YogaGoStack`      | ap-southeast-2 | Yoga Go: Cognito, DynamoDB, Lambdas            | CognitoCertStack, SES identity in us-west-2 |
+| `YogaGoSesStack`   | us-west-2      | SES email sending and receiving (both domains) | YogaGoStack                                 |
+| `CalelStack`       | ap-southeast-2 | Calendar & scheduling service (standalone)     | -                                           |
+| `CallyStack`       | ap-southeast-2 | Cally: Cognito, DynamoDB, Lambdas              | CallyCertStack, YogaGoStack (emails stream) |
+
+### Fresh AWS Account Setup
+
+**Prerequisites:**
+
+- AWS CLI configured with appropriate credentials
+- Node.js and npm installed
+- CDK CLI installed (`npm install -g aws-cdk`)
+- Both domains (`myyoga.guru`, `callygo.com`) DNS managed in Vercel
+
+**Step 1: Bootstrap CDK (one-time per account/region)**
+
+```bash
+npx cdk bootstrap \
+  aws://<ACCOUNT_ID>/ap-southeast-2 \
+  aws://<ACCOUNT_ID>/us-east-1 \
+  aws://<ACCOUNT_ID>/us-west-2 \
+  -c cognitoCertificateArn=placeholder \
+  -c callyCertificateArn=placeholder \
+  -c emailsStreamArn=placeholder \
+  -c cognitoSubdomain=login -c callySubdomain=login \
+  --profile myg
+```
+
+**Step 2: Pre-create SES email identity in us-west-2**
+
+Cognito User Pool requires a verified SES identity in us-west-2 (for sending verification emails). This must exist BEFORE deploying YogaGoStack, but the SesStack that normally manages it depends on YogaGoStack's tables. Break the chicken-and-egg by creating it manually first:
+
+```bash
+aws sesv2 create-email-identity \
+  --email-identity myyoga.guru --region us-west-2 --profile myg
+```
+
+If DKIM DNS records for `myyoga.guru` already exist in Vercel DNS (from a previous deployment), the identity will auto-verify. Otherwise, add the 3 CNAME records:
+
+```bash
+aws sesv2 get-email-identity \
+  --email-identity myyoga.guru --region us-west-2 --profile myg \
+  --query 'DkimAttributes.Tokens'
+```
+
+Each token becomes a CNAME: `<token>._domainkey.myyoga.guru` -> `<token>.dkim.amazonses.com`
+
+**Step 3: Deploy Certificate Stacks (us-east-1)**
+
+Both Cognito custom domains require ACM certificates in us-east-1. Deploy them together:
+
+```bash
+# Deploy both cert stacks (use --output to avoid lock conflicts)
+npx cdk deploy CognitoCertStack \
+  -c cognitoCertificateArn=placeholder \
+  -c callyCertificateArn=placeholder \
+  -c emailsStreamArn=placeholder \
+  -c cognitoSubdomain=login -c callySubdomain=login \
+  --require-approval never --profile myg
+
+npx cdk deploy CallyCertStack \
+  -c cognitoCertificateArn=placeholder \
+  -c callyCertificateArn=placeholder \
+  -c emailsStreamArn=placeholder \
+  -c cognitoSubdomain=login -c callySubdomain=login \
+  --require-approval never --profile myg \
+  --output cdk-cally-cert.out
+```
+
+After deployment:
+
+1. Note the Certificate ARN and DNS validation CNAME from each stack's output
+2. Add both DNS validation CNAMEs to Vercel DNS
+3. Wait for both certificates to show "Issued" (can take 5-30 minutes)
+
+> **CAA Record Required**: If deploying to `callygo.com` for the first time, add a CAA record: `CAA 0 issue "amazon.com"`. Without this, ACM certificate issuance will fail immediately. `myyoga.guru` typically doesn't need this if it already has permissive CAA records.
+
+**Step 4: Deploy YogaGoStack (ap-southeast-2)**
+
+Creates Cognito User Pool (with `login.myyoga.guru` custom domain), DynamoDB tables, Lambdas. The `yoga-go/production` secret is auto-created with placeholder values.
+
+```bash
+npx cdk deploy YogaGoStack \
+  -c cognitoCertificateArn=<COGNITO_CERT_ARN> \
+  -c callyCertificateArn=placeholder \
+  -c emailsStreamArn=placeholder \
+  -c cognitoSubdomain=login -c callySubdomain=login \
+  --require-approval never --profile myg
+```
+
+After deployment:
+
+1. Note `CognitoCloudFrontDomain` from stack output
+2. Add CNAME to Vercel DNS: `login` (under myyoga.guru) -> `<cloudfront-domain>.cloudfront.net`
+3. Update the secret with real values:
+
+```bash
+aws secretsmanager put-secret-value \
+  --secret-id yoga-go/production \
+  --region ap-southeast-2 --profile myg \
+  --secret-string '{"GOOGLE_CLIENT_ID":"...","GOOGLE_CLIENT_SECRET":"...","FACEBOOK_APP_ID":"...","FACEBOOK_APP_SECRET":"...","DEBOUNCE_API_KEY":"..."}'
+```
+
+**Step 5: Delete pre-created SES identity, then deploy SES Stack (us-west-2)**
+
+IMPORTANT: Delete the manually-created identity first so CDK can manage it:
+
+```bash
+aws sesv2 delete-email-identity \
+  --email-identity myyoga.guru --region us-west-2 --profile myg
+```
+
+Then deploy (SesStack creates SES identities for both `myyoga.guru` and `callygo.com`):
+
+```bash
+npx cdk deploy YogaGoSesStack \
+  -c cognitoCertificateArn=<COGNITO_CERT_ARN> \
+  -c callyCertificateArn=placeholder \
+  -c emailsStreamArn=placeholder \
+  -c cognitoSubdomain=login -c callySubdomain=login \
+  --require-approval never --profile myg
+```
+
+After deployment:
+
+1. Add DKIM CNAME records for `callygo.com` to Vercel DNS (3 records, same pattern as myyoga.guru)
+2. Activate the receipt rule set:
+
+```bash
+aws ses set-active-receipt-rule-set \
+  --rule-set-name yoga-go-inbound --region us-west-2 --profile myg
+```
+
+**Step 6: Deploy CalelStack (ap-southeast-2, standalone)**
+
+```bash
+npx cdk deploy CalelStack \
+  -c cognitoCertificateArn=placeholder \
+  -c callyCertificateArn=placeholder \
+  -c emailsStreamArn=placeholder \
+  -c cognitoSubdomain=login -c callySubdomain=login \
+  --require-approval never --profile myg
+```
+
+**Step 7: Deploy CallyStack (ap-southeast-2)**
+
+Depends on CallyCertStack (for `login.callygo.com` cert) and YogaGoStack (for `yoga-go-emails` stream).
+
+```bash
+# 1. Get the yoga-go-emails stream ARN
+aws dynamodb describe-table \
+  --table-name yoga-go-emails \
+  --query 'Table.LatestStreamArn' \
+  --output text \
+  --region ap-southeast-2 --profile myg
+
+# 2. Deploy with both cert ARN and stream ARN
+npx cdk deploy CallyStack \
+  -c cognitoCertificateArn=<COGNITO_CERT_ARN> \
+  -c callyCertificateArn=<CALLY_CERT_ARN> \
+  -c emailsStreamArn=<STREAM_ARN> \
+  -c cognitoSubdomain=login -c callySubdomain=login \
+  --require-approval never --profile myg
+```
+
+After deployment:
+
+1. Note `CognitoCloudFrontDomain` from stack output
+2. Add CNAME to Vercel DNS: `login` (under callygo.com) -> `<cloudfront-domain>.cloudfront.net`
+3. Update secret:
+
+```bash
+aws secretsmanager put-secret-value \
+  --secret-id cally/production \
+  --region ap-southeast-2 --profile myg \
+  --secret-string '{"GOOGLE_CLIENT_ID":"...","GOOGLE_CLIENT_SECRET":"..."}'
+```
+
+**Step 8: Post-deployment setup**
+
+1. Create IAM access keys for `yoga-go-vercel`, `cally-vercel`, and `calel-vercel` users
+2. Update Vercel environment variables with Cognito User Pool IDs, Client IDs, and domain
+3. Update Google OAuth redirect URIs to include `login.callygo.com/oauth2/idpresponse`
+4. Verify both domains' SES DKIM records and email identities are verified
+5. **Update Cognito Google Identity Provider** - CDK creates the Google IdP with placeholder values from the secret. Updating the secret does NOT retroactively update the Cognito IdP. After setting real values in the secret, run:
+
+```bash
+# For each user pool, update the Google IdP with real credentials:
+CREDS=$(aws secretsmanager get-secret-value --secret-id <secret-name> --region ap-southeast-2 --profile myg --query 'SecretString' --output text)
+GCID=$(echo "$CREDS" | python3 -c "import sys,json; print(json.load(sys.stdin)['GOOGLE_CLIENT_ID'])")
+GCSECRET=$(echo "$CREDS" | python3 -c "import sys,json; print(json.load(sys.stdin)['GOOGLE_CLIENT_SECRET'])")
+
+aws cognito-idp update-identity-provider \
+  --user-pool-id <POOL_ID> --provider-name Google \
+  --provider-details "{\"client_id\":\"$GCID\",\"client_secret\":\"$GCSECRET\",\"authorize_scopes\":\"email profile openid\",\"authorize_url\":\"https://accounts.google.com/o/oauth2/v2/auth\",\"token_url\":\"https://www.googleapis.com/oauth2/v4/token\",\"token_request_method\":\"POST\",\"oidc_issuer\":\"https://accounts.google.com\",\"attributes_url\":\"https://people.googleapis.com/v1/people/me?personFields=\",\"attributes_url_add_attributes\":\"true\"}" \
+  --region ap-southeast-2 --profile myg
+```
+
+### Troubleshooting & Lessons Learned
+
+**Cognito custom domain stuck after failed deploy:**
+When a Cognito custom domain (e.g., `login.myyoga.guru`) is created, it provisions a CloudFront distribution under the hood. If the stack rolls back, the user pool is deleted (RETAIN) but the domain-to-CloudFront association persists globally for 30-60+ minutes. Each failed retry creates a NEW user pool that briefly grabs the domain, potentially resetting the release timer. **Fix**: Use a different subdomain (e.g., switch from `auth` to `login`), or wait 60+ minutes without retrying.
+
+**Failed deployments leave orphaned resources:**
+DynamoDB tables and Cognito user pools with `RETAIN` removal policy survive stack rollback. After a `ROLLBACK_COMPLETE`:
+
+1. Delete the failed CloudFormation stack
+2. Manually delete all orphaned DynamoDB tables and Cognito user pools
+3. Only then redeploy
+
+```bash
+# Delete failed stack
+aws cloudformation delete-stack --stack-name YogaGoStack --region ap-southeast-2 --profile myg
+aws cloudformation wait stack-delete-complete --stack-name YogaGoStack --region ap-southeast-2 --profile myg
+
+# Find and delete orphaned resources
+aws dynamodb list-tables --region ap-southeast-2 --profile myg
+aws dynamodb delete-table --table-name <orphaned-table> --region ap-southeast-2 --profile myg
+aws cognito-idp list-user-pools --max-results 20 --region ap-southeast-2 --profile myg
+aws cognito-idp delete-user-pool --user-pool-id <orphaned-pool-id> --region ap-southeast-2 --profile myg
+```
+
+**ACM certificate fails immediately for callygo.com:**
+Symptom: `DNS Record Set is not available. Certificate is in FAILED status.`
+Cause: Missing CAA (Certificate Authority Authorization) DNS record.
+Fix: Add `CAA 0 issue "amazon.com"` to callygo.com DNS in Vercel before deploying CallyCertStack.
+
+**SES receipt rule set can't be deleted:**
+Symptom: `Cannot delete active rule set: yoga-go-inbound`
+Fix: Deactivate the rule set first (pass no name), then delete individual rules, then the rule set:
+
+```bash
+aws ses set-active-receipt-rule-set --region us-west-2 --profile myg  # deactivate
+aws ses delete-receipt-rule --rule-set-name yoga-go-inbound --rule-name <rule-name> --region us-west-2 --profile myg
+aws ses delete-receipt-rule-set --rule-set-name yoga-go-inbound --region us-west-2 --profile myg
+```
+
+**CDK lock conflict when deploying two stacks simultaneously:**
+Symptom: `Other CLIs are currently reading from cdk.out`
+Fix: Use `--output cdk-other.out` for the second deploy command.
+
+**SES identity chicken-and-egg:**
+YogaGoStack needs a verified SES identity in us-west-2, but SesStack (which manages it) depends on YogaGoStack's DynamoDB tables. Solution: Pre-create the SES identity manually (Step 2), deploy YogaGoStack, delete the manual identity, then deploy SesStack so CDK can manage it going forward.
 
 ### Important Notes
 
-- **Certificate ARN is required** when deploying `YogaGoStack` - always include the `-c cognitoCertificateArn=<ARN>` parameter
-- All AWS resources are managed via CDK - avoid creating resources manually via CLI or Console
-- The AWS profile `myg` is used for all commands (configured in `~/.aws/credentials`)
+- **Context parameters are always required** - CDK synths all stacks, so always pass all `-c` params (use `placeholder` for values you don't have yet)
+- **S3 bucket names and Cognito domain prefixes are globally unique** - The CDK code uses account ID suffixes to avoid conflicts
+- All AWS resources are managed via CDK - avoid creating resources manually via CLI or Console (except the SES pre-creation in Step 2)
+- For dev environment, use profile `myg` with `-c cognitoSubdomain=login -c callySubdomain=login`
+- For prod environment, use profile `myg-prod` (defaults to `secure` subdomain)
 
----
+### AWS Secrets
 
-This application is also deployed to AWS using ECS on EC2 with automated CI/CD via GitHub Actions.
+Two secrets are auto-created by CDK with placeholder values. Update them with real credentials after deployment:
 
-### Architecture
-
-- **Container Registry**: AWS ECR (Elastic Container Registry)
-- **Compute**: ECS on EC2 (single t3.micro instance - free tier eligible)
-- **Infrastructure**: AWS CDK (TypeScript) in `infra/` directory
-- **Secrets**: AWS Secrets Manager
-- **Logging**: CloudWatch Logs
-- **CI/CD**: GitHub Actions (automatic on push to main)
-
-### Quick Commands
+| Secret                     | Region         | Keys                                                           |
+| -------------------------- | -------------- | -------------------------------------------------------------- |
+| `yoga-go/production`       | ap-southeast-2 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `DEBOUNCE_API_KEY` |
+| `cally/production`         | ap-southeast-2 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`                     |
+| `yoga-go/smtp-credentials` | us-west-2      | Auto-populated by CDK (SMTP user for SES)                      |
 
 ```bash
-# Infrastructure management
-npm run infra:deploy    # Deploy/update AWS infrastructure
-npm run infra:diff      # Preview infrastructure changes
-npm run infra:synth     # Generate CloudFormation template
-
-# View available Docker images in ECR
-./infra/scripts/list-images.sh
-
-# Deploy specific image tag (rollback capability)
-./infra/scripts/deploy-tag.sh <tag>      # Deploy specific tag
-./infra/scripts/deploy-tag.sh b727c7a   # Example: deploy commit SHA
-./infra/scripts/deploy-tag.sh latest    # Deploy latest image
-
-# Get application URL
-./infra/scripts/get-service-url.sh
-
-# View application logs
-aws logs tail /ecs/yoga-go --follow --region ap-southeast-2 --profile myg
+# Update a secret
+aws secretsmanager put-secret-value \
+  --secret-id yoga-go/production \
+  --region ap-southeast-2 --profile myg \
+  --secret-string '{"GOOGLE_CLIENT_ID":"...","GOOGLE_CLIENT_SECRET":"...","DEBOUNCE_API_KEY":"..."}'
 ```
 
-### Automatic Deployment
+### Vercel Deployment
 
-Every push to `main` branch automatically:
+Both apps (yoga, cally) are deployed to Vercel. Each Vercel project needs these environment variables:
 
-1. Builds Docker image
-2. Pushes to ECR with tags:
-   - Git commit SHA (e.g., `b727c7a`)
-   - `latest`
-3. Deploys to ECS (forces service update)
-4. Deployment takes 2-3 minutes
+**Common (both apps):**
 
-### Rollback & Tag Deployment
-
-You can deploy any previous version from ECR:
-
-**View available versions:**
+| Variable                     | Value                     | Notes                                                     |
+| ---------------------------- | ------------------------- | --------------------------------------------------------- |
+| `EDGE_AWS_ACCESS_KEY_ID`     | From IAM access key       | CDK creates `yoga-go-vercel` and `cally-vercel` IAM users |
+| `EDGE_AWS_SECRET_ACCESS_KEY` | From IAM access key       |                                                           |
+| `EDGE_AWS_REGION`            | `ap-southeast-2`          |                                                           |
+| `COGNITO_USER_POOL_ID`       | From stack output         | e.g., `ap-southeast-2_xxxxx`                              |
+| `COGNITO_CLIENT_ID`          | From stack output         |                                                           |
+| `COGNITO_CLIENT_SECRET`      | From Cognito console      | Retrieve via `aws cognito-idp describe-user-pool-client`  |
+| `COGNITO_DOMAIN`             | Custom domain             | `login.myyoga.guru` or `login.callygo.com`                |
+| `GOOGLE_CLIENT_ID`           | From Google Cloud Console |                                                           |
+| `GOOGLE_CLIENT_SECRET`       | From Google Cloud Console |                                                           |
 
 ```bash
-./infra/scripts/list-images.sh
+# Create IAM access keys for Vercel users
+aws iam create-access-key --user-name yoga-go-vercel --profile myg
+aws iam create-access-key --user-name cally-vercel --profile myg
+
+# Get Cognito client secret
+aws cognito-idp describe-user-pool-client \
+  --user-pool-id <POOL_ID> --client-id <CLIENT_ID> \
+  --region ap-southeast-2 --profile myg \
+  --query 'UserPoolClient.ClientSecret' --output text
 ```
 
-**Deploy specific version:**
+### Google Cloud Console
 
-```bash
-# List available tags
-./infra/scripts/deploy-tag.sh
+After deploying Cognito with custom domains, update OAuth clients in Google Cloud Console:
 
-# Deploy specific commit
-./infra/scripts/deploy-tag.sh b727c7a
+1. Go to **APIs & Credentials > OAuth 2.0 Client IDs**
+2. For each OAuth client (yoga, cally), update:
 
-# Or use GitHub Actions manual workflow:
-# Go to Actions → "Deploy Specific Tag to ECS" → Run workflow
-```
+**Authorized JavaScript origins:**
 
-**Quick rollback example:**
+- `https://login.myyoga.guru` (yoga) / `https://login.callygo.com` (cally)
 
-```bash
-# 1. List available images
-./infra/scripts/list-images.sh
+**Authorized redirect URIs:**
 
-# 2. Deploy previous version
-./infra/scripts/deploy-tag.sh <previous-tag>
+- `https://login.myyoga.guru/oauth2/idpresponse` (yoga)
+- `https://login.callygo.com/oauth2/idpresponse` (cally)
+- Keep existing localhost and Vercel preview URLs
 
-# 3. Verify deployment
-curl http://YOUR_IP/api/health
-```
+### Tearing Down Stacks
 
-### Image Tagging Strategy
+When destroying stacks, follow reverse deployment order. Key gotchas:
 
-- **Commit SHA tags** (e.g., `b727c7a`) - Use for production deployments (traceable)
-- **`latest` tag** - Always points to most recent build
-- **Lifecycle policy** - Keeps last 10 images, removes untagged after 1 day
+1. **Deactivate SES receipt rule set before deleting SesStack:**
 
-### Monitoring
+   ```bash
+   aws ses set-active-receipt-rule-set --region us-west-2 --profile myg
+   ```
 
-```bash
-# Check service status
-aws ecs describe-services \
-  --cluster yoga-go-cluster \
-  --services yoga-go-service \
-  --region ap-southeast-2 \
-  --profile myg
+2. **Cognito custom domains take 30-60+ min to release globally** after stack deletion (CloudFront teardown). Wait before redeploying with the same domain.
 
-# View application logs
-aws logs tail /ecs/yoga-go --follow \
-  --region ap-southeast-2 \
-  --profile myg
-
-# Get EC2 instance public IP
-./infra/scripts/get-service-url.sh
-```
-
-### Secrets Management
-
-Application secrets are stored in AWS Secrets Manager:
-
-```bash
-# Update secrets from .env.production file
-./infra/scripts/update-secrets.sh .env.production
-
-# Restart service to apply new secrets
-aws ecs update-service \
-  --cluster yoga-go-cluster \
-  --service yoga-go-service \
-  --force-new-deployment \
-  --region ap-southeast-2 \
-  --profile myg
-```
-
-### Detailed Documentation
-
-For comprehensive deployment documentation, troubleshooting, and best practices, see:
-
-📖 **[DEPLOYMENT.md](./DEPLOYMENT.md)**
-
-Topics covered:
-
-- Complete infrastructure setup guide
-- GitHub Actions configuration
-- Secrets management
-- Rollback procedures and scenarios
-- Deployment verification checklist
-- Troubleshooting common issues
-- Cost optimization tips
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+3. **RETAIN resources survive stack deletion** - manually delete orphaned DynamoDB tables, Cognito pools, and S3 buckets between teardown and redeploy.

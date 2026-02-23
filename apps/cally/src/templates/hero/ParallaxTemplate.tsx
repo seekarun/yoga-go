@@ -803,6 +803,7 @@ export default function ParallaxTemplate(props: HeroTemplateProps) {
               paddingRight: `${h?.paddingRight ?? 20}px`,
               textAlign: contentAlign,
               ...(isEditing && toolbar.sectionSelected ? selectedOutline : {}),
+              ...(isEditing && toolbar.anySelected ? { zIndex: 10 } : {}),
             }}
             onClick={toolbar.handleSectionClick}
           >

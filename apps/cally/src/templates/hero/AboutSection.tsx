@@ -13,6 +13,7 @@ import SectionToolbar from "./SectionToolbar";
 import BgDragOverlay from "./BgDragOverlay";
 import { ABOUT_LAYOUT_OPTIONS, bgFilterToCSS } from "./layoutOptions";
 import ResizableText from "./ResizableText";
+import { useDimOverlay } from "./useDimOverlay";
 
 const DEFAULTS = {
   paddingTop: 80,
@@ -97,6 +98,12 @@ export default function AboutSection({
   const [imageBgRemoved, setImageBgRemoved] = useState(false);
   const [originalAboutImage, setOriginalAboutImage] = useState<string | null>(
     null,
+  );
+
+  // Dim the rest of the page when any sub-element is selected
+  useDimOverlay(
+    isEditing &&
+      (sectionSelected || imageSelected || titleSelected || bodySelected),
   );
 
   // Auto-disable drag mode when section is deselected
@@ -903,44 +910,46 @@ export default function AboutSection({
 
       {/* About section toolbar — anchored to section top so it doesn't move with padding */}
       {showHandles && sectionSelected && (
-        <SectionToolbar
-          bgColor={overrides?.bgColor || theme.bg}
-          bgImage={overrides?.bgImage}
-          onBgImageClick={onBgImageClick}
-          onBgImageRemove={handleBgImageRemove}
-          bgImageBlur={overrides?.bgImageBlur ?? 0}
-          onBgImageBlurChange={handleBgImageBlurChange}
-          bgImageOpacity={overrides?.bgImageOpacity ?? 100}
-          onBgImageOpacityChange={handleBgImageOpacityChange}
-          paddingTop={overrides?.paddingTop ?? 80}
-          paddingBottom={overrides?.paddingBottom ?? 80}
-          paddingLeft={overrides?.paddingLeft ?? 0}
-          paddingRight={overrides?.paddingRight ?? 0}
-          onPaddingTopChange={handleToolbarPaddingTopChange}
-          onPaddingBottomChange={handleToolbarPaddingBottomChange}
-          onPaddingLeftChange={handleToolbarPaddingLeftChange}
-          onPaddingRightChange={handleToolbarPaddingRightChange}
-          palette={palette}
-          customColors={customColors}
-          onBgColorChange={handleBgColorChange}
-          onCustomColorsChange={onCustomColorsChange}
-          hasBackgroundImage={!!overrides?.bgImage}
-          overlayOpacity={overrides?.overlayOpacity ?? 0}
-          onOverlayOpacityChange={handleOverlayOpacityChange}
-          bgFilter={overrides?.bgFilter}
-          onBgFilterChange={handleBgFilterChange}
-          onRemoveBgClick={handleRemoveBgClick}
-          removingBg={removingBg}
-          bgRemoved={bgRemoved}
-          onUndoRemoveBg={handleUndoRemoveBg}
-          bgDragActive={bgDragActive}
-          onBgDragToggle={toggleBgDrag}
-          sectionHeight={overrides?.sectionHeight}
-          onSectionHeightChange={handleSectionHeightChange}
-          layoutOptions={ABOUT_LAYOUT_OPTIONS}
-          currentLayout={resolvedLayout}
-          onLayoutChange={handleLayoutChange}
-        />
+        <div style={{ position: "absolute", top: 8, left: "50%", zIndex: 50 }}>
+          <SectionToolbar
+            bgColor={overrides?.bgColor || theme.bg}
+            bgImage={overrides?.bgImage}
+            onBgImageClick={onBgImageClick}
+            onBgImageRemove={handleBgImageRemove}
+            bgImageBlur={overrides?.bgImageBlur ?? 0}
+            onBgImageBlurChange={handleBgImageBlurChange}
+            bgImageOpacity={overrides?.bgImageOpacity ?? 100}
+            onBgImageOpacityChange={handleBgImageOpacityChange}
+            paddingTop={overrides?.paddingTop ?? 80}
+            paddingBottom={overrides?.paddingBottom ?? 80}
+            paddingLeft={overrides?.paddingLeft ?? 0}
+            paddingRight={overrides?.paddingRight ?? 0}
+            onPaddingTopChange={handleToolbarPaddingTopChange}
+            onPaddingBottomChange={handleToolbarPaddingBottomChange}
+            onPaddingLeftChange={handleToolbarPaddingLeftChange}
+            onPaddingRightChange={handleToolbarPaddingRightChange}
+            palette={palette}
+            customColors={customColors}
+            onBgColorChange={handleBgColorChange}
+            onCustomColorsChange={onCustomColorsChange}
+            hasBackgroundImage={!!overrides?.bgImage}
+            overlayOpacity={overrides?.overlayOpacity ?? 0}
+            onOverlayOpacityChange={handleOverlayOpacityChange}
+            bgFilter={overrides?.bgFilter}
+            onBgFilterChange={handleBgFilterChange}
+            onRemoveBgClick={handleRemoveBgClick}
+            removingBg={removingBg}
+            bgRemoved={bgRemoved}
+            onUndoRemoveBg={handleUndoRemoveBg}
+            bgDragActive={bgDragActive}
+            onBgDragToggle={toggleBgDrag}
+            sectionHeight={overrides?.sectionHeight}
+            onSectionHeightChange={handleSectionHeightChange}
+            layoutOptions={ABOUT_LAYOUT_OPTIONS}
+            currentLayout={resolvedLayout}
+            onLayoutChange={handleLayoutChange}
+          />
+        </div>
       )}
 
       {/* Background image layer */}

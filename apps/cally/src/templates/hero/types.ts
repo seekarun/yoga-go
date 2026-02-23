@@ -7,6 +7,7 @@ import type {
   AboutStyleOverrides,
   HeroStyleOverrides,
   ProductsStyleOverrides,
+  SectionStyleOverrides,
 } from "@/types/landing-page";
 import type { Product } from "@/types";
 
@@ -49,6 +50,8 @@ export interface HeroTemplateProps {
   // Background removal callbacks
   onAboutRemoveBgComplete?: (newUrl: string) => void;
   onFeatureCardRemoveBg?: (cardId: string, newUrl: string) => void;
+  onFeaturesStyleOverrideChange?: (o: SectionStyleOverrides) => void;
+  onFeaturesBgImageClick?: () => void;
   // Products data & callbacks
   products?: Product[];
   currency?: string;
@@ -68,6 +71,8 @@ export interface HeroTemplateProps {
   ) => void;
   onAddTestimonial?: () => void;
   onRemoveTestimonial?: (testimonialId: string) => void;
+  onTestimonialsStyleOverrideChange?: (o: SectionStyleOverrides) => void;
+  onTestimonialsBgImageClick?: () => void;
   // FAQ callbacks
   onFAQHeadingChange?: (heading: string) => void;
   onFAQSubheadingChange?: (subheading: string) => void;
@@ -78,15 +83,21 @@ export interface HeroTemplateProps {
   ) => void;
   onAddFAQItem?: () => void;
   onRemoveFAQItem?: (itemId: string) => void;
+  onFAQStyleOverrideChange?: (o: SectionStyleOverrides) => void;
+  onFAQBgImageClick?: () => void;
   // Location props & callbacks
   address?: string;
   onLocationHeadingChange?: (heading: string) => void;
   onLocationSubheadingChange?: (subheading: string) => void;
+  onLocationStyleOverrideChange?: (o: SectionStyleOverrides) => void;
+  onLocationBgImageClick?: () => void;
   // Gallery callbacks
   onGalleryHeadingChange?: (heading: string) => void;
   onGallerySubheadingChange?: (subheading: string) => void;
   onGalleryAddImage?: () => void;
   onGalleryRemoveImage?: (imageId: string) => void;
+  onGalleryStyleOverrideChange?: (o: SectionStyleOverrides) => void;
+  onGalleryBgImageClick?: () => void;
   // Footer callbacks
   onFooterTextChange?: (text: string) => void;
   onFooterLinkChange?: (
@@ -96,6 +107,8 @@ export interface HeroTemplateProps {
   ) => void;
   onAddFooterLink?: () => void;
   onRemoveFooterLink?: (index: number) => void;
+  onFooterStyleOverrideChange?: (o: SectionStyleOverrides) => void;
+  onFooterBgImageClick?: () => void;
 }
 
 export type HeroTemplateComponent = React.FC<HeroTemplateProps>;

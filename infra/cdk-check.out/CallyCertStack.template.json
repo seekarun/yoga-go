@@ -1,0 +1,90 @@
+{
+ "Description": "Cally Certificate for login.callygo.com (us-east-1)",
+ "Resources": {
+  "CallyCognitoCert963A84A7": {
+   "Type": "AWS::CertificateManager::Certificate",
+   "Properties": {
+    "DomainName": "login.callygo.com",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "cally-cognito-login.callygo.com"
+     }
+    ],
+    "ValidationMethod": "DNS"
+   },
+   "Metadata": {
+    "aws:cdk:path": "CallyCertStack/CallyCognitoCert/Resource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/zPSMzI21DNQTCwv1k1OydbNyUzSqw4uSUzO1kksL45PTi0qyUzLTE4sSc1NzEtMTy3Sq3ZGiOk4p+UhcWtBfP/SkoLSklqdvPyUVL2sYv0yIxM9Yz0DxazizEzdotK8kszcVL0gCA0A16TzIn4AAAA="
+   },
+   "Metadata": {
+    "aws:cdk:path": "CallyCertStack/CDKMetadata/Default"
+   }
+  }
+ },
+ "Outputs": {
+  "CertificateArn": {
+   "Description": "Certificate ARN - use this when deploying CallyStack",
+   "Value": {
+    "Ref": "CallyCognitoCert963A84A7"
+   },
+   "Export": {
+    "Name": "CallyCertificateArn"
+   }
+  },
+  "NextSteps": {
+   "Description": "Next steps after deployment",
+   "Value": {
+    "Fn::Join": [
+     "",
+     [
+      "1. Go to ACM Console in us-east-1\n2. Find certificate for login.callygo.com\n3. Copy the DNS validation CNAME record\n4. Add CNAME to Vercel DNS (callygo.com)\n5. Wait for status to change to \"Issued\"\n6. Deploy CallyStack: cdk deploy CallyStack -c callyCertificateArn=",
+      {
+       "Ref": "CallyCognitoCert963A84A7"
+      },
+      " -c emailsStreamArn=<ARN>"
+     ]
+    ]
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

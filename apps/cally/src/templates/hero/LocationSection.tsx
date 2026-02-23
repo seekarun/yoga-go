@@ -1,6 +1,14 @@
 "use client";
 
-import type { LocationConfig, BrandFont } from "@/types/landing-page";
+import type {
+  LocationConfig,
+  BrandFont,
+  SectionStyleOverrides,
+} from "@/types/landing-page";
+import type { ColorPalette } from "@/lib/colorPalette";
+import SectionToolbar from "./SectionToolbar";
+import BgDragOverlay from "./BgDragOverlay";
+import { useSectionToolbar } from "./useSectionToolbar";
 
 interface LocationSectionProps {
   location: LocationConfig;
@@ -10,6 +18,11 @@ interface LocationSectionProps {
   brandFonts?: { headerFont?: BrandFont; bodyFont?: BrandFont };
   onHeadingChange?: (heading: string) => void;
   onSubheadingChange?: (subheading: string) => void;
+  onStyleOverrideChange?: (o: SectionStyleOverrides) => void;
+  onBgImageClick?: () => void;
+  palette?: ColorPalette;
+  customColors?: { name: string; hex: string }[];
+  onCustomColorsChange?: (colors: { name: string; hex: string }[]) => void;
 }
 
 /**
@@ -24,6 +37,11 @@ export default function LocationSection({
   brandFonts,
   onHeadingChange,
   onSubheadingChange,
+  onStyleOverrideChange,
+  onBgImageClick,
+  palette,
+  customColors,
+  onCustomColorsChange,
 }: LocationSectionProps) {
   const colors = {
     light: {
@@ -57,11 +75,27 @@ export default function LocationSection({
 
   const theme = colors[variant];
 
-  const sectionStyle: React.CSSProperties = {
-    width: "100%",
-    padding: "80px 8%",
-    backgroundColor: theme.bg,
-  };
+  const {
+    sectionRef,
+    sectionSelected,
+    showHandles,
+    sectionClickHandler,
+    toolbarProps,
+    bgLayerStyle,
+    overlayStyle,
+    bgDragOverlayProps,
+    contentContainerStyle,
+    sectionStyle,
+  } = useSectionToolbar({
+    isEditing,
+    overrides: location.styleOverrides,
+    onStyleOverrideChange,
+    defaultBg: theme.bg,
+    onBgImageClick,
+    palette,
+    customColors,
+    onCustomColorsChange,
+  });
 
   const containerStyle: React.CSSProperties = {
     maxWidth: "1440px",
@@ -163,7 +197,19 @@ export default function LocationSection({
     : "";
 
   return (
-    <section style={sectionStyle}>
+    <section
+      ref={sectionRef as React.RefObject<HTMLElement>}
+      style={sectionStyle}
+      onClick={showHandles ? sectionClickHandler : undefined}
+    >
+      {showHandles && sectionSelected && (
+        <div style={{ position: "absolute", top: 8, left: "50%", zIndex: 50 }}>
+          <SectionToolbar {...toolbarProps} />
+        </div>
+      )}
+      {bgLayerStyle && <div style={bgLayerStyle} />}
+      {overlayStyle && <div style={overlayStyle} />}
+      <BgDragOverlay {...bgDragOverlayProps} />
       {isEditing && (
         <style>{`
           .editable-field-dark:focus {
@@ -182,7 +228,7 @@ export default function LocationSection({
           }
         `}</style>
       )}
-      <div style={containerStyle}>
+      <div style={{ ...contentContainerStyle, ...containerStyle }}>
         {/* Header */}
         <div style={headerStyle}>
           {isEditing ? (

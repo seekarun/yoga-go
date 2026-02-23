@@ -29,6 +29,7 @@ export const API_ENDPOINTS = {
   chat: "/api/data/app/ai/chat",
   calendar: "/api/data/app/calendar",
   inbox: "/api/data/app/inbox",
+  compose: "/api/data/app/inbox/compose",
   subscribers: "/api/data/app/subscribers",
   users: "/api/data/app/users",
   preferences: "/api/data/app/preferences",

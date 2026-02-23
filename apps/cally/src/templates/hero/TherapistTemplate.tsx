@@ -676,6 +676,7 @@ export default function TherapistTemplate(props: HeroTemplateProps) {
             overflow: "hidden",
             backgroundColor: h?.bgColor || undefined,
             ...(isEditing && toolbar.sectionSelected ? selectedOutline : {}),
+            ...(isEditing && toolbar.anySelected ? { zIndex: 10 } : {}),
           }}
           onClick={toolbar.handleSectionClick}
         >

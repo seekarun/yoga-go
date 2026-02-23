@@ -180,6 +180,7 @@ export default function CenteredTemplate(props: HeroTemplateProps) {
           style={{
             ...containerStyle,
             ...(isEditing && toolbar.sectionSelected ? selectedOutline : {}),
+            ...(isEditing && toolbar.anySelected ? { zIndex: 10 } : {}),
           }}
           onClick={toolbar.handleSectionClick}
         >

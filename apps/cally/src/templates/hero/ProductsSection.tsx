@@ -10,6 +10,7 @@ import type {
 import type { ColorPalette } from "@/lib/colorPalette";
 import SectionToolbar from "./SectionToolbar";
 import TextToolbar from "./TextToolbar";
+import { useDimOverlay } from "./useDimOverlay";
 
 /**
  * Tiny image carousel for product cards.
@@ -281,6 +282,11 @@ export default function ProductsSection({
   // Track whether the subheading text is selected
   const [subheadingSelected, setSubheadingSelected] = useState(false);
   const subheadingContainerRef = useRef<HTMLDivElement>(null);
+
+  // Dim the rest of the page when any sub-element is selected
+  useDimOverlay(
+    isEditing && (sectionSelected || headingSelected || subheadingSelected),
+  );
 
   // Click-outside listener to deselect section
   useEffect(() => {
@@ -718,28 +724,30 @@ export default function ProductsSection({
     >
       {/* Products section toolbar — anchored to section top */}
       {showHandles && sectionSelected && (
-        <SectionToolbar
-          bgColor={overrides?.bgColor || theme.bg}
-          bgImage={overrides?.bgImage}
-          onBgImageClick={onBgImageClick}
-          onBgImageRemove={handleBgImageRemove}
-          bgImageBlur={overrides?.bgImageBlur ?? 0}
-          onBgImageBlurChange={handleBgImageBlurChange}
-          bgImageOpacity={overrides?.bgImageOpacity ?? 100}
-          onBgImageOpacityChange={handleBgImageOpacityChange}
-          paddingTop={overrides?.paddingTop ?? 80}
-          paddingBottom={overrides?.paddingBottom ?? 80}
-          paddingLeft={overrides?.paddingLeft ?? 0}
-          paddingRight={overrides?.paddingRight ?? 0}
-          onPaddingTopChange={handlePaddingTopChange}
-          onPaddingBottomChange={handlePaddingBottomChange}
-          onPaddingLeftChange={handlePaddingLeftChange}
-          onPaddingRightChange={handlePaddingRightChange}
-          palette={palette}
-          customColors={customColors}
-          onBgColorChange={handleBgColorChange}
-          onCustomColorsChange={onCustomColorsChange}
-        />
+        <div style={{ position: "absolute", top: 8, left: "50%", zIndex: 50 }}>
+          <SectionToolbar
+            bgColor={overrides?.bgColor || theme.bg}
+            bgImage={overrides?.bgImage}
+            onBgImageClick={onBgImageClick}
+            onBgImageRemove={handleBgImageRemove}
+            bgImageBlur={overrides?.bgImageBlur ?? 0}
+            onBgImageBlurChange={handleBgImageBlurChange}
+            bgImageOpacity={overrides?.bgImageOpacity ?? 100}
+            onBgImageOpacityChange={handleBgImageOpacityChange}
+            paddingTop={overrides?.paddingTop ?? 80}
+            paddingBottom={overrides?.paddingBottom ?? 80}
+            paddingLeft={overrides?.paddingLeft ?? 0}
+            paddingRight={overrides?.paddingRight ?? 0}
+            onPaddingTopChange={handlePaddingTopChange}
+            onPaddingBottomChange={handlePaddingBottomChange}
+            onPaddingLeftChange={handlePaddingLeftChange}
+            onPaddingRightChange={handlePaddingRightChange}
+            palette={palette}
+            customColors={customColors}
+            onBgColorChange={handleBgColorChange}
+            onCustomColorsChange={onCustomColorsChange}
+          />
+        </div>
       )}
 
       {/* Background image layer */}

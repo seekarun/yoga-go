@@ -1,7 +1,15 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import type { GalleryConfig, BrandFont } from "@/types/landing-page";
+import type {
+  GalleryConfig,
+  BrandFont,
+  SectionStyleOverrides,
+} from "@/types/landing-page";
+import type { ColorPalette } from "@/lib/colorPalette";
+import SectionToolbar from "./SectionToolbar";
+import BgDragOverlay from "./BgDragOverlay";
+import { useSectionToolbar } from "./useSectionToolbar";
 
 interface GallerySectionProps {
   gallery: GalleryConfig;
@@ -12,6 +20,11 @@ interface GallerySectionProps {
   onSubheadingChange?: (subheading: string) => void;
   onAddImage?: () => void;
   onRemoveImage?: (imageId: string) => void;
+  onStyleOverrideChange?: (o: SectionStyleOverrides) => void;
+  onBgImageClick?: () => void;
+  palette?: ColorPalette;
+  customColors?: { name: string; hex: string }[];
+  onCustomColorsChange?: (colors: { name: string; hex: string }[]) => void;
 }
 
 /**
@@ -27,6 +40,11 @@ export default function GallerySection({
   onSubheadingChange,
   onAddImage,
   onRemoveImage,
+  onStyleOverrideChange,
+  onBgImageClick,
+  palette,
+  customColors,
+  onCustomColorsChange,
 }: GallerySectionProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -73,6 +91,28 @@ export default function GallerySection({
   const theme = colors[variant];
   const images = gallery.images || [];
 
+  const {
+    sectionRef,
+    sectionSelected,
+    showHandles,
+    sectionClickHandler,
+    toolbarProps,
+    bgLayerStyle,
+    overlayStyle,
+    bgDragOverlayProps,
+    contentContainerStyle,
+    sectionStyle,
+  } = useSectionToolbar({
+    isEditing,
+    overrides: gallery.styleOverrides,
+    onStyleOverrideChange,
+    defaultBg: theme.bg,
+    onBgImageClick,
+    palette,
+    customColors,
+    onCustomColorsChange,
+  });
+
   // Close lightbox on Escape, navigate with arrow keys
   useEffect(() => {
     if (lightboxIndex === null) return;
@@ -108,12 +148,6 @@ export default function GallerySection({
       behavior: "smooth",
     });
   }, []);
-
-  const sectionStyle: React.CSSProperties = {
-    width: "100%",
-    padding: "80px 8%",
-    backgroundColor: theme.bg,
-  };
 
   const containerStyle: React.CSSProperties = {
     maxWidth: "1440px",
@@ -266,7 +300,19 @@ export default function GallerySection({
   };
 
   return (
-    <section style={sectionStyle}>
+    <section
+      ref={sectionRef as React.RefObject<HTMLElement>}
+      style={sectionStyle}
+      onClick={showHandles ? sectionClickHandler : undefined}
+    >
+      {showHandles && sectionSelected && (
+        <div style={{ position: "absolute", top: 8, left: "50%", zIndex: 50 }}>
+          <SectionToolbar {...toolbarProps} />
+        </div>
+      )}
+      {bgLayerStyle && <div style={bgLayerStyle} />}
+      {overlayStyle && <div style={overlayStyle} />}
+      <BgDragOverlay {...bgDragOverlayProps} />
       {isEditing && (
         <style>{`
           .editable-field-dark:focus {
@@ -293,7 +339,7 @@ export default function GallerySection({
       <style>{`
         .gallery-carousel::-webkit-scrollbar { display: none; }
       `}</style>
-      <div style={containerStyle}>
+      <div style={{ ...contentContainerStyle, ...containerStyle }}>
         {/* Header */}
         <div style={headerStyle}>
           {isEditing ? (

@@ -21,6 +21,8 @@ export interface SesStackProps extends cdk.StackProps {
   emailsTableArn: string;
   /** DynamoDB Emails Table Name */
   emailsTableName: string;
+  /** Optional Cally domain for SES email identity (e.g., callygo.com) */
+  callyDomain?: string;
 }
 
 /**
@@ -63,6 +65,20 @@ export class SesStack extends cdk.Stack {
 
     // Suppress the unused variable warning - emailIdentity is used for implicit dependency
     void emailIdentity;
+
+    // ========================================
+    // SES Email Identity for Cally Domain (callygo.com)
+    // ========================================
+    if (props.callyDomain) {
+      const callyEmailIdentity = new ses.EmailIdentity(
+        this,
+        "CallyEmailIdentity",
+        {
+          identity: ses.Identity.domain(props.callyDomain),
+        },
+      );
+      void callyEmailIdentity;
+    }
 
     // ========================================
     // SES Configuration Set
@@ -183,6 +199,9 @@ The MyYoga.Guru Team`,
           allowedOrigins: [
             "http://localhost:3113",
             "https://proj-cally.vercel.app",
+            ...(props.callyDomain
+              ? [`https://${props.callyDomain}`, `https://www.${props.callyDomain}`]
+              : []),
           ],
           allowedHeaders: ["*"],
         },
@@ -300,7 +319,26 @@ The MyYoga.Guru Team`,
       scanEnabled: true,
     });
 
-    // Rule 2: BYOD custom domain emails (catch-all for any verified domain)
+    // Rule 2: Cally platform emails (e.g., @callygo.com)
+    if (props.callyDomain) {
+      receiptRuleSet.addRule("ForwardCallyEmails", {
+        recipients: [props.callyDomain],
+        actions: [
+          new sesActions.S3({
+            bucket: emailBucket,
+            objectKeyPrefix: "incoming/",
+          }),
+          new sesActions.Lambda({
+            function: emailForwarderLambda,
+            invocationType: sesActions.LambdaInvocationType.EVENT,
+          }),
+          new sesActions.Stop(),
+        ],
+        scanEnabled: true,
+      });
+    }
+
+    // Rule 3: BYOD custom domain emails (catch-all for any verified domain)
     // Empty recipients array = catch all emails for any verified domain in SES
     // Lambda filters by domain to find the right tenant
     // Platform emails won't reach here due to StopAction above

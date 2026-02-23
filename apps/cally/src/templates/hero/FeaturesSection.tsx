@@ -1,8 +1,15 @@
 "use client";
 
-import type { FeaturesConfig } from "@/types/landing-page";
-import type { BrandFont } from "@/types/landing-page";
+import type {
+  FeaturesConfig,
+  BrandFont,
+  SectionStyleOverrides,
+} from "@/types/landing-page";
+import type { ColorPalette } from "@/lib/colorPalette";
 import RemoveBackgroundButton from "./RemoveBackgroundButton";
+import SectionToolbar from "./SectionToolbar";
+import BgDragOverlay from "./BgDragOverlay";
+import { useSectionToolbar } from "./useSectionToolbar";
 
 interface FeaturesSectionProps {
   features: FeaturesConfig;
@@ -20,6 +27,11 @@ interface FeaturesSectionProps {
   onAddCard?: () => void;
   onRemoveCard?: (cardId: string) => void;
   onCardRemoveBg?: (cardId: string, newUrl: string) => void;
+  onStyleOverrideChange?: (o: SectionStyleOverrides) => void;
+  onBgImageClick?: () => void;
+  palette?: ColorPalette;
+  customColors?: { name: string; hex: string }[];
+  onCustomColorsChange?: (colors: { name: string; hex: string }[]) => void;
 }
 
 /**
@@ -38,6 +50,11 @@ export default function FeaturesSection({
   onAddCard,
   onRemoveCard,
   onCardRemoveBg,
+  onStyleOverrideChange,
+  onBgImageClick,
+  palette,
+  customColors,
+  onCustomColorsChange,
 }: FeaturesSectionProps) {
   const colors = {
     light: {
@@ -74,11 +91,27 @@ export default function FeaturesSection({
 
   const theme = colors[variant];
 
-  const sectionStyle: React.CSSProperties = {
-    width: "100%",
-    padding: "80px 8%",
-    backgroundColor: theme.bg,
-  };
+  const {
+    sectionRef,
+    sectionSelected,
+    showHandles,
+    sectionClickHandler,
+    toolbarProps,
+    bgLayerStyle,
+    overlayStyle,
+    bgDragOverlayProps,
+    contentContainerStyle,
+    sectionStyle,
+  } = useSectionToolbar({
+    isEditing,
+    overrides: features.styleOverrides,
+    onStyleOverrideChange,
+    defaultBg: theme.bg,
+    onBgImageClick,
+    palette,
+    customColors,
+    onCustomColorsChange,
+  });
 
   const containerStyle: React.CSSProperties = {
     maxWidth: "1440px",
@@ -195,7 +228,19 @@ export default function FeaturesSection({
   };
 
   return (
-    <section style={sectionStyle}>
+    <section
+      ref={sectionRef as React.RefObject<HTMLElement>}
+      style={sectionStyle}
+      onClick={showHandles ? sectionClickHandler : undefined}
+    >
+      {showHandles && sectionSelected && (
+        <div style={{ position: "absolute", top: 8, left: "50%", zIndex: 50 }}>
+          <SectionToolbar {...toolbarProps} />
+        </div>
+      )}
+      {bgLayerStyle && <div style={bgLayerStyle} />}
+      {overlayStyle && <div style={overlayStyle} />}
+      <BgDragOverlay {...bgDragOverlayProps} />
       {isEditing && (
         <style>{`
           .editable-field-dark:focus {
@@ -222,7 +267,7 @@ export default function FeaturesSection({
           }
         `}</style>
       )}
-      <div style={containerStyle}>
+      <div style={{ ...contentContainerStyle, ...containerStyle }}>
         {/* Header */}
         <div style={headerStyle}>
           {isEditing ? (

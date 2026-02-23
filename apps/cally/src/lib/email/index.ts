@@ -4,7 +4,7 @@
  */
 import { createEmailClient } from "@core/lib";
 
-const FALLBACK_FROM_EMAIL = "hi@cally.live";
+const FALLBACK_FROM_EMAIL = "hi@callygo.com";
 
 export const emailClient = createEmailClient({
   region: process.env.SES_REGION || "us-west-2",

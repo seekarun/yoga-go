@@ -1,0 +1,21 @@
+{
+  "version": "48.0.0",
+  "files": {
+    "8184c30b301b33c4123c1407e6fe3d21731a6e69441cf49ffb9a298e828c3ba8": {
+      "displayName": "CallyCertStack Template",
+      "source": {
+        "path": "CallyCertStack.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "710735877057-us-east-1-0ec140ed": {
+          "bucketName": "cdk-hnb659fds-assets-710735877057-us-east-1",
+          "objectKey": "8184c30b301b33c4123c1407e6fe3d21731a6e69441cf49ffb9a298e828c3ba8.json",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::710735877057:role/cdk-hnb659fds-file-publishing-role-710735877057-us-east-1"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

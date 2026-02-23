@@ -626,6 +626,7 @@ export default function BaysideTemplate(props: HeroTemplateProps) {
             position: "relative",
             backgroundColor: h?.bgColor || undefined,
             ...(isEditing && toolbar.sectionSelected ? selectedOutline : {}),
+            ...(isEditing && toolbar.anySelected ? { zIndex: 10 } : {}),
           }}
           onClick={toolbar.handleSectionClick}
         >

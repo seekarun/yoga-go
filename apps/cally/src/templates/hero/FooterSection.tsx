@@ -1,6 +1,14 @@
 "use client";
 
-import type { FooterConfig, BrandFont } from "@/types/landing-page";
+import type {
+  FooterConfig,
+  BrandFont,
+  SectionStyleOverrides,
+} from "@/types/landing-page";
+import type { ColorPalette } from "@/lib/colorPalette";
+import SectionToolbar from "./SectionToolbar";
+import BgDragOverlay from "./BgDragOverlay";
+import { useSectionToolbar } from "./useSectionToolbar";
 
 interface FooterSectionProps {
   footer: FooterConfig;
@@ -10,6 +18,11 @@ interface FooterSectionProps {
   onLinkChange?: (index: number, field: "label" | "url", value: string) => void;
   onAddLink?: () => void;
   onRemoveLink?: (index: number) => void;
+  onStyleOverrideChange?: (o: SectionStyleOverrides) => void;
+  onBgImageClick?: () => void;
+  palette?: ColorPalette;
+  customColors?: { name: string; hex: string }[];
+  onCustomColorsChange?: (colors: { name: string; hex: string }[]) => void;
 }
 
 export default function FooterSection({
@@ -20,13 +33,33 @@ export default function FooterSection({
   onLinkChange,
   onAddLink,
   onRemoveLink,
+  onStyleOverrideChange,
+  onBgImageClick,
+  palette,
+  customColors,
+  onCustomColorsChange,
 }: FooterSectionProps) {
-  const sectionStyle: React.CSSProperties = {
-    width: "100%",
-    padding: "40px 8%",
-    backgroundColor: "#1a1a1a",
-    color: "#9ca3af",
-  };
+  const {
+    sectionRef,
+    sectionSelected,
+    showHandles,
+    sectionClickHandler,
+    toolbarProps,
+    bgLayerStyle,
+    overlayStyle,
+    bgDragOverlayProps,
+    contentContainerStyle,
+    sectionStyle,
+  } = useSectionToolbar({
+    isEditing,
+    overrides: footer.styleOverrides,
+    onStyleOverrideChange,
+    defaultBg: "#1a1a1a",
+    onBgImageClick,
+    palette,
+    customColors,
+    onCustomColorsChange,
+  });
 
   const containerStyle: React.CSSProperties = {
     maxWidth: "1440px",
@@ -86,7 +119,19 @@ export default function FooterSection({
   };
 
   return (
-    <footer style={sectionStyle}>
+    <footer
+      ref={sectionRef as React.RefObject<HTMLElement>}
+      style={{ ...sectionStyle, color: "#9ca3af" }}
+      onClick={showHandles ? sectionClickHandler : undefined}
+    >
+      {showHandles && sectionSelected && (
+        <div style={{ position: "absolute", top: 8, left: "50%", zIndex: 50 }}>
+          <SectionToolbar {...toolbarProps} />
+        </div>
+      )}
+      {bgLayerStyle && <div style={bgLayerStyle} />}
+      {overlayStyle && <div style={overlayStyle} />}
+      <BgDragOverlay {...bgDragOverlayProps} />
       {isEditing && (
         <style>{`
           .editable-footer:focus {
@@ -111,7 +156,7 @@ export default function FooterSection({
           }
         `}</style>
       )}
-      <div style={containerStyle}>
+      <div style={{ ...contentContainerStyle, ...containerStyle }}>
         {/* Links */}
         {((footer.links && footer.links.length > 0) || isEditing) && (
           <div style={linksRowStyle}>

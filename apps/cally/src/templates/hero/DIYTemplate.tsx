@@ -184,6 +184,7 @@ export default function DIYTemplate(props: HeroTemplateProps) {
           style={{
             ...containerStyle,
             ...(isEditing && toolbar.sectionSelected ? selectedOutline : {}),
+            ...(isEditing && toolbar.anySelected ? { zIndex: 10 } : {}),
           }}
           onClick={toolbar.handleSectionClick}
         >

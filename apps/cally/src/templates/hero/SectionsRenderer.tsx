@@ -4,6 +4,7 @@ import type {
   SimpleLandingPageConfig,
   AboutStyleOverrides,
   ProductsStyleOverrides,
+  SectionStyleOverrides,
   BrandFont,
 } from "@/types/landing-page";
 import type { Product } from "@/types";
@@ -43,6 +44,8 @@ interface SectionsRendererProps {
   // Background removal callbacks
   onAboutRemoveBgComplete?: (newUrl: string) => void;
   onFeatureCardRemoveBg?: (cardId: string, newUrl: string) => void;
+  onFeaturesStyleOverrideChange?: (o: SectionStyleOverrides) => void;
+  onFeaturesBgImageClick?: () => void;
   // Products data & callbacks
   products?: Product[];
   currency?: string;
@@ -62,15 +65,21 @@ interface SectionsRendererProps {
   ) => void;
   onAddTestimonial?: () => void;
   onRemoveTestimonial?: (testimonialId: string) => void;
+  onTestimonialsStyleOverrideChange?: (o: SectionStyleOverrides) => void;
+  onTestimonialsBgImageClick?: () => void;
   // Location props & callbacks
   address?: string;
   onLocationHeadingChange?: (heading: string) => void;
   onLocationSubheadingChange?: (subheading: string) => void;
+  onLocationStyleOverrideChange?: (o: SectionStyleOverrides) => void;
+  onLocationBgImageClick?: () => void;
   // Gallery callbacks
   onGalleryHeadingChange?: (heading: string) => void;
   onGallerySubheadingChange?: (subheading: string) => void;
   onGalleryAddImage?: () => void;
   onGalleryRemoveImage?: (imageId: string) => void;
+  onGalleryStyleOverrideChange?: (o: SectionStyleOverrides) => void;
+  onGalleryBgImageClick?: () => void;
   // FAQ callbacks
   onFAQHeadingChange?: (heading: string) => void;
   onFAQSubheadingChange?: (subheading: string) => void;
@@ -81,6 +90,8 @@ interface SectionsRendererProps {
   ) => void;
   onAddFAQItem?: () => void;
   onRemoveFAQItem?: (itemId: string) => void;
+  onFAQStyleOverrideChange?: (o: SectionStyleOverrides) => void;
+  onFAQBgImageClick?: () => void;
   // Footer callbacks
   onFooterTextChange?: (text: string) => void;
   onFooterLinkChange?: (
@@ -90,6 +101,8 @@ interface SectionsRendererProps {
   ) => void;
   onAddFooterLink?: () => void;
   onRemoveFooterLink?: (index: number) => void;
+  onFooterStyleOverrideChange?: (o: SectionStyleOverrides) => void;
+  onFooterBgImageClick?: () => void;
 }
 
 export default function SectionsRenderer({
@@ -112,6 +125,8 @@ export default function SectionsRenderer({
   onRemoveFeatureCard,
   onAboutRemoveBgComplete,
   onFeatureCardRemoveBg,
+  onFeaturesStyleOverrideChange,
+  onFeaturesBgImageClick,
   products,
   currency,
   onBookProduct,
@@ -123,24 +138,34 @@ export default function SectionsRenderer({
   address,
   onLocationHeadingChange,
   onLocationSubheadingChange,
+  onLocationStyleOverrideChange,
+  onLocationBgImageClick,
   onGalleryHeadingChange,
   onGallerySubheadingChange,
   onGalleryAddImage,
   onGalleryRemoveImage,
+  onGalleryStyleOverrideChange,
+  onGalleryBgImageClick,
   onTestimonialsHeadingChange,
   onTestimonialsSubheadingChange,
   onTestimonialChange,
   onAddTestimonial,
   onRemoveTestimonial,
+  onTestimonialsStyleOverrideChange,
+  onTestimonialsBgImageClick,
   onFAQHeadingChange,
   onFAQSubheadingChange,
   onFAQItemChange,
   onAddFAQItem,
   onRemoveFAQItem,
+  onFAQStyleOverrideChange,
+  onFAQBgImageClick,
   onFooterTextChange,
   onFooterLinkChange,
   onAddFooterLink,
   onRemoveFooterLink,
+  onFooterStyleOverrideChange,
+  onFooterBgImageClick,
 }: SectionsRendererProps) {
   const sections = config.sections || [
     { id: "about" as const, enabled: true },
@@ -198,6 +223,11 @@ export default function SectionsRenderer({
                     onAddCard={onAddFeatureCard}
                     onRemoveCard={onRemoveFeatureCard}
                     onCardRemoveBg={onFeatureCardRemoveBg}
+                    onStyleOverrideChange={onFeaturesStyleOverrideChange}
+                    onBgImageClick={onFeaturesBgImageClick}
+                    palette={config.theme?.palette}
+                    customColors={config.customColors}
+                    onCustomColorsChange={onCustomColorsChange}
                   />
                 </div>
               ) : null;
@@ -238,6 +268,11 @@ export default function SectionsRenderer({
                     onTestimonialChange={onTestimonialChange}
                     onAddTestimonial={onAddTestimonial}
                     onRemoveTestimonial={onRemoveTestimonial}
+                    onStyleOverrideChange={onTestimonialsStyleOverrideChange}
+                    onBgImageClick={onTestimonialsBgImageClick}
+                    palette={config.theme?.palette}
+                    customColors={config.customColors}
+                    onCustomColorsChange={onCustomColorsChange}
                   />
                 </div>
               ) : null;
@@ -255,6 +290,11 @@ export default function SectionsRenderer({
                     onItemChange={onFAQItemChange}
                     onAddItem={onAddFAQItem}
                     onRemoveItem={onRemoveFAQItem}
+                    onStyleOverrideChange={onFAQStyleOverrideChange}
+                    onBgImageClick={onFAQBgImageClick}
+                    palette={config.theme?.palette}
+                    customColors={config.customColors}
+                    onCustomColorsChange={onCustomColorsChange}
                   />
                 </div>
               ) : null;
@@ -270,6 +310,11 @@ export default function SectionsRenderer({
                     brandFonts={brandFonts}
                     onHeadingChange={onLocationHeadingChange}
                     onSubheadingChange={onLocationSubheadingChange}
+                    onStyleOverrideChange={onLocationStyleOverrideChange}
+                    onBgImageClick={onLocationBgImageClick}
+                    palette={config.theme?.palette}
+                    customColors={config.customColors}
+                    onCustomColorsChange={onCustomColorsChange}
                   />
                 </div>
               ) : null;
@@ -286,6 +331,11 @@ export default function SectionsRenderer({
                     onSubheadingChange={onGallerySubheadingChange}
                     onAddImage={onGalleryAddImage}
                     onRemoveImage={onGalleryRemoveImage}
+                    onStyleOverrideChange={onGalleryStyleOverrideChange}
+                    onBgImageClick={onGalleryBgImageClick}
+                    palette={config.theme?.palette}
+                    customColors={config.customColors}
+                    onCustomColorsChange={onCustomColorsChange}
                   />
                 </div>
               ) : null;
@@ -306,6 +356,11 @@ export default function SectionsRenderer({
             onLinkChange={onFooterLinkChange}
             onAddLink={onAddFooterLink}
             onRemoveLink={onRemoveFooterLink}
+            onStyleOverrideChange={onFooterStyleOverrideChange}
+            onBgImageClick={onFooterBgImageClick}
+            palette={config.theme?.palette}
+            customColors={config.customColors}
+            onCustomColorsChange={onCustomColorsChange}
           />
         </div>
       )}

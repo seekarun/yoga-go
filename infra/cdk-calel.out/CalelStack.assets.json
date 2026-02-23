@@ -1,0 +1,36 @@
+{
+  "version": "48.0.0",
+  "files": {
+    "fd6db6fffa52ebc9ebc54193e90e49be2eeedea5c7df7e3bce496705429a1234": {
+      "displayName": "PostConfirmationLambda/Code",
+      "source": {
+        "path": "asset.fd6db6fffa52ebc9ebc54193e90e49be2eeedea5c7df7e3bce496705429a1234",
+        "packaging": "zip"
+      },
+      "destinations": {
+        "710735877057-ap-southeast-2-b8be37c3": {
+          "bucketName": "cdk-hnb659fds-assets-710735877057-ap-southeast-2",
+          "objectKey": "fd6db6fffa52ebc9ebc54193e90e49be2eeedea5c7df7e3bce496705429a1234.zip",
+          "region": "ap-southeast-2",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::710735877057:role/cdk-hnb659fds-file-publishing-role-710735877057-ap-southeast-2"
+        }
+      }
+    },
+    "566251044b9f2fd7bb2bee9f247376703d15677046eae5ec68c95fc708c4a0e3": {
+      "displayName": "CalelStack Template",
+      "source": {
+        "path": "CalelStack.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "710735877057-ap-southeast-2-5b058b11": {
+          "bucketName": "cdk-hnb659fds-assets-710735877057-ap-southeast-2",
+          "objectKey": "566251044b9f2fd7bb2bee9f247376703d15677046eae5ec68c95fc708c4a0e3.json",
+          "region": "ap-southeast-2",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::710735877057:role/cdk-hnb659fds-file-publishing-role-710735877057-ap-southeast-2"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

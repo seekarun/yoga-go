@@ -163,7 +163,9 @@
       "Bash(NODE_OPTIONS=\"--max-old-space-size=4096\" npm run build:cally:*)",
       "Bash(npx expo install:*)",
       "Bash(git -C /Users/arunsubramaniam/garage/yoga-go status -- apps/cally/src/lib/webinar/)",
-      "Bash(git -C /Users/arunsubramaniam/garage/yoga-go log --oneline -1)"
+      "Bash(git -C /Users/arunsubramaniam/garage/yoga-go log --oneline -1)",
+      "Bash(AWS_PROFILE=myg-prod aws sts:*)",
+      "Bash(AWS_PROFILE=myg-prod aws dynamodb list-tables --region ap-southeast-2 --query 'TableNames' --output json 2>&1 && AWS_PROFILE=myg-prod aws cognito-idp list-user-pools --max-results 10 --region ap-southeast-2 --query 'UserPools[].Name' --output json 2>&1)"
     ],
     "deny": [],
     "ask": []

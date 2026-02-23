@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { HeroStyleOverrides } from "@/types/landing-page";
+import { useDimOverlay } from "./useDimOverlay";
 
 interface UseHeroToolbarStateOptions {
   isEditing: boolean;
@@ -69,6 +70,11 @@ export default function useHeroToolbarState({
   useEffect(() => {
     if (!sectionSelected) setBgDragActive(false);
   }, [sectionSelected]);
+
+  const anySelected = titleSelected || subtitleSelected || sectionSelected;
+
+  // Dim the rest of the page when any element in the hero is selected
+  useDimOverlay(isEditing && anySelected);
 
   const toggleBgDrag = useCallback(() => setBgDragActive((prev) => !prev), []);
 
@@ -258,6 +264,7 @@ export default function useHeroToolbarState({
     titleSelected,
     subtitleSelected,
     sectionSelected,
+    anySelected,
     // Refs
     titleRef,
     subtitleRef,

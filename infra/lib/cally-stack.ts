@@ -1,4 +1,5 @@
 import * as cdk from "aws-cdk-lib";
+import * as acm from "aws-cdk-lib/aws-certificatemanager";
 import * as cognito from "aws-cdk-lib/aws-cognito";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as iam from "aws-cdk-lib/aws-iam";
@@ -8,8 +9,16 @@ import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as sqs from "aws-cdk-lib/aws-sqs";
 import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
+import { ensureSecret } from "./ensure-secret";
 import type { Construct } from "constructs";
 import * as path from "path";
+
+export interface CallyStackProps extends cdk.StackProps {
+  /** Custom domain for Cally (e.g., callygo.com) */
+  readonly callyDomain: string;
+  /** Cognito custom domain (e.g., signin.callygo.com) */
+  readonly callyCognitoDomain: string;
+}
 
 /**
  * Cally Application Stack
@@ -36,21 +45,19 @@ export class CallyStack extends cdk.Stack {
   public readonly userPool: cognito.UserPool;
   public readonly userPoolClient: cognito.UserPoolClient;
 
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props: CallyStackProps) {
     super(scope, id, props);
 
+    const { callyDomain, callyCognitoDomain } = props;
+
     // ========================================
-    // Secrets Manager - Google OAuth Credentials
+    // Secrets Manager - Google OAuth Credentials (auto-created if not exists)
     // ========================================
-    // Expects secret with structure:
-    // {
-    //   "GOOGLE_CLIENT_ID": "<client-id>",
-    //   "GOOGLE_CLIENT_SECRET": "<client-secret>"
-    // }
-    const appSecret = secretsmanager.Secret.fromSecretNameV2(
+    const { secret: appSecret, resource: appSecretResource } = ensureSecret(
       this,
       "AppSecret",
       "cally/production",
+      ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
     );
 
     // ========================================
@@ -92,7 +99,7 @@ export class CallyStack extends cdk.Stack {
     // Used for storing generated TTS audio for phone calls
     // Twilio needs public read access to fetch audio files
     this.audioBucket = new s3.Bucket(this, "AudioBucket", {
-      bucketName: "cally-audio-files",
+      bucketName: `cally-audio-files-${this.account}`,
       blockPublicAccess: new s3.BlockPublicAccess({
         blockPublicAcls: false,
         ignorePublicAcls: false,
@@ -224,13 +231,36 @@ export class CallyStack extends cdk.Stack {
     });
 
     // ========================================
-    // Cognito Hosted UI Domain
+    // Cognito Custom Domain (signin.callygo.com)
     // ========================================
-    // Using Cognito-provided domain prefix (simpler than custom domain)
-    // Full domain: cally-auth.auth.ap-southeast-2.amazoncognito.com
-    const cognitoDomain = this.userPool.addDomain("CallyHostedUIDomain", {
-      cognitoDomain: {
-        domainPrefix: "cally-auth",
+    // Custom domain requires ACM certificate in us-east-1 (deployed via CallyCertStack)
+    const callyCertificateArn = this.node.tryGetContext(
+      "callyCertificateArn",
+    );
+
+    if (!callyCertificateArn) {
+      throw new Error(
+        `Missing required context parameter: callyCertificateArn
+
+Deploy with: npx cdk deploy CallyStack -c callyCertificateArn=arn:aws:acm:us-east-1:ACCOUNT:certificate/CERT-ID -c emailsStreamArn=<ARN>
+
+To get the certificate ARN:
+1. Deploy CallyCertStack first: npx cdk deploy CallyCertStack
+2. Validate the certificate in ACM (add DNS CNAME to Vercel)
+3. Copy the certificate ARN from ACM console or stack output`,
+      );
+    }
+
+    const callyCertificate = acm.Certificate.fromCertificateArn(
+      this,
+      "CallyCognitoCertificate",
+      callyCertificateArn,
+    );
+
+    const cognitoDomain = this.userPool.addDomain("CallyCustomDomain", {
+      customDomain: {
+        domainName: callyCognitoDomain,
+        certificate: callyCertificate,
       },
     });
 
@@ -257,6 +287,9 @@ export class CallyStack extends cdk.Stack {
       },
     );
 
+    // Ensure Google provider waits for the secret to be created
+    googleProvider.node.addDependency(appSecretResource);
+
     // ========================================
     // Cognito App Client
     // ========================================
@@ -274,6 +307,8 @@ export class CallyStack extends cdk.Stack {
         callbackUrls: [
           "http://localhost:3113/api/auth/google/callback",
           "https://proj-cally.vercel.app/api/auth/google/callback",
+          `https://${callyDomain}/api/auth/google/callback`,
+          `https://www.${callyDomain}/api/auth/google/callback`,
           // Mobile: Expo Go (simulator + physical device)
           "exp://localhost:8081",
           "exp://localhost:8081/--/",
@@ -284,6 +319,8 @@ export class CallyStack extends cdk.Stack {
         logoutUrls: [
           "http://localhost:3113",
           "https://proj-cally.vercel.app",
+          `https://${callyDomain}`,
+          `https://www.${callyDomain}`,
         ],
       },
       supportedIdentityProviders: [
@@ -303,7 +340,7 @@ export class CallyStack extends cdk.Stack {
     const emailBucket = s3.Bucket.fromBucketName(
       this,
       "EmailBucket",
-      "yoga-go-incoming-emails-710735877057",
+      `yoga-go-incoming-emails-${this.account}`,
     );
 
     // ========================================
@@ -312,13 +349,19 @@ export class CallyStack extends cdk.Stack {
     // yoga-go-emails: Shared email storage for SES Lambda compatibility
     // Import with stream ARN for notification stream Lambda
     // Stream ARN is specific to when the stream was enabled on the table
+    // Retrieve with: aws dynamodb describe-table --table-name yoga-go-emails --query 'Table.LatestStreamArn' --profile <profile>
+    const emailsStreamArn = this.node.tryGetContext("emailsStreamArn");
+    if (!emailsStreamArn) {
+      throw new Error(
+        "emailsStreamArn context is required. Deploy with: -c emailsStreamArn=<ARN>",
+      );
+    }
     const emailsTable = dynamodb.Table.fromTableAttributes(
       this,
       "EmailsTable",
       {
         tableName: "yoga-go-emails",
-        tableStreamArn:
-          "arn:aws:dynamodb:ap-southeast-2:710735877057:table/yoga-go-emails/stream/2026-01-03T11:07:43.856",
+        tableStreamArn: emailsStreamArn,
       },
     );
 
@@ -536,9 +579,15 @@ export class CallyStack extends cdk.Stack {
     });
 
     new cdk.CfnOutput(this, "CognitoDomain", {
-      value: `${cognitoDomain.domainName}.auth.${this.region}.amazoncognito.com`,
-      description: "Cally Cognito Hosted UI Domain",
+      value: callyCognitoDomain,
+      description: "Cally Cognito Custom Domain",
       exportName: "CallyCognitoDomain",
+    });
+
+    new cdk.CfnOutput(this, "CognitoCloudFrontDomain", {
+      value: cognitoDomain.cloudFrontEndpoint,
+      description: `Add CNAME record in Vercel: ${callyCognitoDomain} -> this value`,
+      exportName: "CallyCognitoCloudFrontDomain",
     });
 
     new cdk.CfnOutput(this, "CognitoRegion", {

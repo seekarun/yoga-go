@@ -1,0 +1,2517 @@
+{
+ "Description": "Yoga Go - Cognito, DynamoDB (hosted on Vercel)",
+ "Resources": {
+  "YogaGoUserPool95F58773": {
+   "Type": "AWS::Cognito::UserPool",
+   "Properties": {
+    "AccountRecoverySetting": {
+     "RecoveryMechanisms": [
+      {
+       "Name": "verified_email",
+       "Priority": 1
+      }
+     ]
+    },
+    "AdminCreateUserConfig": {
+     "AllowAdminCreateUserOnly": false
+    },
+    "AutoVerifiedAttributes": [
+     "email"
+    ],
+    "EmailConfiguration": {
+     "EmailSendingAccount": "DEVELOPER",
+     "From": "MyYoga.Guru <noreply@myyoga.guru>",
+     "SourceArn": "arn:aws:ses:us-west-2:710735877057:identity/myyoga.guru"
+    },
+    "EmailVerificationMessage": "Namaste! Please verify your email by entering this code: {####}",
+    "EmailVerificationSubject": "Verify your MyYoga.Guru account",
+    "EnabledMfas": [
+     "SOFTWARE_TOKEN_MFA"
+    ],
+    "MfaConfiguration": "OPTIONAL",
+    "Policies": {
+     "PasswordPolicy": {
+      "MinimumLength": 8,
+      "RequireLowercase": true,
+      "RequireNumbers": true,
+      "RequireSymbols": false,
+      "RequireUppercase": true
+     }
+    },
+    "Schema": [
+     {
+      "Mutable": true,
+      "Name": "email",
+      "Required": true
+     },
+     {
+      "Mutable": true,
+      "Name": "name",
+      "Required": false
+     }
+    ],
+    "SmsVerificationMessage": "The verification code to your new account is {####}",
+    "UserPoolName": "yoga-go-users",
+    "UsernameAttributes": [
+     "email"
+    ],
+    "VerificationMessageTemplate": {
+     "DefaultEmailOption": "CONFIRM_WITH_CODE",
+     "EmailMessage": "Namaste! Please verify your email by entering this code: {####}",
+     "EmailSubject": "Verify your MyYoga.Guru account",
+     "SmsMessage": "The verification code to your new account is {####}"
+    }
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/YogaGoUserPool/Resource"
+   }
+  },
+  "YogaGoUserPoolCognitoCustomDomain13F01EA2": {
+   "Type": "AWS::Cognito::UserPoolDomain",
+   "Properties": {
+    "CustomDomainConfig": {
+     "CertificateArn": "placeholder"
+    },
+    "Domain": "login.myyoga.guru",
+    "UserPoolId": {
+     "Ref": "YogaGoUserPool95F58773"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/YogaGoUserPool/CognitoCustomDomain/Resource"
+   }
+  },
+  "YogaGoUserPoolYogaGoWebClient42DC1CD0": {
+   "Type": "AWS::Cognito::UserPoolClient",
+   "Properties": {
+    "AllowedOAuthFlows": [
+     "code"
+    ],
+    "AllowedOAuthFlowsUserPoolClient": true,
+    "AllowedOAuthScopes": [
+     "email",
+     "openid",
+     "profile"
+    ],
+    "CallbackURLs": [
+     "http://localhost:3111/api/auth/callback/cognito",
+     "https://myyoga.guru/api/auth/callback/cognito",
+     "https://www.myyoga.guru/api/auth/callback/cognito",
+     "http://localhost:3111/api/auth/google/callback",
+     "https://myyoga.guru/api/auth/google/callback",
+     "https://www.myyoga.guru/api/auth/google/callback",
+     "http://localhost:3111/api/auth/facebook/callback",
+     "https://myyoga.guru/api/auth/facebook/callback",
+     "https://www.myyoga.guru/api/auth/facebook/callback"
+    ],
+    "ClientName": "yoga-go-web",
+    "ExplicitAuthFlows": [
+     "ALLOW_USER_PASSWORD_AUTH",
+     "ALLOW_USER_SRP_AUTH",
+     "ALLOW_REFRESH_TOKEN_AUTH"
+    ],
+    "GenerateSecret": true,
+    "LogoutURLs": [
+     "http://localhost:3111",
+     "https://myyoga.guru",
+     "https://www.myyoga.guru"
+    ],
+    "PreventUserExistenceErrors": "ENABLED",
+    "SupportedIdentityProviders": [
+     "COGNITO",
+     "Google",
+     "Facebook"
+    ],
+    "UserPoolId": {
+     "Ref": "YogaGoUserPool95F58773"
+    }
+   },
+   "DependsOn": [
+    "FacebookProvider55BEFC1B",
+    "GoogleProvider566D8493"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/YogaGoUserPool/YogaGoWebClient/Resource"
+   }
+  },
+  "AppSecretEnsureExists1A64EE93": {
+   "Type": "Custom::AWS",
+   "Properties": {
+    "ServiceToken": {
+     "Fn::GetAtt": [
+      "AWS679f53fac002430cb0da5b7982bd22872D164C4C",
+      "Arn"
+     ]
+    },
+    "Create": "{\"service\":\"SecretsManager\",\"action\":\"createSecret\",\"parameters\":{\"Name\":\"yoga-go/production\",\"SecretString\":\"{\\\"GOOGLE_CLIENT_ID\\\":\\\"<REPLACE_THIS>\\\",\\\"GOOGLE_CLIENT_SECRET\\\":\\\"<REPLACE_THIS>\\\",\\\"FACEBOOK_APP_ID\\\":\\\"<REPLACE_THIS>\\\",\\\"FACEBOOK_APP_SECRET\\\":\\\"<REPLACE_THIS>\\\",\\\"DEBOUNCE_API_KEY\\\":\\\"<REPLACE_THIS>\\\"}\",\"Description\":\"Auto-created by CDK with placeholder values. Update with real values: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, FACEBOOK_APP_ID, FACEBOOK_APP_SECRET, DEBOUNCE_API_KEY\"},\"physicalResourceId\":{\"id\":\"yoga-go/production\"},\"ignoreErrorCodesMatching\":\"ResourceExistsException\"}",
+    "InstallLatestAwsSdk": false
+   },
+   "DependsOn": [
+    "AppSecretEnsureExistsCustomResourcePolicyFED3A97B"
+   ],
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/AppSecretEnsureExists/Resource/Default"
+   }
+  },
+  "AppSecretEnsureExistsCustomResourcePolicyFED3A97B": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": "secretsmanager:CreateSecret",
+       "Effect": "Allow",
+       "Resource": "*"
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "AppSecretEnsureExistsCustomResourcePolicyFED3A97B",
+    "Roles": [
+     {
+      "Ref": "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/AppSecretEnsureExists/CustomResourcePolicy/Resource"
+   }
+  },
+  "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/AWS679f53fac002430cb0da5b7982bd2287/ServiceRole/Resource"
+   }
+  },
+  "AWS679f53fac002430cb0da5b7982bd22872D164C4C": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-710735877057-ap-southeast-2",
+     "S3Key": "bc8ef58951f4c88e641dd23090e9d2e2e61c7530a07960e767522941e959b625.zip"
+    },
+    "Handler": "index.handler",
+    "Role": {
+     "Fn::GetAtt": [
+      "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs22.x",
+    "Timeout": 120
+   },
+   "DependsOn": [
+    "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/AWS679f53fac002430cb0da5b7982bd2287/Resource",
+    "aws:asset:path": "asset.bc8ef58951f4c88e641dd23090e9d2e2e61c7530a07960e767522941e959b625",
+    "aws:asset:is-bundled": false,
+    "aws:asset:property": "Code"
+   }
+  },
+  "GoogleProvider566D8493": {
+   "Type": "AWS::Cognito::UserPoolIdentityProvider",
+   "Properties": {
+    "AttributeMapping": {
+     "email": "email",
+     "name": "name",
+     "picture": "picture"
+    },
+    "ProviderDetails": {
+     "client_id": "{{resolve:secretsmanager:arn:aws:secretsmanager:ap-southeast-2:710735877057:secret:yoga-go/production:SecretString:GOOGLE_CLIENT_ID::}}",
+     "client_secret": "{{resolve:secretsmanager:arn:aws:secretsmanager:ap-southeast-2:710735877057:secret:yoga-go/production:SecretString:GOOGLE_CLIENT_SECRET::}}",
+     "authorize_scopes": "email profile openid"
+    },
+    "ProviderName": "Google",
+    "ProviderType": "Google",
+    "UserPoolId": {
+     "Ref": "YogaGoUserPool95F58773"
+    }
+   },
+   "DependsOn": [
+    "AppSecretEnsureExistsCustomResourcePolicyFED3A97B",
+    "AppSecretEnsureExists1A64EE93"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/GoogleProvider/Resource"
+   }
+  },
+  "FacebookProvider55BEFC1B": {
+   "Type": "AWS::Cognito::UserPoolIdentityProvider",
+   "Properties": {
+    "AttributeMapping": {
+     "email": "email",
+     "name": "name"
+    },
+    "ProviderDetails": {
+     "client_id": "{{resolve:secretsmanager:arn:aws:secretsmanager:ap-southeast-2:710735877057:secret:yoga-go/production:SecretString:FACEBOOK_APP_ID::}}",
+     "client_secret": "{{resolve:secretsmanager:arn:aws:secretsmanager:ap-southeast-2:710735877057:secret:yoga-go/production:SecretString:FACEBOOK_APP_SECRET::}}",
+     "authorize_scopes": "email,public_profile"
+    },
+    "ProviderName": "Facebook",
+    "ProviderType": "Facebook",
+    "UserPoolId": {
+     "Ref": "YogaGoUserPool95F58773"
+    }
+   },
+   "DependsOn": [
+    "AppSecretEnsureExistsCustomResourcePolicyFED3A97B",
+    "AppSecretEnsureExists1A64EE93"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/FacebookProvider/Resource"
+   }
+  },
+  "EmailIdentity7187767D": {
+   "Type": "AWS::SES::EmailIdentity",
+   "Properties": {
+    "EmailIdentity": "myyoga.guru",
+    "MailFromAttributes": {
+     "MailFromDomain": "mail.myyoga.guru"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/EmailIdentity/Resource"
+   }
+  },
+  "SesConfigSetECAFDFF8": {
+   "Type": "AWS::SES::ConfigurationSet",
+   "Properties": {
+    "Name": "yoga-go-emails",
+    "ReputationOptions": {
+     "ReputationMetricsEnabled": true
+    },
+    "SendingOptions": {
+     "SendingEnabled": true
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/SesConfigSet/Resource"
+   }
+  },
+  "SesConfigSetCloudWatchDestinationE0C2300F": {
+   "Type": "AWS::SES::ConfigurationSetEventDestination",
+   "Properties": {
+    "ConfigurationSetName": {
+     "Ref": "SesConfigSetECAFDFF8"
+    },
+    "EventDestination": {
+     "CloudWatchDestination": {
+      "DimensionConfigurations": [
+       {
+        "DefaultDimensionValue": "transactional",
+        "DimensionName": "EmailType",
+        "DimensionValueSource": "messageTag"
+       }
+      ]
+     },
+     "Enabled": true,
+     "MatchingEventTypes": [
+      "send",
+      "delivery",
+      "bounce",
+      "complaint",
+      "reject",
+      "open",
+      "click"
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/SesConfigSet/CloudWatchDestination/Resource"
+   }
+  },
+  "SesConfigSetBounceNotificationDestination59D75406": {
+   "Type": "AWS::SES::ConfigurationSetEventDestination",
+   "Properties": {
+    "ConfigurationSetName": {
+     "Ref": "SesConfigSetECAFDFF8"
+    },
+    "EventDestination": {
+     "Enabled": true,
+     "MatchingEventTypes": [
+      "bounce",
+      "complaint"
+     ],
+     "SnsDestination": {
+      "TopicARN": {
+       "Ref": "SesBounceNotificationTopic0C5D5AD9"
+      }
+     }
+    }
+   },
+   "DependsOn": [
+    "SesBounceNotificationTopicPolicy245EBA12"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/SesConfigSet/BounceNotificationDestination/Resource"
+   }
+  },
+  "WelcomeEmailTemplate": {
+   "Type": "AWS::SES::Template",
+   "Properties": {
+    "Template": {
+     "HtmlPart": "<!DOCTYPE html>\n<html><body style=\"font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;\">\n<h1 style=\"color: #6366f1;\">🧘 MyYoga.Guru</h1>\n<h2>Hi {{name}}!</h2>\n<p>Welcome to <strong>MyYoga.Guru</strong>!</p>\n<p>We're thrilled to have you join our community of yoga enthusiasts.</p>\n<div style=\"text-align: center; margin: 30px 0;\">\n<a href=\"https://www.myyoga.guru/app\" style=\"background-color: #6366f1; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px;\">Start Exploring</a>\n</div>\n<p><strong>Namaste,</strong><br>The MyYoga.Guru Team</p>\n</body></html>",
+     "SubjectPart": "Welcome to MyYoga.Guru! 🧘",
+     "TemplateName": "yoga-go-welcome",
+     "TextPart": "Hi {{name}},\n\nWelcome to MyYoga.Guru!\n\nWe're thrilled to have you join our community of yoga enthusiasts.\n\nNamaste,\nThe MyYoga.Guru Team"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/WelcomeEmailTemplate"
+   }
+  },
+  "InvoiceEmailTemplate": {
+   "Type": "AWS::SES::Template",
+   "Properties": {
+    "Template": {
+     "HtmlPart": "<!DOCTYPE html>\n<html><body style=\"font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;\">\n<h1 style=\"color: #6366f1;\">🧘 MyYoga.Guru - Payment Confirmation</h1>\n<p>Hi <strong>{{customerName}}</strong>,</p>\n<p>Thank you for your purchase!</p>\n<div style=\"background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;\">\n<p><strong>Order ID:</strong> {{orderId}}</p>\n<p><strong>Amount:</strong> {{currency}} {{amount}}</p>\n<p><strong>Status:</strong> <span style=\"color: #16a34a;\">PAID</span></p>\n</div>\n<p><strong>Namaste,</strong><br>The MyYoga.Guru Team</p>\n</body></html>",
+     "SubjectPart": "Payment Confirmation - Order #{{orderId}} 🧘",
+     "TemplateName": "yoga-go-invoice",
+     "TextPart": "Hi {{customerName}},\n\nThank you for your purchase!\n\nOrder ID: {{orderId}}\nAmount: {{currency}} {{amount}}\nStatus: PAID\n\nNamaste,\nThe MyYoga.Guru Team"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/InvoiceEmailTemplate"
+   }
+  },
+  "CoreTable97EB8292": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "PK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "SK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "GSI1PK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "GSI1SK",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "GlobalSecondaryIndexes": [
+     {
+      "IndexName": "GSI1",
+      "KeySchema": [
+       {
+        "AttributeName": "GSI1PK",
+        "KeyType": "HASH"
+       },
+       {
+        "AttributeName": "GSI1SK",
+        "KeyType": "RANGE"
+       }
+      ],
+      "Projection": {
+       "ProjectionType": "ALL"
+      }
+     }
+    ],
+    "KeySchema": [
+     {
+      "AttributeName": "PK",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "SK",
+      "KeyType": "RANGE"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": false
+    },
+    "StreamSpecification": {
+     "StreamViewType": "NEW_IMAGE"
+    },
+    "TableName": "yoga-go-core"
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/CoreTable/Resource"
+   }
+  },
+  "UsersTable9725E9C8": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "PK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "SK",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+     {
+      "AttributeName": "PK",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "SK",
+      "KeyType": "RANGE"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": false
+    },
+    "StreamSpecification": {
+     "StreamViewType": "NEW_IMAGE"
+    },
+    "TableName": "yoga-go-users"
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/UsersTable/Resource"
+   }
+  },
+  "UserWelcomeStreamLambdaServiceRole8623F1EF": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/UserWelcomeStreamLambda/ServiceRole/Resource"
+   }
+  },
+  "UserWelcomeStreamLambdaServiceRoleDefaultPolicy1DE0AECE": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:DescribeTable",
+        "dynamodb:GetItem",
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator",
+        "dynamodb:Query",
+        "dynamodb:Scan"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "CoreTable97EB8292",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::GetAtt": [
+          "UsersTable9725E9C8",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "CoreTable97EB8292",
+             "Arn"
+            ]
+           },
+           "/index/*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "ses:SendEmail",
+        "ses:SendRawEmail",
+        "ses:SendTemplatedEmail"
+       ],
+       "Condition": {
+        "StringLike": {
+         "ses:FromAddress": "*@myyoga.guru"
+        }
+       },
+       "Effect": "Allow",
+       "Resource": "*"
+      },
+      {
+       "Action": "dynamodb:ListStreams",
+       "Effect": "Allow",
+       "Resource": "*"
+      },
+      {
+       "Action": [
+        "dynamodb:DescribeStream",
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "CoreTable97EB8292",
+          "StreamArn"
+         ]
+        },
+        {
+         "Fn::GetAtt": [
+          "UsersTable9725E9C8",
+          "StreamArn"
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:BatchWriteItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "AnalyticsTable3F84C304",
+         "Arn"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "UserWelcomeStreamLambdaServiceRoleDefaultPolicy1DE0AECE",
+    "Roles": [
+     {
+      "Ref": "UserWelcomeStreamLambdaServiceRole8623F1EF"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/UserWelcomeStreamLambda/ServiceRole/DefaultPolicy/Resource"
+   }
+  },
+  "UserWelcomeStreamLambda6E3D36D0": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-710735877057-ap-southeast-2",
+     "S3Key": "56a4a5c820dad095418e510133b5f471c7d11c064b02edff8b234e65836d3a4b.zip"
+    },
+    "Environment": {
+     "Variables": {
+      "DYNAMODB_TABLE": {
+       "Ref": "CoreTable97EB8292"
+      },
+      "USERS_TABLE": {
+       "Ref": "UsersTable9725E9C8"
+      },
+      "ANALYTICS_TABLE": "yoga-go-analytics",
+      "SES_FROM_EMAIL": "hi@myyoga.guru",
+      "APP_DOMAIN": "myyoga.guru",
+      "SES_CONFIG_SET": "yoga-go-emails-west"
+     }
+    },
+    "FunctionName": "yoga-go-user-welcome-stream",
+    "Handler": "index.handler",
+    "MemorySize": 256,
+    "Role": {
+     "Fn::GetAtt": [
+      "UserWelcomeStreamLambdaServiceRole8623F1EF",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs22.x",
+    "Timeout": 30
+   },
+   "DependsOn": [
+    "UserWelcomeStreamLambdaServiceRoleDefaultPolicy1DE0AECE",
+    "UserWelcomeStreamLambdaServiceRole8623F1EF"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/UserWelcomeStreamLambda/Resource",
+    "aws:asset:path": "asset.56a4a5c820dad095418e510133b5f471c7d11c064b02edff8b234e65836d3a4b",
+    "aws:asset:is-bundled": true,
+    "aws:asset:property": "Code"
+   }
+  },
+  "UserWelcomeStreamLambdaDynamoDBEventSourceYogaGoStackUsersTableC1D5F3C6F9E0601A": {
+   "Type": "AWS::Lambda::EventSourceMapping",
+   "Properties": {
+    "BatchSize": 10,
+    "EventSourceArn": {
+     "Fn::GetAtt": [
+      "UsersTable9725E9C8",
+      "StreamArn"
+     ]
+    },
+    "FilterCriteria": {
+     "Filters": [
+      {
+       "Pattern": "{\"eventName\":[\"INSERT\"],\"dynamodb\":{\"Keys\":{\"SK\":{\"S\":[\"PROFILE\"]}}}}"
+      }
+     ]
+    },
+    "FunctionName": {
+     "Ref": "UserWelcomeStreamLambda6E3D36D0"
+    },
+    "MaximumRetryAttempts": 2,
+    "StartingPosition": "LATEST"
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/UserWelcomeStreamLambda/DynamoDBEventSource:YogaGoStackUsersTableC1D5F3C6/Resource"
+   }
+  },
+  "UserWelcomeStreamLambdaDynamoDBEventSourceYogaGoStackCoreTable27E5B5701248E301": {
+   "Type": "AWS::Lambda::EventSourceMapping",
+   "Properties": {
+    "BatchSize": 10,
+    "EventSourceArn": {
+     "Fn::GetAtt": [
+      "CoreTable97EB8292",
+      "StreamArn"
+     ]
+    },
+    "FilterCriteria": {
+     "Filters": [
+      {
+       "Pattern": "{\"eventName\":[\"INSERT\"],\"dynamodb\":{\"NewImage\":{\"entityType\":{\"S\":[\"TENANT\"]}}}}"
+      }
+     ]
+    },
+    "FunctionName": {
+     "Ref": "UserWelcomeStreamLambda6E3D36D0"
+    },
+    "MaximumRetryAttempts": 2,
+    "StartingPosition": "LATEST"
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/UserWelcomeStreamLambda/DynamoDBEventSource:YogaGoStackCoreTable27E5B570/Resource"
+   }
+  },
+  "SurveyResponseValidatorLambdaServiceRole708E34ED": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "DependsOn": [
+    "AppSecretEnsureExistsCustomResourcePolicyFED3A97B",
+    "AppSecretEnsureExists1A64EE93"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/SurveyResponseValidatorLambda/ServiceRole/Resource"
+   }
+  },
+  "SurveyResponseValidatorLambdaServiceRoleDefaultPolicy0637C14C": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable",
+        "dynamodb:GetItem",
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator",
+        "dynamodb:PutItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:UpdateItem"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "CoreTable97EB8292",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "CoreTable97EB8292",
+             "Arn"
+            ]
+           },
+           "/index/*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "ses:SendEmail",
+        "ses:SendRawEmail"
+       ],
+       "Condition": {
+        "StringLike": {
+         "ses:FromAddress": "*@myyoga.guru"
+        }
+       },
+       "Effect": "Allow",
+       "Resource": "*"
+      },
+      {
+       "Action": "dynamodb:ListStreams",
+       "Effect": "Allow",
+       "Resource": "*"
+      },
+      {
+       "Action": [
+        "dynamodb:DescribeStream",
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "CoreTable97EB8292",
+         "StreamArn"
+        ]
+       }
+      },
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:DescribeTable",
+        "dynamodb:GetItem",
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator",
+        "dynamodb:Query",
+        "dynamodb:Scan"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "EmailsTableF5BA4582",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "EmailsTableF5BA4582",
+             "Arn"
+            ]
+           },
+           "/index/*"
+          ]
+         ]
+        }
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "SurveyResponseValidatorLambdaServiceRoleDefaultPolicy0637C14C",
+    "Roles": [
+     {
+      "Ref": "SurveyResponseValidatorLambdaServiceRole708E34ED"
+     }
+    ]
+   },
+   "DependsOn": [
+    "AppSecretEnsureExistsCustomResourcePolicyFED3A97B",
+    "AppSecretEnsureExists1A64EE93"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/SurveyResponseValidatorLambda/ServiceRole/DefaultPolicy/Resource"
+   }
+  },
+  "SurveyResponseValidatorLambdaCF325B31": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-710735877057-ap-southeast-2",
+     "S3Key": "714b457a6a96fcea891c2e82ce4d71adf8f460684ffec8065a58b079982404b6.zip"
+    },
+    "Environment": {
+     "Variables": {
+      "DYNAMODB_TABLE": {
+       "Ref": "CoreTable97EB8292"
+      },
+      "EMAILS_TABLE": "yoga-go-emails",
+      "SES_FROM_EMAIL": "verify@myyoga.guru",
+      "SES_CONFIG_SET": "yoga-go-emails-west",
+      "DEBOUNCE_API_KEY": "{{resolve:secretsmanager:arn:aws:secretsmanager:ap-southeast-2:710735877057:secret:yoga-go/production:SecretString:DEBOUNCE_API_KEY::}}"
+     }
+    },
+    "FunctionName": "yoga-go-survey-response-validator",
+    "Handler": "index.handler",
+    "MemorySize": 256,
+    "Role": {
+     "Fn::GetAtt": [
+      "SurveyResponseValidatorLambdaServiceRole708E34ED",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs22.x",
+    "Timeout": 30
+   },
+   "DependsOn": [
+    "AppSecretEnsureExistsCustomResourcePolicyFED3A97B",
+    "AppSecretEnsureExists1A64EE93",
+    "SurveyResponseValidatorLambdaServiceRoleDefaultPolicy0637C14C",
+    "SurveyResponseValidatorLambdaServiceRole708E34ED"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/SurveyResponseValidatorLambda/Resource",
+    "aws:asset:path": "asset.714b457a6a96fcea891c2e82ce4d71adf8f460684ffec8065a58b079982404b6",
+    "aws:asset:is-bundled": true,
+    "aws:asset:property": "Code"
+   }
+  },
+  "SurveyResponseValidatorLambdaDynamoDBEventSourceYogaGoStackCoreTable27E5B570E5E3272F": {
+   "Type": "AWS::Lambda::EventSourceMapping",
+   "Properties": {
+    "BatchSize": 10,
+    "EventSourceArn": {
+     "Fn::GetAtt": [
+      "CoreTable97EB8292",
+      "StreamArn"
+     ]
+    },
+    "FilterCriteria": {
+     "Filters": [
+      {
+       "Pattern": "{\"eventName\":[\"INSERT\"],\"dynamodb\":{\"Keys\":{\"SK\":{\"S\":[{\"prefix\":\"SURVEYRESP#\"}]}}}}"
+      }
+     ]
+    },
+    "FunctionName": {
+     "Ref": "SurveyResponseValidatorLambdaCF325B31"
+    },
+    "MaximumRetryAttempts": 2,
+    "StartingPosition": "LATEST"
+   },
+   "DependsOn": [
+    "AppSecretEnsureExistsCustomResourcePolicyFED3A97B",
+    "AppSecretEnsureExists1A64EE93"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/SurveyResponseValidatorLambda/DynamoDBEventSource:YogaGoStackCoreTable27E5B570/Resource"
+   }
+  },
+  "SesBounceNotificationTopic0C5D5AD9": {
+   "Type": "AWS::SNS::Topic",
+   "Properties": {
+    "DisplayName": "SES Bounce Notifications",
+    "TopicName": "yoga-go-ses-bounce-notifications"
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/SesBounceNotificationTopic/Resource"
+   }
+  },
+  "SesBounceNotificationTopicPolicy245EBA12": {
+   "Type": "AWS::SNS::TopicPolicy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sns:Publish",
+       "Condition": {
+        "StringEquals": {
+         "AWS:SourceAccount": "710735877057",
+         "AWS:SourceArn": {
+          "Fn::Join": [
+           "",
+           [
+            "arn:",
+            {
+             "Ref": "AWS::Partition"
+            },
+            ":ses:ap-southeast-2:710735877057:configuration-set/",
+            {
+             "Ref": "SesConfigSetECAFDFF8"
+            }
+           ]
+          ]
+         }
+        }
+       },
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "ses.amazonaws.com"
+       },
+       "Resource": {
+        "Ref": "SesBounceNotificationTopic0C5D5AD9"
+       },
+       "Sid": "0"
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Topics": [
+     {
+      "Ref": "SesBounceNotificationTopic0C5D5AD9"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/SesBounceNotificationTopic/Policy/Resource"
+   }
+  },
+  "SesBounceHandlerLambdaServiceRoleDB84AFED": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/SesBounceHandlerLambda/ServiceRole/Resource"
+   }
+  },
+  "SesBounceHandlerLambdaServiceRoleDefaultPolicy937DA493": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable",
+        "dynamodb:GetItem",
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator",
+        "dynamodb:PutItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:UpdateItem"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "CoreTable97EB8292",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::GetAtt": [
+          "EmailsTableF5BA4582",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "CoreTable97EB8292",
+             "Arn"
+            ]
+           },
+           "/index/*"
+          ]
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "EmailsTableF5BA4582",
+             "Arn"
+            ]
+           },
+           "/index/*"
+          ]
+         ]
+        }
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "SesBounceHandlerLambdaServiceRoleDefaultPolicy937DA493",
+    "Roles": [
+     {
+      "Ref": "SesBounceHandlerLambdaServiceRoleDB84AFED"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/SesBounceHandlerLambda/ServiceRole/DefaultPolicy/Resource"
+   }
+  },
+  "SesBounceHandlerLambdaECFA103D": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-710735877057-ap-southeast-2",
+     "S3Key": "e725cbdcf4b34db3aafe87994a408247d34343cafa850bf214e58b5da38cd9f1.zip"
+    },
+    "Environment": {
+     "Variables": {
+      "DYNAMODB_TABLE": {
+       "Ref": "CoreTable97EB8292"
+      },
+      "EMAILS_TABLE": "yoga-go-emails"
+     }
+    },
+    "FunctionName": "yoga-go-ses-bounce-handler",
+    "Handler": "index.handler",
+    "MemorySize": 256,
+    "Role": {
+     "Fn::GetAtt": [
+      "SesBounceHandlerLambdaServiceRoleDB84AFED",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs22.x",
+    "Timeout": 30
+   },
+   "DependsOn": [
+    "SesBounceHandlerLambdaServiceRoleDefaultPolicy937DA493",
+    "SesBounceHandlerLambdaServiceRoleDB84AFED"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/SesBounceHandlerLambda/Resource",
+    "aws:asset:path": "asset.e725cbdcf4b34db3aafe87994a408247d34343cafa850bf214e58b5da38cd9f1",
+    "aws:asset:is-bundled": true,
+    "aws:asset:property": "Code"
+   }
+  },
+  "SesBounceHandlerLambdaAllowInvokeYogaGoStackSesBounceNotificationTopic13D30990801ED685": {
+   "Type": "AWS::Lambda::Permission",
+   "Properties": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "Fn::GetAtt": [
+      "SesBounceHandlerLambdaECFA103D",
+      "Arn"
+     ]
+    },
+    "Principal": "sns.amazonaws.com",
+    "SourceArn": {
+     "Ref": "SesBounceNotificationTopic0C5D5AD9"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/SesBounceHandlerLambda/AllowInvoke:YogaGoStackSesBounceNotificationTopic13D30990"
+   }
+  },
+  "SesBounceHandlerLambdaSesBounceNotificationTopicAF4E8E70": {
+   "Type": "AWS::SNS::Subscription",
+   "Properties": {
+    "Endpoint": {
+     "Fn::GetAtt": [
+      "SesBounceHandlerLambdaECFA103D",
+      "Arn"
+     ]
+    },
+    "Protocol": "lambda",
+    "TopicArn": {
+     "Ref": "SesBounceNotificationTopic0C5D5AD9"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/SesBounceHandlerLambda/SesBounceNotificationTopic/Resource"
+   }
+  },
+  "OrdersTable315BB997": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "PK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "SK",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+     {
+      "AttributeName": "PK",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "SK",
+      "KeyType": "RANGE"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": false
+    },
+    "TableName": "yoga-go-orders"
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/OrdersTable/Resource"
+   }
+  },
+  "AnalyticsTable3F84C304": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "PK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "SK",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+     {
+      "AttributeName": "PK",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "SK",
+      "KeyType": "RANGE"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": false
+    },
+    "TableName": "yoga-go-analytics"
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/AnalyticsTable/Resource"
+   }
+  },
+  "DiscussionsTable250DB3EA": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "PK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "SK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "GSI1PK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "GSI1SK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "GSI2PK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "GSI2SK",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "GlobalSecondaryIndexes": [
+     {
+      "IndexName": "GSI1",
+      "KeySchema": [
+       {
+        "AttributeName": "GSI1PK",
+        "KeyType": "HASH"
+       },
+       {
+        "AttributeName": "GSI1SK",
+        "KeyType": "RANGE"
+       }
+      ],
+      "Projection": {
+       "ProjectionType": "ALL"
+      }
+     },
+     {
+      "IndexName": "GSI2",
+      "KeySchema": [
+       {
+        "AttributeName": "GSI2PK",
+        "KeyType": "HASH"
+       },
+       {
+        "AttributeName": "GSI2SK",
+        "KeyType": "RANGE"
+       }
+      ],
+      "Projection": {
+       "ProjectionType": "ALL"
+      }
+     }
+    ],
+    "KeySchema": [
+     {
+      "AttributeName": "PK",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "SK",
+      "KeyType": "RANGE"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": false
+    },
+    "StreamSpecification": {
+     "StreamViewType": "NEW_IMAGE"
+    },
+    "TableName": "yoga-go-discussions",
+    "TimeToLiveSpecification": {
+     "AttributeName": "ttl",
+     "Enabled": true
+    }
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/DiscussionsTable/Resource"
+   }
+  },
+  "BlogTable4F8B6C55": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "PK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "SK",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "KeySchema": [
+     {
+      "AttributeName": "PK",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "SK",
+      "KeyType": "RANGE"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": false
+    },
+    "TableName": "yoga-go-blog"
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/BlogTable/Resource"
+   }
+  },
+  "AssetsTableB17E4AB4": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "PK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "SK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "GSI1PK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "GSI1SK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "GSI2PK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "GSI2SK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "GSI3PK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "GSI3SK",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "GlobalSecondaryIndexes": [
+     {
+      "IndexName": "GSI1",
+      "KeySchema": [
+       {
+        "AttributeName": "GSI1PK",
+        "KeyType": "HASH"
+       },
+       {
+        "AttributeName": "GSI1SK",
+        "KeyType": "RANGE"
+       }
+      ],
+      "Projection": {
+       "ProjectionType": "ALL"
+      }
+     },
+     {
+      "IndexName": "GSI2",
+      "KeySchema": [
+       {
+        "AttributeName": "GSI2PK",
+        "KeyType": "HASH"
+       },
+       {
+        "AttributeName": "GSI2SK",
+        "KeyType": "RANGE"
+       }
+      ],
+      "Projection": {
+       "ProjectionType": "ALL"
+      }
+     },
+     {
+      "IndexName": "GSI3",
+      "KeySchema": [
+       {
+        "AttributeName": "GSI3PK",
+        "KeyType": "HASH"
+       },
+       {
+        "AttributeName": "GSI3SK",
+        "KeyType": "RANGE"
+       }
+      ],
+      "Projection": {
+       "ProjectionType": "ALL"
+      }
+     }
+    ],
+    "KeySchema": [
+     {
+      "AttributeName": "PK",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "SK",
+      "KeyType": "RANGE"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": false
+    },
+    "TableName": "yoga-go-assets"
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/AssetsTable/Resource"
+   }
+  },
+  "BoostTable75343769": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "PK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "SK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "GSI1PK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "GSI1SK",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "GlobalSecondaryIndexes": [
+     {
+      "IndexName": "GSI1",
+      "KeySchema": [
+       {
+        "AttributeName": "GSI1PK",
+        "KeyType": "HASH"
+       },
+       {
+        "AttributeName": "GSI1SK",
+        "KeyType": "RANGE"
+       }
+      ],
+      "Projection": {
+       "ProjectionType": "ALL"
+      }
+     }
+    ],
+    "KeySchema": [
+     {
+      "AttributeName": "PK",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "SK",
+      "KeyType": "RANGE"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": false
+    },
+    "TableName": "yoga-go-boost"
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/BoostTable/Resource"
+   }
+  },
+  "EmailsTableF5BA4582": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "PK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "SK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "GSI1PK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "GSI1SK",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "GlobalSecondaryIndexes": [
+     {
+      "IndexName": "GSI1",
+      "KeySchema": [
+       {
+        "AttributeName": "GSI1PK",
+        "KeyType": "HASH"
+       },
+       {
+        "AttributeName": "GSI1SK",
+        "KeyType": "RANGE"
+       }
+      ],
+      "Projection": {
+       "ProjectionType": "ALL"
+      }
+     }
+    ],
+    "KeySchema": [
+     {
+      "AttributeName": "PK",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "SK",
+      "KeyType": "RANGE"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": false
+    },
+    "StreamSpecification": {
+     "StreamViewType": "NEW_IMAGE"
+    },
+    "TableName": "yoga-go-emails",
+    "TimeToLiveSpecification": {
+     "AttributeName": "ttl",
+     "Enabled": true
+    }
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/EmailsTable/Resource"
+   }
+  },
+  "NotificationStreamLambdaServiceRole41FD97D8": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/NotificationStreamLambda/ServiceRole/Resource"
+   }
+  },
+  "NotificationStreamLambdaServiceRoleDefaultPolicy70229643": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable",
+        "dynamodb:GetItem",
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator",
+        "dynamodb:PutItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:UpdateItem"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "DiscussionsTable250DB3EA",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "DiscussionsTable250DB3EA",
+             "Arn"
+            ]
+           },
+           "/index/*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:DescribeTable",
+        "dynamodb:GetItem",
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator",
+        "dynamodb:Query",
+        "dynamodb:Scan"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "EmailsTableF5BA4582",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "EmailsTableF5BA4582",
+             "Arn"
+            ]
+           },
+           "/index/*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "secretsmanager:DescribeSecret",
+        "secretsmanager:GetSecretValue"
+       ],
+       "Effect": "Allow",
+       "Resource": "arn:aws:secretsmanager:ap-southeast-2:710735877057:secret:yoga-go/production-??????"
+      },
+      {
+       "Action": "dynamodb:ListStreams",
+       "Effect": "Allow",
+       "Resource": "*"
+      },
+      {
+       "Action": [
+        "dynamodb:DescribeStream",
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "DiscussionsTable250DB3EA",
+          "StreamArn"
+         ]
+        },
+        {
+         "Fn::GetAtt": [
+          "EmailsTableF5BA4582",
+          "StreamArn"
+         ]
+        }
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "NotificationStreamLambdaServiceRoleDefaultPolicy70229643",
+    "Roles": [
+     {
+      "Ref": "NotificationStreamLambdaServiceRole41FD97D8"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/NotificationStreamLambda/ServiceRole/DefaultPolicy/Resource"
+   }
+  },
+  "NotificationStreamLambdaA4B4CCD5": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-710735877057-ap-southeast-2",
+     "S3Key": "73681810e46aac1125e238e60872eddde528dab9b7f7f6c41778508964d00077.zip"
+    },
+    "Environment": {
+     "Variables": {
+      "DYNAMODB_TABLE": {
+       "Ref": "DiscussionsTable250DB3EA"
+      },
+      "EMAILS_TABLE": {
+       "Ref": "EmailsTableF5BA4582"
+      },
+      "APP_DOMAIN": "myyoga.guru"
+     }
+    },
+    "FunctionName": "yoga-go-notification-stream",
+    "Handler": "index.handler",
+    "MemorySize": 256,
+    "Role": {
+     "Fn::GetAtt": [
+      "NotificationStreamLambdaServiceRole41FD97D8",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs22.x",
+    "Timeout": 30
+   },
+   "DependsOn": [
+    "NotificationStreamLambdaServiceRoleDefaultPolicy70229643",
+    "NotificationStreamLambdaServiceRole41FD97D8"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/NotificationStreamLambda/Resource",
+    "aws:asset:path": "asset.73681810e46aac1125e238e60872eddde528dab9b7f7f6c41778508964d00077",
+    "aws:asset:is-bundled": true,
+    "aws:asset:property": "Code"
+   }
+  },
+  "NotificationStreamLambdaDynamoDBEventSourceYogaGoStackEmailsTableC516AC4CA7F2A738": {
+   "Type": "AWS::Lambda::EventSourceMapping",
+   "Properties": {
+    "BatchSize": 10,
+    "EventSourceArn": {
+     "Fn::GetAtt": [
+      "EmailsTableF5BA4582",
+      "StreamArn"
+     ]
+    },
+    "FilterCriteria": {
+     "Filters": [
+      {
+       "Pattern": "{\"eventName\":[\"INSERT\"],\"dynamodb\":{\"NewImage\":{\"isOutgoing\":{\"BOOL\":[false]}}}}"
+      },
+      {
+       "Pattern": "{\"eventName\":[\"INSERT\"],\"dynamodb\":{\"NewImage\":{\"isOutgoing\":[{\"exists\":false}]}}}"
+      }
+     ]
+    },
+    "FunctionName": {
+     "Ref": "NotificationStreamLambdaA4B4CCD5"
+    },
+    "MaximumRetryAttempts": 2,
+    "StartingPosition": "LATEST"
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/NotificationStreamLambda/DynamoDBEventSource:YogaGoStackEmailsTableC516AC4C/Resource"
+   }
+  },
+  "NotificationStreamLambdaDynamoDBEventSourceYogaGoStackDiscussionsTable81D6C5BDDD3779CA": {
+   "Type": "AWS::Lambda::EventSourceMapping",
+   "Properties": {
+    "BatchSize": 10,
+    "EventSourceArn": {
+     "Fn::GetAtt": [
+      "DiscussionsTable250DB3EA",
+      "StreamArn"
+     ]
+    },
+    "FilterCriteria": {
+     "Filters": [
+      {
+       "Pattern": "{\"eventName\":[\"INSERT\"],\"dynamodb\":{\"NewImage\":{\"entityType\":{\"S\":[\"FORUM_THREAD\"]}}}}"
+      },
+      {
+       "Pattern": "{\"eventName\":[\"INSERT\"],\"dynamodb\":{\"NewImage\":{\"entityType\":{\"S\":[\"FORUM_REPLY\"]}}}}"
+      }
+     ]
+    },
+    "FunctionName": {
+     "Ref": "NotificationStreamLambdaA4B4CCD5"
+    },
+    "MaximumRetryAttempts": 2,
+    "StartingPosition": "LATEST"
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/NotificationStreamLambda/DynamoDBEventSource:YogaGoStackDiscussionsTable81D6C5BD/Resource"
+   }
+  },
+  "RecordingProcessorDLQ70C748FC": {
+   "Type": "AWS::SQS::Queue",
+   "Properties": {
+    "MessageRetentionPeriod": 1209600,
+    "QueueName": "yoga-go-recording-processor-dlq"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/RecordingProcessorDLQ/Resource"
+   }
+  },
+  "RecordingProcessorQueueF58ADC25": {
+   "Type": "AWS::SQS::Queue",
+   "Properties": {
+    "QueueName": "yoga-go-recording-processor",
+    "ReceiveMessageWaitTimeSeconds": 20,
+    "RedrivePolicy": {
+     "deadLetterTargetArn": {
+      "Fn::GetAtt": [
+       "RecordingProcessorDLQ70C748FC",
+       "Arn"
+      ]
+     },
+     "maxReceiveCount": 3
+    },
+    "VisibilityTimeout": 900
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/RecordingProcessorQueue/Resource"
+   }
+  },
+  "RecordingProcessorLambdaServiceRole6E77B2F6": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/RecordingProcessorLambda/ServiceRole/Resource"
+   }
+  },
+  "RecordingProcessorLambdaServiceRoleDefaultPolicy0D5699AC": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable",
+        "dynamodb:GetItem",
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator",
+        "dynamodb:PutItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:UpdateItem"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "CoreTable97EB8292",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "CoreTable97EB8292",
+             "Arn"
+            ]
+           },
+           "/index/*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "secretsmanager:DescribeSecret",
+        "secretsmanager:GetSecretValue"
+       ],
+       "Effect": "Allow",
+       "Resource": "arn:aws:secretsmanager:ap-southeast-2:710735877057:secret:yoga-go/production-??????"
+      },
+      {
+       "Action": [
+        "sqs:ChangeMessageVisibility",
+        "sqs:DeleteMessage",
+        "sqs:GetQueueAttributes",
+        "sqs:GetQueueUrl",
+        "sqs:ReceiveMessage"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "RecordingProcessorQueueF58ADC25",
+         "Arn"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "RecordingProcessorLambdaServiceRoleDefaultPolicy0D5699AC",
+    "Roles": [
+     {
+      "Ref": "RecordingProcessorLambdaServiceRole6E77B2F6"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/RecordingProcessorLambda/ServiceRole/DefaultPolicy/Resource"
+   }
+  },
+  "RecordingProcessorLambda52D97285": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-710735877057-ap-southeast-2",
+     "S3Key": "e79b4901acdb96b1f3ebf80064ecc08cf51197db79feaf17143c924ac05cb8bc.zip"
+    },
+    "Environment": {
+     "Variables": {
+      "DYNAMODB_TABLE": {
+       "Ref": "CoreTable97EB8292"
+      },
+      "AWS_DYNAMODB_REGION": "ap-southeast-2"
+     }
+    },
+    "FunctionName": "yoga-go-recording-processor",
+    "Handler": "index.handler",
+    "MemorySize": 1024,
+    "Role": {
+     "Fn::GetAtt": [
+      "RecordingProcessorLambdaServiceRole6E77B2F6",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs22.x",
+    "Timeout": 900
+   },
+   "DependsOn": [
+    "RecordingProcessorLambdaServiceRoleDefaultPolicy0D5699AC",
+    "RecordingProcessorLambdaServiceRole6E77B2F6"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/RecordingProcessorLambda/Resource",
+    "aws:asset:path": "asset.e79b4901acdb96b1f3ebf80064ecc08cf51197db79feaf17143c924ac05cb8bc",
+    "aws:asset:is-bundled": true,
+    "aws:asset:property": "Code"
+   }
+  },
+  "RecordingProcessorLambdaSqsEventSourceYogaGoStackRecordingProcessorQueueFECB4F1FBE3A2FC8": {
+   "Type": "AWS::Lambda::EventSourceMapping",
+   "Properties": {
+    "BatchSize": 1,
+    "EventSourceArn": {
+     "Fn::GetAtt": [
+      "RecordingProcessorQueueF58ADC25",
+      "Arn"
+     ]
+    },
+    "FunctionName": {
+     "Ref": "RecordingProcessorLambda52D97285"
+    },
+    "ScalingConfig": {
+     "MaximumConcurrency": 5
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/RecordingProcessorLambda/SqsEventSource:YogaGoStackRecordingProcessorQueueFECB4F1F/Resource"
+   }
+  },
+  "VercelUserC1EB28D7": {
+   "Type": "AWS::IAM::User",
+   "Properties": {
+    "ManagedPolicyArns": [
+     {
+      "Ref": "VercelPolicy7DDA1F5D"
+     }
+    ],
+    "UserName": "yoga-go-vercel"
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/VercelUser/Resource"
+   }
+  },
+  "VercelPolicy7DDA1F5D": {
+   "Type": "AWS::IAM::ManagedPolicy",
+   "Properties": {
+    "Description": "",
+    "ManagedPolicyName": "yoga-go-vercel-policy",
+    "Path": "/",
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:UpdateItem"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        "arn:aws:dynamodb:ap-southeast-2:710735877057:table/yoga-go-analytics",
+        "arn:aws:dynamodb:ap-southeast-2:710735877057:table/yoga-go-analytics/index/*",
+        "arn:aws:dynamodb:ap-southeast-2:710735877057:table/yoga-go-orders",
+        "arn:aws:dynamodb:ap-southeast-2:710735877057:table/yoga-go-orders/index/*",
+        {
+         "Fn::GetAtt": [
+          "AssetsTableB17E4AB4",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::GetAtt": [
+          "BlogTable4F8B6C55",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::GetAtt": [
+          "BoostTable75343769",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::GetAtt": [
+          "CoreTable97EB8292",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::GetAtt": [
+          "DiscussionsTable250DB3EA",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::GetAtt": [
+          "EmailsTableF5BA4582",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::GetAtt": [
+          "UsersTable9725E9C8",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "AssetsTableB17E4AB4",
+             "Arn"
+            ]
+           },
+           "/index/*"
+          ]
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "BlogTable4F8B6C55",
+             "Arn"
+            ]
+           },
+           "/index/*"
+          ]
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "BoostTable75343769",
+             "Arn"
+            ]
+           },
+           "/index/*"
+          ]
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "CoreTable97EB8292",
+             "Arn"
+            ]
+           },
+           "/index/*"
+          ]
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "DiscussionsTable250DB3EA",
+             "Arn"
+            ]
+           },
+           "/index/*"
+          ]
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "EmailsTableF5BA4582",
+             "Arn"
+            ]
+           },
+           "/index/*"
+          ]
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "UsersTable9725E9C8",
+             "Arn"
+            ]
+           },
+           "/index/*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "ses:SendEmail",
+        "ses:SendRawEmail",
+        "ses:SendTemplatedEmail"
+       ],
+       "Condition": {
+        "StringLike": {
+         "ses:FromAddress": "*@myyoga.guru"
+        }
+       },
+       "Effect": "Allow",
+       "Resource": "*"
+      },
+      {
+       "Action": [
+        "ses:CreateEmailIdentity",
+        "ses:DeleteEmailIdentity",
+        "ses:GetEmailIdentity"
+       ],
+       "Effect": "Allow",
+       "Resource": "*"
+      },
+      {
+       "Action": [
+        "cognito-idp:AdminGetUser",
+        "cognito-idp:DescribeUserPool",
+        "cognito-idp:DescribeUserPoolClient",
+        "cognito-idp:GetUser"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "YogaGoUserPool95F58773",
+         "Arn"
+        ]
+       }
+      },
+      {
+       "Action": "sqs:SendMessage",
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "RecordingProcessorQueueF58ADC25",
+         "Arn"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/VercelPolicy/Resource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/41R227iQAz9lr4Ps13oD7T0oj60ZQn7jJyJiQyJnY1nQCjKv68ykJDSXakv43OObY2PPbXT2U97ewMHnbhsNykotU3iwe0MHHTdOMmZvNjmt2K9ECnMfMMD7sGjlEA8Tp2Vns4LQvbjgrPS09cM2ZM/LmrZU4b1i0he4LjhuuK/rc/gMBXZtaaAMs3ANglxXqAXfg7sPAmbAcw3F/Fpj+wTCbXDN6gq4rxL/1tdYF2SKgm3hqC0zUIKcseYOqGlnOaPsZu1N2PegCHH7NLxSWiNztagil7tfReMzuxDcDv0D6BoFNU2TyXQYDxO+VkQ3lAeauh8JRgX/1W7EqLRR1RPDP1uvlOzwrIqwGNrsiNDKVlqmxWkJ/cR9JdYs2S4Vfsew7B3ZbXNSipysSOC+F42NKZJSNXVVPX/j3lr9I/a5lfAEL+PoG3NEjVesNM+gq+CNy6ol3JdnzNq7w86j9ql+IpueMDxMomHnDhvTefLbvXHfnpnZ/b2ZqtEkzqwpxLt8hT/AjU1MrNqAwAA"
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoStack/CDKMetadata/Default"
+   }
+  }
+ },
+ "Outputs": {
+  "CognitoCloudFrontDomain": {
+   "Description": "Add CNAME record in Vercel: login.myyoga.guru -> this value",
+   "Value": {
+    "Fn::GetAtt": [
+     "YogaGoUserPoolCognitoCustomDomain13F01EA2",
+     "CloudFrontDistribution"
+    ]
+   },
+   "Export": {
+    "Name": "YogaGoCognitoCloudFrontDomain"
+   }
+  },
+  "RecordingQueueUrl": {
+   "Description": "SQS Queue URL for recording processor",
+   "Value": {
+    "Ref": "RecordingProcessorQueueF58ADC25"
+   },
+   "Export": {
+    "Name": "YogaGoRecordingQueueUrl"
+   }
+  },
+  "VercelUserArn": {
+   "Description": "IAM User ARN for Vercel - create access keys in AWS Console",
+   "Value": {
+    "Fn::GetAtt": [
+     "VercelUserC1EB28D7",
+     "Arn"
+    ]
+   },
+   "Export": {
+    "Name": "YogaGoVercelUserArn"
+   }
+  },
+  "UserPoolId": {
+   "Description": "Cognito User Pool ID",
+   "Value": {
+    "Ref": "YogaGoUserPool95F58773"
+   },
+   "Export": {
+    "Name": "YogaGoUserPoolId"
+   }
+  },
+  "UserPoolClientId": {
+   "Description": "Cognito App Client ID",
+   "Value": {
+    "Ref": "YogaGoUserPoolYogaGoWebClient42DC1CD0"
+   },
+   "Export": {
+    "Name": "YogaGoUserPoolClientId"
+   }
+  },
+  "CognitoDomain": {
+   "Description": "Cognito Hosted UI Domain",
+   "Value": {
+    "Ref": "YogaGoUserPoolCognitoCustomDomain13F01EA2"
+   },
+   "Export": {
+    "Name": "YogaGoCognitoDomain"
+   }
+  },
+  "DynamoDBCoreTableName": {
+   "Description": "DynamoDB Core Table Name",
+   "Value": {
+    "Ref": "CoreTable97EB8292"
+   },
+   "Export": {
+    "Name": "YogaGoDynamoDBCoreTableName"
+   }
+  },
+  "SESConfigSetName": {
+   "Description": "SES Configuration Set Name",
+   "Value": {
+    "Ref": "SesConfigSetECAFDFF8"
+   },
+   "Export": {
+    "Name": "YogaGoSESConfigSetName"
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

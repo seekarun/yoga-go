@@ -509,6 +509,7 @@ export default function AppleTemplate(props: HeroTemplateProps) {
           style={{
             ...heroStyle,
             ...(isEditing && toolbar.sectionSelected ? selectedOutline : {}),
+            ...(isEditing && toolbar.anySelected ? { zIndex: 10 } : {}),
           }}
           onClick={toolbar.handleSectionClick}
         >

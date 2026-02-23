@@ -23,6 +23,7 @@ import type {
   GalleryImage,
   ProductsConfig,
   SectionOrderItem,
+  SectionStyleOverrides,
   SEOConfig,
 } from "@/types/landing-page";
 import {
@@ -97,6 +98,18 @@ export default function SimpleLandingPageEditor({
   // Products bg image editor state
   const [showProductsBgImageEditor, setShowProductsBgImageEditor] =
     useState(false);
+
+  // Section bg image editor states
+  const [showFeaturesBgImageEditor, setShowFeaturesBgImageEditor] =
+    useState(false);
+  const [showTestimonialsBgImageEditor, setShowTestimonialsBgImageEditor] =
+    useState(false);
+  const [showFAQBgImageEditor, setShowFAQBgImageEditor] = useState(false);
+  const [showLocationBgImageEditor, setShowLocationBgImageEditor] =
+    useState(false);
+  const [showGalleryBgImageEditor, setShowGalleryBgImageEditor] =
+    useState(false);
+  const [showFooterBgImageEditor, setShowFooterBgImageEditor] = useState(false);
 
   // Gallery image editor state
   const [showGalleryImageEditor, setShowGalleryImageEditor] = useState(false);
@@ -1116,6 +1129,190 @@ export default function SimpleLandingPageEditor({
             bgImage: data.imageUrl || undefined,
           },
         } as ProductsConfig,
+      }));
+      setIsDirty(true);
+    },
+    [],
+  );
+
+  // --- Section style override handlers (Features, Testimonials, FAQ, Location, Gallery, Footer) ---
+  const handleFeaturesStyleOverrideChange = useCallback(
+    (overrides: SectionStyleOverrides) => {
+      setConfig((prev) => ({
+        ...prev,
+        features: {
+          ...prev.features,
+          styleOverrides: overrides,
+        } as FeaturesConfig,
+      }));
+      setIsDirty(true);
+    },
+    [],
+  );
+
+  const handleFeaturesBgImageChange = useCallback(
+    (data: { imageUrl: string }) => {
+      setConfig((prev) => ({
+        ...prev,
+        features: {
+          ...prev.features,
+          styleOverrides: {
+            ...prev.features?.styleOverrides,
+            bgImage: data.imageUrl || undefined,
+          },
+        } as FeaturesConfig,
+      }));
+      setIsDirty(true);
+    },
+    [],
+  );
+
+  const handleTestimonialsStyleOverrideChange = useCallback(
+    (overrides: SectionStyleOverrides) => {
+      setConfig((prev) => ({
+        ...prev,
+        testimonials: {
+          ...prev.testimonials,
+          styleOverrides: overrides,
+        } as TestimonialsConfig,
+      }));
+      setIsDirty(true);
+    },
+    [],
+  );
+
+  const handleTestimonialsBgImageChange = useCallback(
+    (data: { imageUrl: string }) => {
+      setConfig((prev) => ({
+        ...prev,
+        testimonials: {
+          ...prev.testimonials,
+          styleOverrides: {
+            ...prev.testimonials?.styleOverrides,
+            bgImage: data.imageUrl || undefined,
+          },
+        } as TestimonialsConfig,
+      }));
+      setIsDirty(true);
+    },
+    [],
+  );
+
+  const handleFAQStyleOverrideChange = useCallback(
+    (overrides: SectionStyleOverrides) => {
+      setConfig((prev) => ({
+        ...prev,
+        faq: {
+          ...prev.faq,
+          styleOverrides: overrides,
+        } as FAQConfig,
+      }));
+      setIsDirty(true);
+    },
+    [],
+  );
+
+  const handleFAQBgImageChange = useCallback((data: { imageUrl: string }) => {
+    setConfig((prev) => ({
+      ...prev,
+      faq: {
+        ...prev.faq,
+        styleOverrides: {
+          ...prev.faq?.styleOverrides,
+          bgImage: data.imageUrl || undefined,
+        },
+      } as FAQConfig,
+    }));
+    setIsDirty(true);
+  }, []);
+
+  const handleLocationStyleOverrideChange = useCallback(
+    (overrides: SectionStyleOverrides) => {
+      setConfig((prev) => ({
+        ...prev,
+        location: {
+          ...prev.location,
+          styleOverrides: overrides,
+        } as LocationConfig,
+      }));
+      setIsDirty(true);
+    },
+    [],
+  );
+
+  const handleLocationBgImageChange = useCallback(
+    (data: { imageUrl: string }) => {
+      setConfig((prev) => ({
+        ...prev,
+        location: {
+          ...prev.location,
+          styleOverrides: {
+            ...prev.location?.styleOverrides,
+            bgImage: data.imageUrl || undefined,
+          },
+        } as LocationConfig,
+      }));
+      setIsDirty(true);
+    },
+    [],
+  );
+
+  const handleGalleryStyleOverrideChange = useCallback(
+    (overrides: SectionStyleOverrides) => {
+      setConfig((prev) => ({
+        ...prev,
+        gallery: {
+          ...prev.gallery,
+          styleOverrides: overrides,
+        } as GalleryConfig,
+      }));
+      setIsDirty(true);
+    },
+    [],
+  );
+
+  const handleGalleryBgImageChange = useCallback(
+    (data: { imageUrl: string }) => {
+      setConfig((prev) => ({
+        ...prev,
+        gallery: {
+          ...prev.gallery,
+          styleOverrides: {
+            ...prev.gallery?.styleOverrides,
+            bgImage: data.imageUrl || undefined,
+          },
+        } as GalleryConfig,
+      }));
+      setIsDirty(true);
+    },
+    [],
+  );
+
+  const handleFooterStyleOverrideChange = useCallback(
+    (overrides: SectionStyleOverrides) => {
+      setConfig((prev) => ({
+        ...prev,
+        footer: {
+          ...prev.footer,
+          styleOverrides: overrides,
+        } as FooterConfig,
+      }));
+      setIsDirty(true);
+    },
+    [],
+  );
+
+  const handleFooterBgImageChange = useCallback(
+    (data: { imageUrl: string }) => {
+      setConfig((prev) => ({
+        ...prev,
+        footer: {
+          ...prev.footer,
+          styleOverrides: {
+            ...prev.footer?.styleOverrides,
+            bgImage: data.imageUrl || undefined,
+          },
+        } as FooterConfig,
       }));
       setIsDirty(true);
     },
@@ -2685,17 +2882,45 @@ export default function SimpleLandingPageEditor({
                   onProductsBgImageClick={() =>
                     setShowProductsBgImageEditor(true)
                   }
+                  onFeaturesStyleOverrideChange={
+                    handleFeaturesStyleOverrideChange
+                  }
+                  onFeaturesBgImageClick={() =>
+                    setShowFeaturesBgImageEditor(true)
+                  }
+                  onTestimonialsStyleOverrideChange={
+                    handleTestimonialsStyleOverrideChange
+                  }
+                  onTestimonialsBgImageClick={() =>
+                    setShowTestimonialsBgImageEditor(true)
+                  }
+                  onFAQStyleOverrideChange={handleFAQStyleOverrideChange}
+                  onFAQBgImageClick={() => setShowFAQBgImageEditor(true)}
                   address={editorAddress}
                   onLocationHeadingChange={handleLocationHeadingChange}
                   onLocationSubheadingChange={handleLocationSubheadingChange}
+                  onLocationStyleOverrideChange={
+                    handleLocationStyleOverrideChange
+                  }
+                  onLocationBgImageClick={() =>
+                    setShowLocationBgImageEditor(true)
+                  }
                   onGalleryHeadingChange={handleGalleryHeadingChange}
                   onGallerySubheadingChange={handleGallerySubheadingChange}
                   onGalleryAddImage={handleGalleryAddImage}
                   onGalleryRemoveImage={handleGalleryRemoveImage}
+                  onGalleryStyleOverrideChange={
+                    handleGalleryStyleOverrideChange
+                  }
+                  onGalleryBgImageClick={() =>
+                    setShowGalleryBgImageEditor(true)
+                  }
                   onFooterTextChange={handleFooterTextChange}
                   onFooterLinkChange={handleFooterLinkChange}
                   onAddFooterLink={handleAddFooterLink}
                   onRemoveFooterLink={handleRemoveFooterLink}
+                  onFooterStyleOverrideChange={handleFooterStyleOverrideChange}
+                  onFooterBgImageClick={() => setShowFooterBgImageEditor(true)}
                 />
               </LandingPageThemeProvider>
             </div>
@@ -2773,6 +2998,78 @@ export default function SimpleLandingPageEditor({
         onSave={handleProductsBgImageChange}
         currentImage={config.productsConfig?.styleOverrides?.bgImage}
         title="Edit Products Background Image"
+        aspectRatio="16/9"
+        defaultSearchQuery="abstract background texture"
+        uploadEndpoint="/api/data/app/tenant/landing-page/upload"
+      />
+
+      {/* Features Background Image Editor Overlay */}
+      <ImageEditorOverlay
+        isOpen={showFeaturesBgImageEditor}
+        onClose={() => setShowFeaturesBgImageEditor(false)}
+        onSave={handleFeaturesBgImageChange}
+        currentImage={config.features?.styleOverrides?.bgImage}
+        title="Edit Features Background Image"
+        aspectRatio="16/9"
+        defaultSearchQuery="abstract background texture"
+        uploadEndpoint="/api/data/app/tenant/landing-page/upload"
+      />
+
+      {/* Testimonials Background Image Editor Overlay */}
+      <ImageEditorOverlay
+        isOpen={showTestimonialsBgImageEditor}
+        onClose={() => setShowTestimonialsBgImageEditor(false)}
+        onSave={handleTestimonialsBgImageChange}
+        currentImage={config.testimonials?.styleOverrides?.bgImage}
+        title="Edit Testimonials Background Image"
+        aspectRatio="16/9"
+        defaultSearchQuery="abstract background texture"
+        uploadEndpoint="/api/data/app/tenant/landing-page/upload"
+      />
+
+      {/* FAQ Background Image Editor Overlay */}
+      <ImageEditorOverlay
+        isOpen={showFAQBgImageEditor}
+        onClose={() => setShowFAQBgImageEditor(false)}
+        onSave={handleFAQBgImageChange}
+        currentImage={config.faq?.styleOverrides?.bgImage}
+        title="Edit FAQ Background Image"
+        aspectRatio="16/9"
+        defaultSearchQuery="abstract background texture"
+        uploadEndpoint="/api/data/app/tenant/landing-page/upload"
+      />
+
+      {/* Location Background Image Editor Overlay */}
+      <ImageEditorOverlay
+        isOpen={showLocationBgImageEditor}
+        onClose={() => setShowLocationBgImageEditor(false)}
+        onSave={handleLocationBgImageChange}
+        currentImage={config.location?.styleOverrides?.bgImage}
+        title="Edit Location Background Image"
+        aspectRatio="16/9"
+        defaultSearchQuery="abstract background texture"
+        uploadEndpoint="/api/data/app/tenant/landing-page/upload"
+      />
+
+      {/* Gallery Background Image Editor Overlay */}
+      <ImageEditorOverlay
+        isOpen={showGalleryBgImageEditor}
+        onClose={() => setShowGalleryBgImageEditor(false)}
+        onSave={handleGalleryBgImageChange}
+        currentImage={config.gallery?.styleOverrides?.bgImage}
+        title="Edit Gallery Background Image"
+        aspectRatio="16/9"
+        defaultSearchQuery="abstract background texture"
+        uploadEndpoint="/api/data/app/tenant/landing-page/upload"
+      />
+
+      {/* Footer Background Image Editor Overlay */}
+      <ImageEditorOverlay
+        isOpen={showFooterBgImageEditor}
+        onClose={() => setShowFooterBgImageEditor(false)}
+        onSave={handleFooterBgImageChange}
+        currentImage={config.footer?.styleOverrides?.bgImage}
+        title="Edit Footer Background Image"
         aspectRatio="16/9"
         defaultSearchQuery="abstract background texture"
         uploadEndpoint="/api/data/app/tenant/landing-page/upload"

@@ -39,7 +39,7 @@ export type RootStackParamList = {
   MainTabs: undefined;
   EventDetail: { event: CalendarItem };
   EmailDetail: { email: Email };
-  Compose: { mode: ComposeMode; email: Email };
+  Compose: { mode: ComposeMode; email?: Email };
   UserDetail: { userEmail: string; userName: string };
   ProductForm: { mode: "create" } | { mode: "edit"; product: Product };
 };

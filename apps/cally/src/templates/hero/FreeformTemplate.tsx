@@ -175,6 +175,7 @@ export default function FreeformTemplate(props: HeroTemplateProps) {
     onBgBlurChange,
     onBgOpacityChange,
     onBgFilterChange,
+    anySelected,
     bgDragActive,
     toggleBgDrag,
   } = useHeroToolbarState({
@@ -446,6 +447,7 @@ export default function FreeformTemplate(props: HeroTemplateProps) {
             overflow: isEditing ? "visible" : "hidden",
             color: "#ffffff",
             backgroundColor: h?.bgColor || undefined,
+            ...(isEditing && anySelected ? { zIndex: 10 } : {}),
           }}
           onClick={handleSectionBgClick}
         >

@@ -6,6 +6,7 @@ import { SesStack } from "../lib/ses-stack";
 import { CalelStack } from "../lib/calel-stack";
 import { CallyStack } from "../lib/cally-stack";
 import { CognitoCertStack } from "../lib/cognito-cert-stack";
+import { CallyCertStack } from "../lib/cally-cert-stack";
 
 const app = new cdk.App();
 
@@ -14,10 +15,21 @@ const account = process.env.CDK_DEFAULT_ACCOUNT;
 // ========================================
 // Domain Configuration
 // ========================================
-// Deploy with: npx cdk deploy -c domain=reelzai.com (for dev)
-// Default: myyoga.guru (prod)
+// Environments:
+//   Dev  (myg):      login.myyoga.guru, login.callygo.com
+//   Prod (myg-prod): secure.myyoga.guru, secure.callygo.com
+//
+// Override subdomain with: -c cognitoSubdomain=login
 const appDomain = app.node.tryGetContext("domain") || "myyoga.guru";
-const cognitoDomain = `signin.${appDomain}`;
+const cognitoSubdomain =
+  app.node.tryGetContext("cognitoSubdomain") || "secure";
+const cognitoDomain = `${cognitoSubdomain}.${appDomain}`;
+
+// Cally domain configuration
+const callyDomain = app.node.tryGetContext("callyDomain") || "callygo.com";
+const callySubdomain =
+  app.node.tryGetContext("callySubdomain") || "secure";
+const callyCognitoDomain = `${callySubdomain}.${callyDomain}`;
 
 const envSydney = {
   account,
@@ -75,6 +87,7 @@ new SesStack(app, "YogaGoSesStack", {
   coreTableName: "yoga-go-core",
   emailsTableArn: `arn:aws:dynamodb:ap-southeast-2:${account}:table/yoga-go-emails`,
   emailsTableName: "yoga-go-emails",
+  callyDomain,
 });
 
 // ========================================
@@ -105,7 +118,8 @@ new CalelStack(app, "CalelStack", {
 //    { "GOOGLE_CLIENT_ID": "<id>", "GOOGLE_CLIENT_SECRET": "<secret>" }
 //
 // Deployment:
-// npm run infra:deploy:cally
+// 1. Get the stream ARN: aws dynamodb describe-table --table-name yoga-go-emails --query 'Table.LatestStreamArn' --output text --profile myg-prod
+// 2. Deploy: npx cdk deploy CallyStack -c emailsStreamArn=<ARN> --profile myg-prod
 new CallyStack(app, "CallyStack", {
   description: "Cally - Landing pages, calendar, live sessions",
   env: envSydney,
@@ -114,6 +128,8 @@ new CallyStack(app, "CallyStack", {
     Environment: "production",
     ManagedBy: "CDK",
   },
+  callyDomain,
+  callyCognitoDomain,
 });
 
 // ========================================
@@ -127,8 +143,32 @@ new CallyStack(app, "CallyStack", {
 // 2. Add DNS validation CNAME to Vercel (check ACM console)
 // 3. Wait for certificate to show "Issued"
 // 4. Deploy YogaGoStack with: cdk deploy YogaGoStack -c cognitoCertificateArn=<ARN> -c domain=<domain>
-// 5. Add CNAME for signin.<domain> -> CloudFront domain (from YogaGoStack output)
-// 6. Update COGNITO_DOMAIN env var in Vercel to signin.<domain>
+// 5. Add CNAME for auth.<domain> -> CloudFront domain (from YogaGoStack output)
+// 6. Update COGNITO_DOMAIN env var in Vercel to auth.<domain>
+// ========================================
+// Cally Certificate Stack (us-east-1)
+// ========================================
+// Creates ACM certificate for Cally Cognito custom domain
+// Must be in us-east-1 as required by Cognito custom domains.
+//
+// Deployment steps:
+// 1. Deploy this stack: cdk deploy CallyCertStack -c callySubdomain=login
+// 2. Add DNS validation CNAME to Vercel (check ACM console)
+// 3. Wait for certificate to show "Issued"
+// 4. Deploy CallyStack with: cdk deploy CallyStack -c callyCertificateArn=<ARN> -c emailsStreamArn=<ARN>
+// 5. Add CNAME for login.callygo.com -> CloudFront domain (from CallyStack output)
+new CallyCertStack(app, "CallyCertStack", {
+  description: `Cally Certificate for ${callyCognitoDomain} (us-east-1)`,
+  env: envVirginia,
+  crossRegionReferences: true,
+  tags: {
+    Application: "Cally",
+    Environment: "production",
+    ManagedBy: "CDK",
+  },
+  domainName: callyCognitoDomain,
+});
+
 new CognitoCertStack(app, "CognitoCertStack", {
   description: `Cognito Certificate for ${cognitoDomain} (us-east-1)`,
   env: envVirginia,

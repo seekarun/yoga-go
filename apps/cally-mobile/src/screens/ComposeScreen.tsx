@@ -16,7 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../navigation/AppNavigator";
 import { useAuth } from "../contexts/AuthContext";
-import { replyToEmail } from "../services/email";
+import { replyToEmail, sendNewEmail } from "../services/email";
 import type { EmailAddress, ComposeMode } from "../services/email";
 import {
   colors,
@@ -35,6 +35,8 @@ function formatAddress(addr: EmailAddress): string {
 
 function getModeLabel(mode: ComposeMode): string {
   switch (mode) {
+    case "compose":
+      return "New Email";
     case "reply":
       return "Reply";
     case "reply-all":
@@ -46,6 +48,8 @@ function getModeLabel(mode: ComposeMode): string {
 
 function getModeIcon(mode: ComposeMode): keyof typeof Ionicons.glyphMap {
   switch (mode) {
+    case "compose":
+      return "create-outline";
     case "reply":
       return "arrow-undo-outline";
     case "reply-all":
@@ -58,10 +62,14 @@ function getModeIcon(mode: ComposeMode): keyof typeof Ionicons.glyphMap {
 export default function ComposeScreen({ navigation, route }: Props) {
   const { mode, email } = route.params;
   const { accessToken, refreshAccessToken } = useAuth();
+  const isNewCompose = mode === "compose";
 
   // Pre-fill recipients based on mode
   const initialTo = useMemo((): EmailAddress[] => {
+    if (!email) return [];
     switch (mode) {
+      case "compose":
+        return [];
       case "reply":
         return [email.from];
       case "reply-all":
@@ -69,30 +77,28 @@ export default function ComposeScreen({ navigation, route }: Props) {
       case "forward":
         return [];
     }
-  }, [mode, email.from]);
+  }, [mode, email]);
 
   const initialCc = useMemo((): EmailAddress[] => {
-    if (mode !== "reply-all") return [];
-    // CC = original To + CC, excluding the sender's own address
+    if (!email || mode !== "reply-all") return [];
     const all = [...(email.to || []), ...(email.cc || [])];
-    // We don't know our own email address here, so include all
     return all;
-  }, [mode, email.to, email.cc]);
+  }, [mode, email]);
 
   const initialSubject = useMemo((): string => {
+    if (!email) return "";
     const sub = email.subject || "";
     if (mode === "forward") {
       return sub.startsWith("Fwd: ") ? sub : `Fwd: ${sub}`;
     }
+    if (mode === "compose") return "";
     return sub.startsWith("Re: ") ? sub : `Re: ${sub}`;
-  }, [mode, email.subject]);
+  }, [mode, email]);
 
   const initialBody = useMemo((): string => {
-    if (mode === "forward") {
-      const header = `\n\n---------- Forwarded message ----------\nFrom: ${email.from.name || ""} <${email.from.email}>\nDate: ${new Date(email.receivedAt).toLocaleString()}\nSubject: ${email.subject}\nTo: ${email.to.map((t) => t.email).join(", ")}\n\n`;
-      return header + email.bodyText;
-    }
-    return "";
+    if (!email || mode !== "forward") return "";
+    const header = `\n\n---------- Forwarded message ----------\nFrom: ${email.from.name || ""} <${email.from.email}>\nDate: ${new Date(email.receivedAt).toLocaleString()}\nSubject: ${email.subject}\nTo: ${email.to.map((t) => t.email).join(", ")}\n\n`;
+    return header + email.bodyText;
   }, [mode, email]);
 
   const [toField, setToField] = useState(
@@ -101,8 +107,10 @@ export default function ComposeScreen({ navigation, route }: Props) {
   const [ccField, setCcField] = useState(
     initialCc.map(formatAddress).join(", "),
   );
+  const [bccField, setBccField] = useState("");
   const [showCc, setShowCc] = useState(initialCc.length > 0);
-  const [subject] = useState(initialSubject);
+  const [showBcc, setShowBcc] = useState(false);
+  const [subject, setSubject] = useState(initialSubject);
   const [body, setBody] = useState(mode === "forward" ? initialBody : "");
   const [isSending, setIsSending] = useState(false);
 
@@ -126,15 +134,26 @@ export default function ComposeScreen({ navigation, route }: Props) {
 
     const toAddresses = parseAddresses(toField);
     const ccAddresses = showCc ? parseAddresses(ccField) : undefined;
+    const bccAddresses = showBcc ? parseAddresses(bccField) : undefined;
 
-    // Validate
-    if (mode === "forward" && toAddresses.length === 0) {
+    // Validate recipients
+    if ((isNewCompose || mode === "forward") && toAddresses.length === 0) {
       Alert.alert("Missing recipient", "Please add at least one recipient.");
       return;
     }
 
     const messageText = mode === "forward" ? body : body.trim();
-    if (mode !== "forward" && messageText.length === 0) {
+
+    // Validate content
+    if (isNewCompose) {
+      if (messageText.length === 0 && !subject.trim()) {
+        Alert.alert(
+          "Empty email",
+          "Please add a subject or message before sending.",
+        );
+        return;
+      }
+    } else if (mode !== "forward" && messageText.length === 0) {
       Alert.alert("Empty message", "Please write a message before sending.");
       return;
     }
@@ -142,50 +161,94 @@ export default function ComposeScreen({ navigation, route }: Props) {
     setIsSending(true);
 
     try {
-      let response = await replyToEmail(
-        email.id,
-        {
-          text: messageText,
-          mode,
-          to:
-            mode === "forward" || mode === "reply-all"
-              ? toAddresses
-              : undefined,
-          cc: ccAddresses,
-        },
-        accessToken,
-      );
+      if (isNewCompose) {
+        // Send new email via compose endpoint
+        let response = await sendNewEmail(
+          {
+            to: toAddresses,
+            cc: ccAddresses,
+            bcc: bccAddresses,
+            subject: subject.trim(),
+            text: messageText,
+          },
+          accessToken,
+        );
 
-      // Handle token expiry
-      if (
-        !response.success &&
-        (response.error?.includes("expired") ||
-          response.error?.includes("authenticated"))
-      ) {
-        const newToken = await refreshAccessToken();
-        if (newToken) {
-          response = await replyToEmail(
-            email.id,
-            {
-              text: messageText,
-              mode,
-              to:
-                mode === "forward" || mode === "reply-all"
-                  ? toAddresses
-                  : undefined,
-              cc: ccAddresses,
-            },
-            newToken,
-          );
+        // Handle token expiry
+        if (
+          !response.success &&
+          (response.error?.includes("expired") ||
+            response.error?.includes("authenticated"))
+        ) {
+          const newToken = await refreshAccessToken();
+          if (newToken) {
+            response = await sendNewEmail(
+              {
+                to: toAddresses,
+                cc: ccAddresses,
+                bcc: bccAddresses,
+                subject: subject.trim(),
+                text: messageText,
+              },
+              newToken,
+            );
+          }
         }
-      }
 
-      if (response.success) {
-        Alert.alert("Sent", `${getModeLabel(mode)} sent successfully.`, [
-          { text: "OK", onPress: () => navigation.goBack() },
-        ]);
+        if (response.success) {
+          Alert.alert("Sent", "Email sent successfully.", [
+            { text: "OK", onPress: () => navigation.goBack() },
+          ]);
+        } else {
+          Alert.alert("Error", response.error || "Failed to send.");
+        }
       } else {
-        Alert.alert("Error", response.error || "Failed to send.");
+        // Reply / Reply-all / Forward via existing endpoint
+        let response = await replyToEmail(
+          email!.id,
+          {
+            text: messageText,
+            mode,
+            to:
+              mode === "forward" || mode === "reply-all"
+                ? toAddresses
+                : undefined,
+            cc: ccAddresses,
+          },
+          accessToken,
+        );
+
+        // Handle token expiry
+        if (
+          !response.success &&
+          (response.error?.includes("expired") ||
+            response.error?.includes("authenticated"))
+        ) {
+          const newToken = await refreshAccessToken();
+          if (newToken) {
+            response = await replyToEmail(
+              email!.id,
+              {
+                text: messageText,
+                mode,
+                to:
+                  mode === "forward" || mode === "reply-all"
+                    ? toAddresses
+                    : undefined,
+                cc: ccAddresses,
+              },
+              newToken,
+            );
+          }
+        }
+
+        if (response.success) {
+          Alert.alert("Sent", `${getModeLabel(mode)} sent successfully.`, [
+            { text: "OK", onPress: () => navigation.goBack() },
+          ]);
+        } else {
+          Alert.alert("Error", response.error || "Failed to send.");
+        }
       }
     } catch (err) {
       console.error("[DBG][ComposeScreen] Send error:", err);
@@ -197,12 +260,16 @@ export default function ComposeScreen({ navigation, route }: Props) {
     accessToken,
     refreshAccessToken,
     body,
+    bccField,
     ccField,
-    email.id,
+    email,
+    isNewCompose,
     mode,
     navigation,
     parseAddresses,
+    showBcc,
     showCc,
+    subject,
     toField,
   ]);
 
@@ -265,13 +332,23 @@ export default function ComposeScreen({ navigation, route }: Props) {
               placeholderTextColor={colors.textMuted}
               keyboardType="email-address"
               autoCapitalize="none"
-              editable={mode === "forward" || mode === "reply-all"}
+              editable={
+                isNewCompose || mode === "forward" || mode === "reply-all"
+              }
+              autoFocus={isNewCompose}
             />
-            {!showCc && (
-              <TouchableOpacity onPress={() => setShowCc(true)}>
-                <Text style={styles.ccToggle}>Cc</Text>
-              </TouchableOpacity>
-            )}
+            <View style={styles.ccBccToggles}>
+              {!showCc && (
+                <TouchableOpacity onPress={() => setShowCc(true)}>
+                  <Text style={styles.ccToggle}>Cc</Text>
+                </TouchableOpacity>
+              )}
+              {!showBcc && (
+                <TouchableOpacity onPress={() => setShowBcc(true)}>
+                  <Text style={styles.ccToggle}>Bcc</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
 
           <View style={styles.fieldDivider} />
@@ -295,12 +372,42 @@ export default function ComposeScreen({ navigation, route }: Props) {
             </>
           )}
 
-          {/* Subject (read-only for reply, editable context for reference) */}
+          {/* Bcc field */}
+          {showBcc && (
+            <>
+              <View style={styles.fieldRow}>
+                <Text style={styles.fieldLabel}>Bcc</Text>
+                <TextInput
+                  style={styles.fieldInput}
+                  value={bccField}
+                  onChangeText={setBccField}
+                  placeholder="Bcc recipients"
+                  placeholderTextColor={colors.textMuted}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+              <View style={styles.fieldDivider} />
+            </>
+          )}
+
+          {/* Subject */}
           <View style={styles.fieldRow}>
             <Text style={styles.fieldLabel}>Subject</Text>
-            <Text style={styles.subjectText} numberOfLines={1}>
-              {subject}
-            </Text>
+            {isNewCompose || mode === "forward" ? (
+              <TextInput
+                style={styles.fieldInput}
+                value={subject}
+                onChangeText={setSubject}
+                placeholder="Subject"
+                placeholderTextColor={colors.textMuted}
+                autoCapitalize="sentences"
+              />
+            ) : (
+              <Text style={styles.subjectText} numberOfLines={1}>
+                {subject}
+              </Text>
+            )}
           </View>
 
           <View style={styles.fieldDivider} />
@@ -314,11 +421,11 @@ export default function ComposeScreen({ navigation, route }: Props) {
             placeholderTextColor={colors.textMuted}
             multiline
             textAlignVertical="top"
-            autoFocus={mode !== "forward"}
+            autoFocus={!isNewCompose && mode !== "forward"}
           />
 
-          {/* Original message preview (for reply/reply-all) */}
-          {mode !== "forward" && (
+          {/* Original message preview (for reply/reply-all only) */}
+          {email && (mode === "reply" || mode === "reply-all") && (
             <View style={styles.originalSection}>
               <View style={styles.originalHeader}>
                 <View style={styles.originalDividerLine} />
@@ -418,6 +525,10 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     color: colors.textMain,
     paddingVertical: 0,
+  },
+  ccBccToggles: {
+    flexDirection: "row",
+    gap: spacing.xs,
   },
   ccToggle: {
     fontSize: fontSize.sm,

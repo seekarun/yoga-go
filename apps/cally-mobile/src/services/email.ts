@@ -124,7 +124,7 @@ export async function toggleEmailStar(
   return response.json();
 }
 
-export type ComposeMode = "reply" | "reply-all" | "forward";
+export type ComposeMode = "compose" | "reply" | "reply-all" | "forward";
 
 interface ReplyRequestBody {
   text: string;
@@ -159,6 +159,40 @@ export async function replyToEmail(
       body: JSON.stringify(body),
     },
   );
+
+  return response.json();
+}
+
+interface ComposeRequestBody {
+  to: EmailAddress[];
+  cc?: EmailAddress[];
+  bcc?: EmailAddress[];
+  subject: string;
+  text: string;
+}
+
+interface ComposeResponse {
+  success: boolean;
+  data?: Email;
+  message?: string;
+  error?: string;
+}
+
+/**
+ * Send a new email (compose from scratch)
+ */
+export async function sendNewEmail(
+  body: ComposeRequestBody,
+  accessToken: string,
+): Promise<ComposeResponse> {
+  const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.compose}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(body),
+  });
 
   return response.json();
 }

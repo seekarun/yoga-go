@@ -6,7 +6,7 @@ import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
 import * as nodejsLambda from "aws-cdk-lib/aws-lambda-nodejs";
-import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
+import { ensureSecret } from "./ensure-secret";
 import * as ses from "aws-cdk-lib/aws-ses";
 import * as sns from "aws-cdk-lib/aws-sns";
 import * as snsSubscriptions from "aws-cdk-lib/aws-sns-subscriptions";
@@ -51,7 +51,9 @@ export class YogaGoStack extends cdk.Stack {
     // Deploy with: npx cdk deploy -c domain=reelzai.com (for dev)
     const appDomain: string =
       this.node.tryGetContext("domain") || DEFAULT_DOMAIN;
-    const cognitoDomain = `signin.${appDomain}`;
+    const cognitoSubdomain =
+      this.node.tryGetContext("cognitoSubdomain") || "secure";
+    const cognitoDomain = `${cognitoSubdomain}.${appDomain}`;
     const appName = appDomain === "myyoga.guru" ? "MyYoga.Guru" : "ReelzAI";
 
     // ========================================
@@ -99,7 +101,7 @@ export class YogaGoStack extends cdk.Stack {
     // ========================================
     // Cognito Domain Configuration
     // ========================================
-    // Custom domain (signin.myyoga.guru) requires a certificate in us-east-1
+    // Custom domain (auth.myyoga.guru) requires a certificate in us-east-1
     //
     // For new deployments:
     // 1. Create certificate in ACM us-east-1 for signin.myyoga.guru
@@ -154,12 +156,19 @@ To get the certificate ARN:
     });
 
     // ========================================
-    // Secrets Manager
+    // Secrets Manager (auto-created if not exists)
     // ========================================
-    const appSecret = secretsmanager.Secret.fromSecretNameV2(
+    const { secret: appSecret, resource: appSecretResource } = ensureSecret(
       this,
       "AppSecret",
       "yoga-go/production",
+      [
+        "GOOGLE_CLIENT_ID",
+        "GOOGLE_CLIENT_SECRET",
+        "FACEBOOK_APP_ID",
+        "FACEBOOK_APP_SECRET",
+        "DEBOUNCE_API_KEY",
+      ],
     );
 
     // ========================================
@@ -242,6 +251,12 @@ To get the certificate ARN:
       ],
       preventUserExistenceErrors: true,
     });
+
+    // Ensure identity providers wait for the secret to be created.
+    // secretValueFromJson() creates CFN {{resolve:secretsmanager:...}} references
+    // that CloudFormation resolves at deploy time - the secret must exist first.
+    googleProvider.node.addDependency(appSecretResource);
+    facebookProvider.node.addDependency(appSecretResource);
 
     appClient.node.addDependency(googleProvider);
     appClient.node.addDependency(facebookProvider);
@@ -511,6 +526,9 @@ The MyYoga.Guru Team`,
         },
       },
     );
+
+    // Ensure Lambda waits for secret (uses secretValueFromJson in env vars)
+    surveyResponseValidatorLambda.node.addDependency(appSecretResource);
 
     // Grant DynamoDB read/write for querying responses and updating validation status
     coreTable.grantReadWriteData(surveyResponseValidatorLambda);

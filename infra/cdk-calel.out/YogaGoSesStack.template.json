@@ -1,0 +1,883 @@
+{
+ "Description": "Yoga Go SES - Email sending and receiving (us-west-2)",
+ "Resources": {
+  "EmailIdentity7187767D": {
+   "Type": "AWS::SES::EmailIdentity",
+   "Properties": {
+    "EmailIdentity": "myyoga.guru"
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoSesStack/EmailIdentity/Resource"
+   }
+  },
+  "CallyEmailIdentity9A499DC1": {
+   "Type": "AWS::SES::EmailIdentity",
+   "Properties": {
+    "EmailIdentity": "callygo.com"
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoSesStack/CallyEmailIdentity/Resource"
+   }
+  },
+  "SesConfigSetECAFDFF8": {
+   "Type": "AWS::SES::ConfigurationSet",
+   "Properties": {
+    "Name": "yoga-go-emails-west",
+    "ReputationOptions": {
+     "ReputationMetricsEnabled": true
+    },
+    "SendingOptions": {
+     "SendingEnabled": true
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoSesStack/SesConfigSet/Resource"
+   }
+  },
+  "SesConfigSetCloudWatchDestinationE0C2300F": {
+   "Type": "AWS::SES::ConfigurationSetEventDestination",
+   "Properties": {
+    "ConfigurationSetName": {
+     "Ref": "SesConfigSetECAFDFF8"
+    },
+    "EventDestination": {
+     "CloudWatchDestination": {
+      "DimensionConfigurations": [
+       {
+        "DefaultDimensionValue": "transactional",
+        "DimensionName": "EmailType",
+        "DimensionValueSource": "messageTag"
+       }
+      ]
+     },
+     "Enabled": true,
+     "MatchingEventTypes": [
+      "send",
+      "delivery",
+      "bounce",
+      "complaint",
+      "reject",
+      "open",
+      "click"
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoSesStack/SesConfigSet/CloudWatchDestination/Resource"
+   }
+  },
+  "WelcomeEmailTemplate": {
+   "Type": "AWS::SES::Template",
+   "Properties": {
+    "Template": {
+     "HtmlPart": "<!DOCTYPE html>\n<html><body style=\"font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;\">\n<h1 style=\"color: #6366f1;\">🧘 MyYoga.Guru</h1>\n<h2>Hi {{name}}!</h2>\n<p>Welcome to <strong>MyYoga.Guru</strong>!</p>\n<p>We're thrilled to have you join our community of yoga enthusiasts.</p>\n<div style=\"text-align: center; margin: 30px 0;\">\n<a href=\"https://www.myyoga.guru/app\" style=\"background-color: #6366f1; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px;\">Start Exploring</a>\n</div>\n<p><strong>Namaste,</strong><br>The MyYoga.Guru Team</p>\n</body></html>",
+     "SubjectPart": "Welcome to MyYoga.Guru! 🧘",
+     "TemplateName": "yoga-go-welcome",
+     "TextPart": "Hi {{name}},\n\nWelcome to MyYoga.Guru!\n\nWe're thrilled to have you join our community of yoga enthusiasts.\n\nNamaste,\nThe MyYoga.Guru Team"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoSesStack/WelcomeEmailTemplate"
+   }
+  },
+  "InvoiceEmailTemplate": {
+   "Type": "AWS::SES::Template",
+   "Properties": {
+    "Template": {
+     "HtmlPart": "<!DOCTYPE html>\n<html><body style=\"font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;\">\n<h1 style=\"color: #6366f1;\">🧘 MyYoga.Guru - Payment Confirmation</h1>\n<p>Hi <strong>{{customerName}}</strong>,</p>\n<p>Thank you for your purchase!</p>\n<div style=\"background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;\">\n<p><strong>Order ID:</strong> {{orderId}}</p>\n<p><strong>Amount:</strong> {{currency}} {{amount}}</p>\n<p><strong>Status:</strong> <span style=\"color: #16a34a;\">PAID</span></p>\n</div>\n<p><strong>Namaste,</strong><br>The MyYoga.Guru Team</p>\n</body></html>",
+     "SubjectPart": "Payment Confirmation - Order #{{orderId}} 🧘",
+     "TemplateName": "yoga-go-invoice",
+     "TextPart": "Hi {{customerName}},\n\nThank you for your purchase!\n\nOrder ID: {{orderId}}\nAmount: {{currency}} {{amount}}\nStatus: PAID\n\nNamaste,\nThe MyYoga.Guru Team"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoSesStack/InvoiceEmailTemplate"
+   }
+  },
+  "EmailBucket843A740F": {
+   "Type": "AWS::S3::Bucket",
+   "Properties": {
+    "BucketEncryption": {
+     "ServerSideEncryptionConfiguration": [
+      {
+       "ServerSideEncryptionByDefault": {
+        "SSEAlgorithm": "AES256"
+       }
+      }
+     ]
+    },
+    "BucketName": "yoga-go-incoming-emails-710735877057",
+    "CorsConfiguration": {
+     "CorsRules": [
+      {
+       "AllowedHeaders": [
+        "*"
+       ],
+       "AllowedMethods": [
+        "PUT"
+       ],
+       "AllowedOrigins": [
+        "http://localhost:3113",
+        "https://proj-cally.vercel.app",
+        "https://callygo.com",
+        "https://www.callygo.com"
+       ]
+      }
+     ]
+    },
+    "LifecycleConfiguration": {
+     "Rules": [
+      {
+       "ExpirationInDays": 1,
+       "Id": "DeleteIncomingAfterOneDay",
+       "Prefix": "incoming/",
+       "Status": "Enabled"
+      },
+      {
+       "ExpirationInDays": 90,
+       "Id": "DeleteParsedAfter90Days",
+       "Prefix": "parsed/",
+       "Status": "Enabled"
+      },
+      {
+       "ExpirationInDays": 30,
+       "Id": "DeleteReplyAttachmentsAfter30Days",
+       "Prefix": "reply-attachments/",
+       "Status": "Enabled"
+      }
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "aws-cdk:auto-delete-objects",
+      "Value": "true"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "YogaGoSesStack/EmailBucket/Resource"
+   }
+  },
+  "EmailBucketPolicyBBC68546": {
+   "Type": "AWS::S3::BucketPolicy",
+   "Properties": {
+    "Bucket": {
+     "Ref": "EmailBucket843A740F"
+    },
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "s3:DeleteObject*",
+        "s3:GetBucket*",
+        "s3:List*",
+        "s3:PutBucketPolicy"
+       ],
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": {
+         "Fn::GetAtt": [
+          "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092",
+          "Arn"
+         ]
+        }
+       },
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "EmailBucket843A740F",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "EmailBucket843A740F",
+             "Arn"
+            ]
+           },
+           "/*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": "s3:PutObject",
+       "Condition": {
+        "StringEquals": {
+         "AWS:SourceAccount": "710735877057"
+        }
+       },
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "ses.amazonaws.com"
+       },
+       "Resource": {
+        "Fn::Join": [
+         "",
+         [
+          {
+           "Fn::GetAtt": [
+            "EmailBucket843A740F",
+            "Arn"
+           ]
+          },
+          "/*"
+         ]
+        ]
+       }
+      },
+      {
+       "Action": "s3:PutObject",
+       "Condition": {
+        "StringEquals": {
+         "aws:SourceAccount": {
+          "Ref": "AWS::AccountId"
+         }
+        }
+       },
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "ses.amazonaws.com"
+       },
+       "Resource": {
+        "Fn::Join": [
+         "",
+         [
+          {
+           "Fn::GetAtt": [
+            "EmailBucket843A740F",
+            "Arn"
+           ]
+          },
+          "/incoming/*"
+         ]
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoSesStack/EmailBucket/Policy/Resource"
+   }
+  },
+  "EmailBucketAutoDeleteObjectsCustomResource49FE8D95": {
+   "Type": "Custom::S3AutoDeleteObjects",
+   "Properties": {
+    "ServiceToken": {
+     "Fn::GetAtt": [
+      "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F",
+      "Arn"
+     ]
+    },
+    "BucketName": {
+     "Ref": "EmailBucket843A740F"
+    }
+   },
+   "DependsOn": [
+    "EmailBucketPolicyBBC68546"
+   ],
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "YogaGoSesStack/EmailBucket/AutoDeleteObjectsCustomResource/Default"
+   }
+  },
+  "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoSesStack/Custom::S3AutoDeleteObjectsCustomResourceProvider/Role"
+   }
+  },
+  "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-710735877057-us-west-2",
+     "S3Key": "faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6.zip"
+    },
+    "Timeout": 900,
+    "MemorySize": 128,
+    "Handler": "index.handler",
+    "Role": {
+     "Fn::GetAtt": [
+      "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs22.x",
+    "Description": {
+     "Fn::Join": [
+      "",
+      [
+       "Lambda function for auto-deleting objects in ",
+       {
+        "Ref": "EmailBucket843A740F"
+       },
+       " S3 bucket."
+      ]
+     ]
+    }
+   },
+   "DependsOn": [
+    "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "YogaGoSesStack/Custom::S3AutoDeleteObjectsCustomResourceProvider/Handler",
+    "aws:asset:path": "asset.faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6",
+    "aws:asset:property": "Code"
+   }
+  },
+  "EmailForwarderLambdaServiceRoleADFA6A56": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoSesStack/EmailForwarderLambda/ServiceRole/Resource"
+   }
+  },
+  "EmailForwarderLambdaServiceRoleDefaultPolicy8355EF21": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "s3:Abort*",
+        "s3:DeleteObject*",
+        "s3:GetBucket*",
+        "s3:GetObject*",
+        "s3:List*",
+        "s3:PutObject",
+        "s3:PutObjectLegalHold",
+        "s3:PutObjectRetention",
+        "s3:PutObjectTagging",
+        "s3:PutObjectVersionTagging"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "EmailBucket843A740F",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "EmailBucket843A740F",
+             "Arn"
+            ]
+           },
+           "/*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:GetItem",
+        "dynamodb:Query"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        "arn:aws:dynamodb:ap-southeast-2:710735877057:table/yoga-go-core",
+        "arn:aws:dynamodb:ap-southeast-2:710735877057:table/yoga-go-core/index/*"
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:PutItem",
+        "dynamodb:Query",
+        "dynamodb:UpdateItem"
+       ],
+       "Effect": "Allow",
+       "Resource": "arn:aws:dynamodb:ap-southeast-2:710735877057:table/yoga-go-emails"
+      },
+      {
+       "Action": "ses:SendRawEmail",
+       "Effect": "Allow",
+       "Resource": "*"
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "EmailForwarderLambdaServiceRoleDefaultPolicy8355EF21",
+    "Roles": [
+     {
+      "Ref": "EmailForwarderLambdaServiceRoleADFA6A56"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoSesStack/EmailForwarderLambda/ServiceRole/DefaultPolicy/Resource"
+   }
+  },
+  "EmailForwarderLambda9E13D248": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-710735877057-us-west-2",
+     "S3Key": "bf18d6d0b4c956b3deb0040926601998559df09db7fcb12614ec935d4dd3b9c5.zip"
+    },
+    "Environment": {
+     "Variables": {
+      "DYNAMODB_TABLE": "yoga-go-core",
+      "EMAILS_TABLE": "yoga-go-emails",
+      "EMAIL_BUCKET": {
+       "Ref": "EmailBucket843A740F"
+      },
+      "DEFAULT_FROM_EMAIL": "hi@myyoga.guru",
+      "APP_DOMAIN": "myyoga.guru",
+      "PLATFORM_ADMIN_EMAILS": "hi@arun.au"
+     }
+    },
+    "FunctionName": "yoga-go-email-forwarder",
+    "Handler": "index.handler",
+    "MemorySize": 256,
+    "Role": {
+     "Fn::GetAtt": [
+      "EmailForwarderLambdaServiceRoleADFA6A56",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs22.x",
+    "Timeout": 30
+   },
+   "DependsOn": [
+    "EmailForwarderLambdaServiceRoleDefaultPolicy8355EF21",
+    "EmailForwarderLambdaServiceRoleADFA6A56"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "YogaGoSesStack/EmailForwarderLambda/Resource",
+    "aws:asset:path": "asset.bf18d6d0b4c956b3deb0040926601998559df09db7fcb12614ec935d4dd3b9c5",
+    "aws:asset:is-bundled": true,
+    "aws:asset:property": "Code"
+   }
+  },
+  "EmailForwarderLambdaAllowSES7D6862A4": {
+   "Type": "AWS::Lambda::Permission",
+   "Properties": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "Fn::GetAtt": [
+      "EmailForwarderLambda9E13D248",
+      "Arn"
+     ]
+    },
+    "Principal": "ses.amazonaws.com",
+    "SourceAccount": "710735877057"
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoSesStack/EmailForwarderLambda/AllowSES"
+   }
+  },
+  "EmailForwarderLambdaAllowSes6DBA4391": {
+   "Type": "AWS::Lambda::Permission",
+   "Properties": {
+    "Action": "lambda:InvokeFunction",
+    "FunctionName": {
+     "Fn::GetAtt": [
+      "EmailForwarderLambda9E13D248",
+      "Arn"
+     ]
+    },
+    "Principal": "ses.amazonaws.com",
+    "SourceAccount": {
+     "Ref": "AWS::AccountId"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoSesStack/EmailForwarderLambda/AllowSes"
+   }
+  },
+  "EmailReceiptRuleSet45DC1ECE": {
+   "Type": "AWS::SES::ReceiptRuleSet",
+   "Properties": {
+    "RuleSetName": "yoga-go-inbound"
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoSesStack/EmailReceiptRuleSet/Resource"
+   }
+  },
+  "EmailReceiptRuleSetForwardPlatformEmails050EBEAE": {
+   "Type": "AWS::SES::ReceiptRule",
+   "Properties": {
+    "Rule": {
+     "Actions": [
+      {
+       "S3Action": {
+        "BucketName": {
+         "Ref": "EmailBucket843A740F"
+        },
+        "ObjectKeyPrefix": "incoming/"
+       }
+      },
+      {
+       "LambdaAction": {
+        "FunctionArn": {
+         "Fn::GetAtt": [
+          "EmailForwarderLambda9E13D248",
+          "Arn"
+         ]
+        },
+        "InvocationType": "Event"
+       }
+      },
+      {
+       "StopAction": {
+        "Scope": "RuleSet"
+       }
+      }
+     ],
+     "Enabled": true,
+     "Recipients": [
+      "myyoga.guru"
+     ],
+     "ScanEnabled": true
+    },
+    "RuleSetName": {
+     "Ref": "EmailReceiptRuleSet45DC1ECE"
+    }
+   },
+   "DependsOn": [
+    "EmailBucketPolicyBBC68546",
+    "EmailForwarderLambdaAllowSes6DBA4391"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "YogaGoSesStack/EmailReceiptRuleSet/ForwardPlatformEmails/Resource"
+   }
+  },
+  "EmailReceiptRuleSetForwardCallyEmails775D7607": {
+   "Type": "AWS::SES::ReceiptRule",
+   "Properties": {
+    "After": {
+     "Ref": "EmailReceiptRuleSetForwardPlatformEmails050EBEAE"
+    },
+    "Rule": {
+     "Actions": [
+      {
+       "S3Action": {
+        "BucketName": {
+         "Ref": "EmailBucket843A740F"
+        },
+        "ObjectKeyPrefix": "incoming/"
+       }
+      },
+      {
+       "LambdaAction": {
+        "FunctionArn": {
+         "Fn::GetAtt": [
+          "EmailForwarderLambda9E13D248",
+          "Arn"
+         ]
+        },
+        "InvocationType": "Event"
+       }
+      },
+      {
+       "StopAction": {
+        "Scope": "RuleSet"
+       }
+      }
+     ],
+     "Enabled": true,
+     "Recipients": [
+      "callygo.com"
+     ],
+     "ScanEnabled": true
+    },
+    "RuleSetName": {
+     "Ref": "EmailReceiptRuleSet45DC1ECE"
+    }
+   },
+   "DependsOn": [
+    "EmailBucketPolicyBBC68546",
+    "EmailForwarderLambdaAllowSes6DBA4391"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "YogaGoSesStack/EmailReceiptRuleSet/ForwardCallyEmails/Resource"
+   }
+  },
+  "EmailReceiptRuleSetForwardByodEmails59021963": {
+   "Type": "AWS::SES::ReceiptRule",
+   "Properties": {
+    "After": {
+     "Ref": "EmailReceiptRuleSetForwardCallyEmails775D7607"
+    },
+    "Rule": {
+     "Actions": [
+      {
+       "S3Action": {
+        "BucketName": {
+         "Ref": "EmailBucket843A740F"
+        },
+        "ObjectKeyPrefix": "incoming/"
+       }
+      },
+      {
+       "LambdaAction": {
+        "FunctionArn": {
+         "Fn::GetAtt": [
+          "EmailForwarderLambda9E13D248",
+          "Arn"
+         ]
+        },
+        "InvocationType": "Event"
+       }
+      }
+     ],
+     "Enabled": true,
+     "Recipients": [],
+     "ScanEnabled": true
+    },
+    "RuleSetName": {
+     "Ref": "EmailReceiptRuleSet45DC1ECE"
+    }
+   },
+   "DependsOn": [
+    "EmailBucketPolicyBBC68546",
+    "EmailForwarderLambdaAllowSes6DBA4391"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "YogaGoSesStack/EmailReceiptRuleSet/ForwardByodEmails/Resource"
+   }
+  },
+  "SmtpUser17EE1BF6": {
+   "Type": "AWS::IAM::User",
+   "Properties": {
+    "UserName": "yoga-go-smtp-user"
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoSesStack/SmtpUser/Resource"
+   }
+  },
+  "SmtpUserDefaultPolicy2A3E51B8": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "ses:SendEmail",
+        "ses:SendRawEmail"
+       ],
+       "Effect": "Allow",
+       "Resource": "*"
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "SmtpUserDefaultPolicy2A3E51B8",
+    "Users": [
+     {
+      "Ref": "SmtpUser17EE1BF6"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoSesStack/SmtpUser/DefaultPolicy/Resource"
+   }
+  },
+  "SmtpAccessKey5962B0B0": {
+   "Type": "AWS::IAM::AccessKey",
+   "Properties": {
+    "UserName": {
+     "Ref": "SmtpUser17EE1BF6"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoSesStack/SmtpAccessKey/Resource"
+   }
+  },
+  "SmtpCredentialsSecretA75C626E": {
+   "Type": "AWS::SecretsManager::Secret",
+   "Properties": {
+    "Description": "SES SMTP credentials for Gmail integration",
+    "Name": "yoga-go/smtp-credentials",
+    "SecretString": {
+     "Fn::Join": [
+      "",
+      [
+       "{\"accessKeyId\":\"",
+       {
+        "Ref": "SmtpAccessKey5962B0B0"
+       },
+       "\",\"secretAccessKey\":\"",
+       {
+        "Fn::GetAtt": [
+         "SmtpAccessKey5962B0B0",
+         "SecretAccessKey"
+        ]
+       },
+       "\",\"smtpServer\":\"email-smtp.us-west-2.amazonaws.com\",\"smtpPort\":\"587\"}"
+      ]
+     ]
+    }
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "YogaGoSesStack/SmtpCredentialsSecret/Resource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/21Q204CMRD9Ft5LRfAHADExJkp29ZnU7rAZ2LakM4WQzf67abcCrjydy1zOtFM5nT3KyUidaKyr/bjBb9mWrPReqBNtWgKS7coobF4rsIx8FsutHRjObrEOXjE6WwLHjv/ewFgdwfIzEKNN1r2hez2fYA6NYhAFaMADF6GBnDlwbuSg2gmayXYR9L4fzKyHtWtQn6921r1YKIJONMp8V2pjXQU7ku8JXoLV6UZURraFy6ERrxsz+yLwUSacaw1Eb5AaLiKeuFFEwCTnEXKobJdbe8mKK8EbJEJnO0GgPTAZZVUNXrZl0rGrZ10nloHYmQLIBa/zv/zyP6W1d0eswMcXi3RByapGW4vb4Y/Ah8CdiF8hd/RwnD7JmZyMdoQ49sEyGpBFjz9hjODvawIAAA=="
+   },
+   "Metadata": {
+    "aws:cdk:path": "YogaGoSesStack/CDKMetadata/Default"
+   }
+  }
+ },
+ "Outputs": {
+  "SESConfigSetName": {
+   "Description": "SES Configuration Set Name (us-west-2)",
+   "Value": {
+    "Ref": "SesConfigSetECAFDFF8"
+   },
+   "Export": {
+    "Name": "YogaGoSESConfigSetNameWest"
+   }
+  },
+  "EmailBucketName": {
+   "Description": "S3 Bucket for incoming emails",
+   "Value": {
+    "Ref": "EmailBucket843A740F"
+   },
+   "Export": {
+    "Name": "YogaGoEmailBucketName"
+   }
+  },
+  "EmailForwarderLambdaArn": {
+   "Description": "Email Forwarder Lambda ARN",
+   "Value": {
+    "Fn::GetAtt": [
+     "EmailForwarderLambda9E13D248",
+     "Arn"
+    ]
+   },
+   "Export": {
+    "Name": "YogaGoEmailForwarderLambdaArn"
+   }
+  },
+  "ReceiptRuleSetName": {
+   "Description": "SES Receipt Rule Set Name",
+   "Value": {
+    "Ref": "EmailReceiptRuleSet45DC1ECE"
+   },
+   "Export": {
+    "Name": "YogaGoReceiptRuleSetName"
+   }
+  },
+  "SmtpCredentialsSecretArn": {
+   "Description": "SMTP Credentials Secret ARN (retrieve with AWS CLI)",
+   "Value": {
+    "Ref": "SmtpCredentialsSecretA75C626E"
+   },
+   "Export": {
+    "Name": "YogaGoSmtpCredentialsSecretArn"
+   }
+  },
+  "SmtpServer": {
+   "Description": "SES SMTP Server",
+   "Value": "email-smtp.us-west-2.amazonaws.com"
+  },
+  "SmtpPort": {
+   "Description": "SES SMTP Port (TLS)",
+   "Value": "587"
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

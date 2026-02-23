@@ -410,6 +410,15 @@ export default function EmailScreen() {
           }
         />
       )}
+
+      {/* Compose FAB */}
+      <TouchableOpacity
+        style={styles.fab}
+        activeOpacity={0.8}
+        onPress={() => navigation.navigate("Compose", { mode: "compose" })}
+      >
+        <Ionicons name="create-outline" size={24} color={colors.white} />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -618,5 +627,21 @@ const styles = StyleSheet.create({
   emptySubtext: {
     fontSize: fontSize.md,
     color: colors.textMuted,
+  },
+  fab: {
+    position: "absolute",
+    bottom: spacing.lg,
+    right: spacing.lg,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
 });

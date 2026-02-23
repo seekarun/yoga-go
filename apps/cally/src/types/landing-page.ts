@@ -179,6 +179,26 @@ export interface ButtonConfig {
   action: string; // Using string for flexibility, validated against BUTTON_ACTIONS at runtime
 }
 
+/**
+ * Common section style overrides shared by all sections
+ */
+export interface SectionStyleOverrides {
+  bgColor?: string;
+  bgImage?: string;
+  bgImageBlur?: number; // px, default 0
+  bgImageOpacity?: number; // 0-100, default 100
+  overlayOpacity?: number; // 0-100, dark overlay on bg image
+  bgFilter?: string; // CSS filter preset
+  bgImageOffsetX?: number; // px, drag reposition X
+  bgImageOffsetY?: number; // px, drag reposition Y
+  bgImageZoom?: number; // 100-300, scroll zoom during drag
+  paddingTop?: number; // px, default 80
+  paddingBottom?: number; // px, default 80
+  paddingLeft?: number; // px, default 0
+  paddingRight?: number; // px, default 0
+  sectionHeight?: number; // px, optional fixed height
+}
+
 export interface AboutStyleOverrides {
   paddingTop?: number; // px, default 80
   paddingBottom?: number; // px, default 80
@@ -288,6 +308,7 @@ export interface FeaturesConfig {
   heading?: string;
   subheading?: string;
   cards: FeatureCard[];
+  styleOverrides?: SectionStyleOverrides;
 }
 
 /**
@@ -322,6 +343,7 @@ export interface TestimonialsConfig {
   heading?: string;
   subheading?: string;
   testimonials: Testimonial[];
+  styleOverrides?: SectionStyleOverrides;
 }
 
 /**
@@ -337,6 +359,7 @@ export interface FAQConfig {
   heading?: string;
   subheading?: string;
   items: FAQItem[];
+  styleOverrides?: SectionStyleOverrides;
 }
 
 /**
@@ -382,6 +405,7 @@ export interface ProductsConfig {
 export interface LocationConfig {
   heading?: string;
   subheading?: string;
+  styleOverrides?: SectionStyleOverrides;
 }
 
 /**
@@ -397,6 +421,7 @@ export interface GalleryConfig {
   heading?: string;
   subheading?: string;
   images: GalleryImage[];
+  styleOverrides?: SectionStyleOverrides;
 }
 
 /**
@@ -427,6 +452,7 @@ export interface FooterConfig {
   text?: string;
   links?: FooterLink[];
   showPoweredBy?: boolean;
+  styleOverrides?: SectionStyleOverrides;
 }
 
 /**

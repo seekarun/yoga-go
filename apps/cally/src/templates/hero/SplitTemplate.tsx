@@ -176,6 +176,7 @@ export default function SplitTemplate(props: HeroTemplateProps) {
           style={{
             ...containerStyle,
             ...(isEditing && toolbar.sectionSelected ? selectedOutline : {}),
+            ...(isEditing && toolbar.anySelected ? { zIndex: 10 } : {}),
             position: "relative",
           }}
           onClick={toolbar.handleSectionClick}

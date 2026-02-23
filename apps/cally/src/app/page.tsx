@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
 import { PRICING_TIERS } from "@/lib/pricing";
 import type { SubscriptionTier } from "@/types/subscription";
+import LaunchingSoon from "./launching-soon";
 
 /* ─── icon components ─── */
 
@@ -319,6 +320,11 @@ function PricingCard({
 
 export default function HomePage() {
   const { isAuthenticated, isLoading, login } = useAuth();
+
+  // Show "Launching Soon" page unless NEXT_PUBLIC_LAUNCHED is set to "true"
+  if (process.env.NEXT_PUBLIC_LAUNCHED !== "true") {
+    return <LaunchingSoon />;
+  }
 
   if (isLoading) {
     return (

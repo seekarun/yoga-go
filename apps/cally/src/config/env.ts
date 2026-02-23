@@ -13,10 +13,10 @@ export const PROTOCOL = IS_PRODUCTION ? "https" : "http";
 
 // Base URL for the app
 export const BASE_URL = IS_PRODUCTION
-  ? `https://${process.env.NEXT_PUBLIC_DOMAIN || "cally.app"}`
+  ? `https://${process.env.NEXT_PUBLIC_DOMAIN || "callygo.com"}`
   : `http://localhost:${LOCAL_PORT}`;
 
 // Cookie domain (undefined for localhost)
 export const COOKIE_DOMAIN = IS_PRODUCTION
-  ? `.${process.env.NEXT_PUBLIC_DOMAIN || "cally.app"}`
+  ? `.${process.env.NEXT_PUBLIC_DOMAIN || "callygo.com"}`
   : undefined;

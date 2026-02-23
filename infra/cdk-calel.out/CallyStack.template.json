@@ -1,0 +1,1174 @@
+{
+ "Description": "Cally - Landing pages, calendar, live sessions",
+ "Resources": {
+  "AppSecretEnsureExists1A64EE93": {
+   "Type": "Custom::AWS",
+   "Properties": {
+    "ServiceToken": {
+     "Fn::GetAtt": [
+      "AWS679f53fac002430cb0da5b7982bd22872D164C4C",
+      "Arn"
+     ]
+    },
+    "Create": "{\"service\":\"SecretsManager\",\"action\":\"createSecret\",\"parameters\":{\"Name\":\"cally/production\",\"SecretString\":\"{\\\"GOOGLE_CLIENT_ID\\\":\\\"<REPLACE_THIS>\\\",\\\"GOOGLE_CLIENT_SECRET\\\":\\\"<REPLACE_THIS>\\\"}\",\"Description\":\"Auto-created by CDK with placeholder values. Update with real values: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET\"},\"physicalResourceId\":{\"id\":\"cally/production\"},\"ignoreErrorCodesMatching\":\"ResourceExistsException\"}",
+    "InstallLatestAwsSdk": false
+   },
+   "DependsOn": [
+    "AppSecretEnsureExistsCustomResourcePolicyFED3A97B"
+   ],
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "CallyStack/AppSecretEnsureExists/Resource/Default"
+   }
+  },
+  "AppSecretEnsureExistsCustomResourcePolicyFED3A97B": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": "secretsmanager:CreateSecret",
+       "Effect": "Allow",
+       "Resource": "*"
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "AppSecretEnsureExistsCustomResourcePolicyFED3A97B",
+    "Roles": [
+     {
+      "Ref": "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "CallyStack/AppSecretEnsureExists/CustomResourcePolicy/Resource"
+   }
+  },
+  "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "CallyStack/AWS679f53fac002430cb0da5b7982bd2287/ServiceRole/Resource"
+   }
+  },
+  "AWS679f53fac002430cb0da5b7982bd22872D164C4C": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-710735877057-ap-southeast-2",
+     "S3Key": "bc8ef58951f4c88e641dd23090e9d2e2e61c7530a07960e767522941e959b625.zip"
+    },
+    "Handler": "index.handler",
+    "Role": {
+     "Fn::GetAtt": [
+      "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs22.x",
+    "Timeout": 120
+   },
+   "DependsOn": [
+    "AWS679f53fac002430cb0da5b7982bd2287ServiceRoleC1EA0FF2"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "CallyStack/AWS679f53fac002430cb0da5b7982bd2287/Resource",
+    "aws:asset:path": "asset.bc8ef58951f4c88e641dd23090e9d2e2e61c7530a07960e767522941e959b625",
+    "aws:asset:is-bundled": false,
+    "aws:asset:property": "Code"
+   }
+  },
+  "CoreTable97EB8292": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "PK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "SK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "GSI1PK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "GSI1SK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "GSI2PK",
+      "AttributeType": "S"
+     },
+     {
+      "AttributeName": "GSI2SK",
+      "AttributeType": "S"
+     }
+    ],
+    "BillingMode": "PAY_PER_REQUEST",
+    "GlobalSecondaryIndexes": [
+     {
+      "IndexName": "GSI1",
+      "KeySchema": [
+       {
+        "AttributeName": "GSI1PK",
+        "KeyType": "HASH"
+       },
+       {
+        "AttributeName": "GSI1SK",
+        "KeyType": "RANGE"
+       }
+      ],
+      "Projection": {
+       "ProjectionType": "ALL"
+      }
+     },
+     {
+      "IndexName": "GSI2",
+      "KeySchema": [
+       {
+        "AttributeName": "GSI2PK",
+        "KeyType": "HASH"
+       },
+       {
+        "AttributeName": "GSI2SK",
+        "KeyType": "RANGE"
+       }
+      ],
+      "Projection": {
+       "ProjectionType": "ALL"
+      }
+     }
+    ],
+    "KeySchema": [
+     {
+      "AttributeName": "PK",
+      "KeyType": "HASH"
+     },
+     {
+      "AttributeName": "SK",
+      "KeyType": "RANGE"
+     }
+    ],
+    "PointInTimeRecoverySpecification": {
+     "PointInTimeRecoveryEnabled": false
+    },
+    "TableName": "cally-main",
+    "TimeToLiveSpecification": {
+     "AttributeName": "ttl",
+     "Enabled": true
+    }
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "CallyStack/CoreTable/Resource"
+   }
+  },
+  "AudioBucket96BEECBA": {
+   "Type": "AWS::S3::Bucket",
+   "Properties": {
+    "BucketName": "cally-audio-files-710735877057",
+    "CorsConfiguration": {
+     "CorsRules": [
+      {
+       "AllowedHeaders": [
+        "*"
+       ],
+       "AllowedMethods": [
+        "GET",
+        "PUT"
+       ],
+       "AllowedOrigins": [
+        "*"
+       ]
+      }
+     ]
+    },
+    "LifecycleConfiguration": {
+     "Rules": [
+      {
+       "ExpirationInDays": 7,
+       "Id": "DeleteOldBriefings",
+       "Prefix": "briefings/",
+       "Status": "Enabled"
+      },
+      {
+       "ExpirationInDays": 30,
+       "Id": "DeleteOldTranscripts",
+       "Prefix": "transcripts/",
+       "Status": "Enabled"
+      }
+     ]
+    },
+    "PublicAccessBlockConfiguration": {
+     "BlockPublicAcls": false,
+     "BlockPublicPolicy": false,
+     "IgnorePublicAcls": false,
+     "RestrictPublicBuckets": false
+    }
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "CallyStack/AudioBucket/Resource"
+   }
+  },
+  "AudioBucketPolicy75597578": {
+   "Type": "AWS::S3::BucketPolicy",
+   "Properties": {
+    "Bucket": {
+     "Ref": "AudioBucket96BEECBA"
+    },
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": "s3:GetObject",
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": "*"
+       },
+       "Resource": [
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "AudioBucket96BEECBA",
+             "Arn"
+            ]
+           },
+           "/briefings/*"
+          ]
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "AudioBucket96BEECBA",
+             "Arn"
+            ]
+           },
+           "/landing-pages/*"
+          ]
+         ]
+        }
+       ]
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "CallyStack/AudioBucket/Policy/Resource"
+   }
+  },
+  "TranscriptionDLQ14BD709D": {
+   "Type": "AWS::SQS::Queue",
+   "Properties": {
+    "MessageRetentionPeriod": 1209600,
+    "QueueName": "cally-transcription-dlq"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "CallyStack/TranscriptionDLQ/Resource"
+   }
+  },
+  "TranscriptionQueue01B856E8": {
+   "Type": "AWS::SQS::Queue",
+   "Properties": {
+    "MessageRetentionPeriod": 604800,
+    "QueueName": "cally-transcription-queue",
+    "RedrivePolicy": {
+     "deadLetterTargetArn": {
+      "Fn::GetAtt": [
+       "TranscriptionDLQ14BD709D",
+       "Arn"
+      ]
+     },
+     "maxReceiveCount": 3
+    },
+    "VisibilityTimeout": 900
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "CallyStack/TranscriptionQueue/Resource"
+   }
+  },
+  "TranscriptionProcessorServiceRoleF833FEA0": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "CallyStack/TranscriptionProcessor/ServiceRole/Resource"
+   }
+  },
+  "TranscriptionProcessorServiceRoleDefaultPolicy94DE3BCF": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable",
+        "dynamodb:GetItem",
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator",
+        "dynamodb:PutItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:UpdateItem"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "CoreTable97EB8292",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "CoreTable97EB8292",
+             "Arn"
+            ]
+           },
+           "/index/*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "s3:GetBucket*",
+        "s3:GetObject*",
+        "s3:List*"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "AudioBucket96BEECBA",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "AudioBucket96BEECBA",
+             "Arn"
+            ]
+           },
+           "/*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "secretsmanager:DescribeSecret",
+        "secretsmanager:GetSecretValue"
+       ],
+       "Effect": "Allow",
+       "Resource": "arn:aws:secretsmanager:ap-southeast-2:710735877057:secret:cally/production-??????"
+      },
+      {
+       "Action": [
+        "sqs:ChangeMessageVisibility",
+        "sqs:DeleteMessage",
+        "sqs:GetQueueAttributes",
+        "sqs:GetQueueUrl",
+        "sqs:ReceiveMessage"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "TranscriptionQueue01B856E8",
+         "Arn"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "TranscriptionProcessorServiceRoleDefaultPolicy94DE3BCF",
+    "Roles": [
+     {
+      "Ref": "TranscriptionProcessorServiceRoleF833FEA0"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "CallyStack/TranscriptionProcessor/ServiceRole/DefaultPolicy/Resource"
+   }
+  },
+  "TranscriptionProcessor12E1D9F9": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-710735877057-ap-southeast-2",
+     "S3Key": "4805947949ca12846ab146fb303a0bf5e63c927acc992d32fface12027be5b2d.zip"
+    },
+    "Environment": {
+     "Variables": {
+      "DYNAMODB_TABLE": {
+       "Ref": "CoreTable97EB8292"
+      },
+      "S3_BUCKET": {
+       "Ref": "AudioBucket96BEECBA"
+      },
+      "SECRETS_NAME": "cally/production"
+     }
+    },
+    "FunctionName": "cally-transcription-processor",
+    "Handler": "index.handler",
+    "MemorySize": 512,
+    "Role": {
+     "Fn::GetAtt": [
+      "TranscriptionProcessorServiceRoleF833FEA0",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs20.x",
+    "Timeout": 900
+   },
+   "DependsOn": [
+    "TranscriptionProcessorServiceRoleDefaultPolicy94DE3BCF",
+    "TranscriptionProcessorServiceRoleF833FEA0"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "CallyStack/TranscriptionProcessor/Resource",
+    "aws:asset:path": "asset.4805947949ca12846ab146fb303a0bf5e63c927acc992d32fface12027be5b2d",
+    "aws:asset:is-bundled": true,
+    "aws:asset:property": "Code"
+   }
+  },
+  "TranscriptionProcessorSqsEventSourceCallyStackTranscriptionQueueA87ECEF90667D076": {
+   "Type": "AWS::Lambda::EventSourceMapping",
+   "Properties": {
+    "BatchSize": 1,
+    "EventSourceArn": {
+     "Fn::GetAtt": [
+      "TranscriptionQueue01B856E8",
+      "Arn"
+     ]
+    },
+    "FunctionName": {
+     "Ref": "TranscriptionProcessor12E1D9F9"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "CallyStack/TranscriptionProcessor/SqsEventSource:CallyStackTranscriptionQueueA87ECEF9/Resource"
+   }
+  },
+  "CallyUserPool48BB3D80": {
+   "Type": "AWS::Cognito::UserPool",
+   "Properties": {
+    "AccountRecoverySetting": {
+     "RecoveryMechanisms": [
+      {
+       "Name": "verified_email",
+       "Priority": 1
+      }
+     ]
+    },
+    "AdminCreateUserConfig": {
+     "AllowAdminCreateUserOnly": false
+    },
+    "AutoVerifiedAttributes": [
+     "email"
+    ],
+    "EmailVerificationMessage": "The verification code to your new account is {####}",
+    "EmailVerificationSubject": "Verify your new account",
+    "Policies": {
+     "PasswordPolicy": {
+      "MinimumLength": 8,
+      "RequireLowercase": true,
+      "RequireNumbers": true,
+      "RequireSymbols": false,
+      "RequireUppercase": true
+     }
+    },
+    "Schema": [
+     {
+      "Mutable": true,
+      "Name": "email",
+      "Required": true
+     },
+     {
+      "Mutable": true,
+      "Name": "name",
+      "Required": false
+     }
+    ],
+    "SmsVerificationMessage": "The verification code to your new account is {####}",
+    "UserPoolName": "cally-users",
+    "UsernameAttributes": [
+     "email"
+    ],
+    "VerificationMessageTemplate": {
+     "DefaultEmailOption": "CONFIRM_WITH_CODE",
+     "EmailMessage": "The verification code to your new account is {####}",
+     "EmailSubject": "Verify your new account",
+     "SmsMessage": "The verification code to your new account is {####}"
+    }
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "CallyStack/CallyUserPool/Resource"
+   }
+  },
+  "CallyUserPoolCallyCustomDomainDF50C99A": {
+   "Type": "AWS::Cognito::UserPoolDomain",
+   "Properties": {
+    "CustomDomainConfig": {
+     "CertificateArn": "placeholder"
+    },
+    "Domain": "signin.callygo.com",
+    "UserPoolId": {
+     "Ref": "CallyUserPool48BB3D80"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "CallyStack/CallyUserPool/CallyCustomDomain/Resource"
+   }
+  },
+  "CallyUserPoolCallyWebClient62505739": {
+   "Type": "AWS::Cognito::UserPoolClient",
+   "Properties": {
+    "AllowedOAuthFlows": [
+     "code"
+    ],
+    "AllowedOAuthFlowsUserPoolClient": true,
+    "AllowedOAuthScopes": [
+     "email",
+     "openid",
+     "profile"
+    ],
+    "CallbackURLs": [
+     "http://localhost:3113/api/auth/google/callback",
+     "https://proj-cally.vercel.app/api/auth/google/callback",
+     "https://callygo.com/api/auth/google/callback",
+     "https://www.callygo.com/api/auth/google/callback",
+     "exp://localhost:8081",
+     "exp://localhost:8081/--/",
+     "exp://10.1.1.195:8081",
+     "cally-mobile://"
+    ],
+    "ClientName": "cally-web",
+    "ExplicitAuthFlows": [
+     "ALLOW_USER_PASSWORD_AUTH",
+     "ALLOW_USER_SRP_AUTH",
+     "ALLOW_REFRESH_TOKEN_AUTH"
+    ],
+    "GenerateSecret": true,
+    "LogoutURLs": [
+     "http://localhost:3113",
+     "https://proj-cally.vercel.app",
+     "https://callygo.com",
+     "https://www.callygo.com"
+    ],
+    "PreventUserExistenceErrors": "ENABLED",
+    "SupportedIdentityProviders": [
+     "COGNITO",
+     "Google"
+    ],
+    "UserPoolId": {
+     "Ref": "CallyUserPool48BB3D80"
+    }
+   },
+   "DependsOn": [
+    "GoogleProvider566D8493"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "CallyStack/CallyUserPool/CallyWebClient/Resource"
+   }
+  },
+  "GoogleProvider566D8493": {
+   "Type": "AWS::Cognito::UserPoolIdentityProvider",
+   "Properties": {
+    "AttributeMapping": {
+     "email": "email",
+     "name": "name",
+     "picture": "picture"
+    },
+    "ProviderDetails": {
+     "client_id": "{{resolve:secretsmanager:arn:aws:secretsmanager:ap-southeast-2:710735877057:secret:cally/production:SecretString:GOOGLE_CLIENT_ID::}}",
+     "client_secret": "{{resolve:secretsmanager:arn:aws:secretsmanager:ap-southeast-2:710735877057:secret:cally/production:SecretString:GOOGLE_CLIENT_SECRET::}}",
+     "authorize_scopes": "email profile openid"
+    },
+    "ProviderName": "Google",
+    "ProviderType": "Google",
+    "UserPoolId": {
+     "Ref": "CallyUserPool48BB3D80"
+    }
+   },
+   "DependsOn": [
+    "AppSecretEnsureExistsCustomResourcePolicyFED3A97B",
+    "AppSecretEnsureExists1A64EE93"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "CallyStack/GoogleProvider/Resource"
+   }
+  },
+  "VercelUserC1EB28D7": {
+   "Type": "AWS::IAM::User",
+   "Properties": {
+    "ManagedPolicyArns": [
+     {
+      "Ref": "VercelPolicy7DDA1F5D"
+     }
+    ],
+    "UserName": "cally-vercel"
+   },
+   "Metadata": {
+    "aws:cdk:path": "CallyStack/VercelUser/Resource"
+   }
+  },
+  "VercelPolicy7DDA1F5D": {
+   "Type": "AWS::IAM::ManagedPolicy",
+   "Properties": {
+    "Description": "",
+    "ManagedPolicyName": "cally-vercel-policy",
+    "Path": "/",
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:UpdateItem"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        "arn:aws:dynamodb:ap-southeast-2:710735877057:table/yoga-go-core",
+        "arn:aws:dynamodb:ap-southeast-2:710735877057:table/yoga-go-core/index/*",
+        "arn:aws:dynamodb:ap-southeast-2:710735877057:table/yoga-go-emails",
+        "arn:aws:dynamodb:ap-southeast-2:710735877057:table/yoga-go-emails/index/*",
+        {
+         "Fn::GetAtt": [
+          "CoreTable97EB8292",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "CoreTable97EB8292",
+             "Arn"
+            ]
+           },
+           "/index/*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "cognito-idp:AdminGetUser",
+        "cognito-idp:DescribeUserPool",
+        "cognito-idp:DescribeUserPoolClient",
+        "cognito-idp:GetUser"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "CallyUserPool48BB3D80",
+         "Arn"
+        ]
+       }
+      },
+      {
+       "Action": [
+        "ses:CreateEmailIdentity",
+        "ses:DeleteEmailIdentity",
+        "ses:GetEmailIdentity",
+        "ses:PutEmailIdentityDkimAttributes",
+        "ses:PutEmailIdentityMailFromAttributes"
+       ],
+       "Effect": "Allow",
+       "Resource": "arn:aws:ses:us-west-2:*:identity/*"
+      },
+      {
+       "Action": [
+        "ses:SendEmail",
+        "ses:SendRawEmail"
+       ],
+       "Effect": "Allow",
+       "Resource": "*"
+      },
+      {
+       "Action": [
+        "s3:DeleteObject",
+        "s3:GetObject",
+        "s3:ListBucket",
+        "s3:PutObject",
+        "s3:PutObjectAcl"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        "arn:aws:s3:::yoga-go-incoming-emails-710735877057",
+        "arn:aws:s3:::yoga-go-incoming-emails-710735877057/*",
+        {
+         "Fn::GetAtt": [
+          "AudioBucket96BEECBA",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "AudioBucket96BEECBA",
+             "Arn"
+            ]
+           },
+           "/*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": "sqs:SendMessage",
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "TranscriptionQueue01B856E8",
+         "Arn"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "CallyStack/VercelPolicy/Resource"
+   }
+  },
+  "CallyNotificationStreamLambdaServiceRole47A67B80": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+       ]
+      ]
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "CallyStack/CallyNotificationStreamLambda/ServiceRole/Resource"
+   }
+  },
+  "CallyNotificationStreamLambdaServiceRoleDefaultPolicy6A78FE53": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable",
+        "dynamodb:GetItem",
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator",
+        "dynamodb:PutItem",
+        "dynamodb:Query",
+        "dynamodb:Scan",
+        "dynamodb:UpdateItem"
+       ],
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetAtt": [
+          "CoreTable97EB8292",
+          "Arn"
+         ]
+        },
+        {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetAtt": [
+             "CoreTable97EB8292",
+             "Arn"
+            ]
+           },
+           "/index/*"
+          ]
+         ]
+        }
+       ]
+      },
+      {
+       "Action": [
+        "dynamodb:BatchGetItem",
+        "dynamodb:ConditionCheckItem",
+        "dynamodb:DescribeTable",
+        "dynamodb:GetItem",
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator",
+        "dynamodb:Query",
+        "dynamodb:Scan"
+       ],
+       "Effect": "Allow",
+       "Resource": "arn:aws:dynamodb:ap-southeast-2:710735877057:table/yoga-go-emails"
+      },
+      {
+       "Action": [
+        "secretsmanager:DescribeSecret",
+        "secretsmanager:GetSecretValue"
+       ],
+       "Effect": "Allow",
+       "Resource": "arn:aws:secretsmanager:ap-southeast-2:710735877057:secret:yoga-go/production-??????"
+      },
+      {
+       "Action": "dynamodb:ListStreams",
+       "Effect": "Allow",
+       "Resource": "*"
+      },
+      {
+       "Action": [
+        "dynamodb:DescribeStream",
+        "dynamodb:GetRecords",
+        "dynamodb:GetShardIterator"
+       ],
+       "Effect": "Allow",
+       "Resource": "placeholder"
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "CallyNotificationStreamLambdaServiceRoleDefaultPolicy6A78FE53",
+    "Roles": [
+     {
+      "Ref": "CallyNotificationStreamLambdaServiceRole47A67B80"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "CallyStack/CallyNotificationStreamLambda/ServiceRole/DefaultPolicy/Resource"
+   }
+  },
+  "CallyNotificationStreamLambda92757667": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-710735877057-ap-southeast-2",
+     "S3Key": "99d2c81fc7cea4e6c4bfe98f7decbfd95f460ad6fb5cd1d0e3878eef8ccc2fed.zip"
+    },
+    "Environment": {
+     "Variables": {
+      "DYNAMODB_TABLE": {
+       "Ref": "CoreTable97EB8292"
+      },
+      "SECRETS_NAME": "yoga-go/production"
+     }
+    },
+    "FunctionName": "cally-notification-stream",
+    "Handler": "index.handler",
+    "MemorySize": 256,
+    "Role": {
+     "Fn::GetAtt": [
+      "CallyNotificationStreamLambdaServiceRole47A67B80",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs20.x",
+    "Timeout": 30
+   },
+   "DependsOn": [
+    "CallyNotificationStreamLambdaServiceRoleDefaultPolicy6A78FE53",
+    "CallyNotificationStreamLambdaServiceRole47A67B80"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "CallyStack/CallyNotificationStreamLambda/Resource",
+    "aws:asset:path": "asset.99d2c81fc7cea4e6c4bfe98f7decbfd95f460ad6fb5cd1d0e3878eef8ccc2fed",
+    "aws:asset:is-bundled": true,
+    "aws:asset:property": "Code"
+   }
+  },
+  "CallyNotificationStreamLambdaDynamoDBEventSourceCallyStackEmailsTable30D25290551A6B6A": {
+   "Type": "AWS::Lambda::EventSourceMapping",
+   "Properties": {
+    "BatchSize": 10,
+    "EventSourceArn": "placeholder",
+    "FilterCriteria": {
+     "Filters": [
+      {
+       "Pattern": "{\"eventName\":[\"INSERT\"],\"dynamodb\":{\"NewImage\":{\"isOutgoing\":{\"BOOL\":[false]}}}}"
+      },
+      {
+       "Pattern": "{\"eventName\":[\"INSERT\"],\"dynamodb\":{\"NewImage\":{\"isOutgoing\":[{\"exists\":false}]}}}"
+      }
+     ]
+    },
+    "FunctionName": {
+     "Ref": "CallyNotificationStreamLambda92757667"
+    },
+    "MaximumRetryAttempts": 2,
+    "StartingPosition": "LATEST"
+   },
+   "Metadata": {
+    "aws:cdk:path": "CallyStack/CallyNotificationStreamLambda/DynamoDBEventSource:CallyStackEmailsTable30D25290/Resource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/3WR3W7CMAyFn4X74DG6FwD2o12wMbpdozTxqkAbszoBoajvPiVtgW3aTc/nYzuq7SlMs1uYjOSRx0rvxpUpIOROqp1Qnh3VmwaZfKOQYXbkRfLWvSXkkTehknWhJYTc2LJCR/bRW+UMWXGGxefFfDigdXnqX8r93tgypv+6rTCyhrCiyqhTLOlpTRXGMOkHYxODpEtpZYn60vHDaAVnG8mMjmEWRXAGYe7VDt1cMooOY19PnVyeu45boU9W1qQLCO+y6H6pg/SNL7aCvxjCm0ef0gla0e1rY0njluElyXk7ikprHEGIE62IqmG6xAPcUy2NvU71zhAuKoPWXRf0zhA+a7TOuNOqoYPR2DwRld0Q/1W0rfh1/XiEgc+QVps7WfaHffVu710r4riw5ZvD9A4ymIy2bMy48daZGmHd6TcvvFyFjQIAAA=="
+   },
+   "Metadata": {
+    "aws:cdk:path": "CallyStack/CDKMetadata/Default"
+   }
+  }
+ },
+ "Outputs": {
+  "CoreTableName": {
+   "Description": "Cally Core DynamoDB Table Name",
+   "Value": {
+    "Ref": "CoreTable97EB8292"
+   },
+   "Export": {
+    "Name": "CallyCoreTableName"
+   }
+  },
+  "CoreTableArn": {
+   "Description": "Cally Core DynamoDB Table ARN",
+   "Value": {
+    "Fn::GetAtt": [
+     "CoreTable97EB8292",
+     "Arn"
+    ]
+   },
+   "Export": {
+    "Name": "CallyCoreTableArn"
+   }
+  },
+  "AudioBucketName": {
+   "Description": "S3 Bucket for TTS audio files",
+   "Value": {
+    "Ref": "AudioBucket96BEECBA"
+   },
+   "Export": {
+    "Name": "CallyAudioBucketName"
+   }
+  },
+  "UserPoolId": {
+   "Description": "Cally Cognito User Pool ID",
+   "Value": {
+    "Ref": "CallyUserPool48BB3D80"
+   },
+   "Export": {
+    "Name": "CallyUserPoolId"
+   }
+  },
+  "UserPoolClientId": {
+   "Description": "Cally Cognito User Pool Client ID",
+   "Value": {
+    "Ref": "CallyUserPoolCallyWebClient62505739"
+   },
+   "Export": {
+    "Name": "CallyUserPoolClientId"
+   }
+  },
+  "CognitoDomain": {
+   "Description": "Cally Cognito Custom Domain",
+   "Value": "signin.callygo.com",
+   "Export": {
+    "Name": "CallyCognitoDomain"
+   }
+  },
+  "CognitoCloudFrontDomain": {
+   "Description": "Add CNAME record in Vercel: signin.callygo.com -> this value",
+   "Value": {
+    "Fn::GetAtt": [
+     "CallyUserPoolCallyCustomDomainDF50C99A",
+     "CloudFrontDistribution"
+    ]
+   },
+   "Export": {
+    "Name": "CallyCognitoCloudFrontDomain"
+   }
+  },
+  "CognitoRegion": {
+   "Description": "AWS Region for Cognito",
+   "Value": "ap-southeast-2",
+   "Export": {
+    "Name": "CallyCognitoRegion"
+   }
+  },
+  "VercelUserArn": {
+   "Description": "IAM User ARN for Vercel - create access keys in AWS Console",
+   "Value": {
+    "Fn::GetAtt": [
+     "VercelUserC1EB28D7",
+     "Arn"
+    ]
+   },
+   "Export": {
+    "Name": "CallyVercelUserArn"
+   }
+  },
+  "TranscriptionQueueUrl": {
+   "Description": "SQS Queue URL for transcription processing",
+   "Value": {
+    "Ref": "TranscriptionQueue01B856E8"
+   },
+   "Export": {
+    "Name": "CallyTranscriptionQueueUrl"
+   }
+  },
+  "NoteClientSecret": {
+   "Description": "How to get the client secret",
+   "Value": "Retrieve client secret from AWS Console: Cognito > User Pools > cally-users > App clients > cally-web"
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

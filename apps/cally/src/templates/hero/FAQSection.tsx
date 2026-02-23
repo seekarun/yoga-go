@@ -1,7 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import type { FAQConfig, BrandFont } from "@/types/landing-page";
+import type {
+  FAQConfig,
+  BrandFont,
+  SectionStyleOverrides,
+} from "@/types/landing-page";
+import type { ColorPalette } from "@/lib/colorPalette";
+import SectionToolbar from "./SectionToolbar";
+import BgDragOverlay from "./BgDragOverlay";
+import { useSectionToolbar } from "./useSectionToolbar";
 
 interface FAQSectionProps {
   faq: FAQConfig;
@@ -17,6 +25,11 @@ interface FAQSectionProps {
   ) => void;
   onAddItem?: () => void;
   onRemoveItem?: (itemId: string) => void;
+  onStyleOverrideChange?: (o: SectionStyleOverrides) => void;
+  onBgImageClick?: () => void;
+  palette?: ColorPalette;
+  customColors?: { name: string; hex: string }[];
+  onCustomColorsChange?: (colors: { name: string; hex: string }[]) => void;
 }
 
 export default function FAQSection({
@@ -29,6 +42,11 @@ export default function FAQSection({
   onItemChange,
   onAddItem,
   onRemoveItem,
+  onStyleOverrideChange,
+  onBgImageClick,
+  palette,
+  customColors,
+  onCustomColorsChange,
 }: FAQSectionProps) {
   const [openItems, setOpenItems] = useState<Set<string>>(new Set());
 
@@ -67,6 +85,28 @@ export default function FAQSection({
 
   const theme = colors[variant];
 
+  const {
+    sectionRef,
+    sectionSelected,
+    showHandles,
+    sectionClickHandler,
+    toolbarProps,
+    bgLayerStyle,
+    overlayStyle,
+    bgDragOverlayProps,
+    contentContainerStyle,
+    sectionStyle,
+  } = useSectionToolbar({
+    isEditing,
+    overrides: faq.styleOverrides,
+    onStyleOverrideChange,
+    defaultBg: theme.bg,
+    onBgImageClick,
+    palette,
+    customColors,
+    onCustomColorsChange,
+  });
+
   const toggleItem = (id: string) => {
     if (isEditing) return;
     setOpenItems((prev) => {
@@ -78,12 +118,6 @@ export default function FAQSection({
       }
       return next;
     });
-  };
-
-  const sectionStyle: React.CSSProperties = {
-    width: "100%",
-    padding: "80px 8%",
-    backgroundColor: theme.bg,
   };
 
   const containerStyle: React.CSSProperties = {
@@ -178,7 +212,19 @@ export default function FAQSection({
   };
 
   return (
-    <section style={sectionStyle}>
+    <section
+      ref={sectionRef as React.RefObject<HTMLElement>}
+      style={sectionStyle}
+      onClick={showHandles ? sectionClickHandler : undefined}
+    >
+      {showHandles && sectionSelected && (
+        <div style={{ position: "absolute", top: 8, left: "50%", zIndex: 50 }}>
+          <SectionToolbar {...toolbarProps} />
+        </div>
+      )}
+      {bgLayerStyle && <div style={bgLayerStyle} />}
+      {overlayStyle && <div style={overlayStyle} />}
+      <BgDragOverlay {...bgDragOverlayProps} />
       {isEditing && (
         <style>{`
           .editable-field-dark:focus {
@@ -201,7 +247,7 @@ export default function FAQSection({
           }
         `}</style>
       )}
-      <div style={containerStyle}>
+      <div style={{ ...contentContainerStyle, ...containerStyle }}>
         {/* Header */}
         <div style={headerStyle}>
           {isEditing ? (

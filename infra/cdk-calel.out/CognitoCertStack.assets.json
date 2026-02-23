@@ -1,0 +1,21 @@
+{
+  "version": "48.0.0",
+  "files": {
+    "f79023427d9fb4b640eb21c96e1f8217e4d1b56396c82eb59a23b70210a868e2": {
+      "displayName": "CognitoCertStack Template",
+      "source": {
+        "path": "CognitoCertStack.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "710735877057-us-east-1-b27a2c7d": {
+          "bucketName": "cdk-hnb659fds-assets-710735877057-us-east-1",
+          "objectKey": "f79023427d9fb4b640eb21c96e1f8217e4d1b56396c82eb59a23b70210a868e2.json",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::710735877057:role/cdk-hnb659fds-file-publishing-role-710735877057-us-east-1"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}
