@@ -61,6 +61,7 @@ export class SesStack extends cdk.Stack {
     // DKIM and other DNS records are configured manually in Vercel DNS
     const emailIdentity = new ses.EmailIdentity(this, "EmailIdentity", {
       identity: ses.Identity.domain(appDomain),
+      mailFromDomain: `mail.${appDomain}`,
     });
 
     // Suppress the unused variable warning - emailIdentity is used for implicit dependency
@@ -75,6 +76,7 @@ export class SesStack extends cdk.Stack {
         "CallyEmailIdentity",
         {
           identity: ses.Identity.domain(props.callyDomain),
+          mailFromDomain: `mail.${props.callyDomain}`,
         },
       );
       void callyEmailIdentity;

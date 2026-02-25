@@ -562,9 +562,16 @@ async function forwardEmail(
   const modifiedLines: string[] = [];
   let inHeaders = true;
   let addedHeaders = false;
+  let skipContinuation = false; // Track multi-line headers being skipped (e.g., DKIM)
 
   for (const line of lines) {
     if (inHeaders) {
+      // Continuation lines start with whitespace (space or tab)
+      if (skipContinuation && (line.startsWith(" ") || line.startsWith("\t"))) {
+        continue;
+      }
+      skipContinuation = false;
+
       if (line === "") {
         // End of headers - add our custom headers before the empty line
         if (!addedHeaders) {
@@ -578,9 +585,19 @@ async function forwardEmail(
         // Replace To: header
         modifiedLines.push(`To: ${forwardTo}`);
       } else if (line.toLowerCase().startsWith("from:")) {
-        // Keep original From but add Reply-To
-        modifiedLines.push(line);
+        // Replace From with our verified domain address
+        // Extract display name from original From if available (e.g., "John Doe <john@example.com>")
+        const nameMatch = line.match(/^From:\s*(?:"?([^"<]+?)"?\s*<|([^<@\s]+))/i);
+        const displayName = (nameMatch?.[1] || nameMatch?.[2] || "").trim();
+        const fromHeader = displayName
+          ? `From: "${displayName}" <${fromEmail}>`
+          : `From: ${fromEmail}`;
+        modifiedLines.push(fromHeader);
         modifiedLines.push(`Reply-To: ${originalSender}`);
+      } else if (line.toLowerCase().startsWith("reply-to:")) {
+        // Skip existing Reply-To - we add our own with original sender
+        skipContinuation = true;
+        continue;
       } else if (line.toLowerCase().startsWith("return-path:")) {
         // Update Return-Path to our domain
         modifiedLines.push(`Return-Path: <${fromEmail}>`);
@@ -588,7 +605,8 @@ async function forwardEmail(
         line.toLowerCase().startsWith("dkim-signature:") ||
         line.toLowerCase().startsWith("domainkey-signature:")
       ) {
-        // Skip DKIM signatures as they won't be valid after modification
+        // Skip DKIM signatures (multi-line) as they won't be valid after modification
+        skipContinuation = true;
         continue;
       } else {
         modifiedLines.push(line);

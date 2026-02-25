@@ -6,15 +6,31 @@ import InlineToast from "@/components/InlineToast";
 import type { InlineToastType } from "@/components/InlineToast";
 import DomainStatusBadge from "./DomainStatusBadge";
 import NameserverInstructions from "./NameserverInstructions";
+import DnsInstructions from "./DnsInstructions";
 import EmailSetupCard from "./EmailSetupCard";
 import PurchasedDomainBanner from "./PurchasedDomainBanner";
 import type { DomainConfig, EmailConfig, TenantDnsRecord } from "@/types";
+
+type DnsManagement = "vercel" | "self";
+
+interface AddDomainResult {
+  nameservers: string[];
+  dnsRecords?: Array<{
+    type: string;
+    name: string;
+    value: string;
+    purpose: string;
+  }>;
+}
 
 interface DomainSetupCardProps {
   domainConfig?: DomainConfig;
   additionalDomains?: DomainConfig[];
   emailConfig?: EmailConfig;
-  onAddDomain: (domain: string) => Promise<{ nameservers: string[] }>;
+  onAddDomain: (
+    domain: string,
+    dnsManagement: DnsManagement,
+  ) => Promise<AddDomainResult>;
   onVerifyDomain: (domain?: string) => Promise<{ verified: boolean }>;
   onRemoveDomain: (domain?: string) => Promise<void>;
   onSetupEmail: (
@@ -25,6 +41,7 @@ interface DomainSetupCardProps {
   onVerifyEmail: () => Promise<void>;
   onDisableEmail: () => Promise<void>;
   emailDnsRecords?: TenantDnsRecord[];
+  defaultForwardEmail?: string;
 }
 
 export default function DomainSetupCard({
@@ -38,9 +55,15 @@ export default function DomainSetupCard({
   onVerifyEmail,
   onDisableEmail,
   emailDnsRecords = [],
+  defaultForwardEmail,
 }: DomainSetupCardProps) {
   const [domain, setDomain] = useState("");
   const [nameservers, setNameservers] = useState<string[]>([]);
+  const [selfManagedRecords, setSelfManagedRecords] = useState<
+    Array<{ type: string; name: string; value: string; purpose: string }>
+  >([]);
+  const [dnsManagement, setDnsManagement] = useState<DnsManagement>("vercel");
+  const [domainAdded, setDomainAdded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [additionalDomainLoading, setAdditionalDomainLoading] = useState<
@@ -54,18 +77,22 @@ export default function DomainSetupCard({
 
   const hasDomain = !!domainConfig?.domain;
   const isDomainVerified = domainConfig?.vercelVerified;
+  const effectiveDnsManagement = domainConfig?.dnsManagement ?? "vercel";
 
   const handleAddDomain = async () => {
     if (!domain.trim()) {
       setError("Domain is required");
       return;
     }
-
     setLoading(true);
     setError(null);
     try {
-      const result = await onAddDomain(domain);
+      const result = await onAddDomain(domain, dnsManagement);
       setNameservers(result.nameservers);
+      if (dnsManagement === "self" && result.dnsRecords) {
+        setSelfManagedRecords(result.dnsRecords);
+      }
+      setDomainAdded(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add domain");
     } finally {
@@ -184,41 +211,109 @@ export default function DomainSetupCard({
 
           <p className="text-sm text-gray-600 mb-4">
             Connect your existing domain to use a custom URL for your calendar
-            and landing page. You will need to update your domain&apos;s
-            nameservers.
+            and landing page.
           </p>
 
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Domain Name
-              </label>
-              <input
-                type="text"
-                value={domain}
-                onChange={(e) => setDomain(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="yourdomain.com"
-              />
-            </div>
+            {/* Step 1: Enter domain and click Connect */}
+            {!domainAdded && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Domain Name
+                  </label>
+                  <input
+                    type="text"
+                    value={domain}
+                    onChange={(e) => setDomain(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="yourdomain.com"
+                  />
+                </div>
 
-            {error && (
-              <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
-                {error}
-              </div>
+                {error && (
+                  <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                    {error}
+                  </div>
+                )}
+
+                <PrimaryButton
+                  onClick={handleAddDomain}
+                  loading={loading}
+                  fullWidth
+                >
+                  Connect Domain
+                </PrimaryButton>
+              </>
             )}
 
-            {nameservers.length > 0 && (
-              <NameserverInstructions nameservers={nameservers} />
-            )}
+            {/* Step 2: After Connect — show DNS configuration */}
+            {domainAdded && (
+              <>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-sm font-medium text-gray-900">{domain}</p>
+                </div>
 
-            <PrimaryButton
-              onClick={handleAddDomain}
-              loading={loading}
-              fullWidth
-            >
-              Connect Domain
-            </PrimaryButton>
+                {/* Default: CallyGo Manages — show NS instructions */}
+                {dnsManagement === "vercel" && (
+                  <>
+                    <NameserverInstructions
+                      nameservers={
+                        nameservers.length > 0
+                          ? nameservers
+                          : ["ns1.vercel-dns.com", "ns2.vercel-dns.com"]
+                      }
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setDnsManagement("self")}
+                      className="text-sm text-[var(--color-primary)] hover:underline font-medium"
+                    >
+                      I&apos;ll manage DNS myself
+                    </button>
+                  </>
+                )}
+
+                {/* Self-Manage: show A/CNAME records */}
+                {dnsManagement === "self" && (
+                  <>
+                    {selfManagedRecords.length > 0 ? (
+                      <DnsInstructions
+                        records={selfManagedRecords}
+                        title="DNS Records for Your Landing Page"
+                        description="Add these records at your domain registrar to point your domain to CallyGo:"
+                      />
+                    ) : (
+                      <DnsInstructions
+                        records={[
+                          {
+                            type: "A",
+                            name: "@",
+                            value: "76.76.21.21",
+                            purpose: "Points your root domain to CallyGo",
+                          },
+                          {
+                            type: "CNAME",
+                            name: "www",
+                            value: "cname.vercel-dns.com",
+                            purpose: "Points www subdomain to CallyGo",
+                          },
+                        ]}
+                        title="DNS Records for Your Landing Page"
+                        description="Add these records at your domain registrar to point your domain to CallyGo:"
+                      />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setDnsManagement("vercel")}
+                      className="text-sm text-[var(--color-primary)] hover:underline font-medium"
+                    >
+                      Let CallyGo manage DNS instead
+                    </button>
+                  </>
+                )}
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -272,9 +367,30 @@ export default function DomainSetupCard({
             />
           )}
 
-          {!isDomainVerified && (
+          {!isDomainVerified && effectiveDnsManagement === "vercel" && (
             <NameserverInstructions
               nameservers={["ns1.vercel-dns.com", "ns2.vercel-dns.com"]}
+            />
+          )}
+
+          {!isDomainVerified && effectiveDnsManagement === "self" && (
+            <DnsInstructions
+              records={[
+                {
+                  type: "A",
+                  name: "@",
+                  value: "76.76.21.21",
+                  purpose: "Points your root domain to CallyGo",
+                },
+                {
+                  type: "CNAME",
+                  name: "www",
+                  value: "cname.vercel-dns.com",
+                  purpose: "Points www subdomain to CallyGo",
+                },
+              ]}
+              title="DNS Records for Your Landing Page"
+              description="Add these records at your domain registrar to point your domain to CallyGo:"
             />
           )}
 
@@ -363,6 +479,8 @@ export default function DomainSetupCard({
           onVerifyEmail={onVerifyEmail}
           onDisableEmail={onDisableEmail}
           dnsRecords={emailDnsRecords}
+          defaultForwardEmail={defaultForwardEmail}
+          dnsManagement={effectiveDnsManagement}
         />
       )}
     </div>

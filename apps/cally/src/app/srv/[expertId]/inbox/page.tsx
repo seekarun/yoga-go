@@ -2,7 +2,13 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import type { EmailWithThread, EmailDraft, EmailLabel } from "@/types";
+import Link from "next/link";
+import type {
+  EmailWithThread,
+  EmailDraft,
+  EmailLabel,
+  EmailSignatureConfig,
+} from "@/types";
 import { useNotificationContextOptional } from "@/contexts/NotificationContext";
 import EmailComposer from "@/components/inbox/EmailComposer";
 import BulkActionBar from "@/components/inbox/BulkActionBar";
@@ -116,8 +122,32 @@ export default function InboxPage() {
   // Bulk selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  // Fetch labels on mount
+  // Email setup check
+  const [emailReady, setEmailReady] = useState<boolean | null>(null);
+
+  // Settings / signature state
+  const [showSettings, setShowSettings] = useState(false);
+  const [signature, setSignature] = useState<EmailSignatureConfig>({
+    text: "",
+    html: "",
+    enabled: false,
+  });
+  const [sigSaving, setSigSaving] = useState(false);
+  const [sigMessage, setSigMessage] = useState<string | null>(null);
+
+  // Fetch labels + signature + email status on mount
   useEffect(() => {
+    fetch("/api/data/app/domain/status")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          setEmailReady(!!data.data?.emailConfig?.domainEmail);
+        } else {
+          setEmailReady(false);
+        }
+      })
+      .catch(() => setEmailReady(false));
+
     fetch("/api/data/app/inbox/labels")
       .then((r) => r.json())
       .then((data) => {
@@ -128,7 +158,40 @@ export default function InboxPage() {
       .catch((err) => {
         console.log("[DBG][inbox] Failed to fetch labels:", err);
       });
+
+    fetch("/api/data/app/inbox/signature")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success && data.data) {
+          setSignature(data.data);
+        }
+      })
+      .catch(() => {});
   }, []);
+
+  const handleSaveSignature = async () => {
+    setSigSaving(true);
+    setSigMessage(null);
+    try {
+      const res = await fetch("/api/data/app/inbox/signature", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(signature),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSignature(data.data);
+        setSigMessage("Signature saved");
+        setTimeout(() => setSigMessage(null), 3000);
+      } else {
+        setSigMessage("Failed to save signature");
+      }
+    } catch {
+      setSigMessage("Failed to save signature");
+    } finally {
+      setSigSaving(false);
+    }
+  };
 
   // Debounce search query changes
   useEffect(() => {
@@ -537,7 +600,53 @@ export default function InboxPage() {
     );
   }
 
-  if (loading) {
+  if (emailReady === false) {
+    return (
+      <div className="px-6 lg:px-8 py-20 text-center">
+        <svg
+          className="w-16 h-16 mx-auto text-gray-300 mb-4"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.5}
+            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+          />
+        </svg>
+        <h2 className="text-lg font-semibold text-gray-900 mb-2">
+          Email not set up yet
+        </h2>
+        <p className="text-sm text-gray-500 mb-6 max-w-md mx-auto">
+          To use the inbox, you need to configure a custom domain and enable
+          email first.
+        </p>
+        <Link
+          href={`/srv/${expertId}/settings/domain`}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90 text-sm font-medium"
+        >
+          Set up Domain & Email
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
+        </Link>
+      </div>
+    );
+  }
+
+  if (loading || emailReady === null) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-primary)]" />
@@ -590,6 +699,35 @@ export default function InboxPage() {
               )}
             </button>
           ))}
+          <button
+            onClick={() => setShowSettings(true)}
+            className={`p-1.5 rounded-lg transition-colors ${
+              showSettings
+                ? "bg-[var(--color-primary)] text-white"
+                : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+            }`}
+            title="Email Settings"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+              />
+            </svg>
+          </button>
         </div>
         <button
           onClick={() => {
@@ -1255,6 +1393,118 @@ export default function InboxPage() {
             if (activeLabelId === labelId) setActiveLabelId(undefined);
           }}
         />
+      )}
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          onClick={() => setShowSettings(false)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Email Settings
+              </h3>
+              <button
+                onClick={() => setShowSettings(false)}
+                className="p-1 hover:bg-gray-100 rounded-lg"
+              >
+                <svg
+                  className="w-5 h-5 text-gray-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-600">
+                  Automatically append a signature to outgoing emails.
+                </p>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={signature.enabled}
+                    onChange={(e) =>
+                      setSignature((s) => ({
+                        ...s,
+                        enabled: e.target.checked,
+                      }))
+                    }
+                    className="w-4 h-4 text-[var(--color-primary)] rounded focus:ring-[var(--color-primary)]"
+                  />
+                  <span className="text-sm text-gray-700">Enabled</span>
+                </label>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Signature Text
+                </label>
+                <textarea
+                  value={signature.text}
+                  onChange={(e) =>
+                    setSignature((s) => ({
+                      ...s,
+                      text: e.target.value,
+                      html: e.target.value.replace(/\n/g, "<br>"),
+                    }))
+                  }
+                  rows={4}
+                  placeholder="e.g. John Smith&#10;CEO, Acme Inc.&#10;(555) 123-4567"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent resize-y"
+                />
+              </div>
+
+              {signature.text && (
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Preview:</p>
+                  <div className="border border-gray-100 rounded-lg p-3 bg-gray-50">
+                    <div
+                      className="text-sm text-gray-600 border-t border-gray-300 pt-2"
+                      style={{ whiteSpace: "pre-line" }}
+                    >
+                      {signature.text}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleSaveSignature}
+                  disabled={sigSaving}
+                  className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90 text-sm font-medium disabled:opacity-50"
+                >
+                  {sigSaving ? "Saving..." : "Save Signature"}
+                </button>
+                {sigMessage && (
+                  <span
+                    className={`text-sm ${
+                      sigMessage.includes("Failed")
+                        ? "text-red-600"
+                        : "text-green-600"
+                    }`}
+                  >
+                    {sigMessage}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 import { DomainSetupCard, DomainSearchCard } from "@/components/domain";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import type {
@@ -9,7 +10,6 @@ import type {
   EmailConfig,
   DomainStatusResponse,
   TenantDnsRecord,
-  EmailSignatureConfig,
 } from "@/types";
 
 type DomainTab = "search" | "byod";
@@ -52,8 +52,20 @@ function generateEmailDnsRecords(
     });
   });
 
-  // Suppress unused warning
-  void domain;
+  // Custom MAIL FROM subdomain records
+  records.push({
+    type: "MX",
+    name: "mail",
+    value: `feedback-smtp.${SES_REGION}.amazonaws.com`,
+    priority: 10,
+    purpose: "MAIL FROM - Bounce handling for custom sending domain",
+  });
+  records.push({
+    type: "TXT",
+    name: "mail",
+    value: "v=spf1 include:amazonses.com ~all",
+    purpose: `MAIL FROM SPF - Authorizes SES to send from mail.${domain}`,
+  });
 
   return records;
 }
@@ -64,6 +76,8 @@ function generateEmailDnsRecords(
 export default function DomainSettingsPage() {
   const params = useParams();
   const _expertId = params.expertId as string;
+  const { user } = useAuth();
+  const userEmail = user?.profile?.email || "";
 
   const [loading, setLoading] = useState(true);
   const [domainConfig, setDomainConfig] = useState<DomainConfig | undefined>();
@@ -74,13 +88,6 @@ export default function DomainSettingsPage() {
   const [emailDnsRecords, setEmailDnsRecords] = useState<TenantDnsRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<DomainTab>("search");
-  const [signature, setSignature] = useState<EmailSignatureConfig>({
-    text: "",
-    html: "",
-    enabled: false,
-  });
-  const [sigSaving, setSigSaving] = useState(false);
-  const [sigMessage, setSigMessage] = useState<string | null>(null);
 
   // Fetch domain status
   const fetchStatus = useCallback(async () => {
@@ -108,17 +115,6 @@ export default function DomainSettingsPage() {
       } else {
         setError(data.error || "Failed to load domain status");
       }
-
-      // Fetch signature config
-      try {
-        const sigRes = await fetch("/api/data/app/inbox/signature");
-        const sigData = await sigRes.json();
-        if (sigData.success && sigData.data) {
-          setSignature(sigData.data);
-        }
-      } catch {
-        // Signature fetch failed, use defaults
-      }
     } catch (err) {
       console.error("[DBG][DomainSettingsPage] Error fetching status:", err);
       setError("Failed to load domain status");
@@ -134,11 +130,20 @@ export default function DomainSettingsPage() {
   // Add domain
   const handleAddDomain = async (
     domain: string,
-  ): Promise<{ nameservers: string[] }> => {
+    dnsManagement: "vercel" | "self" = "vercel",
+  ): Promise<{
+    nameservers: string[];
+    dnsRecords?: Array<{
+      type: string;
+      name: string;
+      value: string;
+      purpose: string;
+    }>;
+  }> => {
     const response = await fetch("/api/data/app/domain/add", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ domain }),
+      body: JSON.stringify({ domain, dnsManagement }),
     });
     const data = await response.json();
 
@@ -147,7 +152,10 @@ export default function DomainSettingsPage() {
     }
 
     await fetchStatus();
-    return { nameservers: data.data.nameservers };
+    return {
+      nameservers: data.data.nameservers,
+      dnsRecords: data.data.dnsRecords,
+    };
   };
 
   // Verify domain (optionally specify which domain to verify)
@@ -233,30 +241,6 @@ export default function DomainSettingsPage() {
     setEmailDnsRecords([]);
   };
 
-  const handleSaveSignature = async () => {
-    setSigSaving(true);
-    setSigMessage(null);
-    try {
-      const res = await fetch("/api/data/app/inbox/signature", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(signature),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setSignature(data.data);
-        setSigMessage("Signature saved");
-        setTimeout(() => setSigMessage(null), 3000);
-      } else {
-        setSigMessage("Failed to save signature");
-      }
-    } catch {
-      setSigMessage("Failed to save signature");
-    } finally {
-      setSigSaving(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="p-6">
@@ -321,134 +305,53 @@ export default function DomainSettingsPage() {
               onVerifyEmail={handleVerifyEmail}
               onDisableEmail={handleDisableEmail}
               emailDnsRecords={emailDnsRecords}
+              defaultForwardEmail={userEmail}
             />
           </div>
         )}
 
-        {/* Add domain section — always show tabs */}
-        <div>
-          {hasDomain && (
-            <h2 className="text-lg font-semibold text-[var(--text-main)] mb-4">
-              Add Another Domain
-            </h2>
-          )}
-          <div className="flex border-b border-gray-200 mb-6">
-            <button
-              onClick={() => setActiveTab("search")}
-              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                activeTab === "search"
-                  ? "border-indigo-600 text-indigo-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              Search & Buy
-            </button>
-            <button
-              onClick={() => setActiveTab("byod")}
-              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                activeTab === "byod"
-                  ? "border-indigo-600 text-indigo-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              I Have a Domain
-            </button>
-          </div>
-
-          {activeTab === "search" ? (
-            <DomainSearchCard onPurchaseComplete={fetchStatus} />
-          ) : (
-            <DomainSetupCard
-              onAddDomain={handleAddDomain}
-              onVerifyDomain={handleVerifyDomain}
-              onRemoveDomain={handleRemoveDomain}
-              onSetupEmail={handleSetupEmail}
-              onVerifyEmail={handleVerifyEmail}
-              onDisableEmail={handleDisableEmail}
-            />
-          )}
-        </div>
-
-        {/* Email Signature Section */}
-        <div className="mt-8">
-          <h2 className="text-lg font-semibold text-[var(--text-main)] mb-4">
-            Email Signature
-          </h2>
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm text-[var(--text-muted)]">
-                Automatically append a signature to outgoing emails.
-              </p>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={signature.enabled}
-                  onChange={(e) =>
-                    setSignature((s) => ({ ...s, enabled: e.target.checked }))
-                  }
-                  className="w-4 h-4 text-[var(--color-primary)] rounded focus:ring-[var(--color-primary)]"
-                />
-                <span className="text-sm text-gray-700">Enabled</span>
-              </label>
+        {/* Add domain section — only show when no domain configured */}
+        {!hasDomain && (
+          <div>
+            <div className="flex border-b border-gray-200 mb-6">
+              <button
+                onClick={() => setActiveTab("search")}
+                className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                  activeTab === "search"
+                    ? "border-indigo-600 text-indigo-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                Search & Buy
+              </button>
+              <button
+                onClick={() => setActiveTab("byod")}
+                className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                  activeTab === "byod"
+                    ? "border-indigo-600 text-indigo-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                I Have a Domain
+              </button>
             </div>
 
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Signature Text
-                </label>
-                <textarea
-                  value={signature.text}
-                  onChange={(e) =>
-                    setSignature((s) => ({
-                      ...s,
-                      text: e.target.value,
-                      html: e.target.value.replace(/\n/g, "<br>"),
-                    }))
-                  }
-                  rows={4}
-                  placeholder="e.g. John Smith&#10;CEO, Acme Inc.&#10;(555) 123-4567"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent resize-y"
-                />
-              </div>
-
-              {signature.text && (
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Preview:</p>
-                  <div className="border border-gray-100 rounded-lg p-3 bg-gray-50">
-                    <div
-                      className="text-sm text-gray-600 border-t border-gray-300 pt-2"
-                      style={{ whiteSpace: "pre-line" }}
-                    >
-                      {signature.text}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={handleSaveSignature}
-                  disabled={sigSaving}
-                  className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90 text-sm font-medium disabled:opacity-50"
-                >
-                  {sigSaving ? "Saving..." : "Save Signature"}
-                </button>
-                {sigMessage && (
-                  <span
-                    className={`text-sm ${
-                      sigMessage.includes("Failed")
-                        ? "text-red-600"
-                        : "text-green-600"
-                    }`}
-                  >
-                    {sigMessage}
-                  </span>
-                )}
-              </div>
-            </div>
+            {activeTab === "search" ? (
+              <DomainSearchCard onPurchaseComplete={fetchStatus} />
+            ) : (
+              <DomainSetupCard
+                key="no-domain"
+                onAddDomain={handleAddDomain}
+                onVerifyDomain={handleVerifyDomain}
+                onRemoveDomain={handleRemoveDomain}
+                onSetupEmail={handleSetupEmail}
+                onVerifyEmail={handleVerifyEmail}
+                onDisableEmail={handleDisableEmail}
+                defaultForwardEmail={userEmail}
+              />
+            )}
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

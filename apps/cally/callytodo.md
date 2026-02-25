@@ -20,8 +20,7 @@ x more templates
 x feat: add images for products
 x tech: alerts
 x booking wait list
-
-- review DB structure for scaling
+x review DB structure for scaling
 
 - super admin console
   - dashboard

@@ -33,7 +33,10 @@ export async function POST(request: Request) {
 
     // Parse request body
     const body = await request.json();
-    const { domain } = body;
+    const { domain, dnsManagement = "vercel" } = body as {
+      domain: string;
+      dnsManagement?: "vercel" | "self";
+    };
 
     if (!domain || typeof domain !== "string") {
       return NextResponse.json(
@@ -42,8 +45,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate domain format
-    const domainRegex = /^[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]\.[a-zA-Z]{2,}$/;
+    // Validate domain format (supports multi-part TLDs like .com.au, .co.uk)
+    const domainRegex =
+      /^([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
     const normalizedDomain = domain.toLowerCase().trim();
     if (!domainRegex.test(normalizedDomain)) {
       return NextResponse.json(
@@ -94,8 +98,8 @@ export async function POST(request: Request) {
         );
         const existingLookup = await getDomainLookup(normalizedDomain);
 
-        if (existingLookup) {
-          // Another tenant in DynamoDB still owns this domain — reject
+        if (existingLookup && existingLookup.tenantId !== tenant.id) {
+          // Another tenant in DynamoDB owns this domain — reject
           console.error(
             "[DBG][domain/add] Domain owned by tenant:",
             existingLookup.tenantId,
@@ -103,48 +107,73 @@ export async function POST(request: Request) {
           return NextResponse.json(
             {
               success: false,
-              error: "This domain is already associated with another account.",
+              error:
+                "This domain is already taken. If you own this domain, please contact support.",
             },
             { status: 400 },
           );
         }
 
-        // No tenant owns it in DynamoDB — domain is orphaned in Vercel (previous tenant was deleted)
-        // Try to remove from Vercel then re-add so it's properly assigned to our project
-        console.log(
-          "[DBG][domain/add] Domain orphaned in Vercel, removing and re-adding for tenant:",
-          tenant.id,
-        );
-
-        // Remove may fail (e.g. nameserver issue) — that's OK, try re-add anyway
-        const removeResult = await removeDomainFromVercel(normalizedDomain);
-        console.log(
-          "[DBG][domain/add] Vercel remove result:",
-          removeResult.success,
-          removeResult.error,
-        );
-
-        // Re-add to ensure it's on our project
-        const retryResult = await addDomainToVercel(normalizedDomain);
-        if (!retryResult.success) {
-          // If still failing, check if domain is already on our project
-          const existingStatus = await getDomainStatus(normalizedDomain);
-          if (!existingStatus.exists) {
+        // No other tenant owns it — check if domain is on our project or another
+        const existingStatus = await getDomainStatus(normalizedDomain);
+        if (existingStatus.exists) {
+          // Domain is already on our project — just reuse it
+          console.log(
+            "[DBG][domain/add] Domain already on our project, reusing for tenant:",
+            tenant.id,
+          );
+        } else if (result.conflictProjectId) {
+          // Domain is on a different project in our team — move it
+          console.log(
+            "[DBG][domain/add] Domain on another project, moving from:",
+            result.conflictProjectId,
+          );
+          const removeResult = await removeDomainFromVercel(
+            normalizedDomain,
+            result.conflictProjectId,
+          );
+          if (!removeResult.success) {
             console.error(
-              "[DBG][domain/add] Cannot reclaim orphaned domain:",
+              "[DBG][domain/add] Failed to remove from other project:",
+              removeResult.error,
+            );
+            return NextResponse.json(
+              {
+                success: false,
+                error:
+                  "This domain is already taken. If you own this domain, please contact support.",
+              },
+              { status: 400 },
+            );
+          }
+          // Re-add to our project
+          const retryResult = await addDomainToVercel(normalizedDomain);
+          if (!retryResult.success) {
+            console.error(
+              "[DBG][domain/add] Failed to re-add after move:",
               retryResult.error,
             );
             return NextResponse.json(
               {
                 success: false,
-                error: `Cannot reclaim domain. It may still be registered in Vercel. Try removing it from the Vercel dashboard first.`,
+                error:
+                  "This domain is already taken. If you own this domain, please contact support.",
               },
               { status: 400 },
             );
           }
-          // Domain is already on our project — proceed
-          console.log(
-            "[DBG][domain/add] Domain already on our project, proceeding",
+        } else {
+          // No project ID available — cannot reclaim
+          console.error(
+            "[DBG][domain/add] Domain in use, no conflict project ID available",
+          );
+          return NextResponse.json(
+            {
+              success: false,
+              error:
+                "This domain is already taken. If you own this domain, please contact support.",
+            },
+            { status: 400 },
           );
         }
       } else {
@@ -168,6 +197,7 @@ export async function POST(request: Request) {
       addedAt: new Date().toISOString(),
       vercelVerified: status.verified,
       vercelVerifiedAt: status.verified ? new Date().toISOString() : undefined,
+      dnsManagement,
     };
 
     if (!hasPrimaryDomain) {
@@ -186,14 +216,44 @@ export async function POST(request: Request) {
     // Vercel nameservers - standard for all domains
     const nameservers = ["ns1.vercel-dns.com", "ns2.vercel-dns.com"];
 
+    // Build DNS records for self-managed domains
+    const selfManagedRecords =
+      dnsManagement === "self"
+        ? [
+            {
+              type: "A" as const,
+              name: "@",
+              value: "76.76.21.21",
+              purpose: "Points your root domain to CallyGo",
+            },
+            {
+              type: "CNAME" as const,
+              name: "www",
+              value: "cname.vercel-dns.com",
+              purpose: "Points www subdomain to CallyGo",
+            },
+            // Include Vercel TXT verification record if present
+            ...(status.verification || []).map((v) => ({
+              type: "TXT" as const,
+              name: v.name,
+              value: v.value,
+              purpose: "Vercel domain ownership verification",
+            })),
+          ]
+        : undefined;
+
     const response: AddDomainResponse = {
       domain: normalizedDomain,
       verified: status.verified,
       nameservers,
+      dnsManagement,
+      dnsRecords: selfManagedRecords,
       verification: result.verification,
       instructions: status.verified
         ? "Domain is verified and ready to use."
-        : "Update your domain's nameservers at your registrar to the values shown above. DNS changes can take up to 48 hours to propagate.",
+        : dnsManagement === "self"
+          ? "Add the DNS records shown above at your domain registrar. DNS changes can take up to 48 hours to propagate."
+          : "Update your domain's nameservers at your registrar to the values shown above. DNS changes can take up to 48 hours to propagate.",
     };
 
     return NextResponse.json({

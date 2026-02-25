@@ -94,26 +94,41 @@ export async function POST(request: Request) {
     // Get DNS records that need to be added
     const dnsRecords = getDnsRecordsForDomain(domain, sesResult.dkimTokens);
 
-    // Automatically add DNS records to Vercel (since domain uses Vercel nameservers)
+    // Only auto-add DNS records to Vercel if CallyGo manages DNS (not self-managed)
+    const isSelfManaged = tenant.domainConfig.dnsManagement === "self";
     let dnsRecordsAdded = false;
     let dnsAddErrors: string[] = [];
-    try {
+
+    if (!isSelfManaged) {
+      try {
+        console.log(
+          "[DBG][email/setup] Adding DNS records to Vercel for:",
+          domain,
+        );
+        const dnsResult = await addEmailDnsRecords(
+          domain,
+          sesResult.dkimTokens,
+        );
+        dnsRecordsAdded = dnsResult.success;
+        dnsAddErrors = dnsResult.errors;
+        console.log(
+          "[DBG][email/setup] DNS records result:",
+          dnsResult.addedRecords,
+          "errors:",
+          dnsResult.errors,
+        );
+      } catch (dnsError) {
+        console.error(
+          "[DBG][email/setup] Failed to add DNS records:",
+          dnsError,
+        );
+        // Continue - user can add records manually
+      }
+    } else {
       console.log(
-        "[DBG][email/setup] Adding DNS records to Vercel for:",
+        "[DBG][email/setup] Self-managed DNS - skipping auto-add for:",
         domain,
       );
-      const dnsResult = await addEmailDnsRecords(domain, sesResult.dkimTokens);
-      dnsRecordsAdded = dnsResult.success;
-      dnsAddErrors = dnsResult.errors;
-      console.log(
-        "[DBG][email/setup] DNS records result:",
-        dnsResult.addedRecords,
-        "errors:",
-        dnsResult.errors,
-      );
-    } catch (dnsError) {
-      console.error("[DBG][email/setup] Failed to add DNS records:", dnsError);
-      // Continue - user can add records manually
     }
 
     // Save email config to tenant (including AI assistant email)

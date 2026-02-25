@@ -25,6 +25,7 @@ export interface DomainConfig {
   vercelVerified: boolean;
   vercelVerifiedAt?: string;
   purchaseConfig?: DomainPurchaseConfig;
+  dnsManagement?: "vercel" | "self";
 }
 
 /**
@@ -59,6 +60,13 @@ export interface AddDomainResponse {
   domain: string;
   verified: boolean;
   nameservers: string[];
+  dnsManagement: "vercel" | "self";
+  dnsRecords?: Array<{
+    type: "A" | "CNAME" | "TXT";
+    name: string;
+    value: string;
+    purpose: string;
+  }>;
   verification?: Array<{
     type: "TXT" | "CNAME";
     name: string;

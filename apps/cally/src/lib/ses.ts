@@ -10,6 +10,7 @@ import {
   CreateEmailIdentityCommand,
   GetEmailIdentityCommand,
   DeleteEmailIdentityCommand,
+  PutEmailIdentityMailFromAttributesCommand,
 } from "@aws-sdk/client-sesv2";
 import type { TenantDnsRecord, DkimStatus } from "@/types";
 
@@ -58,6 +59,26 @@ export async function createDomainIdentity(
       verifiedForSendingStatus: response.VerifiedForSendingStatus,
       dkimAttributes: response.DkimAttributes,
     });
+
+    // Set custom MAIL FROM domain to avoid "via amazonses.com" in Gmail
+    const mailFromDomain = `mail.${domain}`;
+    try {
+      await ses.send(
+        new PutEmailIdentityMailFromAttributesCommand({
+          EmailIdentity: domain,
+          MailFromDomain: mailFromDomain,
+          BehaviorOnMxFailure: "USE_DEFAULT_VALUE",
+        }),
+      );
+      console.log(
+        `[DBG][ses] Custom MAIL FROM set to ${mailFromDomain} for ${domain}`,
+      );
+    } catch (mailFromErr) {
+      console.warn(
+        `[DBG][ses] Failed to set custom MAIL FROM for ${domain}:`,
+        mailFromErr,
+      );
+    }
 
     // Extract DKIM tokens (3 tokens needed for CNAME records)
     const dkimTokens = response.DkimAttributes?.Tokens || [];
@@ -172,9 +193,6 @@ export function getDnsRecordsForDomain(
   domain: string,
   dkimTokens: string[],
 ): TenantDnsRecord[] {
-  // Suppress unused warning - domain is kept for potential future use (e.g., subdomain support)
-  void domain;
-
   const records: TenantDnsRecord[] = [];
 
   // MX Record for receiving emails via SES
@@ -203,6 +221,21 @@ export function getDnsRecordsForDomain(
       value: `${token}.dkim.amazonses.com`,
       purpose: `DKIM ${index + 1} - Email authentication signature`,
     });
+  });
+
+  // Custom MAIL FROM subdomain records (removes "via amazonses.com" in Gmail)
+  records.push({
+    type: "MX",
+    name: `mail`,
+    value: `feedback-smtp.${SES_REGION}.amazonaws.com`,
+    priority: 10,
+    purpose: "MAIL FROM - Bounce handling for custom sending domain",
+  });
+  records.push({
+    type: "TXT",
+    name: `mail`,
+    value: "v=spf1 include:amazonses.com ~all",
+    purpose: "MAIL FROM SPF - Authorizes SES to send from mail." + domain,
   });
 
   return records;

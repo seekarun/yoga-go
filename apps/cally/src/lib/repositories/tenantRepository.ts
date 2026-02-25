@@ -931,6 +931,43 @@ export async function updateDomainLookupForwardToCal(
 }
 
 /**
+ * Update forwardToEmail on the domain lookup tenant reference in yoga-go-core
+ * This keeps the SES Lambda in sync when the forwarding address is changed
+ */
+export async function updateDomainLookupForwardToEmail(
+  tenantId: string,
+  forwardToEmail: string,
+): Promise<void> {
+  console.log(
+    "[DBG][tenantRepository] Updating forwardToEmail in domain lookup:",
+    tenantId,
+    "->",
+    forwardToEmail,
+  );
+
+  await docClient.send(
+    new UpdateCommand({
+      TableName: Tables.YOGA_CORE,
+      Key: {
+        PK: "TENANT",
+        SK: tenantId,
+      },
+      UpdateExpression:
+        "SET emailConfig.forwardToEmail = :forwardToEmail, updatedAt = :now",
+      ExpressionAttributeValues: {
+        ":forwardToEmail": forwardToEmail,
+        ":now": new Date().toISOString(),
+      },
+    }),
+  );
+
+  console.log(
+    "[DBG][tenantRepository] Updated forwardToEmail in domain lookup:",
+    tenantId,
+  );
+}
+
+/**
  * Delete domain lookup records from yoga-go-core table
  * Deletes both the domain lookup and the tenant reference
  */

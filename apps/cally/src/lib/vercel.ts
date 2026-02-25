@@ -54,6 +54,7 @@ export interface AddDomainResult {
   verified?: boolean;
   verification?: DomainVerification[];
   error?: string;
+  conflictProjectId?: string;
 }
 
 /**
@@ -123,9 +124,16 @@ export async function addDomainToVercel(
 
       // Handle specific error cases
       if (data.error?.code === "domain_already_in_use") {
+        // Extract the project ID that currently holds the domain
+        // Vercel returns: { error: { code, projectId, domain: { projectId } } }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const errorData = data.error as any;
+        const conflictProjectId: string | undefined =
+          errorData?.projectId || errorData?.domain?.projectId;
         return {
           success: false,
           error: "Unable to add domain. This domain is already in use.",
+          conflictProjectId,
         };
       }
       if (data.error?.code === "invalid_domain") {
@@ -212,15 +220,21 @@ export async function addDomainToVercel(
  */
 export async function removeDomainFromVercel(
   domain: string,
+  fromProjectId?: string,
 ): Promise<{ success: boolean; error?: string }> {
-  const projectId = process.env.VERCEL_PROJECT_ID;
+  const projectId = fromProjectId || process.env.VERCEL_PROJECT_ID;
   if (!projectId) {
     console.error("[DBG][vercel] VERCEL_PROJECT_ID not configured");
     return { success: false, error: "Vercel integration not configured" };
   }
 
   const normalizedDomain = domain.toLowerCase().trim();
-  console.log("[DBG][vercel] Removing domain from Vercel:", normalizedDomain);
+  console.log(
+    "[DBG][vercel] Removing domain from Vercel project:",
+    projectId,
+    "domain:",
+    normalizedDomain,
+  );
 
   try {
     const response = await fetch(
@@ -650,6 +664,30 @@ export async function addEmailDnsRecords(
     } else {
       errors.push(`DKIM ${i + 1}: ${dkimResult.error}`);
     }
+  }
+
+  // Custom MAIL FROM subdomain records (removes "via amazonses.com")
+  const mailFromMxResult = await addDnsRecord(domain, {
+    type: "MX",
+    name: "mail",
+    value: "feedback-smtp.us-west-2.amazonaws.com",
+    mxPriority: 10,
+  });
+  if (mailFromMxResult.success) {
+    addedRecords.push("MAIL FROM MX");
+  } else {
+    errors.push(`MAIL FROM MX: ${mailFromMxResult.error}`);
+  }
+
+  const mailFromSpfResult = await addDnsRecord(domain, {
+    type: "TXT",
+    name: "mail",
+    value: "v=spf1 include:amazonses.com ~all",
+  });
+  if (mailFromSpfResult.success) {
+    addedRecords.push("MAIL FROM SPF");
+  } else {
+    errors.push(`MAIL FROM SPF: ${mailFromSpfResult.error}`);
   }
 
   console.log("[DBG][vercel] Email DNS records result:", {
