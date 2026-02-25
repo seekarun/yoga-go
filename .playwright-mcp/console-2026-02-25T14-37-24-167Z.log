@@ -1,0 +1,2 @@
+[     576ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://myart.guru/api/auth/me:0
+[     654ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://myart.guru/favicon.ico:0

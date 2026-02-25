@@ -1,0 +1,6 @@
+[    1837ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3113/01kj5c82jqxa3mnt37d6rmw3yy:0
+[    1885ms] [ERROR] Failed to load resource: the server responded with a status of 500 (Internal Server Error) @ http://localhost:3113/favicon.ico:0
+[   37730ms] [WARNING] You may test your Stripe.js integration over HTTP. However, live Stripe.js integrations must use HTTPS. @ https://js.stripe.com/clover/stripe.js:0
+[   38245ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3113/favicon.ico:0
+[   38975ms] [ERROR] Failed to load resource: the server responded with a status of 401 (Unauthorized) @ http://localhost:3113/api/auth/me:0
+[   46134ms] [WARNING] The resource http://localhost:3113/_next/static/chunks/yoga-go_apps_cally_src_app_globals_7d70d08d.css was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ http://localhost:3113/01kj5c82jqxa3mnt37d6rmw3yy:0

@@ -1,0 +1,2 @@
+[    2002ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://callygo.com/01kj5c82jqxa3mnt37d6rmw3yy:0
+[    3732ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://callygo.com/api/auth/me:0

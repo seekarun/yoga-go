@@ -82,7 +82,9 @@ export default async function middleware(request: NextRequest) {
 
   // --- Custom domain rewriting ---
   if (isCustomDomain(hostname) && !isSystemPath(pathname)) {
-    const tenantId = await lookupTenantByDomain(hostname.split(":")[0]);
+    // Strip www. prefix so www.mymusic.guru resolves the same as mymusic.guru
+    const domain = hostname.split(":")[0].replace(/^www\./, "");
+    const tenantId = await lookupTenantByDomain(domain);
 
     if (tenantId) {
       // Only rewrite if the path doesn't already start with the tenantId
@@ -101,7 +103,7 @@ export default async function middleware(request: NextRequest) {
     } else {
       console.log(
         "[DBG][middleware] No tenant found for custom domain:",
-        hostname,
+        domain,
       );
     }
   }
