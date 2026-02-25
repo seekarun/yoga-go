@@ -20,16 +20,7 @@ export interface BrandFont {
 /**
  * Template IDs for the 5 available hero templates
  */
-export type TemplateId =
-  | "centered"
-  | "split"
-  | "apple"
-  | "bayside"
-  | "therapist"
-  | "parallax"
-  | "animated"
-  | "diy"
-  | "freeform";
+export type TemplateId = "centered" | "salon";
 
 /**
  * Image aspect ratio configuration for a template
@@ -74,98 +65,16 @@ export const TEMPLATES: TemplateInfo[] = [
     status: "published",
   },
   {
-    id: "split",
-    name: "Split",
-    description: "Half image, half content side-by-side layout",
-    imageConfig: {
-      heroBackground: "9/16",
-      aboutImage: "4/5",
-      featureCardImage: "16/9",
-    },
-    status: "development",
-  },
-  {
-    id: "apple",
-    name: "Apple",
+    id: "salon",
+    name: "Salon",
     description:
-      "Clean, spacious design with large typography and minimal CTAs",
+      "Premium salon layout with warm earth tones and elegant serif typography",
     imageConfig: {
       heroBackground: "16/9",
-      aboutImage: "1/1",
-      featureCardImage: "16/9",
+      aboutImage: "3/4",
+      featureCardImage: "1/1",
     },
-    status: "development",
-  },
-  {
-    id: "bayside",
-    name: "Bayside",
-    description:
-      "Boutique luxury aesthetic with serif headings and editorial styling",
-    imageConfig: {
-      heroBackground: "9/16",
-      aboutImage: "4/5",
-      featureCardImage: "16/9",
-    },
-    status: "development",
-  },
-  {
-    id: "therapist",
-    name: "Therapist",
-    description:
-      "Warm, empathetic wellness aesthetic with soft shapes and serif headings",
-    imageConfig: {
-      heroBackground: "16/9",
-      aboutImage: "1/1",
-      featureCardImage: "16/9",
-    },
-    status: "development",
-  },
-  {
-    id: "parallax",
-    name: "Parallax",
-    description:
-      "Immersive scroll-driven depth effect with fixed background layers",
-    imageConfig: {
-      heroBackground: "16/9",
-      aboutImage: "4/5",
-      featureCardImage: "16/9",
-    },
-    status: "development",
-  },
-  {
-    id: "animated",
-    name: "Animated",
-    description:
-      "Scroll-triggered fade-in animations with smooth element transitions",
-    imageConfig: {
-      heroBackground: "16/9",
-      aboutImage: "4/5",
-      featureCardImage: "16/9",
-    },
-    status: "development",
-  },
-  {
-    id: "diy",
-    name: "DIY",
-    description:
-      "Fully customisable centered layout with inline editing and drag-to-resize",
-    imageConfig: {
-      heroBackground: "16/9",
-      aboutImage: "1/1",
-      featureCardImage: "16/9",
-    },
-    status: "development",
-  },
-  {
-    id: "freeform",
-    name: "Freeform",
-    description: "Canvas layout — drag elements anywhere",
-    imageConfig: {
-      heroBackground: "16/9",
-      aboutImage: "1/1",
-      featureCardImage: "16/9",
-    },
-    status: "development",
+    status: "published",
   },
 ];
 
@@ -691,6 +600,90 @@ export function getTemplateInfo(id: TemplateId): TemplateInfo | undefined {
 export function getAvailableTemplates(isDev: boolean): TemplateInfo[] {
   if (isDev) return TEMPLATES;
   return TEMPLATES.filter((t) => t.status === "published");
+}
+
+// ============================================================================
+// Rich data model — all public tenant data available to every section
+// ============================================================================
+
+/**
+ * Public product shape exposed to landing page sections.
+ * Trimmed from the full Product type — no internal fields.
+ */
+export interface TenantLandingPageProduct {
+  id: string;
+  name: string;
+  description?: string;
+  durationMinutes: number;
+  price: number;
+  images?: Array<{ id: string; url: string }>;
+  isActive: boolean;
+  productType?: "service" | "webinar";
+  maxParticipants?: number;
+  signupCount?: number;
+}
+
+/**
+ * Public review shape exposed to landing page sections.
+ * Transformed from FeedbackRequest — only visitor-safe fields.
+ */
+export interface TenantLandingPageReview {
+  id: string;
+  rating?: number;
+  message: string;
+  authorName: string;
+  submittedAt?: string;
+}
+
+/**
+ * Pre-computed stats for landing page sections.
+ */
+export interface TenantLandingPageStats {
+  totalProducts: number;
+  totalReviews: number;
+  averageRating: number | null; // null if no reviews with ratings
+  totalWebinars: number;
+}
+
+/**
+ * All public tenant data aggregated for landing page sections.
+ *
+ * Passed to every section component so any section can render cross-cutting
+ * views (hero with review snippets, about with product count, CTA with stats).
+ *
+ * Contains NO sensitive data (no emails, tokens, stripe keys, etc.).
+ */
+export interface TenantLandingPageData {
+  // Tenant identity
+  tenantId: string;
+  name: string;
+  avatar?: string;
+  logo?: string;
+
+  // Contact & location
+  address?: string;
+  currency?: string;
+  timezone?: string;
+
+  // Products & services
+  products: TenantLandingPageProduct[];
+
+  // Reviews (approved feedback)
+  reviews: TenantLandingPageReview[];
+
+  // Computed stats
+  stats: TenantLandingPageStats;
+
+  // Booking availability (public-safe subset)
+  booking?: {
+    timezone: string;
+    slotDurationMinutes: number;
+    lookaheadDays: number;
+  };
+
+  // Domain info
+  domain?: string;
+  baseUrl: string; // canonical URL (custom domain or vercel URL)
 }
 
 // ============================================================================

@@ -30,6 +30,8 @@ x review DB structure for scaling
 - tech: backups
 - chat for video calls 100ms
 - add phone number + whatsapp support for booking
+- handle 404
+-
 
 - AI security review
 - use existing domain host - set records only

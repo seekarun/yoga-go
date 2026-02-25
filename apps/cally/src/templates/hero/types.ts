@@ -8,11 +8,13 @@ import type {
   HeroStyleOverrides,
   ProductsStyleOverrides,
   SectionStyleOverrides,
+  TenantLandingPageData,
 } from "@/types/landing-page";
 import type { Product } from "@/types";
 
 export interface HeroTemplateProps {
   config: SimpleLandingPageConfig;
+  tenantData?: TenantLandingPageData;
   isEditing?: boolean;
   editingFormFactor?: "desktop" | "mobile";
   onTitleChange?: (title: string) => void;

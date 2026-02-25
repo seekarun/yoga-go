@@ -96,7 +96,7 @@ export async function addDomainToVercel(
   const projectId = process.env.VERCEL_PROJECT_ID;
   if (!projectId) {
     console.error("[DBG][vercel] VERCEL_PROJECT_ID not configured");
-    return { success: false, error: "Vercel integration not configured" };
+    return { success: false, error: "Domain service not configured" };
   }
 
   const normalizedDomain = domain.toLowerCase().trim();
@@ -125,11 +125,21 @@ export async function addDomainToVercel(
       // Handle specific error cases
       if (data.error?.code === "domain_already_in_use") {
         // Extract the project ID that currently holds the domain
-        // Vercel returns: { error: { code, projectId, domain: { projectId } } }
+        // Vercel may return projectId at various paths depending on API version
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const errorData = data.error as any;
+        const errorData = data as any;
         const conflictProjectId: string | undefined =
-          errorData?.projectId || errorData?.domain?.projectId;
+          errorData?.error?.projectId ||
+          errorData?.error?.domain?.projectId ||
+          errorData?.projectId;
+        console.log(
+          "[DBG][vercel] domain_already_in_use — conflictProjectId:",
+          conflictProjectId,
+          "our projectId:",
+          projectId,
+          "full error:",
+          JSON.stringify(data, null, 2),
+        );
         return {
           success: false,
           error: "Unable to add domain. This domain is already in use.",
@@ -210,7 +220,7 @@ export async function addDomainToVercel(
     console.error("[DBG][vercel] Error adding domain:", errorMessage);
     return {
       success: false,
-      error: `Failed to connect to Vercel API: ${errorMessage}`,
+      error: `Failed to connect to domain service: ${errorMessage}`,
     };
   }
 }
@@ -225,7 +235,7 @@ export async function removeDomainFromVercel(
   const projectId = fromProjectId || process.env.VERCEL_PROJECT_ID;
   if (!projectId) {
     console.error("[DBG][vercel] VERCEL_PROJECT_ID not configured");
-    return { success: false, error: "Vercel integration not configured" };
+    return { success: false, error: "Domain service not configured" };
   }
 
   const normalizedDomain = domain.toLowerCase().trim();
@@ -258,7 +268,7 @@ export async function removeDomainFromVercel(
     return { success: true };
   } catch (error) {
     console.error("[DBG][vercel] Error removing domain:", error);
-    return { success: false, error: "Failed to connect to Vercel API" };
+    return { success: false, error: "Failed to connect to domain service" };
   }
 }
 
@@ -367,7 +377,7 @@ export async function getDomainStatus(domain: string): Promise<{
     return {
       exists: false,
       verified: false,
-      error: "Vercel integration not configured",
+      error: "Domain service not configured",
     };
   }
 
@@ -452,7 +462,7 @@ export async function getDomainStatus(domain: string): Promise<{
     return {
       exists: false,
       verified: false,
-      error: "Failed to connect to Vercel API",
+      error: "Failed to connect to domain service",
     };
   }
 }
@@ -470,7 +480,7 @@ export async function verifyDomain(domain: string): Promise<{
     return {
       success: false,
       verified: false,
-      error: "Vercel integration not configured",
+      error: "Domain service not configured",
     };
   }
 
@@ -504,7 +514,7 @@ export async function verifyDomain(domain: string): Promise<{
     return {
       success: false,
       verified: false,
-      error: "Failed to connect to Vercel API",
+      error: "Failed to connect to domain service",
     };
   }
 }
@@ -519,7 +529,7 @@ export async function listProjectDomains(): Promise<{
 }> {
   const projectId = process.env.VERCEL_PROJECT_ID;
   if (!projectId) {
-    return { success: false, error: "Vercel integration not configured" };
+    return { success: false, error: "Domain service not configured" };
   }
 
   try {
@@ -547,7 +557,7 @@ export async function listProjectDomains(): Promise<{
     };
   } catch (error) {
     console.error("[DBG][vercel] Error listing domains:", error);
-    return { success: false, error: "Failed to connect to Vercel API" };
+    return { success: false, error: "Failed to connect to domain service" };
   }
 }
 
@@ -612,7 +622,7 @@ export async function addDnsRecord(
     return { success: true, id: data.uid };
   } catch (error) {
     console.error("[DBG][vercel] Error adding DNS record:", error);
-    return { success: false, error: "Failed to connect to Vercel API" };
+    return { success: false, error: "Failed to connect to domain service" };
   }
 }
 

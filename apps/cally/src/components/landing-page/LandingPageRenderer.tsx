@@ -2,7 +2,10 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
-import type { SimpleLandingPageConfig } from "@/types/landing-page";
+import type {
+  SimpleLandingPageConfig,
+  TenantLandingPageData,
+} from "@/types/landing-page";
 import type { Product } from "@/types";
 import HeroTemplateRenderer from "@/templates/hero";
 import { LandingPageThemeProvider } from "@/templates/hero/ThemeProvider";
@@ -16,6 +19,7 @@ import SurveyOverlay from "@/components/landing-page/SurveyOverlay";
 interface LandingPageRendererProps {
   config: SimpleLandingPageConfig;
   tenantId: string;
+  tenantData?: TenantLandingPageData;
   products?: Product[];
   currency?: string;
   address?: string;
@@ -35,6 +39,7 @@ declare const CallyEmbed:
 export default function LandingPageRenderer({
   config,
   tenantId,
+  tenantData,
   products,
   currency,
   address,
@@ -145,6 +150,7 @@ export default function LandingPageRenderer({
       <div id="section-hero">
         <HeroTemplateRenderer
           config={config}
+          tenantData={tenantData}
           isEditing={false}
           onButtonClick={handleButtonClick}
           products={products}

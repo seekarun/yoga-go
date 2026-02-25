@@ -6,6 +6,7 @@ import type {
   ProductsStyleOverrides,
   SectionStyleOverrides,
   BrandFont,
+  TenantLandingPageData,
 } from "@/types/landing-page";
 import type { Product } from "@/types";
 import AboutSection from "./AboutSection";
@@ -19,6 +20,7 @@ import FooterSection from "./FooterSection";
 
 interface SectionsRendererProps {
   config: SimpleLandingPageConfig;
+  tenantData?: TenantLandingPageData;
   isEditing?: boolean;
   variant?: "light" | "dark" | "gray";
   // About callbacks
@@ -107,6 +109,7 @@ interface SectionsRendererProps {
 
 export default function SectionsRenderer({
   config,
+  tenantData,
   isEditing = false,
   variant = "light",
   onAboutTitleChange,
@@ -190,6 +193,7 @@ export default function SectionsRenderer({
                 <div key="about" id="section-about">
                   <AboutSection
                     about={config.about}
+                    tenantData={tenantData}
                     isEditing={isEditing}
                     variant={variant}
                     palette={config.theme?.palette}
@@ -213,6 +217,7 @@ export default function SectionsRenderer({
                 <div key="features" id="section-features">
                   <FeaturesSection
                     features={config.features}
+                    tenantData={tenantData}
                     isEditing={isEditing}
                     variant={variant}
                     brandFonts={brandFonts}
@@ -237,6 +242,7 @@ export default function SectionsRenderer({
                 <div key="products" id="section-products">
                   <ProductsSection
                     products={products}
+                    tenantData={tenantData}
                     currency={currency || "AUD"}
                     variant={variant}
                     brandFonts={brandFonts}
@@ -260,6 +266,7 @@ export default function SectionsRenderer({
                 <div key="testimonials" id="section-testimonials">
                   <TestimonialsSection
                     testimonials={config.testimonials}
+                    tenantData={tenantData}
                     isEditing={isEditing}
                     variant={variant}
                     brandFonts={brandFonts}
@@ -282,6 +289,7 @@ export default function SectionsRenderer({
                 <div key="faq" id="section-faq">
                   <FAQSection
                     faq={config.faq}
+                    tenantData={tenantData}
                     isEditing={isEditing}
                     variant={variant}
                     brandFonts={brandFonts}
@@ -304,6 +312,7 @@ export default function SectionsRenderer({
                 <div key="location" id="section-location">
                   <LocationSection
                     location={config.location}
+                    tenantData={tenantData}
                     address={address}
                     isEditing={isEditing}
                     variant={variant}
@@ -324,6 +333,7 @@ export default function SectionsRenderer({
                 <div key="gallery" id="section-gallery">
                   <GallerySection
                     gallery={config.gallery}
+                    tenantData={tenantData}
                     isEditing={isEditing}
                     variant={variant}
                     brandFonts={brandFonts}
@@ -350,6 +360,7 @@ export default function SectionsRenderer({
         <div id="section-footer">
           <FooterSection
             footer={config.footer}
+            tenantData={tenantData}
             isEditing={isEditing}
             brandFonts={brandFonts}
             onTextChange={onFooterTextChange}

@@ -4,6 +4,7 @@ import type {
   FooterConfig,
   BrandFont,
   SectionStyleOverrides,
+  TenantLandingPageData,
 } from "@/types/landing-page";
 import type { ColorPalette } from "@/lib/colorPalette";
 import SectionToolbar from "./SectionToolbar";
@@ -12,6 +13,7 @@ import { useSectionToolbar } from "./useSectionToolbar";
 
 interface FooterSectionProps {
   footer: FooterConfig;
+  tenantData?: TenantLandingPageData;
   isEditing?: boolean;
   brandFonts?: { headerFont?: BrandFont; bodyFont?: BrandFont };
   onTextChange?: (text: string) => void;

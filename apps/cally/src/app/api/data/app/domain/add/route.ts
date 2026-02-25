@@ -9,12 +9,9 @@ import {
   updateDomainConfig,
   addAdditionalDomain,
   getDomainLookup,
+  createDomainLookup,
 } from "@/lib/repositories/tenantRepository";
-import {
-  addDomainToVercel,
-  getDomainStatus,
-  removeDomainFromVercel,
-} from "@/lib/vercel";
+import { addDomainToVercel, getDomainStatus } from "@/lib/vercel";
 import type { AddDomainResponse } from "@/types/domain";
 
 export async function POST(request: Request) {
@@ -94,7 +91,7 @@ export async function POST(request: Request) {
 
       if (isAlreadyInUse) {
         console.log(
-          "[DBG][domain/add] Domain already in Vercel, checking DynamoDB ownership",
+          "[DBG][domain/add] Domain already in use, checking DynamoDB ownership",
         );
         const existingLookup = await getDomainLookup(normalizedDomain);
 
@@ -114,68 +111,12 @@ export async function POST(request: Request) {
           );
         }
 
-        // No other tenant owns it — check if domain is on our project or another
-        const existingStatus = await getDomainStatus(normalizedDomain);
-        if (existingStatus.exists) {
-          // Domain is already on our project — just reuse it
-          console.log(
-            "[DBG][domain/add] Domain already on our project, reusing for tenant:",
-            tenant.id,
-          );
-        } else if (result.conflictProjectId) {
-          // Domain is on a different project in our team — move it
-          console.log(
-            "[DBG][domain/add] Domain on another project, moving from:",
-            result.conflictProjectId,
-          );
-          const removeResult = await removeDomainFromVercel(
-            normalizedDomain,
-            result.conflictProjectId,
-          );
-          if (!removeResult.success) {
-            console.error(
-              "[DBG][domain/add] Failed to remove from other project:",
-              removeResult.error,
-            );
-            return NextResponse.json(
-              {
-                success: false,
-                error:
-                  "This domain is already taken. If you own this domain, please contact support.",
-              },
-              { status: 400 },
-            );
-          }
-          // Re-add to our project
-          const retryResult = await addDomainToVercel(normalizedDomain);
-          if (!retryResult.success) {
-            console.error(
-              "[DBG][domain/add] Failed to re-add after move:",
-              retryResult.error,
-            );
-            return NextResponse.json(
-              {
-                success: false,
-                error:
-                  "This domain is already taken. If you own this domain, please contact support.",
-              },
-              { status: 400 },
-            );
-          }
-        } else {
-          // No project ID available — cannot reclaim
-          console.error(
-            "[DBG][domain/add] Domain in use, no conflict project ID available",
-          );
-          return NextResponse.json(
-            {
-              success: false,
-              error:
-                "This domain is already taken. If you own this domain, please contact support.",
-            },
-            { status: 400 },
-          );
-        }
+        // No other tenant owns it in DynamoDB — safe to proceed.
+        // The domain is either already on our project or was previously configured.
+        console.log(
+          "[DBG][domain/add] No other tenant owns this domain, proceeding. conflictProjectId:",
+          result.conflictProjectId,
+        );
       } else {
         console.error(
           "[DBG][domain/add] Failed to add domain to Vercel:",
@@ -204,6 +145,15 @@ export async function POST(request: Request) {
       await updateDomainConfig(tenant.id, newDomainConfig);
     } else {
       await addAdditionalDomain(tenant.id, newDomainConfig);
+    }
+
+    // Create domain lookup record so middleware can route custom domain requests
+    if (status.verified) {
+      await createDomainLookup(normalizedDomain, tenant.id);
+      console.log(
+        "[DBG][domain/add] Domain lookup created for verified domain:",
+        normalizedDomain,
+      );
     }
 
     console.log(
@@ -237,7 +187,7 @@ export async function POST(request: Request) {
               type: "TXT" as const,
               name: v.name,
               value: v.value,
-              purpose: "Vercel domain ownership verification",
+              purpose: "Domain ownership verification",
             })),
           ]
         : undefined;

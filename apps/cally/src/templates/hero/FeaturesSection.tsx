@@ -4,6 +4,7 @@ import type {
   FeaturesConfig,
   BrandFont,
   SectionStyleOverrides,
+  TenantLandingPageData,
 } from "@/types/landing-page";
 import type { ColorPalette } from "@/lib/colorPalette";
 import RemoveBackgroundButton from "./RemoveBackgroundButton";
@@ -13,6 +14,7 @@ import { useSectionToolbar } from "./useSectionToolbar";
 
 interface FeaturesSectionProps {
   features: FeaturesConfig;
+  tenantData?: TenantLandingPageData;
   isEditing?: boolean;
   variant?: "light" | "dark" | "gray";
   brandFonts?: { headerFont?: BrandFont; bodyFont?: BrandFont };

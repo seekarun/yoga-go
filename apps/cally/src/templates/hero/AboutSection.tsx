@@ -5,6 +5,7 @@ import type {
   AboutConfig,
   AboutStyleOverrides,
   BrandFont,
+  TenantLandingPageData,
 } from "@/types/landing-page";
 import type { ColorPalette } from "@/lib/colorPalette";
 import DragHandle from "./DragHandle";
@@ -36,6 +37,7 @@ function clamp(value: number, min: number, max: number) {
 
 interface AboutSectionProps {
   about: AboutConfig;
+  tenantData?: TenantLandingPageData;
   isEditing?: boolean;
   variant?: "light" | "dark" | "gray";
   palette?: ColorPalette;

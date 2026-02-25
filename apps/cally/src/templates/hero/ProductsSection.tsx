@@ -6,6 +6,7 @@ import type {
   BrandFont,
   ProductsConfig,
   ProductsStyleOverrides,
+  TenantLandingPageData,
 } from "@/types/landing-page";
 import type { ColorPalette } from "@/lib/colorPalette";
 import SectionToolbar from "./SectionToolbar";
@@ -190,6 +191,7 @@ function ProductImageCarousel({
 
 interface ProductsSectionProps {
   products: Product[];
+  tenantData?: TenantLandingPageData;
   currency: string;
   variant?: "light" | "dark" | "gray";
   brandFonts?: { headerFont?: BrandFont; bodyFont?: BrandFont };

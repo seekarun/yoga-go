@@ -165,7 +165,9 @@
       "Bash(git -C /Users/arunsubramaniam/garage/yoga-go status -- apps/cally/src/lib/webinar/)",
       "Bash(git -C /Users/arunsubramaniam/garage/yoga-go log --oneline -1)",
       "Bash(AWS_PROFILE=myg-prod aws sts:*)",
-      "Bash(AWS_PROFILE=myg-prod aws dynamodb list-tables --region ap-southeast-2 --query 'TableNames' --output json 2>&1 && AWS_PROFILE=myg-prod aws cognito-idp list-user-pools --max-results 10 --region ap-southeast-2 --query 'UserPools[].Name' --output json 2>&1)"
+      "Bash(AWS_PROFILE=myg-prod aws dynamodb list-tables --region ap-southeast-2 --query 'TableNames' --output json 2>&1 && AWS_PROFILE=myg-prod aws cognito-idp list-user-pools --max-results 10 --region ap-southeast-2 --query 'UserPools[].Name' --output json 2>&1)",
+      "Bash(AWS_PROFILE=myg aws dynamodb get-item --table-name cally-main --region ap-southeast-2 --key '{\"PK\":{\"S\":\"TENANT#01kj5c82jqxa3mnt37d6rmw3yy\"},\"SK\":{\"S\":\"PROFILE\"}}' 2>&1 | python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); item=d.get\\('Item',{}\\); print\\('isLandingPagePublished:', item.get\\('isLandingPagePublished',{}\\).get\\('BOOL','NOT SET'\\)\\); print\\('has customLandingPage:', 'customLandingPage' in item\\); lp=item.get\\('customLandingPage',{}\\).get\\('M',{}\\); print\\('template:', lp.get\\('template',{}\\).get\\('S','NOT SET'\\)\\)\" 2>&1)",
+      "WebFetch(domain:mymusic.guru)"
     ],
     "deny": [],
     "ask": []

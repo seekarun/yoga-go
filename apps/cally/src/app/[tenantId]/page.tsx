@@ -12,6 +12,7 @@ import { DEFAULT_LANDING_PAGE_CONFIG } from "@/types/landing-page";
 import type { Testimonial, GalleryImage } from "@/types/landing-page";
 import LandingPageRenderer from "@/components/landing-page/LandingPageRenderer";
 import { ChatWidgetWrapper } from "@/components/ai";
+import { buildTenantLandingPageData } from "@/lib/landing-page-data";
 
 interface PageProps {
   params: Promise<{
@@ -153,6 +154,13 @@ export default async function TenantLandingPage({ params }: PageProps) {
     }
   }
 
+  // Assemble rich data model for sections (no extra DB calls needed)
+  const tenantData = buildTenantLandingPageData({
+    tenant,
+    products: activeProducts,
+    approvedFeedback,
+  });
+
   // Build canonical URL for structured data
   const domain = tenant.domainConfig?.domain;
   const baseUrl = domain
@@ -183,6 +191,7 @@ export default async function TenantLandingPage({ params }: PageProps) {
       <LandingPageRenderer
         config={landingPage}
         tenantId={tenantId}
+        tenantData={tenantData}
         products={activeProducts}
         currency={tenant.currency ?? "AUD"}
         address={tenant.address}

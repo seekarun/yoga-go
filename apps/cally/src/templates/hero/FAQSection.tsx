@@ -5,6 +5,7 @@ import type {
   FAQConfig,
   BrandFont,
   SectionStyleOverrides,
+  TenantLandingPageData,
 } from "@/types/landing-page";
 import type { ColorPalette } from "@/lib/colorPalette";
 import SectionToolbar from "./SectionToolbar";
@@ -13,6 +14,7 @@ import { useSectionToolbar } from "./useSectionToolbar";
 
 interface FAQSectionProps {
   faq: FAQConfig;
+  tenantData?: TenantLandingPageData;
   isEditing?: boolean;
   variant?: "light" | "dark" | "gray";
   brandFonts?: { headerFont?: BrandFont; bodyFont?: BrandFont };

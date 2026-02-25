@@ -83,7 +83,7 @@ export async function POST(request: Request) {
     // Get full status including config check
     const status = await getDomainStatus(domain);
 
-    // Update tenant if newly verified
+    // Update tenant if newly verified and ensure domain lookup exists
     if (status.verified) {
       if (isAdditionalDomain) {
         const additionalDomainConfig = (tenant.additionalDomains || []).find(
@@ -94,11 +94,6 @@ export async function POST(request: Request) {
             vercelVerified: true,
             vercelVerifiedAt: new Date().toISOString(),
           });
-          await createDomainLookup(domain, tenant.id);
-          console.log(
-            "[DBG][domain/verify] Additional domain verified and lookup created:",
-            domain,
-          );
         }
       } else if (tenant.domainConfig && !tenant.domainConfig.vercelVerified) {
         await updateDomainConfig(tenant.id, {
@@ -106,12 +101,16 @@ export async function POST(request: Request) {
           vercelVerified: true,
           vercelVerifiedAt: new Date().toISOString(),
         });
-        await createDomainLookup(domain, tenant.id);
-        console.log(
-          "[DBG][domain/verify] Primary domain verified and lookup created for tenant:",
-          tenant.id,
-        );
       }
+
+      // Always ensure domain lookup record exists for routing
+      await createDomainLookup(domain, tenant.id);
+      console.log(
+        "[DBG][domain/verify] Domain verified, lookup ensured for:",
+        domain,
+        "tenant:",
+        tenant.id,
+      );
     }
 
     return NextResponse.json({
@@ -122,7 +121,7 @@ export async function POST(request: Request) {
         verification: status.verification,
         message: status.verified
           ? "Domain is verified and ready to use."
-          : "Domain verification pending. Make sure your nameservers are pointing to Vercel.",
+          : "Domain verification pending. Make sure your nameservers are configured correctly.",
       },
     });
   } catch (error) {
