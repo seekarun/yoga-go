@@ -125,6 +125,11 @@ export default function SimpleLandingPageEditor({
   const [editorCurrency, setEditorCurrency] = useState("AUD");
   const [editorAddress, setEditorAddress] = useState("");
 
+  // Approved feedback → testimonials (merged into preview like the public page)
+  const [feedbackTestimonials, setFeedbackTestimonials] = useState<
+    Testimonial[]
+  >([]);
+
   // Surveys state (for button action dropdown)
   const [activeSurveys, setActiveSurveys] = useState<
     { id: string; title: string }[]
@@ -155,6 +160,27 @@ export default function SimpleLandingPageEditor({
     const template = TEMPLATES.find((t) => t.id === config.template);
     return template?.imageConfig || TEMPLATES[0].imageConfig;
   }, [config.template]);
+
+  // Merge approved feedback into config testimonials for preview
+  // (mirrors the merge logic in [tenantId]/page.tsx)
+  const previewConfig: SimpleLandingPageConfig = useMemo(() => {
+    if (feedbackTestimonials.length === 0) return config;
+    const existingTestimonials = config.testimonials?.testimonials || [];
+    const merged: SimpleLandingPageConfig = {
+      ...config,
+      testimonials: {
+        ...config.testimonials,
+        testimonials: [...feedbackTestimonials, ...existingTestimonials],
+      } as TestimonialsConfig,
+    };
+    // Auto-enable testimonials section when feedback exists
+    if (merged.sections) {
+      merged.sections = merged.sections.map((s) =>
+        s.id === "testimonials" ? { ...s, enabled: true } : s,
+      );
+    }
+    return merged;
+  }, [config, feedbackTestimonials]);
 
   // Auto-save refs
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -195,13 +221,11 @@ export default function SimpleLandingPageEditor({
     setHexInput(currentBrandColor);
   }, [currentBrandColor]);
 
-  // Update palette when harmony changes
+  // Update palette when harmony changes or config loads with missing harmony colors
+  const themePrimaryColor = config.theme?.primaryColor;
   useEffect(() => {
-    if (config.theme?.primaryColor && config.theme?.palette) {
-      const harmonyColors = getHarmonyColors(
-        config.theme.primaryColor,
-        colorHarmony,
-      );
+    if (themePrimaryColor && config.theme?.palette) {
+      const harmonyColors = getHarmonyColors(themePrimaryColor, colorHarmony);
       if (
         config.theme.palette.secondary !== harmonyColors.secondary ||
         config.theme.palette.highlight !== harmonyColors.highlight
@@ -224,8 +248,8 @@ export default function SimpleLandingPageEditor({
         setIsDirty(true);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run when harmony changes
-  }, [colorHarmony]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-run when harmony or primary color changes (covers initial load)
+  }, [colorHarmony, themePrimaryColor]);
 
   // Fetch data on mount
   useEffect(() => {
@@ -371,6 +395,12 @@ export default function SimpleLandingPageEditor({
           landingPage.backgroundImage ??
           DEFAULT_LANDING_PAGE_CONFIG.backgroundImage;
 
+        // Restore saved harmony type before setting config
+        const savedHarmony = landingPage.theme?.palette?.harmonyType;
+        if (savedHarmony) {
+          setColorHarmony(savedHarmony);
+        }
+
         setConfig({
           template: landingPage.template || "centered",
           title: landingPage.title || "Welcome",
@@ -396,7 +426,23 @@ export default function SimpleLandingPageEditor({
           footerEnabled: landingPage.footerEnabled ?? true,
           sections: finalSections,
           customColors: landingPage.customColors || [],
-          theme: landingPage.theme || undefined,
+          theme:
+            landingPage.theme ||
+            (() => {
+              // Bootstrap a default theme so palette/fonts are always available
+              const defaultColor = "#667eea";
+              const palette = generatePalette(defaultColor);
+              const harmony = getHarmonyColors(defaultColor, "analogous");
+              return {
+                primaryColor: defaultColor,
+                palette: {
+                  ...palette,
+                  secondary: harmony.secondary,
+                  highlight: harmony.highlight,
+                  harmonyType: "analogous" as const,
+                },
+              };
+            })(),
           seo: landingPage.seo || DEFAULT_LANDING_PAGE_CONFIG.seo,
         });
 
@@ -416,15 +462,17 @@ export default function SimpleLandingPageEditor({
 
     fetchData();
 
-    // Fetch products for preview
+    // Fetch products + preferences + approved feedback for preview
     const fetchProducts = async () => {
       try {
-        const [productsRes, prefsRes] = await Promise.all([
+        const [productsRes, prefsRes, feedbackRes] = await Promise.all([
           fetch("/api/data/app/products"),
           fetch("/api/data/app/preferences"),
+          fetch("/api/data/app/feedback"),
         ]);
         const productsJson = await productsRes.json();
         const prefsJson = await prefsRes.json();
+        const feedbackJson = await feedbackRes.json();
         if (productsJson.success && productsJson.data) {
           setProducts(productsJson.data.filter((p: Product) => p.isActive));
         }
@@ -436,6 +484,38 @@ export default function SimpleLandingPageEditor({
         }
         if (prefsJson.success && prefsJson.data?.logo !== undefined) {
           setTenantLogo(prefsJson.data.logo);
+        }
+        // Merge approved feedback into testimonials (same logic as [tenantId]/page.tsx)
+        if (feedbackJson.success && feedbackJson.data) {
+          const approved: Testimonial[] = feedbackJson.data
+            .filter(
+              (f: {
+                status: string;
+                approved?: boolean;
+                consentToShowcase?: boolean;
+                message?: string;
+                recipientName?: string;
+              }) =>
+                f.status === "submitted" &&
+                f.approved &&
+                f.consentToShowcase &&
+                f.message &&
+                f.recipientName,
+            )
+            .map(
+              (f: {
+                id: string;
+                message: string;
+                recipientName: string;
+                rating?: number;
+              }) => ({
+                id: `feedback-${f.id}`,
+                quote: f.message,
+                authorName: f.recipientName,
+                rating: f.rating,
+              }),
+            );
+          setFeedbackTestimonials(approved);
         }
       } catch (err) {
         console.error(
@@ -2689,7 +2769,7 @@ export default function SimpleLandingPageEditor({
                         bodyFont={config.theme?.bodyFont}
                       >
                         <HeroTemplateRenderer
-                          config={config}
+                          config={previewConfig}
                           isEditing={false}
                           products={products}
                           currency={editorCurrency}
@@ -2781,7 +2861,7 @@ export default function SimpleLandingPageEditor({
                 bodyFont={config.theme?.bodyFont}
               >
                 <HeroTemplateRenderer
-                  config={config}
+                  config={previewConfig}
                   isEditing={true}
                   editingFormFactor={
                     previewMode === "mobile" ? "mobile" : "desktop"

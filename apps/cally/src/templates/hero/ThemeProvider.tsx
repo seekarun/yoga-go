@@ -3,7 +3,11 @@
 import type { ReactNode } from "react";
 import type { ColorPalette } from "@/lib/colorPalette";
 import type { BrandFont } from "@/types/landing-page";
-import { DEFAULT_PALETTE, getContrastColor } from "@/lib/colorPalette";
+import {
+  DEFAULT_PALETTE,
+  getContrastColor,
+  getHarmonyColors,
+} from "@/lib/colorPalette";
 import { getGoogleFontsUrl } from "./fonts";
 
 interface LandingPageThemeProviderProps {
@@ -48,8 +52,31 @@ export function LandingPageThemeProvider({
   const contrast500 = palette ? getContrastColor(colors[500]) : undefined;
   const contrast600 = palette ? getContrastColor(colors[600]) : undefined;
 
-  const secondaryColor = palette ? colors.secondary || colors[100] : undefined;
-  const highlightColor = palette ? colors.highlight || colors[400] : undefined;
+  // Derive harmony colors: use stored values, compute from harmonyType, or fall back to shades
+  let secondaryColor: string | undefined;
+  let highlightColor: string | undefined;
+  if (palette) {
+    if (palette.secondary) {
+      secondaryColor = palette.secondary;
+    } else if (palette.harmonyType) {
+      secondaryColor = getHarmonyColors(
+        colors[500],
+        palette.harmonyType,
+      ).secondary;
+    } else {
+      secondaryColor = colors[100];
+    }
+    if (palette.highlight) {
+      highlightColor = palette.highlight;
+    } else if (palette.harmonyType) {
+      highlightColor = getHarmonyColors(
+        colors[500],
+        palette.harmonyType,
+      ).highlight;
+    } else {
+      highlightColor = colors[400];
+    }
+  }
 
   const style = {
     ...(palette

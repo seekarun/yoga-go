@@ -20,7 +20,7 @@ export interface BrandFont {
 /**
  * Template IDs for the 5 available hero templates
  */
-export type TemplateId = "centered" | "salon";
+export type TemplateId = "centered" | "salon" | "playground";
 
 /**
  * Image aspect ratio configuration for a template
@@ -75,6 +75,18 @@ export const TEMPLATES: TemplateInfo[] = [
       featureCardImage: "1/1",
     },
     status: "published",
+  },
+  {
+    id: "playground",
+    name: "Playground",
+    description:
+      "Simple widget-based template for previewing landing page data",
+    imageConfig: {
+      heroBackground: "16/9",
+      aboutImage: "1/1",
+      featureCardImage: "16/9",
+    },
+    status: "development",
   },
 ];
 
