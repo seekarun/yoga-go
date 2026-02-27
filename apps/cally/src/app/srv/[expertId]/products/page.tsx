@@ -58,8 +58,15 @@ function ProductCard({
 }: ProductCardProps) {
   const isWebinar = product.productType === "webinar";
 
+  // Combine images array with legacy single image field
+  const images = product.images?.length
+    ? product.images
+    : product.image
+      ? [{ id: "legacy", url: product.image, position: product.imagePosition }]
+      : [];
+
   return (
-    <div className="bg-white rounded-lg border border-[var(--color-border)] p-4 flex items-center gap-4 hover:shadow-sm transition-shadow">
+    <div className="bg-white rounded-lg border border-[var(--color-border)] p-4 flex items-start gap-4 hover:shadow-sm transition-shadow">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
           {product.color && (
@@ -77,12 +84,7 @@ function ProductCard({
             </span>
           )}
         </div>
-        {product.description && (
-          <p className="text-sm text-[var(--text-muted)] truncate mb-1">
-            {product.description}
-          </p>
-        )}
-        <div className="flex items-center gap-3 text-sm text-[var(--text-muted)]">
+        <div className="flex items-center gap-3 text-sm text-[var(--text-muted)] mb-1">
           {isWebinar ? (
             <span className="flex items-center gap-1">
               <svg
@@ -122,10 +124,32 @@ function ProductCard({
             {product.price > 0 ? formatPrice(product.price, currency) : "Free"}
           </span>
         </div>
+        {product.description && (
+          <p className="text-sm text-[var(--text-muted)] truncate mb-1">
+            {product.description}
+          </p>
+        )}
+        {/* Image thumbnails */}
+        {images.length > 0 && (
+          <div className="flex gap-1.5">
+            {images.map((img, i) => (
+              // eslint-disable-next-line @next/next/no-img-element -- product thumbnails, small fixed size
+              <img
+                key={img.id || i}
+                src={img.url}
+                alt=""
+                className="w-10 h-10 rounded object-cover border border-[var(--color-border)]"
+                style={
+                  img.position ? { objectPosition: img.position } : undefined
+                }
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="flex items-start gap-2 flex-shrink-0">
         <button
           type="button"
           onClick={() => onToggleActive(product)}
@@ -150,11 +174,11 @@ function ProductCard({
         <button
           type="button"
           onClick={() => onEdit(product)}
-          className="p-2 text-[var(--text-muted)] hover:text-[var(--color-primary)] hover:bg-gray-100 rounded-lg transition-colors"
+          className="p-1.5 text-[var(--text-muted)] hover:text-[var(--color-primary)] hover:bg-gray-100 rounded-lg transition-colors"
           title="Edit"
         >
           <svg
-            className="w-4 h-4"
+            className="w-5 h-5"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -172,11 +196,11 @@ function ProductCard({
           type="button"
           onClick={() => onDelete(product.id)}
           disabled={deletingId === product.id}
-          className="p-2 text-[var(--text-muted)] hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+          className="p-1.5 text-[var(--text-muted)] hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
           title="Delete"
         >
           <svg
-            className="w-4 h-4"
+            className="w-5 h-5"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -260,21 +284,35 @@ export default function ProductsPage() {
   }, [fetchProducts]);
 
   const handleToggleActive = async (product: Product) => {
+    const newState = !product.isActive;
+
+    // Optimistic update
+    setProducts((prev) =>
+      prev.map((p) => (p.id === product.id ? { ...p, isActive: newState } : p)),
+    );
+
     try {
       const res = await fetch(`/api/data/app/products/${product.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isActive: !product.isActive }),
+        body: JSON.stringify({ isActive: newState }),
       });
       const json = await res.json();
-      if (json.success) {
+      if (!json.success) {
+        // Revert on server failure
         setProducts((prev) =>
           prev.map((p) =>
-            p.id === product.id ? { ...p, isActive: !p.isActive } : p,
+            p.id === product.id ? { ...p, isActive: !newState } : p,
           ),
         );
       }
     } catch {
+      // Revert on network error
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === product.id ? { ...p, isActive: !newState } : p,
+        ),
+      );
       console.error("[DBG][products] Failed to toggle active state");
     }
   };
@@ -353,22 +391,9 @@ export default function ProductsPage() {
           </h2>
           <button
             onClick={() => handleAdd("service")}
-            className="px-3 py-1.5 text-sm font-medium text-white bg-[var(--color-primary)] rounded-lg hover:opacity-90 transition-opacity flex items-center gap-1.5"
+            className="text-sm font-medium text-[var(--color-primary)] hover:underline flex items-center gap-1"
           >
-            <svg
-              className="w-3.5 h-3.5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-            Add Service
+            + Add Service
           </button>
         </div>
         {services.length === 0 ? (
@@ -401,22 +426,9 @@ export default function ProductsPage() {
           </h2>
           <button
             onClick={() => handleAdd("webinar")}
-            className="px-3 py-1.5 text-sm font-medium text-white bg-[var(--color-primary)] rounded-lg hover:opacity-90 transition-opacity flex items-center gap-1.5"
+            className="text-sm font-medium text-[var(--color-primary)] hover:underline flex items-center gap-1"
           >
-            <svg
-              className="w-3.5 h-3.5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-            Add Webinar
+            + Add Webinar
           </button>
         </div>
         {webinars.length === 0 ? (

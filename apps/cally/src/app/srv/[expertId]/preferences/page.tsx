@@ -2,15 +2,11 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
-import { SUPPORTED_TIMEZONES, getTimezoneLabel } from "@/lib/timezones";
 import type { WeeklySchedule, CancellationConfig } from "@/types/booking";
 import {
   DEFAULT_BOOKING_CONFIG,
   DEFAULT_CANCELLATION_CONFIG,
 } from "@/types/booking";
-import { ImageEditorOverlay } from "@core/components";
-import type { ImageEditorData } from "@core/components";
 
 /**
  * User preferences/settings page
@@ -18,52 +14,20 @@ import type { ImageEditorData } from "@core/components";
 export default function PreferencesPage() {
   const params = useParams();
   const _expertId = params.expertId as string;
-  const { user, logout } = useAuth();
 
-  const [name, setName] = useState("");
-  const [logo, setLogo] = useState("");
-  const [showLogoEditor, setShowLogoEditor] = useState(false);
-  const [savingLogo, setSavingLogo] = useState(false);
-  const [logoFeedback, setLogoFeedback] = useState<{
-    type: "success" | "error";
-    message: string;
-  } | null>(null);
-  const [address, setAddress] = useState("");
-  const [timezone, setTimezone] = useState("");
   const [videoCallPreference, setVideoCallPreference] = useState<
     "cally" | "google_meet" | "zoom"
   >("cally");
   const [googleCalendarConnected, setGoogleCalendarConnected] = useState(false);
   const [zoomConnected, setZoomConnected] = useState(false);
   const [defaultEventDuration, setDefaultEventDuration] = useState(30);
-  const [currency, setCurrency] = useState("AUD");
-  const [savingName, setSavingName] = useState(false);
-  const [savingAddress, setSavingAddress] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [savingVideo, setSavingVideo] = useState(false);
   const [savingDuration, setSavingDuration] = useState(false);
-  const [savingCurrency, setSavingCurrency] = useState(false);
-  const [nameFeedback, setNameFeedback] = useState<{
-    type: "success" | "error";
-    message: string;
-  } | null>(null);
-  const [addressFeedback, setAddressFeedback] = useState<{
-    type: "success" | "error";
-    message: string;
-  } | null>(null);
-  const [feedback, setFeedback] = useState<{
-    type: "success" | "error";
-    message: string;
-  } | null>(null);
   const [videoFeedback, setVideoFeedback] = useState<{
     type: "success" | "error";
     message: string;
   } | null>(null);
   const [durationFeedback, setDurationFeedback] = useState<{
-    type: "success" | "error";
-    message: string;
-  } | null>(null);
-  const [currencyFeedback, setCurrencyFeedback] = useState<{
     type: "success" | "error";
     message: string;
   } | null>(null);
@@ -82,30 +46,16 @@ export default function PreferencesPage() {
     type: "success" | "error";
     message: string;
   } | null>(null);
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmNewPassword, setConfirmNewPassword] = useState("");
-  const [showChangePassword, setShowChangePassword] = useState(false);
-  const [savingPassword, setSavingPassword] = useState(false);
-  const [passwordFeedback, setPasswordFeedback] = useState<{
-    type: "success" | "error";
-    message: string;
-  } | null>(null);
 
   const fetchPreferences = useCallback(async () => {
     try {
       const res = await fetch("/api/data/app/preferences");
       const data = await res.json();
       if (data.success && data.data) {
-        if (data.data.name) setName(data.data.name);
-        if (data.data.logo !== undefined) setLogo(data.data.logo);
-        if (data.data.address !== undefined) setAddress(data.data.address);
-        if (data.data.timezone) setTimezone(data.data.timezone);
         if (data.data.videoCallPreference)
           setVideoCallPreference(data.data.videoCallPreference);
         if (data.data.defaultEventDuration)
           setDefaultEventDuration(data.data.defaultEventDuration);
-        if (data.data.currency) setCurrency(data.data.currency);
         if (data.data.weeklySchedule)
           setWeeklySchedule(data.data.weeklySchedule);
         if (data.data.cancellationConfig)
@@ -121,149 +71,6 @@ export default function PreferencesPage() {
   useEffect(() => {
     fetchPreferences();
   }, [fetchPreferences]);
-
-  const handleNameBlur = async () => {
-    if (!name.trim()) return;
-    setSavingName(true);
-    setNameFeedback(null);
-
-    try {
-      const res = await fetch("/api/data/app/preferences", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setNameFeedback({ type: "success", message: "Name updated" });
-      } else {
-        setNameFeedback({
-          type: "error",
-          message: data.error || "Failed to update name",
-        });
-      }
-    } catch {
-      setNameFeedback({ type: "error", message: "Failed to update name" });
-    } finally {
-      setSavingName(false);
-      setTimeout(() => setNameFeedback(null), 3000);
-    }
-  };
-
-  const handleLogoSave = async (data: ImageEditorData) => {
-    setSavingLogo(true);
-    setLogoFeedback(null);
-    setShowLogoEditor(false);
-
-    try {
-      const res = await fetch("/api/data/app/preferences", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ logo: data.imageUrl }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        setLogo(data.imageUrl);
-        setLogoFeedback({ type: "success", message: "Logo updated" });
-      } else {
-        setLogoFeedback({
-          type: "error",
-          message: json.error || "Failed to update logo",
-        });
-      }
-    } catch {
-      setLogoFeedback({ type: "error", message: "Failed to update logo" });
-    } finally {
-      setSavingLogo(false);
-      setTimeout(() => setLogoFeedback(null), 3000);
-    }
-  };
-
-  const handleLogoRemove = async () => {
-    setSavingLogo(true);
-    setLogoFeedback(null);
-
-    try {
-      const res = await fetch("/api/data/app/preferences", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ logo: "" }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        setLogo("");
-        setLogoFeedback({ type: "success", message: "Logo removed" });
-      } else {
-        setLogoFeedback({
-          type: "error",
-          message: json.error || "Failed to remove logo",
-        });
-      }
-    } catch {
-      setLogoFeedback({ type: "error", message: "Failed to remove logo" });
-    } finally {
-      setSavingLogo(false);
-      setTimeout(() => setLogoFeedback(null), 3000);
-    }
-  };
-
-  const handleAddressBlur = async () => {
-    setSavingAddress(true);
-    setAddressFeedback(null);
-
-    try {
-      const res = await fetch("/api/data/app/preferences", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setAddressFeedback({ type: "success", message: "Address updated" });
-      } else {
-        setAddressFeedback({
-          type: "error",
-          message: data.error || "Failed to update address",
-        });
-      }
-    } catch {
-      setAddressFeedback({
-        type: "error",
-        message: "Failed to update address",
-      });
-    } finally {
-      setSavingAddress(false);
-      setTimeout(() => setAddressFeedback(null), 3000);
-    }
-  };
-
-  const handleTimezoneChange = async (newTimezone: string) => {
-    setTimezone(newTimezone);
-    setSaving(true);
-    setFeedback(null);
-
-    try {
-      const res = await fetch("/api/data/app/preferences", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ timezone: newTimezone }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setFeedback({ type: "success", message: "Timezone updated" });
-      } else {
-        setFeedback({
-          type: "error",
-          message: data.error || "Failed to update timezone",
-        });
-      }
-    } catch {
-      setFeedback({ type: "error", message: "Failed to update timezone" });
-    } finally {
-      setSaving(false);
-      setTimeout(() => setFeedback(null), 3000);
-    }
-  };
 
   const handleDurationBlur = async () => {
     const duration = Number(defaultEventDuration);
@@ -305,37 +112,6 @@ export default function PreferencesPage() {
     } finally {
       setSavingDuration(false);
       setTimeout(() => setDurationFeedback(null), 3000);
-    }
-  };
-
-  const handleCurrencyChange = async (newCurrency: string) => {
-    setCurrency(newCurrency);
-    setSavingCurrency(true);
-    setCurrencyFeedback(null);
-
-    try {
-      const res = await fetch("/api/data/app/preferences", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currency: newCurrency }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setCurrencyFeedback({ type: "success", message: "Currency updated" });
-      } else {
-        setCurrencyFeedback({
-          type: "error",
-          message: data.error || "Failed to update currency",
-        });
-      }
-    } catch {
-      setCurrencyFeedback({
-        type: "error",
-        message: "Failed to update currency",
-      });
-    } finally {
-      setSavingCurrency(false);
-      setTimeout(() => setCurrencyFeedback(null), 3000);
     }
   };
 
@@ -460,68 +236,6 @@ export default function PreferencesPage() {
     saveSchedule(updated);
   };
 
-  const handleChangePassword = async () => {
-    setPasswordFeedback(null);
-
-    if (!currentPassword) {
-      setPasswordFeedback({
-        type: "error",
-        message: "Current password is required",
-      });
-      return;
-    }
-
-    if (newPassword.length < 8) {
-      setPasswordFeedback({
-        type: "error",
-        message: "New password must be at least 8 characters",
-      });
-      return;
-    }
-
-    if (newPassword !== confirmNewPassword) {
-      setPasswordFeedback({
-        type: "error",
-        message: "Passwords do not match",
-      });
-      return;
-    }
-
-    setSavingPassword(true);
-
-    try {
-      const res = await fetch("/api/auth/cognito/change-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword, newPassword }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setPasswordFeedback({
-          type: "success",
-          message: "Password changed successfully",
-        });
-        setCurrentPassword("");
-        setNewPassword("");
-        setConfirmNewPassword("");
-        setShowChangePassword(false);
-      } else {
-        setPasswordFeedback({
-          type: "error",
-          message: data.message || "Failed to change password",
-        });
-      }
-    } catch {
-      setPasswordFeedback({
-        type: "error",
-        message: "Failed to change password",
-      });
-    } finally {
-      setSavingPassword(false);
-      setTimeout(() => setPasswordFeedback(null), 5000);
-    }
-  };
-
   const handleVideoCallPreferenceChange = async (
     newPref: "cally" | "google_meet" | "zoom",
   ) => {
@@ -565,373 +279,12 @@ export default function PreferencesPage() {
   return (
     <div className="p-6">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-[var(--text-main)]">Settings</h1>
+        <h1 className="text-2xl font-bold text-[var(--text-main)]">
+          Preferences
+        </h1>
         <p className="text-[var(--text-muted)] mt-1">
-          Manage your account preferences.
+          Manage your calendar and video call settings.
         </p>
-      </div>
-
-      {/* Account Section */}
-      <div className="bg-white rounded-lg border border-[var(--color-border)] p-6 mb-6">
-        <h2 className="text-lg font-semibold text-[var(--text-main)] mb-4">
-          Account
-        </h2>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-[var(--text-muted)] mb-1">
-              Email
-            </label>
-            <p className="text-[var(--text-body)]">
-              {user?.profile?.email || "Not set"}
-            </p>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-[var(--text-muted)] mb-1">
-              Logo
-            </label>
-            <p className="text-sm text-[var(--text-muted)] mb-2">
-              Displayed on your landing page header.
-            </p>
-            <div className="flex items-center gap-3">
-              {logo ? (
-                <>
-                  {/* eslint-disable-next-line @next/next/no-img-element -- tenant logo URL, fixed size */}
-                  <img
-                    src={logo}
-                    alt="Logo"
-                    className="h-12 w-auto rounded border border-[var(--color-border)] object-contain bg-gray-50"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowLogoEditor(true)}
-                    disabled={savingLogo}
-                    className="px-3 py-1.5 text-sm border border-[var(--color-border)] rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-                  >
-                    Change
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleLogoRemove}
-                    disabled={savingLogo}
-                    className="px-3 py-1.5 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50"
-                  >
-                    Remove
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setShowLogoEditor(true)}
-                  disabled={savingLogo}
-                  className="px-3 py-1.5 text-sm border border-[var(--color-border)] rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-                >
-                  Upload Logo
-                </button>
-              )}
-              {savingLogo && (
-                <span className="text-sm text-[var(--text-muted)]">
-                  Saving...
-                </span>
-              )}
-              {logoFeedback && (
-                <span
-                  className={`text-sm ${
-                    logoFeedback.type === "success"
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}
-                >
-                  {logoFeedback.message}
-                </span>
-              )}
-            </div>
-          </div>
-          <div>
-            <label
-              htmlFor="name-input"
-              className="block text-sm font-medium text-[var(--text-muted)] mb-1"
-            >
-              Name
-            </label>
-            <p className="text-sm text-[var(--text-muted)] mb-2">
-              Used as the sender name on all outgoing emails.
-            </p>
-            <div className="flex items-center gap-3">
-              <input
-                id="name-input"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                onBlur={handleNameBlur}
-                placeholder="Your name"
-                maxLength={100}
-                disabled={savingName}
-                className="border border-[var(--color-border)] rounded-lg px-3 py-2 text-[var(--text-main)] bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] disabled:opacity-50 w-72"
-              />
-              {savingName && (
-                <span className="text-sm text-[var(--text-muted)]">
-                  Saving...
-                </span>
-              )}
-              {nameFeedback && (
-                <span
-                  className={`text-sm ${
-                    nameFeedback.type === "success"
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}
-                >
-                  {nameFeedback.message}
-                </span>
-              )}
-            </div>
-          </div>
-          <div>
-            <label
-              htmlFor="address-input"
-              className="block text-sm font-medium text-[var(--text-muted)] mb-1"
-            >
-              Business Address
-            </label>
-            <p className="text-sm text-[var(--text-muted)] mb-2">
-              Displayed on your landing page location section.
-            </p>
-            <div className="flex items-center gap-3">
-              <input
-                id="address-input"
-                type="text"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                onBlur={handleAddressBlur}
-                placeholder="e.g. 123 Main St, Sydney NSW 2000"
-                maxLength={300}
-                disabled={savingAddress}
-                className="border border-[var(--color-border)] rounded-lg px-3 py-2 text-[var(--text-main)] bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] disabled:opacity-50 w-96"
-              />
-              {savingAddress && (
-                <span className="text-sm text-[var(--text-muted)]">
-                  Saving...
-                </span>
-              )}
-              {addressFeedback && (
-                <span
-                  className={`text-sm ${
-                    addressFeedback.type === "success"
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}
-                >
-                  {addressFeedback.message}
-                </span>
-              )}
-            </div>
-          </div>
-          <div>
-            <label
-              htmlFor="timezone-select"
-              className="block text-sm font-medium text-[var(--text-muted)] mb-1"
-            >
-              Timezone
-            </label>
-            <p className="text-sm text-[var(--text-muted)] mb-2">
-              Used for meeting times, booking slots, and notifications.
-            </p>
-            <div className="flex items-center gap-3">
-              <select
-                id="timezone-select"
-                value={timezone}
-                onChange={(e) => handleTimezoneChange(e.target.value)}
-                disabled={saving}
-                className="border border-[var(--color-border)] rounded-lg px-3 py-2 text-[var(--text-main)] bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] disabled:opacity-50"
-              >
-                {!timezone && <option value="">Loading...</option>}
-                {SUPPORTED_TIMEZONES.map((tz) => (
-                  <option key={tz} value={tz}>
-                    {getTimezoneLabel(tz)}
-                  </option>
-                ))}
-              </select>
-              {saving && (
-                <span className="text-sm text-[var(--text-muted)]">
-                  Saving...
-                </span>
-              )}
-              {feedback && (
-                <span
-                  className={`text-sm ${
-                    feedback.type === "success"
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}
-                >
-                  {feedback.message}
-                </span>
-              )}
-            </div>
-          </div>
-          <div>
-            <label
-              htmlFor="currency-select"
-              className="block text-sm font-medium text-[var(--text-muted)] mb-1"
-            >
-              Currency
-            </label>
-            <p className="text-sm text-[var(--text-muted)] mb-2">
-              Used for product pricing on your landing page.
-            </p>
-            <div className="flex items-center gap-3">
-              <select
-                id="currency-select"
-                value={currency}
-                onChange={(e) => handleCurrencyChange(e.target.value)}
-                disabled={savingCurrency}
-                className="border border-[var(--color-border)] rounded-lg px-3 py-2 text-[var(--text-main)] bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] disabled:opacity-50"
-              >
-                <option value="AUD">AUD - Australian Dollar</option>
-                <option value="USD">USD - US Dollar</option>
-                <option value="GBP">GBP - British Pound</option>
-                <option value="EUR">EUR - Euro</option>
-                <option value="INR">INR - Indian Rupee</option>
-                <option value="NZD">NZD - New Zealand Dollar</option>
-                <option value="CAD">CAD - Canadian Dollar</option>
-                <option value="SGD">SGD - Singapore Dollar</option>
-              </select>
-              {savingCurrency && (
-                <span className="text-sm text-[var(--text-muted)]">
-                  Saving...
-                </span>
-              )}
-              {currencyFeedback && (
-                <span
-                  className={`text-sm ${
-                    currencyFeedback.type === "success"
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}
-                >
-                  {currencyFeedback.message}
-                </span>
-              )}
-            </div>
-          </div>
-          {/* Change Password */}
-          <div className="pt-4 border-t border-[var(--color-border)]">
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <label className="block text-sm font-medium text-[var(--text-muted)]">
-                  Password
-                </label>
-                <p className="text-sm text-[var(--text-muted)]">
-                  Change your account password.
-                </p>
-              </div>
-              {!showChangePassword && (
-                <button
-                  type="button"
-                  onClick={() => setShowChangePassword(true)}
-                  className="text-sm text-[var(--color-primary)] hover:underline"
-                >
-                  Change Password
-                </button>
-              )}
-            </div>
-            {showChangePassword && (
-              <div className="mt-3 space-y-3 max-w-sm">
-                <div>
-                  <label
-                    htmlFor="current-password"
-                    className="block text-sm font-medium text-[var(--text-body)] mb-1"
-                  >
-                    Current Password
-                  </label>
-                  <input
-                    id="current-password"
-                    type="password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="Enter current password"
-                    disabled={savingPassword}
-                    autoComplete="current-password"
-                    className="w-full border border-[var(--color-border)] rounded-lg px-3 py-2 text-[var(--text-main)] bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] disabled:opacity-50"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="new-password-pref"
-                    className="block text-sm font-medium text-[var(--text-body)] mb-1"
-                  >
-                    New Password
-                  </label>
-                  <input
-                    id="new-password-pref"
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="At least 8 characters"
-                    disabled={savingPassword}
-                    autoComplete="new-password"
-                    className="w-full border border-[var(--color-border)] rounded-lg px-3 py-2 text-[var(--text-main)] bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] disabled:opacity-50"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="confirm-new-password"
-                    className="block text-sm font-medium text-[var(--text-body)] mb-1"
-                  >
-                    Confirm New Password
-                  </label>
-                  <input
-                    id="confirm-new-password"
-                    type="password"
-                    value={confirmNewPassword}
-                    onChange={(e) => setConfirmNewPassword(e.target.value)}
-                    placeholder="Re-enter new password"
-                    disabled={savingPassword}
-                    autoComplete="new-password"
-                    className="w-full border border-[var(--color-border)] rounded-lg px-3 py-2 text-[var(--text-main)] bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] disabled:opacity-50"
-                  />
-                </div>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={handleChangePassword}
-                    disabled={savingPassword}
-                    className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
-                  >
-                    {savingPassword ? "Changing..." : "Change Password"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowChangePassword(false);
-                      setCurrentPassword("");
-                      setNewPassword("");
-                      setConfirmNewPassword("");
-                      setPasswordFeedback(null);
-                    }}
-                    disabled={savingPassword}
-                    className="px-4 py-2 text-[var(--text-muted)] text-sm hover:text-[var(--text-body)]"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
-            {passwordFeedback && (
-              <div className="mt-2">
-                <span
-                  className={`text-sm ${
-                    passwordFeedback.type === "success"
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}
-                >
-                  {passwordFeedback.message}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
       </div>
 
       {/* Calendar Section */}
@@ -1327,37 +680,6 @@ export default function PreferencesPage() {
           )}
         </div>
       </div>
-
-      {/* Danger Zone */}
-      <div className="bg-white rounded-lg border border-red-200 p-6">
-        <h2 className="text-lg font-semibold text-red-600 mb-4">Danger Zone</h2>
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="font-medium text-[var(--text-main)]">Sign Out</p>
-            <p className="text-sm text-[var(--text-muted)]">
-              Sign out of your account on this device.
-            </p>
-          </div>
-          <button
-            onClick={() => logout("/")}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            Sign Out
-          </button>
-        </div>
-      </div>
-
-      {/* Logo Editor Overlay */}
-      <ImageEditorOverlay
-        isOpen={showLogoEditor}
-        onClose={() => setShowLogoEditor(false)}
-        onSave={handleLogoSave}
-        currentImage={logo || undefined}
-        title="Upload Logo"
-        aspectRatio="1/1"
-        defaultSearchQuery="logo icon"
-        uploadEndpoint="/api/data/app/tenant/landing-page/upload"
-      />
     </div>
   );
 }

@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import NotificationBell from "@/components/notifications/NotificationBell";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface CallySidebarProps {
   expertId: string;
@@ -18,7 +19,11 @@ interface MenuItem {
 
 export default function CallySidebar({ expertId }: CallySidebarProps) {
   const pathname = usePathname();
+  const { user, logout } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const [domain, setDomain] = useState<string | null>(null);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   // Load collapsed state from localStorage
   useEffect(() => {
@@ -27,6 +32,36 @@ export default function CallySidebar({ expertId }: CallySidebarProps) {
       setCollapsed(saved === "true");
     }
   }, []);
+
+  // Fetch domain status for header display
+  useEffect(() => {
+    fetch("/api/data/app/domain/status")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data?.domain) {
+          setDomain(data.data.domain);
+        }
+      })
+      .catch(() => {
+        // Silently ignore - will fall back to name
+      });
+  }, []);
+
+  // Close user menu on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        userMenuRef.current &&
+        !userMenuRef.current.contains(e.target as Node)
+      ) {
+        setShowUserMenu(false);
+      }
+    };
+    if (showUserMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showUserMenu]);
 
   const toggleCollapsed = () => {
     const newState = !collapsed;
@@ -286,26 +321,6 @@ export default function CallySidebar({ expertId }: CallySidebarProps) {
         </svg>
       ),
     },
-    {
-      id: "preferences",
-      label: "Settings",
-      href: `/srv/${expertId}/preferences`,
-      icon: (
-        <svg
-          className="w-5 h-5"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
-          />
-        </svg>
-      ),
-    },
   ];
 
   const allHrefs = menuItems.map((item) => item.href);
@@ -327,16 +342,21 @@ export default function CallySidebar({ expertId }: CallySidebarProps) {
 
   return (
     <aside
-      className={`fixed left-0 top-0 h-screen bg-white border-r border-[var(--color-border)] transition-all duration-300 z-40 ${
+      className={`fixed left-0 top-0 h-screen bg-white border-r border-[var(--color-border)] transition-all duration-300 z-40 flex flex-col ${
         collapsed ? "w-16" : "w-56"
       }`}
     >
       {/* Header */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-[var(--color-border)]">
         {!collapsed && (
-          <span className="text-xl font-bold text-[var(--color-primary)]">
-            CallyGo
-          </span>
+          <div className="flex flex-col leading-tight min-w-0">
+            <span className="text-base font-bold text-[var(--text-main)] truncate">
+              {domain || user?.profile?.name?.split(" ")[0] || "CallyGo"}
+            </span>
+            <span className="text-[10px] text-[var(--text-muted)]">
+              on CallyGo
+            </span>
+          </div>
         )}
         <div className="flex items-center gap-1">
           <NotificationBell />
@@ -363,7 +383,7 @@ export default function CallySidebar({ expertId }: CallySidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="p-2 space-y-1">
+      <nav className="flex-1 overflow-y-auto p-2 space-y-1">
         {menuItems.map((item) => (
           <Link
             key={item.id}
@@ -380,6 +400,124 @@ export default function CallySidebar({ expertId }: CallySidebarProps) {
           </Link>
         ))}
       </nav>
+
+      {/* User Profile - Bottom */}
+      <div
+        ref={userMenuRef}
+        className="relative border-t border-[var(--color-border)] shrink-0"
+      >
+        {/* User menu popover */}
+        {showUserMenu && (
+          <div className="absolute bottom-full left-2 right-2 mb-1 bg-white rounded-lg border border-[var(--color-border)] shadow-lg py-1 z-50">
+            <Link
+              href={`/srv/${expertId}/profile`}
+              onClick={() => setShowUserMenu(false)}
+              className="flex items-center gap-3 px-4 py-2.5 text-sm text-[var(--text-body)] hover:bg-gray-50 transition-colors"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                />
+              </svg>
+              {!collapsed && "Profile"}
+            </Link>
+            <Link
+              href={`/srv/${expertId}/settings/subscription`}
+              onClick={() => setShowUserMenu(false)}
+              className="flex items-center gap-3 px-4 py-2.5 text-sm text-[var(--text-body)] hover:bg-gray-50 transition-colors"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
+                />
+              </svg>
+              {!collapsed && "Account & Billing"}
+            </Link>
+            <Link
+              href={`/srv/${expertId}/preferences`}
+              onClick={() => setShowUserMenu(false)}
+              className="flex items-center gap-3 px-4 py-2.5 text-sm text-[var(--text-body)] hover:bg-gray-50 transition-colors"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
+                />
+              </svg>
+              {!collapsed && "Preferences"}
+            </Link>
+            <div className="border-t border-[var(--color-border)] my-1" />
+            <button
+              onClick={() => {
+                setShowUserMenu(false);
+                logout("/");
+              }}
+              className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors w-full"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                />
+              </svg>
+              {!collapsed && "Sign Out"}
+            </button>
+          </div>
+        )}
+
+        {/* Profile button */}
+        <button
+          onClick={() => setShowUserMenu(!showUserMenu)}
+          className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors ${
+            showUserMenu ? "bg-gray-50" : ""
+          }`}
+          title={collapsed ? user?.profile?.name || "Profile" : undefined}
+        >
+          <div className="w-8 h-8 rounded-full bg-[var(--color-primary)] text-white flex items-center justify-center text-sm font-medium shrink-0">
+            {user?.profile?.name?.charAt(0)?.toUpperCase() || "?"}
+          </div>
+          {!collapsed && (
+            <div className="flex flex-col items-start min-w-0 flex-1">
+              <span className="text-sm font-medium text-[var(--text-main)] truncate w-full text-left">
+                {user?.profile?.name || "User"}
+              </span>
+              <span className="text-xs text-[var(--text-muted)] truncate w-full text-left">
+                {user?.profile?.email || ""}
+              </span>
+            </div>
+          )}
+        </button>
+      </div>
     </aside>
   );
 }
