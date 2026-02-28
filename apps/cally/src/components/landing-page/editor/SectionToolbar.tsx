@@ -30,9 +30,13 @@ const SECTION_LABELS: Record<string, string> = {
 
 /** Sections that have widgets in the catalogue. */
 const WIDGET_SECTIONS: Record<string, WidgetSectionType> = {
+  about: "about",
+  features: "features",
   products: "products",
   testimonials: "testimonials",
 };
+
+const DISABLED_VALUE = "__disabled__";
 
 export default function SectionToolbar({
   heroEnabled,
@@ -222,34 +226,50 @@ export default function SectionToolbar({
     cursor: "default",
   };
 
-  const selectStyle: React.CSSProperties = {
+  const selectStyle = (enabled: boolean): React.CSSProperties => ({
     fontSize: "0.7rem",
     padding: "2px 4px",
     borderRadius: "4px",
     border: "1px solid #e5e7eb",
     background: "#fff",
-    color: "#374151",
-    maxWidth: "100px",
+    color: enabled ? "#374151" : "#9ca3af",
+    maxWidth: "120px",
     flexShrink: 0,
     cursor: "pointer",
-  };
+  });
 
-  /** Render a widget dropdown for a section that has widgets. */
+  /**
+   * Render a combined widget + enable/disable dropdown.
+   * Selecting a widget enables the section; selecting "Disabled" disables it.
+   */
   const renderWidgetSelect = (
     widgetSection: WidgetSectionType,
     currentWidgetId: string | undefined,
-    onChange: (widgetId: string) => void,
+    enabled: boolean,
+    onSelect: (widgetId: string) => void,
+    onToggle: (enabled: boolean) => void,
   ) => {
     const widgets = WIDGET_CATALOGUE[widgetSection];
-    if (!widgets || widgets.length <= 1) return null;
+    if (!widgets || widgets.length === 0) return null;
+
+    const value = enabled ? currentWidgetId || widgets[0].id : DISABLED_VALUE;
 
     return (
       <select
-        style={selectStyle}
-        value={currentWidgetId || widgets[0].id}
-        onChange={(e) => onChange(e.target.value)}
+        style={selectStyle(enabled)}
+        value={value}
+        onChange={(e) => {
+          const val = e.target.value;
+          if (val === DISABLED_VALUE) {
+            onToggle(false);
+          } else {
+            if (!enabled) onToggle(true);
+            onSelect(val);
+          }
+        }}
         onClick={(e) => e.stopPropagation()}
       >
+        <option value={DISABLED_VALUE}>Disabled</option>
         {widgets.map((w) => (
           <option key={w.id} value={w.id}>
             {w.name}
@@ -315,20 +335,16 @@ export default function SectionToolbar({
         </button>
       </div>
 
-      {/* Hero - fixed at top, toggle + widget selector */}
+      {/* Hero — combined widget + enable/disable dropdown */}
       <div style={rowStyle}>
         <span style={labelStyle}>Hero</span>
-        {heroEnabled &&
-          renderWidgetSelect("hero", heroWidgetId, (widgetId) =>
-            onHeroWidgetChange?.(widgetId),
-          )}
-        <button
-          type="button"
-          style={toggleStyle(heroEnabled)}
-          onClick={() => onHeroToggle(!heroEnabled)}
-        >
-          <div style={toggleKnobStyle(heroEnabled)} />
-        </button>
+        {renderWidgetSelect(
+          "hero",
+          heroWidgetId,
+          heroEnabled,
+          (widgetId) => onHeroWidgetChange?.(widgetId),
+          onHeroToggle,
+        )}
       </div>
 
       {/* Divider */}
@@ -340,15 +356,23 @@ export default function SectionToolbar({
 
         return (
           <div key={section.id} style={rowStyle}>
-            <span style={labelStyle}>
+            <span
+              style={{
+                ...labelStyle,
+                color: section.enabled ? "#374151" : "#9ca3af",
+              }}
+            >
               {SECTION_LABELS[section.id] || section.id}
             </span>
 
-            {/* Widget selector — only for sections that have widgets */}
-            {section.enabled &&
-              widgetSection &&
-              renderWidgetSelect(widgetSection, section.widgetId, (widgetId) =>
-                onWidgetChange?.(section.id, widgetId),
+            {/* Widget + toggle dropdown for sections with widgets */}
+            {widgetSection &&
+              renderWidgetSelect(
+                widgetSection,
+                section.widgetId,
+                section.enabled,
+                (widgetId) => onWidgetChange?.(section.id, widgetId),
+                (enabled) => onSectionToggle(section.id, enabled),
               )}
 
             {/* Move up */}
@@ -395,14 +419,16 @@ export default function SectionToolbar({
               </svg>
             </button>
 
-            {/* Toggle */}
-            <button
-              type="button"
-              style={toggleStyle(section.enabled)}
-              onClick={() => onSectionToggle(section.id, !section.enabled)}
-            >
-              <div style={toggleKnobStyle(section.enabled)} />
-            </button>
+            {/* Toggle — only for sections WITHOUT widget dropdowns */}
+            {!widgetSection && (
+              <button
+                type="button"
+                style={toggleStyle(section.enabled)}
+                onClick={() => onSectionToggle(section.id, !section.enabled)}
+              >
+                <div style={toggleKnobStyle(section.enabled)} />
+              </button>
+            )}
           </div>
         );
       })}

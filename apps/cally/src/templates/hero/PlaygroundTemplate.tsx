@@ -22,6 +22,12 @@ import {
   HeroDoctorProfile,
   HeroVerticalImageScroll,
   HeroThroughTheTear,
+  // Features
+  FeaturesUnevenGrid,
+  FeaturesSimpleGrid,
+  // About
+  AboutLeftImage,
+  AboutLeftVideo,
 } from "../widgets";
 import FooterSection from "./FooterSection";
 
@@ -100,6 +106,46 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
       case "video-horizontal":
       default:
         return <HeroVideoHorizontal {...heroProps} />;
+    }
+  };
+
+  /** Common about props. */
+  const aboutProps = {
+    title: config.about?.title,
+    paragraph: config.about?.paragraph,
+    image: config.about?.image,
+    brand,
+  };
+
+  /** Render the selected about widget. */
+  const renderAbout = () => {
+    const widgetId = getWidgetId("about") || "left-image";
+    switch (widgetId) {
+      case "left-video":
+        return <AboutLeftVideo {...aboutProps} />;
+      case "left-image":
+      default:
+        return <AboutLeftImage {...aboutProps} />;
+    }
+  };
+
+  /** Common features props. */
+  const featuresProps = {
+    heading: config.features?.heading,
+    subheading: config.features?.subheading,
+    cards: config.features?.cards || [],
+    brand,
+  };
+
+  /** Render the selected features widget. */
+  const renderFeatures = () => {
+    const widgetId = getWidgetId("features") || "uneven-grid";
+    switch (widgetId) {
+      case "simple-grid":
+        return <FeaturesSimpleGrid {...featuresProps} />;
+      case "uneven-grid":
+      default:
+        return <FeaturesUnevenGrid {...featuresProps} />;
     }
   };
 
@@ -232,29 +278,11 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
       {enabledSections.map((section) => {
         switch (section.id) {
           case "about":
-            return config.about ? (
-              <div key="about" className={`${SCOPE}-section`}>
-                <div className={`${SCOPE}-about`}>
-                  {config.about.image && (
-                    // eslint-disable-next-line @next/next/no-img-element -- playground template
-                    <img
-                      className={`${SCOPE}-about-img`}
-                      src={config.about.image}
-                      alt={config.about.title || "About"}
-                    />
-                  )}
-                  <div>
-                    {config.about.title && (
-                      <h2 className={`${SCOPE}-about-title`}>
-                        {config.about.title}
-                      </h2>
-                    )}
-                    <p className={`${SCOPE}-about-text`}>
-                      {config.about.paragraph}
-                    </p>
-                  </div>
-                </div>
-              </div>
+            return config.about ? <div key="about">{renderAbout()}</div> : null;
+
+          case "features":
+            return config.features && config.features.cards.length > 0 ? (
+              <div key="features">{renderFeatures()}</div>
             ) : null;
 
           case "products":

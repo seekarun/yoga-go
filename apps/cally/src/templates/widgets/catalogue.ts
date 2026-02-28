@@ -133,6 +133,39 @@ export const WIDGET_CATALOGUE: WidgetCatalogue = {
       section: "hero",
     },
   ],
+  features: [
+    {
+      id: "uneven-grid",
+      name: "Uneven Grid",
+      description:
+        "Bento-style layout with a large card spanning 2 rows on the left and smaller cards on the right. Pastel backgrounds derived from brand colour.",
+      section: "features",
+      maxItems: 4,
+    },
+    {
+      id: "simple-grid",
+      name: "Simple Grid",
+      description:
+        "Clean 4-column text layout with a small icon, bold title, and description per card. No images or background colours.",
+      section: "features",
+    },
+  ],
+  about: [
+    {
+      id: "left-image",
+      name: "Left Image",
+      description:
+        "Two-column layout with a tall portrait image on the left and title + paragraph on the right. Warm cream background, magazine feel.",
+      section: "about",
+    },
+    {
+      id: "left-video",
+      name: "Left Video",
+      description:
+        "Two-column layout with a looping muted video on the left and title + paragraph on the right. Warm cream background.",
+      section: "about",
+    },
+  ],
 };
 
 /**

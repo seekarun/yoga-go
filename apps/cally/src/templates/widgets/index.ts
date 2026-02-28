@@ -34,3 +34,11 @@ export { default as HeroPovCards } from "./hero/PovCards";
 export { default as HeroDoctorProfile } from "./hero/DoctorProfile";
 export { default as HeroVerticalImageScroll } from "./hero/VerticalImageScroll";
 export { default as HeroThroughTheTear } from "./hero/ThroughTheTear";
+
+// Features widget components
+export { default as FeaturesUnevenGrid } from "./features/UnevenGrid";
+export { default as FeaturesSimpleGrid } from "./features/SimpleGrid";
+
+// About widget components
+export { default as AboutLeftImage } from "./about/LeftImage";
+export { default as AboutLeftVideo } from "./about/LeftVideo";

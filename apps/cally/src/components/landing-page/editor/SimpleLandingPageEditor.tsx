@@ -363,7 +363,7 @@ export default function SimpleLandingPageEditor({
         const noCardsHaveImages =
           loadedFeatures?.cards?.length > 0 &&
           loadedFeatures.cards.every((c: FeatureCard) => !c.image);
-        const backfilledFeatures = noCardsHaveImages
+        const imageBackfilledFeatures = noCardsHaveImages
           ? {
               ...loadedFeatures,
               cards: loadedFeatures.cards.map(
@@ -374,6 +374,19 @@ export default function SimpleLandingPageEditor({
               ),
             }
           : loadedFeatures;
+
+        // Pad feature cards to 4 from defaults if tenant has fewer
+        const paddedCards = imageBackfilledFeatures?.cards || [];
+        const backfilledFeatures =
+          paddedCards.length < 4 && defaultCards.length >= 4
+            ? {
+                ...imageBackfilledFeatures,
+                cards: [
+                  ...paddedCards,
+                  ...defaultCards.slice(paddedCards.length, 4),
+                ],
+              }
+            : imageBackfilledFeatures;
 
         const loadedGallery =
           landingPage.gallery || DEFAULT_LANDING_PAGE_CONFIG.gallery;

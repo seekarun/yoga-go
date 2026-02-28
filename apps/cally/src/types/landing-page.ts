@@ -505,6 +505,14 @@ export const DEFAULT_LANDING_PAGE_CONFIG: SimpleLandingPageConfig = {
         description:
           "Flexible virtual meetings that fit your schedule, from anywhere in the world.",
       },
+      {
+        id: "feature-4",
+        image:
+          "https://images.pexels.com/photos/3184291/pexels-photo-3184291.jpeg?auto=compress&cs=tinysrgb&w=800",
+        title: "Progress Tracking",
+        description:
+          "Regular check-ins and detailed reports to keep you on track and motivated throughout your journey.",
+      },
     ],
   },
   testimonials: {

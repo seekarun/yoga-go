@@ -89,7 +89,8 @@ GUIDELINES:
 1. Generate realistic, professional placeholder text appropriate to the business
 2. Keep existing content unless the user asks to change it
 3. When adding testimonials, create 3-5 realistic examples
-4. When adding FAQ, suggest 4-6 relevant questions
+4. When adding features, create exactly 4 feature cards
+5. When adding FAQ, suggest 4-6 relevant questions
 5. Use concise, professional copywriting
 6. Maintain section order as specified or reorder if requested
 7. Always include at least one hero section

@@ -78,6 +78,22 @@ export default async function TenantLandingPage({ params }: PageProps) {
     ...tenant.customLandingPage,
   };
 
+  // Pad feature cards to 4 from defaults if tenant has fewer
+  const defaultFeatureCards = DEFAULT_LANDING_PAGE_CONFIG.features?.cards || [];
+  if (
+    landingPage.features &&
+    landingPage.features.cards.length < 4 &&
+    defaultFeatureCards.length >= 4
+  ) {
+    landingPage.features = {
+      ...landingPage.features,
+      cards: [
+        ...landingPage.features.cards,
+        ...defaultFeatureCards.slice(landingPage.features.cards.length, 4),
+      ],
+    };
+  }
+
   // Fetch active products and feedback in parallel
   const [approvedFeedback, activeProductsRaw] = await Promise.all([
     getApprovedFeedback(tenantId),
