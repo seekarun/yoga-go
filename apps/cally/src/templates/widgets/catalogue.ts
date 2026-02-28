@@ -125,6 +125,13 @@ export const WIDGET_CATALOGUE: WidgetCatalogue = {
         "Split layout with title and CTA on the left. Right side has a column of gallery images scrolling upward with top/bottom fade.",
       section: "hero",
     },
+    {
+      id: "through-the-tear",
+      name: "Through the Tear",
+      description:
+        "White page with a jagged torn-paper gap revealing the brand colour beneath. CSS clip-path torn edges, grain texture, centred content.",
+      section: "hero",
+    },
   ],
 };
 

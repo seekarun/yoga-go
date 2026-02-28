@@ -1582,6 +1582,27 @@ export default function SimpleLandingPageEditor({
     setIsDirty(true);
   }, []);
 
+  const handleWidgetChange = useCallback(
+    (sectionId: string, widgetId: string) => {
+      setConfig((prev) => ({
+        ...prev,
+        sections: (prev.sections || []).map((s) =>
+          s.id === sectionId ? { ...s, widgetId } : s,
+        ),
+      }));
+      setIsDirty(true);
+    },
+    [],
+  );
+
+  const handleHeroWidgetChange = useCallback((widgetId: string) => {
+    setConfig((prev) => ({
+      ...prev,
+      heroWidgetId: widgetId,
+    }));
+    setIsDirty(true);
+  }, []);
+
   // Brand colour handlers
   const handleBrandColorChange = useCallback(
     (color: string) => {
@@ -2705,11 +2726,14 @@ export default function SimpleLandingPageEditor({
             heroEnabled={config.heroEnabled !== false}
             footerEnabled={config.footerEnabled !== false}
             sections={config.sections || DEFAULT_LANDING_PAGE_CONFIG.sections!}
+            heroWidgetId={config.heroWidgetId}
             onHeroToggle={handleHeroToggle}
             onFooterToggle={handleFooterToggle}
             onSectionToggle={handleSectionToggle}
             onSectionMoveUp={handleSectionMoveUp}
             onSectionMoveDown={handleSectionMoveDown}
+            onWidgetChange={handleWidgetChange}
+            onHeroWidgetChange={handleHeroWidgetChange}
           />
         )}
 

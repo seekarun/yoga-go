@@ -4,9 +4,24 @@ import type { HeroTemplateProps } from "./types";
 import type { WidgetBrandConfig } from "../widgets/types";
 import { getHarmonyColors } from "@/lib/colorPalette";
 import {
+  // Testimonials
+  TestimonialsCardMatrix3x2,
+  TestimonialsSolidCards,
+  TestimonialsAnimatedSingleCard,
+  TestimonialsAnimatedScrambledCards,
+  TestimonialsCardUnevenGrid,
   TestimonialsAnimatedCardScroll,
+  // Products
+  ProductsStaticVertical,
+  ProductsStaticEcom,
   ProductsStaticHorizontal,
+  // Hero
+  HeroVideoHorizontal,
+  HeroStatsBoxes,
+  HeroPovCards,
+  HeroDoctorProfile,
   HeroVerticalImageScroll,
+  HeroThroughTheTear,
 } from "../widgets";
 import FooterSection from "./FooterSection";
 
@@ -45,18 +60,101 @@ function buildBrand(props: HeroTemplateProps): WidgetBrandConfig {
  * Playground Template
  *
  * A clean, minimal template designed for previewing widgets and tenant data.
- * Renders each section in a simple format — hero as a header band,
- * about as text, products as cards, and testimonials using the
- * "3x2 Card Matrix" widget.
- *
- * All sections are responsive and styled using the tenant's brand.
+ * Reads heroWidgetId and section widgetId from config to dynamically
+ * select which widget variant renders for each section.
  */
 export default function PlaygroundTemplate(props: HeroTemplateProps) {
   const { config, tenantData, products, currency } = props;
   const brand = buildBrand(props);
 
   const sections = config.sections || [];
-  const enabledSections = sections.filter((s) => s.enabled).map((s) => s.id);
+  const enabledSections = sections.filter((s) => s.enabled);
+
+  /** Get widgetId for a section, falling back to first widget in catalogue. */
+  const getWidgetId = (sectionId: string): string | undefined =>
+    sections.find((s) => s.id === sectionId)?.widgetId;
+
+  /** Common hero props passed to all hero widgets. */
+  const heroProps = {
+    title: config.title,
+    subtitle: config.subtitle,
+    buttonLabel: config.button?.label,
+    brand,
+    onButtonClick: props.onButtonClick,
+  };
+
+  /** Render the selected hero widget. */
+  const renderHero = () => {
+    const widgetId = config.heroWidgetId || "video-horizontal";
+    switch (widgetId) {
+      case "stats-boxes":
+        return <HeroStatsBoxes {...heroProps} />;
+      case "pov-cards":
+        return <HeroPovCards {...heroProps} />;
+      case "doctor-profile":
+        return <HeroDoctorProfile {...heroProps} />;
+      case "vertical-image-scroll":
+        return <HeroVerticalImageScroll {...heroProps} products={products} />;
+      case "through-the-tear":
+        return <HeroThroughTheTear {...heroProps} />;
+      case "video-horizontal":
+      default:
+        return <HeroVideoHorizontal {...heroProps} />;
+    }
+  };
+
+  /** Common product props. */
+  const productProps = {
+    products: products || [],
+    heading: config.productsConfig?.heading || "Services",
+    subheading: config.productsConfig?.subheading,
+    brand,
+    currency,
+    onBookProduct: props.onBookProduct,
+    onSignupWebinar: props.onSignupWebinar,
+  };
+
+  /** Render the selected products widget. */
+  const renderProducts = () => {
+    const widgetId = getWidgetId("products") || "static-vertical";
+    switch (widgetId) {
+      case "static-ecom":
+        return <ProductsStaticEcom {...productProps} />;
+      case "static-horizontal":
+        return <ProductsStaticHorizontal {...productProps} />;
+      case "static-vertical":
+      default:
+        return <ProductsStaticVertical {...productProps} />;
+    }
+  };
+
+  /** Common testimonial props. */
+  const testimonialProps = {
+    testimonials: config.testimonials?.testimonials || [],
+    heading: config.testimonials?.heading || "What People Say",
+    subheading: config.testimonials?.subheading,
+    brand,
+  };
+
+  /** Render the selected testimonials widget. */
+  const renderTestimonials = () => {
+    const widgetId = getWidgetId("testimonials") || "card-matrix-3x2";
+    switch (widgetId) {
+      case "solid-cards":
+        return <TestimonialsSolidCards {...testimonialProps} />;
+      case "animated-single-card":
+        return <TestimonialsAnimatedSingleCard {...testimonialProps} />;
+      case "animated-scrambled-cards":
+        return <TestimonialsAnimatedScrambledCards {...testimonialProps} />;
+      case "card-uneven-grid":
+        return <TestimonialsCardUnevenGrid {...testimonialProps} />;
+      case "animated-card-scroll":
+        return <TestimonialsAnimatedCardScroll {...testimonialProps} />;
+      case "card-matrix-3x2":
+      default:
+        return <TestimonialsCardMatrix3x2 {...testimonialProps} />;
+    }
+  };
 
   return (
     <div className={SCOPE}>
@@ -127,114 +225,99 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
         }
       `}</style>
 
-      {/* Hero — uses widget */}
-      {config.heroEnabled !== false && (
-        <HeroVerticalImageScroll
-          title={config.title}
-          subtitle={config.subtitle}
-          buttonLabel={config.button?.label}
-          brand={brand}
-          onButtonClick={props.onButtonClick}
-          products={products}
-        />
-      )}
+      {/* Hero — dynamic widget */}
+      {config.heroEnabled !== false && renderHero()}
 
-      {/* About */}
-      {enabledSections.includes("about") && config.about && (
-        <div className={`${SCOPE}-section`}>
-          <div className={`${SCOPE}-about`}>
-            {config.about.image && (
-              // eslint-disable-next-line @next/next/no-img-element -- playground template, simple rendering
-              <img
-                className={`${SCOPE}-about-img`}
-                src={config.about.image}
-                alt={config.about.title || "About"}
-              />
-            )}
-            <div>
-              {config.about.title && (
-                <h2 className={`${SCOPE}-about-title`}>{config.about.title}</h2>
-              )}
-              <p className={`${SCOPE}-about-text`}>{config.about.paragraph}</p>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Render enabled sections in order */}
+      {enabledSections.map((section) => {
+        switch (section.id) {
+          case "about":
+            return config.about ? (
+              <div key="about" className={`${SCOPE}-section`}>
+                <div className={`${SCOPE}-about`}>
+                  {config.about.image && (
+                    // eslint-disable-next-line @next/next/no-img-element -- playground template
+                    <img
+                      className={`${SCOPE}-about-img`}
+                      src={config.about.image}
+                      alt={config.about.title || "About"}
+                    />
+                  )}
+                  <div>
+                    {config.about.title && (
+                      <h2 className={`${SCOPE}-about-title`}>
+                        {config.about.title}
+                      </h2>
+                    )}
+                    <p className={`${SCOPE}-about-text`}>
+                      {config.about.paragraph}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : null;
 
-      {/* Products — uses widget */}
-      {enabledSections.includes("products") &&
-        products &&
-        products.length > 0 && (
-          <ProductsStaticHorizontal
-            products={products}
-            heading={config.productsConfig?.heading || "Services"}
-            subheading={config.productsConfig?.subheading}
-            brand={brand}
-            currency={currency}
-            onBookProduct={props.onBookProduct}
-            onSignupWebinar={props.onSignupWebinar}
-          />
-        )}
+          case "products":
+            return products && products.length > 0 ? (
+              <div key="products">{renderProducts()}</div>
+            ) : null;
 
-      {/* Testimonials — uses widget */}
-      {enabledSections.includes("testimonials") &&
-        config.testimonials &&
-        config.testimonials.testimonials.length > 0 && (
-          <TestimonialsAnimatedCardScroll
-            testimonials={config.testimonials.testimonials}
-            heading={config.testimonials.heading || "What People Say"}
-            subheading={config.testimonials.subheading}
-            brand={brand}
-          />
-        )}
+          case "testimonials":
+            return config.testimonials &&
+              config.testimonials.testimonials.length > 0 ? (
+              <div key="testimonials">{renderTestimonials()}</div>
+            ) : null;
 
-      {/* FAQ */}
-      {enabledSections.includes("faq") &&
-        config.faq &&
-        config.faq.items.length > 0 && (
-          <div className={`${SCOPE}-bg-gray`}>
-            <div className={`${SCOPE}-section`}>
-              <h2 className={`${SCOPE}-section-heading`}>
-                {config.faq.heading || "FAQ"}
-              </h2>
-              {config.faq.subheading && (
-                <p className={`${SCOPE}-section-subheading`}>
-                  {config.faq.subheading}
-                </p>
-              )}
-              {config.faq.items.map((item) => (
-                <details
-                  key={item.id}
-                  style={{
-                    marginBottom: 12,
-                    borderBottom: "1px solid #e5e7eb",
-                    paddingBottom: 12,
-                  }}
-                >
-                  <summary
-                    style={{
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      fontSize: "1.05rem",
-                      padding: "8px 0",
-                    }}
-                  >
-                    {item.question}
-                  </summary>
-                  <p
-                    style={{
-                      color: "#374151",
-                      lineHeight: 1.7,
-                      paddingTop: 8,
-                    }}
-                  >
-                    {item.answer}
-                  </p>
-                </details>
-              ))}
-            </div>
-          </div>
-        )}
+          case "faq":
+            return config.faq && config.faq.items.length > 0 ? (
+              <div key="faq" className={`${SCOPE}-bg-gray`}>
+                <div className={`${SCOPE}-section`}>
+                  <h2 className={`${SCOPE}-section-heading`}>
+                    {config.faq.heading || "FAQ"}
+                  </h2>
+                  {config.faq.subheading && (
+                    <p className={`${SCOPE}-section-subheading`}>
+                      {config.faq.subheading}
+                    </p>
+                  )}
+                  {config.faq.items.map((item) => (
+                    <details
+                      key={item.id}
+                      style={{
+                        marginBottom: 12,
+                        borderBottom: "1px solid #e5e7eb",
+                        paddingBottom: 12,
+                      }}
+                    >
+                      <summary
+                        style={{
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          fontSize: "1.05rem",
+                          padding: "8px 0",
+                        }}
+                      >
+                        {item.question}
+                      </summary>
+                      <p
+                        style={{
+                          color: "#374151",
+                          lineHeight: 1.7,
+                          paddingTop: 8,
+                        }}
+                      >
+                        {item.answer}
+                      </p>
+                    </details>
+                  ))}
+                </div>
+              </div>
+            ) : null;
+
+          default:
+            return null;
+        }
+      })}
 
       {/* Footer */}
       {config.footerEnabled !== false && config.footer && (

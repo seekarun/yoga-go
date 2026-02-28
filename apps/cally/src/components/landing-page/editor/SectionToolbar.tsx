@@ -2,16 +2,20 @@
 
 import { useState, useRef, useCallback } from "react";
 import type { SectionOrderItem } from "@/types/landing-page";
+import { WIDGET_CATALOGUE, type WidgetSectionType } from "@/templates/widgets";
 
 interface SectionToolbarProps {
   heroEnabled: boolean;
   footerEnabled: boolean;
   sections: SectionOrderItem[];
+  heroWidgetId?: string;
   onHeroToggle: (enabled: boolean) => void;
   onFooterToggle: (enabled: boolean) => void;
   onSectionToggle: (sectionId: string, enabled: boolean) => void;
   onSectionMoveUp: (sectionId: string) => void;
   onSectionMoveDown: (sectionId: string) => void;
+  onWidgetChange?: (sectionId: string, widgetId: string) => void;
+  onHeroWidgetChange?: (widgetId: string) => void;
 }
 
 const SECTION_LABELS: Record<string, string> = {
@@ -24,15 +28,24 @@ const SECTION_LABELS: Record<string, string> = {
   gallery: "Gallery",
 };
 
+/** Sections that have widgets in the catalogue. */
+const WIDGET_SECTIONS: Record<string, WidgetSectionType> = {
+  products: "products",
+  testimonials: "testimonials",
+};
+
 export default function SectionToolbar({
   heroEnabled,
   footerEnabled,
   sections,
+  heroWidgetId,
   onHeroToggle,
   onFooterToggle,
   onSectionToggle,
   onSectionMoveUp,
   onSectionMoveDown,
+  onWidgetChange,
+  onHeroWidgetChange,
 }: SectionToolbarProps) {
   const [collapsed, setCollapsed] = useState(false);
   // y=null means "use CSS centering"; once dragged, y becomes a pixel value
@@ -140,7 +153,7 @@ export default function SectionToolbar({
     boxShadow: isDragging
       ? "0 8px 24px rgba(0,0,0,0.18)"
       : "0 4px 16px rgba(0,0,0,0.1)",
-    width: "220px",
+    width: "280px",
     userSelect: "none",
   };
 
@@ -209,6 +222,43 @@ export default function SectionToolbar({
     cursor: "default",
   };
 
+  const selectStyle: React.CSSProperties = {
+    fontSize: "0.7rem",
+    padding: "2px 4px",
+    borderRadius: "4px",
+    border: "1px solid #e5e7eb",
+    background: "#fff",
+    color: "#374151",
+    maxWidth: "100px",
+    flexShrink: 0,
+    cursor: "pointer",
+  };
+
+  /** Render a widget dropdown for a section that has widgets. */
+  const renderWidgetSelect = (
+    widgetSection: WidgetSectionType,
+    currentWidgetId: string | undefined,
+    onChange: (widgetId: string) => void,
+  ) => {
+    const widgets = WIDGET_CATALOGUE[widgetSection];
+    if (!widgets || widgets.length <= 1) return null;
+
+    return (
+      <select
+        style={selectStyle}
+        value={currentWidgetId || widgets[0].id}
+        onChange={(e) => onChange(e.target.value)}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {widgets.map((w) => (
+          <option key={w.id} value={w.id}>
+            {w.name}
+          </option>
+        ))}
+      </select>
+    );
+  };
+
   return (
     <div ref={panelRef} style={panelStyle}>
       {/* Header — drag handle */}
@@ -265,9 +315,13 @@ export default function SectionToolbar({
         </button>
       </div>
 
-      {/* Hero - fixed at top, toggle only */}
+      {/* Hero - fixed at top, toggle + widget selector */}
       <div style={rowStyle}>
         <span style={labelStyle}>Hero</span>
+        {heroEnabled &&
+          renderWidgetSelect("hero", heroWidgetId, (widgetId) =>
+            onHeroWidgetChange?.(widgetId),
+          )}
         <button
           type="button"
           style={toggleStyle(heroEnabled)}
@@ -280,65 +334,78 @@ export default function SectionToolbar({
       {/* Divider */}
       <div style={{ borderTop: "1px solid #e5e7eb", margin: "6px 0" }} />
 
-      {/* Reorderable sections (about, features, testimonials, faq) */}
-      {sections.map((section, index) => (
-        <div key={section.id} style={rowStyle}>
-          <span style={labelStyle}>
-            {SECTION_LABELS[section.id] || section.id}
-          </span>
+      {/* Reorderable sections */}
+      {sections.map((section, index) => {
+        const widgetSection = WIDGET_SECTIONS[section.id];
 
-          {/* Move up */}
-          <button
-            type="button"
-            style={index === 0 ? disabledArrowStyle : arrowBtnStyle}
-            onClick={() => index > 0 && onSectionMoveUp(section.id)}
-            disabled={index === 0}
-          >
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
+        return (
+          <div key={section.id} style={rowStyle}>
+            <span style={labelStyle}>
+              {SECTION_LABELS[section.id] || section.id}
+            </span>
+
+            {/* Widget selector — only for sections that have widgets */}
+            {section.enabled &&
+              widgetSection &&
+              renderWidgetSelect(widgetSection, section.widgetId, (widgetId) =>
+                onWidgetChange?.(section.id, widgetId),
+              )}
+
+            {/* Move up */}
+            <button
+              type="button"
+              style={index === 0 ? disabledArrowStyle : arrowBtnStyle}
+              onClick={() => index > 0 && onSectionMoveUp(section.id)}
+              disabled={index === 0}
             >
-              <polyline points="18 15 12 9 6 15" />
-            </svg>
-          </button>
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <polyline points="18 15 12 9 6 15" />
+              </svg>
+            </button>
 
-          {/* Move down */}
-          <button
-            type="button"
-            style={
-              index === sections.length - 1 ? disabledArrowStyle : arrowBtnStyle
-            }
-            onClick={() =>
-              index < sections.length - 1 && onSectionMoveDown(section.id)
-            }
-            disabled={index === sections.length - 1}
-          >
-            <svg
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
+            {/* Move down */}
+            <button
+              type="button"
+              style={
+                index === sections.length - 1
+                  ? disabledArrowStyle
+                  : arrowBtnStyle
+              }
+              onClick={() =>
+                index < sections.length - 1 && onSectionMoveDown(section.id)
+              }
+              disabled={index === sections.length - 1}
             >
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </button>
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
 
-          {/* Toggle */}
-          <button
-            type="button"
-            style={toggleStyle(section.enabled)}
-            onClick={() => onSectionToggle(section.id, !section.enabled)}
-          >
-            <div style={toggleKnobStyle(section.enabled)} />
-          </button>
-        </div>
-      ))}
+            {/* Toggle */}
+            <button
+              type="button"
+              style={toggleStyle(section.enabled)}
+              onClick={() => onSectionToggle(section.id, !section.enabled)}
+            >
+              <div style={toggleKnobStyle(section.enabled)} />
+            </button>
+          </div>
+        );
+      })}
 
       {/* Divider */}
       <div style={{ borderTop: "1px solid #e5e7eb", margin: "6px 0" }} />

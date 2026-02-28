@@ -33,3 +33,4 @@ export { default as HeroStatsBoxes } from "./hero/StatsBoxes";
 export { default as HeroPovCards } from "./hero/PovCards";
 export { default as HeroDoctorProfile } from "./hero/DoctorProfile";
 export { default as HeroVerticalImageScroll } from "./hero/VerticalImageScroll";
+export { default as HeroThroughTheTear } from "./hero/ThroughTheTear";

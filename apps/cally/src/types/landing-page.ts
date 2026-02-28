@@ -247,6 +247,8 @@ export type SectionId =
 export interface SectionOrderItem {
   id: SectionId;
   enabled: boolean;
+  /** Selected widget variant ID (from widget catalogue) */
+  widgetId?: string;
 }
 
 /**
@@ -432,6 +434,8 @@ export interface SimpleLandingPageConfig {
   heroStyleOverrides?: HeroStyleOverrides;
   /** Whether hero section is visible (default true) */
   heroEnabled?: boolean;
+  /** Selected hero widget variant ID */
+  heroWidgetId?: string;
   /** Whether footer section is visible (default true) */
   footerEnabled?: boolean;
   /** Section ordering (about, features, testimonials, faq) */
