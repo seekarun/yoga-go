@@ -188,9 +188,11 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
     onSignupWebinar: props.onSignupWebinar,
     isEditing: props.isEditing,
     styleOverrides: config.productsConfig?.styleOverrides,
+    cardStyles: config.productsConfig?.cardStyles,
     onHeadingChange: props.onProductsHeadingChange,
     onSubheadingChange: props.onProductsSubheadingChange,
     onStyleOverrideChange: props.onProductsStyleOverrideChange,
+    onCardStyleChange: props.onProductCardStyleChange,
   };
 
   /** Render the selected products widget. */

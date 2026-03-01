@@ -1,11 +1,26 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import {
+  useState,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useLayoutEffect,
+} from "react";
+import { createPortal } from "react-dom";
 import type { Product, ProductImage } from "@/types";
-import type { ProductsStyleOverrides } from "@/types/landing-page";
+import type {
+  ProductsStyleOverrides,
+  ProductCardStyleOverride,
+} from "@/types/landing-page";
 import type { WidgetBrandConfig } from "../types";
 import { getContrastColor } from "@/lib/colorPalette";
 import ResizableText from "../../hero/ResizableText";
+import ImageToolbar from "../../hero/ImageToolbar";
+import TextToolbar from "../../hero/TextToolbar";
+import { bgFilterToCSS } from "../../hero/layoutOptions";
+import { processRemoveBackground } from "../../hero/removeBackgroundUtil";
 
 interface StaticEcomProps {
   products: Product[];
@@ -20,6 +35,11 @@ interface StaticEcomProps {
   onSubheadingChange?: (subheading: string) => void;
   onStyleOverrideChange?: (overrides: ProductsStyleOverrides) => void;
   styleOverrides?: ProductsStyleOverrides;
+  cardStyles?: Record<string, ProductCardStyleOverride>;
+  onCardStyleChange?: (
+    productId: string,
+    patch: Partial<ProductCardStyleOverride>,
+  ) => void;
 }
 
 const SCOPE = "w-pr-se";
@@ -50,6 +70,20 @@ function formatDuration(minutes: number): string {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
+function parsePosition(pos?: string): { x: number; y: number } {
+  if (!pos) return { x: 50, y: 50 };
+  const parts = pos.split(/\s+/).map((p) => parseInt(p, 10));
+  return { x: parts[0] ?? 50, y: parts[1] ?? 50 };
+}
+
+/** Selection state for card-level editing */
+type CardSelection =
+  | { type: "image"; productId: string }
+  | { type: "name"; productId: string }
+  | { type: "desc"; productId: string }
+  | { type: "price"; productId: string }
+  | null;
+
 /**
  * Image carousel for ecom-style product cards.
  * Square aspect ratio, arrows + dots on hover.
@@ -59,11 +93,19 @@ function ImageCarousel({
   fallbackImage,
   fallbackPosition,
   fallbackZoom,
+  overridePosition,
+  overrideZoom,
+  overrideFilter,
+  overrideImageUrl,
 }: {
   images: ProductImage[];
   fallbackImage?: string;
   fallbackPosition?: string;
   fallbackZoom?: number;
+  overridePosition?: string;
+  overrideZoom?: number;
+  overrideFilter?: string;
+  overrideImageUrl?: string;
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -122,15 +164,24 @@ function ImageCarousel({
   }
 
   const current = slides[currentIndex];
+  const displayUrl = overrideImageUrl || current.url;
+  const effectivePosition = overridePosition ?? current.position ?? "50% 50%";
+  const pos = parsePosition(effectivePosition);
+  // MIN_POSITION_SCALE ensures both X and Y sliders have effect
+  const MIN_POSITION_SCALE = 1.05;
+  const userScale = (overrideZoom ?? current.zoom ?? 100) / 100;
+  const zoomScale = Math.max(MIN_POSITION_SCALE, userScale);
 
   return (
     <div className={`${SCOPE}-img-wrap`}>
       <div
         className={`${SCOPE}-img`}
         style={{
-          backgroundImage: `url(${current.url})`,
-          backgroundPosition: current.position || "50% 50%",
-          transform: current.zoom ? `scale(${current.zoom / 100})` : undefined,
+          backgroundImage: `url(${displayUrl})`,
+          backgroundPosition: `${pos.x}% ${pos.y}%`,
+          transform: `scale(${zoomScale})`,
+          transformOrigin: `${pos.x}% ${pos.y}%`,
+          filter: bgFilterToCSS(overrideFilter) || "none",
         }}
       />
 
@@ -209,6 +260,8 @@ export default function StaticEcom({
   onSubheadingChange,
   onStyleOverrideChange,
   styleOverrides,
+  cardStyles,
+  onCardStyleChange,
 }: StaticEcomProps) {
   const active = useMemo(() => products.filter((p) => p.isActive), [products]);
   const useCarousel = active.length > 3;
@@ -219,22 +272,79 @@ export default function StaticEcom({
 
   const [headingSelected, setHeadingSelected] = useState(false);
   const [subheadingSelected, setSubheadingSelected] = useState(false);
+  const [cardSel, setCardSel] = useState<CardSelection>(null);
+
+  // Remove-BG state
+  const [removingBg, setRemovingBg] = useState(false);
+  const [bgRemovedProductId, setBgRemovedProductId] = useState<string | null>(
+    null,
+  );
+  const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
+
   const sectionRef = useRef<HTMLElement>(null);
+  const imgRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const cardTextRefs = useRef<Map<string, HTMLElement>>(new Map());
+  const portalRef = useRef<HTMLDivElement>(null);
+
+  const [portalPos, setPortalPos] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
+
+  const getAnchorEl = useCallback((): HTMLElement | null => {
+    if (!cardSel) return null;
+    if (cardSel.type === "image") {
+      return imgRefs.current.get(cardSel.productId) || null;
+    }
+    const key = `${cardSel.productId}-${cardSel.type}`;
+    return cardTextRefs.current.get(key) || null;
+  }, [cardSel]);
 
   useEffect(() => {
     if (!isEditing) return;
     const handler = (e: MouseEvent) => {
-      if (
-        sectionRef.current &&
-        !sectionRef.current.contains(e.target as Node)
-      ) {
+      const target = e.target as Node;
+      if (portalRef.current && portalRef.current.contains(target)) return;
+      if (sectionRef.current && !sectionRef.current.contains(target)) {
         setHeadingSelected(false);
         setSubheadingSelected(false);
+        setCardSel(null);
+        return;
+      }
+      if (cardSel) {
+        const anchor = getAnchorEl();
+        if (anchor && !anchor.contains(target)) {
+          setCardSel(null);
+        }
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [isEditing]);
+  }, [isEditing, cardSel, getAnchorEl]);
+
+  useLayoutEffect(() => {
+    if (!cardSel) {
+      setPortalPos(null);
+      return;
+    }
+    const el = getAnchorEl();
+    if (!el) {
+      setPortalPos(null);
+      return;
+    }
+    const measure = () => {
+      const rect = el.getBoundingClientRect();
+      setPortalPos({ top: rect.top, left: rect.left, width: rect.width });
+    };
+    measure();
+    window.addEventListener("scroll", measure, true);
+    window.addEventListener("resize", measure);
+    return () => {
+      window.removeEventListener("scroll", measure, true);
+      window.removeEventListener("resize", measure);
+    };
+  }, [cardSel, getAnchorEl]);
 
   const emitOverride = useCallback(
     (patch: Partial<ProductsStyleOverrides>) => {
@@ -263,6 +373,36 @@ export default function StaticEcom({
   useEffect(() => {
     updateArrows();
   }, [updateArrows, active.length]);
+
+  const handleRemoveBg = useCallback(
+    async (productId: string, imageUrl: string) => {
+      if (removingBg) return;
+      setOriginalImageUrl(imageUrl);
+      setBgRemovedProductId(productId);
+      setRemovingBg(true);
+      try {
+        const newUrl = await processRemoveBackground(imageUrl, "StaticEcom");
+        onCardStyleChange?.(productId, { bgRemovedImageUrl: newUrl });
+      } catch (err) {
+        console.error("[DBG][StaticEcom] Remove BG failed:", err);
+        setOriginalImageUrl(null);
+        setBgRemovedProductId(null);
+      } finally {
+        setRemovingBg(false);
+      }
+    },
+    [removingBg, onCardStyleChange],
+  );
+
+  const handleUndoRemoveBg = useCallback(
+    (productId: string) => {
+      if (!originalImageUrl || bgRemovedProductId !== productId) return;
+      onCardStyleChange?.(productId, { bgRemovedImageUrl: undefined });
+      setOriginalImageUrl(null);
+      setBgRemovedProductId(null);
+    },
+    [originalImageUrl, bgRemovedProductId, onCardStyleChange],
+  );
 
   if (active.length === 0) return null;
 
@@ -294,31 +434,293 @@ export default function StaticEcom({
   const secondary = brand.secondaryColor || primary;
   const badgeText = getContrastColor(secondary);
 
+  const renderPortalToolbar = () => {
+    if (!isEditing || !cardSel || !portalPos) return null;
+    const product = active.find((p) => p.id === cardSel.productId);
+    if (!product) return null;
+    const cs = cardStyles?.[product.id];
+
+    let toolbarContent: React.ReactNode = null;
+
+    if (cardSel.type === "image") {
+      const pos = parsePosition(cs?.imagePosition ?? product.imagePosition);
+      const imgUrl = product.images?.[0]?.url || product.image;
+      toolbarContent = (
+        <ImageToolbar
+          borderRadius={0}
+          positionX={pos.x}
+          positionY={pos.y}
+          zoom={cs?.imageZoom ?? product.imageZoom ?? 100}
+          filter={cs?.imageFilter}
+          onBorderRadiusChange={() => {}}
+          onPositionChange={(x, y) =>
+            onCardStyleChange?.(product.id, {
+              imagePosition: `${x}% ${y}%`,
+            })
+          }
+          onZoomChange={(v) =>
+            onCardStyleChange?.(product.id, { imageZoom: v })
+          }
+          onFilterChange={(v) =>
+            onCardStyleChange?.(product.id, {
+              imageFilter: v === "none" ? undefined : v,
+            })
+          }
+          onReplaceImage={() => {}}
+          onRemoveBgClick={
+            imgUrl ? () => handleRemoveBg(product.id, imgUrl) : undefined
+          }
+          removingBg={removingBg && bgRemovedProductId === product.id}
+          bgRemoved={bgRemovedProductId === product.id && !removingBg}
+          onUndoRemoveBg={() => handleUndoRemoveBg(product.id)}
+        />
+      );
+    } else if (cardSel.type === "name") {
+      toolbarContent = (
+        <TextToolbar
+          fontSize={cs?.nameFontSize ?? 17}
+          fontFamily={cs?.nameFontFamily ?? ""}
+          fontWeight={cs?.nameFontWeight ?? "bold"}
+          fontStyle={cs?.nameFontStyle ?? "normal"}
+          color={cs?.nameColor ?? "#1a1a1a"}
+          textAlign={cs?.nameTextAlign ?? "left"}
+          onFontSizeChange={(v) =>
+            onCardStyleChange?.(product.id, { nameFontSize: v })
+          }
+          onFontFamilyChange={(v) =>
+            onCardStyleChange?.(product.id, { nameFontFamily: v })
+          }
+          onFontWeightChange={(v) =>
+            onCardStyleChange?.(product.id, { nameFontWeight: v })
+          }
+          onFontStyleChange={(v) =>
+            onCardStyleChange?.(product.id, { nameFontStyle: v })
+          }
+          onColorChange={(v) =>
+            onCardStyleChange?.(product.id, { nameColor: v })
+          }
+          onTextAlignChange={(v) =>
+            onCardStyleChange?.(product.id, { nameTextAlign: v })
+          }
+        />
+      );
+    } else if (cardSel.type === "desc") {
+      toolbarContent = (
+        <TextToolbar
+          fontSize={cs?.descFontSize ?? 14}
+          fontFamily={cs?.descFontFamily ?? ""}
+          fontWeight={cs?.descFontWeight ?? "normal"}
+          fontStyle={cs?.descFontStyle ?? "normal"}
+          color={cs?.descColor ?? "#374151"}
+          textAlign={cs?.descTextAlign ?? "left"}
+          onFontSizeChange={(v) =>
+            onCardStyleChange?.(product.id, { descFontSize: v })
+          }
+          onFontFamilyChange={(v) =>
+            onCardStyleChange?.(product.id, { descFontFamily: v })
+          }
+          onFontWeightChange={(v) =>
+            onCardStyleChange?.(product.id, { descFontWeight: v })
+          }
+          onFontStyleChange={(v) =>
+            onCardStyleChange?.(product.id, { descFontStyle: v })
+          }
+          onColorChange={(v) =>
+            onCardStyleChange?.(product.id, { descColor: v })
+          }
+          onTextAlignChange={(v) =>
+            onCardStyleChange?.(product.id, { descTextAlign: v })
+          }
+        />
+      );
+    } else if (cardSel.type === "price") {
+      toolbarContent = (
+        <TextToolbar
+          fontSize={cs?.priceFontSize ?? 18}
+          fontFamily=""
+          fontWeight="bold"
+          fontStyle="normal"
+          color={cs?.priceColor ?? "#1a1a1a"}
+          textAlign="left"
+          onFontSizeChange={(v) =>
+            onCardStyleChange?.(product.id, { priceFontSize: v })
+          }
+          onColorChange={(v) =>
+            onCardStyleChange?.(product.id, { priceColor: v })
+          }
+          onFontFamilyChange={() => {}}
+          onFontWeightChange={() => {}}
+          onFontStyleChange={() => {}}
+          onTextAlignChange={() => {}}
+        />
+      );
+    }
+
+    if (!toolbarContent) return null;
+
+    return createPortal(
+      <div
+        ref={portalRef}
+        style={{
+          position: "fixed",
+          top: portalPos.top,
+          left: portalPos.left,
+          width: portalPos.width,
+          height: 0,
+          zIndex: 9999,
+        }}
+      >
+        {toolbarContent}
+      </div>,
+      document.body,
+    );
+  };
+
   const renderCards = () =>
     active.map((product) => {
       const isWebinar = product.productType === "webinar";
+      const cs = cardStyles?.[product.id];
+
+      const isNameSel =
+        cardSel?.type === "name" && cardSel.productId === product.id;
+      const isDescSel =
+        cardSel?.type === "desc" && cardSel.productId === product.id;
+      const isPriceSel =
+        cardSel?.type === "price" && cardSel.productId === product.id;
+      const isImgSel =
+        cardSel?.type === "image" && cardSel.productId === product.id;
+
+      const nameStyle: React.CSSProperties = {
+        ...(cs?.nameFontSize ? { fontSize: cs.nameFontSize } : {}),
+        ...(cs?.nameFontWeight ? { fontWeight: cs.nameFontWeight } : {}),
+        ...(cs?.nameFontStyle ? { fontStyle: cs.nameFontStyle } : {}),
+        ...(cs?.nameColor ? { color: cs.nameColor } : {}),
+        ...(cs?.nameTextAlign ? { textAlign: cs.nameTextAlign } : {}),
+        ...(cs?.nameFontFamily ? { fontFamily: cs.nameFontFamily } : {}),
+      };
+
+      const descStyle: React.CSSProperties = {
+        ...(cs?.descFontSize ? { fontSize: cs.descFontSize } : {}),
+        ...(cs?.descFontWeight ? { fontWeight: cs.descFontWeight } : {}),
+        ...(cs?.descFontStyle ? { fontStyle: cs.descFontStyle } : {}),
+        ...(cs?.descColor ? { color: cs.descColor } : {}),
+        ...(cs?.descTextAlign ? { textAlign: cs.descTextAlign } : {}),
+        ...(cs?.descFontFamily ? { fontFamily: cs.descFontFamily } : {}),
+      };
+
+      const priceStyle: React.CSSProperties = {
+        ...(cs?.priceFontSize ? { fontSize: cs.priceFontSize } : {}),
+        ...(cs?.priceColor ? { color: cs.priceColor } : {}),
+      };
+
       return (
         <div key={product.id} className={`${SCOPE}-card`}>
           <div style={{ position: "relative" }}>
             <div className={`${SCOPE}-badge`}>
               {formatDuration(product.durationMinutes)}
             </div>
-            <ImageCarousel
-              images={product.images || []}
-              fallbackImage={product.image}
-              fallbackPosition={product.imagePosition}
-              fallbackZoom={product.imageZoom}
-            />
+            <div
+              ref={(el) => {
+                if (el) imgRefs.current.set(product.id, el);
+                else imgRefs.current.delete(product.id);
+              }}
+              className={isImgSel ? `${SCOPE}-img-col--selected` : undefined}
+              onClick={
+                isEditing
+                  ? () => {
+                      setCardSel({
+                        type: "image",
+                        productId: product.id,
+                      });
+                      setHeadingSelected(false);
+                      setSubheadingSelected(false);
+                    }
+                  : undefined
+              }
+              style={isEditing ? { cursor: "pointer" } : undefined}
+            >
+              <ImageCarousel
+                images={product.images || []}
+                fallbackImage={product.image}
+                fallbackPosition={product.imagePosition}
+                fallbackZoom={product.imageZoom}
+                overridePosition={cs?.imagePosition}
+                overrideZoom={cs?.imageZoom}
+                overrideFilter={cs?.imageFilter}
+                overrideImageUrl={cs?.bgRemovedImageUrl}
+              />
+            </div>
           </div>
           <div className={`${SCOPE}-body`}>
             <div className={`${SCOPE}-row-top`}>
-              <h3 className={`${SCOPE}-name`}>{product.name}</h3>
+              <h3
+                ref={(el) => {
+                  if (el) cardTextRefs.current.set(`${product.id}-name`, el);
+                  else cardTextRefs.current.delete(`${product.id}-name`);
+                }}
+                className={`${SCOPE}-name${isNameSel ? ` ${SCOPE}-card-text--selected` : ""}`}
+                style={nameStyle}
+                onClick={
+                  isEditing
+                    ? () => {
+                        setCardSel({
+                          type: "name",
+                          productId: product.id,
+                        });
+                        setHeadingSelected(false);
+                        setSubheadingSelected(false);
+                      }
+                    : undefined
+                }
+              >
+                {product.name}
+              </h3>
             </div>
             {product.description && (
-              <p className={`${SCOPE}-desc`}>{product.description}</p>
+              <p
+                ref={(el) => {
+                  if (el) cardTextRefs.current.set(`${product.id}-desc`, el);
+                  else cardTextRefs.current.delete(`${product.id}-desc`);
+                }}
+                className={`${SCOPE}-desc${isDescSel ? ` ${SCOPE}-card-text--selected` : ""}`}
+                style={descStyle}
+                onClick={
+                  isEditing
+                    ? () => {
+                        setCardSel({
+                          type: "desc",
+                          productId: product.id,
+                        });
+                        setHeadingSelected(false);
+                        setSubheadingSelected(false);
+                      }
+                    : undefined
+                }
+              >
+                {product.description}
+              </p>
             )}
             <div className={`${SCOPE}-price-row`}>
-              <span className={`${SCOPE}-price`}>
+              <span
+                ref={(el) => {
+                  if (el) cardTextRefs.current.set(`${product.id}-price`, el);
+                  else cardTextRefs.current.delete(`${product.id}-price`);
+                }}
+                className={`${SCOPE}-price${isPriceSel ? ` ${SCOPE}-card-text--selected` : ""}`}
+                style={priceStyle}
+                onClick={
+                  isEditing
+                    ? () => {
+                        setCardSel({
+                          type: "price",
+                          productId: product.id,
+                        });
+                        setHeadingSelected(false);
+                        setSubheadingSelected(false);
+                      }
+                    : undefined
+                }
+              >
                 {product.price > 0
                   ? formatPrice(product.price, currency)
                   : "Free"}
@@ -449,6 +851,11 @@ export default function StaticEcom({
         }
 
         /* ---- image area (square) ---- */
+        .${SCOPE}-img-col--selected {
+          outline: 2px solid #3b82f6;
+          outline-offset: -2px;
+          border-radius: 20px;
+        }
         .${SCOPE}-img-wrap {
           position: relative;
           width: 100%;
@@ -618,6 +1025,11 @@ export default function StaticEcom({
           font-family: ${brand.bodyFont || "inherit"};
           line-height: 1.6;
         }
+        .${SCOPE}-card-text--selected {
+          outline: 2px solid #3b82f6;
+          outline-offset: 4px;
+          border-radius: 6px;
+        }
         .${SCOPE}-price-row {
           display: flex;
           align-items: baseline;
@@ -691,6 +1103,7 @@ export default function StaticEcom({
               onSelect={() => {
                 setHeadingSelected(true);
                 setSubheadingSelected(false);
+                setCardSel(null);
               }}
               onDeselect={() => setHeadingSelected(false)}
               toolbarProps={{
@@ -723,6 +1136,7 @@ export default function StaticEcom({
               onSelect={() => {
                 setSubheadingSelected(true);
                 setHeadingSelected(false);
+                setCardSel(null);
               }}
               onDeselect={() => setSubheadingSelected(false)}
               toolbarProps={{
@@ -791,6 +1205,8 @@ export default function StaticEcom({
       ) : (
         <div className={`${SCOPE}-grid`}>{renderCards()}</div>
       )}
+
+      {renderPortalToolbar()}
     </section>
   );
 }

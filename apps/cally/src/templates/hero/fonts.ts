@@ -34,3 +34,32 @@ export function getGoogleFontsUrl(fontFamily: string): string | null {
   const encoded = name.replace(/ /g, "+");
   return `https://fonts.googleapis.com/css2?family=${encoded}:wght@400;500;600;700&display=swap`;
 }
+
+/** System fonts that don't need Google Fonts loading */
+const SYSTEM_FONTS = new Set(["", "Georgia, serif"]);
+
+/** Collect Google Font CSS URLs for all unique fontFamily values in spans. */
+export function getSpanFontUrls(spans?: { fontFamily?: string }[]): string[] {
+  if (!spans || spans.length === 0) return [];
+  const seen = new Set<string>();
+  const urls: string[] = [];
+  for (const span of spans) {
+    if (span.fontFamily && !seen.has(span.fontFamily)) {
+      seen.add(span.fontFamily);
+      const url = getGoogleFontsUrl(span.fontFamily);
+      if (url) urls.push(url);
+    }
+  }
+  return urls;
+}
+
+/** Build a Google Fonts URL that loads ALL non-system fonts for dropdown preview */
+export function getAllGoogleFontsUrl(): string {
+  const families = FONT_OPTIONS.filter((opt) => !SYSTEM_FONTS.has(opt.value))
+    .map((opt) => {
+      const name = opt.value.split(",")[0].replace(/'/g, "").trim();
+      return name.replace(/ /g, "+");
+    })
+    .map((encoded) => `family=${encoded}:wght@400;700`);
+  return `https://fonts.googleapis.com/css2?${families.join("&")}&display=swap`;
+}

@@ -22,6 +22,7 @@ import type {
   GalleryConfig,
   GalleryImage,
   ProductsConfig,
+  ProductCardStyleOverride,
   SectionOrderItem,
   SectionStyleOverrides,
   SEOConfig,
@@ -1038,6 +1039,27 @@ export default function SimpleLandingPageEditor({
           ),
         } as FeaturesConfig,
       }));
+      setIsDirty(true);
+    },
+    [],
+  );
+
+  // Handle product card style change (per-card text/image styling from toolbar)
+  const handleProductCardStyleChange = useCallback(
+    (productId: string, patch: Partial<ProductCardStyleOverride>) => {
+      setConfig((prev) => {
+        const existing = prev.productsConfig?.cardStyles?.[productId] || {};
+        return {
+          ...prev,
+          productsConfig: {
+            ...prev.productsConfig,
+            cardStyles: {
+              ...prev.productsConfig?.cardStyles,
+              [productId]: { ...existing, ...patch },
+            },
+          } as ProductsConfig,
+        };
+      });
       setIsDirty(true);
     },
     [],
@@ -3008,6 +3030,7 @@ export default function SimpleLandingPageEditor({
                   onProductsStyleOverrideChange={
                     handleProductsStyleOverrideChange
                   }
+                  onProductCardStyleChange={handleProductCardStyleChange}
                   onProductsBgImageClick={() =>
                     setShowProductsBgImageEditor(true)
                   }

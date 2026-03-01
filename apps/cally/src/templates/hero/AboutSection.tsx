@@ -810,6 +810,10 @@ export default function AboutSection({
   };
 
   const imgPosition = about.imagePosition || "50% 50%";
+  // MIN_POSITION_SCALE ensures both X and Y sliders have effect
+  const MIN_POSITION_SCALE = 1.05;
+  const aboutUserScale = (about.imageZoom || 100) / 100;
+  const aboutZoomScale = Math.max(MIN_POSITION_SCALE, aboutUserScale);
   const imageStyle: React.CSSProperties = {
     width: "100%",
     height: "100%",
@@ -821,10 +825,11 @@ export default function AboutSection({
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    transform: about.image
-      ? `scale(${(about.imageZoom || 100) / 100})`
-      : undefined,
+    transform: about.image ? `scale(${aboutZoomScale})` : undefined,
     transformOrigin: about.image ? imgPosition : undefined,
+    filter: about.image
+      ? bgFilterToCSS(overrides?.imageFilter) || "none"
+      : undefined,
   };
 
   const textStyle: React.CSSProperties = {
@@ -1057,10 +1062,17 @@ export default function AboutSection({
               positionY={posY}
               zoom={about.imageZoom || 100}
               offsetY={resolvedOffsetY}
+              filter={overrides?.imageFilter}
               onBorderRadiusChange={handleBorderRadiusChange}
               onPositionChange={handlePositionChange}
               onZoomChange={handleZoomChange}
               onOffsetYChange={handleOffsetYChange}
+              onFilterChange={(v) =>
+                onStyleOverrideChange?.({
+                  ...overrides,
+                  imageFilter: v === "none" ? undefined : v,
+                })
+              }
               onReplaceImage={() => onImageClick?.()}
               onRemoveBgClick={
                 about.image && onRemoveBgComplete

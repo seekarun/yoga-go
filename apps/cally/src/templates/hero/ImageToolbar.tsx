@@ -2,16 +2,29 @@
 
 import ToolbarContainer from "./ToolbarContainer";
 
+const FILTER_OPTIONS = [
+  { value: "none", label: "No filter" },
+  { value: "grayscale", label: "Grayscale" },
+  { value: "sepia", label: "Sepia" },
+  { value: "saturate", label: "Saturate" },
+  { value: "contrast", label: "High contrast" },
+  { value: "brightness", label: "Brighten" },
+  { value: "invert", label: "Invert" },
+  { value: "hue-rotate", label: "Hue rotate" },
+];
+
 interface ImageToolbarProps {
   borderRadius: number;
   positionX: number;
   positionY: number;
   zoom: number;
   offsetY?: number;
+  filter?: string;
   onBorderRadiusChange: (value: number) => void;
   onPositionChange: (x: number, y: number) => void;
   onZoomChange: (value: number) => void;
   onOffsetYChange?: (value: number) => void;
+  onFilterChange?: (value: string) => void;
   onReplaceImage: () => void;
   onRemoveBgClick?: () => void;
   removingBg?: boolean;
@@ -25,10 +38,12 @@ export default function ImageToolbar({
   positionY,
   zoom,
   offsetY = 0,
+  filter,
   onBorderRadiusChange,
   onPositionChange,
   onZoomChange,
   onOffsetYChange,
+  onFilterChange,
   onReplaceImage,
   onRemoveBgClick,
   removingBg = false,
@@ -201,6 +216,46 @@ export default function ImageToolbar({
               style={sliderStyle}
             />
             <span style={labelStyle}>{offsetY}</span>
+          </div>
+        </>
+      )}
+
+      {/* Filter dropdown */}
+      {onFilterChange && (
+        <>
+          <div style={dividerStyle} />
+          <div style={groupStyle} title="Image filter">
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            >
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+            </svg>
+            <select
+              value={filter || "none"}
+              onChange={(e) => onFilterChange(e.target.value)}
+              style={{
+                fontSize: "10px",
+                padding: "2px 4px",
+                border: "1px solid #e5e7eb",
+                borderRadius: "4px",
+                background: "#fff",
+                color: "#374151",
+                cursor: "pointer",
+                outline: "none",
+              }}
+            >
+              {FILTER_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
           </div>
         </>
       )}

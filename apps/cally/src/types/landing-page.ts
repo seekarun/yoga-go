@@ -165,11 +165,27 @@ export interface AboutStyleOverrides {
   bgImageOpacity?: number; // 0-100, default 100
   overlayOpacity?: number; // 0-100, dark overlay on bg image
   bgFilter?: string; // CSS filter preset: "grayscale" | "sepia" | etc.
+  imageFilter?: string; // CSS filter preset for the foreground about image
+  bgRemovedImage?: string; // URL of bg-removed foreground image (override for about.image)
   sectionHeight?: number; // px, optional fixed height
   bgImageOffsetX?: number; // px, drag reposition X
   bgImageOffsetY?: number; // px, drag reposition Y
   bgImageZoom?: number; // 100-300, scroll zoom during drag
   layout?: "image-left" | "image-right" | "stacked"; // default: "image-left"
+}
+
+/**
+ * Inline style span for a portion of text (title only).
+ * Each span defines a character range and style overrides.
+ */
+export interface TextSpan {
+  offset: number; // start character index
+  length: number; // number of characters
+  fontSize?: number;
+  fontFamily?: string;
+  fontWeight?: "normal" | "bold";
+  fontStyle?: "normal" | "italic";
+  color?: string;
 }
 
 export interface HeroStyleOverrides {
@@ -205,6 +221,8 @@ export interface HeroStyleOverrides {
   bgBlur?: number; // px, default 0 — blur on hero background image
   bgOpacity?: number; // 0-100, default 100 — opacity of hero background image
   bgFilter?: string; // CSS filter preset name: "grayscale" | "sepia" | "saturate" | "contrast" | "brightness" | "invert" | "none"
+  /** Inline styled spans for the hero title text */
+  titleSpans?: TextSpan[];
   // Mobile freeform position overrides (% of container, 0-100)
   mobileTitleX?: number;
   mobileTitleY?: number;
@@ -246,6 +264,7 @@ export interface FeatureCard {
   descFontStyle?: "normal" | "italic";
   descColor?: string;
   descTextAlign?: "left" | "center" | "right";
+  imageFilter?: string; // CSS filter preset for card image
 }
 
 /**
@@ -340,12 +359,42 @@ export interface ProductsStyleOverrides {
 }
 
 /**
+ * Per-product card style overrides (presentation only — text content from DB).
+ * Keyed by product ID in ProductsConfig.cardStyles.
+ */
+export interface ProductCardStyleOverride {
+  // Name/title
+  nameFontSize?: number;
+  nameFontFamily?: string;
+  nameFontWeight?: "normal" | "bold";
+  nameFontStyle?: "normal" | "italic";
+  nameColor?: string;
+  nameTextAlign?: "left" | "center" | "right";
+  // Description
+  descFontSize?: number;
+  descFontFamily?: string;
+  descFontWeight?: "normal" | "bold";
+  descFontStyle?: "normal" | "italic";
+  descColor?: string;
+  descTextAlign?: "left" | "center" | "right";
+  // Price
+  priceFontSize?: number;
+  priceColor?: string;
+  // Image overrides
+  imagePosition?: string;
+  imageZoom?: number;
+  imageFilter?: string; // CSS filter preset for card image
+  bgRemovedImageUrl?: string; // BG-removed image URL override
+}
+
+/**
  * Products section configuration (heading/subheading text)
  */
 export interface ProductsConfig {
   heading?: string;
   subheading?: string;
   styleOverrides?: ProductsStyleOverrides;
+  cardStyles?: Record<string, ProductCardStyleOverride>;
 }
 
 /**

@@ -6,6 +6,7 @@ import type {
   SimpleLandingPageConfig,
   AboutStyleOverrides,
   HeroStyleOverrides,
+  ProductCardStyleOverride,
   ProductsStyleOverrides,
   SectionStyleOverrides,
   TenantLandingPageData,
@@ -68,6 +69,10 @@ export interface HeroTemplateProps {
   onProductsHeadingChange?: (heading: string) => void;
   onProductsSubheadingChange?: (subheading: string) => void;
   onProductsStyleOverrideChange?: (overrides: ProductsStyleOverrides) => void;
+  onProductCardStyleChange?: (
+    productId: string,
+    patch: Partial<ProductCardStyleOverride>,
+  ) => void;
   onProductsBgImageClick?: () => void;
   // Testimonials callbacks
   onTestimonialsHeadingChange?: (heading: string) => void;

@@ -13,6 +13,8 @@ import type { WidgetBrandConfig } from "../types";
 import ResizableText from "../../hero/ResizableText";
 import ImageToolbar from "../../hero/ImageToolbar";
 import TextToolbar from "../../hero/TextToolbar";
+import { bgFilterToCSS } from "../../hero/layoutOptions";
+import { processRemoveBackground } from "../../hero/removeBackgroundUtil";
 
 interface UnevenGridProps {
   heading?: string;
@@ -83,6 +85,11 @@ export default function UnevenGrid({
   const [headingSelected, setHeadingSelected] = useState(false);
   const [subheadingSelected, setSubheadingSelected] = useState(false);
   const [cardSel, setCardSel] = useState<CardSelection>(null);
+
+  // Remove-BG state — tracks the currently-selected card's image
+  const [removingBg, setRemovingBg] = useState(false);
+  const [bgRemovedCardId, setBgRemovedCardId] = useState<string | null>(null);
+  const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
 
   const sectionRef = useRef<HTMLElement>(null);
   const imgColRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -160,6 +167,36 @@ export default function UnevenGrid({
     [styleOverrides, onStyleOverrideChange],
   );
 
+  const handleRemoveBg = useCallback(
+    async (cardId: string, imageUrl: string) => {
+      if (removingBg) return;
+      setOriginalImageUrl(imageUrl);
+      setBgRemovedCardId(cardId);
+      setRemovingBg(true);
+      try {
+        const newUrl = await processRemoveBackground(imageUrl, "UnevenGrid");
+        onCardStyleChange?.(cardId, { image: newUrl });
+      } catch (err) {
+        console.error("[DBG][UnevenGrid] Remove BG failed:", err);
+        setOriginalImageUrl(null);
+        setBgRemovedCardId(null);
+      } finally {
+        setRemovingBg(false);
+      }
+    },
+    [removingBg, onCardStyleChange],
+  );
+
+  const handleUndoRemoveBg = useCallback(
+    (cardId: string) => {
+      if (!originalImageUrl || bgRemovedCardId !== cardId) return;
+      onCardStyleChange?.(cardId, { image: originalImageUrl });
+      setOriginalImageUrl(null);
+      setBgRemovedCardId(null);
+    },
+    [originalImageUrl, bgRemovedCardId, onCardStyleChange],
+  );
+
   const cardBg =
     brand.secondaryColor || getPastelTints(brand.primaryColor || "#6366f1")[0];
   const items = cards.length >= 4 ? cards.slice(0, 4) : cards;
@@ -203,12 +240,22 @@ export default function UnevenGrid({
           positionX={pos.x}
           positionY={pos.y}
           zoom={card.imageZoom || 100}
+          filter={card.imageFilter}
           onBorderRadiusChange={() => {}}
           onPositionChange={(x, y) =>
             onCardImagePositionChange?.(card.id, `${x}% ${y}%`)
           }
           onZoomChange={(v) => onCardImageZoomChange?.(card.id, v)}
+          onFilterChange={(v) =>
+            onCardStyleChange?.(card.id, {
+              imageFilter: v === "none" ? undefined : v,
+            })
+          }
           onReplaceImage={() => onCardImageClick?.(card.id)}
+          onRemoveBgClick={() => handleRemoveBg(card.id, card.image!)}
+          removingBg={removingBg && bgRemovedCardId === card.id}
+          bgRemoved={bgRemovedCardId === card.id && !removingBg}
+          onUndoRemoveBg={() => handleUndoRemoveBg(card.id)}
         />
       );
     } else if (cardSel.type === "title") {
@@ -452,7 +499,10 @@ export default function UnevenGrid({
       <div className={`${SCOPE}-grid`}>
         {items.map((card, i) => {
           const pos = parsePosition(card.imagePosition);
-          const zoomScale = (card.imageZoom || 100) / 100;
+          // MIN_POSITION_SCALE ensures both X and Y sliders have effect
+          const MIN_POSITION_SCALE = 1.05;
+          const cardUserScale = (card.imageZoom || 100) / 100;
+          const zoomScale = Math.max(MIN_POSITION_SCALE, cardUserScale);
           const isTitleSel =
             cardSel?.type === "title" && cardSel.cardId === card.id;
           const isDescSel =
@@ -579,8 +629,9 @@ export default function UnevenGrid({
                       backgroundPosition: `${pos.x}% ${pos.y}%`,
                       backgroundSize: "cover",
                       backgroundRepeat: "no-repeat",
-                      transform:
-                        zoomScale !== 1 ? `scale(${zoomScale})` : undefined,
+                      transform: `scale(${zoomScale})`,
+                      transformOrigin: `${pos.x}% ${pos.y}%`,
+                      filter: bgFilterToCSS(card.imageFilter) || "none",
                     }}
                   />
                 </div>

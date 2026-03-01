@@ -6,6 +6,8 @@ import useHeroToolbarState from "./useHeroToolbarState";
 import SectionToolbar from "./SectionToolbar";
 import { HERO_LAYOUT_OPTIONS, bgFilterToCSS } from "./layoutOptions";
 import ResizableText from "./ResizableText";
+import { renderSpans } from "./spanUtils";
+import { getSpanFontUrls } from "./fonts";
 import BgDragOverlay from "./BgDragOverlay";
 
 const DEFAULT_OVERLAY = 50;
@@ -288,6 +290,11 @@ export default function CenteredTemplate(props: HeroTemplateProps) {
                   palette={config.theme?.palette}
                   customColors={config.customColors}
                   onCustomColorsChange={onCustomColorsChange}
+                  spans={h?.titleSpans}
+                  onSpansChange={(spans) =>
+                    onHeroStyleOverrideChange?.({ ...h, titleSpans: spans })
+                  }
+                  isTitle
                 />
 
                 <ResizableText
@@ -359,13 +366,22 @@ export default function CenteredTemplate(props: HeroTemplateProps) {
               </>
             ) : (
               <>
+                {getSpanFontUrls(h?.titleSpans).map((url) => (
+                  <link key={url} rel="stylesheet" href={url} />
+                ))}
                 <h1
                   style={{
                     ...titleStyle,
                     maxWidth: `${h?.titleMaxWidth ?? DEFAULT_TITLE_MW}px`,
                   }}
                 >
-                  {title}
+                  {h?.titleSpans && h.titleSpans.length > 0
+                    ? renderSpans(title, h.titleSpans, titleStyle).map((s) => (
+                        <span key={s.startIndex} style={s.style}>
+                          {s.text}
+                        </span>
+                      ))
+                    : title}
                 </h1>
                 <p
                   style={{

@@ -5,6 +5,8 @@ import type { AboutStyleOverrides } from "@/types/landing-page";
 import type { WidgetBrandConfig } from "../types";
 import ResizableText from "../../hero/ResizableText";
 import ImageToolbar from "../../hero/ImageToolbar";
+import { bgFilterToCSS } from "../../hero/layoutOptions";
+import { processRemoveBackground } from "../../hero/removeBackgroundUtil";
 
 interface LeftImageProps {
   title?: string;
@@ -62,12 +64,17 @@ export default function LeftImage({
   onStyleOverrideChange,
 }: LeftImageProps) {
   const primary = brand.primaryColor || "#1a1a1a";
-  const imgSrc = image || PLACEHOLDER_IMAGE;
+  const imgSrc = overrides?.bgRemovedImage || image || PLACEHOLDER_IMAGE;
 
   // Selection state
   const [titleSelected, setTitleSelected] = useState(false);
   const [paragraphSelected, setParagraphSelected] = useState(false);
   const [imageSelected, setImageSelected] = useState(false);
+
+  // Remove-BG state
+  const [removingBg, setRemovingBg] = useState(false);
+  const [bgRemoved, setBgRemoved] = useState(false);
+  const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
 
   // Refs for click-outside detection
   const sectionRef = useRef<HTMLElement>(null);
@@ -107,6 +114,29 @@ export default function LeftImage({
     [overrides, onStyleOverrideChange],
   );
 
+  const handleRemoveBg = useCallback(async () => {
+    if (removingBg || !image) return;
+    setOriginalImageUrl(image);
+    setRemovingBg(true);
+    try {
+      const newUrl = await processRemoveBackground(image, "LeftImage");
+      emitOverride({ bgRemovedImage: newUrl });
+      setBgRemoved(true);
+    } catch (err) {
+      console.error("[DBG][LeftImage] Remove BG failed:", err);
+      setOriginalImageUrl(null);
+    } finally {
+      setRemovingBg(false);
+    }
+  }, [removingBg, image, emitOverride]);
+
+  const handleUndoRemoveBg = useCallback(() => {
+    if (!originalImageUrl) return;
+    emitOverride({ bgRemovedImage: undefined });
+    setBgRemoved(false);
+    setOriginalImageUrl(null);
+  }, [originalImageUrl, emitOverride]);
+
   // Title toolbar style
   const titleStyle: React.CSSProperties = {
     fontSize: overrides?.titleFontSize ?? 28,
@@ -135,7 +165,12 @@ export default function LeftImage({
   // Image styles — use background-image + background-position to match the
   // image uploader modal exactly. Both use background-size: cover + position %,
   // so the same values produce the same visual crop in both places.
-  const zoomScale = (imageZoom || 100) / 100;
+  // MIN_POSITION_SCALE ensures there's always overflow in both dimensions so
+  // both X and Y position sliders have a visible effect (background-size:cover
+  // alone only overflows in one dimension based on aspect ratio).
+  const MIN_POSITION_SCALE = 1.05;
+  const userScale = (imageZoom || 100) / 100;
+  const zoomScale = Math.max(MIN_POSITION_SCALE, userScale);
   const imgDivStyle: React.CSSProperties = {
     width: "100%",
     height: "100%",
@@ -143,7 +178,9 @@ export default function LeftImage({
     backgroundPosition: `${pos.x}% ${pos.y}%`,
     backgroundSize: "cover",
     backgroundRepeat: "no-repeat",
-    transform: zoomScale !== 1 ? `scale(${zoomScale})` : undefined,
+    transform: `scale(${zoomScale})`,
+    transformOrigin: `${pos.x}% ${pos.y}%`,
+    filter: bgFilterToCSS(overrides?.imageFilter) || "none",
   };
 
   return (
@@ -220,10 +257,18 @@ export default function LeftImage({
             positionX={pos.x}
             positionY={pos.y}
             zoom={imageZoom || 100}
+            filter={overrides?.imageFilter}
             onBorderRadiusChange={(v) => emitOverride({ borderRadius: v })}
             onPositionChange={(x, y) => onImagePositionChange?.(`${x}% ${y}%`)}
             onZoomChange={(v) => onImageZoomChange?.(v)}
+            onFilterChange={(v) =>
+              emitOverride({ imageFilter: v === "none" ? undefined : v })
+            }
             onReplaceImage={() => onImageClick?.()}
+            onRemoveBgClick={image ? handleRemoveBg : undefined}
+            removingBg={removingBg}
+            bgRemoved={bgRemoved}
+            onUndoRemoveBg={handleUndoRemoveBg}
           />
         )}
       </div>

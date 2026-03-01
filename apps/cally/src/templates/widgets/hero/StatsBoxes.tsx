@@ -5,6 +5,8 @@ import type { HeroStyleOverrides } from "@/types/landing-page";
 import type { WidgetBrandConfig } from "../types";
 import { getContrastColor } from "@/lib/colorPalette";
 import ResizableText from "../../hero/ResizableText";
+import { renderSpans } from "../../hero/spanUtils";
+import { getSpanFontUrls } from "../../hero/fonts";
 
 interface StatsBoxesProps {
   title?: string;
@@ -228,9 +230,29 @@ export default function StatsBoxes({
               onColorChange: (v) => emitOverride({ titleTextColor: v }),
               onTextAlignChange: (v) => emitOverride({ titleTextAlign: v }),
             }}
+            spans={overrides?.titleSpans}
+            onSpansChange={(spans) => emitOverride({ titleSpans: spans })}
+            isTitle
           />
         ) : (
-          title && <h1 style={titleStyle}>{title}</h1>
+          title && (
+            <>
+              {getSpanFontUrls(overrides?.titleSpans).map((url) => (
+                <link key={url} rel="stylesheet" href={url} />
+              ))}
+              <h1 style={titleStyle}>
+                {overrides?.titleSpans && overrides.titleSpans.length > 0
+                  ? renderSpans(title, overrides.titleSpans, titleStyle).map(
+                      (s) => (
+                        <span key={s.startIndex} style={s.style}>
+                          {s.text}
+                        </span>
+                      ),
+                    )
+                  : title}
+              </h1>
+            </>
+          )
         )}
 
         {isEditing ? (
