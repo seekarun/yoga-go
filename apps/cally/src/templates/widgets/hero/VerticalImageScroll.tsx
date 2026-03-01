@@ -1,8 +1,11 @@
 "use client";
 
+import { useState, useRef, useEffect, useCallback } from "react";
 import type { Product } from "@/types";
+import type { HeroStyleOverrides } from "@/types/landing-page";
 import type { WidgetBrandConfig } from "../types";
 import { getContrastColor } from "@/lib/colorPalette";
+import ResizableText from "../../hero/ResizableText";
 
 interface VerticalImageScrollProps {
   title?: string;
@@ -10,8 +13,12 @@ interface VerticalImageScrollProps {
   buttonLabel?: string;
   brand: WidgetBrandConfig;
   onButtonClick?: () => void;
-  /** Products to extract images from. Falls back to placeholders. */
   products?: Product[];
+  isEditing?: boolean;
+  styleOverrides?: HeroStyleOverrides;
+  onTitleChange?: (title: string) => void;
+  onSubtitleChange?: (subtitle: string) => void;
+  onStyleOverrideChange?: (overrides: HeroStyleOverrides) => void;
 }
 
 const SCOPE = "w-hr-vis";
@@ -30,9 +37,8 @@ const PLACEHOLDER_IMAGES = [
 /**
  * Hero: Vertical Image Scroll
  *
- * Split layout. Left: title, subtitle, CTA button. Right: two columns of
- * images scrolling upward at slightly different speeds. Top and bottom edges
- * fade into the background via gradient masks.
+ * Split layout. Left: title, subtitle, CTA. Right: two columns of images
+ * scrolling upward at different speeds.
  */
 export default function VerticalImageScroll({
   title,
@@ -41,10 +47,41 @@ export default function VerticalImageScroll({
   brand,
   onButtonClick,
   products,
+  isEditing = false,
+  styleOverrides: overrides,
+  onTitleChange,
+  onSubtitleChange,
+  onStyleOverrideChange,
 }: VerticalImageScrollProps) {
   const primary = brand.primaryColor || "#1a1a1a";
 
-  // Collect all images from all products into a flat list.
+  const [titleSelected, setTitleSelected] = useState(false);
+  const [subtitleSelected, setSubtitleSelected] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!isEditing) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        sectionRef.current &&
+        !sectionRef.current.contains(e.target as Node)
+      ) {
+        setTitleSelected(false);
+        setSubtitleSelected(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [isEditing]);
+
+  const emitOverride = useCallback(
+    (patch: Partial<HeroStyleOverrides>) => {
+      onStyleOverrideChange?.({ ...overrides, ...patch });
+    },
+    [overrides, onStyleOverrideChange],
+  );
+
+  // Collect images from products
   const productImages: string[] = [];
   if (products) {
     for (const p of products) {
@@ -57,11 +94,8 @@ export default function VerticalImageScroll({
       }
     }
   }
-
-  // Use product images if available, otherwise placeholders.
   const pool = productImages.length > 0 ? productImages : PLACEHOLDER_IMAGES;
 
-  // Distribute alternating across two columns so both have variety.
   const col1Src: string[] = [];
   const col2Src: string[] = [];
   pool.forEach((src, i) => {
@@ -69,166 +103,144 @@ export default function VerticalImageScroll({
     else col2Src.push(src);
   });
 
-  // Repeat until we have at least 8 per column for smooth scrolling.
   const repeat = (arr: string[], minLen: number): string[] => {
     const out: string[] = [];
-    while (out.length < minLen) {
-      out.push(...arr);
-    }
+    while (out.length < minLen) out.push(...arr);
     return out;
   };
   const col1Set = repeat(col1Src, 8);
   const col2Set = repeat(col2Src, 8);
-
-  // Double each set — translateY(-50%) scrolls the first half, then
-  // the identical second half takes over seamlessly.
   const col1 = [...col1Set, ...col1Set];
   const col2 = [...col2Set, ...col2Set];
 
+  const titleStyle: React.CSSProperties = {
+    fontSize: overrides?.titleFontSize ?? "clamp(2.4rem, 5.5vw, 3.8rem)",
+    fontWeight: overrides?.titleFontWeight ?? 700,
+    fontStyle: overrides?.titleFontStyle ?? "normal",
+    color: overrides?.titleTextColor ?? "#1a1a1a",
+    textAlign: overrides?.titleTextAlign ?? "left",
+    fontFamily: overrides?.titleFontFamily || brand.headerFont || "inherit",
+    lineHeight: 1.08,
+    letterSpacing: "-0.025em",
+    margin: 0,
+  };
+
+  const subtitleStyle: React.CSSProperties = {
+    fontSize: overrides?.subtitleFontSize ?? "1.1rem",
+    fontWeight: overrides?.subtitleFontWeight ?? "normal",
+    fontStyle: overrides?.subtitleFontStyle ?? "normal",
+    color: overrides?.subtitleTextColor ?? "#6b7280",
+    textAlign: overrides?.subtitleTextAlign ?? "left",
+    fontFamily: overrides?.subtitleFontFamily || brand.bodyFont || "inherit",
+    lineHeight: 1.7,
+    margin: 0,
+    maxWidth: 520,
+  };
+
   return (
-    <section className={SCOPE}>
+    <section ref={sectionRef} className={SCOPE}>
       <style>{`
         .${SCOPE} {
-          padding: 40px 24px;
-          max-width: 1280px;
-          margin: 0 auto;
-          display: grid;
-          grid-template-columns: 1.2fr 0.8fr;
-          gap: 48px;
-          align-items: center;
-          min-height: 560px;
+          padding: 40px 24px; max-width: 1280px; margin: 0 auto;
+          display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 48px;
+          align-items: center; min-height: 560px;
         }
-
-        /* ---- left: text ---- */
-        .${SCOPE}-text {
-          display: flex;
-          flex-direction: column;
-          gap: 24px;
-        }
-        .${SCOPE}-title {
-          font-size: clamp(2.4rem, 5.5vw, 3.8rem);
-          font-weight: 700;
-          color: #1a1a1a;
-          margin: 0;
-          font-family: ${brand.headerFont || "inherit"};
-          line-height: 1.08;
-          letter-spacing: -0.025em;
-        }
-        .${SCOPE}-subtitle {
-          font-size: 1.1rem;
-          color: #6b7280;
-          line-height: 1.7;
-          margin: 0;
-          max-width: 520px;
-          font-family: ${brand.bodyFont || "inherit"};
-        }
+        .${SCOPE}-text { display: flex; flex-direction: column; gap: 24px; }
         .${SCOPE}-btn {
-          display: inline-block;
-          width: fit-content;
-          padding: 16px 40px;
-          border-radius: 50px;
-          font-weight: 600;
-          font-size: 1rem;
-          border: none;
-          cursor: pointer;
-          transition: opacity 0.2s, transform 0.15s;
-          color: ${getContrastColor(primary)};
-          background: ${primary};
+          display: inline-block; width: fit-content; padding: 16px 40px;
+          border-radius: 50px; font-weight: 600; font-size: 1rem; border: none;
+          cursor: pointer; transition: opacity 0.2s, transform 0.15s;
+          color: ${getContrastColor(primary)}; background: ${primary};
           font-family: ${brand.bodyFont || "inherit"};
         }
-        .${SCOPE}-btn:hover {
-          opacity: 0.9;
-          transform: scale(1.03);
-        }
-
-        /* ---- right: two scrolling columns ---- */
+        .${SCOPE}-btn:hover { opacity: 0.9; transform: scale(1.03); }
         .${SCOPE}-scroll-wrap {
-          position: relative;
-          height: 520px;
-          overflow: hidden;
-          border-radius: 20px;
+          position: relative; height: 520px; overflow: hidden; border-radius: 20px;
         }
-
-        /* Fade top & bottom */
-        .${SCOPE}-scroll-wrap::before,
-        .${SCOPE}-scroll-wrap::after {
-          content: "";
-          position: absolute;
-          left: 0;
-          right: 0;
-          height: 100px;
-          z-index: 2;
-          pointer-events: none;
+        .${SCOPE}-scroll-wrap::before, .${SCOPE}-scroll-wrap::after {
+          content: ""; position: absolute; left: 0; right: 0; height: 100px; z-index: 2; pointer-events: none;
         }
-        .${SCOPE}-scroll-wrap::before {
-          top: 0;
-          background: linear-gradient(to bottom, #fff, transparent);
-        }
-        .${SCOPE}-scroll-wrap::after {
-          bottom: 0;
-          background: linear-gradient(to top, #fff, transparent);
-        }
-
-        /* Two-column grid inside the scroll area */
-        .${SCOPE}-columns {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 12px;
-          height: 100%;
-        }
-
-        /* Individual column track */
-        .${SCOPE}-col {
-          overflow: hidden;
-        }
-        .${SCOPE}-track {
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        }
-        .${SCOPE}-track--slow {
-          animation: ${SCOPE}-scroll 35s linear infinite;
-        }
-        .${SCOPE}-track--fast {
-          animation: ${SCOPE}-scroll 25s linear infinite;
-        }
-
-        @keyframes ${SCOPE}-scroll {
-          0% { transform: translateY(0); }
-          100% { transform: translateY(-50%); }
-        }
-
-        .${SCOPE}-track img {
-          width: 100%;
-          border-radius: 12px;
-          object-fit: cover;
-          aspect-ratio: 4 / 3;
-          display: block;
-          flex-shrink: 0;
-        }
-
+        .${SCOPE}-scroll-wrap::before { top: 0; background: linear-gradient(to bottom, #fff, transparent); }
+        .${SCOPE}-scroll-wrap::after { bottom: 0; background: linear-gradient(to top, #fff, transparent); }
+        .${SCOPE}-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; height: 100%; }
+        .${SCOPE}-col { overflow: hidden; }
+        .${SCOPE}-track { display: flex; flex-direction: column; gap: 12px; }
+        .${SCOPE}-track--slow { animation: ${SCOPE}-scroll 35s linear infinite; }
+        .${SCOPE}-track--fast { animation: ${SCOPE}-scroll 25s linear infinite; }
+        @keyframes ${SCOPE}-scroll { 0% { transform: translateY(0); } 100% { transform: translateY(-50%); } }
+        .${SCOPE}-track img { width: 100%; border-radius: 12px; object-fit: cover; aspect-ratio: 4 / 3; display: block; flex-shrink: 0; }
         @media (max-width: 900px) {
-          .${SCOPE} {
-            grid-template-columns: 1fr;
-            padding: 32px 16px;
-            gap: 32px;
-          }
-          .${SCOPE}-scroll-wrap {
-            height: 400px;
-          }
+          .${SCOPE} { grid-template-columns: 1fr; padding: 32px 16px; gap: 32px; }
+          .${SCOPE}-scroll-wrap { height: 400px; }
         }
-
-        @media (max-width: 520px) {
-          .${SCOPE}-scroll-wrap {
-            height: 320px;
-          }
-        }
+        @media (max-width: 520px) { .${SCOPE}-scroll-wrap { height: 320px; } }
       `}</style>
 
-      {/* Left — text */}
       <div className={`${SCOPE}-text`}>
-        {title && <h1 className={`${SCOPE}-title`}>{title}</h1>}
-        {subtitle && <p className={`${SCOPE}-subtitle`}>{subtitle}</p>}
+        {isEditing ? (
+          <ResizableText
+            text={title || "Your Heading"}
+            isEditing
+            onTextChange={onTitleChange}
+            textStyle={titleStyle}
+            selected={titleSelected}
+            onSelect={() => {
+              setTitleSelected(true);
+              setSubtitleSelected(false);
+            }}
+            onDeselect={() => setTitleSelected(false)}
+            toolbarProps={{
+              fontSize: overrides?.titleFontSize ?? 38,
+              fontFamily: overrides?.titleFontFamily ?? "",
+              fontWeight: overrides?.titleFontWeight ?? "bold",
+              fontStyle: overrides?.titleFontStyle ?? "normal",
+              color: overrides?.titleTextColor ?? "#1a1a1a",
+              textAlign: overrides?.titleTextAlign ?? "left",
+              onFontSizeChange: (v) => emitOverride({ titleFontSize: v }),
+              onFontFamilyChange: (v) => emitOverride({ titleFontFamily: v }),
+              onFontWeightChange: (v) => emitOverride({ titleFontWeight: v }),
+              onFontStyleChange: (v) => emitOverride({ titleFontStyle: v }),
+              onColorChange: (v) => emitOverride({ titleTextColor: v }),
+              onTextAlignChange: (v) => emitOverride({ titleTextAlign: v }),
+            }}
+          />
+        ) : (
+          title && <h1 style={titleStyle}>{title}</h1>
+        )}
+
+        {isEditing ? (
+          <ResizableText
+            text={subtitle || ""}
+            isEditing
+            onTextChange={onSubtitleChange}
+            textStyle={subtitleStyle}
+            selected={subtitleSelected}
+            onSelect={() => {
+              setSubtitleSelected(true);
+              setTitleSelected(false);
+            }}
+            onDeselect={() => setSubtitleSelected(false)}
+            toolbarProps={{
+              fontSize: overrides?.subtitleFontSize ?? 17,
+              fontFamily: overrides?.subtitleFontFamily ?? "",
+              fontWeight: overrides?.subtitleFontWeight ?? "normal",
+              fontStyle: overrides?.subtitleFontStyle ?? "normal",
+              color: overrides?.subtitleTextColor ?? "#6b7280",
+              textAlign: overrides?.subtitleTextAlign ?? "left",
+              onFontSizeChange: (v) => emitOverride({ subtitleFontSize: v }),
+              onFontFamilyChange: (v) =>
+                emitOverride({ subtitleFontFamily: v }),
+              onFontWeightChange: (v) =>
+                emitOverride({ subtitleFontWeight: v }),
+              onFontStyleChange: (v) => emitOverride({ subtitleFontStyle: v }),
+              onColorChange: (v) => emitOverride({ subtitleTextColor: v }),
+              onTextAlignChange: (v) => emitOverride({ subtitleTextAlign: v }),
+            }}
+          />
+        ) : (
+          subtitle && <p style={subtitleStyle}>{subtitle}</p>
+        )}
+
         {buttonLabel && (
           <button
             type="button"
@@ -240,7 +252,6 @@ export default function VerticalImageScroll({
         )}
       </div>
 
-      {/* Right — two scrolling columns */}
       <div className={`${SCOPE}-scroll-wrap`}>
         <div className={`${SCOPE}-columns`}>
           <div className={`${SCOPE}-col`}>

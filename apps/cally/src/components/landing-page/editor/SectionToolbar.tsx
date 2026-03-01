@@ -34,6 +34,7 @@ const WIDGET_SECTIONS: Record<string, WidgetSectionType> = {
   features: "features",
   products: "products",
   testimonials: "testimonials",
+  faq: "faq",
 };
 
 const DISABLED_VALUE = "__disabled__";

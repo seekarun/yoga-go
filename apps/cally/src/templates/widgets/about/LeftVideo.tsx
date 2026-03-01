@@ -1,13 +1,21 @@
 "use client";
 
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
+import type { AboutStyleOverrides } from "@/types/landing-page";
 import type { WidgetBrandConfig } from "../types";
+import ResizableText from "../../hero/ResizableText";
 
 interface LeftVideoProps {
   title?: string;
   paragraph?: string;
   videoUrl?: string;
+  styleOverrides?: AboutStyleOverrides;
   brand: WidgetBrandConfig;
+  /** Enable inline editing. */
+  isEditing?: boolean;
+  onTitleChange?: (title: string) => void;
+  onParagraphChange?: (paragraph: string) => void;
+  onStyleOverrideChange?: (overrides: AboutStyleOverrides) => void;
 }
 
 const SCOPE = "w-ab-lv";
@@ -20,17 +28,24 @@ const PLACEHOLDER_VIDEO =
  *
  * Two-column layout with a user-controlled video on the left (play/pause,
  * volume, progress bar) and the about title + paragraph on the right.
- * Designed for intro/about-me videos uploaded by the tenant.
+ *
+ * In edit mode, uses ResizableText for title/paragraph (with TextToolbar).
  */
 export default function LeftVideo({
   title,
   paragraph,
   videoUrl,
+  styleOverrides: overrides,
   brand,
+  isEditing = false,
+  onTitleChange,
+  onParagraphChange,
+  onStyleOverrideChange,
 }: LeftVideoProps) {
   const primary = brand.primaryColor || "#1a1a1a";
   const src = videoUrl || PLACEHOLDER_VIDEO;
 
+  // Video playback state
   const videoRef = useRef<HTMLVideoElement>(null);
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
@@ -38,6 +53,35 @@ export default function LeftVideo({
   const [duration, setDuration] = useState(0);
   const [showControls, setShowControls] = useState(true);
 
+  // Selection state for editing
+  const [titleSelected, setTitleSelected] = useState(false);
+  const [paragraphSelected, setParagraphSelected] = useState(false);
+
+  const sectionRef = useRef<HTMLElement>(null);
+
+  // Click-outside listener: deselect everything when clicking outside
+  useEffect(() => {
+    if (!isEditing) return;
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (sectionRef.current && !sectionRef.current.contains(target)) {
+        setTitleSelected(false);
+        setParagraphSelected(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [isEditing]);
+
+  // Style override helpers
+  const emitOverride = useCallback(
+    (patch: Partial<AboutStyleOverrides>) => {
+      onStyleOverrideChange?.({ ...overrides, ...patch });
+    },
+    [overrides, onStyleOverrideChange],
+  );
+
+  // Video controls
   const togglePlay = useCallback(() => {
     const v = videoRef.current;
     if (!v) return;
@@ -94,14 +138,41 @@ export default function LeftVideo({
     return `${m}:${sec.toString().padStart(2, "0")}`;
   };
 
+  // Title toolbar style
+  const titleStyle: React.CSSProperties = {
+    fontSize: overrides?.titleFontSize ?? "clamp(1.8rem, 3.5vw, 2.6rem)",
+    fontWeight: overrides?.titleFontWeight ?? 700,
+    fontStyle: overrides?.titleFontStyle ?? "normal",
+    color: overrides?.titleTextColor ?? primary,
+    textAlign: overrides?.titleTextAlign ?? "left",
+    fontFamily: overrides?.titleFontFamily || brand.headerFont || "inherit",
+    lineHeight: 1.15,
+    margin: 0,
+  };
+
+  // Paragraph toolbar style
+  const paragraphStyle: React.CSSProperties = {
+    fontSize: overrides?.fontSize ?? 16,
+    fontWeight: overrides?.fontWeight ?? "normal",
+    fontStyle: overrides?.fontStyle ?? "normal",
+    color: overrides?.textColor ?? "#4a4a4a",
+    textAlign: overrides?.textAlign ?? "left",
+    fontFamily: overrides?.fontFamily || brand.bodyFont || "inherit",
+    lineHeight: 1.8,
+    margin: 0,
+    whiteSpace: "pre-line",
+  };
+
   return (
-    <section className={SCOPE}>
+    <section ref={sectionRef} className={SCOPE}>
       <style>{`
         .${SCOPE} {
           display: grid;
           grid-template-columns: 1fr 1fr;
           min-height: 480px;
-          background: #faf6f1;
+          background: ${brand.secondaryColor || "#faf6f1"};
+          max-width: 1200px;
+          margin: 0 auto;
         }
 
         /* Left — video wrapper */
@@ -221,26 +292,8 @@ export default function LeftVideo({
           gap: 24px;
         }
 
-        .${SCOPE}-title {
-          font-size: clamp(1.8rem, 3.5vw, 2.6rem);
-          font-weight: 700;
-          color: ${primary};
-          margin: 0;
-          font-family: ${brand.headerFont || "inherit"};
-          line-height: 1.15;
-        }
-
         .${SCOPE}-dot {
           color: ${primary};
-        }
-
-        .${SCOPE}-paragraph {
-          font-size: 1rem;
-          color: #4a4a4a;
-          line-height: 1.8;
-          margin: 0;
-          font-family: ${brand.bodyFont || "inherit"};
-          white-space: pre-line;
         }
 
         @media (max-width: 768px) {
@@ -356,13 +409,72 @@ export default function LeftVideo({
 
       {/* Right — text */}
       <div className={`${SCOPE}-text`}>
-        {title && (
-          <h2 className={`${SCOPE}-title`}>
-            {title}
-            <span className={`${SCOPE}-dot`}>.</span>
-          </h2>
+        {isEditing ? (
+          <ResizableText
+            text={title || "About Me"}
+            isEditing
+            onTextChange={onTitleChange}
+            textStyle={titleStyle}
+            selected={titleSelected}
+            onSelect={() => {
+              setTitleSelected(true);
+              setParagraphSelected(false);
+            }}
+            onDeselect={() => setTitleSelected(false)}
+            toolbarProps={{
+              fontSize: overrides?.titleFontSize ?? 28,
+              fontFamily: overrides?.titleFontFamily ?? "",
+              fontWeight: overrides?.titleFontWeight ?? "bold",
+              fontStyle: overrides?.titleFontStyle ?? "normal",
+              color: overrides?.titleTextColor ?? primary,
+              textAlign: overrides?.titleTextAlign ?? "left",
+              onFontSizeChange: (v) => emitOverride({ titleFontSize: v }),
+              onFontFamilyChange: (v) => emitOverride({ titleFontFamily: v }),
+              onFontWeightChange: (v) => emitOverride({ titleFontWeight: v }),
+              onFontStyleChange: (v) => emitOverride({ titleFontStyle: v }),
+              onColorChange: (v) => emitOverride({ titleTextColor: v }),
+              onTextAlignChange: (v) => emitOverride({ titleTextAlign: v }),
+            }}
+          />
+        ) : (
+          title && (
+            <h2 style={titleStyle}>
+              {title}
+              <span className={`${SCOPE}-dot`}>.</span>
+            </h2>
+          )
         )}
-        {paragraph && <p className={`${SCOPE}-paragraph`}>{paragraph}</p>}
+
+        {isEditing ? (
+          <ResizableText
+            text={paragraph || ""}
+            isEditing
+            onTextChange={onParagraphChange}
+            textStyle={paragraphStyle}
+            selected={paragraphSelected}
+            onSelect={() => {
+              setParagraphSelected(true);
+              setTitleSelected(false);
+            }}
+            onDeselect={() => setParagraphSelected(false)}
+            toolbarProps={{
+              fontSize: overrides?.fontSize ?? 16,
+              fontFamily: overrides?.fontFamily ?? "",
+              fontWeight: overrides?.fontWeight ?? "normal",
+              fontStyle: overrides?.fontStyle ?? "normal",
+              color: overrides?.textColor ?? "#4a4a4a",
+              textAlign: overrides?.textAlign ?? "left",
+              onFontSizeChange: (v) => emitOverride({ fontSize: v }),
+              onFontFamilyChange: (v) => emitOverride({ fontFamily: v }),
+              onFontWeightChange: (v) => emitOverride({ fontWeight: v }),
+              onFontStyleChange: (v) => emitOverride({ fontStyle: v }),
+              onColorChange: (v) => emitOverride({ textColor: v }),
+              onTextAlignChange: (v) => emitOverride({ textAlign: v }),
+            }}
+          />
+        ) : (
+          paragraph && <p style={paragraphStyle}>{paragraph}</p>
+        )}
       </div>
     </section>
   );

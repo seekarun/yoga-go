@@ -37,6 +37,12 @@ export interface HeroTemplateProps {
     value: string,
   ) => void;
   onFeatureCardImageClick?: (cardId: string) => void;
+  onFeatureCardImagePositionChange?: (cardId: string, position: string) => void;
+  onFeatureCardImageZoomChange?: (cardId: string, zoom: number) => void;
+  onFeatureCardStyleChange?: (
+    cardId: string,
+    patch: Partial<import("@/types/landing-page").FeatureCard>,
+  ) => void;
   onAddFeatureCard?: () => void;
   onRemoveFeatureCard?: (cardId: string) => void;
   // Hero style overrides

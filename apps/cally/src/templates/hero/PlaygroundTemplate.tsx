@@ -25,11 +25,14 @@ import {
   // Features
   FeaturesUnevenGrid,
   FeaturesSimpleGrid,
+  // FAQ
+  FaqClassicCollapsible,
   // About
   AboutLeftImage,
   AboutLeftVideo,
 } from "../widgets";
 import FooterSection from "./FooterSection";
+import { BrandColorsProvider } from "./CustomColorsContext";
 
 const SCOPE = "tpl-playground";
 
@@ -87,6 +90,11 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
     buttonLabel: config.button?.label,
     brand,
     onButtonClick: props.onButtonClick,
+    isEditing: props.isEditing,
+    styleOverrides: config.heroStyleOverrides,
+    onTitleChange: props.onTitleChange,
+    onSubtitleChange: props.onSubtitleChange,
+    onStyleOverrideChange: props.onHeroStyleOverrideChange,
   };
 
   /** Render the selected hero widget. */
@@ -109,12 +117,22 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
     }
   };
 
-  /** Common about props. */
+  /** Common about props (data + editing callbacks). */
   const aboutProps = {
     title: config.about?.title,
     paragraph: config.about?.paragraph,
     image: config.about?.image,
+    imagePosition: config.about?.imagePosition,
+    imageZoom: config.about?.imageZoom,
+    styleOverrides: config.about?.styleOverrides,
     brand,
+    isEditing: props.isEditing,
+    onTitleChange: props.onAboutTitleChange,
+    onParagraphChange: props.onAboutParagraphChange,
+    onImageClick: props.onAboutImageClick,
+    onImagePositionChange: props.onAboutImagePositionChange,
+    onImageZoomChange: props.onAboutImageZoomChange,
+    onStyleOverrideChange: props.onAboutStyleOverrideChange,
   };
 
   /** Render the selected about widget. */
@@ -135,6 +153,16 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
     subheading: config.features?.subheading,
     cards: config.features?.cards || [],
     brand,
+    isEditing: props.isEditing,
+    styleOverrides: config.features?.styleOverrides,
+    onHeadingChange: props.onFeaturesHeadingChange,
+    onSubheadingChange: props.onFeaturesSubheadingChange,
+    onStyleOverrideChange: props.onFeaturesStyleOverrideChange,
+    onCardChange: props.onFeatureCardChange,
+    onCardImageClick: props.onFeatureCardImageClick,
+    onCardImagePositionChange: props.onFeatureCardImagePositionChange,
+    onCardImageZoomChange: props.onFeatureCardImageZoomChange,
+    onCardStyleChange: props.onFeatureCardStyleChange,
   };
 
   /** Render the selected features widget. */
@@ -158,6 +186,11 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
     currency,
     onBookProduct: props.onBookProduct,
     onSignupWebinar: props.onSignupWebinar,
+    isEditing: props.isEditing,
+    styleOverrides: config.productsConfig?.styleOverrides,
+    onHeadingChange: props.onProductsHeadingChange,
+    onSubheadingChange: props.onProductsSubheadingChange,
+    onStyleOverrideChange: props.onProductsStyleOverrideChange,
   };
 
   /** Render the selected products widget. */
@@ -180,6 +213,11 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
     heading: config.testimonials?.heading || "What People Say",
     subheading: config.testimonials?.subheading,
     brand,
+    isEditing: props.isEditing,
+    styleOverrides: config.testimonials?.styleOverrides,
+    onHeadingChange: props.onTestimonialsHeadingChange,
+    onSubheadingChange: props.onTestimonialsSubheadingChange,
+    onStyleOverrideChange: props.onTestimonialsStyleOverrideChange,
   };
 
   /** Render the selected testimonials widget. */
@@ -202,9 +240,37 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
     }
   };
 
+  /** Common FAQ props. */
+  const faqProps = {
+    heading: config.faq?.heading || "FAQ",
+    subheading: config.faq?.subheading,
+    items: config.faq?.items || [],
+    brand,
+    isEditing: props.isEditing,
+    styleOverrides: config.faq?.styleOverrides,
+    onHeadingChange: props.onFAQHeadingChange,
+    onSubheadingChange: props.onFAQSubheadingChange,
+    onStyleOverrideChange: props.onFAQStyleOverrideChange,
+  };
+
+  /** Render the selected FAQ widget. */
+  const renderFaq = () => {
+    const widgetId = getWidgetId("faq") || "classic-collapsible";
+    switch (widgetId) {
+      case "classic-collapsible":
+      default:
+        return <FaqClassicCollapsible {...faqProps} />;
+    }
+  };
+
   return (
-    <div className={SCOPE}>
-      <style>{`
+    <BrandColorsProvider
+      palette={config.theme?.palette}
+      customColors={config.customColors || []}
+      onCustomColorsChange={props.onCustomColorsChange}
+    >
+      <div className={SCOPE}>
+        <style>{`
         .${SCOPE} {
           font-family: ${brand.bodyFont || "'system-ui', sans-serif"};
           color: #1a1a1a;
@@ -271,86 +337,48 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
         }
       `}</style>
 
-      {/* Hero — dynamic widget */}
-      {config.heroEnabled !== false && renderHero()}
+        {/* Hero — dynamic widget */}
+        {config.heroEnabled !== false && renderHero()}
 
-      {/* Render enabled sections in order */}
-      {enabledSections.map((section) => {
-        switch (section.id) {
-          case "about":
-            return config.about ? <div key="about">{renderAbout()}</div> : null;
+        {/* Render enabled sections in order */}
+        {enabledSections.map((section) => {
+          switch (section.id) {
+            case "about":
+              return config.about ? (
+                <div key="about">{renderAbout()}</div>
+              ) : null;
 
-          case "features":
-            return config.features && config.features.cards.length > 0 ? (
-              <div key="features">{renderFeatures()}</div>
-            ) : null;
+            case "features":
+              return config.features && config.features.cards.length > 0 ? (
+                <div key="features">{renderFeatures()}</div>
+              ) : null;
 
-          case "products":
-            return products && products.length > 0 ? (
-              <div key="products">{renderProducts()}</div>
-            ) : null;
+            case "products":
+              return products && products.length > 0 ? (
+                <div key="products">{renderProducts()}</div>
+              ) : null;
 
-          case "testimonials":
-            return config.testimonials &&
-              config.testimonials.testimonials.length > 0 ? (
-              <div key="testimonials">{renderTestimonials()}</div>
-            ) : null;
+            case "testimonials":
+              return config.testimonials &&
+                config.testimonials.testimonials.length > 0 ? (
+                <div key="testimonials">{renderTestimonials()}</div>
+              ) : null;
 
-          case "faq":
-            return config.faq && config.faq.items.length > 0 ? (
-              <div key="faq" className={`${SCOPE}-bg-gray`}>
-                <div className={`${SCOPE}-section`}>
-                  <h2 className={`${SCOPE}-section-heading`}>
-                    {config.faq.heading || "FAQ"}
-                  </h2>
-                  {config.faq.subheading && (
-                    <p className={`${SCOPE}-section-subheading`}>
-                      {config.faq.subheading}
-                    </p>
-                  )}
-                  {config.faq.items.map((item) => (
-                    <details
-                      key={item.id}
-                      style={{
-                        marginBottom: 12,
-                        borderBottom: "1px solid #e5e7eb",
-                        paddingBottom: 12,
-                      }}
-                    >
-                      <summary
-                        style={{
-                          fontWeight: 600,
-                          cursor: "pointer",
-                          fontSize: "1.05rem",
-                          padding: "8px 0",
-                        }}
-                      >
-                        {item.question}
-                      </summary>
-                      <p
-                        style={{
-                          color: "#374151",
-                          lineHeight: 1.7,
-                          paddingTop: 8,
-                        }}
-                      >
-                        {item.answer}
-                      </p>
-                    </details>
-                  ))}
-                </div>
-              </div>
-            ) : null;
+            case "faq":
+              return config.faq && config.faq.items.length > 0 ? (
+                <div key="faq">{renderFaq()}</div>
+              ) : null;
 
-          default:
-            return null;
-        }
-      })}
+            default:
+              return null;
+          }
+        })}
 
-      {/* Footer */}
-      {config.footerEnabled !== false && config.footer && (
-        <FooterSection footer={config.footer} tenantData={tenantData} />
-      )}
-    </div>
+        {/* Footer */}
+        {config.footerEnabled !== false && config.footer && (
+          <FooterSection footer={config.footer} tenantData={tenantData} />
+        )}
+      </div>
+    </BrandColorsProvider>
   );
 }

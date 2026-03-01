@@ -992,6 +992,57 @@ export default function SimpleLandingPageEditor({
     [editingFeatureCardId],
   );
 
+  // Handle feature card image position change (from inline ImageToolbar)
+  const handleFeatureCardImagePositionChange = useCallback(
+    (cardId: string, position: string) => {
+      setConfig((prev) => ({
+        ...prev,
+        features: {
+          ...prev.features,
+          cards: (prev.features?.cards || []).map((card) =>
+            card.id === cardId ? { ...card, imagePosition: position } : card,
+          ),
+        } as FeaturesConfig,
+      }));
+      setIsDirty(true);
+    },
+    [],
+  );
+
+  // Handle feature card image zoom change (from inline ImageToolbar)
+  const handleFeatureCardImageZoomChange = useCallback(
+    (cardId: string, zoom: number) => {
+      setConfig((prev) => ({
+        ...prev,
+        features: {
+          ...prev.features,
+          cards: (prev.features?.cards || []).map((card) =>
+            card.id === cardId ? { ...card, imageZoom: zoom } : card,
+          ),
+        } as FeaturesConfig,
+      }));
+      setIsDirty(true);
+    },
+    [],
+  );
+
+  // Handle feature card style change (per-card text styling from toolbar)
+  const handleFeatureCardStyleChange = useCallback(
+    (cardId: string, patch: Partial<FeatureCard>) => {
+      setConfig((prev) => ({
+        ...prev,
+        features: {
+          ...prev.features,
+          cards: (prev.features?.cards || []).map((card) =>
+            card.id === cardId ? { ...card, ...patch } : card,
+          ),
+        } as FeaturesConfig,
+      }));
+      setIsDirty(true);
+    },
+    [],
+  );
+
   // Handle add feature card
   const handleAddFeatureCard = useCallback(() => {
     const newCard: FeatureCard = {
@@ -2930,6 +2981,13 @@ export default function SimpleLandingPageEditor({
                   onFeaturesSubheadingChange={handleFeaturesSubheadingChange}
                   onFeatureCardChange={handleFeatureCardChange}
                   onFeatureCardImageClick={handleFeatureCardImageClick}
+                  onFeatureCardImagePositionChange={
+                    handleFeatureCardImagePositionChange
+                  }
+                  onFeatureCardImageZoomChange={
+                    handleFeatureCardImageZoomChange
+                  }
+                  onFeatureCardStyleChange={handleFeatureCardStyleChange}
                   onAddFeatureCard={handleAddFeatureCard}
                   onRemoveFeatureCard={handleRemoveFeatureCard}
                   onFeatureCardRemoveBg={handleFeatureCardRemoveBg}

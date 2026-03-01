@@ -8,7 +8,9 @@ import React, {
   useMemo,
 } from "react";
 import type { WidgetBrandConfig } from "../types";
+import type { SectionStyleOverrides } from "@/types/landing-page";
 import { getContrastColor } from "@/lib/colorPalette";
+import ResizableText from "../../hero/ResizableText";
 
 interface Testimonial {
   id: string;
@@ -25,6 +27,11 @@ interface AnimatedCardScrollProps {
   brand: WidgetBrandConfig;
   /** Auto-cycle interval in ms (default 4000) */
   interval?: number;
+  isEditing?: boolean;
+  onHeadingChange?: (heading: string) => void;
+  onSubheadingChange?: (subheading: string) => void;
+  onStyleOverrideChange?: (overrides: SectionStyleOverrides) => void;
+  styleOverrides?: SectionStyleOverrides;
 }
 
 const SCOPE = "w-tm-acs";
@@ -63,6 +70,11 @@ export default function AnimatedCardScroll({
   subheading,
   brand,
   interval = DEFAULT_INTERVAL,
+  isEditing,
+  onHeadingChange,
+  onSubheadingChange,
+  onStyleOverrideChange,
+  styleOverrides,
 }: AnimatedCardScrollProps) {
   const limited = useMemo(() => testimonials.slice(0, 6), [testimonials]);
   const count = limited.length;
@@ -71,6 +83,9 @@ export default function AnimatedCardScroll({
   const [transitionOn, setTransitionOn] = useState(true);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const pausedRef = useRef(false);
+  const [headingSelected, setHeadingSelected] = useState(false);
+  const [subheadingSelected, setSubheadingSelected] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
 
   const primary = brand.primaryColor || "#6366f1";
   const starColor = brand.secondaryColor || "#f5a623";
@@ -137,6 +152,28 @@ export default function AnimatedCardScroll({
     }
   }, [transitionOn]);
 
+  useEffect(() => {
+    if (!isEditing) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        sectionRef.current &&
+        !sectionRef.current.contains(e.target as Node)
+      ) {
+        setHeadingSelected(false);
+        setSubheadingSelected(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [isEditing]);
+
+  const emitOverride = useCallback(
+    (patch: Partial<SectionStyleOverrides>) => {
+      onStyleOverrideChange?.({ ...styleOverrides, ...patch });
+    },
+    [styleOverrides, onStyleOverrideChange],
+  );
+
   // Pause auto-cycle while user is hovering/touching the carousel
   const handlePointerEnter = () => {
     pausedRef.current = true;
@@ -154,8 +191,32 @@ export default function AnimatedCardScroll({
   // Active dot index (0..count-1)
   const activeDot = ((centerIdx % count) + count) % count;
 
+  const headingStyle: React.CSSProperties = {
+    fontSize: styleOverrides?.headingFontSize ?? "clamp(1.75rem, 3vw, 2.5rem)",
+    fontWeight: styleOverrides?.headingFontWeight ?? 700,
+    fontStyle: styleOverrides?.headingFontStyle ?? "normal",
+    color: styleOverrides?.headingTextColor ?? "#1a1a1a",
+    textAlign: styleOverrides?.headingTextAlign ?? "center",
+    fontFamily:
+      styleOverrides?.headingFontFamily || brand.headerFont || "inherit",
+    lineHeight: 1.15,
+    margin: "0 0 12px",
+  };
+
+  const subheadingStyle: React.CSSProperties = {
+    fontSize: styleOverrides?.subheadingFontSize ?? "1.1rem",
+    fontWeight: styleOverrides?.subheadingFontWeight ?? "normal",
+    fontStyle: styleOverrides?.subheadingFontStyle ?? "normal",
+    color: styleOverrides?.subheadingTextColor ?? "#6b7280",
+    textAlign: styleOverrides?.subheadingTextAlign ?? "center",
+    fontFamily:
+      styleOverrides?.subheadingFontFamily || brand.bodyFont || "inherit",
+    maxWidth: 600,
+    margin: "0 auto",
+  };
+
   return (
-    <section className={SCOPE}>
+    <section className={SCOPE} ref={sectionRef}>
       <style>{`
         .${SCOPE} {
           padding: 80px 24px;
@@ -215,7 +276,7 @@ export default function AnimatedCardScroll({
         .${SCOPE}-card {
           flex-shrink: 0;
           width: var(--card-w);
-          background: #fff;
+          background: ${brand.secondaryColor || "#fff"};
           border-radius: 20px;
           padding: 32px 28px;
           box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
@@ -384,10 +445,75 @@ export default function AnimatedCardScroll({
         }
       `}</style>
 
-      {(heading || subheading) && (
+      {(heading || subheading || isEditing) && (
         <div className={`${SCOPE}-header`}>
-          {heading && <h2 className={`${SCOPE}-heading`}>{heading}</h2>}
-          {subheading && <p className={`${SCOPE}-subheading`}>{subheading}</p>}
+          {isEditing ? (
+            <ResizableText
+              text={heading || "What People Say"}
+              isEditing
+              onTextChange={onHeadingChange}
+              textStyle={headingStyle}
+              selected={headingSelected}
+              onSelect={() => {
+                setHeadingSelected(true);
+                setSubheadingSelected(false);
+              }}
+              onDeselect={() => setHeadingSelected(false)}
+              toolbarProps={{
+                fontSize: styleOverrides?.headingFontSize ?? 28,
+                fontFamily: styleOverrides?.headingFontFamily ?? "",
+                fontWeight: styleOverrides?.headingFontWeight ?? "bold",
+                fontStyle: styleOverrides?.headingFontStyle ?? "normal",
+                color: styleOverrides?.headingTextColor ?? "#1a1a1a",
+                textAlign: styleOverrides?.headingTextAlign ?? "center",
+                onFontSizeChange: (v) => emitOverride({ headingFontSize: v }),
+                onFontFamilyChange: (v) =>
+                  emitOverride({ headingFontFamily: v }),
+                onFontWeightChange: (v) =>
+                  emitOverride({ headingFontWeight: v }),
+                onFontStyleChange: (v) => emitOverride({ headingFontStyle: v }),
+                onColorChange: (v) => emitOverride({ headingTextColor: v }),
+                onTextAlignChange: (v) => emitOverride({ headingTextAlign: v }),
+              }}
+            />
+          ) : (
+            heading && <h2 className={`${SCOPE}-heading`}>{heading}</h2>
+          )}
+          {isEditing ? (
+            <ResizableText
+              text={subheading || "Hear from our community"}
+              isEditing
+              onTextChange={onSubheadingChange}
+              textStyle={subheadingStyle}
+              selected={subheadingSelected}
+              onSelect={() => {
+                setSubheadingSelected(true);
+                setHeadingSelected(false);
+              }}
+              onDeselect={() => setSubheadingSelected(false)}
+              toolbarProps={{
+                fontSize: styleOverrides?.subheadingFontSize ?? 16,
+                fontFamily: styleOverrides?.subheadingFontFamily ?? "",
+                fontWeight: styleOverrides?.subheadingFontWeight ?? "normal",
+                fontStyle: styleOverrides?.subheadingFontStyle ?? "normal",
+                color: styleOverrides?.subheadingTextColor ?? "#6b7280",
+                textAlign: styleOverrides?.subheadingTextAlign ?? "center",
+                onFontSizeChange: (v) =>
+                  emitOverride({ subheadingFontSize: v }),
+                onFontFamilyChange: (v) =>
+                  emitOverride({ subheadingFontFamily: v }),
+                onFontWeightChange: (v) =>
+                  emitOverride({ subheadingFontWeight: v }),
+                onFontStyleChange: (v) =>
+                  emitOverride({ subheadingFontStyle: v }),
+                onColorChange: (v) => emitOverride({ subheadingTextColor: v }),
+                onTextAlignChange: (v) =>
+                  emitOverride({ subheadingTextAlign: v }),
+              }}
+            />
+          ) : (
+            subheading && <p className={`${SCOPE}-subheading`}>{subheading}</p>
+          )}
         </div>
       )}
 

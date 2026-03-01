@@ -118,6 +118,20 @@ export interface SectionStyleOverrides {
   paddingLeft?: number; // px, default 0
   paddingRight?: number; // px, default 0
   sectionHeight?: number; // px, optional fixed height
+  // Heading text overrides
+  headingFontSize?: number;
+  headingFontFamily?: string;
+  headingFontWeight?: "normal" | "bold";
+  headingFontStyle?: "normal" | "italic";
+  headingTextColor?: string;
+  headingTextAlign?: "left" | "center" | "right";
+  // Subheading text overrides
+  subheadingFontSize?: number;
+  subheadingFontFamily?: string;
+  subheadingFontWeight?: "normal" | "bold";
+  subheadingFontStyle?: "normal" | "italic";
+  subheadingTextColor?: string;
+  subheadingTextAlign?: "left" | "center" | "right";
 }
 
 export interface AboutStyleOverrides {
@@ -220,6 +234,18 @@ export interface FeatureCard {
   imageZoom?: number;
   title: string;
   description: string;
+  titleFontSize?: number;
+  titleFontFamily?: string;
+  titleFontWeight?: "normal" | "bold";
+  titleFontStyle?: "normal" | "italic";
+  titleColor?: string;
+  titleTextAlign?: "left" | "center" | "right";
+  descFontSize?: number;
+  descFontFamily?: string;
+  descFontWeight?: "normal" | "bold";
+  descFontStyle?: "normal" | "italic";
+  descColor?: string;
+  descTextAlign?: "left" | "center" | "right";
 }
 
 /**

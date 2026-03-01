@@ -39,6 +39,8 @@ interface ResizableTextProps {
   // Selection (externally controlled)
   selected?: boolean;
   onSelect?: (e: React.MouseEvent) => void;
+  /** Called when focus leaves the text + toolbar area (blur-based deselect). */
+  onDeselect?: () => void;
   // Extra wrapper styling
   wrapperStyle?: React.CSSProperties;
 }
@@ -66,11 +68,13 @@ const ResizableText = forwardRef<HTMLDivElement, ResizableTextProps>(
       onCustomColorsChange,
       selected,
       onSelect,
+      onDeselect,
       wrapperStyle,
     },
     ref,
   ) {
     const baseWidthRef = useRef(0);
+    const wrapperRef = useRef<HTMLDivElement>(null);
 
     const editableBaseStyle: React.CSSProperties = isEditing
       ? {
@@ -111,6 +115,36 @@ const ResizableText = forwardRef<HTMLDivElement, ResizableTextProps>(
 
     const handleDragEnd = useCallback(() => {}, []);
 
+    /** Deselect when focus leaves the wrapper (text + toolbar area). */
+    const handleWrapperBlur = useCallback(
+      (e: React.FocusEvent) => {
+        if (!onDeselect || !selected) return;
+        const wrapper = wrapperRef.current;
+        if (!wrapper) return;
+        // relatedTarget is the element receiving focus — if it's inside
+        // the wrapper (e.g. a toolbar control), don't deselect.
+        if (
+          e.relatedTarget instanceof Node &&
+          wrapper.contains(e.relatedTarget)
+        ) {
+          return;
+        }
+        // relatedTarget can be null when focus moves to native widgets
+        // (e.g. color picker, select dropdown). Use rAF to let focus
+        // settle, then check whether it truly left the wrapper.
+        requestAnimationFrame(() => {
+          if (
+            wrapper.contains(document.activeElement) ||
+            document.activeElement === wrapper
+          ) {
+            return;
+          }
+          onDeselect();
+        });
+      },
+      [onDeselect, selected],
+    );
+
     if (!isEditing) {
       return (
         <div
@@ -128,8 +162,14 @@ const ResizableText = forwardRef<HTMLDivElement, ResizableTextProps>(
 
     return (
       <div
-        ref={ref}
+        ref={(node) => {
+          // Support both the forwarded ref and our internal ref
+          wrapperRef.current = node;
+          if (typeof ref === "function") ref(node);
+          else if (ref) ref.current = node;
+        }}
         onClick={onSelect}
+        onBlur={handleWrapperBlur}
         style={{
           position: "relative",
           width: "100%",

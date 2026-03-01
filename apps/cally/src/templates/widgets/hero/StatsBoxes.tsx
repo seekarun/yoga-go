@@ -1,7 +1,10 @@
 "use client";
 
+import { useState, useRef, useEffect, useCallback } from "react";
+import type { HeroStyleOverrides } from "@/types/landing-page";
 import type { WidgetBrandConfig } from "../types";
 import { getContrastColor } from "@/lib/colorPalette";
+import ResizableText from "../../hero/ResizableText";
 
 interface StatsBoxesProps {
   title?: string;
@@ -9,13 +12,15 @@ interface StatsBoxesProps {
   buttonLabel?: string;
   brand: WidgetBrandConfig;
   onButtonClick?: () => void;
+  isEditing?: boolean;
+  styleOverrides?: HeroStyleOverrides;
+  onTitleChange?: (title: string) => void;
+  onSubtitleChange?: (subtitle: string) => void;
+  onStyleOverrideChange?: (overrides: HeroStyleOverrides) => void;
 }
 
 const SCOPE = "w-hr-sb";
 
-/**
- * Placeholder stats — will be replaced with real data later.
- */
 const STATS = [
   { value: "1.2k+", label: "Happy Clients" },
   { value: "350+", label: "Sessions Booked" },
@@ -25,10 +30,8 @@ const STATS = [
 /**
  * Hero: Stats Boxes
  *
- * Split-layout hero inspired by modern SaaS landing pages.
- * Left side: title (with italic accent on a keyword), subtitle, CTA button.
- * Right side: a 2x2 bento grid with a hero image tile and stat boxes
- * featuring large numbers + labels. Light warm/neutral backgrounds.
+ * Split-layout hero. Left: title, subtitle, CTA. Right: 2x2 bento grid
+ * with a hero image tile and stat boxes.
  */
 export default function StatsBoxes({
   title,
@@ -36,11 +39,66 @@ export default function StatsBoxes({
   buttonLabel,
   brand,
   onButtonClick,
+  isEditing = false,
+  styleOverrides: overrides,
+  onTitleChange,
+  onSubtitleChange,
+  onStyleOverrideChange,
 }: StatsBoxesProps) {
   const primary = brand.primaryColor || "#6366f1";
 
+  const [titleSelected, setTitleSelected] = useState(false);
+  const [subtitleSelected, setSubtitleSelected] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!isEditing) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        sectionRef.current &&
+        !sectionRef.current.contains(e.target as Node)
+      ) {
+        setTitleSelected(false);
+        setSubtitleSelected(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [isEditing]);
+
+  const emitOverride = useCallback(
+    (patch: Partial<HeroStyleOverrides>) => {
+      onStyleOverrideChange?.({ ...overrides, ...patch });
+    },
+    [overrides, onStyleOverrideChange],
+  );
+
+  const titleStyle: React.CSSProperties = {
+    fontSize: overrides?.titleFontSize ?? "clamp(2.2rem, 5vw, 3.5rem)",
+    fontWeight: overrides?.titleFontWeight ?? 700,
+    fontStyle: overrides?.titleFontStyle ?? "normal",
+    color: overrides?.titleTextColor ?? "#111",
+    textAlign: overrides?.titleTextAlign ?? "left",
+    fontFamily: overrides?.titleFontFamily || brand.headerFont || "inherit",
+    lineHeight: 1.12,
+    letterSpacing: "-0.02em",
+    margin: 0,
+  };
+
+  const subtitleStyle: React.CSSProperties = {
+    fontSize: overrides?.subtitleFontSize ?? "1.1rem",
+    fontWeight: overrides?.subtitleFontWeight ?? "normal",
+    fontStyle: overrides?.subtitleFontStyle ?? "normal",
+    color: overrides?.subtitleTextColor ?? "#6b7280",
+    textAlign: overrides?.subtitleTextAlign ?? "left",
+    fontFamily: overrides?.subtitleFontFamily || brand.bodyFont || "inherit",
+    lineHeight: 1.7,
+    margin: 0,
+    maxWidth: 520,
+  };
+
   return (
-    <section className={SCOPE}>
+    <section ref={sectionRef} className={SCOPE}>
       <style>{`
         .${SCOPE} {
           padding: 40px 24px;
@@ -51,33 +109,14 @@ export default function StatsBoxes({
           gap: 48px;
           align-items: center;
         }
-
-        /* ---- left: text ---- */
         .${SCOPE}-text {
           display: flex;
           flex-direction: column;
           gap: 24px;
         }
-        .${SCOPE}-title {
-          font-size: clamp(2.2rem, 5vw, 3.5rem);
-          font-weight: 700;
-          color: #111;
-          margin: 0;
-          font-family: ${brand.headerFont || "inherit"};
-          line-height: 1.12;
-          letter-spacing: -0.02em;
-        }
         .${SCOPE}-title em {
           font-style: italic;
           color: ${primary};
-        }
-        .${SCOPE}-subtitle {
-          font-size: 1.1rem;
-          color: #6b7280;
-          line-height: 1.7;
-          margin: 0;
-          max-width: 520px;
-          font-family: ${brand.bodyFont || "inherit"};
         }
         .${SCOPE}-btn {
           display: inline-block;
@@ -97,15 +136,11 @@ export default function StatsBoxes({
           opacity: 0.9;
           transform: scale(1.02);
         }
-
-        /* ---- right: bento grid ---- */
         .${SCOPE}-grid {
           display: grid;
           grid-template-columns: 1.2fr 1fr;
           gap: 16px;
         }
-
-        /* offset columns: first column shifts down */
         .${SCOPE}-col-left {
           display: flex;
           flex-direction: column;
@@ -117,8 +152,6 @@ export default function StatsBoxes({
           flex-direction: column;
           gap: 16px;
         }
-
-        /* image tile */
         .${SCOPE}-img-tile {
           border-radius: 20px;
           overflow: hidden;
@@ -126,15 +159,12 @@ export default function StatsBoxes({
           aspect-ratio: 1;
           position: relative;
         }
-        /* eslint-disable-next-line -- placeholder image */
         .${SCOPE}-img-tile img {
           width: 100%;
           height: 100%;
           object-fit: cover;
           display: block;
         }
-
-        /* stat boxes */
         .${SCOPE}-stat {
           border-radius: 20px;
           padding: 28px 24px;
@@ -143,13 +173,8 @@ export default function StatsBoxes({
           justify-content: flex-end;
           aspect-ratio: 1;
         }
-        .${SCOPE}-stat--light {
-          background: #f5f5f0;
-        }
-        .${SCOPE}-stat--warm {
-          background: #ede8e3;
-        }
-
+        .${SCOPE}-stat--light { background: #f5f5f0; }
+        .${SCOPE}-stat--warm { background: #ede8e3; }
         .${SCOPE}-stat-value {
           font-size: clamp(2rem, 4vw, 3rem);
           font-weight: 700;
@@ -166,36 +191,81 @@ export default function StatsBoxes({
           font-family: ${brand.bodyFont || "inherit"};
           font-weight: 500;
         }
-
         @media (max-width: 900px) {
-          .${SCOPE} {
-            grid-template-columns: 1fr;
-            padding: 48px 16px;
-            gap: 32px;
-          }
-          .${SCOPE}-col-left {
-            transform: none;
-          }
-          .${SCOPE}-img-tile {
-            aspect-ratio: 1;
-          }
+          .${SCOPE} { grid-template-columns: 1fr; padding: 48px 16px; gap: 32px; }
+          .${SCOPE}-col-left { transform: none; }
         }
-
         @media (max-width: 520px) {
-          .${SCOPE}-grid {
-            grid-template-columns: 1fr;
-          }
-          .${SCOPE}-col-left,
-          .${SCOPE}-col-right {
-            transform: none;
-          }
+          .${SCOPE}-grid { grid-template-columns: 1fr; }
+          .${SCOPE}-col-left, .${SCOPE}-col-right { transform: none; }
         }
       `}</style>
 
-      {/* Left — text content */}
       <div className={`${SCOPE}-text`}>
-        {title && <h1 className={`${SCOPE}-title`}>{title}</h1>}
-        {subtitle && <p className={`${SCOPE}-subtitle`}>{subtitle}</p>}
+        {isEditing ? (
+          <ResizableText
+            text={title || "Your Heading"}
+            isEditing
+            onTextChange={onTitleChange}
+            textStyle={titleStyle}
+            selected={titleSelected}
+            onSelect={() => {
+              setTitleSelected(true);
+              setSubtitleSelected(false);
+            }}
+            onDeselect={() => setTitleSelected(false)}
+            toolbarProps={{
+              fontSize: overrides?.titleFontSize ?? 36,
+              fontFamily: overrides?.titleFontFamily ?? "",
+              fontWeight: overrides?.titleFontWeight ?? "bold",
+              fontStyle: overrides?.titleFontStyle ?? "normal",
+              color: overrides?.titleTextColor ?? "#111",
+              textAlign: overrides?.titleTextAlign ?? "left",
+              onFontSizeChange: (v) => emitOverride({ titleFontSize: v }),
+              onFontFamilyChange: (v) => emitOverride({ titleFontFamily: v }),
+              onFontWeightChange: (v) => emitOverride({ titleFontWeight: v }),
+              onFontStyleChange: (v) => emitOverride({ titleFontStyle: v }),
+              onColorChange: (v) => emitOverride({ titleTextColor: v }),
+              onTextAlignChange: (v) => emitOverride({ titleTextAlign: v }),
+            }}
+          />
+        ) : (
+          title && <h1 style={titleStyle}>{title}</h1>
+        )}
+
+        {isEditing ? (
+          <ResizableText
+            text={subtitle || ""}
+            isEditing
+            onTextChange={onSubtitleChange}
+            textStyle={subtitleStyle}
+            selected={subtitleSelected}
+            onSelect={() => {
+              setSubtitleSelected(true);
+              setTitleSelected(false);
+            }}
+            onDeselect={() => setSubtitleSelected(false)}
+            toolbarProps={{
+              fontSize: overrides?.subtitleFontSize ?? 17,
+              fontFamily: overrides?.subtitleFontFamily ?? "",
+              fontWeight: overrides?.subtitleFontWeight ?? "normal",
+              fontStyle: overrides?.subtitleFontStyle ?? "normal",
+              color: overrides?.subtitleTextColor ?? "#6b7280",
+              textAlign: overrides?.subtitleTextAlign ?? "left",
+              onFontSizeChange: (v) => emitOverride({ subtitleFontSize: v }),
+              onFontFamilyChange: (v) =>
+                emitOverride({ subtitleFontFamily: v }),
+              onFontWeightChange: (v) =>
+                emitOverride({ subtitleFontWeight: v }),
+              onFontStyleChange: (v) => emitOverride({ subtitleFontStyle: v }),
+              onColorChange: (v) => emitOverride({ subtitleTextColor: v }),
+              onTextAlignChange: (v) => emitOverride({ subtitleTextAlign: v }),
+            }}
+          />
+        ) : (
+          subtitle && <p style={subtitleStyle}>{subtitle}</p>
+        )}
+
         {buttonLabel && (
           <button
             type="button"
@@ -207,9 +277,7 @@ export default function StatsBoxes({
         )}
       </div>
 
-      {/* Right — bento grid with offset columns */}
       <div className={`${SCOPE}-grid`}>
-        {/* Column 1 — shifted down */}
         <div className={`${SCOPE}-col-left`}>
           <div className={`${SCOPE}-img-tile`}>
             {/* eslint-disable-next-line @next/next/no-img-element -- placeholder image */}
@@ -223,8 +291,6 @@ export default function StatsBoxes({
             <p className={`${SCOPE}-stat-label`}>{STATS[1].label}</p>
           </div>
         </div>
-
-        {/* Column 2 — normal position */}
         <div className={`${SCOPE}-col-right`}>
           <div className={`${SCOPE}-stat ${SCOPE}-stat--light`}>
             <p className={`${SCOPE}-stat-value`}>{STATS[0].value}</p>

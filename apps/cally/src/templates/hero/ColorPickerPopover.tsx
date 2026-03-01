@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import type { ColorPalette } from "@/lib/colorPalette";
+import { useBrandColors } from "./CustomColorsContext";
 
 interface CustomColor {
   name: string;
@@ -21,11 +22,20 @@ interface ColorPickerPopoverProps {
 export default function ColorPickerPopover({
   color,
   onChange,
-  palette,
-  customColors = [],
-  onCustomColorsChange,
+  palette: paletteProp,
+  customColors: customColorsProp,
+  onCustomColorsChange: onCustomColorsChangeProp,
   popoverDirection = "auto",
 }: ColorPickerPopoverProps) {
+  // Fall back to context when direct props are not provided
+  const ctx = useBrandColors();
+  const palette = paletteProp ?? ctx.palette;
+  const customColors = useMemo(
+    () => customColorsProp ?? ctx.customColors ?? [],
+    [customColorsProp, ctx.customColors],
+  );
+  const onCustomColorsChange =
+    onCustomColorsChangeProp ?? ctx.onCustomColorsChange;
   const [open, setOpen] = useState(false);
   const [adding, setAdding] = useState(false);
   const [newHex, setNewHex] = useState("#6b7280");

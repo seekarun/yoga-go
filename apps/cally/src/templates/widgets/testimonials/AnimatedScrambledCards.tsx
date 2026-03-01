@@ -9,6 +9,8 @@ import React, {
 } from "react";
 import { getContrastColor } from "@/lib/colorPalette";
 import type { WidgetBrandConfig } from "../types";
+import type { SectionStyleOverrides } from "@/types/landing-page";
+import ResizableText from "../../hero/ResizableText";
 
 interface Testimonial {
   id: string;
@@ -25,6 +27,11 @@ interface AnimatedScrambledCardsProps {
   brand: WidgetBrandConfig;
   /** Auto-cycle interval in ms (default 4000) */
   interval?: number;
+  isEditing?: boolean;
+  onHeadingChange?: (heading: string) => void;
+  onSubheadingChange?: (subheading: string) => void;
+  onStyleOverrideChange?: (overrides: SectionStyleOverrides) => void;
+  styleOverrides?: SectionStyleOverrides;
 }
 
 const SCOPE = "w-tm-asc2";
@@ -67,6 +74,11 @@ export default function AnimatedScrambledCards({
   subheading,
   brand,
   interval = DEFAULT_INTERVAL,
+  isEditing,
+  onHeadingChange,
+  onSubheadingChange,
+  onStyleOverrideChange,
+  styleOverrides,
 }: AnimatedScrambledCardsProps) {
   const limited = useMemo(() => testimonials.slice(0, 6), [testimonials]);
   const count = limited.length;
@@ -76,6 +88,9 @@ export default function AnimatedScrambledCards({
   const [transitionOn, setTransitionOn] = useState(true);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const pausedRef = useRef(false);
+  const [headingSelected, setHeadingSelected] = useState(false);
+  const [subheadingSelected, setSubheadingSelected] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
 
   const starColor = brand.secondaryColor || "#f5b942";
   const primary = brand.primaryColor || "#6366f1";
@@ -144,6 +159,28 @@ export default function AnimatedScrambledCards({
     }
   }, [transitionOn]);
 
+  useEffect(() => {
+    if (!isEditing) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        sectionRef.current &&
+        !sectionRef.current.contains(e.target as Node)
+      ) {
+        setHeadingSelected(false);
+        setSubheadingSelected(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [isEditing]);
+
+  const emitOverride = useCallback(
+    (patch: Partial<SectionStyleOverrides>) => {
+      onStyleOverrideChange?.({ ...styleOverrides, ...patch });
+    },
+    [styleOverrides, onStyleOverrideChange],
+  );
+
   const handlePointerEnter = () => {
     pausedRef.current = true;
   };
@@ -157,8 +194,32 @@ export default function AnimatedScrambledCards({
 
   if (count === 0) return null;
 
+  const headingStyle: React.CSSProperties = {
+    fontSize: styleOverrides?.headingFontSize ?? "clamp(1.75rem, 3vw, 2.5rem)",
+    fontWeight: styleOverrides?.headingFontWeight ?? 700,
+    fontStyle: styleOverrides?.headingFontStyle ?? "normal",
+    color: styleOverrides?.headingTextColor ?? "#fff",
+    textAlign: styleOverrides?.headingTextAlign ?? "center",
+    fontFamily:
+      styleOverrides?.headingFontFamily || brand.headerFont || "inherit",
+    lineHeight: 1.15,
+    margin: "0 0 12px",
+  };
+
+  const subheadingStyle: React.CSSProperties = {
+    fontSize: styleOverrides?.subheadingFontSize ?? "1.1rem",
+    fontWeight: styleOverrides?.subheadingFontWeight ?? "normal",
+    fontStyle: styleOverrides?.subheadingFontStyle ?? "normal",
+    color: styleOverrides?.subheadingTextColor ?? "rgba(255,255,255,0.55)",
+    textAlign: styleOverrides?.subheadingTextAlign ?? "center",
+    fontFamily:
+      styleOverrides?.subheadingFontFamily || brand.bodyFont || "inherit",
+    maxWidth: 600,
+    margin: "0 auto",
+  };
+
   return (
-    <section className={SCOPE}>
+    <section className={SCOPE} ref={sectionRef}>
       <style>{`
         .${SCOPE} {
           padding: 80px 24px;
@@ -345,10 +406,77 @@ export default function AnimatedScrambledCards({
         }
       `}</style>
 
-      {(heading || subheading) && (
+      {(heading || subheading || isEditing) && (
         <div className={`${SCOPE}-header`}>
-          {heading && <h2 className={`${SCOPE}-heading`}>{heading}</h2>}
-          {subheading && <p className={`${SCOPE}-subheading`}>{subheading}</p>}
+          {isEditing ? (
+            <ResizableText
+              text={heading || "What People Say"}
+              isEditing
+              onTextChange={onHeadingChange}
+              textStyle={headingStyle}
+              selected={headingSelected}
+              onSelect={() => {
+                setHeadingSelected(true);
+                setSubheadingSelected(false);
+              }}
+              onDeselect={() => setHeadingSelected(false)}
+              toolbarProps={{
+                fontSize: styleOverrides?.headingFontSize ?? 28,
+                fontFamily: styleOverrides?.headingFontFamily ?? "",
+                fontWeight: styleOverrides?.headingFontWeight ?? "bold",
+                fontStyle: styleOverrides?.headingFontStyle ?? "normal",
+                color: styleOverrides?.headingTextColor ?? "#fff",
+                textAlign: styleOverrides?.headingTextAlign ?? "center",
+                onFontSizeChange: (v) => emitOverride({ headingFontSize: v }),
+                onFontFamilyChange: (v) =>
+                  emitOverride({ headingFontFamily: v }),
+                onFontWeightChange: (v) =>
+                  emitOverride({ headingFontWeight: v }),
+                onFontStyleChange: (v) => emitOverride({ headingFontStyle: v }),
+                onColorChange: (v) => emitOverride({ headingTextColor: v }),
+                onTextAlignChange: (v) => emitOverride({ headingTextAlign: v }),
+              }}
+            />
+          ) : (
+            heading && <h2 className={`${SCOPE}-heading`}>{heading}</h2>
+          )}
+          {isEditing ? (
+            <ResizableText
+              text={subheading || "Hear from our community"}
+              isEditing
+              onTextChange={onSubheadingChange}
+              textStyle={subheadingStyle}
+              selected={subheadingSelected}
+              onSelect={() => {
+                setSubheadingSelected(true);
+                setHeadingSelected(false);
+              }}
+              onDeselect={() => setSubheadingSelected(false)}
+              toolbarProps={{
+                fontSize: styleOverrides?.subheadingFontSize ?? 16,
+                fontFamily: styleOverrides?.subheadingFontFamily ?? "",
+                fontWeight: styleOverrides?.subheadingFontWeight ?? "normal",
+                fontStyle: styleOverrides?.subheadingFontStyle ?? "normal",
+                color:
+                  styleOverrides?.subheadingTextColor ??
+                  "rgba(255,255,255,0.55)",
+                textAlign: styleOverrides?.subheadingTextAlign ?? "center",
+                onFontSizeChange: (v) =>
+                  emitOverride({ subheadingFontSize: v }),
+                onFontFamilyChange: (v) =>
+                  emitOverride({ subheadingFontFamily: v }),
+                onFontWeightChange: (v) =>
+                  emitOverride({ subheadingFontWeight: v }),
+                onFontStyleChange: (v) =>
+                  emitOverride({ subheadingFontStyle: v }),
+                onColorChange: (v) => emitOverride({ subheadingTextColor: v }),
+                onTextAlignChange: (v) =>
+                  emitOverride({ subheadingTextAlign: v }),
+              }}
+            />
+          ) : (
+            subheading && <p className={`${SCOPE}-subheading`}>{subheading}</p>
+          )}
         </div>
       )}
 

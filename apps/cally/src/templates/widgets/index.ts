@@ -39,6 +39,9 @@ export { default as HeroThroughTheTear } from "./hero/ThroughTheTear";
 export { default as FeaturesUnevenGrid } from "./features/UnevenGrid";
 export { default as FeaturesSimpleGrid } from "./features/SimpleGrid";
 
+// FAQ widget components
+export { default as FaqClassicCollapsible } from "./faq/ClassicCollapsible";
+
 // About widget components
 export { default as AboutLeftImage } from "./about/LeftImage";
 export { default as AboutLeftVideo } from "./about/LeftVideo";

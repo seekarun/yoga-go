@@ -22,6 +22,8 @@ x tech: alerts
 x booking wait list
 x review DB structure for scaling
 
+========================================
+
 - super admin console
   - dashboard
   - analytics
@@ -29,13 +31,15 @@ x review DB structure for scaling
 - Analytics for tenants
 - tech: backups
 - chat for video calls 100ms
-- add phone number + whatsapp support for booking
+  5 mins danny- add phone number + whatsapp support for booking
 - handle 404
 -
 
 - AI security review
 - use existing domain host - set records only
 - Fix templates - small available options, hardy. delete all boring ones.
+
+========================================
 
 - production deployment.
 
@@ -47,6 +51,7 @@ x review DB structure for scaling
   - Ramya
   - the real estate guy? - Brij
 
+- AB testing for landing page
 - AI chat to look up user's past interactions
 - search for cally.live and replace with domain everywehre
 - facebook login

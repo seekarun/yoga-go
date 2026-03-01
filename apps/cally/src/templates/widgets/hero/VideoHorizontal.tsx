@@ -1,8 +1,10 @@
 "use client";
 
 import { useRef, useEffect, useCallback, useState } from "react";
+import type { HeroStyleOverrides } from "@/types/landing-page";
 import type { WidgetBrandConfig } from "../types";
 import { getContrastColor } from "@/lib/colorPalette";
+import ResizableText from "../../hero/ResizableText";
 
 interface VideoHorizontalProps {
   title?: string;
@@ -10,14 +12,15 @@ interface VideoHorizontalProps {
   buttonLabel?: string;
   brand: WidgetBrandConfig;
   onButtonClick?: () => void;
+  isEditing?: boolean;
+  styleOverrides?: HeroStyleOverrides;
+  onTitleChange?: (title: string) => void;
+  onSubtitleChange?: (subtitle: string) => void;
+  onStyleOverrideChange?: (overrides: HeroStyleOverrides) => void;
 }
 
 const SCOPE = "w-hr-vh";
 
-/**
- * Default Pexels videos — free to use (Pexels license).
- * Landscape HD, played one at a time in sequence.
- */
 const DEFAULT_VIDEOS = [
   "https://videos.pexels.com/video-files/3982856/3982856-uhd_2560_1440_30fps.mp4",
   "https://videos.pexels.com/video-files/8760113/8760113-hd_1920_1080_30fps.mp4",
@@ -31,7 +34,6 @@ const DEFAULT_VIDEOS = [
  * Full-width hero background that plays videos one at a time, full landscape.
  * When one video ends it crossfades to the next, looping back to the first
  * after the last. Dark overlay for text contrast.
- * Title, subtitle, and CTA button are centered over the video.
  */
 export default function VideoHorizontal({
   title,
@@ -39,17 +41,47 @@ export default function VideoHorizontal({
   buttonLabel,
   brand,
   onButtonClick,
+  isEditing = false,
+  styleOverrides: overrides,
+  onTitleChange,
+  onSubtitleChange,
+  onStyleOverrideChange,
 }: VideoHorizontalProps) {
   const primary = brand.primaryColor || "#6366f1";
   const [activeIndex, setActiveIndex] = useState(0);
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
 
-  /** When the active video ends, advance to the next. */
+  // Selection state for editing
+  const [titleSelected, setTitleSelected] = useState(false);
+  const [subtitleSelected, setSubtitleSelected] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!isEditing) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        sectionRef.current &&
+        !sectionRef.current.contains(e.target as Node)
+      ) {
+        setTitleSelected(false);
+        setSubtitleSelected(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [isEditing]);
+
+  const emitOverride = useCallback(
+    (patch: Partial<HeroStyleOverrides>) => {
+      onStyleOverrideChange?.({ ...overrides, ...patch });
+    },
+    [overrides, onStyleOverrideChange],
+  );
+
   const handleEnded = useCallback(() => {
     setActiveIndex((prev) => (prev + 1) % DEFAULT_VIDEOS.length);
   }, []);
 
-  /** Play the newly active video, pause the rest. */
   useEffect(() => {
     videoRefs.current.forEach((el, i) => {
       if (!el) return;
@@ -62,7 +94,6 @@ export default function VideoHorizontal({
     });
   }, [activeIndex]);
 
-  /** Kick-start the first video on mount. */
   useEffect(() => {
     const first = videoRefs.current[0];
     if (first) first.play().catch(() => {});
@@ -75,8 +106,33 @@ export default function VideoHorizontal({
     [],
   );
 
+  const titleStyle: React.CSSProperties = {
+    fontSize: overrides?.titleFontSize ?? "clamp(2rem, 5vw, 3.5rem)",
+    fontWeight: overrides?.titleFontWeight ?? 700,
+    fontStyle: overrides?.titleFontStyle ?? "normal",
+    color: overrides?.titleTextColor ?? "#fff",
+    textAlign: overrides?.titleTextAlign ?? "center",
+    fontFamily: overrides?.titleFontFamily || brand.headerFont || "inherit",
+    lineHeight: 1.15,
+    margin: "0 0 16px",
+    textShadow: "0 2px 12px rgba(0, 0, 0, 0.3)",
+  };
+
+  const subtitleStyle: React.CSSProperties = {
+    fontSize: overrides?.subtitleFontSize ?? "clamp(1rem, 2vw, 1.25rem)",
+    fontWeight: overrides?.subtitleFontWeight ?? "normal",
+    fontStyle: overrides?.subtitleFontStyle ?? "normal",
+    color: overrides?.subtitleTextColor ?? "rgba(255, 255, 255, 0.85)",
+    textAlign: overrides?.subtitleTextAlign ?? "center",
+    fontFamily: overrides?.subtitleFontFamily || brand.bodyFont || "inherit",
+    lineHeight: 1.6,
+    margin: "0 auto 36px",
+    maxWidth: 600,
+    textShadow: "0 1px 6px rgba(0, 0, 0, 0.2)",
+  };
+
   return (
-    <section className={SCOPE}>
+    <section ref={sectionRef} className={SCOPE}>
       <style>{`
         .${SCOPE} {
           position: relative;
@@ -88,8 +144,6 @@ export default function VideoHorizontal({
           justify-content: center;
           background: #000;
         }
-
-        /* ---- stacked full-size videos ---- */
         .${SCOPE}-video {
           position: absolute;
           inset: 0;
@@ -102,40 +156,18 @@ export default function VideoHorizontal({
         .${SCOPE}-video--active {
           opacity: 1;
         }
-
-        /* ---- overlay ---- */
         .${SCOPE}-overlay {
           position: absolute;
           inset: 0;
           background: rgba(0, 0, 0, 0.5);
           z-index: 1;
         }
-
-        /* ---- content ---- */
         .${SCOPE}-content {
           position: relative;
           z-index: 2;
           text-align: center;
           padding: 60px 24px;
           max-width: 800px;
-        }
-        .${SCOPE}-title {
-          font-size: clamp(2rem, 5vw, 3.5rem);
-          font-weight: 700;
-          color: #fff;
-          margin: 0 0 16px;
-          font-family: ${brand.headerFont || "inherit"};
-          line-height: 1.15;
-          text-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
-        }
-        .${SCOPE}-subtitle {
-          font-size: clamp(1rem, 2vw, 1.25rem);
-          color: rgba(255, 255, 255, 0.85);
-          max-width: 600px;
-          margin: 0 auto 36px;
-          font-family: ${brand.bodyFont || "inherit"};
-          line-height: 1.6;
-          text-shadow: 0 1px 6px rgba(0, 0, 0, 0.2);
         }
         .${SCOPE}-btn {
           display: inline-block;
@@ -155,18 +187,12 @@ export default function VideoHorizontal({
           opacity: 0.9;
           transform: scale(1.03);
         }
-
         @media (max-width: 768px) {
-          .${SCOPE} {
-            min-height: 420px;
-          }
-          .${SCOPE}-content {
-            padding: 40px 16px;
-          }
+          .${SCOPE} { min-height: 420px; }
+          .${SCOPE}-content { padding: 40px 16px; }
         }
       `}</style>
 
-      {/* Stacked videos — only the active one is visible */}
       {DEFAULT_VIDEOS.map((src, i) => (
         <video
           key={src}
@@ -180,13 +206,73 @@ export default function VideoHorizontal({
         />
       ))}
 
-      {/* Dark overlay */}
       <div className={`${SCOPE}-overlay`} />
 
-      {/* Text content */}
       <div className={`${SCOPE}-content`}>
-        {title && <h1 className={`${SCOPE}-title`}>{title}</h1>}
-        {subtitle && <p className={`${SCOPE}-subtitle`}>{subtitle}</p>}
+        {isEditing ? (
+          <ResizableText
+            text={title || "Your Heading"}
+            isEditing
+            onTextChange={onTitleChange}
+            textStyle={titleStyle}
+            selected={titleSelected}
+            onSelect={() => {
+              setTitleSelected(true);
+              setSubtitleSelected(false);
+            }}
+            onDeselect={() => setTitleSelected(false)}
+            toolbarProps={{
+              fontSize: overrides?.titleFontSize ?? 36,
+              fontFamily: overrides?.titleFontFamily ?? "",
+              fontWeight: overrides?.titleFontWeight ?? "bold",
+              fontStyle: overrides?.titleFontStyle ?? "normal",
+              color: overrides?.titleTextColor ?? "#fff",
+              textAlign: overrides?.titleTextAlign ?? "center",
+              onFontSizeChange: (v) => emitOverride({ titleFontSize: v }),
+              onFontFamilyChange: (v) => emitOverride({ titleFontFamily: v }),
+              onFontWeightChange: (v) => emitOverride({ titleFontWeight: v }),
+              onFontStyleChange: (v) => emitOverride({ titleFontStyle: v }),
+              onColorChange: (v) => emitOverride({ titleTextColor: v }),
+              onTextAlignChange: (v) => emitOverride({ titleTextAlign: v }),
+            }}
+          />
+        ) : (
+          title && <h1 style={titleStyle}>{title}</h1>
+        )}
+
+        {isEditing ? (
+          <ResizableText
+            text={subtitle || ""}
+            isEditing
+            onTextChange={onSubtitleChange}
+            textStyle={subtitleStyle}
+            selected={subtitleSelected}
+            onSelect={() => {
+              setSubtitleSelected(true);
+              setTitleSelected(false);
+            }}
+            onDeselect={() => setSubtitleSelected(false)}
+            toolbarProps={{
+              fontSize: overrides?.subtitleFontSize ?? 18,
+              fontFamily: overrides?.subtitleFontFamily ?? "",
+              fontWeight: overrides?.subtitleFontWeight ?? "normal",
+              fontStyle: overrides?.subtitleFontStyle ?? "normal",
+              color: overrides?.subtitleTextColor ?? "rgba(255,255,255,0.85)",
+              textAlign: overrides?.subtitleTextAlign ?? "center",
+              onFontSizeChange: (v) => emitOverride({ subtitleFontSize: v }),
+              onFontFamilyChange: (v) =>
+                emitOverride({ subtitleFontFamily: v }),
+              onFontWeightChange: (v) =>
+                emitOverride({ subtitleFontWeight: v }),
+              onFontStyleChange: (v) => emitOverride({ subtitleFontStyle: v }),
+              onColorChange: (v) => emitOverride({ subtitleTextColor: v }),
+              onTextAlignChange: (v) => emitOverride({ subtitleTextAlign: v }),
+            }}
+          />
+        ) : (
+          subtitle && <p style={subtitleStyle}>{subtitle}</p>
+        )}
+
         {buttonLabel && (
           <button
             type="button"

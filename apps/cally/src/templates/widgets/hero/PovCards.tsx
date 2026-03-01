@@ -1,7 +1,10 @@
 "use client";
 
+import { useState, useRef, useEffect, useCallback } from "react";
+import type { HeroStyleOverrides } from "@/types/landing-page";
 import type { WidgetBrandConfig } from "../types";
 import { getContrastColor } from "@/lib/colorPalette";
+import ResizableText from "../../hero/ResizableText";
 
 interface PovCardsProps {
   title?: string;
@@ -9,6 +12,11 @@ interface PovCardsProps {
   buttonLabel?: string;
   brand: WidgetBrandConfig;
   onButtonClick?: () => void;
+  isEditing?: boolean;
+  styleOverrides?: HeroStyleOverrides;
+  onTitleChange?: (title: string) => void;
+  onSubtitleChange?: (subtitle: string) => void;
+  onStyleOverrideChange?: (overrides: HeroStyleOverrides) => void;
 }
 
 const SCOPE = "w-hr-pc";
@@ -41,8 +49,7 @@ const CARDS = [
  * Hero: POV Cards
  *
  * Centered hero with title, subtitle, and CTA over a soft lavender-to-cream
- * gradient. Three question cards fan out at the bottom, each slightly rotated.
- * Subtle grid overlay and a bottom border complete the look.
+ * gradient. Three question cards fan out at the bottom.
  */
 export default function PovCards({
   title,
@@ -50,11 +57,66 @@ export default function PovCards({
   buttonLabel,
   brand,
   onButtonClick,
+  isEditing = false,
+  styleOverrides: overrides,
+  onTitleChange,
+  onSubtitleChange,
+  onStyleOverrideChange,
 }: PovCardsProps) {
   const primary = brand.primaryColor || "#6366f1";
 
+  const [titleSelected, setTitleSelected] = useState(false);
+  const [subtitleSelected, setSubtitleSelected] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!isEditing) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        sectionRef.current &&
+        !sectionRef.current.contains(e.target as Node)
+      ) {
+        setTitleSelected(false);
+        setSubtitleSelected(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [isEditing]);
+
+  const emitOverride = useCallback(
+    (patch: Partial<HeroStyleOverrides>) => {
+      onStyleOverrideChange?.({ ...overrides, ...patch });
+    },
+    [overrides, onStyleOverrideChange],
+  );
+
+  const titleStyle: React.CSSProperties = {
+    fontSize: overrides?.titleFontSize ?? "clamp(2.4rem, 5.5vw, 3.8rem)",
+    fontWeight: overrides?.titleFontWeight ?? 700,
+    fontStyle: overrides?.titleFontStyle ?? "normal",
+    color: overrides?.titleTextColor ?? "#1a1a1a",
+    textAlign: overrides?.titleTextAlign ?? "center",
+    fontFamily: overrides?.titleFontFamily || brand.headerFont || "inherit",
+    lineHeight: 1.1,
+    letterSpacing: "-0.025em",
+    margin: 0,
+  };
+
+  const subtitleStyle: React.CSSProperties = {
+    fontSize: overrides?.subtitleFontSize ?? "clamp(1rem, 2vw, 1.15rem)",
+    fontWeight: overrides?.subtitleFontWeight ?? "normal",
+    fontStyle: overrides?.subtitleFontStyle ?? "normal",
+    color: overrides?.subtitleTextColor ?? "#5c5c5c",
+    textAlign: overrides?.subtitleTextAlign ?? "center",
+    fontFamily: overrides?.subtitleFontFamily || brand.bodyFont || "inherit",
+    lineHeight: 1.65,
+    margin: 0,
+    maxWidth: 580,
+  };
+
   return (
-    <section className={SCOPE}>
+    <section ref={sectionRef} className={SCOPE}>
       <style>{`
         .${SCOPE} {
           position: relative;
@@ -63,17 +125,9 @@ export default function PovCards({
           display: flex;
           flex-direction: column;
           align-items: center;
-          background: linear-gradient(
-            160deg,
-            #eae6f2 0%,
-            #f0ecf4 20%,
-            #f5f2f0 45%,
-            #f3edd8 100%
-          );
+          background: linear-gradient(160deg, #eae6f2 0%, #f0ecf4 20%, #f5f2f0 45%, #f3edd8 100%);
           border-bottom: 1px solid #e0dbd4;
         }
-
-        /* subtle grid overlay */
         .${SCOPE}::before {
           content: "";
           position: absolute;
@@ -84,8 +138,6 @@ export default function PovCards({
           background-size: 60px 60px;
           pointer-events: none;
         }
-
-        /* ---- text content ---- */
         .${SCOPE}-content {
           position: relative;
           z-index: 2;
@@ -95,23 +147,6 @@ export default function PovCards({
           flex-direction: column;
           align-items: center;
           gap: 20px;
-        }
-        .${SCOPE}-title {
-          font-size: clamp(2.4rem, 5.5vw, 3.8rem);
-          font-weight: 700;
-          color: #1a1a1a;
-          margin: 0;
-          font-family: ${brand.headerFont || "inherit"};
-          line-height: 1.1;
-          letter-spacing: -0.025em;
-        }
-        .${SCOPE}-subtitle {
-          font-size: clamp(1rem, 2vw, 1.15rem);
-          color: #5c5c5c;
-          line-height: 1.65;
-          margin: 0;
-          max-width: 580px;
-          font-family: ${brand.bodyFont || "inherit"};
         }
         .${SCOPE}-btn {
           display: inline-block;
@@ -127,12 +162,7 @@ export default function PovCards({
           font-family: ${brand.bodyFont || "inherit"};
           margin-top: 4px;
         }
-        .${SCOPE}-btn:hover {
-          opacity: 0.9;
-          transform: scale(1.03);
-        }
-
-        /* ---- cards fan ---- */
+        .${SCOPE}-btn:hover { opacity: 0.9; transform: scale(1.03); }
         .${SCOPE}-cards {
           position: relative;
           z-index: 2;
@@ -145,7 +175,6 @@ export default function PovCards({
           max-width: 650px;
           height: 260px;
         }
-
         .${SCOPE}-card {
           width: 240px;
           aspect-ratio: 5 / 7;
@@ -158,117 +187,101 @@ export default function PovCards({
           align-items: center;
           justify-content: normal;
           gap: 16px;
-          box-shadow:
-            0 4px 24px rgba(0, 0, 0, 0.06),
-            0 1px 4px rgba(0, 0, 0, 0.04);
+          box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06), 0 1px 4px rgba(0, 0, 0, 0.04);
           position: absolute;
           bottom: -140px;
           transform-origin: bottom center;
         }
-        .${SCOPE}-card:nth-child(1) {
-          left: 0;
-          transform: rotate(-8deg);
-          z-index: 2;
-        }
-        .${SCOPE}-card:nth-child(2) {
-          left: 50%;
-          transform: translateX(-50%) translateY(-30px);
-          z-index: 1;
-          background: #f0ecf8;
-        }
-        .${SCOPE}-card:nth-child(3) {
-          right: 0;
-          transform: rotate(8deg);
-          z-index: 2;
-        }
-
-        .${SCOPE}-card-avatar {
-          width: 48px;
-          height: 48px;
-          border-radius: 50%;
-          object-fit: cover;
-          border: 2px solid #fff;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-        .${SCOPE}-card-question {
-          font-size: 1.1rem;
-          font-weight: 600;
-          color: #1a1a1a;
-          text-align: center;
-          line-height: 1.35;
-          margin: 0;
-          font-family: ${brand.headerFont || "inherit"};
-        }
-        .${SCOPE}-card-stats {
-          display: flex;
-          gap: 16px;
-          align-items: center;
-          font-size: 0.85rem;
-          color: #8b8b8b;
-          font-family: ${brand.bodyFont || "inherit"};
-        }
-        .${SCOPE}-card-stats span {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-        }
-        .${SCOPE}-card-dot {
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          background: ${primary};
-          opacity: 0.6;
-        }
-
+        .${SCOPE}-card:nth-child(1) { left: 0; transform: rotate(-8deg); z-index: 2; }
+        .${SCOPE}-card:nth-child(2) { left: 50%; transform: translateX(-50%) translateY(-30px); z-index: 1; background: #f0ecf8; }
+        .${SCOPE}-card:nth-child(3) { right: 0; transform: rotate(8deg); z-index: 2; }
+        .${SCOPE}-card-avatar { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); }
+        .${SCOPE}-card-question { font-size: 1.1rem; font-weight: 600; color: #1a1a1a; text-align: center; line-height: 1.35; margin: 0; font-family: ${brand.headerFont || "inherit"}; }
+        .${SCOPE}-card-stats { display: flex; gap: 16px; align-items: center; font-size: 0.85rem; color: #8b8b8b; font-family: ${brand.bodyFont || "inherit"}; }
+        .${SCOPE}-card-stats span { display: flex; align-items: center; gap: 6px; }
+        .${SCOPE}-card-dot { width: 8px; height: 8px; border-radius: 50%; background: ${primary}; opacity: 0.6; }
         @media (max-width: 768px) {
-          .${SCOPE} {
-            padding: 56px 16px 0;
-          }
-          .${SCOPE}-cards {
-            height: 280px;
-            max-width: 100%;
-          }
-          .${SCOPE}-card {
-            width: 200px;
-            padding: 24px 16px 20px;
-          }
-          .${SCOPE}-card-question {
-            font-size: 0.95rem;
-          }
+          .${SCOPE} { padding: 56px 16px 0; }
+          .${SCOPE}-cards { height: 280px; max-width: 100%; }
+          .${SCOPE}-card { width: 200px; padding: 24px 16px 20px; }
+          .${SCOPE}-card-question { font-size: 0.95rem; }
         }
-
         @media (max-width: 520px) {
-          .${SCOPE}-cards {
-            height: 220px;
-          }
-          .${SCOPE}-card {
-            width: 180px;
-            padding: 20px 14px 16px;
-            border-radius: 14px;
-          }
-          .${SCOPE}-card:nth-child(1) {
-            transform: rotate(-6deg) translateY(16px);
-          }
-          .${SCOPE}-card:nth-child(3) {
-            transform: rotate(6deg) translateY(16px);
-          }
-          .${SCOPE}-card-avatar {
-            width: 36px;
-            height: 36px;
-          }
-          .${SCOPE}-card-question {
-            font-size: 0.85rem;
-          }
-          .${SCOPE}-card-stats {
-            font-size: 0.75rem;
-          }
+          .${SCOPE}-cards { height: 220px; }
+          .${SCOPE}-card { width: 180px; padding: 20px 14px 16px; border-radius: 14px; }
+          .${SCOPE}-card:nth-child(1) { transform: rotate(-6deg) translateY(16px); }
+          .${SCOPE}-card:nth-child(3) { transform: rotate(6deg) translateY(16px); }
+          .${SCOPE}-card-avatar { width: 36px; height: 36px; }
+          .${SCOPE}-card-question { font-size: 0.85rem; }
+          .${SCOPE}-card-stats { font-size: 0.75rem; }
         }
       `}</style>
 
-      {/* Text content */}
       <div className={`${SCOPE}-content`}>
-        {title && <h1 className={`${SCOPE}-title`}>{title}</h1>}
-        {subtitle && <p className={`${SCOPE}-subtitle`}>{subtitle}</p>}
+        {isEditing ? (
+          <ResizableText
+            text={title || "Your Heading"}
+            isEditing
+            onTextChange={onTitleChange}
+            textStyle={titleStyle}
+            selected={titleSelected}
+            onSelect={() => {
+              setTitleSelected(true);
+              setSubtitleSelected(false);
+            }}
+            onDeselect={() => setTitleSelected(false)}
+            toolbarProps={{
+              fontSize: overrides?.titleFontSize ?? 38,
+              fontFamily: overrides?.titleFontFamily ?? "",
+              fontWeight: overrides?.titleFontWeight ?? "bold",
+              fontStyle: overrides?.titleFontStyle ?? "normal",
+              color: overrides?.titleTextColor ?? "#1a1a1a",
+              textAlign: overrides?.titleTextAlign ?? "center",
+              onFontSizeChange: (v) => emitOverride({ titleFontSize: v }),
+              onFontFamilyChange: (v) => emitOverride({ titleFontFamily: v }),
+              onFontWeightChange: (v) => emitOverride({ titleFontWeight: v }),
+              onFontStyleChange: (v) => emitOverride({ titleFontStyle: v }),
+              onColorChange: (v) => emitOverride({ titleTextColor: v }),
+              onTextAlignChange: (v) => emitOverride({ titleTextAlign: v }),
+            }}
+          />
+        ) : (
+          title && <h1 style={titleStyle}>{title}</h1>
+        )}
+
+        {isEditing ? (
+          <ResizableText
+            text={subtitle || ""}
+            isEditing
+            onTextChange={onSubtitleChange}
+            textStyle={subtitleStyle}
+            selected={subtitleSelected}
+            onSelect={() => {
+              setSubtitleSelected(true);
+              setTitleSelected(false);
+            }}
+            onDeselect={() => setSubtitleSelected(false)}
+            toolbarProps={{
+              fontSize: overrides?.subtitleFontSize ?? 16,
+              fontFamily: overrides?.subtitleFontFamily ?? "",
+              fontWeight: overrides?.subtitleFontWeight ?? "normal",
+              fontStyle: overrides?.subtitleFontStyle ?? "normal",
+              color: overrides?.subtitleTextColor ?? "#5c5c5c",
+              textAlign: overrides?.subtitleTextAlign ?? "center",
+              onFontSizeChange: (v) => emitOverride({ subtitleFontSize: v }),
+              onFontFamilyChange: (v) =>
+                emitOverride({ subtitleFontFamily: v }),
+              onFontWeightChange: (v) =>
+                emitOverride({ subtitleFontWeight: v }),
+              onFontStyleChange: (v) => emitOverride({ subtitleFontStyle: v }),
+              onColorChange: (v) => emitOverride({ subtitleTextColor: v }),
+              onTextAlignChange: (v) => emitOverride({ subtitleTextAlign: v }),
+            }}
+          />
+        ) : (
+          subtitle && <p style={subtitleStyle}>{subtitle}</p>
+        )}
+
         {buttonLabel && (
           <button
             type="button"
@@ -280,7 +293,6 @@ export default function PovCards({
         )}
       </div>
 
-      {/* Fanned cards */}
       <div className={`${SCOPE}-cards`}>
         {CARDS.map((card) => (
           <div key={card.question} className={`${SCOPE}-card`}>

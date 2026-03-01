@@ -150,6 +150,15 @@ export const WIDGET_CATALOGUE: WidgetCatalogue = {
       section: "features",
     },
   ],
+  faq: [
+    {
+      id: "classic-collapsible",
+      name: "Classic Collapsible",
+      description:
+        "Clean accordion with native details/summary elements, left-aligned heading, and subtle bottom borders between items.",
+      section: "faq",
+    },
+  ],
   about: [
     {
       id: "left-image",

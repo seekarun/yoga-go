@@ -28,7 +28,10 @@ export interface WidgetBrandConfig {
  * Combines SectionId subsets with top-level template sections (hero, footer, etc.).
  */
 export type WidgetSectionType =
-  | Extract<SectionId, "testimonials" | "products" | "about" | "features">
+  | Extract<
+      SectionId,
+      "testimonials" | "products" | "about" | "features" | "faq"
+    >
   | "hero";
 
 /**

@@ -173,7 +173,8 @@
       "mcp__plugin_playwright_playwright__browser_wait_for",
       "Bash(/usr/bin/grep:*)",
       "WebFetch(domain:api.pexels.com)",
-      "mcp__plugin_playwright_playwright__browser_close"
+      "mcp__plugin_playwright_playwright__browser_close",
+      "Bash(npx:*)"
     ],
     "deny": [],
     "ask": []
