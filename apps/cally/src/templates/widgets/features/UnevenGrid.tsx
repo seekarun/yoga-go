@@ -205,10 +205,14 @@ export default function UnevenGrid({
     fontSize: styleOverrides?.headingFontSize ?? "clamp(1.5rem, 3vw, 2rem)",
     fontWeight: styleOverrides?.headingFontWeight ?? 700,
     fontStyle: styleOverrides?.headingFontStyle ?? "normal",
-    color: styleOverrides?.headingTextColor ?? "#1a1a1a",
+    color:
+      styleOverrides?.headingTextColor ?? brand.subHeaderFontColor ?? "#1a1a1a",
     textAlign: styleOverrides?.headingTextAlign ?? "left",
     fontFamily:
-      styleOverrides?.headingFontFamily || brand.headerFont || "inherit",
+      styleOverrides?.headingFontFamily ||
+      brand.subHeaderFont ||
+      brand.headerFont ||
+      "inherit",
     lineHeight: 1.15,
     margin: "0 0 8px",
   };
@@ -217,7 +221,8 @@ export default function UnevenGrid({
     fontSize: styleOverrides?.subheadingFontSize ?? "1rem",
     fontWeight: styleOverrides?.subheadingFontWeight ?? "normal",
     fontStyle: styleOverrides?.subheadingFontStyle ?? "normal",
-    color: styleOverrides?.subheadingTextColor ?? "#6b7280",
+    color:
+      styleOverrides?.subheadingTextColor ?? brand.bodyFontColor ?? "#6b7280",
     textAlign: styleOverrides?.subheadingTextAlign ?? "left",
     fontFamily:
       styleOverrides?.subheadingFontFamily || brand.bodyFont || "inherit",
@@ -346,13 +351,13 @@ export default function UnevenGrid({
           font-size: clamp(1.5rem, 3vw, 2rem);
           font-weight: 700;
           margin: 0 0 8px;
-          font-family: ${brand.headerFont || "inherit"};
-          color: #1a1a1a;
+          font-family: ${brand.subHeaderFont || brand.headerFont || "inherit"};
+          color: ${brand.subHeaderFontColor || "#1a1a1a"};
         }
         .${SCOPE}-header { margin-bottom: 40px; }
         .${SCOPE}-subheading {
           font-size: 1rem;
-          color: #6b7280;
+          color: ${brand.bodyFontColor || "#6b7280"};
           margin: 0 0 40px;
           font-family: ${brand.bodyFont || "inherit"};
         }
@@ -360,16 +365,16 @@ export default function UnevenGrid({
           display: grid;
           grid-template-columns: 1fr 1fr 1fr;
           grid-template-rows: auto auto;
-          gap: 16px;
+          gap: ${brand.cardStyle?.margin ?? 16}px;
         }
         .${SCOPE}-card {
-          border-radius: 20px;
+          border-radius: ${brand.cardStyle?.borderRadius ?? 20}px;
           display: flex;
           flex-direction: column;
           justify-content: space-between;
           overflow: hidden;
           min-height: 220px;
-          background: ${cardBg};
+          background: ${brand.cardStyle?.bgColor || cardBg};
         }
         .${SCOPE}-card--0 { grid-row: 1 / 3; grid-column: 1; }
         .${SCOPE}-card--1 { grid-row: 1; grid-column: 2; aspect-ratio: 1; }
@@ -389,14 +394,14 @@ export default function UnevenGrid({
         .${SCOPE}-card--3 .${SCOPE}-card-img {
           width: 100%; height: 100%; max-height: none; object-fit: cover; margin-top: 0;
         }
-        .${SCOPE}-card-text { padding: 24px 24px 0; }
+        .${SCOPE}-card-text { padding: ${brand.cardStyle?.padding ?? 24}px ${brand.cardStyle?.padding ?? 24}px 0; }
         .${SCOPE}-card-title {
-          font-size: clamp(1.3rem, 2.5vw, 1.8rem);
-          font-weight: 800; color: #1a1a1a; margin: 0 0 8px;
-          font-family: ${brand.headerFont || "inherit"}; line-height: 1.15;
+          font-size: ${brand.subHeaderFontSize ? `${brand.subHeaderFontSize}px` : "clamp(1.3rem, 2.5vw, 1.8rem)"};
+          font-weight: 800; color: ${brand.subHeaderFontColor || "#1a1a1a"}; margin: 0 0 8px;
+          font-family: ${brand.subHeaderFont || brand.headerFont || "inherit"}; line-height: 1.15;
         }
         .${SCOPE}-card-desc {
-          font-size: 0.95rem; color: #4a4a4a; line-height: 1.6; margin: 0;
+          font-size: 0.95rem; color: ${brand.bodyFontColor || "#4a4a4a"}; line-height: 1.6; margin: 0;
           font-family: ${brand.bodyFont || "inherit"};
         }
         .${SCOPE}-card-text-el--selected {
@@ -439,10 +444,16 @@ export default function UnevenGrid({
               onDeselect={() => setHeadingSelected(false)}
               toolbarProps={{
                 fontSize: styleOverrides?.headingFontSize ?? 28,
-                fontFamily: styleOverrides?.headingFontFamily ?? "",
+                fontFamily:
+                  styleOverrides?.headingFontFamily ||
+                  brand.subHeaderFont ||
+                  "",
                 fontWeight: styleOverrides?.headingFontWeight ?? "bold",
                 fontStyle: styleOverrides?.headingFontStyle ?? "normal",
-                color: styleOverrides?.headingTextColor ?? "#1a1a1a",
+                color:
+                  styleOverrides?.headingTextColor ??
+                  brand.subHeaderFontColor ??
+                  "#1a1a1a",
                 textAlign: styleOverrides?.headingTextAlign ?? "left",
                 onFontSizeChange: (v) => emitOverride({ headingFontSize: v }),
                 onFontFamilyChange: (v) =>
@@ -472,10 +483,14 @@ export default function UnevenGrid({
               onDeselect={() => setSubheadingSelected(false)}
               toolbarProps={{
                 fontSize: styleOverrides?.subheadingFontSize ?? 16,
-                fontFamily: styleOverrides?.subheadingFontFamily ?? "",
+                fontFamily:
+                  styleOverrides?.subheadingFontFamily || brand.bodyFont || "",
                 fontWeight: styleOverrides?.subheadingFontWeight ?? "normal",
                 fontStyle: styleOverrides?.subheadingFontStyle ?? "normal",
-                color: styleOverrides?.subheadingTextColor ?? "#6b7280",
+                color:
+                  styleOverrides?.subheadingTextColor ??
+                  brand.bodyFontColor ??
+                  "#6b7280",
                 textAlign: styleOverrides?.subheadingTextAlign ?? "left",
                 onFontSizeChange: (v) =>
                   emitOverride({ subheadingFontSize: v }),

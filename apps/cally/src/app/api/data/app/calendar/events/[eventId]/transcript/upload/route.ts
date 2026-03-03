@@ -20,7 +20,8 @@ const s3Client = new S3Client({
   region: process.env.AWS_REGION || "ap-southeast-2",
 });
 
-const S3_BUCKET = process.env.S3_AUDIO_BUCKET || "cally-audio-files";
+const S3_BUCKET =
+  process.env.S3_AUDIO_BUCKET || "cally-audio-files-710735877057";
 
 interface RouteParams {
   params: Promise<{

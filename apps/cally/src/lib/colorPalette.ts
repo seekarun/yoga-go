@@ -293,3 +293,48 @@ export const HARMONY_OPTIONS: {
 export function isValidHexColor(hex: string): boolean {
   return /^#[0-9A-Fa-f]{6}$/.test(hex);
 }
+
+/**
+ * Check whether a color value is a palette/custom reference string
+ * e.g. "palette:primary", "palette:secondary", "custom:Black"
+ */
+export function isColorRef(value: string): boolean {
+  return value.startsWith("palette:") || value.startsWith("custom:");
+}
+
+/**
+ * Resolve a color reference to its hex value.
+ * Accepts both reference strings and raw hex values (pass-through).
+ *
+ * Reference formats:
+ *   "palette:primary"   → palette[500]
+ *   "palette:secondary" → palette.secondary
+ *   "palette:highlight" → palette.highlight
+ *   "custom:<name>"     → matching customColor.hex
+ */
+export function resolveColorRef(
+  value: string | undefined,
+  palette?: ColorPalette,
+  customColors?: { name: string; hex: string }[],
+  fallback = "#1a1a1a",
+): string {
+  if (!value) return fallback;
+  if (!isColorRef(value)) return value; // raw hex pass-through
+
+  const [kind, key] = value.split(":") as [string, string];
+
+  if (kind === "palette" && palette) {
+    if (key === "primary") return palette[500];
+    if (key === "secondary") return palette.secondary || fallback;
+    if (key === "highlight") return palette.highlight || fallback;
+  }
+
+  if (kind === "custom" && customColors) {
+    const match = customColors.find(
+      (c) => c.name.toLowerCase() === key.toLowerCase(),
+    );
+    if (match) return match.hex;
+  }
+
+  return fallback;
+}

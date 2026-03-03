@@ -276,9 +276,9 @@ export default function AnimatedCardScroll({
         .${SCOPE}-card {
           flex-shrink: 0;
           width: var(--card-w);
-          background: ${brand.secondaryColor || "#fff"};
-          border-radius: 20px;
-          padding: 32px 28px;
+          background: ${brand.cardStyle?.bgColor || brand.secondaryColor || "#fff"};
+          border-radius: ${brand.cardStyle?.borderRadius ?? 20}px;
+          padding: ${brand.cardStyle?.padding ?? 32}px;
           box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
           border: 1px solid #f0f0f0;
           display: flex;
@@ -461,10 +461,16 @@ export default function AnimatedCardScroll({
               onDeselect={() => setHeadingSelected(false)}
               toolbarProps={{
                 fontSize: styleOverrides?.headingFontSize ?? 28,
-                fontFamily: styleOverrides?.headingFontFamily ?? "",
+                fontFamily:
+                  styleOverrides?.headingFontFamily ||
+                  brand.subHeaderFont ||
+                  "",
                 fontWeight: styleOverrides?.headingFontWeight ?? "bold",
                 fontStyle: styleOverrides?.headingFontStyle ?? "normal",
-                color: styleOverrides?.headingTextColor ?? "#1a1a1a",
+                color:
+                  styleOverrides?.headingTextColor ??
+                  brand.subHeaderFontColor ??
+                  "#1a1a1a",
                 textAlign: styleOverrides?.headingTextAlign ?? "center",
                 onFontSizeChange: (v) => emitOverride({ headingFontSize: v }),
                 onFontFamilyChange: (v) =>
@@ -493,10 +499,14 @@ export default function AnimatedCardScroll({
               onDeselect={() => setSubheadingSelected(false)}
               toolbarProps={{
                 fontSize: styleOverrides?.subheadingFontSize ?? 16,
-                fontFamily: styleOverrides?.subheadingFontFamily ?? "",
+                fontFamily:
+                  styleOverrides?.subheadingFontFamily || brand.bodyFont || "",
                 fontWeight: styleOverrides?.subheadingFontWeight ?? "normal",
                 fontStyle: styleOverrides?.subheadingFontStyle ?? "normal",
-                color: styleOverrides?.subheadingTextColor ?? "#6b7280",
+                color:
+                  styleOverrides?.subheadingTextColor ??
+                  brand.bodyFontColor ??
+                  "#6b7280",
                 textAlign: styleOverrides?.subheadingTextAlign ?? "center",
                 onFontSizeChange: (v) =>
                   emitOverride({ subheadingFontSize: v }),

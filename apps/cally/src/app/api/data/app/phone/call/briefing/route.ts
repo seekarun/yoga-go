@@ -19,7 +19,8 @@ import { nanoid } from "nanoid";
 const s3Client = new S3Client({
   region: process.env.AWS_REGION || "ap-southeast-2",
 });
-const AUDIO_BUCKET = process.env.S3_AUDIO_BUCKET || "cally-audio-files";
+const AUDIO_BUCKET =
+  process.env.S3_AUDIO_BUCKET || "cally-audio-files-710735877057";
 
 /**
  * Get the base URL for the app (for webhook URLs)

@@ -10,11 +10,17 @@
 import type { ColorPalette } from "@/lib/colorPalette";
 
 /**
+ * Font weight — accepts CSS numeric weights (100–900) or legacy keywords.
+ */
+export type FontWeight = number | "normal" | "bold";
+
+/**
  * Brand-level font configuration (header or body)
  */
 export interface BrandFont {
   family: string; // e.g. "'Playfair Display', serif" (matches FONT_OPTIONS value)
   size?: number; // px
+  color?: string; // hex color string
 }
 
 /**
@@ -101,6 +107,27 @@ export interface ButtonConfig {
 }
 
 /**
+ * Brand-level button style overrides (primary / secondary)
+ */
+export interface BrandButtonStyle {
+  fillColor?: string; // background colour (hex or color ref)
+  textColor?: string; // text colour (hex or color ref)
+  borderColor?: string; // border colour (hex or color ref)
+  borderWidth?: number; // px, 0 = no border
+  borderRadius?: number; // px
+}
+
+/**
+ * Brand-level card style overrides
+ */
+export interface BrandCardStyle {
+  borderRadius?: number; // px
+  padding?: number; // px
+  margin?: number; // px (gap between cards)
+  bgColor?: string; // background colour (hex or color ref)
+}
+
+/**
  * Common section style overrides shared by all sections
  */
 export interface SectionStyleOverrides {
@@ -121,14 +148,14 @@ export interface SectionStyleOverrides {
   // Heading text overrides
   headingFontSize?: number;
   headingFontFamily?: string;
-  headingFontWeight?: "normal" | "bold";
+  headingFontWeight?: FontWeight;
   headingFontStyle?: "normal" | "italic";
   headingTextColor?: string;
   headingTextAlign?: "left" | "center" | "right";
   // Subheading text overrides
   subheadingFontSize?: number;
   subheadingFontFamily?: string;
-  subheadingFontWeight?: "normal" | "bold";
+  subheadingFontWeight?: FontWeight;
   subheadingFontStyle?: "normal" | "italic";
   subheadingTextColor?: string;
   subheadingTextAlign?: "left" | "center" | "right";
@@ -146,14 +173,14 @@ export interface AboutStyleOverrides {
   // Body text overrides
   fontSize?: number; // px, default 18
   fontFamily?: string; // default: "" (system/inherit)
-  fontWeight?: "normal" | "bold"; // default: "normal"
+  fontWeight?: FontWeight; // default: "normal"
   fontStyle?: "normal" | "italic"; // default: "normal"
   textColor?: string; // hex, default: theme.text
   textAlign?: "left" | "center" | "right"; // default: "left"
   // Title text overrides
   titleFontSize?: number; // px, default 28
   titleFontFamily?: string; // default: "" (system/inherit)
-  titleFontWeight?: "normal" | "bold"; // default: "bold"
+  titleFontWeight?: FontWeight; // default: "bold"
   titleFontStyle?: "normal" | "italic"; // default: "normal"
   titleTextColor?: string; // hex, default: theme.text
   titleTextAlign?: "left" | "center" | "right"; // default: "left"
@@ -183,7 +210,7 @@ export interface TextSpan {
   length: number; // number of characters
   fontSize?: number;
   fontFamily?: string;
-  fontWeight?: "normal" | "bold";
+  fontWeight?: FontWeight;
   fontStyle?: "normal" | "italic";
   color?: string;
 }
@@ -191,13 +218,13 @@ export interface TextSpan {
 export interface HeroStyleOverrides {
   titleFontSize?: number;
   titleFontFamily?: string;
-  titleFontWeight?: "normal" | "bold";
+  titleFontWeight?: FontWeight;
   titleFontStyle?: "normal" | "italic";
   titleTextColor?: string;
   titleTextAlign?: "left" | "center" | "right";
   subtitleFontSize?: number;
   subtitleFontFamily?: string;
-  subtitleFontWeight?: "normal" | "bold";
+  subtitleFontWeight?: FontWeight;
   subtitleFontStyle?: "normal" | "italic";
   subtitleTextColor?: string;
   subtitleTextAlign?: "left" | "center" | "right";
@@ -254,13 +281,13 @@ export interface FeatureCard {
   description: string;
   titleFontSize?: number;
   titleFontFamily?: string;
-  titleFontWeight?: "normal" | "bold";
+  titleFontWeight?: FontWeight;
   titleFontStyle?: "normal" | "italic";
   titleColor?: string;
   titleTextAlign?: "left" | "center" | "right";
   descFontSize?: number;
   descFontFamily?: string;
-  descFontWeight?: "normal" | "bold";
+  descFontWeight?: FontWeight;
   descFontStyle?: "normal" | "italic";
   descColor?: string;
   descTextAlign?: "left" | "center" | "right";
@@ -345,14 +372,14 @@ export interface ProductsStyleOverrides {
   // Heading text overrides
   headingFontSize?: number; // px
   headingFontFamily?: string;
-  headingFontWeight?: "normal" | "bold";
+  headingFontWeight?: FontWeight;
   headingFontStyle?: "normal" | "italic";
   headingTextColor?: string;
   headingTextAlign?: "left" | "center" | "right";
   // Subheading text overrides
   subheadingFontSize?: number; // px
   subheadingFontFamily?: string;
-  subheadingFontWeight?: "normal" | "bold";
+  subheadingFontWeight?: FontWeight;
   subheadingFontStyle?: "normal" | "italic";
   subheadingTextColor?: string;
   subheadingTextAlign?: "left" | "center" | "right";
@@ -366,14 +393,14 @@ export interface ProductCardStyleOverride {
   // Name/title
   nameFontSize?: number;
   nameFontFamily?: string;
-  nameFontWeight?: "normal" | "bold";
+  nameFontWeight?: FontWeight;
   nameFontStyle?: "normal" | "italic";
   nameColor?: string;
   nameTextAlign?: "left" | "center" | "right";
   // Description
   descFontSize?: number;
   descFontFamily?: string;
-  descFontWeight?: "normal" | "bold";
+  descFontWeight?: FontWeight;
   descFontStyle?: "normal" | "italic";
   descColor?: string;
   descTextAlign?: "left" | "center" | "right";
@@ -520,7 +547,11 @@ export interface SimpleLandingPageConfig {
     primaryColor?: string;
     palette?: ColorPalette;
     headerFont?: BrandFont;
+    subHeaderFont?: BrandFont;
     bodyFont?: BrandFont;
+    primaryButton?: BrandButtonStyle;
+    secondaryButton?: BrandButtonStyle;
+    cardStyle?: BrandCardStyle;
   };
   /** User-defined custom colour swatches */
   customColors?: { name: string; hex: string }[];

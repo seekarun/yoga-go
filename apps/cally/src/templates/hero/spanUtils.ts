@@ -5,7 +5,7 @@
  * Unspanned regions inherit the global style.
  */
 
-import type { TextSpan } from "@/types/landing-page";
+import type { FontWeight, TextSpan } from "@/types/landing-page";
 
 /** A renderable segment produced by `renderSpans`. */
 export interface TextSegment {
@@ -18,7 +18,7 @@ export interface TextSegment {
 export interface SpanStyle {
   fontSize?: number;
   fontFamily?: string;
-  fontWeight?: "normal" | "bold";
+  fontWeight?: FontWeight;
   fontStyle?: "normal" | "italic";
   color?: string;
 }

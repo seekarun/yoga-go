@@ -2,7 +2,7 @@
 
 import { forwardRef, useRef, useCallback, useState } from "react";
 import type { ColorPalette } from "@/lib/colorPalette";
-import type { TextSpan } from "@/types/landing-page";
+import type { FontWeight, TextSpan } from "@/types/landing-page";
 import TextToolbar from "./TextToolbar";
 import WidthResizeHandles from "./WidthResizeHandles";
 import { renderSpans, mergeSpan, getStyleAtRange } from "./spanUtils";
@@ -12,13 +12,13 @@ import { getSpanFontUrls } from "./fonts";
 interface TextToolbarProps {
   fontSize: number;
   fontFamily: string;
-  fontWeight: "normal" | "bold";
+  fontWeight: FontWeight;
   fontStyle: "normal" | "italic";
   color: string;
   textAlign: "left" | "center" | "right";
   onFontSizeChange: (value: number) => void;
   onFontFamilyChange: (value: string) => void;
-  onFontWeightChange: (value: "normal" | "bold") => void;
+  onFontWeightChange: (value: FontWeight) => void;
   onFontStyleChange: (value: "normal" | "italic") => void;
   onColorChange: (value: string) => void;
   onTextAlignChange: (value: "left" | "center" | "right") => void;
@@ -293,7 +293,7 @@ const ResizableText = forwardRef<HTMLDivElement, ResizableTextProps>(
         textAlign: toolbarProps.textAlign, // alignment is always global
         onFontSizeChange: (v: number) => applySpanStyle({ fontSize: v }),
         onFontFamilyChange: (v: string) => applySpanStyle({ fontFamily: v }),
-        onFontWeightChange: (v: "normal" | "bold") =>
+        onFontWeightChange: (v: FontWeight) =>
           applySpanStyle({ fontWeight: v }),
         onFontStyleChange: (v: "normal" | "italic") =>
           applySpanStyle({ fontStyle: v }),

@@ -17,7 +17,11 @@ interface GallerySectionProps {
   tenantData?: TenantLandingPageData;
   isEditing?: boolean;
   variant?: "light" | "dark" | "gray";
-  brandFonts?: { headerFont?: BrandFont; bodyFont?: BrandFont };
+  brandFonts?: {
+    headerFont?: BrandFont;
+    subHeaderFont?: BrandFont;
+    bodyFont?: BrandFont;
+  };
   onHeadingChange?: (heading: string) => void;
   onSubheadingChange?: (subheading: string) => void;
   onAddImage?: () => void;
@@ -162,12 +166,17 @@ export default function GallerySection({
   };
 
   const headingStyle: React.CSSProperties = {
-    fontFamily: brandFonts?.headerFont?.family || undefined,
-    fontSize: brandFonts?.headerFont?.size
-      ? `${brandFonts.headerFont.size}px`
-      : "clamp(1.75rem, 3vw, 2.5rem)",
+    fontFamily:
+      brandFonts?.subHeaderFont?.family ||
+      brandFonts?.headerFont?.family ||
+      undefined,
+    fontSize: brandFonts?.subHeaderFont?.size
+      ? `${brandFonts.subHeaderFont.size}px`
+      : brandFonts?.headerFont?.size
+        ? `${brandFonts.headerFont.size}px`
+        : "clamp(1.75rem, 3vw, 2.5rem)",
     fontWeight: 700,
-    color: theme.heading,
+    color: brandFonts?.subHeaderFont?.color || theme.heading,
     marginBottom: "12px",
   };
 
@@ -176,7 +185,7 @@ export default function GallerySection({
     fontSize: brandFonts?.bodyFont?.size
       ? `${brandFonts.bodyFont.size}px`
       : "1.1rem",
-    color: theme.subheading,
+    color: brandFonts?.bodyFont?.color || theme.subheading,
     maxWidth: "600px",
     margin: "0 auto",
   };

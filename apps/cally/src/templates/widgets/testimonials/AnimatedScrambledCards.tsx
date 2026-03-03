@@ -284,8 +284,8 @@ export default function AnimatedScrambledCards({
           flex-shrink: 0;
           width: var(--card-w);
           background: linear-gradient(145deg, #2a2a2a 0%, #1a1a1a 100%);
-          border-radius: 16px;
-          padding: 36px 32px 32px;
+          border-radius: ${brand.cardStyle?.borderRadius ?? 16}px;
+          padding: ${brand.cardStyle?.padding ?? 36}px;
           border: 1px solid rgba(255,255,255,0.08);
         }
         .${SCOPE}-stars {
@@ -422,10 +422,16 @@ export default function AnimatedScrambledCards({
               onDeselect={() => setHeadingSelected(false)}
               toolbarProps={{
                 fontSize: styleOverrides?.headingFontSize ?? 28,
-                fontFamily: styleOverrides?.headingFontFamily ?? "",
+                fontFamily:
+                  styleOverrides?.headingFontFamily ||
+                  brand.subHeaderFont ||
+                  "",
                 fontWeight: styleOverrides?.headingFontWeight ?? "bold",
                 fontStyle: styleOverrides?.headingFontStyle ?? "normal",
-                color: styleOverrides?.headingTextColor ?? "#fff",
+                color:
+                  styleOverrides?.headingTextColor ??
+                  brand.subHeaderFontColor ??
+                  "#fff",
                 textAlign: styleOverrides?.headingTextAlign ?? "center",
                 onFontSizeChange: (v) => emitOverride({ headingFontSize: v }),
                 onFontFamilyChange: (v) =>
@@ -454,11 +460,13 @@ export default function AnimatedScrambledCards({
               onDeselect={() => setSubheadingSelected(false)}
               toolbarProps={{
                 fontSize: styleOverrides?.subheadingFontSize ?? 16,
-                fontFamily: styleOverrides?.subheadingFontFamily ?? "",
+                fontFamily:
+                  styleOverrides?.subheadingFontFamily || brand.bodyFont || "",
                 fontWeight: styleOverrides?.subheadingFontWeight ?? "normal",
                 fontStyle: styleOverrides?.subheadingFontStyle ?? "normal",
                 color:
                   styleOverrides?.subheadingTextColor ??
+                  brand.bodyFontColor ??
                   "rgba(255,255,255,0.55)",
                 textAlign: styleOverrides?.subheadingTextAlign ?? "center",
                 onFontSizeChange: (v) =>

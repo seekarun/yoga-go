@@ -211,9 +211,9 @@ export default function AnimatedSingleCard({
           font-family: ${brand.bodyFont || "inherit"};
         }
         .${SCOPE}-card {
-          background: ${brand.secondaryColor || "#f9fafb"};
-          border-radius: 20px;
-          padding: 48px 40px 40px;
+          background: ${brand.cardStyle?.bgColor || brand.secondaryColor || "#f9fafb"};
+          border-radius: ${brand.cardStyle?.borderRadius ?? 20}px;
+          padding: ${brand.cardStyle?.padding ?? 48}px;
           text-align: center;
           box-shadow: 0 4px 32px rgba(0, 0, 0, 0.06);
           position: relative;
@@ -337,10 +337,16 @@ export default function AnimatedSingleCard({
                 onDeselect={() => setHeadingSelected(false)}
                 toolbarProps={{
                   fontSize: styleOverrides?.headingFontSize ?? 28,
-                  fontFamily: styleOverrides?.headingFontFamily ?? "",
+                  fontFamily:
+                    styleOverrides?.headingFontFamily ||
+                    brand.subHeaderFont ||
+                    "",
                   fontWeight: styleOverrides?.headingFontWeight ?? "bold",
                   fontStyle: styleOverrides?.headingFontStyle ?? "normal",
-                  color: styleOverrides?.headingTextColor ?? "#1a1a1a",
+                  color:
+                    styleOverrides?.headingTextColor ??
+                    brand.subHeaderFontColor ??
+                    "#1a1a1a",
                   textAlign: styleOverrides?.headingTextAlign ?? "center",
                   onFontSizeChange: (v) => emitOverride({ headingFontSize: v }),
                   onFontFamilyChange: (v) =>
@@ -371,10 +377,16 @@ export default function AnimatedSingleCard({
                 onDeselect={() => setSubheadingSelected(false)}
                 toolbarProps={{
                   fontSize: styleOverrides?.subheadingFontSize ?? 16,
-                  fontFamily: styleOverrides?.subheadingFontFamily ?? "",
+                  fontFamily:
+                    styleOverrides?.subheadingFontFamily ||
+                    brand.bodyFont ||
+                    "",
                   fontWeight: styleOverrides?.subheadingFontWeight ?? "normal",
                   fontStyle: styleOverrides?.subheadingFontStyle ?? "normal",
-                  color: styleOverrides?.subheadingTextColor ?? "#6b7280",
+                  color:
+                    styleOverrides?.subheadingTextColor ??
+                    brand.bodyFontColor ??
+                    "#6b7280",
                   textAlign: styleOverrides?.subheadingTextAlign ?? "center",
                   onFontSizeChange: (v) =>
                     emitOverride({ subheadingFontSize: v }),

@@ -134,6 +134,7 @@ export default function LandingPageRenderer({
     <LandingPageThemeProvider
       palette={config.theme?.palette}
       headerFont={config.theme?.headerFont}
+      subHeaderFont={config.theme?.subHeaderFont}
       bodyFont={config.theme?.bodyFont}
     >
       <LandingPageHeader

@@ -5,6 +5,7 @@ import type {
   AboutConfig,
   AboutStyleOverrides,
   BrandFont,
+  FontWeight,
   TenantLandingPageData,
 } from "@/types/landing-page";
 import type { ColorPalette } from "@/lib/colorPalette";
@@ -42,7 +43,11 @@ interface AboutSectionProps {
   variant?: "light" | "dark" | "gray";
   palette?: ColorPalette;
   customColors?: { name: string; hex: string }[];
-  brandFonts?: { headerFont?: BrandFont; bodyFont?: BrandFont };
+  brandFonts?: {
+    headerFont?: BrandFont;
+    subHeaderFont?: BrandFont;
+    bodyFont?: BrandFont;
+  };
   onCustomColorsChange?: (colors: { name: string; hex: string }[]) => void;
   onTitleChange?: (title: string) => void;
   onParagraphChange?: (paragraph: string) => void;
@@ -425,7 +430,7 @@ export default function AboutSection({
   );
 
   const handleTitleFontWeightChange = useCallback(
-    (val: "normal" | "bold") => {
+    (val: FontWeight) => {
       onStyleOverrideChange?.({ ...overrides, titleFontWeight: val });
     },
     [overrides, onStyleOverrideChange],
@@ -468,7 +473,7 @@ export default function AboutSection({
   );
 
   const handleFontWeightChange = useCallback(
-    (val: "normal" | "bold") => {
+    (val: FontWeight) => {
       onStyleOverrideChange?.({ ...overrides, fontWeight: val });
     },
     [overrides, onStyleOverrideChange],
@@ -843,16 +848,24 @@ export default function AboutSection({
   const titleStyle: React.CSSProperties = {
     fontSize: overrides?.titleFontSize
       ? `${overrides.titleFontSize}px`
-      : brandFonts?.headerFont?.size
-        ? `${brandFonts.headerFont.size}px`
-        : "1.75rem",
+      : brandFonts?.subHeaderFont?.size
+        ? `${brandFonts.subHeaderFont.size}px`
+        : brandFonts?.headerFont?.size
+          ? `${brandFonts.headerFont.size}px`
+          : "1.75rem",
     fontWeight: overrides?.titleFontWeight ?? "bold",
     lineHeight: 1.3,
     marginBottom: "16px",
-    color: overrides?.titleTextColor || theme.text,
+    color:
+      overrides?.titleTextColor ||
+      brandFonts?.subHeaderFont?.color ||
+      theme.text,
     textAlign: overrides?.titleTextAlign || "left",
     fontFamily:
-      overrides?.titleFontFamily || brandFonts?.headerFont?.family || undefined,
+      overrides?.titleFontFamily ||
+      brandFonts?.subHeaderFont?.family ||
+      brandFonts?.headerFont?.family ||
+      undefined,
     fontStyle: overrides?.titleFontStyle || undefined,
   };
 
@@ -863,7 +876,7 @@ export default function AboutSection({
         ? `${brandFonts.bodyFont.size}px`
         : "1.1rem",
     lineHeight: 1.8,
-    color: overrides?.textColor || theme.text,
+    color: overrides?.textColor || brandFonts?.bodyFont?.color || theme.text,
     textAlign: overrides?.textAlign || "left",
     fontFamily:
       overrides?.fontFamily || brandFonts?.bodyFont?.family || undefined,
@@ -1183,10 +1196,16 @@ export default function AboutSection({
               }
               toolbarProps={{
                 fontSize: overrides?.titleFontSize ?? 28,
-                fontFamily: overrides?.titleFontFamily ?? "",
+                fontFamily:
+                  overrides?.titleFontFamily ||
+                  brandFonts?.subHeaderFont?.family ||
+                  "",
                 fontWeight: overrides?.titleFontWeight ?? "bold",
                 fontStyle: overrides?.titleFontStyle ?? "normal",
-                color: overrides?.titleTextColor ?? theme.text,
+                color:
+                  overrides?.titleTextColor ??
+                  brandFonts?.subHeaderFont?.color ??
+                  theme.text,
                 textAlign: overrides?.titleTextAlign ?? "left",
                 onFontSizeChange: handleTitleFontSizeChange,
                 onFontFamilyChange: handleTitleFontFamilyChange,
@@ -1230,10 +1249,14 @@ export default function AboutSection({
               }
               toolbarProps={{
                 fontSize: overrides?.fontSize ?? 18,
-                fontFamily: overrides?.fontFamily ?? "",
+                fontFamily:
+                  overrides?.fontFamily || brandFonts?.bodyFont?.family || "",
                 fontWeight: overrides?.fontWeight ?? "normal",
                 fontStyle: overrides?.fontStyle ?? "normal",
-                color: overrides?.textColor ?? theme.text,
+                color:
+                  overrides?.textColor ??
+                  brandFonts?.bodyFont?.color ??
+                  theme.text,
                 textAlign: overrides?.textAlign ?? "left",
                 onFontSizeChange: handleFontSizeChange,
                 onFontFamilyChange: handleFontFamilyChange,

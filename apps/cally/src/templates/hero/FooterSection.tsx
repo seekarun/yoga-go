@@ -15,7 +15,11 @@ interface FooterSectionProps {
   footer: FooterConfig;
   tenantData?: TenantLandingPageData;
   isEditing?: boolean;
-  brandFonts?: { headerFont?: BrandFont; bodyFont?: BrandFont };
+  brandFonts?: {
+    headerFont?: BrandFont;
+    subHeaderFont?: BrandFont;
+    bodyFont?: BrandFont;
+  };
   onTextChange?: (text: string) => void;
   onLinkChange?: (index: number, field: "label" | "url", value: string) => void;
   onAddLink?: () => void;
@@ -91,7 +95,7 @@ export default function FooterSection({
   const textStyle: React.CSSProperties = {
     fontFamily: brandFonts?.bodyFont?.family || undefined,
     fontSize: "0.85rem",
-    color: "#6b7280",
+    color: brandFonts?.bodyFont?.color || "#6b7280",
     textAlign: "center",
   };
 

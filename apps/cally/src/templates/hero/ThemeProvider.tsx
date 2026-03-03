@@ -13,6 +13,7 @@ import { getGoogleFontsUrl } from "./fonts";
 interface LandingPageThemeProviderProps {
   palette?: ColorPalette;
   headerFont?: BrandFont;
+  subHeaderFont?: BrandFont;
   bodyFont?: BrandFont;
   children: ReactNode;
 }
@@ -29,6 +30,7 @@ interface LandingPageThemeProviderProps {
 export function LandingPageThemeProvider({
   palette,
   headerFont,
+  subHeaderFont,
   bodyFont,
   children,
 }: LandingPageThemeProviderProps) {
@@ -37,6 +39,10 @@ export function LandingPageThemeProvider({
   if (headerFont?.family) {
     const url = getGoogleFontsUrl(headerFont.family);
     if (url) fontLinks.push(url);
+  }
+  if (subHeaderFont?.family) {
+    const url = getGoogleFontsUrl(subHeaderFont.family);
+    if (url && !fontLinks.includes(url)) fontLinks.push(url);
   }
   if (bodyFont?.family) {
     const url = getGoogleFontsUrl(bodyFont.family);

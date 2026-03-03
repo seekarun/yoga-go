@@ -113,10 +113,14 @@ export default function SolidCards({
     fontSize: styleOverrides?.headingFontSize ?? "clamp(1.75rem, 3vw, 2.5rem)",
     fontWeight: styleOverrides?.headingFontWeight ?? 700,
     fontStyle: styleOverrides?.headingFontStyle ?? "normal",
-    color: styleOverrides?.headingTextColor ?? "#1a1a1a",
+    color:
+      styleOverrides?.headingTextColor ?? brand.subHeaderFontColor ?? "#1a1a1a",
     textAlign: styleOverrides?.headingTextAlign ?? "center",
     fontFamily:
-      styleOverrides?.headingFontFamily || brand.headerFont || "inherit",
+      styleOverrides?.headingFontFamily ||
+      brand.subHeaderFont ||
+      brand.headerFont ||
+      "inherit",
     lineHeight: 1.15,
     margin: "0 0 12px",
   };
@@ -125,7 +129,8 @@ export default function SolidCards({
     fontSize: styleOverrides?.subheadingFontSize ?? "1.1rem",
     fontWeight: styleOverrides?.subheadingFontWeight ?? "normal",
     fontStyle: styleOverrides?.subheadingFontStyle ?? "normal",
-    color: styleOverrides?.subheadingTextColor ?? "#6b7280",
+    color:
+      styleOverrides?.subheadingTextColor ?? brand.bodyFontColor ?? "#6b7280",
     textAlign: styleOverrides?.subheadingTextAlign ?? "center",
     fontFamily:
       styleOverrides?.subheadingFontFamily || brand.bodyFont || "inherit",
@@ -150,13 +155,13 @@ export default function SolidCards({
         .${SCOPE}-heading {
           font-size: clamp(1.75rem, 3vw, 2.5rem);
           font-weight: 700;
-          color: #1a1a1a;
+          color: ${brand.subHeaderFontColor || "#1a1a1a"};
           margin: 0 0 12px;
-          font-family: ${brand.headerFont || "inherit"};
+          font-family: ${brand.subHeaderFont || brand.headerFont || "inherit"};
         }
         .${SCOPE}-subheading {
           font-size: 1.1rem;
-          color: #6b7280;
+          color: ${brand.bodyFontColor || "#6b7280"};
           max-width: 600px;
           margin: 0 auto;
           font-family: ${brand.bodyFont || "inherit"};
@@ -164,7 +169,7 @@ export default function SolidCards({
         .${SCOPE}-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
-          gap: 20px;
+          gap: ${brand.cardStyle?.margin ?? 20}px;
         }
         @media (max-width: 700px) {
           .${SCOPE}-grid {
@@ -175,8 +180,8 @@ export default function SolidCards({
           }
         }
         .${SCOPE}-card {
-          border-radius: 14px;
-          padding: 28px;
+          border-radius: ${brand.cardStyle?.borderRadius ?? 14}px;
+          padding: ${brand.cardStyle?.padding ?? 28}px;
           display: flex;
           flex-direction: column;
           gap: 16px;
@@ -246,10 +251,16 @@ export default function SolidCards({
                 onDeselect={() => setHeadingSelected(false)}
                 toolbarProps={{
                   fontSize: styleOverrides?.headingFontSize ?? 28,
-                  fontFamily: styleOverrides?.headingFontFamily ?? "",
+                  fontFamily:
+                    styleOverrides?.headingFontFamily ||
+                    brand.subHeaderFont ||
+                    "",
                   fontWeight: styleOverrides?.headingFontWeight ?? "bold",
                   fontStyle: styleOverrides?.headingFontStyle ?? "normal",
-                  color: styleOverrides?.headingTextColor ?? "#1a1a1a",
+                  color:
+                    styleOverrides?.headingTextColor ??
+                    brand.subHeaderFontColor ??
+                    "#1a1a1a",
                   textAlign: styleOverrides?.headingTextAlign ?? "center",
                   onFontSizeChange: (v) => emitOverride({ headingFontSize: v }),
                   onFontFamilyChange: (v) =>
@@ -280,10 +291,16 @@ export default function SolidCards({
                 onDeselect={() => setSubheadingSelected(false)}
                 toolbarProps={{
                   fontSize: styleOverrides?.subheadingFontSize ?? 16,
-                  fontFamily: styleOverrides?.subheadingFontFamily ?? "",
+                  fontFamily:
+                    styleOverrides?.subheadingFontFamily ||
+                    brand.bodyFont ||
+                    "",
                   fontWeight: styleOverrides?.subheadingFontWeight ?? "normal",
                   fontStyle: styleOverrides?.subheadingFontStyle ?? "normal",
-                  color: styleOverrides?.subheadingTextColor ?? "#6b7280",
+                  color:
+                    styleOverrides?.subheadingTextColor ??
+                    brand.bodyFontColor ??
+                    "#6b7280",
                   textAlign: styleOverrides?.subheadingTextAlign ?? "center",
                   onFontSizeChange: (v) =>
                     emitOverride({ subheadingFontSize: v }),

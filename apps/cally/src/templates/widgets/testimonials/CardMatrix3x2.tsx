@@ -106,10 +106,14 @@ export default function CardMatrix3x2({
     fontSize: styleOverrides?.headingFontSize ?? "clamp(1.75rem, 3vw, 2.5rem)",
     fontWeight: styleOverrides?.headingFontWeight ?? 700,
     fontStyle: styleOverrides?.headingFontStyle ?? "normal",
-    color: styleOverrides?.headingTextColor ?? "#1a1a1a",
+    color:
+      styleOverrides?.headingTextColor ?? brand.subHeaderFontColor ?? "#1a1a1a",
     textAlign: styleOverrides?.headingTextAlign ?? "center",
     fontFamily:
-      styleOverrides?.headingFontFamily || brand.headerFont || "inherit",
+      styleOverrides?.headingFontFamily ||
+      brand.subHeaderFont ||
+      brand.headerFont ||
+      "inherit",
     lineHeight: 1.15,
     margin: "0 0 12px",
   };
@@ -118,7 +122,8 @@ export default function CardMatrix3x2({
     fontSize: styleOverrides?.subheadingFontSize ?? "1.1rem",
     fontWeight: styleOverrides?.subheadingFontWeight ?? "normal",
     fontStyle: styleOverrides?.subheadingFontStyle ?? "normal",
-    color: styleOverrides?.subheadingTextColor ?? "#6b7280",
+    color:
+      styleOverrides?.subheadingTextColor ?? brand.bodyFontColor ?? "#6b7280",
     textAlign: styleOverrides?.subheadingTextAlign ?? "center",
     fontFamily:
       styleOverrides?.subheadingFontFamily || brand.bodyFont || "inherit",
@@ -143,13 +148,13 @@ export default function CardMatrix3x2({
         .${SCOPE}-heading {
           font-size: clamp(1.75rem, 3vw, 2.5rem);
           font-weight: 700;
-          color: #1a1a1a;
+          color: ${brand.subHeaderFontColor || "#1a1a1a"};
           margin: 0 0 12px;
-          font-family: ${brand.headerFont || "inherit"};
+          font-family: ${brand.subHeaderFont || brand.headerFont || "inherit"};
         }
         .${SCOPE}-subheading {
           font-size: 1.1rem;
-          color: #6b7280;
+          color: ${brand.bodyFontColor || "#6b7280"};
           max-width: 600px;
           margin: 0 auto;
           font-family: ${brand.bodyFont || "inherit"};
@@ -157,7 +162,7 @@ export default function CardMatrix3x2({
         .${SCOPE}-grid {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
-          gap: 24px;
+          gap: ${brand.cardStyle?.margin ?? 24}px;
         }
         @media (max-width: 1024px) {
           .${SCOPE}-grid {
@@ -173,9 +178,9 @@ export default function CardMatrix3x2({
           }
         }
         .${SCOPE}-card {
-          background: ${brand.secondaryColor || "#ffffff"};
-          border-radius: 16px;
-          padding: 32px;
+          background: ${brand.cardStyle?.bgColor || brand.secondaryColor || "#ffffff"};
+          border-radius: ${brand.cardStyle?.borderRadius ?? 16}px;
+          padding: ${brand.cardStyle?.padding ?? 32}px;
           border: none;
           box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
           display: flex;
@@ -256,10 +261,16 @@ export default function CardMatrix3x2({
                 onDeselect={() => setHeadingSelected(false)}
                 toolbarProps={{
                   fontSize: styleOverrides?.headingFontSize ?? 28,
-                  fontFamily: styleOverrides?.headingFontFamily ?? "",
+                  fontFamily:
+                    styleOverrides?.headingFontFamily ||
+                    brand.subHeaderFont ||
+                    "",
                   fontWeight: styleOverrides?.headingFontWeight ?? "bold",
                   fontStyle: styleOverrides?.headingFontStyle ?? "normal",
-                  color: styleOverrides?.headingTextColor ?? "#1a1a1a",
+                  color:
+                    styleOverrides?.headingTextColor ??
+                    brand.subHeaderFontColor ??
+                    "#1a1a1a",
                   textAlign: styleOverrides?.headingTextAlign ?? "center",
                   onFontSizeChange: (v) => emitOverride({ headingFontSize: v }),
                   onFontFamilyChange: (v) =>
@@ -290,10 +301,16 @@ export default function CardMatrix3x2({
                 onDeselect={() => setSubheadingSelected(false)}
                 toolbarProps={{
                   fontSize: styleOverrides?.subheadingFontSize ?? 16,
-                  fontFamily: styleOverrides?.subheadingFontFamily ?? "",
+                  fontFamily:
+                    styleOverrides?.subheadingFontFamily ||
+                    brand.bodyFont ||
+                    "",
                   fontWeight: styleOverrides?.subheadingFontWeight ?? "normal",
                   fontStyle: styleOverrides?.subheadingFontStyle ?? "normal",
-                  color: styleOverrides?.subheadingTextColor ?? "#6b7280",
+                  color:
+                    styleOverrides?.subheadingTextColor ??
+                    brand.bodyFontColor ??
+                    "#6b7280",
                   textAlign: styleOverrides?.subheadingTextAlign ?? "center",
                   onFontSizeChange: (v) =>
                     emitOverride({ subheadingFontSize: v }),

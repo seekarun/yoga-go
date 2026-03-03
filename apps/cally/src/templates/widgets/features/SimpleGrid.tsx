@@ -138,10 +138,14 @@ export default function SimpleGrid({
     fontSize: styleOverrides?.headingFontSize ?? "clamp(1.5rem, 3vw, 2rem)",
     fontWeight: styleOverrides?.headingFontWeight ?? 700,
     fontStyle: styleOverrides?.headingFontStyle ?? "normal",
-    color: styleOverrides?.headingTextColor ?? "#1a1a1a",
+    color:
+      styleOverrides?.headingTextColor ?? brand.subHeaderFontColor ?? "#1a1a1a",
     textAlign: styleOverrides?.headingTextAlign ?? "left",
     fontFamily:
-      styleOverrides?.headingFontFamily || brand.headerFont || "inherit",
+      styleOverrides?.headingFontFamily ||
+      brand.subHeaderFont ||
+      brand.headerFont ||
+      "inherit",
     lineHeight: 1.15,
     margin: "0 0 8px",
   };
@@ -150,7 +154,8 @@ export default function SimpleGrid({
     fontSize: styleOverrides?.subheadingFontSize ?? "1rem",
     fontWeight: styleOverrides?.subheadingFontWeight ?? "normal",
     fontStyle: styleOverrides?.subheadingFontStyle ?? "normal",
-    color: styleOverrides?.subheadingTextColor ?? "#6b7280",
+    color:
+      styleOverrides?.subheadingTextColor ?? brand.bodyFontColor ?? "#6b7280",
     textAlign: styleOverrides?.subheadingTextAlign ?? "left",
     fontFamily:
       styleOverrides?.subheadingFontFamily || brand.bodyFont || "inherit",
@@ -258,13 +263,13 @@ export default function SimpleGrid({
           font-size: clamp(1.5rem, 3vw, 2rem);
           font-weight: 700;
           margin: 0 0 8px;
-          font-family: ${brand.headerFont || "inherit"};
-          color: #1a1a1a;
+          font-family: ${brand.subHeaderFont || brand.headerFont || "inherit"};
+          color: ${brand.subHeaderFontColor || "#1a1a1a"};
         }
 
         .${SCOPE}-subheading {
           font-size: 1rem;
-          color: #6b7280;
+          color: ${brand.bodyFontColor || "#6b7280"};
           margin: 0 0 40px;
           font-family: ${brand.bodyFont || "inherit"};
         }
@@ -293,17 +298,17 @@ export default function SimpleGrid({
         }
 
         .${SCOPE}-title {
-          font-size: 1.1rem;
+          font-size: ${brand.subHeaderFontSize ? `${brand.subHeaderFontSize}px` : "1.1rem"};
           font-weight: 700;
-          color: #1a1a1a;
+          color: ${brand.subHeaderFontColor || "#1a1a1a"};
           margin: 0;
           line-height: 1.3;
-          font-family: ${brand.headerFont || "inherit"};
+          font-family: ${brand.subHeaderFont || brand.headerFont || "inherit"};
         }
 
         .${SCOPE}-desc {
           font-size: 0.95rem;
-          color: #6b7280;
+          color: ${brand.bodyFontColor || "#6b7280"};
           line-height: 1.7;
           margin: 0;
           font-family: ${brand.bodyFont || "inherit"};
@@ -347,10 +352,16 @@ export default function SimpleGrid({
               onDeselect={() => setHeadingSelected(false)}
               toolbarProps={{
                 fontSize: styleOverrides?.headingFontSize ?? 28,
-                fontFamily: styleOverrides?.headingFontFamily ?? "",
+                fontFamily:
+                  styleOverrides?.headingFontFamily ||
+                  brand.subHeaderFont ||
+                  "",
                 fontWeight: styleOverrides?.headingFontWeight ?? "bold",
                 fontStyle: styleOverrides?.headingFontStyle ?? "normal",
-                color: styleOverrides?.headingTextColor ?? "#1a1a1a",
+                color:
+                  styleOverrides?.headingTextColor ??
+                  brand.subHeaderFontColor ??
+                  "#1a1a1a",
                 textAlign: styleOverrides?.headingTextAlign ?? "left",
                 onFontSizeChange: (v) => emitOverride({ headingFontSize: v }),
                 onFontFamilyChange: (v) =>
@@ -380,10 +391,14 @@ export default function SimpleGrid({
               onDeselect={() => setSubheadingSelected(false)}
               toolbarProps={{
                 fontSize: styleOverrides?.subheadingFontSize ?? 16,
-                fontFamily: styleOverrides?.subheadingFontFamily ?? "",
+                fontFamily:
+                  styleOverrides?.subheadingFontFamily || brand.bodyFont || "",
                 fontWeight: styleOverrides?.subheadingFontWeight ?? "normal",
                 fontStyle: styleOverrides?.subheadingFontStyle ?? "normal",
-                color: styleOverrides?.subheadingTextColor ?? "#6b7280",
+                color:
+                  styleOverrides?.subheadingTextColor ??
+                  brand.bodyFontColor ??
+                  "#6b7280",
                 textAlign: styleOverrides?.subheadingTextAlign ?? "left",
                 onFontSizeChange: (v) =>
                   emitOverride({ subheadingFontSize: v }),

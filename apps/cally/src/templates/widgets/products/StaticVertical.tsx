@@ -712,10 +712,14 @@ export default function StaticVertical({
     fontSize: styleOverrides?.headingFontSize ?? "clamp(1.75rem, 3vw, 2.5rem)",
     fontWeight: styleOverrides?.headingFontWeight ?? 700,
     fontStyle: styleOverrides?.headingFontStyle ?? "normal",
-    color: styleOverrides?.headingTextColor ?? "#1a1a1a",
+    color:
+      styleOverrides?.headingTextColor ?? brand.subHeaderFontColor ?? "#1a1a1a",
     textAlign: styleOverrides?.headingTextAlign ?? "center",
     fontFamily:
-      styleOverrides?.headingFontFamily || brand.headerFont || "inherit",
+      styleOverrides?.headingFontFamily ||
+      brand.subHeaderFont ||
+      brand.headerFont ||
+      "inherit",
     lineHeight: 1.15,
     margin: "0 0 12px",
   };
@@ -724,7 +728,8 @@ export default function StaticVertical({
     fontSize: styleOverrides?.subheadingFontSize ?? "1.1rem",
     fontWeight: styleOverrides?.subheadingFontWeight ?? "normal",
     fontStyle: styleOverrides?.subheadingFontStyle ?? "normal",
-    color: styleOverrides?.subheadingTextColor ?? "#6b7280",
+    color:
+      styleOverrides?.subheadingTextColor ?? brand.bodyFontColor ?? "#6b7280",
     textAlign: styleOverrides?.subheadingTextAlign ?? "center",
     fontFamily:
       styleOverrides?.subheadingFontFamily || brand.bodyFont || "inherit",
@@ -747,13 +752,13 @@ export default function StaticVertical({
         .${SCOPE}-heading {
           font-size: clamp(1.75rem, 3vw, 2.5rem);
           font-weight: 700;
-          color: #1a1a1a;
+          color: ${brand.subHeaderFontColor || "#1a1a1a"};
           margin: 0 0 12px;
-          font-family: ${brand.headerFont || "inherit"};
+          font-family: ${brand.subHeaderFont || brand.headerFont || "inherit"};
         }
         .${SCOPE}-subheading {
           font-size: 1.1rem;
-          color: #6b7280;
+          color: ${brand.bodyFontColor || "#6b7280"};
           max-width: 600px;
           margin: 0 auto;
           font-family: ${brand.bodyFont || "inherit"};
@@ -763,7 +768,7 @@ export default function StaticVertical({
         .${SCOPE}-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-          gap: 28px;
+          gap: ${brand.cardStyle?.margin ?? 28}px;
           max-width: 1200px;
           margin: 0 auto;
         }
@@ -776,7 +781,7 @@ export default function StaticVertical({
         }
         .${SCOPE}-track {
           display: flex;
-          gap: 28px;
+          gap: ${brand.cardStyle?.margin ?? 28}px;
           overflow-x: auto;
           scroll-snap-type: x mandatory;
           -webkit-overflow-scrolling: touch;
@@ -824,8 +829,8 @@ export default function StaticVertical({
 
         /* ---- card ---- */
         .${SCOPE}-card {
-          background: ${brand.secondaryColor || "#fff"};
-          border-radius: 20px;
+          background: ${brand.cardStyle?.bgColor || brand.secondaryColor || "#fff"};
+          border-radius: ${brand.cardStyle?.borderRadius ?? 20}px;
           overflow: hidden;
           box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
           border: 1px solid #f0f0f0;
@@ -951,15 +956,15 @@ export default function StaticVertical({
           flex-direction: column;
         }
         .${SCOPE}-name {
-          font-size: 1.2rem;
+          font-size: ${brand.subHeaderFontSize ? `${brand.subHeaderFontSize}px` : "1.2rem"};
           font-weight: 700;
-          color: #1a1a1a;
+          color: ${brand.subHeaderFontColor || "#1a1a1a"};
           margin: 0 0 6px;
-          font-family: ${brand.headerFont || "inherit"};
+          font-family: ${brand.subHeaderFont || brand.headerFont || "inherit"};
         }
         .${SCOPE}-desc {
           font-size: 0.95rem;
-          color: #6b7280;
+          color: ${brand.bodyFontColor || "#6b7280"};
           line-height: 1.6;
           margin: 0 0 16px;
           font-family: ${brand.bodyFont || "inherit"};
@@ -1003,14 +1008,14 @@ export default function StaticVertical({
         }
         .${SCOPE}-btn {
           padding: 10px 24px;
-          border-radius: 50px;
-          border: none;
+          border-radius: ${brand.primaryButton?.borderRadius ?? 50}px;
+          border: ${brand.primaryButton?.borderWidth ? `${brand.primaryButton.borderWidth}px solid ${brand.primaryButton.borderColor}` : "none"};
           font-weight: 600;
           font-size: 0.9rem;
           cursor: pointer;
           transition: opacity 0.2s, transform 0.15s;
-          color: ${getContrastColor(primary)};
-          background: ${primary};
+          color: ${brand.primaryButton?.textColor || getContrastColor(primary)};
+          background: ${brand.primaryButton?.fillColor || primary};
           font-family: ${brand.bodyFont || "inherit"};
         }
         .${SCOPE}-btn:hover {
@@ -1062,10 +1067,16 @@ export default function StaticVertical({
               onDeselect={() => setHeadingSelected(false)}
               toolbarProps={{
                 fontSize: styleOverrides?.headingFontSize ?? 28,
-                fontFamily: styleOverrides?.headingFontFamily ?? "",
+                fontFamily:
+                  styleOverrides?.headingFontFamily ||
+                  brand.subHeaderFont ||
+                  "",
                 fontWeight: styleOverrides?.headingFontWeight ?? "bold",
                 fontStyle: styleOverrides?.headingFontStyle ?? "normal",
-                color: styleOverrides?.headingTextColor ?? "#1a1a1a",
+                color:
+                  styleOverrides?.headingTextColor ??
+                  brand.subHeaderFontColor ??
+                  "#1a1a1a",
                 textAlign: styleOverrides?.headingTextAlign ?? "center",
                 onFontSizeChange: (v) => emitOverride({ headingFontSize: v }),
                 onFontFamilyChange: (v) =>
@@ -1095,10 +1106,14 @@ export default function StaticVertical({
               onDeselect={() => setSubheadingSelected(false)}
               toolbarProps={{
                 fontSize: styleOverrides?.subheadingFontSize ?? 17,
-                fontFamily: styleOverrides?.subheadingFontFamily ?? "",
+                fontFamily:
+                  styleOverrides?.subheadingFontFamily || brand.bodyFont || "",
                 fontWeight: styleOverrides?.subheadingFontWeight ?? "normal",
                 fontStyle: styleOverrides?.subheadingFontStyle ?? "normal",
-                color: styleOverrides?.subheadingTextColor ?? "#6b7280",
+                color:
+                  styleOverrides?.subheadingTextColor ??
+                  brand.bodyFontColor ??
+                  "#6b7280",
                 textAlign: styleOverrides?.subheadingTextAlign ?? "center",
                 onFontSizeChange: (v) =>
                   emitOverride({ subheadingFontSize: v }),

@@ -8,6 +8,23 @@
 
 import type { SectionId } from "@/types/landing-page";
 
+/** Resolved button style values (all hex, no refs) */
+export interface WidgetButtonStyle {
+  fillColor: string;
+  textColor: string;
+  borderColor: string;
+  borderWidth: number;
+  borderRadius: number;
+}
+
+/** Resolved card style values (all hex, no refs) */
+export interface WidgetCardStyle {
+  borderRadius: number;
+  padding: number;
+  margin: number;
+  bgColor: string;
+}
+
 /**
  * Brand configuration passed to every widget for style-ability.
  * Derived from the tenant's theme settings.
@@ -19,8 +36,24 @@ export interface WidgetBrandConfig {
   secondaryColor?: string;
   /** Header/display font family, e.g. "'Playfair Display', serif" */
   headerFont?: string;
+  /** Sub-header font family for section headings (h2/h3 level) */
+  subHeaderFont?: string;
+  /** Sub-header font size in px */
+  subHeaderFontSize?: number;
   /** Body/paragraph font family, e.g. "'Inter', sans-serif" */
   bodyFont?: string;
+  /** Header font color override */
+  headerFontColor?: string;
+  /** Sub-header font color override */
+  subHeaderFontColor?: string;
+  /** Body font color override */
+  bodyFontColor?: string;
+  /** Primary button style overrides */
+  primaryButton?: WidgetButtonStyle;
+  /** Secondary button style overrides */
+  secondaryButton?: WidgetButtonStyle;
+  /** Card style overrides */
+  cardStyle?: WidgetCardStyle;
 }
 
 /**

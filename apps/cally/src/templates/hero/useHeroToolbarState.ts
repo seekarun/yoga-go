@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import type { HeroStyleOverrides } from "@/types/landing-page";
+import type { FontWeight, HeroStyleOverrides } from "@/types/landing-page";
 import { useDimOverlay } from "./useDimOverlay";
 
 interface UseHeroToolbarStateOptions {
@@ -135,7 +135,7 @@ export default function useHeroToolbarState({
     [mergeOverride],
   );
   const onTitleFontWeightChange = useCallback(
-    (v: "normal" | "bold") => mergeOverride({ titleFontWeight: v }),
+    (v: FontWeight) => mergeOverride({ titleFontWeight: v }),
     [mergeOverride],
   );
   const onTitleFontStyleChange = useCallback(
@@ -161,7 +161,7 @@ export default function useHeroToolbarState({
     [mergeOverride],
   );
   const onSubtitleFontWeightChange = useCallback(
-    (v: "normal" | "bold") => mergeOverride({ subtitleFontWeight: v }),
+    (v: FontWeight) => mergeOverride({ subtitleFontWeight: v }),
     [mergeOverride],
   );
   const onSubtitleFontStyleChange = useCallback(

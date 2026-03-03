@@ -17,7 +17,11 @@ interface FeaturesSectionProps {
   tenantData?: TenantLandingPageData;
   isEditing?: boolean;
   variant?: "light" | "dark" | "gray";
-  brandFonts?: { headerFont?: BrandFont; bodyFont?: BrandFont };
+  brandFonts?: {
+    headerFont?: BrandFont;
+    subHeaderFont?: BrandFont;
+    bodyFont?: BrandFont;
+  };
   onHeadingChange?: (heading: string) => void;
   onSubheadingChange?: (subheading: string) => void;
   onCardChange?: (
@@ -126,20 +130,25 @@ export default function FeaturesSection({
   };
 
   const headingStyle: React.CSSProperties = {
-    fontSize: brandFonts?.headerFont?.size
-      ? `${brandFonts.headerFont.size}px`
-      : "clamp(1.75rem, 3vw, 2.5rem)",
+    fontSize: brandFonts?.subHeaderFont?.size
+      ? `${brandFonts.subHeaderFont.size}px`
+      : brandFonts?.headerFont?.size
+        ? `${brandFonts.headerFont.size}px`
+        : "clamp(1.75rem, 3vw, 2.5rem)",
     fontWeight: 700,
-    color: theme.heading,
+    color: brandFonts?.subHeaderFont?.color || theme.heading,
     marginBottom: "12px",
-    fontFamily: brandFonts?.headerFont?.family || undefined,
+    fontFamily:
+      brandFonts?.subHeaderFont?.family ||
+      brandFonts?.headerFont?.family ||
+      undefined,
   };
 
   const subheadingStyle: React.CSSProperties = {
     fontSize: brandFonts?.bodyFont?.size
       ? `${brandFonts.bodyFont.size}px`
       : "1.1rem",
-    color: theme.subheading,
+    color: brandFonts?.bodyFont?.color || theme.subheading,
     maxWidth: "600px",
     margin: "0 auto",
     fontFamily: brandFonts?.bodyFont?.family || undefined,
@@ -189,16 +198,21 @@ export default function FeaturesSection({
   };
 
   const cardTitleStyle: React.CSSProperties = {
-    fontSize: "1.1rem",
+    fontSize: brandFonts?.subHeaderFont?.size
+      ? `${brandFonts.subHeaderFont.size}px`
+      : "1.1rem",
     fontWeight: 600,
-    color: theme.cardTitle,
+    color: brandFonts?.subHeaderFont?.color || theme.cardTitle,
     marginBottom: "8px",
-    fontFamily: brandFonts?.headerFont?.family || undefined,
+    fontFamily:
+      brandFonts?.subHeaderFont?.family ||
+      brandFonts?.headerFont?.family ||
+      undefined,
   };
 
   const cardDescStyle: React.CSSProperties = {
     fontSize: "0.95rem",
-    color: theme.cardText,
+    color: brandFonts?.bodyFont?.color || theme.cardText,
     lineHeight: 1.6,
     fontFamily: brandFonts?.bodyFont?.family || undefined,
   };

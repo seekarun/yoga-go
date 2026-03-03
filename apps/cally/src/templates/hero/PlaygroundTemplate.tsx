@@ -1,8 +1,23 @@
 "use client";
 
 import type { HeroTemplateProps } from "./types";
-import type { WidgetBrandConfig } from "../widgets/types";
-import { getHarmonyColors } from "@/lib/colorPalette";
+import type {
+  BrandButtonStyle,
+  HeroStyleOverrides,
+  SectionStyleOverrides,
+  AboutStyleOverrides,
+  ProductsStyleOverrides,
+} from "@/types/landing-page";
+import type {
+  WidgetBrandConfig,
+  WidgetButtonStyle,
+  WidgetCardStyle,
+} from "../widgets/types";
+import {
+  getHarmonyColors,
+  getContrastColor,
+  resolveColorRef,
+} from "@/lib/colorPalette";
 import {
   // Testimonials
   TestimonialsCardMatrix3x2,
@@ -57,11 +72,133 @@ function buildBrand(props: HeroTemplateProps): WidgetBrandConfig {
     secondaryColor = palette?.[100];
   }
 
+  const cc = props.config.customColors;
+  const rc = (v: string | undefined, fb: string) =>
+    resolveColorRef(v, palette, cc, fb);
+
+  const resolveBtn = (
+    raw: BrandButtonStyle | undefined,
+    fallbackFill: string,
+    fallbackText: string,
+  ): WidgetButtonStyle => ({
+    fillColor: rc(raw?.fillColor, fallbackFill),
+    textColor: rc(raw?.textColor, fallbackText),
+    borderColor: rc(raw?.borderColor, "transparent"),
+    borderWidth: raw?.borderWidth ?? 0,
+    borderRadius: raw?.borderRadius ?? 8,
+  });
+
   return {
     primaryColor,
     secondaryColor,
     headerFont: props.config.theme?.headerFont?.family,
+    subHeaderFont: props.config.theme?.subHeaderFont?.family,
+    subHeaderFontSize: props.config.theme?.subHeaderFont?.size,
     bodyFont: props.config.theme?.bodyFont?.family,
+    headerFontColor: rc(props.config.theme?.headerFont?.color, "#1a1a1a"),
+    subHeaderFontColor: rc(props.config.theme?.subHeaderFont?.color, "#1a1a1a"),
+    bodyFontColor: rc(props.config.theme?.bodyFont?.color, "#1a1a1a"),
+    primaryButton: resolveBtn(
+      props.config.theme?.primaryButton,
+      primaryColor,
+      getContrastColor(primaryColor),
+    ),
+    secondaryButton: resolveBtn(
+      props.config.theme?.secondaryButton,
+      "transparent",
+      primaryColor,
+    ),
+    cardStyle: props.config.theme?.cardStyle
+      ? ({
+          borderRadius: props.config.theme.cardStyle.borderRadius ?? 20,
+          padding: props.config.theme.cardStyle.padding ?? 28,
+          margin: props.config.theme.cardStyle.margin ?? 16,
+          bgColor: rc(props.config.theme.cardStyle.bgColor, ""),
+        } as WidgetCardStyle)
+      : undefined,
+  };
+}
+
+/**
+ * Resolve colour-ref strings in hero style overrides so widgets get plain hex.
+ * Also resolves colour refs inside titleSpans so per-word colours render correctly.
+ */
+function resolveHeroOverrides(
+  o: HeroStyleOverrides | undefined,
+  rc: (v: string | undefined, fb: string) => string,
+): HeroStyleOverrides | undefined {
+  if (!o) return o;
+  return {
+    ...o,
+    titleTextColor: o.titleTextColor
+      ? rc(o.titleTextColor, "") || undefined
+      : undefined,
+    subtitleTextColor: o.subtitleTextColor
+      ? rc(o.subtitleTextColor, "") || undefined
+      : undefined,
+    bgColor: o.bgColor ? rc(o.bgColor, "") || undefined : undefined,
+    titleSpans: o.titleSpans?.map((span) => ({
+      ...span,
+      color: span.color ? rc(span.color, "") || undefined : span.color,
+    })),
+  };
+}
+
+/**
+ * Resolve colour-ref strings in section style overrides.
+ */
+function resolveSectionOverrides(
+  o: SectionStyleOverrides | undefined,
+  rc: (v: string | undefined, fb: string) => string,
+): SectionStyleOverrides | undefined {
+  if (!o) return o;
+  return {
+    ...o,
+    headingTextColor: o.headingTextColor
+      ? rc(o.headingTextColor, "") || undefined
+      : undefined,
+    subheadingTextColor: o.subheadingTextColor
+      ? rc(o.subheadingTextColor, "") || undefined
+      : undefined,
+    bgColor: o.bgColor ? rc(o.bgColor, "") || undefined : undefined,
+  };
+}
+
+/**
+ * Resolve colour-ref strings in about style overrides.
+ */
+function resolveAboutOverrides(
+  o: AboutStyleOverrides | undefined,
+  rc: (v: string | undefined, fb: string) => string,
+): AboutStyleOverrides | undefined {
+  if (!o) return o;
+  return {
+    ...o,
+    titleTextColor: o.titleTextColor
+      ? rc(o.titleTextColor, "") || undefined
+      : undefined,
+    textColor: o.textColor ? rc(o.textColor, "") || undefined : undefined,
+    bgColor: o.bgColor ? rc(o.bgColor, "") || undefined : undefined,
+  };
+}
+
+/**
+ * Resolve colour-ref strings in products style overrides.
+ */
+function resolveProductsOverrides(
+  o: ProductsStyleOverrides | undefined,
+  rc: (v: string | undefined, fb: string) => string,
+): ProductsStyleOverrides | undefined {
+  if (!o) return o;
+  return {
+    ...o,
+    headingTextColor: o.headingTextColor
+      ? rc(o.headingTextColor, "") || undefined
+      : undefined,
+    subheadingTextColor: o.subheadingTextColor
+      ? rc(o.subheadingTextColor, "") || undefined
+      : undefined,
+    bgColor: o.bgColor ? rc(o.bgColor, "") || undefined : undefined,
   };
 }
 
@@ -75,6 +212,10 @@ function buildBrand(props: HeroTemplateProps): WidgetBrandConfig {
 export default function PlaygroundTemplate(props: HeroTemplateProps) {
   const { config, tenantData, products, currency } = props;
   const brand = buildBrand(props);
+
+  /** Resolve colour references to hex for display. */
+  const rc = (v: string | undefined, fb: string) =>
+    resolveColorRef(v, config.theme?.palette, config.customColors, fb);
 
   const sections = config.sections || [];
   const enabledSections = sections.filter((s) => s.enabled);
@@ -91,7 +232,7 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
     brand,
     onButtonClick: props.onButtonClick,
     isEditing: props.isEditing,
-    styleOverrides: config.heroStyleOverrides,
+    styleOverrides: resolveHeroOverrides(config.heroStyleOverrides, rc),
     onTitleChange: props.onTitleChange,
     onSubtitleChange: props.onSubtitleChange,
     onStyleOverrideChange: props.onHeroStyleOverrideChange,
@@ -124,7 +265,7 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
     image: config.about?.image,
     imagePosition: config.about?.imagePosition,
     imageZoom: config.about?.imageZoom,
-    styleOverrides: config.about?.styleOverrides,
+    styleOverrides: resolveAboutOverrides(config.about?.styleOverrides, rc),
     brand,
     isEditing: props.isEditing,
     onTitleChange: props.onAboutTitleChange,
@@ -154,7 +295,10 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
     cards: config.features?.cards || [],
     brand,
     isEditing: props.isEditing,
-    styleOverrides: config.features?.styleOverrides,
+    styleOverrides: resolveSectionOverrides(
+      config.features?.styleOverrides,
+      rc,
+    ),
     onHeadingChange: props.onFeaturesHeadingChange,
     onSubheadingChange: props.onFeaturesSubheadingChange,
     onStyleOverrideChange: props.onFeaturesStyleOverrideChange,
@@ -187,7 +331,10 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
     onBookProduct: props.onBookProduct,
     onSignupWebinar: props.onSignupWebinar,
     isEditing: props.isEditing,
-    styleOverrides: config.productsConfig?.styleOverrides,
+    styleOverrides: resolveProductsOverrides(
+      config.productsConfig?.styleOverrides,
+      rc,
+    ),
     cardStyles: config.productsConfig?.cardStyles,
     onHeadingChange: props.onProductsHeadingChange,
     onSubheadingChange: props.onProductsSubheadingChange,
@@ -216,7 +363,10 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
     subheading: config.testimonials?.subheading,
     brand,
     isEditing: props.isEditing,
-    styleOverrides: config.testimonials?.styleOverrides,
+    styleOverrides: resolveSectionOverrides(
+      config.testimonials?.styleOverrides,
+      rc,
+    ),
     onHeadingChange: props.onTestimonialsHeadingChange,
     onSubheadingChange: props.onTestimonialsSubheadingChange,
     onStyleOverrideChange: props.onTestimonialsStyleOverrideChange,
@@ -249,7 +399,7 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
     items: config.faq?.items || [],
     brand,
     isEditing: props.isEditing,
-    styleOverrides: config.faq?.styleOverrides,
+    styleOverrides: resolveSectionOverrides(config.faq?.styleOverrides, rc),
     onHeadingChange: props.onFAQHeadingChange,
     onSubheadingChange: props.onFAQSubheadingChange,
     onStyleOverrideChange: props.onFAQStyleOverrideChange,
@@ -283,10 +433,11 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
           margin: 0 auto;
         }
         .${SCOPE}-section-heading {
-          font-size: clamp(1.5rem, 3vw, 2rem);
+          font-size: ${brand.subHeaderFontSize ? `${brand.subHeaderFontSize}px` : "clamp(1.5rem, 3vw, 2rem)"};
           font-weight: 700;
           margin: 0 0 8px;
-          font-family: ${brand.headerFont || "inherit"};
+          font-family: ${brand.subHeaderFont || brand.headerFont || "inherit"};
+          ${brand.subHeaderFontColor ? `color: ${brand.subHeaderFontColor};` : ""}
         }
         .${SCOPE}-section-subheading {
           font-size: 1rem;
@@ -314,10 +465,11 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
           color: #374151;
         }
         .${SCOPE}-about-title {
-          font-size: 1.5rem;
+          font-size: ${brand.subHeaderFontSize ? `${brand.subHeaderFontSize}px` : "clamp(1.25rem, 3vw, 1.5rem)"};
           font-weight: 700;
           margin: 0 0 16px;
-          font-family: ${brand.headerFont || "inherit"};
+          font-family: ${brand.subHeaderFont || brand.headerFont || "inherit"};
+          ${brand.subHeaderFontColor ? `color: ${brand.subHeaderFontColor};` : ""}
         }
 
         /* Alternating section backgrounds */

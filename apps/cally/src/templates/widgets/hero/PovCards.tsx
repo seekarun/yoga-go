@@ -97,7 +97,7 @@ export default function PovCards({
     fontSize: overrides?.titleFontSize ?? "clamp(2.4rem, 5.5vw, 3.8rem)",
     fontWeight: overrides?.titleFontWeight ?? 700,
     fontStyle: overrides?.titleFontStyle ?? "normal",
-    color: overrides?.titleTextColor ?? "#1a1a1a",
+    color: overrides?.titleTextColor ?? brand.headerFontColor ?? "#1a1a1a",
     textAlign: overrides?.titleTextAlign ?? "center",
     fontFamily: overrides?.titleFontFamily || brand.headerFont || "inherit",
     lineHeight: 1.1,
@@ -106,12 +106,24 @@ export default function PovCards({
   };
 
   const subtitleStyle: React.CSSProperties = {
-    fontSize: overrides?.subtitleFontSize ?? "clamp(1rem, 2vw, 1.15rem)",
+    fontSize:
+      overrides?.subtitleFontSize ??
+      (brand.subHeaderFontSize
+        ? `${brand.subHeaderFontSize}px`
+        : "clamp(1rem, 2vw, 1.15rem)"),
     fontWeight: overrides?.subtitleFontWeight ?? "normal",
     fontStyle: overrides?.subtitleFontStyle ?? "normal",
-    color: overrides?.subtitleTextColor ?? "#5c5c5c",
+    color:
+      overrides?.subtitleTextColor ??
+      brand.subHeaderFontColor ??
+      brand.headerFontColor ??
+      "#5c5c5c",
     textAlign: overrides?.subtitleTextAlign ?? "center",
-    fontFamily: overrides?.subtitleFontFamily || brand.bodyFont || "inherit",
+    fontFamily:
+      overrides?.subtitleFontFamily ||
+      brand.subHeaderFont ||
+      brand.headerFont ||
+      "inherit",
     lineHeight: 1.65,
     margin: 0,
     maxWidth: 580,
@@ -153,14 +165,14 @@ export default function PovCards({
         .${SCOPE}-btn {
           display: inline-block;
           padding: 16px 40px;
-          border-radius: 50px;
+          border-radius: ${brand.primaryButton?.borderRadius ?? 50}px;
           font-weight: 600;
           font-size: 1rem;
-          border: none;
+          border: ${brand.primaryButton?.borderWidth ? `${brand.primaryButton.borderWidth}px solid ${brand.primaryButton.borderColor}` : "none"};
           cursor: pointer;
           transition: opacity 0.2s, transform 0.15s;
-          color: ${getContrastColor(primary)};
-          background: ${primary};
+          color: ${brand.primaryButton?.textColor || getContrastColor(primary)};
+          background: ${brand.primaryButton?.fillColor || primary};
           font-family: ${brand.bodyFont || "inherit"};
           margin-top: 4px;
         }
@@ -234,10 +246,11 @@ export default function PovCards({
             onDeselect={() => setTitleSelected(false)}
             toolbarProps={{
               fontSize: overrides?.titleFontSize ?? 38,
-              fontFamily: overrides?.titleFontFamily ?? "",
+              fontFamily: overrides?.titleFontFamily || brand.headerFont || "",
               fontWeight: overrides?.titleFontWeight ?? "bold",
               fontStyle: overrides?.titleFontStyle ?? "normal",
-              color: overrides?.titleTextColor ?? "#1a1a1a",
+              color:
+                overrides?.titleTextColor ?? brand.headerFontColor ?? "#1a1a1a",
               textAlign: overrides?.titleTextAlign ?? "center",
               onFontSizeChange: (v) => emitOverride({ titleFontSize: v }),
               onFontFamilyChange: (v) => emitOverride({ titleFontFamily: v }),
@@ -285,10 +298,18 @@ export default function PovCards({
             onDeselect={() => setSubtitleSelected(false)}
             toolbarProps={{
               fontSize: overrides?.subtitleFontSize ?? 16,
-              fontFamily: overrides?.subtitleFontFamily ?? "",
+              fontFamily:
+                overrides?.subtitleFontFamily ||
+                brand.subHeaderFont ||
+                brand.headerFont ||
+                "",
               fontWeight: overrides?.subtitleFontWeight ?? "normal",
               fontStyle: overrides?.subtitleFontStyle ?? "normal",
-              color: overrides?.subtitleTextColor ?? "#5c5c5c",
+              color:
+                overrides?.subtitleTextColor ??
+                brand.subHeaderFontColor ??
+                brand.headerFontColor ??
+                "#5c5c5c",
               textAlign: overrides?.subtitleTextAlign ?? "center",
               onFontSizeChange: (v) => emitOverride({ subtitleFontSize: v }),
               onFontFamilyChange: (v) =>

@@ -2,16 +2,24 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { ColorPalette } from "@/lib/colorPalette";
+import type { FontWeight } from "@/types/landing-page";
 import ColorPickerPopover from "./ColorPickerPopover";
 import ToolbarContainer from "./ToolbarContainer";
-import { FONT_OPTIONS, getGoogleFontsUrl, getAllGoogleFontsUrl } from "./fonts";
+import {
+  FONT_OPTIONS,
+  getGoogleFontsUrl,
+  getAllGoogleFontsUrl,
+  getFontWeights,
+  WEIGHT_LABELS,
+  normalizeWeight,
+} from "./fonts";
 
 type TextAlign = "left" | "center" | "right";
 
 interface TextToolbarProps {
   fontSize: number;
   fontFamily: string;
-  fontWeight: "normal" | "bold";
+  fontWeight: FontWeight;
   fontStyle: "normal" | "italic";
   color: string;
   textAlign: TextAlign;
@@ -19,7 +27,7 @@ interface TextToolbarProps {
   customColors?: { name: string; hex: string }[];
   onFontSizeChange: (value: number) => void;
   onFontFamilyChange: (value: string) => void;
-  onFontWeightChange: (value: "normal" | "bold") => void;
+  onFontWeightChange: (value: FontWeight) => void;
   onFontStyleChange: (value: "normal" | "italic") => void;
   onColorChange: (value: string) => void;
   onTextAlignChange: (value: TextAlign) => void;
@@ -298,6 +306,210 @@ function FontPicker({
   );
 }
 
+/* ─── Weight Picker ─── */
+function WeightPicker({
+  fontFamily,
+  value,
+  onChange,
+  selectStyle,
+}: {
+  fontFamily: string;
+  value: FontWeight;
+  onChange: (v: FontWeight) => void;
+  selectStyle: React.CSSProperties;
+}) {
+  const [open, setOpen] = useState(false);
+  const [highlighted, setHighlighted] = useState(-1);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  const weights = getFontWeights(fontFamily);
+  const numericValue = normalizeWeight(value);
+  const currentLabel = WEIGHT_LABELS[numericValue] || `${numericValue}`;
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  // Scroll highlighted item into view
+  useEffect(() => {
+    if (!open || highlighted < 0 || !listRef.current) return;
+    const item = listRef.current.children[highlighted] as
+      | HTMLElement
+      | undefined;
+    item?.scrollIntoView({ block: "nearest" });
+  }, [open, highlighted]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (!open) {
+        if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
+          e.preventDefault();
+          setOpen(true);
+          setHighlighted(
+            Math.max(
+              0,
+              weights.findIndex((w) => w === numericValue),
+            ),
+          );
+        }
+        return;
+      }
+      switch (e.key) {
+        case "ArrowDown":
+          e.preventDefault();
+          setHighlighted((h) => Math.min(h + 1, weights.length - 1));
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          setHighlighted((h) => Math.max(h - 1, 0));
+          break;
+        case "Enter":
+          e.preventDefault();
+          if (highlighted >= 0) {
+            onChange(weights[highlighted]);
+            setOpen(false);
+          }
+          break;
+        case "Escape":
+          e.preventDefault();
+          setOpen(false);
+          break;
+      }
+    },
+    [open, highlighted, numericValue, weights, onChange],
+  );
+
+  return (
+    <div
+      ref={containerRef}
+      style={{ position: "relative" }}
+      onKeyDown={handleKeyDown}
+    >
+      <button
+        type="button"
+        onClick={() => {
+          setOpen((prev) => !prev);
+          if (!open) {
+            setHighlighted(
+              Math.max(
+                0,
+                weights.findIndex((w) => w === numericValue),
+              ),
+            );
+          }
+        }}
+        style={{
+          ...selectStyle,
+          display: "flex",
+          alignItems: "center",
+          gap: "4px",
+          fontWeight: numericValue,
+        }}
+      >
+        <span
+          style={{
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {currentLabel}
+        </span>
+        <svg
+          width="10"
+          height="10"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          style={{
+            flexShrink: 0,
+            transform: open ? "rotate(180deg)" : "none",
+            transition: "transform 0.15s",
+          }}
+        >
+          <path d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" />
+        </svg>
+      </button>
+
+      {open && (
+        <div
+          ref={listRef}
+          role="listbox"
+          onMouseDown={(e) => e.preventDefault()}
+          style={{
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            marginTop: "4px",
+            width: "160px",
+            maxHeight: "240px",
+            overflowY: "auto",
+            background: "#fff",
+            border: "1px solid #e5e7eb",
+            borderRadius: "6px",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
+            zIndex: 9999,
+            padding: "4px 0",
+          }}
+        >
+          {weights.map((w, i) => {
+            const isSelected = w === numericValue;
+            const isHighlighted = i === highlighted;
+            return (
+              <div
+                key={w}
+                role="option"
+                aria-selected={isSelected}
+                onMouseEnter={() => setHighlighted(i)}
+                onClick={() => {
+                  onChange(w);
+                  setOpen(false);
+                }}
+                style={{
+                  padding: "6px 12px",
+                  fontSize: "13px",
+                  fontWeight: w,
+                  cursor: "pointer",
+                  background: isHighlighted
+                    ? "rgba(59,130,246,0.08)"
+                    : "transparent",
+                  color: isSelected ? "#3b82f6" : "#374151",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "8px",
+                }}
+              >
+                <span>{WEIGHT_LABELS[w] || w}</span>
+                <span
+                  style={{
+                    fontSize: "10px",
+                    color: isSelected ? "#3b82f6" : "#9ca3af",
+                    fontWeight: 400,
+                  }}
+                >
+                  {w}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function TextToolbar({
   fontSize,
   fontFamily,
@@ -406,18 +618,14 @@ export default function TextToolbar({
 
       <div style={dividerStyle} />
 
-      {/* Bold / Italic */}
+      {/* Weight / Italic */}
       <div style={groupStyle}>
-        <button
-          type="button"
-          onClick={() =>
-            onFontWeightChange(fontWeight === "bold" ? "normal" : "bold")
-          }
-          style={toggleBtnStyle(fontWeight === "bold")}
-          title="Bold"
-        >
-          B
-        </button>
+        <WeightPicker
+          fontFamily={fontFamily}
+          value={fontWeight}
+          onChange={onFontWeightChange}
+          selectStyle={selectStyle}
+        />
         <button
           type="button"
           onClick={() =>

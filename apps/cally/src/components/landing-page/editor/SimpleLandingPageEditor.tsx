@@ -26,6 +26,8 @@ import type {
   SectionOrderItem,
   SectionStyleOverrides,
   SEOConfig,
+  BrandButtonStyle,
+  BrandCardStyle,
 } from "@/types/landing-page";
 import {
   TEMPLATES,
@@ -45,10 +47,11 @@ import {
   generatePalette,
   getHarmonyColors,
   hexToHsl,
-  isValidHexColor,
   HARMONY_OPTIONS,
 } from "@/lib/colorPalette";
+import HslColorPicker from "@/templates/hero/HslColorPicker";
 import { LandingPageThemeProvider } from "@/templates/hero/ThemeProvider";
+import ColorPickerPopover from "@/templates/hero/ColorPickerPopover";
 
 interface SimpleLandingPageEditorProps {
   tenantId: string;
@@ -138,12 +141,15 @@ export default function SimpleLandingPageEditor({
 
   // Brand colour picker state
   const [showColorPicker, setShowColorPicker] = useState(false);
-  const [hexInput, setHexInput] = useState("#667eea");
-  const [hexError, setHexError] = useState(false);
   const [colorHarmony, setColorHarmony] =
     useState<ColorHarmonyType>("analogous");
+  const [editingBrandColor, setEditingBrandColor] = useState<
+    "primary" | "secondary" | "highlight" | null
+  >(null);
+  const [showTypography, setShowTypography] = useState(false);
+  const [showButtons, setShowButtons] = useState(false);
+  const [showCards, setShowCards] = useState(false);
   const colorPickerRef = useRef<HTMLDivElement>(null);
-  const colorInputRef = useRef<HTMLInputElement>(null);
   const paletteSnapshotRef = useRef<{
     primary?: string;
     secondary?: string;
@@ -216,11 +222,6 @@ export default function SimpleLandingPageEditor({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  // Sync hex input when brand color changes externally
-  useEffect(() => {
-    setHexInput(currentBrandColor);
-  }, [currentBrandColor]);
 
   // Update palette when harmony changes or config loads with missing harmony colors
   const themePrimaryColor = config.theme?.primaryColor;
@@ -1712,30 +1713,38 @@ export default function SimpleLandingPageEditor({
     [colorHarmony],
   );
 
-  const handleHexInputChange = useCallback(
-    (value: string) => {
-      let hex = value;
-      if (!hex.startsWith("#")) hex = "#" + hex;
-      setHexInput(hex);
-
-      if (isValidHexColor(hex)) {
-        setHexError(false);
-        handleBrandColorChange(hex);
-      } else {
-        setHexError(hex.length >= 7);
-      }
+  const handleSecondaryColorChange = useCallback(
+    (color: string) => {
+      setConfig((prev) => ({
+        ...prev,
+        theme: {
+          ...prev.theme,
+          palette: {
+            ...(prev.theme?.palette || generatePalette(currentBrandColor)),
+            secondary: color,
+          },
+        },
+      }));
+      setIsDirty(true);
     },
-    [handleBrandColorChange],
+    [currentBrandColor],
   );
 
-  const handleHexInputKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === "Enter" && isValidHexColor(hexInput)) {
-        handleBrandColorChange(hexInput);
-        setShowColorPicker(false);
-      }
+  const handleHighlightColorChange = useCallback(
+    (color: string) => {
+      setConfig((prev) => ({
+        ...prev,
+        theme: {
+          ...prev.theme,
+          palette: {
+            ...(prev.theme?.palette || generatePalette(currentBrandColor)),
+            highlight: color,
+          },
+        },
+      }));
+      setIsDirty(true);
     },
-    [hexInput, handleBrandColorChange],
+    [currentBrandColor],
   );
 
   const cycleHarmony = useCallback(() => {
@@ -1803,64 +1812,279 @@ export default function SimpleLandingPageEditor({
     setIsDirty(true);
   }, []);
 
+  const handleSubHeaderFontChange = useCallback((family: string) => {
+    setConfig((prev) => ({
+      ...prev,
+      theme: {
+        ...prev.theme,
+        subHeaderFont: family
+          ? ({ ...prev.theme?.subHeaderFont, family } as BrandFont)
+          : undefined,
+      },
+    }));
+    setIsDirty(true);
+  }, []);
+
+  const handleSubHeaderFontSizeChange = useCallback((size: number) => {
+    setConfig((prev) => ({
+      ...prev,
+      theme: {
+        ...prev.theme,
+        subHeaderFont: {
+          ...prev.theme?.subHeaderFont,
+          family: prev.theme?.subHeaderFont?.family || "",
+          size,
+        },
+      },
+    }));
+    setIsDirty(true);
+  }, []);
+
+  const handleHeaderFontColorChange = useCallback((color: string) => {
+    setConfig((prev) => ({
+      ...prev,
+      theme: {
+        ...prev.theme,
+        headerFont: {
+          ...prev.theme?.headerFont,
+          family: prev.theme?.headerFont?.family || "",
+          color,
+        },
+      },
+    }));
+    setIsDirty(true);
+  }, []);
+
+  const handleSubHeaderFontColorChange = useCallback((color: string) => {
+    setConfig((prev) => ({
+      ...prev,
+      theme: {
+        ...prev.theme,
+        subHeaderFont: {
+          ...prev.theme?.subHeaderFont,
+          family: prev.theme?.subHeaderFont?.family || "",
+          color,
+        },
+      },
+    }));
+    setIsDirty(true);
+  }, []);
+
+  const handleBodyFontColorChange = useCallback((color: string) => {
+    setConfig((prev) => ({
+      ...prev,
+      theme: {
+        ...prev.theme,
+        bodyFont: {
+          ...prev.theme?.bodyFont,
+          family: prev.theme?.bodyFont?.family || "",
+          color,
+        },
+      },
+    }));
+    setIsDirty(true);
+  }, []);
+
+  // --- Brand button style handlers ---
+  const handleButtonStyleChange = useCallback(
+    (
+      variant: "primaryButton" | "secondaryButton",
+      updates: Partial<BrandButtonStyle>,
+    ) => {
+      setConfig((prev) => ({
+        ...prev,
+        theme: {
+          ...prev.theme,
+          [variant]: { ...prev.theme?.[variant], ...updates },
+        },
+      }));
+      setIsDirty(true);
+    },
+    [],
+  );
+
+  // --- Brand card style handler ---
+  const handleCardStyleChange = useCallback(
+    (updates: Partial<BrandCardStyle>) => {
+      setConfig((prev) => ({
+        ...prev,
+        theme: {
+          ...prev.theme,
+          cardStyle: { ...prev.theme?.cardStyle, ...updates },
+        },
+      }));
+      setIsDirty(true);
+    },
+    [],
+  );
+
   // --- Apply brand to all sections ---
+  // Resets all per-section/per-card custom styles and colours so
+  // everything falls back to the brand-level typography and palette.
   const handleApplyBrandToAllSections = useCallback(() => {
-    const oldPrimary = paletteSnapshotRef.current.primary?.toLowerCase();
-    const oldSecondary = paletteSnapshotRef.current.secondary?.toLowerCase();
-    const oldHighlight = paletteSnapshotRef.current.highlight?.toLowerCase();
-
     setConfig((prev) => {
-      const newPrimary = prev.theme?.palette?.[500];
-      const newSecondary = prev.theme?.palette?.secondary;
-      const newHighlight = prev.theme?.palette?.highlight;
+      /** Strip text/font/colour overrides from a SectionStyleOverrides,
+       *  keeping only layout fields (bg, padding, height). */
+      const stripTextOverrides = (
+        o: SectionStyleOverrides | undefined,
+      ): SectionStyleOverrides | undefined => {
+        if (!o) return undefined;
+        const {
+          headingFontSize: _hfs,
 
-      const mapColor = (current: string | undefined): string | undefined => {
-        if (!current) return current;
-        const c = current.toLowerCase();
-        if (oldPrimary && c === oldPrimary && newPrimary) return newPrimary;
-        if (oldSecondary && c === oldSecondary && newSecondary)
-          return newSecondary;
-        if (oldHighlight && c === oldHighlight && newHighlight)
-          return newHighlight;
-        return current;
+          headingFontFamily: _hff,
+
+          headingFontWeight: _hfw,
+
+          headingFontStyle: _hfst,
+
+          headingTextColor: _htc,
+
+          headingTextAlign: _hta,
+
+          subheadingFontSize: _sfs,
+
+          subheadingFontFamily: _sff,
+
+          subheadingFontWeight: _sfw,
+
+          subheadingFontStyle: _sfst,
+
+          subheadingTextColor: _stc,
+
+          subheadingTextAlign: _sta,
+          ...layout
+        } = o;
+        return Object.keys(layout).length > 0
+          ? (layout as SectionStyleOverrides)
+          : undefined;
       };
 
-      // Hero overrides
+      /** Strip text/font/colour overrides from ProductsStyleOverrides. */
+      const stripProductsTextOverrides = (
+        o: ProductsStyleOverrides | undefined,
+      ): ProductsStyleOverrides | undefined => {
+        if (!o) return undefined;
+        const {
+          headingFontSize: _hfs,
+
+          headingFontFamily: _hff,
+
+          headingFontWeight: _hfw,
+
+          headingFontStyle: _hfst,
+
+          headingTextColor: _htc,
+
+          headingTextAlign: _hta,
+
+          subheadingFontSize: _sfs,
+
+          subheadingFontFamily: _sff,
+
+          subheadingFontWeight: _sfw,
+
+          subheadingFontStyle: _sfst,
+
+          subheadingTextColor: _stc,
+
+          subheadingTextAlign: _sta,
+          ...layout
+        } = o;
+        return Object.keys(layout).length > 0
+          ? (layout as ProductsStyleOverrides)
+          : undefined;
+      };
+
+      /** Strip text/font/colour overrides from AboutStyleOverrides. */
+      const stripAboutTextOverrides = (
+        o: AboutStyleOverrides | undefined,
+      ): AboutStyleOverrides | undefined => {
+        if (!o) return undefined;
+        const {
+          fontSize: _fs,
+
+          fontFamily: _ff,
+
+          fontWeight: _fw,
+
+          fontStyle: _fst,
+
+          textColor: _tc,
+
+          textAlign: _ta,
+
+          titleFontSize: _tfs,
+
+          titleFontFamily: _tff,
+
+          titleFontWeight: _tfw,
+
+          titleFontStyle: _tfst,
+
+          titleTextColor: _ttc,
+
+          titleTextAlign: _tta,
+          ...layout
+        } = o;
+        return Object.keys(layout).length > 0
+          ? (layout as AboutStyleOverrides)
+          : undefined;
+      };
+
+      /** Strip per-card text/font/colour overrides from feature cards. */
+      const stripFeatureCardStyles = (
+        cards: FeatureCard[] | undefined,
+      ): FeatureCard[] | undefined => {
+        if (!cards) return undefined;
+        return cards.map((card) => {
+          const {
+            titleFontSize: _tfs,
+
+            titleFontFamily: _tff,
+
+            titleFontWeight: _tfw,
+
+            titleFontStyle: _tfst,
+
+            titleColor: _tc,
+
+            titleTextAlign: _tta,
+
+            descFontSize: _dfs,
+
+            descFontFamily: _dff,
+
+            descFontWeight: _dfw,
+
+            descFontStyle: _dfst,
+
+            descColor: _dc,
+
+            descTextAlign: _dta,
+            ...rest
+          } = card;
+          return rest as FeatureCard;
+        });
+      };
+
+      // Hero — clear text/font/colour overrides, keep layout/position
       const heroOverrides = prev.heroStyleOverrides
         ? {
             ...prev.heroStyleOverrides,
+            titleFontSize: undefined,
             titleFontFamily: undefined,
+            titleFontWeight: undefined,
+            titleFontStyle: undefined,
+            titleTextColor: undefined,
+            titleTextAlign: undefined,
+            subtitleFontSize: undefined,
             subtitleFontFamily: undefined,
-            titleTextColor: mapColor(prev.heroStyleOverrides.titleTextColor),
-            subtitleTextColor: mapColor(
-              prev.heroStyleOverrides.subtitleTextColor,
-            ),
-          }
-        : undefined;
-
-      // About overrides
-      const aboutOverrides = prev.about?.styleOverrides
-        ? {
-            ...prev.about.styleOverrides,
-            titleFontFamily: undefined,
-            fontFamily: undefined,
-            titleTextColor: mapColor(prev.about.styleOverrides.titleTextColor),
-            textColor: mapColor(prev.about.styleOverrides.textColor),
-          }
-        : undefined;
-
-      // Products overrides
-      const productsOverrides = prev.productsConfig?.styleOverrides
-        ? {
-            ...prev.productsConfig.styleOverrides,
-            headingFontFamily: undefined,
-            subheadingFontFamily: undefined,
-            headingTextColor: mapColor(
-              prev.productsConfig.styleOverrides.headingTextColor,
-            ),
-            subheadingTextColor: mapColor(
-              prev.productsConfig.styleOverrides.subheadingTextColor,
-            ),
+            subtitleFontWeight: undefined,
+            subtitleFontStyle: undefined,
+            subtitleTextColor: undefined,
+            subtitleTextAlign: undefined,
+            titleSpans: undefined,
           }
         : undefined;
 
@@ -1868,15 +2092,65 @@ export default function SimpleLandingPageEditor({
         ...prev,
         heroStyleOverrides: heroOverrides,
         about: prev.about
-          ? { ...prev.about, styleOverrides: aboutOverrides }
+          ? {
+              ...prev.about,
+              styleOverrides: stripAboutTextOverrides(
+                prev.about.styleOverrides,
+              ),
+            }
           : prev.about,
+        features: prev.features
+          ? {
+              ...prev.features,
+              styleOverrides: stripTextOverrides(prev.features.styleOverrides),
+              cards: stripFeatureCardStyles(prev.features.cards) || [],
+            }
+          : prev.features,
         productsConfig: prev.productsConfig
-          ? { ...prev.productsConfig, styleOverrides: productsOverrides }
+          ? {
+              ...prev.productsConfig,
+              styleOverrides: stripProductsTextOverrides(
+                prev.productsConfig.styleOverrides,
+              ),
+              cardStyles: undefined,
+            }
           : prev.productsConfig,
+        testimonials: prev.testimonials
+          ? {
+              ...prev.testimonials,
+              styleOverrides: stripTextOverrides(
+                prev.testimonials.styleOverrides,
+              ),
+            }
+          : prev.testimonials,
+        faq: prev.faq
+          ? {
+              ...prev.faq,
+              styleOverrides: stripTextOverrides(prev.faq.styleOverrides),
+            }
+          : prev.faq,
+        location: prev.location
+          ? {
+              ...prev.location,
+              styleOverrides: stripTextOverrides(prev.location.styleOverrides),
+            }
+          : prev.location,
+        gallery: prev.gallery
+          ? {
+              ...prev.gallery,
+              styleOverrides: stripTextOverrides(prev.gallery.styleOverrides),
+            }
+          : prev.gallery,
+        footer: prev.footer
+          ? {
+              ...prev.footer,
+              styleOverrides: stripTextOverrides(prev.footer.styleOverrides),
+            }
+          : prev.footer,
       };
     });
 
-    // Update snapshot to current palette so subsequent applies work correctly
+    // Update snapshot to current palette
     setConfig((prev) => {
       paletteSnapshotRef.current = {
         primary: prev.theme?.palette?.[500],
@@ -2150,65 +2424,12 @@ export default function SimpleLandingPageEditor({
                 )}
               </div>
 
-              <div className="text-xs font-medium text-gray-700 mb-3">
-                Your Brand Colour (click to change)
-              </div>
-
-              {/* Colour Picker */}
-              <div className="mb-4">
-                <div
-                  className="relative w-full h-32 rounded-lg overflow-hidden cursor-pointer border border-gray-200"
-                  onClick={() => colorInputRef.current?.click()}
-                >
-                  <input
-                    ref={colorInputRef}
-                    type="color"
-                    value={currentBrandColor}
-                    onChange={(e) => handleBrandColorChange(e.target.value)}
-                    className="absolute inset-0 w-[200%] h-[200%] cursor-pointer border-0 -top-1/2 -left-1/2"
-                  />
-                </div>
-              </div>
-
-              {/* Hex Input */}
-              <div className="mb-4">
-                <label className="block text-xs text-gray-500 mb-1">
-                  Hex Code
-                </label>
-                <div className="flex items-center gap-2">
-                  <div
-                    className="w-8 h-8 rounded-md border border-gray-200 flex-shrink-0"
-                    style={{
-                      backgroundColor: isValidHexColor(hexInput)
-                        ? hexInput
-                        : currentBrandColor,
-                    }}
-                  />
-                  <input
-                    type="text"
-                    value={hexInput}
-                    onChange={(e) => handleHexInputChange(e.target.value)}
-                    onKeyDown={handleHexInputKeyDown}
-                    placeholder="#000000"
-                    maxLength={7}
-                    className={`flex-1 px-2 py-1.5 text-sm border rounded-md font-mono uppercase ${
-                      hexError
-                        ? "border-red-300 focus:ring-red-500 focus:border-red-500"
-                        : "border-gray-200 focus:ring-blue-500 focus:border-blue-500"
-                    } focus:outline-none focus:ring-1`}
-                  />
-                </div>
-                {hexError && (
-                  <p className="text-xs text-red-500 mt-1">
-                    Enter valid hex (e.g. #FF5733)
-                  </p>
-                )}
-              </div>
-
-              {/* Colour Palette Display */}
+              {/* Brand Colours */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-xs text-gray-500">Color Palette</label>
+                  <div className="text-xs font-medium text-gray-700">
+                    Brand Colours
+                  </div>
                   <button
                     onClick={cycleHarmony}
                     className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
@@ -2236,48 +2457,108 @@ export default function SimpleLandingPageEditor({
                   </button>
                 </div>
                 {(() => {
-                  const harmonyColors = getHarmonyColors(
-                    currentBrandColor,
-                    colorHarmony,
-                  );
+                  const secondaryColor =
+                    config.theme?.palette?.secondary ||
+                    getHarmonyColors(currentBrandColor, colorHarmony).secondary;
+                  const highlightColor =
+                    config.theme?.palette?.highlight ||
+                    getHarmonyColors(currentBrandColor, colorHarmony).highlight;
+
+                  const swatches: {
+                    key: "primary" | "secondary" | "highlight";
+                    label: string;
+                    hex: string;
+                    onChange: (hex: string) => void;
+                  }[] = [
+                    {
+                      key: "primary",
+                      label: "Primary",
+                      hex: currentBrandColor,
+                      onChange: handleBrandColorChange,
+                    },
+                    {
+                      key: "secondary",
+                      label: "Secondary",
+                      hex: secondaryColor,
+                      onChange: handleSecondaryColorChange,
+                    },
+                    {
+                      key: "highlight",
+                      label: "Highlight",
+                      hex: highlightColor,
+                      onChange: handleHighlightColorChange,
+                    },
+                  ];
+
                   return (
                     <div className="flex flex-col gap-2">
-                      <div
-                        className="h-10 rounded-lg border border-gray-200 flex items-center justify-center"
-                        style={{ backgroundColor: currentBrandColor }}
-                      >
-                        <span
-                          className="text-xs font-medium"
-                          style={{
-                            color:
-                              hexToHsl(currentBrandColor).l > 50
-                                ? "#374151"
-                                : "#fff",
-                          }}
-                        >
-                          Primary
-                        </span>
-                      </div>
-                      <div
-                        className="h-8 rounded-lg border border-gray-200 flex items-center justify-center"
-                        style={{
-                          backgroundColor: harmonyColors.secondary,
-                        }}
-                      >
-                        <span className="text-xs font-medium text-gray-700">
-                          Secondary
-                        </span>
-                      </div>
-                      <div
-                        className="h-8 rounded-lg border border-gray-200 flex items-center justify-center"
-                        style={{
-                          backgroundColor: harmonyColors.highlight,
-                        }}
-                      >
-                        <span className="text-xs font-medium text-gray-700">
-                          Highlight
-                        </span>
-                      </div>
+                      {swatches.map((swatch) => {
+                        const isEditing = editingBrandColor === swatch.key;
+                        return (
+                          <div key={swatch.key}>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setEditingBrandColor(
+                                  isEditing ? null : swatch.key,
+                                )
+                              }
+                              className={`w-full rounded-lg border flex items-center justify-between px-3 transition-all ${
+                                isEditing
+                                  ? "border-blue-400 ring-1 ring-blue-200"
+                                  : "border-gray-200 hover:border-gray-300"
+                              }`}
+                              style={{
+                                backgroundColor: swatch.hex,
+                                height: swatch.key === "primary" ? 40 : 32,
+                              }}
+                            >
+                              <span
+                                className="text-xs font-medium"
+                                style={{
+                                  color:
+                                    hexToHsl(swatch.hex).l > 50
+                                      ? "#374151"
+                                      : "#fff",
+                                }}
+                              >
+                                {swatch.label}
+                              </span>
+                              <svg
+                                width="10"
+                                height="10"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke={
+                                  hexToHsl(swatch.hex).l > 50
+                                    ? "#6b7280"
+                                    : "rgba(255,255,255,0.7)"
+                                }
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                style={{
+                                  transform: isEditing
+                                    ? "rotate(180deg)"
+                                    : "none",
+                                  transition: "transform 0.15s ease",
+                                }}
+                              >
+                                <polyline points="6 9 12 15 18 9" />
+                              </svg>
+                            </button>
+                            {isEditing && (
+                              <div className="mt-2 mb-1">
+                                <HslColorPicker
+                                  color={swatch.hex}
+                                  onChange={swatch.onChange}
+                                  width={208}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   );
                 })()}
@@ -2346,87 +2627,481 @@ export default function SimpleLandingPageEditor({
                 )}
               </div>
 
-              {/* Typography */}
+              {/* Typography (collapsible sub-menu) */}
               <div className="mt-4 pt-4 border-t border-gray-200">
-                <div className="text-xs font-medium text-gray-700 mb-3">
+                <button
+                  type="button"
+                  onClick={() => setShowTypography((v) => !v)}
+                  className="flex items-center justify-between w-full text-xs font-medium text-gray-700"
+                >
                   Typography
-                </div>
-
-                {/* Header Font */}
-                <div className="mb-3">
-                  <label className="block text-[10px] text-gray-500 mb-1">
-                    Header Font
-                  </label>
-                  <select
-                    value={config.theme?.headerFont?.family || ""}
-                    onChange={(e) => handleHeaderFontChange(e.target.value)}
-                    className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-gray-400 transition-transform"
+                    style={{
+                      transform: showTypography ? "rotate(180deg)" : "none",
+                    }}
                   >
-                    {FONT_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                  {config.theme?.headerFont?.family && (
-                    <div className="flex items-center gap-2 mt-1.5">
-                      <label className="text-[10px] text-gray-400 flex-shrink-0">
-                        Size
-                      </label>
-                      <input
-                        type="range"
-                        min={16}
-                        max={72}
-                        value={config.theme?.headerFont?.size || 28}
-                        onChange={(e) =>
-                          handleHeaderFontSizeChange(Number(e.target.value))
-                        }
-                        className="flex-1 h-1 accent-blue-500"
-                      />
-                      <span className="text-[10px] text-gray-400 w-7 text-right">
-                        {config.theme?.headerFont?.size || 28}px
-                      </span>
-                    </div>
-                  )}
-                </div>
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
 
-                {/* Body Font */}
-                <div>
-                  <label className="block text-[10px] text-gray-500 mb-1">
-                    Body Font
-                  </label>
-                  <select
-                    value={config.theme?.bodyFont?.family || ""}
-                    onChange={(e) => handleBodyFontChange(e.target.value)}
-                    className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    {FONT_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                  {config.theme?.bodyFont?.family && (
-                    <div className="flex items-center gap-2 mt-1.5">
-                      <label className="text-[10px] text-gray-400 flex-shrink-0">
-                        Size
+                {showTypography && (
+                  <div className="mt-3">
+                    {/* Header Font */}
+                    <div className="mb-3">
+                      <label className="block text-[10px] text-gray-500 mb-1">
+                        Header Font
                       </label>
-                      <input
-                        type="range"
-                        min={12}
-                        max={32}
-                        value={config.theme?.bodyFont?.size || 16}
-                        onChange={(e) =>
-                          handleBodyFontSizeChange(Number(e.target.value))
-                        }
-                        className="flex-1 h-1 accent-blue-500"
-                      />
-                      <span className="text-[10px] text-gray-400 w-7 text-right">
-                        {config.theme?.bodyFont?.size || 16}px
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <select
+                          value={config.theme?.headerFont?.family || ""}
+                          onChange={(e) =>
+                            handleHeaderFontChange(e.target.value)
+                          }
+                          className="flex-1 min-w-0 px-2 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          {FONT_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                        {config.theme?.headerFont?.family && (
+                          <>
+                            <select
+                              value={config.theme?.headerFont?.size || 28}
+                              onChange={(e) =>
+                                handleHeaderFontSizeChange(
+                                  Number(e.target.value),
+                                )
+                              }
+                              className="w-[70px] px-1.5 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                            >
+                              {[24, 28, 32, 36, 40, 48, 56, 64, 72].map((s) => (
+                                <option key={s} value={s}>
+                                  {s}px
+                                </option>
+                              ))}
+                            </select>
+                            <ColorPickerPopover
+                              color={
+                                config.theme?.headerFont?.color || "#1a1a1a"
+                              }
+                              onChange={handleHeaderFontColorChange}
+                              palette={config.theme?.palette}
+                              customColors={config.customColors}
+                              onCustomColorsChange={handleCustomColorsChange}
+                            />
+                          </>
+                        )}
+                      </div>
                     </div>
-                  )}
-                </div>
+
+                    {/* Sub-Header Font */}
+                    <div className="mb-3">
+                      <label className="block text-[10px] text-gray-500 mb-1">
+                        Sub-Header Font
+                      </label>
+                      <div className="flex items-center gap-1.5">
+                        <select
+                          value={config.theme?.subHeaderFont?.family || ""}
+                          onChange={(e) =>
+                            handleSubHeaderFontChange(e.target.value)
+                          }
+                          className="flex-1 min-w-0 px-2 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          {FONT_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                        {config.theme?.subHeaderFont?.family && (
+                          <>
+                            <select
+                              value={config.theme?.subHeaderFont?.size || 22}
+                              onChange={(e) =>
+                                handleSubHeaderFontSizeChange(
+                                  Number(e.target.value),
+                                )
+                              }
+                              className="w-[70px] px-1.5 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                            >
+                              {[16, 18, 20, 22, 24, 28, 32, 36].map((s) => (
+                                <option key={s} value={s}>
+                                  {s}px
+                                </option>
+                              ))}
+                            </select>
+                            <ColorPickerPopover
+                              color={
+                                config.theme?.subHeaderFont?.color || "#1a1a1a"
+                              }
+                              onChange={handleSubHeaderFontColorChange}
+                              palette={config.theme?.palette}
+                              customColors={config.customColors}
+                              onCustomColorsChange={handleCustomColorsChange}
+                            />
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Body Font */}
+                    <div>
+                      <label className="block text-[10px] text-gray-500 mb-1">
+                        Body Font
+                      </label>
+                      <div className="flex items-center gap-1.5">
+                        <select
+                          value={config.theme?.bodyFont?.family || ""}
+                          onChange={(e) => handleBodyFontChange(e.target.value)}
+                          className="flex-1 min-w-0 px-2 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          {FONT_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                        {config.theme?.bodyFont?.family && (
+                          <>
+                            <select
+                              value={config.theme?.bodyFont?.size || 16}
+                              onChange={(e) =>
+                                handleBodyFontSizeChange(Number(e.target.value))
+                              }
+                              className="w-[70px] px-1.5 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                            >
+                              {[12, 13, 14, 15, 16, 18, 20, 24].map((s) => (
+                                <option key={s} value={s}>
+                                  {s}px
+                                </option>
+                              ))}
+                            </select>
+                            <ColorPickerPopover
+                              color={config.theme?.bodyFont?.color || "#4b5563"}
+                              onChange={handleBodyFontColorChange}
+                              palette={config.theme?.palette}
+                              customColors={config.customColors}
+                              onCustomColorsChange={handleCustomColorsChange}
+                            />
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Buttons (collapsible sub-menu) */}
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setShowButtons((v) => !v)}
+                  className="flex items-center justify-between w-full text-xs font-medium text-gray-700"
+                >
+                  Buttons
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-gray-400 transition-transform"
+                    style={{
+                      transform: showButtons ? "rotate(180deg)" : "none",
+                    }}
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+
+                {showButtons && (
+                  <div className="mt-3 flex flex-col gap-4">
+                    {(
+                      [
+                        {
+                          key: "primaryButton" as const,
+                          label: "Primary Button",
+                        },
+                        {
+                          key: "secondaryButton" as const,
+                          label: "Secondary Button",
+                        },
+                      ] as const
+                    ).map(({ key, label }) => {
+                      const btn = config.theme?.[key];
+                      return (
+                        <div key={key}>
+                          <label className="block text-[10px] text-gray-500 mb-1.5">
+                            {label}
+                          </label>
+
+                          {/* Preview */}
+                          <div className="mb-2 flex justify-center">
+                            <span
+                              className="inline-block text-xs font-semibold px-5 py-1.5"
+                              style={{
+                                backgroundColor:
+                                  btn?.fillColor || "var(--brand-500, #6366f1)",
+                                color: btn?.textColor || "#ffffff",
+                                border: `${btn?.borderWidth ?? 0}px solid ${btn?.borderColor || "transparent"}`,
+                                borderRadius: `${btn?.borderRadius ?? 8}px`,
+                              }}
+                            >
+                              {label}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
+                            {/* Fill colour */}
+                            <div className="flex items-center gap-1">
+                              <span className="text-[10px] text-gray-500 w-8 shrink-0">
+                                Fill
+                              </span>
+                              <ColorPickerPopover
+                                color={btn?.fillColor || "palette:primary"}
+                                onChange={(c) =>
+                                  handleButtonStyleChange(key, {
+                                    fillColor: c,
+                                  })
+                                }
+                                palette={config.theme?.palette}
+                                customColors={config.customColors}
+                                onCustomColorsChange={handleCustomColorsChange}
+                              />
+                            </div>
+
+                            {/* Text colour */}
+                            <div className="flex items-center gap-1">
+                              <span className="text-[10px] text-gray-500 w-8 shrink-0">
+                                Text
+                              </span>
+                              <ColorPickerPopover
+                                color={btn?.textColor || "#ffffff"}
+                                onChange={(c) =>
+                                  handleButtonStyleChange(key, {
+                                    textColor: c,
+                                  })
+                                }
+                                palette={config.theme?.palette}
+                                customColors={config.customColors}
+                                onCustomColorsChange={handleCustomColorsChange}
+                              />
+                            </div>
+
+                            {/* Border colour */}
+                            <div className="flex items-center gap-1">
+                              <span className="text-[10px] text-gray-500 w-8 shrink-0">
+                                Border
+                              </span>
+                              <ColorPickerPopover
+                                color={btn?.borderColor || "transparent"}
+                                onChange={(c) =>
+                                  handleButtonStyleChange(key, {
+                                    borderColor: c,
+                                  })
+                                }
+                                palette={config.theme?.palette}
+                                customColors={config.customColors}
+                                onCustomColorsChange={handleCustomColorsChange}
+                              />
+                            </div>
+
+                            {/* Border thickness */}
+                            <div className="flex items-center gap-1">
+                              <span className="text-[10px] text-gray-500 w-8 shrink-0">
+                                Width
+                              </span>
+                              <select
+                                value={btn?.borderWidth ?? 0}
+                                onChange={(e) =>
+                                  handleButtonStyleChange(key, {
+                                    borderWidth: Number(e.target.value),
+                                  })
+                                }
+                                className="flex-1 min-w-0 px-1.5 py-1 text-[10px] border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              >
+                                {[0, 1, 2, 3, 4].map((v) => (
+                                  <option key={v} value={v}>
+                                    {v}px
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {/* Border radius */}
+                            <div className="col-span-2 flex items-center gap-1">
+                              <span className="text-[10px] text-gray-500 w-8 shrink-0">
+                                Round
+                              </span>
+                              <select
+                                value={btn?.borderRadius ?? 8}
+                                onChange={(e) =>
+                                  handleButtonStyleChange(key, {
+                                    borderRadius: Number(e.target.value),
+                                  })
+                                }
+                                className="flex-1 min-w-0 px-1.5 py-1 text-[10px] border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              >
+                                {[0, 4, 8, 12, 16, 24, 50].map((v) => (
+                                  <option key={v} value={v}>
+                                    {v === 50 ? "Pill" : `${v}px`}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Cards (collapsible sub-menu) */}
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setShowCards((v) => !v)}
+                  className="flex items-center justify-between w-full text-xs font-medium text-gray-700"
+                >
+                  Cards
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-gray-400 transition-transform"
+                    style={{
+                      transform: showCards ? "rotate(180deg)" : "none",
+                    }}
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+
+                {showCards &&
+                  (() => {
+                    const cs = config.theme?.cardStyle;
+                    return (
+                      <div className="mt-3 flex flex-col gap-3">
+                        {/* Preview */}
+                        <div className="flex justify-center">
+                          <div
+                            className="w-28 h-16 flex items-center justify-center text-[10px] text-gray-500 font-medium"
+                            style={{
+                              backgroundColor: cs?.bgColor || "#f9fafb",
+                              borderRadius: `${cs?.borderRadius ?? 20}px`,
+                              padding: `${cs?.padding ?? 28}px`,
+                            }}
+                          >
+                            Card
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
+                          {/* Background colour */}
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-gray-500 w-8 shrink-0">
+                              Bg
+                            </span>
+                            <ColorPickerPopover
+                              color={cs?.bgColor || ""}
+                              onChange={(c) =>
+                                handleCardStyleChange({ bgColor: c })
+                              }
+                              palette={config.theme?.palette}
+                              customColors={config.customColors}
+                              onCustomColorsChange={handleCustomColorsChange}
+                            />
+                          </div>
+
+                          {/* Border radius */}
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-gray-500 w-8 shrink-0">
+                              Round
+                            </span>
+                            <select
+                              value={cs?.borderRadius ?? 20}
+                              onChange={(e) =>
+                                handleCardStyleChange({
+                                  borderRadius: Number(e.target.value),
+                                })
+                              }
+                              className="flex-1 min-w-0 px-1.5 py-1 text-[10px] border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            >
+                              {[0, 4, 8, 12, 16, 20, 24, 32].map((v) => (
+                                <option key={v} value={v}>
+                                  {v}px
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Padding */}
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-gray-500 w-8 shrink-0">
+                              Pad
+                            </span>
+                            <select
+                              value={cs?.padding ?? 28}
+                              onChange={(e) =>
+                                handleCardStyleChange({
+                                  padding: Number(e.target.value),
+                                })
+                              }
+                              className="flex-1 min-w-0 px-1.5 py-1 text-[10px] border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            >
+                              {[8, 12, 16, 20, 24, 28, 32, 40, 48].map((v) => (
+                                <option key={v} value={v}>
+                                  {v}px
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Margin (gap between cards) */}
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-gray-500 w-8 shrink-0">
+                              Gap
+                            </span>
+                            <select
+                              value={cs?.margin ?? 16}
+                              onChange={(e) =>
+                                handleCardStyleChange({
+                                  margin: Number(e.target.value),
+                                })
+                              }
+                              className="flex-1 min-w-0 px-1.5 py-1 text-[10px] border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            >
+                              {[0, 4, 8, 12, 16, 20, 24, 32].map((v) => (
+                                <option key={v} value={v}>
+                                  {v}px
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
               </div>
 
               {/* Apply to All Sections */}
@@ -2876,6 +3551,7 @@ export default function SimpleLandingPageEditor({
                       <LandingPageThemeProvider
                         palette={config.theme?.palette}
                         headerFont={config.theme?.headerFont}
+                        subHeaderFont={config.theme?.subHeaderFont}
                         bodyFont={config.theme?.bodyFont}
                       >
                         <HeroTemplateRenderer
@@ -2968,6 +3644,7 @@ export default function SimpleLandingPageEditor({
               <LandingPageThemeProvider
                 palette={config.theme?.palette}
                 headerFont={config.theme?.headerFont}
+                subHeaderFont={config.theme?.subHeaderFont}
                 bodyFont={config.theme?.bodyFont}
               >
                 <HeroTemplateRenderer

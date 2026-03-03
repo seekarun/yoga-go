@@ -771,7 +771,7 @@ export default function StaticEcom({
         .${SCOPE}-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-          gap: 24px;
+          gap: ${brand.cardStyle?.margin ?? 24}px;
           max-width: 1200px;
           margin: 0 auto;
         }
@@ -784,7 +784,7 @@ export default function StaticEcom({
         }
         .${SCOPE}-track {
           display: flex;
-          gap: 24px;
+          gap: ${brand.cardStyle?.margin ?? 24}px;
           overflow-x: auto;
           scroll-snap-type: x mandatory;
           -webkit-overflow-scrolling: touch;
@@ -832,8 +832,8 @@ export default function StaticEcom({
 
         /* ---- card ---- */
         .${SCOPE}-card {
-          background: transparent;
-          border-radius: 20px;
+          background: ${brand.cardStyle?.bgColor || "transparent"};
+          border-radius: ${brand.cardStyle?.borderRadius ?? 20}px;
           overflow: hidden;
           transition: transform 0.25s ease, box-shadow 0.25s ease;
           display: flex;
@@ -1046,14 +1046,14 @@ export default function StaticEcom({
           width: 100%;
           margin-top: 14px;
           padding: 11px 20px;
-          border-radius: 12px;
-          border: none;
+          border-radius: ${brand.primaryButton?.borderRadius ?? 12}px;
+          border: ${brand.primaryButton?.borderWidth ? `${brand.primaryButton.borderWidth}px solid ${brand.primaryButton.borderColor}` : "none"};
           font-weight: 600;
           font-size: 0.9rem;
           cursor: pointer;
           transition: opacity 0.2s, transform 0.15s;
-          color: ${getContrastColor(primary)};
-          background: ${primary};
+          color: ${brand.primaryButton?.textColor || getContrastColor(primary)};
+          background: ${brand.primaryButton?.fillColor || primary};
           font-family: ${brand.bodyFont || "inherit"};
         }
         .${SCOPE}-btn:hover {
@@ -1108,10 +1108,16 @@ export default function StaticEcom({
               onDeselect={() => setHeadingSelected(false)}
               toolbarProps={{
                 fontSize: styleOverrides?.headingFontSize ?? 28,
-                fontFamily: styleOverrides?.headingFontFamily ?? "",
+                fontFamily:
+                  styleOverrides?.headingFontFamily ||
+                  brand.subHeaderFont ||
+                  "",
                 fontWeight: styleOverrides?.headingFontWeight ?? "bold",
                 fontStyle: styleOverrides?.headingFontStyle ?? "normal",
-                color: styleOverrides?.headingTextColor ?? "#1a1a1a",
+                color:
+                  styleOverrides?.headingTextColor ??
+                  brand.subHeaderFontColor ??
+                  "#1a1a1a",
                 textAlign: styleOverrides?.headingTextAlign ?? "center",
                 onFontSizeChange: (v) => emitOverride({ headingFontSize: v }),
                 onFontFamilyChange: (v) =>
@@ -1141,10 +1147,14 @@ export default function StaticEcom({
               onDeselect={() => setSubheadingSelected(false)}
               toolbarProps={{
                 fontSize: styleOverrides?.subheadingFontSize ?? 17,
-                fontFamily: styleOverrides?.subheadingFontFamily ?? "",
+                fontFamily:
+                  styleOverrides?.subheadingFontFamily || brand.bodyFont || "",
                 fontWeight: styleOverrides?.subheadingFontWeight ?? "normal",
                 fontStyle: styleOverrides?.subheadingFontStyle ?? "normal",
-                color: styleOverrides?.subheadingTextColor ?? "#6b7280",
+                color:
+                  styleOverrides?.subheadingTextColor ??
+                  brand.bodyFontColor ??
+                  "#6b7280",
                 textAlign: styleOverrides?.subheadingTextAlign ?? "center",
                 onFontSizeChange: (v) =>
                   emitOverride({ subheadingFontSize: v }),

@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import type { Product, ProductImage } from "@/types";
 import type {
   BrandFont,
+  FontWeight,
   ProductsConfig,
   ProductsStyleOverrides,
   TenantLandingPageData,
@@ -194,7 +195,11 @@ interface ProductsSectionProps {
   tenantData?: TenantLandingPageData;
   currency: string;
   variant?: "light" | "dark" | "gray";
-  brandFonts?: { headerFont?: BrandFont; bodyFont?: BrandFont };
+  brandFonts?: {
+    headerFont?: BrandFont;
+    subHeaderFont?: BrandFont;
+    bodyFont?: BrandFont;
+  };
   productsConfig?: ProductsConfig;
   isEditing?: boolean;
   palette?: ColorPalette;
@@ -412,7 +417,7 @@ export default function ProductsSection({
   );
 
   const handleHeadingFontWeightChange = useCallback(
-    (val: "normal" | "bold") => {
+    (val: FontWeight) => {
       onStyleOverrideChange?.({ ...overrides, headingFontWeight: val });
     },
     [overrides, onStyleOverrideChange],
@@ -455,7 +460,7 @@ export default function ProductsSection({
   );
 
   const handleSubheadingFontWeightChange = useCallback(
-    (val: "normal" | "bold") => {
+    (val: FontWeight) => {
       onStyleOverrideChange?.({ ...overrides, subheadingFontWeight: val });
     },
     [overrides, onStyleOverrideChange],
@@ -581,16 +586,22 @@ export default function ProductsSection({
   const headingStyle: React.CSSProperties = {
     fontSize: overrides?.headingFontSize
       ? `${overrides.headingFontSize}px`
-      : brandFonts?.headerFont?.size
-        ? `${brandFonts.headerFont.size}px`
-        : "clamp(1.75rem, 3vw, 2.5rem)",
+      : brandFonts?.subHeaderFont?.size
+        ? `${brandFonts.subHeaderFont.size}px`
+        : brandFonts?.headerFont?.size
+          ? `${brandFonts.headerFont.size}px`
+          : "clamp(1.75rem, 3vw, 2.5rem)",
     fontFamily:
       overrides?.headingFontFamily ||
+      brandFonts?.subHeaderFont?.family ||
       brandFonts?.headerFont?.family ||
       undefined,
     fontWeight: overrides?.headingFontWeight ?? 700,
     fontStyle: overrides?.headingFontStyle || undefined,
-    color: overrides?.headingTextColor || theme.heading,
+    color:
+      overrides?.headingTextColor ||
+      brandFonts?.subHeaderFont?.color ||
+      theme.heading,
     textAlign: overrides?.headingTextAlign || "center",
     marginBottom: "12px",
   };
@@ -607,7 +618,10 @@ export default function ProductsSection({
       undefined,
     fontWeight: overrides?.subheadingFontWeight || undefined,
     fontStyle: overrides?.subheadingFontStyle || undefined,
-    color: overrides?.subheadingTextColor || theme.subheading,
+    color:
+      overrides?.subheadingTextColor ||
+      brandFonts?.bodyFont?.color ||
+      theme.subheading,
     textAlign: overrides?.subheadingTextAlign || "center",
     maxWidth: "600px",
     margin: "0 auto",
@@ -650,17 +664,22 @@ export default function ProductsSection({
   };
 
   const cardTitleStyle: React.CSSProperties = {
-    fontSize: "1.15rem",
-    fontFamily: brandFonts?.headerFont?.family || undefined,
+    fontSize: brandFonts?.subHeaderFont?.size
+      ? `${brandFonts.subHeaderFont.size}px`
+      : "1.15rem",
+    fontFamily:
+      brandFonts?.subHeaderFont?.family ||
+      brandFonts?.headerFont?.family ||
+      undefined,
     fontWeight: 600,
-    color: theme.cardTitle,
+    color: brandFonts?.subHeaderFont?.color || theme.cardTitle,
     marginBottom: "8px",
   };
 
   const cardDescStyle: React.CSSProperties = {
     fontSize: "0.95rem",
     fontFamily: brandFonts?.bodyFont?.family || undefined,
-    color: theme.cardText,
+    color: brandFonts?.bodyFont?.color || theme.cardText,
     lineHeight: 1.6,
     marginBottom: "16px",
     flex: 1,

@@ -9,6 +9,7 @@ import ResizableText from "./ResizableText";
 import { renderSpans } from "./spanUtils";
 import { getSpanFontUrls } from "./fonts";
 import BgDragOverlay from "./BgDragOverlay";
+import { resolveColorRef } from "@/lib/colorPalette";
 
 const DEFAULT_OVERLAY = 50;
 const DEFAULT_PADDING_TOP = 40;
@@ -49,6 +50,16 @@ export default function CenteredTemplate(props: HeroTemplateProps) {
     imageOffsetY,
   } = config;
   const h = config.heroStyleOverrides;
+
+  // Helper to resolve color references (palette:primary etc.) to hex
+  const rc = (val: string | undefined, fallback: string) =>
+    resolveColorRef(val, config.theme?.palette, config.customColors, fallback);
+
+  // Resolve colour refs inside title spans so per-word colours render correctly
+  const resolvedTitleSpans = h?.titleSpans?.map((span) => ({
+    ...span,
+    color: span.color ? rc(span.color, "") || undefined : span.color,
+  }));
 
   const toolbar = useHeroToolbarState({
     isEditing,
@@ -124,7 +135,10 @@ export default function CenteredTemplate(props: HeroTemplateProps) {
     fontFamily:
       h?.titleFontFamily || config.theme?.headerFont?.family || undefined,
     fontStyle: h?.titleFontStyle || undefined,
-    color: h?.titleTextColor || "#ffffff",
+    color:
+      rc(h?.titleTextColor, "") ||
+      rc(config.theme?.headerFont?.color, "") ||
+      "#ffffff",
     textAlign: h?.titleTextAlign || undefined,
     marginBottom: "20px",
     lineHeight: 1.1,
@@ -135,12 +149,21 @@ export default function CenteredTemplate(props: HeroTemplateProps) {
   const subtitleStyle: React.CSSProperties = {
     fontSize: h?.subtitleFontSize
       ? `${h.subtitleFontSize}px`
-      : "clamp(1.1rem, 2.5vw, 1.5rem)",
+      : config.theme?.subHeaderFont?.size
+        ? `${config.theme.subHeaderFont.size}px`
+        : "clamp(1.1rem, 2.5vw, 1.5rem)",
     fontWeight: h?.subtitleFontWeight === "bold" ? 700 : 400,
     fontFamily:
-      h?.subtitleFontFamily || config.theme?.bodyFont?.family || undefined,
+      h?.subtitleFontFamily ||
+      config.theme?.subHeaderFont?.family ||
+      config.theme?.headerFont?.family ||
+      undefined,
     fontStyle: h?.subtitleFontStyle || undefined,
-    color: h?.subtitleTextColor || "#ffffff",
+    color:
+      rc(h?.subtitleTextColor, "") ||
+      rc(config.theme?.subHeaderFont?.color, "") ||
+      rc(config.theme?.headerFont?.color, "") ||
+      "#ffffff",
     textAlign: h?.subtitleTextAlign || undefined,
     opacity: 0.95,
     lineHeight: 1.6,
@@ -154,15 +177,19 @@ export default function CenteredTemplate(props: HeroTemplateProps) {
     borderRadius: "6px",
   };
 
+  const pb = config.theme?.primaryButton;
   const buttonStyle: React.CSSProperties = {
     marginTop: "32px",
     padding: "16px 40px",
     fontSize: "1.1rem",
     fontWeight: 600,
-    backgroundColor: "var(--brand-500, #ffffff)",
-    color: "var(--brand-500-contrast, #1a1a1a)",
-    border: "none",
-    borderRadius: "8px",
+    backgroundColor: rc(pb?.fillColor, "") || "var(--brand-500, #ffffff)",
+    color: rc(pb?.textColor, "") || "var(--brand-500-contrast, #1a1a1a)",
+    border:
+      pb?.borderWidth && pb.borderWidth > 0
+        ? `${pb.borderWidth}px solid ${rc(pb?.borderColor, "transparent")}`
+        : "none",
+    borderRadius: `${pb?.borderRadius ?? 8}px`,
     cursor: "pointer",
     transition: "transform 0.2s, box-shadow 0.2s",
     boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
@@ -275,10 +302,16 @@ export default function CenteredTemplate(props: HeroTemplateProps) {
                   onSelect={toolbar.handleTitleClick}
                   toolbarProps={{
                     fontSize: h?.titleFontSize || 48,
-                    fontFamily: h?.titleFontFamily || "",
+                    fontFamily:
+                      h?.titleFontFamily ||
+                      config.theme?.headerFont?.family ||
+                      "",
                     fontWeight: h?.titleFontWeight || "bold",
                     fontStyle: h?.titleFontStyle || "normal",
-                    color: h?.titleTextColor || "#ffffff",
+                    color:
+                      rc(h?.titleTextColor, "") ||
+                      rc(config.theme?.headerFont?.color, "") ||
+                      "#ffffff",
                     textAlign: h?.titleTextAlign || "center",
                     onFontSizeChange: toolbar.onTitleFontSizeChange,
                     onFontFamilyChange: toolbar.onTitleFontFamilyChange,
@@ -290,7 +323,7 @@ export default function CenteredTemplate(props: HeroTemplateProps) {
                   palette={config.theme?.palette}
                   customColors={config.customColors}
                   onCustomColorsChange={onCustomColorsChange}
-                  spans={h?.titleSpans}
+                  spans={resolvedTitleSpans}
                   onSpansChange={(spans) =>
                     onHeroStyleOverrideChange?.({ ...h, titleSpans: spans })
                   }
@@ -310,10 +343,18 @@ export default function CenteredTemplate(props: HeroTemplateProps) {
                   onSelect={toolbar.handleSubtitleClick}
                   toolbarProps={{
                     fontSize: h?.subtitleFontSize || 20,
-                    fontFamily: h?.subtitleFontFamily || "",
+                    fontFamily:
+                      h?.subtitleFontFamily ||
+                      config.theme?.subHeaderFont?.family ||
+                      config.theme?.headerFont?.family ||
+                      "",
                     fontWeight: h?.subtitleFontWeight || "normal",
                     fontStyle: h?.subtitleFontStyle || "normal",
-                    color: h?.subtitleTextColor || "#ffffff",
+                    color:
+                      rc(h?.subtitleTextColor, "") ||
+                      rc(config.theme?.subHeaderFont?.color, "") ||
+                      rc(config.theme?.headerFont?.color, "") ||
+                      "#ffffff",
                     textAlign: h?.subtitleTextAlign || "center",
                     onFontSizeChange: toolbar.onSubtitleFontSizeChange,
                     onFontFamilyChange: toolbar.onSubtitleFontFamilyChange,
@@ -366,7 +407,7 @@ export default function CenteredTemplate(props: HeroTemplateProps) {
               </>
             ) : (
               <>
-                {getSpanFontUrls(h?.titleSpans).map((url) => (
+                {getSpanFontUrls(resolvedTitleSpans).map((url) => (
                   <link key={url} rel="stylesheet" href={url} />
                 ))}
                 <h1
@@ -375,12 +416,14 @@ export default function CenteredTemplate(props: HeroTemplateProps) {
                     maxWidth: `${h?.titleMaxWidth ?? DEFAULT_TITLE_MW}px`,
                   }}
                 >
-                  {h?.titleSpans && h.titleSpans.length > 0
-                    ? renderSpans(title, h.titleSpans, titleStyle).map((s) => (
-                        <span key={s.startIndex} style={s.style}>
-                          {s.text}
-                        </span>
-                      ))
+                  {resolvedTitleSpans && resolvedTitleSpans.length > 0
+                    ? renderSpans(title, resolvedTitleSpans, titleStyle).map(
+                        (s) => (
+                          <span key={s.startIndex} style={s.style}>
+                            {s.text}
+                          </span>
+                        ),
+                      )
                     : title}
                 </h1>
                 <p

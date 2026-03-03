@@ -67,10 +67,14 @@ export default function ClassicCollapsible({
     fontSize: styleOverrides?.headingFontSize ?? "clamp(1.8rem, 3.5vw, 2.5rem)",
     fontWeight: styleOverrides?.headingFontWeight ?? 700,
     fontStyle: styleOverrides?.headingFontStyle ?? "normal",
-    color: styleOverrides?.headingTextColor ?? "#1a1a1a",
+    color:
+      styleOverrides?.headingTextColor ?? brand.subHeaderFontColor ?? "#1a1a1a",
     textAlign: styleOverrides?.headingTextAlign ?? "left",
     fontFamily:
-      styleOverrides?.headingFontFamily || brand.headerFont || "inherit",
+      styleOverrides?.headingFontFamily ||
+      brand.subHeaderFont ||
+      brand.headerFont ||
+      "inherit",
     lineHeight: 1.15,
     margin: "0 0 8px",
   };
@@ -79,7 +83,8 @@ export default function ClassicCollapsible({
     fontSize: styleOverrides?.subheadingFontSize ?? "1rem",
     fontWeight: styleOverrides?.subheadingFontWeight ?? "normal",
     fontStyle: styleOverrides?.subheadingFontStyle ?? "normal",
-    color: styleOverrides?.subheadingTextColor ?? "#9ca3af",
+    color:
+      styleOverrides?.subheadingTextColor ?? brand.bodyFontColor ?? "#9ca3af",
     textAlign: styleOverrides?.subheadingTextAlign ?? "left",
     fontFamily:
       styleOverrides?.subheadingFontFamily || brand.bodyFont || "inherit",
@@ -98,15 +103,15 @@ export default function ClassicCollapsible({
         .${SCOPE}-heading {
           font-size: clamp(1.8rem, 3.5vw, 2.5rem);
           font-weight: 700;
-          color: #1a1a1a;
+          color: ${brand.subHeaderFontColor || "#1a1a1a"};
           margin: 0 0 8px;
-          font-family: ${brand.headerFont || "inherit"};
+          font-family: ${brand.subHeaderFont || brand.headerFont || "inherit"};
           line-height: 1.15;
         }
 
         .${SCOPE}-subheading {
           font-size: 1rem;
-          color: #9ca3af;
+          color: ${brand.bodyFontColor || "#9ca3af"};
           margin: 0 0 48px;
           font-family: ${brand.bodyFont || "inherit"};
         }
@@ -123,11 +128,11 @@ export default function ClassicCollapsible({
         }
 
         .${SCOPE}-item summary {
-          font-size: 1.1rem;
+          font-size: ${brand.subHeaderFontSize ? `${brand.subHeaderFontSize}px` : "1.1rem"};
           font-weight: 600;
-          color: #1a1a1a;
+          color: ${brand.subHeaderFontColor || "#1a1a1a"};
           cursor: pointer;
-          font-family: ${brand.headerFont || "inherit"};
+          font-family: ${brand.subHeaderFont || brand.headerFont || "inherit"};
           line-height: 1.4;
           padding: 0;
         }
@@ -142,7 +147,7 @@ export default function ClassicCollapsible({
 
         .${SCOPE}-answer {
           font-size: 1rem;
-          color: #6b7280;
+          color: ${brand.bodyFontColor || "#6b7280"};
           line-height: 1.7;
           margin: 0;
           font-family: ${brand.bodyFont || "inherit"};
@@ -172,10 +177,14 @@ export default function ClassicCollapsible({
           onDeselect={() => setHeadingSelected(false)}
           toolbarProps={{
             fontSize: styleOverrides?.headingFontSize ?? 28,
-            fontFamily: styleOverrides?.headingFontFamily ?? "",
+            fontFamily:
+              styleOverrides?.headingFontFamily || brand.subHeaderFont || "",
             fontWeight: styleOverrides?.headingFontWeight ?? "bold",
             fontStyle: styleOverrides?.headingFontStyle ?? "normal",
-            color: styleOverrides?.headingTextColor ?? "#1a1a1a",
+            color:
+              styleOverrides?.headingTextColor ??
+              brand.subHeaderFontColor ??
+              "#1a1a1a",
             textAlign: styleOverrides?.headingTextAlign ?? "left",
             onFontSizeChange: (v) => emitOverride({ headingFontSize: v }),
             onFontFamilyChange: (v) => emitOverride({ headingFontFamily: v }),
@@ -202,10 +211,14 @@ export default function ClassicCollapsible({
           onDeselect={() => setSubheadingSelected(false)}
           toolbarProps={{
             fontSize: styleOverrides?.subheadingFontSize ?? 16,
-            fontFamily: styleOverrides?.subheadingFontFamily ?? "",
+            fontFamily:
+              styleOverrides?.subheadingFontFamily || brand.bodyFont || "",
             fontWeight: styleOverrides?.subheadingFontWeight ?? "normal",
             fontStyle: styleOverrides?.subheadingFontStyle ?? "normal",
-            color: styleOverrides?.subheadingTextColor ?? "#9ca3af",
+            color:
+              styleOverrides?.subheadingTextColor ??
+              brand.bodyFontColor ??
+              "#9ca3af",
             textAlign: styleOverrides?.subheadingTextAlign ?? "left",
             onFontSizeChange: (v) => emitOverride({ subheadingFontSize: v }),
             onFontFamilyChange: (v) =>

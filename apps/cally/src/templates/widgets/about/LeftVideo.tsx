@@ -143,9 +143,13 @@ export default function LeftVideo({
     fontSize: overrides?.titleFontSize ?? "clamp(1.8rem, 3.5vw, 2.6rem)",
     fontWeight: overrides?.titleFontWeight ?? 700,
     fontStyle: overrides?.titleFontStyle ?? "normal",
-    color: overrides?.titleTextColor ?? primary,
+    color: overrides?.titleTextColor ?? brand.subHeaderFontColor ?? primary,
     textAlign: overrides?.titleTextAlign ?? "left",
-    fontFamily: overrides?.titleFontFamily || brand.headerFont || "inherit",
+    fontFamily:
+      overrides?.titleFontFamily ||
+      brand.subHeaderFont ||
+      brand.headerFont ||
+      "inherit",
     lineHeight: 1.15,
     margin: 0,
   };
@@ -155,7 +159,7 @@ export default function LeftVideo({
     fontSize: overrides?.fontSize ?? 16,
     fontWeight: overrides?.fontWeight ?? "normal",
     fontStyle: overrides?.fontStyle ?? "normal",
-    color: overrides?.textColor ?? "#4a4a4a",
+    color: overrides?.textColor ?? brand.bodyFontColor ?? "#4a4a4a",
     textAlign: overrides?.textAlign ?? "left",
     fontFamily: overrides?.fontFamily || brand.bodyFont || "inherit",
     lineHeight: 1.8,
@@ -423,10 +427,14 @@ export default function LeftVideo({
             onDeselect={() => setTitleSelected(false)}
             toolbarProps={{
               fontSize: overrides?.titleFontSize ?? 28,
-              fontFamily: overrides?.titleFontFamily ?? "",
+              fontFamily:
+                overrides?.titleFontFamily || brand.subHeaderFont || "",
               fontWeight: overrides?.titleFontWeight ?? "bold",
               fontStyle: overrides?.titleFontStyle ?? "normal",
-              color: overrides?.titleTextColor ?? primary,
+              color:
+                overrides?.titleTextColor ??
+                brand.subHeaderFontColor ??
+                primary,
               textAlign: overrides?.titleTextAlign ?? "left",
               onFontSizeChange: (v) => emitOverride({ titleFontSize: v }),
               onFontFamilyChange: (v) => emitOverride({ titleFontFamily: v }),
@@ -459,10 +467,10 @@ export default function LeftVideo({
             onDeselect={() => setParagraphSelected(false)}
             toolbarProps={{
               fontSize: overrides?.fontSize ?? 16,
-              fontFamily: overrides?.fontFamily ?? "",
+              fontFamily: overrides?.fontFamily || brand.bodyFont || "",
               fontWeight: overrides?.fontWeight ?? "normal",
               fontStyle: overrides?.fontStyle ?? "normal",
-              color: overrides?.textColor ?? "#4a4a4a",
+              color: overrides?.textColor ?? brand.bodyFontColor ?? "#4a4a4a",
               textAlign: overrides?.textAlign ?? "left",
               onFontSizeChange: (v) => emitOverride({ fontSize: v }),
               onFontFamilyChange: (v) => emitOverride({ fontFamily: v }),

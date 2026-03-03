@@ -74,7 +74,7 @@ export default function DoctorProfile({
     fontSize: overrides?.titleFontSize ?? "clamp(2.2rem, 5vw, 3.4rem)",
     fontWeight: overrides?.titleFontWeight ?? 700,
     fontStyle: overrides?.titleFontStyle ?? "normal",
-    color: overrides?.titleTextColor ?? "#1a1a1a",
+    color: overrides?.titleTextColor ?? brand.headerFontColor ?? "#1a1a1a",
     textAlign: overrides?.titleTextAlign ?? "left",
     fontFamily: overrides?.titleFontFamily || brand.headerFont || "inherit",
     lineHeight: 1.1,
@@ -83,12 +83,22 @@ export default function DoctorProfile({
   };
 
   const subtitleStyle: React.CSSProperties = {
-    fontSize: overrides?.subtitleFontSize ?? "1.1rem",
+    fontSize:
+      overrides?.subtitleFontSize ??
+      (brand.subHeaderFontSize ? `${brand.subHeaderFontSize}px` : "1.1rem"),
     fontWeight: overrides?.subtitleFontWeight ?? "normal",
     fontStyle: overrides?.subtitleFontStyle ?? "normal",
-    color: overrides?.subtitleTextColor ?? "#5c5c5c",
+    color:
+      overrides?.subtitleTextColor ??
+      brand.subHeaderFontColor ??
+      brand.headerFontColor ??
+      "#5c5c5c",
     textAlign: overrides?.subtitleTextAlign ?? "left",
-    fontFamily: overrides?.subtitleFontFamily || brand.bodyFont || "inherit",
+    fontFamily:
+      overrides?.subtitleFontFamily ||
+      brand.subHeaderFont ||
+      brand.headerFont ||
+      "inherit",
     lineHeight: 1.65,
     margin: 0,
     maxWidth: 520,
@@ -123,14 +133,14 @@ export default function DoctorProfile({
           align-items: center;
           gap: 12px;
           padding: 16px 20px 16px 28px;
-          border-radius: 50px;
+          border-radius: ${brand.primaryButton?.borderRadius ?? 50}px;
           font-weight: 600;
           font-size: 1rem;
-          border: none;
+          border: ${brand.primaryButton?.borderWidth ? `${brand.primaryButton.borderWidth}px solid ${brand.primaryButton.borderColor}` : "none"};
           cursor: pointer;
           transition: opacity 0.2s, transform 0.15s;
-          color: ${getContrastColor(primary)};
-          background: ${primary};
+          color: ${brand.primaryButton?.textColor || getContrastColor(primary)};
+          background: ${brand.primaryButton?.fillColor || primary};
           font-family: ${brand.bodyFont || "inherit"};
         }
         .${SCOPE}-btn-primary:hover { opacity: 0.9; transform: scale(1.02); }
@@ -186,10 +196,11 @@ export default function DoctorProfile({
             onDeselect={() => setTitleSelected(false)}
             toolbarProps={{
               fontSize: overrides?.titleFontSize ?? 36,
-              fontFamily: overrides?.titleFontFamily ?? "",
+              fontFamily: overrides?.titleFontFamily || brand.headerFont || "",
               fontWeight: overrides?.titleFontWeight ?? "bold",
               fontStyle: overrides?.titleFontStyle ?? "normal",
-              color: overrides?.titleTextColor ?? "#1a1a1a",
+              color:
+                overrides?.titleTextColor ?? brand.headerFontColor ?? "#1a1a1a",
               textAlign: overrides?.titleTextAlign ?? "left",
               onFontSizeChange: (v) => emitOverride({ titleFontSize: v }),
               onFontFamilyChange: (v) => emitOverride({ titleFontFamily: v }),
@@ -237,10 +248,18 @@ export default function DoctorProfile({
             onDeselect={() => setSubtitleSelected(false)}
             toolbarProps={{
               fontSize: overrides?.subtitleFontSize ?? 17,
-              fontFamily: overrides?.subtitleFontFamily ?? "",
+              fontFamily:
+                overrides?.subtitleFontFamily ||
+                brand.subHeaderFont ||
+                brand.headerFont ||
+                "",
               fontWeight: overrides?.subtitleFontWeight ?? "normal",
               fontStyle: overrides?.subtitleFontStyle ?? "normal",
-              color: overrides?.subtitleTextColor ?? "#5c5c5c",
+              color:
+                overrides?.subtitleTextColor ??
+                brand.subHeaderFontColor ??
+                brand.headerFontColor ??
+                "#5c5c5c",
               textAlign: overrides?.subtitleTextAlign ?? "left",
               onFontSizeChange: (v) => emitOverride({ subtitleFontSize: v }),
               onFontFamilyChange: (v) =>

@@ -143,13 +143,13 @@ export default function CardUnevenGrid({
           display: grid;
           grid-template-columns: 1fr 1fr 1fr;
           grid-template-rows: auto auto;
-          gap: 20px;
+          gap: ${brand.cardStyle?.margin ?? 20}px;
         }
 
         /* ---- shared card base ---- */
         .${SCOPE}-card {
-          border-radius: 16px;
-          padding: 28px 24px;
+          border-radius: ${brand.cardStyle?.borderRadius ?? 16}px;
+          padding: ${brand.cardStyle?.padding ?? 28}px;
           display: flex;
           flex-direction: column;
         }
@@ -231,7 +231,7 @@ export default function CardUnevenGrid({
 
         /* ---- light cards ---- */
         .${SCOPE}-light {
-          background: ${brand.secondaryColor || "#f9fafb"};
+          background: ${brand.cardStyle?.bgColor || brand.secondaryColor || "#f9fafb"};
           border: 1px solid #eee;
         }
         .${SCOPE}-light .${SCOPE}-avatar {
@@ -282,10 +282,16 @@ export default function CardUnevenGrid({
                 onDeselect={() => setHeadingSelected(false)}
                 toolbarProps={{
                   fontSize: styleOverrides?.headingFontSize ?? 28,
-                  fontFamily: styleOverrides?.headingFontFamily ?? "",
+                  fontFamily:
+                    styleOverrides?.headingFontFamily ||
+                    brand.subHeaderFont ||
+                    "",
                   fontWeight: styleOverrides?.headingFontWeight ?? "bold",
                   fontStyle: styleOverrides?.headingFontStyle ?? "normal",
-                  color: styleOverrides?.headingTextColor ?? "#1a1a1a",
+                  color:
+                    styleOverrides?.headingTextColor ??
+                    brand.subHeaderFontColor ??
+                    "#1a1a1a",
                   textAlign: styleOverrides?.headingTextAlign ?? "center",
                   onFontSizeChange: (v) => emitOverride({ headingFontSize: v }),
                   onFontFamilyChange: (v) =>
@@ -316,10 +322,16 @@ export default function CardUnevenGrid({
                 onDeselect={() => setSubheadingSelected(false)}
                 toolbarProps={{
                   fontSize: styleOverrides?.subheadingFontSize ?? 16,
-                  fontFamily: styleOverrides?.subheadingFontFamily ?? "",
+                  fontFamily:
+                    styleOverrides?.subheadingFontFamily ||
+                    brand.bodyFont ||
+                    "",
                   fontWeight: styleOverrides?.subheadingFontWeight ?? "normal",
                   fontStyle: styleOverrides?.subheadingFontStyle ?? "normal",
-                  color: styleOverrides?.subheadingTextColor ?? "#6b7280",
+                  color:
+                    styleOverrides?.subheadingTextColor ??
+                    brand.bodyFontColor ??
+                    "#6b7280",
                   textAlign: styleOverrides?.subheadingTextAlign ?? "center",
                   onFontSizeChange: (v) =>
                     emitOverride({ subheadingFontSize: v }),

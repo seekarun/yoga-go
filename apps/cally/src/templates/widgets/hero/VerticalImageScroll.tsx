@@ -119,7 +119,7 @@ export default function VerticalImageScroll({
     fontSize: overrides?.titleFontSize ?? "clamp(2.4rem, 5.5vw, 3.8rem)",
     fontWeight: overrides?.titleFontWeight ?? 700,
     fontStyle: overrides?.titleFontStyle ?? "normal",
-    color: overrides?.titleTextColor ?? "#1a1a1a",
+    color: overrides?.titleTextColor ?? brand.headerFontColor ?? "#1a1a1a",
     textAlign: overrides?.titleTextAlign ?? "left",
     fontFamily: overrides?.titleFontFamily || brand.headerFont || "inherit",
     lineHeight: 1.08,
@@ -128,12 +128,22 @@ export default function VerticalImageScroll({
   };
 
   const subtitleStyle: React.CSSProperties = {
-    fontSize: overrides?.subtitleFontSize ?? "1.1rem",
+    fontSize:
+      overrides?.subtitleFontSize ??
+      (brand.subHeaderFontSize ? `${brand.subHeaderFontSize}px` : "1.1rem"),
     fontWeight: overrides?.subtitleFontWeight ?? "normal",
     fontStyle: overrides?.subtitleFontStyle ?? "normal",
-    color: overrides?.subtitleTextColor ?? "#6b7280",
+    color:
+      overrides?.subtitleTextColor ??
+      brand.subHeaderFontColor ??
+      brand.headerFontColor ??
+      "#6b7280",
     textAlign: overrides?.subtitleTextAlign ?? "left",
-    fontFamily: overrides?.subtitleFontFamily || brand.bodyFont || "inherit",
+    fontFamily:
+      overrides?.subtitleFontFamily ||
+      brand.subHeaderFont ||
+      brand.headerFont ||
+      "inherit",
     lineHeight: 1.7,
     margin: 0,
     maxWidth: 520,
@@ -150,9 +160,9 @@ export default function VerticalImageScroll({
         .${SCOPE}-text { display: flex; flex-direction: column; gap: 24px; }
         .${SCOPE}-btn {
           display: inline-block; width: fit-content; padding: 16px 40px;
-          border-radius: 50px; font-weight: 600; font-size: 1rem; border: none;
+          border-radius: ${brand.primaryButton?.borderRadius ?? 50}px; font-weight: 600; font-size: 1rem; border: ${brand.primaryButton?.borderWidth ? `${brand.primaryButton.borderWidth}px solid ${brand.primaryButton.borderColor}` : "none"};
           cursor: pointer; transition: opacity 0.2s, transform 0.15s;
-          color: ${getContrastColor(primary)}; background: ${primary};
+          color: ${brand.primaryButton?.textColor || getContrastColor(primary)}; background: ${brand.primaryButton?.fillColor || primary};
           font-family: ${brand.bodyFont || "inherit"};
         }
         .${SCOPE}-btn:hover { opacity: 0.9; transform: scale(1.03); }
@@ -193,10 +203,11 @@ export default function VerticalImageScroll({
             onDeselect={() => setTitleSelected(false)}
             toolbarProps={{
               fontSize: overrides?.titleFontSize ?? 38,
-              fontFamily: overrides?.titleFontFamily ?? "",
+              fontFamily: overrides?.titleFontFamily || brand.headerFont || "",
               fontWeight: overrides?.titleFontWeight ?? "bold",
               fontStyle: overrides?.titleFontStyle ?? "normal",
-              color: overrides?.titleTextColor ?? "#1a1a1a",
+              color:
+                overrides?.titleTextColor ?? brand.headerFontColor ?? "#1a1a1a",
               textAlign: overrides?.titleTextAlign ?? "left",
               onFontSizeChange: (v) => emitOverride({ titleFontSize: v }),
               onFontFamilyChange: (v) => emitOverride({ titleFontFamily: v }),
@@ -244,10 +255,18 @@ export default function VerticalImageScroll({
             onDeselect={() => setSubtitleSelected(false)}
             toolbarProps={{
               fontSize: overrides?.subtitleFontSize ?? 17,
-              fontFamily: overrides?.subtitleFontFamily ?? "",
+              fontFamily:
+                overrides?.subtitleFontFamily ||
+                brand.subHeaderFont ||
+                brand.headerFont ||
+                "",
               fontWeight: overrides?.subtitleFontWeight ?? "normal",
               fontStyle: overrides?.subtitleFontStyle ?? "normal",
-              color: overrides?.subtitleTextColor ?? "#6b7280",
+              color:
+                overrides?.subtitleTextColor ??
+                brand.subHeaderFontColor ??
+                brand.headerFontColor ??
+                "#6b7280",
               textAlign: overrides?.subtitleTextAlign ?? "left",
               onFontSizeChange: (v) => emitOverride({ subtitleFontSize: v }),
               onFontFamilyChange: (v) =>

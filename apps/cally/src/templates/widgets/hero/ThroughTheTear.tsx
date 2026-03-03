@@ -78,7 +78,7 @@ export default function ThroughTheTear({
     fontSize: overrides?.titleFontSize ?? "clamp(2.2rem, 5.5vw, 3.8rem)",
     fontWeight: overrides?.titleFontWeight ?? 800,
     fontStyle: overrides?.titleFontStyle ?? "normal",
-    color: overrides?.titleTextColor ?? "#1a1a1a",
+    color: overrides?.titleTextColor ?? brand.headerFontColor ?? "#1a1a1a",
     textAlign: overrides?.titleTextAlign ?? "center",
     fontFamily: overrides?.titleFontFamily || brand.headerFont || "inherit",
     lineHeight: 1.08,
@@ -88,12 +88,24 @@ export default function ThroughTheTear({
   };
 
   const subtitleStyle: React.CSSProperties = {
-    fontSize: overrides?.subtitleFontSize ?? "clamp(0.95rem, 2vw, 1.15rem)",
+    fontSize:
+      overrides?.subtitleFontSize ??
+      (brand.subHeaderFontSize
+        ? `${brand.subHeaderFontSize}px`
+        : "clamp(0.95rem, 2vw, 1.15rem)"),
     fontWeight: overrides?.subtitleFontWeight ?? "normal",
     fontStyle: overrides?.subtitleFontStyle ?? "normal",
-    color: overrides?.subtitleTextColor ?? "#6b7280",
+    color:
+      overrides?.subtitleTextColor ??
+      brand.subHeaderFontColor ??
+      brand.headerFontColor ??
+      "#6b7280",
     textAlign: overrides?.subtitleTextAlign ?? "center",
-    fontFamily: overrides?.subtitleFontFamily || brand.bodyFont || "inherit",
+    fontFamily:
+      overrides?.subtitleFontFamily ||
+      brand.subHeaderFont ||
+      brand.headerFont ||
+      "inherit",
     lineHeight: 1.65,
     maxWidth: 560,
     margin: "0 0 32px",
@@ -131,13 +143,13 @@ export default function ThroughTheTear({
           padding: 0px 24px 64px; background: #fff;
         }
         .${SCOPE}-btn {
-          display: inline-block; padding: 14px 40px; border-radius: 50px;
-          font-weight: 700; font-size: 0.95rem; border: 2px solid ${primary};
-          cursor: pointer; transition: all 0.25s; color: ${primary};
-          background: transparent; font-family: ${brand.bodyFont || "inherit"};
+          display: inline-block; padding: 14px 40px; border-radius: ${brand.primaryButton?.borderRadius ?? 50}px;
+          font-weight: 700; font-size: 0.95rem; border: ${brand.primaryButton?.borderWidth ? `${brand.primaryButton.borderWidth}px solid ${brand.primaryButton.borderColor}` : `2px solid ${primary}`};
+          cursor: pointer; transition: all 0.25s; color: ${brand.primaryButton?.textColor || primary};
+          background: ${brand.primaryButton?.fillColor || "transparent"}; font-family: ${brand.bodyFont || "inherit"};
           letter-spacing: 0.06em; text-transform: uppercase;
         }
-        .${SCOPE}-btn:hover { background: ${primary}; color: #fff; }
+        .${SCOPE}-btn:hover { background: ${brand.primaryButton?.fillColor || primary}; color: ${brand.primaryButton?.textColor || "#fff"}; }
         @media (max-width: 768px) {
           .${SCOPE}-band { height: 320px; }
           .${SCOPE}-content { padding: 36px 16px 48px; }
@@ -174,10 +186,11 @@ export default function ThroughTheTear({
             onDeselect={() => setTitleSelected(false)}
             toolbarProps={{
               fontSize: overrides?.titleFontSize ?? 38,
-              fontFamily: overrides?.titleFontFamily ?? "",
+              fontFamily: overrides?.titleFontFamily || brand.headerFont || "",
               fontWeight: overrides?.titleFontWeight ?? "bold",
               fontStyle: overrides?.titleFontStyle ?? "normal",
-              color: overrides?.titleTextColor ?? "#1a1a1a",
+              color:
+                overrides?.titleTextColor ?? brand.headerFontColor ?? "#1a1a1a",
               textAlign: overrides?.titleTextAlign ?? "center",
               onFontSizeChange: (v) => emitOverride({ titleFontSize: v }),
               onFontFamilyChange: (v) => emitOverride({ titleFontFamily: v }),
@@ -225,10 +238,18 @@ export default function ThroughTheTear({
             onDeselect={() => setSubtitleSelected(false)}
             toolbarProps={{
               fontSize: overrides?.subtitleFontSize ?? 16,
-              fontFamily: overrides?.subtitleFontFamily ?? "",
+              fontFamily:
+                overrides?.subtitleFontFamily ||
+                brand.subHeaderFont ||
+                brand.headerFont ||
+                "",
               fontWeight: overrides?.subtitleFontWeight ?? "normal",
               fontStyle: overrides?.subtitleFontStyle ?? "normal",
-              color: overrides?.subtitleTextColor ?? "#6b7280",
+              color:
+                overrides?.subtitleTextColor ??
+                brand.subHeaderFontColor ??
+                brand.headerFontColor ??
+                "#6b7280",
               textAlign: overrides?.subtitleTextAlign ?? "center",
               onFontSizeChange: (v) => emitOverride({ subtitleFontSize: v }),
               onFontFamilyChange: (v) =>

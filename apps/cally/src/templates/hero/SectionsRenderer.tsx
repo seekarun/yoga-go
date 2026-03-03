@@ -9,6 +9,7 @@ import type {
   TenantLandingPageData,
 } from "@/types/landing-page";
 import type { Product } from "@/types";
+import { resolveColorRef } from "@/lib/colorPalette";
 import AboutSection from "./AboutSection";
 import FeaturesSection from "./FeaturesSection";
 import ProductsSection from "./ProductsSection";
@@ -177,9 +178,22 @@ export default function SectionsRenderer({
     { id: "faq" as const, enabled: false },
   ];
 
-  const brandFonts: { headerFont?: BrandFont; bodyFont?: BrandFont } = {
-    headerFont: config.theme?.headerFont,
-    bodyFont: config.theme?.bodyFont,
+  // Resolve any color references (e.g. "palette:primary") to actual hex values
+  const pal = config.theme?.palette;
+  const cc = config.customColors;
+  const resolveFont = (font?: BrandFont): BrandFont | undefined =>
+    font
+      ? { ...font, color: resolveColorRef(font.color, pal, cc, font.color) }
+      : undefined;
+
+  const brandFonts: {
+    headerFont?: BrandFont;
+    subHeaderFont?: BrandFont;
+    bodyFont?: BrandFont;
+  } = {
+    headerFont: resolveFont(config.theme?.headerFont),
+    subHeaderFont: resolveFont(config.theme?.subHeaderFont),
+    bodyFont: resolveFont(config.theme?.bodyFont),
   };
 
   return (

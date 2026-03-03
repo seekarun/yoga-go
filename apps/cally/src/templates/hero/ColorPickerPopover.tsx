@@ -2,7 +2,9 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import type { ColorPalette } from "@/lib/colorPalette";
+import { resolveColorRef, isColorRef } from "@/lib/colorPalette";
 import { useBrandColors } from "./CustomColorsContext";
+import HslColorPicker from "./HslColorPicker";
 
 interface CustomColor {
   name: string;
@@ -38,6 +40,7 @@ export default function ColorPickerPopover({
     onCustomColorsChangeProp ?? ctx.onCustomColorsChange;
   const [open, setOpen] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [showCustomPicker, setShowCustomPicker] = useState(false);
   const [newHex, setNewHex] = useState("#6b7280");
   const [newName, setNewName] = useState("");
   const [resolvedDir, setResolvedDir] = useState<"up" | "down">("down");
@@ -96,14 +99,29 @@ export default function ColorPickerPopover({
     [customColors, onCustomColorsChange],
   );
 
+  // Resolve the current color prop (may be a reference or raw hex)
+  const resolvedColor = resolveColorRef(color, palette, customColors);
+
   // Brand swatches: Primary (500), Secondary, Highlight
-  const brandColors: { label: string; hex: string }[] = [];
+  const brandColors: { label: string; hex: string; ref: string }[] = [];
   if (palette) {
-    brandColors.push({ label: "Primary", hex: palette[500] });
+    brandColors.push({
+      label: "Primary",
+      hex: palette[500],
+      ref: "palette:primary",
+    });
     if (palette.secondary)
-      brandColors.push({ label: "Secondary", hex: palette.secondary });
+      brandColors.push({
+        label: "Secondary",
+        hex: palette.secondary,
+        ref: "palette:secondary",
+      });
     if (palette.highlight)
-      brandColors.push({ label: "Highlight", hex: palette.highlight });
+      brandColors.push({
+        label: "Highlight",
+        hex: palette.highlight,
+        ref: "palette:highlight",
+      });
   }
 
   const sectionLabelStyle: React.CSSProperties = {
@@ -144,7 +162,7 @@ export default function ColorPickerPopover({
           width: "22px",
           height: "22px",
           borderRadius: "4px",
-          backgroundColor: color,
+          backgroundColor: resolvedColor,
           border: "1px solid #e5e7eb",
           cursor: "pointer",
           padding: 0,
@@ -169,7 +187,8 @@ export default function ColorPickerPopover({
             boxShadow: "0 4px 20px rgba(0,0,0,0.18)",
             zIndex: 100,
             padding: "12px",
-            width: "180px",
+            width: showCustomPicker || adding ? "280px" : "180px",
+            transition: "width 0.15s ease",
           }}
           onClick={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
@@ -190,10 +209,12 @@ export default function ColorPickerPopover({
                   <button
                     key={bc.label}
                     type="button"
-                    onClick={() => handleSwatchClick(bc.hex)}
+                    onClick={() => handleSwatchClick(bc.ref)}
                     style={swatchBtnStyle(
                       bc.hex,
-                      color.toLowerCase() === bc.hex.toLowerCase(),
+                      color === bc.ref ||
+                        (!isColorRef(color) &&
+                          color.toLowerCase() === bc.hex.toLowerCase()),
                     )}
                     title={bc.hex}
                   >
@@ -235,11 +256,13 @@ export default function ColorPickerPopover({
               >
                 <button
                   type="button"
-                  onClick={() => handleSwatchClick(cc.hex)}
+                  onClick={() => handleSwatchClick(`custom:${cc.name}`)}
                   style={{
                     ...swatchBtnStyle(
                       cc.hex,
-                      color.toLowerCase() === cc.hex.toLowerCase(),
+                      color === `custom:${cc.name}` ||
+                        (!isColorRef(color) &&
+                          color.toLowerCase() === cc.hex.toLowerCase()),
                     ),
                     flex: 1,
                   }}
@@ -283,50 +306,35 @@ export default function ColorPickerPopover({
                 style={{
                   display: "flex",
                   flexDirection: "column",
-                  gap: "4px",
+                  gap: "6px",
                   padding: "6px",
                   border: "1px solid #e5e7eb",
                   borderRadius: "6px",
                 }}
               >
-                <div
-                  style={{ display: "flex", alignItems: "center", gap: "6px" }}
-                >
-                  <input
-                    type="color"
-                    value={newHex}
-                    onChange={(e) => setNewHex(e.target.value)}
-                    style={{
-                      width: "24px",
-                      height: "24px",
-                      padding: 0,
-                      border: "1px solid #e5e7eb",
-                      borderRadius: "4px",
-                      cursor: "pointer",
-                      background: "none",
-                    }}
-                  />
-                  <input
-                    type="text"
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    placeholder="Name"
-                    autoFocus
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") handleAddColor();
-                      if (e.key === "Escape") setAdding(false);
-                    }}
-                    style={{
-                      flex: 1,
-                      fontSize: "11px",
-                      padding: "3px 6px",
-                      border: "1px solid #e5e7eb",
-                      borderRadius: "4px",
-                      outline: "none",
-                      minWidth: 0,
-                    }}
-                  />
-                </div>
+                <HslColorPicker
+                  color={newHex}
+                  onChange={setNewHex}
+                  width={244}
+                />
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="Color name"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleAddColor();
+                    if (e.key === "Escape") setAdding(false);
+                  }}
+                  style={{
+                    fontSize: "11px",
+                    padding: "4px 6px",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: "4px",
+                    outline: "none",
+                  }}
+                />
                 <div
                   style={{
                     display: "flex",
@@ -401,6 +409,49 @@ export default function ColorPickerPopover({
               </button>
             )}
           </div>
+
+          {/* Custom picker toggle */}
+          <button
+            type="button"
+            onClick={() => setShowCustomPicker((v) => !v)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              fontSize: "10px",
+              color: showCustomPicker ? "#3b82f6" : "#9ca3af",
+              padding: "4px 0",
+              marginBottom: showCustomPicker ? "6px" : 0,
+            }}
+          >
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              {showCustomPicker ? (
+                <polyline points="6 15 12 9 18 15" />
+              ) : (
+                <polyline points="6 9 12 15 18 9" />
+              )}
+            </svg>
+            Custom
+          </button>
+          {showCustomPicker && (
+            <HslColorPicker
+              color={resolvedColor}
+              onChange={onChange}
+              width={showCustomPicker || adding ? 256 : 156}
+            />
+          )}
         </div>
       )}
     </div>

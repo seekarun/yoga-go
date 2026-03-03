@@ -53,7 +53,9 @@
     "cally-mobile:start": "npm run start -w cally-mobile",
     "cally-mobile:ios": "npm run ios -w cally-mobile",
     "cally-mobile:android": "npm run android -w cally-mobile",
-    "cally-mobile:typecheck": "npm run typecheck -w cally-mobile"
+    "cally-mobile:typecheck": "npm run typecheck -w cally-mobile",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
   },
   "lint-staged": {
     "apps/**/*.{js,jsx,ts,tsx,json,css,md}": [
@@ -72,6 +74,9 @@
   "dependencies": {
     "@imgly/background-removal": "^1.7.0",
     "dompurify": "^3.3.1",
-    "onnxruntime-web": "^1.21.0"
+    "onnxruntime-web": "^1.21.0",
+    "expo": "~54.0.33",
+    "react": "19.1.0",
+    "react-native": "0.81.5"
   }
 }

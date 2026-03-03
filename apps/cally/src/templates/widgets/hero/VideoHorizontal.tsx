@@ -112,7 +112,7 @@ export default function VideoHorizontal({
     fontSize: overrides?.titleFontSize ?? "clamp(2rem, 5vw, 3.5rem)",
     fontWeight: overrides?.titleFontWeight ?? 700,
     fontStyle: overrides?.titleFontStyle ?? "normal",
-    color: overrides?.titleTextColor ?? "#fff",
+    color: overrides?.titleTextColor ?? brand.headerFontColor ?? "#fff",
     textAlign: overrides?.titleTextAlign ?? "center",
     fontFamily: overrides?.titleFontFamily || brand.headerFont || "inherit",
     lineHeight: 1.15,
@@ -121,12 +121,24 @@ export default function VideoHorizontal({
   };
 
   const subtitleStyle: React.CSSProperties = {
-    fontSize: overrides?.subtitleFontSize ?? "clamp(1rem, 2vw, 1.25rem)",
+    fontSize:
+      overrides?.subtitleFontSize ??
+      (brand.subHeaderFontSize
+        ? `${brand.subHeaderFontSize}px`
+        : "clamp(1rem, 2vw, 1.25rem)"),
     fontWeight: overrides?.subtitleFontWeight ?? "normal",
     fontStyle: overrides?.subtitleFontStyle ?? "normal",
-    color: overrides?.subtitleTextColor ?? "rgba(255, 255, 255, 0.85)",
+    color:
+      overrides?.subtitleTextColor ??
+      brand.subHeaderFontColor ??
+      brand.headerFontColor ??
+      "rgba(255, 255, 255, 0.85)",
     textAlign: overrides?.subtitleTextAlign ?? "center",
-    fontFamily: overrides?.subtitleFontFamily || brand.bodyFont || "inherit",
+    fontFamily:
+      overrides?.subtitleFontFamily ||
+      brand.subHeaderFont ||
+      brand.headerFont ||
+      "inherit",
     lineHeight: 1.6,
     margin: "0 auto 36px",
     maxWidth: 600,
@@ -174,14 +186,14 @@ export default function VideoHorizontal({
         .${SCOPE}-btn {
           display: inline-block;
           padding: 14px 40px;
-          border-radius: 8px;
+          border-radius: ${brand.primaryButton?.borderRadius ?? 8}px;
           font-weight: 600;
           font-size: 1rem;
-          border: none;
+          border: ${brand.primaryButton?.borderWidth ? `${brand.primaryButton.borderWidth}px solid ${brand.primaryButton.borderColor}` : "none"};
           cursor: pointer;
           transition: opacity 0.2s, transform 0.15s;
-          color: ${getContrastColor(primary)};
-          background: ${primary};
+          color: ${brand.primaryButton?.textColor || getContrastColor(primary)};
+          background: ${brand.primaryButton?.fillColor || primary};
           font-family: ${brand.bodyFont || "inherit"};
           box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
         }
@@ -225,10 +237,11 @@ export default function VideoHorizontal({
             onDeselect={() => setTitleSelected(false)}
             toolbarProps={{
               fontSize: overrides?.titleFontSize ?? 36,
-              fontFamily: overrides?.titleFontFamily ?? "",
+              fontFamily: overrides?.titleFontFamily || brand.headerFont || "",
               fontWeight: overrides?.titleFontWeight ?? "bold",
               fontStyle: overrides?.titleFontStyle ?? "normal",
-              color: overrides?.titleTextColor ?? "#fff",
+              color:
+                overrides?.titleTextColor ?? brand.headerFontColor ?? "#fff",
               textAlign: overrides?.titleTextAlign ?? "center",
               onFontSizeChange: (v) => emitOverride({ titleFontSize: v }),
               onFontFamilyChange: (v) => emitOverride({ titleFontFamily: v }),
@@ -276,10 +289,18 @@ export default function VideoHorizontal({
             onDeselect={() => setSubtitleSelected(false)}
             toolbarProps={{
               fontSize: overrides?.subtitleFontSize ?? 18,
-              fontFamily: overrides?.subtitleFontFamily ?? "",
+              fontFamily:
+                overrides?.subtitleFontFamily ||
+                brand.subHeaderFont ||
+                brand.headerFont ||
+                "",
               fontWeight: overrides?.subtitleFontWeight ?? "normal",
               fontStyle: overrides?.subtitleFontStyle ?? "normal",
-              color: overrides?.subtitleTextColor ?? "rgba(255,255,255,0.85)",
+              color:
+                overrides?.subtitleTextColor ??
+                brand.subHeaderFontColor ??
+                brand.headerFontColor ??
+                "rgba(255,255,255,0.85)",
               textAlign: overrides?.subtitleTextAlign ?? "center",
               onFontSizeChange: (v) => emitOverride({ subtitleFontSize: v }),
               onFontFamilyChange: (v) =>
