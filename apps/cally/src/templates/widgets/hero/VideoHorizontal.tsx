@@ -1,12 +1,15 @@
 "use client";
 
 import { useRef, useEffect, useCallback, useState } from "react";
-import type { HeroStyleOverrides } from "@/types/landing-page";
+import type {
+  CustomFontType,
+  HeroStyleOverrides,
+  TypographyRole,
+} from "@/types/landing-page";
 import type { WidgetBrandConfig } from "../types";
 import { getContrastColor } from "@/lib/colorPalette";
 import ResizableText from "../../hero/ResizableText";
-import { renderSpans } from "../../hero/spanUtils";
-import { getSpanFontUrls } from "../../hero/fonts";
+import { fontForRole } from "../../hero/fontUtils";
 
 interface VideoHorizontalProps {
   title?: string;
@@ -19,6 +22,7 @@ interface VideoHorizontalProps {
   onTitleChange?: (title: string) => void;
   onSubtitleChange?: (subtitle: string) => void;
   onStyleOverrideChange?: (overrides: HeroStyleOverrides) => void;
+  onAddCustomFontType?: (ft: CustomFontType) => void;
 }
 
 const SCOPE = "w-hr-vh";
@@ -48,6 +52,7 @@ export default function VideoHorizontal({
   onTitleChange,
   onSubtitleChange,
   onStyleOverrideChange,
+  onAddCustomFontType,
 }: VideoHorizontalProps) {
   const primary = brand.primaryColor || "#6366f1";
   const [activeIndex, setActiveIndex] = useState(0);
@@ -108,37 +113,31 @@ export default function VideoHorizontal({
     [],
   );
 
+  const titleRole: TypographyRole = overrides?.titleTypography || "header";
+  const titleResolved = fontForRole(titleRole, brand);
+  const subtitleRole: TypographyRole =
+    overrides?.subtitleTypography || "sub-header";
+  const subtitleResolved = fontForRole(subtitleRole, brand);
+
+  const innerBody = fontForRole("body", brand);
+
   const titleStyle: React.CSSProperties = {
-    fontSize: overrides?.titleFontSize ?? "clamp(2rem, 5vw, 3.5rem)",
-    fontWeight: overrides?.titleFontWeight ?? 700,
-    fontStyle: overrides?.titleFontStyle ?? "normal",
-    color: overrides?.titleTextColor ?? brand.headerFontColor ?? "#fff",
+    fontSize: titleResolved.size,
+    fontWeight: titleResolved.weight ?? 700,
+    color: titleResolved.color ?? "#fff",
     textAlign: overrides?.titleTextAlign ?? "center",
-    fontFamily: overrides?.titleFontFamily || brand.headerFont || "inherit",
+    fontFamily: titleResolved.font || "inherit",
     lineHeight: 1.15,
     margin: "0 0 16px",
     textShadow: "0 2px 12px rgba(0, 0, 0, 0.3)",
   };
 
   const subtitleStyle: React.CSSProperties = {
-    fontSize:
-      overrides?.subtitleFontSize ??
-      (brand.subHeaderFontSize
-        ? `${brand.subHeaderFontSize}px`
-        : "clamp(1rem, 2vw, 1.25rem)"),
-    fontWeight: overrides?.subtitleFontWeight ?? "normal",
-    fontStyle: overrides?.subtitleFontStyle ?? "normal",
-    color:
-      overrides?.subtitleTextColor ??
-      brand.subHeaderFontColor ??
-      brand.headerFontColor ??
-      "rgba(255, 255, 255, 0.85)",
+    fontSize: subtitleResolved.size,
+    fontWeight: subtitleResolved.weight ?? "normal",
+    color: subtitleResolved.color ?? "rgba(255, 255, 255, 0.85)",
     textAlign: overrides?.subtitleTextAlign ?? "center",
-    fontFamily:
-      overrides?.subtitleFontFamily ||
-      brand.subHeaderFont ||
-      brand.headerFont ||
-      "inherit",
+    fontFamily: subtitleResolved.font || "inherit",
     lineHeight: 1.6,
     margin: "0 auto 36px",
     maxWidth: 600,
@@ -194,7 +193,7 @@ export default function VideoHorizontal({
           transition: opacity 0.2s, transform 0.15s;
           color: ${brand.primaryButton?.textColor || getContrastColor(primary)};
           background: ${brand.primaryButton?.fillColor || primary};
-          font-family: ${brand.bodyFont || "inherit"};
+          font-family: ${innerBody.font || "inherit"};
           box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
         }
         .${SCOPE}-btn:hover {
@@ -236,43 +235,17 @@ export default function VideoHorizontal({
             }}
             onDeselect={() => setTitleSelected(false)}
             toolbarProps={{
-              fontSize: overrides?.titleFontSize ?? 36,
-              fontFamily: overrides?.titleFontFamily || brand.headerFont || "",
-              fontWeight: overrides?.titleFontWeight ?? "bold",
-              fontStyle: overrides?.titleFontStyle ?? "normal",
-              color:
-                overrides?.titleTextColor ?? brand.headerFontColor ?? "#fff",
+              typographyRole: overrides?.titleTypography || "header",
+              onTypographyRoleChange: (v) =>
+                emitOverride({ titleTypography: v }),
               textAlign: overrides?.titleTextAlign ?? "center",
-              onFontSizeChange: (v) => emitOverride({ titleFontSize: v }),
-              onFontFamilyChange: (v) => emitOverride({ titleFontFamily: v }),
-              onFontWeightChange: (v) => emitOverride({ titleFontWeight: v }),
-              onFontStyleChange: (v) => emitOverride({ titleFontStyle: v }),
-              onColorChange: (v) => emitOverride({ titleTextColor: v }),
               onTextAlignChange: (v) => emitOverride({ titleTextAlign: v }),
+              customFontTypes: brand.customFontTypes,
+              onAddCustomFontType,
             }}
-            spans={overrides?.titleSpans}
-            onSpansChange={(spans) => emitOverride({ titleSpans: spans })}
-            isTitle
           />
         ) : (
-          title && (
-            <>
-              {getSpanFontUrls(overrides?.titleSpans).map((url) => (
-                <link key={url} rel="stylesheet" href={url} />
-              ))}
-              <h1 style={titleStyle}>
-                {overrides?.titleSpans && overrides.titleSpans.length > 0
-                  ? renderSpans(title, overrides.titleSpans, titleStyle).map(
-                      (s) => (
-                        <span key={s.startIndex} style={s.style}>
-                          {s.text}
-                        </span>
-                      ),
-                    )
-                  : title}
-              </h1>
-            </>
-          )
+          title && <h1 style={titleStyle}>{title}</h1>
         )}
 
         {isEditing ? (
@@ -288,28 +261,13 @@ export default function VideoHorizontal({
             }}
             onDeselect={() => setSubtitleSelected(false)}
             toolbarProps={{
-              fontSize: overrides?.subtitleFontSize ?? 18,
-              fontFamily:
-                overrides?.subtitleFontFamily ||
-                brand.subHeaderFont ||
-                brand.headerFont ||
-                "",
-              fontWeight: overrides?.subtitleFontWeight ?? "normal",
-              fontStyle: overrides?.subtitleFontStyle ?? "normal",
-              color:
-                overrides?.subtitleTextColor ??
-                brand.subHeaderFontColor ??
-                brand.headerFontColor ??
-                "rgba(255,255,255,0.85)",
+              typographyRole: overrides?.subtitleTypography || "sub-header",
+              onTypographyRoleChange: (v) =>
+                emitOverride({ subtitleTypography: v }),
               textAlign: overrides?.subtitleTextAlign ?? "center",
-              onFontSizeChange: (v) => emitOverride({ subtitleFontSize: v }),
-              onFontFamilyChange: (v) =>
-                emitOverride({ subtitleFontFamily: v }),
-              onFontWeightChange: (v) =>
-                emitOverride({ subtitleFontWeight: v }),
-              onFontStyleChange: (v) => emitOverride({ subtitleFontStyle: v }),
-              onColorChange: (v) => emitOverride({ subtitleTextColor: v }),
               onTextAlignChange: (v) => emitOverride({ subtitleTextAlign: v }),
+              customFontTypes: brand.customFontTypes,
+              onAddCustomFontType,
             }}
           />
         ) : (

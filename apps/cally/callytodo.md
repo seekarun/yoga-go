@@ -33,7 +33,7 @@ x review DB structure for scaling
 - chat for video calls 100ms
   5 mins danny- add phone number + whatsapp support for booking
 - handle 404
--
+- dark/light theme for all widgets
 
 - AI security review
 - use existing domain host - set records only
@@ -61,7 +61,7 @@ x review DB structure for scaling
 - task manager
 - multiple emails (aliases?)
 - xero integration for invoicing
-- intuit quickbooks integration
+- intuit quickbooks integrationproduct
 - products. appointment booking based on product, eg. 30 mins for haircut
 - mobile app to go with webapp
 - voice assistant - talk to AI bot on page,

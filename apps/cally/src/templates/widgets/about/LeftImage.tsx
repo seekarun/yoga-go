@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import type { AboutStyleOverrides } from "@/types/landing-page";
+import type { AboutStyleOverrides, CustomFontType } from "@/types/landing-page";
 import type { WidgetBrandConfig } from "../types";
 import ResizableText from "../../hero/ResizableText";
+import { fontForRole } from "../../hero/fontUtils";
 import ImageToolbar from "../../hero/ImageToolbar";
 import { bgFilterToCSS } from "../../hero/layoutOptions";
 import { processRemoveBackground } from "../../hero/removeBackgroundUtil";
@@ -24,6 +25,7 @@ interface LeftImageProps {
   onImagePositionChange?: (position: string) => void;
   onImageZoomChange?: (zoom: number) => void;
   onStyleOverrideChange?: (overrides: AboutStyleOverrides) => void;
+  onAddCustomFontType?: (ft: CustomFontType) => void;
 }
 
 const SCOPE = "w-ab-li";
@@ -62,6 +64,7 @@ export default function LeftImage({
   onImagePositionChange,
   onImageZoomChange,
   onStyleOverrideChange,
+  onAddCustomFontType,
 }: LeftImageProps) {
   const primary = brand.primaryColor || "#1a1a1a";
   const imgSrc = overrides?.bgRemovedImage || image || PLACEHOLDER_IMAGE;
@@ -138,29 +141,27 @@ export default function LeftImage({
   }, [originalImageUrl, emitOverride]);
 
   // Title toolbar style
+  const titleRole = overrides?.titleTypography || "sub-header";
+  const titleResolved = fontForRole(titleRole, brand);
   const titleStyle: React.CSSProperties = {
-    fontSize: overrides?.titleFontSize ?? 28,
-    fontWeight: overrides?.titleFontWeight ?? "bold",
-    fontStyle: overrides?.titleFontStyle ?? "normal",
-    color: overrides?.titleTextColor ?? brand.subHeaderFontColor ?? primary,
+    fontSize: titleResolved.size,
+    fontWeight: titleResolved.weight ?? "bold",
+    color: titleResolved.color ?? primary,
     textAlign: overrides?.titleTextAlign ?? "left",
-    fontFamily:
-      overrides?.titleFontFamily ||
-      brand.subHeaderFont ||
-      brand.headerFont ||
-      "inherit",
+    fontFamily: titleResolved.font || "inherit",
     lineHeight: 1.15,
     margin: 0,
   };
 
   // Paragraph toolbar style
+  const bodyRole = overrides?.bodyTypography || "body";
+  const bodyResolved = fontForRole(bodyRole, brand);
   const paragraphStyle: React.CSSProperties = {
-    fontSize: overrides?.fontSize ?? 16,
-    fontWeight: overrides?.fontWeight ?? "normal",
-    fontStyle: overrides?.fontStyle ?? "normal",
-    color: overrides?.textColor ?? brand.bodyFontColor ?? "#4a4a4a",
+    fontSize: bodyResolved.size,
+    fontWeight: bodyResolved.weight ?? "normal",
+    color: bodyResolved.color ?? "#4a4a4a",
     textAlign: overrides?.textAlign ?? "left",
-    fontFamily: overrides?.fontFamily || brand.bodyFont || "inherit",
+    fontFamily: bodyResolved.font || "inherit",
     lineHeight: 1.8,
     margin: 0,
     whiteSpace: "pre-line",
@@ -188,13 +189,19 @@ export default function LeftImage({
   };
 
   return (
-    <section ref={sectionRef} className={SCOPE}>
-      <style>{`
+    <div className={`${SCOPE}-outer`}>
+      <section ref={sectionRef} className={SCOPE}>
+        <style>{`
+        .${SCOPE}-outer {
+          padding: 64px 24px;
+        }
         .${SCOPE} {
           display: grid;
           grid-template-columns: 1fr 1fr;
           min-height: 480px;
-          background: ${brand.secondaryColor || "#faf6f1"};
+          background: ${brand.cardStyle?.bgColor || brand.secondaryColor || "#faf6f1"};
+          border-radius: 16px;
+          overflow: hidden;
           max-width: 1200px;
           margin: 0 auto;
         }
@@ -216,13 +223,14 @@ export default function LeftImage({
           display: flex;
           flex-direction: column;
           justify-content: center;
-          padding: 64px 56px;
+          padding: 64px 24px;
           gap: 24px;
         }
         .${SCOPE}-dot {
           color: ${primary};
         }
         @media (max-width: 768px) {
+          .${SCOPE}-outer { padding: 48px 16px; }
           .${SCOPE} {
             grid-template-columns: 1fr;
           }
@@ -236,138 +244,127 @@ export default function LeftImage({
         }
       `}</style>
 
-      {/* Left — image */}
-      <div
-        ref={imageRef}
-        className={`${SCOPE}-img-col${imageSelected ? ` ${SCOPE}-img-col--selected` : ""}`}
-        onClick={
-          isEditing
-            ? () => {
-                setImageSelected(true);
-                setTitleSelected(false);
-                setParagraphSelected(false);
+        {/* Left — image */}
+        <div
+          ref={imageRef}
+          className={`${SCOPE}-img-col${imageSelected ? ` ${SCOPE}-img-col--selected` : ""}`}
+          onClick={
+            isEditing
+              ? () => {
+                  setImageSelected(true);
+                  setTitleSelected(false);
+                  setParagraphSelected(false);
+                }
+              : undefined
+          }
+        >
+          <div className={`${SCOPE}-img-wrap`}>
+            <div role="img" aria-label={title || "About"} style={imgDivStyle} />
+          </div>
+
+          {/* ImageToolbar — outside overflow:hidden wrapper so it's not clipped */}
+          {isEditing && imageSelected && (
+            <ImageToolbar
+              borderRadius={overrides?.borderRadius ?? 0}
+              positionX={pos.x}
+              positionY={pos.y}
+              zoom={imageZoom || 100}
+              filter={overrides?.imageFilter}
+              onBorderRadiusChange={(v) => emitOverride({ borderRadius: v })}
+              onPositionChange={(x, y) =>
+                onImagePositionChange?.(`${x}% ${y}%`)
               }
-            : undefined
-        }
-      >
-        <div className={`${SCOPE}-img-wrap`}>
-          <div role="img" aria-label={title || "About"} style={imgDivStyle} />
+              onZoomChange={(v) => onImageZoomChange?.(v)}
+              onFilterChange={(v) =>
+                emitOverride({ imageFilter: v === "none" ? undefined : v })
+              }
+              onReplaceImage={() => onImageClick?.()}
+              onRemoveBgClick={image ? handleRemoveBg : undefined}
+              removingBg={removingBg}
+              bgRemoved={bgRemoved}
+              onUndoRemoveBg={handleUndoRemoveBg}
+            />
+          )}
         </div>
 
-        {/* ImageToolbar — outside overflow:hidden wrapper so it's not clipped */}
-        {isEditing && imageSelected && (
-          <ImageToolbar
-            borderRadius={overrides?.borderRadius ?? 0}
-            positionX={pos.x}
-            positionY={pos.y}
-            zoom={imageZoom || 100}
-            filter={overrides?.imageFilter}
-            onBorderRadiusChange={(v) => emitOverride({ borderRadius: v })}
-            onPositionChange={(x, y) => onImagePositionChange?.(`${x}% ${y}%`)}
-            onZoomChange={(v) => onImageZoomChange?.(v)}
-            onFilterChange={(v) =>
-              emitOverride({ imageFilter: v === "none" ? undefined : v })
-            }
-            onReplaceImage={() => onImageClick?.()}
-            onRemoveBgClick={image ? handleRemoveBg : undefined}
-            removingBg={removingBg}
-            bgRemoved={bgRemoved}
-            onUndoRemoveBg={handleUndoRemoveBg}
-          />
-        )}
-      </div>
-
-      {/* Right — text */}
-      <div
-        className={`${SCOPE}-text`}
-        onClick={
-          isEditing
-            ? (e) => {
-                // Only deselect image if clicking the text area background
-                if (e.target === e.currentTarget) {
-                  deselectAll();
+        {/* Right — text */}
+        <div
+          className={`${SCOPE}-text`}
+          onClick={
+            isEditing
+              ? (e) => {
+                  // Only deselect image if clicking the text area background
+                  if (e.target === e.currentTarget) {
+                    deselectAll();
+                  }
                 }
-              }
-            : undefined
-        }
-      >
-        {isEditing ? (
-          <div ref={titleRef}>
-            <ResizableText
-              text={title || "About Me"}
-              isEditing
-              onTextChange={onTitleChange}
-              textStyle={titleStyle}
-              selected={titleSelected}
-              onSelect={() => {
-                setTitleSelected(true);
-                setParagraphSelected(false);
-                setImageSelected(false);
-              }}
-              onDeselect={() => setTitleSelected(false)}
-              toolbarProps={{
-                fontSize: overrides?.titleFontSize ?? 28,
-                fontFamily:
-                  overrides?.titleFontFamily || brand.subHeaderFont || "",
-                fontWeight: overrides?.titleFontWeight ?? "bold",
-                fontStyle: overrides?.titleFontStyle ?? "normal",
-                color:
-                  overrides?.titleTextColor ??
-                  brand.subHeaderFontColor ??
-                  primary,
-                textAlign: overrides?.titleTextAlign ?? "left",
-                onFontSizeChange: (v) => emitOverride({ titleFontSize: v }),
-                onFontFamilyChange: (v) => emitOverride({ titleFontFamily: v }),
-                onFontWeightChange: (v) => emitOverride({ titleFontWeight: v }),
-                onFontStyleChange: (v) => emitOverride({ titleFontStyle: v }),
-                onColorChange: (v) => emitOverride({ titleTextColor: v }),
-                onTextAlignChange: (v) => emitOverride({ titleTextAlign: v }),
-              }}
-            />
-          </div>
-        ) : (
-          title && (
-            <h2 style={titleStyle}>
-              {title}
-              <span className={`${SCOPE}-dot`}>.</span>
-            </h2>
-          )
-        )}
+              : undefined
+          }
+        >
+          {isEditing ? (
+            <div ref={titleRef}>
+              <ResizableText
+                text={title || "About Me"}
+                isEditing
+                onTextChange={onTitleChange}
+                textStyle={titleStyle}
+                selected={titleSelected}
+                onSelect={() => {
+                  setTitleSelected(true);
+                  setParagraphSelected(false);
+                  setImageSelected(false);
+                }}
+                onDeselect={() => setTitleSelected(false)}
+                toolbarProps={{
+                  typographyRole: overrides?.titleTypography || "sub-header",
+                  onTypographyRoleChange: (v) =>
+                    emitOverride({ titleTypography: v }),
+                  textAlign: overrides?.titleTextAlign ?? "left",
+                  onTextAlignChange: (v) => emitOverride({ titleTextAlign: v }),
+                  customFontTypes: brand.customFontTypes,
+                  onAddCustomFontType,
+                }}
+              />
+            </div>
+          ) : (
+            title && (
+              <h2 style={titleStyle}>
+                {title}
+                <span className={`${SCOPE}-dot`}>.</span>
+              </h2>
+            )
+          )}
 
-        {isEditing ? (
-          <div ref={paragraphRef}>
-            <ResizableText
-              text={paragraph || ""}
-              isEditing
-              onTextChange={onParagraphChange}
-              textStyle={paragraphStyle}
-              selected={paragraphSelected}
-              onSelect={() => {
-                setParagraphSelected(true);
-                setTitleSelected(false);
-                setImageSelected(false);
-              }}
-              onDeselect={() => setParagraphSelected(false)}
-              toolbarProps={{
-                fontSize: overrides?.fontSize ?? 16,
-                fontFamily: overrides?.fontFamily || brand.bodyFont || "",
-                fontWeight: overrides?.fontWeight ?? "normal",
-                fontStyle: overrides?.fontStyle ?? "normal",
-                color: overrides?.textColor ?? brand.bodyFontColor ?? "#4a4a4a",
-                textAlign: overrides?.textAlign ?? "left",
-                onFontSizeChange: (v) => emitOverride({ fontSize: v }),
-                onFontFamilyChange: (v) => emitOverride({ fontFamily: v }),
-                onFontWeightChange: (v) => emitOverride({ fontWeight: v }),
-                onFontStyleChange: (v) => emitOverride({ fontStyle: v }),
-                onColorChange: (v) => emitOverride({ textColor: v }),
-                onTextAlignChange: (v) => emitOverride({ textAlign: v }),
-              }}
-            />
-          </div>
-        ) : (
-          paragraph && <p style={paragraphStyle}>{paragraph}</p>
-        )}
-      </div>
-    </section>
+          {isEditing ? (
+            <div ref={paragraphRef}>
+              <ResizableText
+                text={paragraph || ""}
+                isEditing
+                onTextChange={onParagraphChange}
+                textStyle={paragraphStyle}
+                selected={paragraphSelected}
+                onSelect={() => {
+                  setParagraphSelected(true);
+                  setTitleSelected(false);
+                  setImageSelected(false);
+                }}
+                onDeselect={() => setParagraphSelected(false)}
+                toolbarProps={{
+                  typographyRole: overrides?.bodyTypography || "body",
+                  onTypographyRoleChange: (v) =>
+                    emitOverride({ bodyTypography: v }),
+                  textAlign: overrides?.textAlign ?? "left",
+                  onTextAlignChange: (v) => emitOverride({ textAlign: v }),
+                  customFontTypes: brand.customFontTypes,
+                  onAddCustomFontType,
+                }}
+              />
+            </div>
+          ) : (
+            paragraph && <p style={paragraphStyle}>{paragraph}</p>
+          )}
+        </div>
+      </section>
+    </div>
   );
 }

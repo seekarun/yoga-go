@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import type { FontWeight, HeroStyleOverrides } from "@/types/landing-page";
+import type { HeroStyleOverrides, TypographyRole } from "@/types/landing-page";
 import { useDimOverlay } from "./useDimOverlay";
 
 interface UseHeroToolbarStateOptions {
@@ -116,7 +116,7 @@ export default function useHeroToolbarState({
     [heroStyleOverrides, onHeroStyleOverrideChange],
   );
 
-  // Title style callbacks
+  // MaxWidth callbacks
   const onTitleMaxWidthChange = useCallback(
     (v: number) => mergeOverride({ titleMaxWidth: v }),
     [mergeOverride],
@@ -126,24 +126,9 @@ export default function useHeroToolbarState({
     [mergeOverride],
   );
 
-  const onTitleFontSizeChange = useCallback(
-    (v: number) => mergeOverride({ titleFontSize: v }),
-    [mergeOverride],
-  );
-  const onTitleFontFamilyChange = useCallback(
-    (v: string) => mergeOverride({ titleFontFamily: v }),
-    [mergeOverride],
-  );
-  const onTitleFontWeightChange = useCallback(
-    (v: FontWeight) => mergeOverride({ titleFontWeight: v }),
-    [mergeOverride],
-  );
-  const onTitleFontStyleChange = useCallback(
-    (v: "normal" | "italic") => mergeOverride({ titleFontStyle: v }),
-    [mergeOverride],
-  );
-  const onTitleTextColorChange = useCallback(
-    (v: string) => mergeOverride({ titleTextColor: v }),
+  // Title: typography role + text align
+  const onTitleTypographyChange = useCallback(
+    (v: TypographyRole) => mergeOverride({ titleTypography: v }),
     [mergeOverride],
   );
   const onTitleTextAlignChange = useCallback(
@@ -151,25 +136,9 @@ export default function useHeroToolbarState({
     [mergeOverride],
   );
 
-  // Subtitle style callbacks
-  const onSubtitleFontSizeChange = useCallback(
-    (v: number) => mergeOverride({ subtitleFontSize: v }),
-    [mergeOverride],
-  );
-  const onSubtitleFontFamilyChange = useCallback(
-    (v: string) => mergeOverride({ subtitleFontFamily: v }),
-    [mergeOverride],
-  );
-  const onSubtitleFontWeightChange = useCallback(
-    (v: FontWeight) => mergeOverride({ subtitleFontWeight: v }),
-    [mergeOverride],
-  );
-  const onSubtitleFontStyleChange = useCallback(
-    (v: "normal" | "italic") => mergeOverride({ subtitleFontStyle: v }),
-    [mergeOverride],
-  );
-  const onSubtitleTextColorChange = useCallback(
-    (v: string) => mergeOverride({ subtitleTextColor: v }),
+  // Subtitle: typography role + text align
+  const onSubtitleTypographyChange = useCallback(
+    (v: TypographyRole) => mergeOverride({ subtitleTypography: v }),
     [mergeOverride],
   );
   const onSubtitleTextAlignChange = useCallback(
@@ -277,18 +246,10 @@ export default function useHeroToolbarState({
     onTitleMaxWidthChange,
     onSubtitleMaxWidthChange,
     // Title callbacks
-    onTitleFontSizeChange,
-    onTitleFontFamilyChange,
-    onTitleFontWeightChange,
-    onTitleFontStyleChange,
-    onTitleTextColorChange,
+    onTitleTypographyChange,
     onTitleTextAlignChange,
     // Subtitle callbacks
-    onSubtitleFontSizeChange,
-    onSubtitleFontFamilyChange,
-    onSubtitleFontWeightChange,
-    onSubtitleFontStyleChange,
-    onSubtitleTextColorChange,
+    onSubtitleTypographyChange,
     onSubtitleTextAlignChange,
     // BG drag mode
     bgDragActive,

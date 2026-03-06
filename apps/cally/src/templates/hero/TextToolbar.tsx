@@ -1,37 +1,23 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import type { ColorPalette } from "@/lib/colorPalette";
-import type { FontWeight } from "@/types/landing-page";
-import ColorPickerPopover from "./ColorPickerPopover";
 import ToolbarContainer from "./ToolbarContainer";
 import {
-  FONT_OPTIONS,
-  getGoogleFontsUrl,
-  getAllGoogleFontsUrl,
-  getFontWeights,
-  WEIGHT_LABELS,
-  normalizeWeight,
-} from "./fonts";
+  BUILTIN_TYPOGRAPHY_ROLES,
+  type TypographyRole,
+  type CustomFontType,
+} from "@/types/landing-page";
+import { FONT_OPTIONS, getFontWeights, WEIGHT_LABELS } from "./fonts";
 
 type TextAlign = "left" | "center" | "right";
 
 interface TextToolbarProps {
-  fontSize: number;
-  fontFamily: string;
-  fontWeight: FontWeight;
-  fontStyle: "normal" | "italic";
-  color: string;
+  typographyRole: TypographyRole;
   textAlign: TextAlign;
-  palette?: ColorPalette;
-  customColors?: { name: string; hex: string }[];
-  onFontSizeChange: (value: number) => void;
-  onFontFamilyChange: (value: string) => void;
-  onFontWeightChange: (value: FontWeight) => void;
-  onFontStyleChange: (value: "normal" | "italic") => void;
-  onColorChange: (value: string) => void;
+  onTypographyRoleChange?: (value: TypographyRole) => void;
   onTextAlignChange: (value: TextAlign) => void;
-  onCustomColorsChange?: (colors: { name: string; hex: string }[]) => void;
+  customFontTypes?: CustomFontType[];
+  onAddCustomFontType?: (ft: CustomFontType) => void;
 }
 
 const ALIGN_OPTIONS: { value: TextAlign; icon: React.ReactNode }[] = [
@@ -91,443 +77,83 @@ const ALIGN_OPTIONS: { value: TextAlign; icon: React.ReactNode }[] = [
   },
 ];
 
-/* ─── Custom Font Picker ─── */
-function FontPicker({
-  value,
-  onChange,
-  selectStyle,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  selectStyle: React.CSSProperties;
-}) {
-  const [open, setOpen] = useState(false);
-  const [highlighted, setHighlighted] = useState(-1);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const listRef = useRef<HTMLDivElement>(null);
-
-  const currentLabel =
-    FONT_OPTIONS.find((o) => o.value === value)?.label || "System (sans-serif)";
-
-  // Close on outside click
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
-
-  // Scroll highlighted item into view
-  useEffect(() => {
-    if (!open || highlighted < 0 || !listRef.current) return;
-    const item = listRef.current.children[highlighted] as
-      | HTMLElement
-      | undefined;
-    item?.scrollIntoView({ block: "nearest" });
-  }, [open, highlighted]);
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (!open) {
-        if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
-          e.preventDefault();
-          setOpen(true);
-          setHighlighted(
-            Math.max(
-              0,
-              FONT_OPTIONS.findIndex((o) => o.value === value),
-            ),
-          );
-        }
-        return;
-      }
-      switch (e.key) {
-        case "ArrowDown":
-          e.preventDefault();
-          setHighlighted((h) => Math.min(h + 1, FONT_OPTIONS.length - 1));
-          break;
-        case "ArrowUp":
-          e.preventDefault();
-          setHighlighted((h) => Math.max(h - 1, 0));
-          break;
-        case "Enter":
-          e.preventDefault();
-          if (highlighted >= 0) {
-            onChange(FONT_OPTIONS[highlighted].value);
-            setOpen(false);
-          }
-          break;
-        case "Escape":
-          e.preventDefault();
-          setOpen(false);
-          break;
-      }
-    },
-    [open, highlighted, value, onChange],
-  );
-
-  const allFontsUrl = getAllGoogleFontsUrl();
-
-  return (
-    <div
-      ref={containerRef}
-      style={{ position: "relative" }}
-      onKeyDown={handleKeyDown}
-    >
-      {/* Load all Google Fonts when dropdown is open */}
-      {open && <link rel="stylesheet" href={allFontsUrl} />}
-
-      {/* Trigger button styled like the old select */}
-      <button
-        type="button"
-        onClick={() => {
-          setOpen((prev) => !prev);
-          if (!open) {
-            setHighlighted(
-              Math.max(
-                0,
-                FONT_OPTIONS.findIndex((o) => o.value === value),
-              ),
-            );
-          }
-        }}
-        style={{
-          ...selectStyle,
-          display: "flex",
-          alignItems: "center",
-          gap: "4px",
-          fontFamily: value || "system-ui, sans-serif",
-        }}
-      >
-        <span
-          style={{
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {currentLabel}
-        </span>
-        <svg
-          width="10"
-          height="10"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-          style={{
-            flexShrink: 0,
-            transform: open ? "rotate(180deg)" : "none",
-            transition: "transform 0.15s",
-          }}
-        >
-          <path d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" />
-        </svg>
-      </button>
-
-      {/* Dropdown list */}
-      {open && (
-        <div
-          ref={listRef}
-          role="listbox"
-          // Prevent mousedown from moving focus away from the editable text,
-          // which would clear the inline span selection in ResizableText.
-          onMouseDown={(e) => e.preventDefault()}
-          style={{
-            position: "absolute",
-            top: "100%",
-            left: 0,
-            marginTop: "4px",
-            width: "200px",
-            maxHeight: "240px",
-            overflowY: "auto",
-            background: "#fff",
-            border: "1px solid #e5e7eb",
-            borderRadius: "6px",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
-            zIndex: 9999,
-            padding: "4px 0",
-          }}
-        >
-          {FONT_OPTIONS.map((opt, i) => {
-            const isSelected = opt.value === value;
-            const isHighlighted = i === highlighted;
-            return (
-              <div
-                key={opt.value}
-                role="option"
-                aria-selected={isSelected}
-                onMouseEnter={() => setHighlighted(i)}
-                onClick={() => {
-                  onChange(opt.value);
-                  setOpen(false);
-                }}
-                style={{
-                  padding: "6px 12px",
-                  fontSize: "13px",
-                  fontFamily: opt.value || "system-ui, sans-serif",
-                  cursor: "pointer",
-                  background: isHighlighted
-                    ? "rgba(59,130,246,0.08)"
-                    : "transparent",
-                  color: isSelected ? "#3b82f6" : "#374151",
-                  fontWeight: isSelected ? 600 : 400,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                }}
-              >
-                <span>{opt.label}</span>
-                {isSelected && (
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="#3b82f6"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ─── Weight Picker ─── */
-function WeightPicker({
-  fontFamily,
-  value,
-  onChange,
-  selectStyle,
-}: {
-  fontFamily: string;
-  value: FontWeight;
-  onChange: (v: FontWeight) => void;
-  selectStyle: React.CSSProperties;
-}) {
-  const [open, setOpen] = useState(false);
-  const [highlighted, setHighlighted] = useState(-1);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const listRef = useRef<HTMLDivElement>(null);
-
-  const weights = getFontWeights(fontFamily);
-  const numericValue = normalizeWeight(value);
-  const currentLabel = WEIGHT_LABELS[numericValue] || `${numericValue}`;
-
-  // Close on outside click
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
-
-  // Scroll highlighted item into view
-  useEffect(() => {
-    if (!open || highlighted < 0 || !listRef.current) return;
-    const item = listRef.current.children[highlighted] as
-      | HTMLElement
-      | undefined;
-    item?.scrollIntoView({ block: "nearest" });
-  }, [open, highlighted]);
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (!open) {
-        if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
-          e.preventDefault();
-          setOpen(true);
-          setHighlighted(
-            Math.max(
-              0,
-              weights.findIndex((w) => w === numericValue),
-            ),
-          );
-        }
-        return;
-      }
-      switch (e.key) {
-        case "ArrowDown":
-          e.preventDefault();
-          setHighlighted((h) => Math.min(h + 1, weights.length - 1));
-          break;
-        case "ArrowUp":
-          e.preventDefault();
-          setHighlighted((h) => Math.max(h - 1, 0));
-          break;
-        case "Enter":
-          e.preventDefault();
-          if (highlighted >= 0) {
-            onChange(weights[highlighted]);
-            setOpen(false);
-          }
-          break;
-        case "Escape":
-          e.preventDefault();
-          setOpen(false);
-          break;
-      }
-    },
-    [open, highlighted, numericValue, weights, onChange],
-  );
-
-  return (
-    <div
-      ref={containerRef}
-      style={{ position: "relative" }}
-      onKeyDown={handleKeyDown}
-    >
-      <button
-        type="button"
-        onClick={() => {
-          setOpen((prev) => !prev);
-          if (!open) {
-            setHighlighted(
-              Math.max(
-                0,
-                weights.findIndex((w) => w === numericValue),
-              ),
-            );
-          }
-        }}
-        style={{
-          ...selectStyle,
-          display: "flex",
-          alignItems: "center",
-          gap: "4px",
-          fontWeight: numericValue,
-        }}
-      >
-        <span
-          style={{
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {currentLabel}
-        </span>
-        <svg
-          width="10"
-          height="10"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-          style={{
-            flexShrink: 0,
-            transform: open ? "rotate(180deg)" : "none",
-            transition: "transform 0.15s",
-          }}
-        >
-          <path d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" />
-        </svg>
-      </button>
-
-      {open && (
-        <div
-          ref={listRef}
-          role="listbox"
-          onMouseDown={(e) => e.preventDefault()}
-          style={{
-            position: "absolute",
-            top: "100%",
-            left: 0,
-            marginTop: "4px",
-            width: "160px",
-            maxHeight: "240px",
-            overflowY: "auto",
-            background: "#fff",
-            border: "1px solid #e5e7eb",
-            borderRadius: "6px",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
-            zIndex: 9999,
-            padding: "4px 0",
-          }}
-        >
-          {weights.map((w, i) => {
-            const isSelected = w === numericValue;
-            const isHighlighted = i === highlighted;
-            return (
-              <div
-                key={w}
-                role="option"
-                aria-selected={isSelected}
-                onMouseEnter={() => setHighlighted(i)}
-                onClick={() => {
-                  onChange(w);
-                  setOpen(false);
-                }}
-                style={{
-                  padding: "6px 12px",
-                  fontSize: "13px",
-                  fontWeight: w,
-                  cursor: "pointer",
-                  background: isHighlighted
-                    ? "rgba(59,130,246,0.08)"
-                    : "transparent",
-                  color: isSelected ? "#3b82f6" : "#374151",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: "8px",
-                }}
-              >
-                <span>{WEIGHT_LABELS[w] || w}</span>
-                <span
-                  style={{
-                    fontSize: "10px",
-                    color: isSelected ? "#3b82f6" : "#9ca3af",
-                    fontWeight: 400,
-                  }}
-                >
-                  {w}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default function TextToolbar({
-  fontSize,
-  fontFamily,
-  fontWeight,
-  fontStyle,
-  color,
+  typographyRole,
   textAlign,
-  palette,
-  customColors,
-  onFontSizeChange,
-  onFontFamilyChange,
-  onFontWeightChange,
-  onFontStyleChange,
-  onColorChange,
+  onTypographyRoleChange,
   onTextAlignChange,
-  onCustomColorsChange,
+  customFontTypes,
+  onAddCustomFontType,
 }: TextToolbarProps) {
-  const googleFontsUrl = getGoogleFontsUrl(fontFamily);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newFamily, setNewFamily] = useState(FONT_OPTIONS[1]?.value ?? "");
+  const [newWeight, setNewWeight] = useState(400);
+  const [newSize, setNewSize] = useState(16);
+  const [newColor, setNewColor] = useState("#1a1a1a");
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      ) {
+        setDropdownOpen(false);
+        setAdding(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [dropdownOpen]);
+
+  // Reset new-weight when family changes (pick closest available weight)
+  useEffect(() => {
+    const weights = getFontWeights(newFamily);
+    if (!weights.includes(newWeight)) {
+      setNewWeight(weights.includes(400) ? 400 : weights[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-check when family changes
+  }, [newFamily]);
+
+  const handleAdd = useCallback(() => {
+    if (!newName.trim() || !onAddCustomFontType) return;
+    onAddCustomFontType({
+      name: newName.trim(),
+      font: {
+        family: newFamily,
+        weight: newWeight,
+        size: newSize,
+        color: newColor,
+      },
+    });
+    // Select the newly added custom type
+    onTypographyRoleChange?.(`custom:${newName.trim()}`);
+    setNewName("");
+    setNewFamily(FONT_OPTIONS[1]?.value ?? "");
+    setNewWeight(400);
+    setNewSize(16);
+    setNewColor("#1a1a1a");
+    setAdding(false);
+    setDropdownOpen(false);
+  }, [
+    newName,
+    newFamily,
+    newWeight,
+    newSize,
+    newColor,
+    onAddCustomFontType,
+    onTypographyRoleChange,
+  ]);
+
+  const groupStyle: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: "4px",
+  };
 
   const dividerStyle: React.CSSProperties = {
     width: "1px",
@@ -536,61 +162,34 @@ export default function TextToolbar({
     flexShrink: 0,
   };
 
-  const groupStyle: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    gap: "4px",
-  };
+  // Resolve current label — built-in or custom
+  const builtinMatch = BUILTIN_TYPOGRAPHY_ROLES.find(
+    (o) => o.value === typographyRole,
+  );
+  const customMatch = typographyRole.startsWith("custom:")
+    ? customFontTypes?.find((ft) => ft.name === typographyRole.slice(7))
+    : undefined;
+  const currentLabel = builtinMatch?.label ?? customMatch?.name ?? "Body";
 
-  const sliderStyle: React.CSSProperties = {
-    width: "60px",
-    height: "4px",
-    cursor: "pointer",
-    accentColor: "#3b82f6",
-  };
-
-  const labelStyle: React.CSSProperties = {
-    fontSize: "10px",
-    color: "#9ca3af",
-    minWidth: "18px",
-    textAlign: "center",
-  };
-
-  const selectStyle: React.CSSProperties = {
-    fontSize: "11px",
-    padding: "2px 4px",
-    border: "1px solid #e5e7eb",
-    borderRadius: "4px",
-    background: "#fff",
-    color: "#374151",
-    cursor: "pointer",
-    outline: "none",
-    maxWidth: "140px",
-  };
-
-  const toggleBtnStyle = (active: boolean): React.CSSProperties => ({
-    background: active ? "rgba(59,130,246,0.1)" : "none",
+  const optionButtonStyle = (isSelected: boolean): React.CSSProperties => ({
+    display: "block",
+    width: "100%",
+    textAlign: "left",
+    background: isSelected ? "rgba(59,130,246,0.08)" : "none",
     border: "none",
     cursor: "pointer",
-    padding: "3px 5px",
-    borderRadius: "4px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: active ? "#3b82f6" : "#374151",
-    transition: "background 0.15s, color 0.15s",
-    fontWeight: "bold",
-    fontSize: "13px",
-    lineHeight: 1,
+    padding: "6px 10px",
+    borderRadius: "5px",
+    fontSize: "12px",
+    fontWeight: isSelected ? 600 : 400,
+    color: isSelected ? "#3b82f6" : "#374151",
+    transition: "background 0.12s",
   });
 
   return (
     <ToolbarContainer>
-      {/* Load Google Font if needed */}
-      {googleFontsUrl && <link rel="stylesheet" href={googleFontsUrl} />}
-
-      {/* Font Size */}
-      <div style={groupStyle}>
+      {/* Typography Role Picker */}
+      <div ref={dropdownRef} style={{ ...groupStyle, position: "relative" }}>
         <svg
           width="14"
           height="14"
@@ -605,62 +204,365 @@ export default function TextToolbar({
           <line x1="9" y1="20" x2="15" y2="20" />
           <line x1="12" y1="4" x2="12" y2="20" />
         </svg>
-        <input
-          type="range"
-          min={12}
-          max={128}
-          value={fontSize}
-          onChange={(e) => onFontSizeChange(Number(e.target.value))}
-          style={sliderStyle}
-        />
-        <span style={labelStyle}>{fontSize}</span>
-      </div>
-
-      <div style={dividerStyle} />
-
-      {/* Weight / Italic */}
-      <div style={groupStyle}>
-        <WeightPicker
-          fontFamily={fontFamily}
-          value={fontWeight}
-          onChange={onFontWeightChange}
-          selectStyle={selectStyle}
-        />
         <button
           type="button"
           onClick={() =>
-            onFontStyleChange(fontStyle === "italic" ? "normal" : "italic")
+            onTypographyRoleChange && setDropdownOpen((prev) => !prev)
           }
           style={{
-            ...toggleBtnStyle(fontStyle === "italic"),
-            fontStyle: "italic",
-            fontWeight: "normal",
+            background: "none",
+            border: "none",
+            cursor: onTypographyRoleChange ? "pointer" : "default",
+            padding: "2px 4px",
+            borderRadius: "4px",
+            fontSize: "11px",
+            fontWeight: 500,
+            color: "#6b7280",
+            letterSpacing: "0.02em",
+            display: "flex",
+            alignItems: "center",
+            gap: "3px",
+            transition: "background 0.15s",
           }}
-          title="Italic"
+          onMouseEnter={(e) => {
+            if (onTypographyRoleChange)
+              e.currentTarget.style.background = "rgba(0,0,0,0.04)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "none";
+          }}
         >
-          I
+          {currentLabel}
+          {onTypographyRoleChange && (
+            <svg
+              width="10"
+              height="10"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{
+                transform: dropdownOpen ? "rotate(180deg)" : undefined,
+                transition: "transform 0.15s",
+              }}
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          )}
         </button>
+
+        {/* Dropdown */}
+        {dropdownOpen && (
+          <div
+            style={{
+              position: "absolute",
+              top: "calc(100% + 6px)",
+              left: 0,
+              background: "#fff",
+              borderRadius: "8px",
+              boxShadow:
+                "0 4px 16px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)",
+              padding: "4px",
+              zIndex: 100,
+              minWidth: "220px",
+            }}
+          >
+            {/* Built-in roles */}
+            {BUILTIN_TYPOGRAPHY_ROLES.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => {
+                  onTypographyRoleChange?.(opt.value);
+                  setDropdownOpen(false);
+                }}
+                style={optionButtonStyle(opt.value === typographyRole)}
+                onMouseEnter={(e) => {
+                  if (opt.value !== typographyRole)
+                    e.currentTarget.style.background = "rgba(0,0,0,0.03)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background =
+                    opt.value === typographyRole
+                      ? "rgba(59,130,246,0.08)"
+                      : "none";
+                }}
+              >
+                {opt.label}
+              </button>
+            ))}
+
+            {/* Custom font types */}
+            {customFontTypes && customFontTypes.length > 0 && (
+              <>
+                <div
+                  style={{
+                    height: "1px",
+                    backgroundColor: "#e5e7eb",
+                    margin: "4px 0",
+                  }}
+                />
+                {customFontTypes.map((ft) => {
+                  const val = `custom:${ft.name}`;
+                  return (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => {
+                        onTypographyRoleChange?.(val);
+                        setDropdownOpen(false);
+                      }}
+                      style={optionButtonStyle(val === typographyRole)}
+                      onMouseEnter={(e) => {
+                        if (val !== typographyRole)
+                          e.currentTarget.style.background = "rgba(0,0,0,0.03)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background =
+                          val === typographyRole
+                            ? "rgba(59,130,246,0.08)"
+                            : "none";
+                      }}
+                    >
+                      {ft.name}
+                    </button>
+                  );
+                })}
+              </>
+            )}
+
+            {/* Add new custom type */}
+            {onAddCustomFontType && (
+              <>
+                <div
+                  style={{
+                    height: "1px",
+                    backgroundColor: "#e5e7eb",
+                    margin: "4px 0",
+                  }}
+                />
+                {adding ? (
+                  <div
+                    style={{ padding: "6px 8px" }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* Name */}
+                    <input
+                      type="text"
+                      placeholder="Type name"
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleAdd();
+                        if (e.key === "Escape") {
+                          setAdding(false);
+                          setNewName("");
+                        }
+                      }}
+                      autoFocus
+                      style={{
+                        width: "100%",
+                        padding: "4px 6px",
+                        fontSize: "11px",
+                        border: "1px solid #d1d5db",
+                        borderRadius: "4px",
+                        outline: "none",
+                        marginBottom: "4px",
+                      }}
+                    />
+                    {/* Font family */}
+                    <select
+                      value={newFamily}
+                      onChange={(e) => setNewFamily(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "4px 6px",
+                        fontSize: "11px",
+                        border: "1px solid #d1d5db",
+                        borderRadius: "4px",
+                        outline: "none",
+                        marginBottom: "4px",
+                        background: "#fff",
+                      }}
+                    >
+                      {FONT_OPTIONS.map((fo) => (
+                        <option key={fo.value} value={fo.value}>
+                          {fo.label}
+                        </option>
+                      ))}
+                    </select>
+                    {/* Weight + Size row */}
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "4px",
+                        marginBottom: "4px",
+                      }}
+                    >
+                      <select
+                        value={newWeight}
+                        onChange={(e) => setNewWeight(Number(e.target.value))}
+                        style={{
+                          flex: 1,
+                          padding: "4px 4px",
+                          fontSize: "11px",
+                          border: "1px solid #d1d5db",
+                          borderRadius: "4px",
+                          outline: "none",
+                          background: "#fff",
+                        }}
+                      >
+                        {getFontWeights(newFamily).map((w) => (
+                          <option key={w} value={w}>
+                            {WEIGHT_LABELS[w] || w}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type="number"
+                        min={8}
+                        max={120}
+                        value={newSize}
+                        onChange={(e) =>
+                          setNewSize(
+                            Math.max(8, Math.min(120, Number(e.target.value))),
+                          )
+                        }
+                        style={{
+                          width: "52px",
+                          padding: "4px 4px",
+                          fontSize: "11px",
+                          border: "1px solid #d1d5db",
+                          borderRadius: "4px",
+                          outline: "none",
+                          textAlign: "center",
+                        }}
+                        title="Font size (px)"
+                      />
+                    </div>
+                    {/* Color */}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        marginBottom: "6px",
+                      }}
+                    >
+                      <input
+                        type="color"
+                        value={newColor}
+                        onChange={(e) => setNewColor(e.target.value)}
+                        style={{
+                          width: "24px",
+                          height: "24px",
+                          border: "1px solid #d1d5db",
+                          borderRadius: "4px",
+                          padding: 0,
+                          cursor: "pointer",
+                          background: "none",
+                        }}
+                      />
+                      <span
+                        style={{
+                          fontSize: "11px",
+                          color: "#6b7280",
+                          fontFamily: "monospace",
+                        }}
+                      >
+                        {newColor}
+                      </span>
+                    </div>
+                    {/* Actions */}
+                    <div style={{ display: "flex", gap: "4px" }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAdding(false);
+                          setNewName("");
+                          setNewWeight(400);
+                          setNewSize(16);
+                          setNewColor("#1a1a1a");
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: "3px 6px",
+                          fontSize: "11px",
+                          background: "none",
+                          border: "1px solid #d1d5db",
+                          borderRadius: "4px",
+                          cursor: "pointer",
+                          color: "#6b7280",
+                        }}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleAdd}
+                        disabled={!newName.trim()}
+                        style={{
+                          flex: 1,
+                          padding: "3px 6px",
+                          fontSize: "11px",
+                          background: newName.trim() ? "#3b82f6" : "#e5e7eb",
+                          border: "none",
+                          borderRadius: "4px",
+                          cursor: newName.trim() ? "pointer" : "default",
+                          color: "#fff",
+                          fontWeight: 500,
+                        }}
+                      >
+                        Add
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setAdding(true)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      width: "100%",
+                      padding: "6px 10px",
+                      background: "none",
+                      border: "none",
+                      borderRadius: "5px",
+                      fontSize: "12px",
+                      color: "#6b7280",
+                      cursor: "pointer",
+                      transition: "background 0.12s",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "rgba(0,0,0,0.03)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "none";
+                    }}
+                  >
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <line x1="12" y1="5" x2="12" y2="19" />
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    Add new...
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        )}
       </div>
-
-      <div style={dividerStyle} />
-
-      {/* Font Family */}
-      <FontPicker
-        value={fontFamily}
-        onChange={onFontFamilyChange}
-        selectStyle={selectStyle}
-      />
-
-      <div style={dividerStyle} />
-
-      {/* Color */}
-      <ColorPickerPopover
-        color={color}
-        onChange={onColorChange}
-        palette={palette}
-        customColors={customColors}
-        onCustomColorsChange={onCustomColorsChange}
-      />
 
       <div style={dividerStyle} />
 
@@ -693,3 +595,5 @@ export default function TextToolbar({
     </ToolbarContainer>
   );
 }
+
+export type { TextToolbarProps, TypographyRole };

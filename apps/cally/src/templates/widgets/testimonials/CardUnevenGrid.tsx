@@ -2,8 +2,12 @@
 
 import { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import { getContrastColor } from "@/lib/colorPalette";
-import type { SectionStyleOverrides } from "@/types/landing-page";
+import type {
+  SectionStyleOverrides,
+  CustomFontType,
+} from "@/types/landing-page";
 import type { WidgetBrandConfig } from "../types";
+import { fontForRole } from "../../hero/fontUtils";
 import ResizableText from "../../hero/ResizableText";
 
 interface Testimonial {
@@ -24,6 +28,7 @@ interface CardUnevenGridProps {
   onSubheadingChange?: (subheading: string) => void;
   onStyleOverrideChange?: (overrides: SectionStyleOverrides) => void;
   styleOverrides?: SectionStyleOverrides;
+  onAddCustomFontType?: (ft: CustomFontType) => void;
 }
 
 const SCOPE = "w-tm-ug";
@@ -52,6 +57,7 @@ export default function CardUnevenGrid({
   onSubheadingChange,
   onStyleOverrideChange,
   styleOverrides,
+  onAddCustomFontType,
 }: CardUnevenGridProps) {
   const [headingSelected, setHeadingSelected] = useState(false);
   const [subheadingSelected, setSubheadingSelected] = useState(false);
@@ -87,29 +93,38 @@ export default function CardUnevenGrid({
   const primary = brand.primaryColor || "#6366f1";
   const starColor = brand.secondaryColor || "#f5a623";
 
+  const headingRole = styleOverrides?.headingTypography || "header";
+  const headingResolved = fontForRole(headingRole, brand);
   const headingStyle: React.CSSProperties = {
-    fontSize: styleOverrides?.headingFontSize ?? "clamp(1.75rem, 3vw, 2.5rem)",
-    fontWeight: styleOverrides?.headingFontWeight ?? 700,
-    fontStyle: styleOverrides?.headingFontStyle ?? "normal",
-    color: styleOverrides?.headingTextColor ?? "#1a1a1a",
+    fontSize: headingResolved.size,
+    fontWeight: headingResolved.weight ?? 700,
+    color: headingResolved.color ?? "#1a1a1a",
     textAlign: styleOverrides?.headingTextAlign ?? "center",
-    fontFamily:
-      styleOverrides?.headingFontFamily || brand.headerFont || "inherit",
+    fontFamily: headingResolved.font || "inherit",
     lineHeight: 1.15,
     margin: "0 0 12px",
   };
 
+  const subheadingRole = styleOverrides?.subheadingTypography || "sub-header";
+  const subheadingResolved = fontForRole(subheadingRole, brand);
+  const subAlign = styleOverrides?.subheadingTextAlign ?? "center";
   const subheadingStyle: React.CSSProperties = {
-    fontSize: styleOverrides?.subheadingFontSize ?? "1.1rem",
-    fontWeight: styleOverrides?.subheadingFontWeight ?? "normal",
-    fontStyle: styleOverrides?.subheadingFontStyle ?? "normal",
-    color: styleOverrides?.subheadingTextColor ?? "#6b7280",
-    textAlign: styleOverrides?.subheadingTextAlign ?? "center",
-    fontFamily:
-      styleOverrides?.subheadingFontFamily || brand.bodyFont || "inherit",
+    fontSize: subheadingResolved.size,
+    fontWeight: subheadingResolved.weight ?? "normal",
+    color: subheadingResolved.color ?? "#6b7280",
+    textAlign: subAlign,
+    fontFamily: subheadingResolved.font || "inherit",
     maxWidth: 600,
-    margin: "0 auto",
+    margin:
+      subAlign === "center"
+        ? "0 auto"
+        : subAlign === "right"
+          ? "0 0 0 auto"
+          : 0,
   };
+
+  const innerSubHeader = fontForRole("sub-header", brand);
+  const innerBody = fontForRole("body", brand);
 
   return (
     <section ref={sectionRef} className={SCOPE}>
@@ -118,7 +133,7 @@ export default function CardUnevenGrid({
           padding: 80px 24px;
         }
         .${SCOPE}-container {
-          max-width: 1100px;
+          max-width: 1200px;
           margin: 0 auto;
         }
         .${SCOPE}-header {
@@ -128,16 +143,16 @@ export default function CardUnevenGrid({
         .${SCOPE}-heading {
           font-size: clamp(1.75rem, 3vw, 2.5rem);
           font-weight: 700;
-          color: #1a1a1a;
+          color: ${innerSubHeader.color || "#1a1a1a"};
           margin: 0 0 12px;
-          font-family: ${brand.headerFont || "inherit"};
+          font-family: ${innerSubHeader.font || "inherit"};
         }
         .${SCOPE}-subheading {
           font-size: 1.1rem;
-          color: #6b7280;
+          color: ${innerBody.color || "#6b7280"};
           max-width: 600px;
           margin: 0 auto;
-          font-family: ${brand.bodyFont || "inherit"};
+          font-family: ${innerBody.font || "inherit"};
         }
         .${SCOPE}-grid {
           display: grid;
@@ -182,25 +197,25 @@ export default function CardUnevenGrid({
           font-size: 1rem;
         }
         .${SCOPE}-quote {
-          font-size: 1rem;
+          font-size: ${innerBody.size}px;
           line-height: 1.7;
           font-weight: 500;
           margin: 0;
           flex: 1;
-          font-family: ${brand.bodyFont || "inherit"};
+          font-family: ${innerBody.font || "inherit"};
         }
         .${SCOPE}-author {
           margin-top: 24px;
         }
         .${SCOPE}-author-name {
-          font-weight: 600;
-          font-size: 0.95rem;
-          font-family: ${brand.bodyFont || "inherit"};
+          font-weight: ${innerSubHeader.weight ?? 600};
+          font-size: ${innerSubHeader.size}px;
+          font-family: ${innerSubHeader.font || "inherit"};
         }
         .${SCOPE}-author-title {
           font-size: 0.8rem;
           margin-top: 2px;
-          font-family: ${brand.bodyFont || "inherit"};
+          font-family: ${innerBody.font || "inherit"};
         }
 
         /* ---- featured (dark) card ---- */
@@ -281,32 +296,22 @@ export default function CardUnevenGrid({
                 }}
                 onDeselect={() => setHeadingSelected(false)}
                 toolbarProps={{
-                  fontSize: styleOverrides?.headingFontSize ?? 28,
-                  fontFamily:
-                    styleOverrides?.headingFontFamily ||
-                    brand.subHeaderFont ||
-                    "",
-                  fontWeight: styleOverrides?.headingFontWeight ?? "bold",
-                  fontStyle: styleOverrides?.headingFontStyle ?? "normal",
-                  color:
-                    styleOverrides?.headingTextColor ??
-                    brand.subHeaderFontColor ??
-                    "#1a1a1a",
+                  typographyRole: styleOverrides?.headingTypography || "header",
+                  onTypographyRoleChange: (v) =>
+                    emitOverride({ headingTypography: v }),
                   textAlign: styleOverrides?.headingTextAlign ?? "center",
-                  onFontSizeChange: (v) => emitOverride({ headingFontSize: v }),
-                  onFontFamilyChange: (v) =>
-                    emitOverride({ headingFontFamily: v }),
-                  onFontWeightChange: (v) =>
-                    emitOverride({ headingFontWeight: v }),
-                  onFontStyleChange: (v) =>
-                    emitOverride({ headingFontStyle: v }),
-                  onColorChange: (v) => emitOverride({ headingTextColor: v }),
                   onTextAlignChange: (v) =>
                     emitOverride({ headingTextAlign: v }),
+                  customFontTypes: brand.customFontTypes,
+                  onAddCustomFontType,
                 }}
               />
             ) : (
-              heading && <h2 className={`${SCOPE}-heading`}>{heading}</h2>
+              heading && (
+                <h2 className={`${SCOPE}-heading`} style={headingStyle}>
+                  {heading}
+                </h2>
+              )
             )}
             {isEditing ? (
               <ResizableText
@@ -321,35 +326,22 @@ export default function CardUnevenGrid({
                 }}
                 onDeselect={() => setSubheadingSelected(false)}
                 toolbarProps={{
-                  fontSize: styleOverrides?.subheadingFontSize ?? 16,
-                  fontFamily:
-                    styleOverrides?.subheadingFontFamily ||
-                    brand.bodyFont ||
-                    "",
-                  fontWeight: styleOverrides?.subheadingFontWeight ?? "normal",
-                  fontStyle: styleOverrides?.subheadingFontStyle ?? "normal",
-                  color:
-                    styleOverrides?.subheadingTextColor ??
-                    brand.bodyFontColor ??
-                    "#6b7280",
+                  typographyRole:
+                    styleOverrides?.subheadingTypography || "sub-header",
+                  onTypographyRoleChange: (v) =>
+                    emitOverride({ subheadingTypography: v }),
                   textAlign: styleOverrides?.subheadingTextAlign ?? "center",
-                  onFontSizeChange: (v) =>
-                    emitOverride({ subheadingFontSize: v }),
-                  onFontFamilyChange: (v) =>
-                    emitOverride({ subheadingFontFamily: v }),
-                  onFontWeightChange: (v) =>
-                    emitOverride({ subheadingFontWeight: v }),
-                  onFontStyleChange: (v) =>
-                    emitOverride({ subheadingFontStyle: v }),
-                  onColorChange: (v) =>
-                    emitOverride({ subheadingTextColor: v }),
                   onTextAlignChange: (v) =>
                     emitOverride({ subheadingTextAlign: v }),
+                  customFontTypes: brand.customFontTypes,
+                  onAddCustomFontType,
                 }}
               />
             ) : (
               subheading && (
-                <p className={`${SCOPE}-subheading`}>{subheading}</p>
+                <p className={`${SCOPE}-subheading`} style={subheadingStyle}>
+                  {subheading}
+                </p>
               )
             )}
           </div>

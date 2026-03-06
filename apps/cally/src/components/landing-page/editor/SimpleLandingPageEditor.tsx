@@ -37,17 +37,27 @@ import {
 } from "@/types/landing-page";
 import type { Product } from "@/types";
 import { ImageEditorOverlay, ButtonEditorOverlay } from "@core/components";
-import type { BrandFont } from "@/types/landing-page";
+import type {
+  BrandFont,
+  CustomFontType,
+  FontWeight,
+} from "@/types/landing-page";
 import HeroTemplateRenderer from "@/templates/hero";
 import SectionToolbar from "./SectionToolbar";
 import MobilePreviewFrame from "./MobilePreviewFrame";
-import { FONT_OPTIONS } from "@/templates/hero/fonts";
+import {
+  FONT_OPTIONS,
+  getFontWeights,
+  WEIGHT_LABELS,
+  normalizeWeight,
+} from "@/templates/hero/fonts";
 import type { ColorHarmonyType } from "@/lib/colorPalette";
 import {
   generatePalette,
   getHarmonyColors,
   hexToHsl,
   HARMONY_OPTIONS,
+  resolveColorRef,
 } from "@/lib/colorPalette";
 import HslColorPicker from "@/templates/hero/HslColorPicker";
 import { LandingPageThemeProvider } from "@/templates/hero/ThemeProvider";
@@ -147,6 +157,7 @@ export default function SimpleLandingPageEditor({
     "primary" | "secondary" | "highlight" | null
   >(null);
   const [showTypography, setShowTypography] = useState(false);
+  const [expandedFontType, setExpandedFontType] = useState<string | null>(null);
   const [showButtons, setShowButtons] = useState(false);
   const [showCards, setShowCards] = useState(false);
   const colorPickerRef = useRef<HTMLDivElement>(null);
@@ -423,6 +434,8 @@ export default function SimpleLandingPageEditor({
           backgroundImage: backfilledBgImage,
           imagePosition: landingPage.imagePosition || "50% 50%",
           imageZoom: landingPage.imageZoom || 100,
+          imageOffsetX: landingPage.imageOffsetX,
+          imageOffsetY: landingPage.imageOffsetY,
           button: landingPage.button || {
             label: "Book Now",
             action: "booking",
@@ -438,6 +451,9 @@ export default function SimpleLandingPageEditor({
           gallery: backfilledGallery,
           footer: landingPage.footer || DEFAULT_LANDING_PAGE_CONFIG.footer,
           heroEnabled: landingPage.heroEnabled ?? true,
+          heroWidgetId: landingPage.heroWidgetId,
+          heroStyleOverrides: landingPage.heroStyleOverrides,
+          productsConfig: landingPage.productsConfig,
           footerEnabled: landingPage.footerEnabled ?? true,
           sections: finalSections,
           customColors: landingPage.customColors || [],
@@ -459,6 +475,7 @@ export default function SimpleLandingPageEditor({
               };
             })(),
           seo: landingPage.seo || DEFAULT_LANDING_PAGE_CONFIG.seo,
+          customFontTypes: landingPage.customFontTypes || [],
         });
 
         setTimeout(() => {
@@ -785,6 +802,14 @@ export default function SimpleLandingPageEditor({
   const handleCustomColorsChange = useCallback(
     (colors: { name: string; hex: string }[]) => {
       setConfig((prev) => ({ ...prev, customColors: colors }));
+      setIsDirty(true);
+    },
+    [],
+  );
+
+  const handleCustomFontTypesChange = useCallback(
+    (fontTypes: CustomFontType[]) => {
+      setConfig((prev) => ({ ...prev, customFontTypes: fontTypes }));
       setIsDirty(true);
     },
     [],
@@ -1885,6 +1910,51 @@ export default function SimpleLandingPageEditor({
     setIsDirty(true);
   }, []);
 
+  const handleHeaderFontWeightChange = useCallback((weight: FontWeight) => {
+    setConfig((prev) => ({
+      ...prev,
+      theme: {
+        ...prev.theme,
+        headerFont: {
+          ...prev.theme?.headerFont,
+          family: prev.theme?.headerFont?.family || "",
+          weight,
+        },
+      },
+    }));
+    setIsDirty(true);
+  }, []);
+
+  const handleSubHeaderFontWeightChange = useCallback((weight: FontWeight) => {
+    setConfig((prev) => ({
+      ...prev,
+      theme: {
+        ...prev.theme,
+        subHeaderFont: {
+          ...prev.theme?.subHeaderFont,
+          family: prev.theme?.subHeaderFont?.family || "",
+          weight,
+        },
+      },
+    }));
+    setIsDirty(true);
+  }, []);
+
+  const handleBodyFontWeightChange = useCallback((weight: FontWeight) => {
+    setConfig((prev) => ({
+      ...prev,
+      theme: {
+        ...prev.theme,
+        bodyFont: {
+          ...prev.theme?.bodyFont,
+          family: prev.theme?.bodyFont?.family || "",
+          weight,
+        },
+      },
+    }));
+    setIsDirty(true);
+  }, []);
+
   // --- Brand button style handlers ---
   const handleButtonStyleChange = useCallback(
     (
@@ -1917,251 +1987,6 @@ export default function SimpleLandingPageEditor({
     },
     [],
   );
-
-  // --- Apply brand to all sections ---
-  // Resets all per-section/per-card custom styles and colours so
-  // everything falls back to the brand-level typography and palette.
-  const handleApplyBrandToAllSections = useCallback(() => {
-    setConfig((prev) => {
-      /** Strip text/font/colour overrides from a SectionStyleOverrides,
-       *  keeping only layout fields (bg, padding, height). */
-      const stripTextOverrides = (
-        o: SectionStyleOverrides | undefined,
-      ): SectionStyleOverrides | undefined => {
-        if (!o) return undefined;
-        const {
-          headingFontSize: _hfs,
-
-          headingFontFamily: _hff,
-
-          headingFontWeight: _hfw,
-
-          headingFontStyle: _hfst,
-
-          headingTextColor: _htc,
-
-          headingTextAlign: _hta,
-
-          subheadingFontSize: _sfs,
-
-          subheadingFontFamily: _sff,
-
-          subheadingFontWeight: _sfw,
-
-          subheadingFontStyle: _sfst,
-
-          subheadingTextColor: _stc,
-
-          subheadingTextAlign: _sta,
-          ...layout
-        } = o;
-        return Object.keys(layout).length > 0
-          ? (layout as SectionStyleOverrides)
-          : undefined;
-      };
-
-      /** Strip text/font/colour overrides from ProductsStyleOverrides. */
-      const stripProductsTextOverrides = (
-        o: ProductsStyleOverrides | undefined,
-      ): ProductsStyleOverrides | undefined => {
-        if (!o) return undefined;
-        const {
-          headingFontSize: _hfs,
-
-          headingFontFamily: _hff,
-
-          headingFontWeight: _hfw,
-
-          headingFontStyle: _hfst,
-
-          headingTextColor: _htc,
-
-          headingTextAlign: _hta,
-
-          subheadingFontSize: _sfs,
-
-          subheadingFontFamily: _sff,
-
-          subheadingFontWeight: _sfw,
-
-          subheadingFontStyle: _sfst,
-
-          subheadingTextColor: _stc,
-
-          subheadingTextAlign: _sta,
-          ...layout
-        } = o;
-        return Object.keys(layout).length > 0
-          ? (layout as ProductsStyleOverrides)
-          : undefined;
-      };
-
-      /** Strip text/font/colour overrides from AboutStyleOverrides. */
-      const stripAboutTextOverrides = (
-        o: AboutStyleOverrides | undefined,
-      ): AboutStyleOverrides | undefined => {
-        if (!o) return undefined;
-        const {
-          fontSize: _fs,
-
-          fontFamily: _ff,
-
-          fontWeight: _fw,
-
-          fontStyle: _fst,
-
-          textColor: _tc,
-
-          textAlign: _ta,
-
-          titleFontSize: _tfs,
-
-          titleFontFamily: _tff,
-
-          titleFontWeight: _tfw,
-
-          titleFontStyle: _tfst,
-
-          titleTextColor: _ttc,
-
-          titleTextAlign: _tta,
-          ...layout
-        } = o;
-        return Object.keys(layout).length > 0
-          ? (layout as AboutStyleOverrides)
-          : undefined;
-      };
-
-      /** Strip per-card text/font/colour overrides from feature cards. */
-      const stripFeatureCardStyles = (
-        cards: FeatureCard[] | undefined,
-      ): FeatureCard[] | undefined => {
-        if (!cards) return undefined;
-        return cards.map((card) => {
-          const {
-            titleFontSize: _tfs,
-
-            titleFontFamily: _tff,
-
-            titleFontWeight: _tfw,
-
-            titleFontStyle: _tfst,
-
-            titleColor: _tc,
-
-            titleTextAlign: _tta,
-
-            descFontSize: _dfs,
-
-            descFontFamily: _dff,
-
-            descFontWeight: _dfw,
-
-            descFontStyle: _dfst,
-
-            descColor: _dc,
-
-            descTextAlign: _dta,
-            ...rest
-          } = card;
-          return rest as FeatureCard;
-        });
-      };
-
-      // Hero — clear text/font/colour overrides, keep layout/position
-      const heroOverrides = prev.heroStyleOverrides
-        ? {
-            ...prev.heroStyleOverrides,
-            titleFontSize: undefined,
-            titleFontFamily: undefined,
-            titleFontWeight: undefined,
-            titleFontStyle: undefined,
-            titleTextColor: undefined,
-            titleTextAlign: undefined,
-            subtitleFontSize: undefined,
-            subtitleFontFamily: undefined,
-            subtitleFontWeight: undefined,
-            subtitleFontStyle: undefined,
-            subtitleTextColor: undefined,
-            subtitleTextAlign: undefined,
-            titleSpans: undefined,
-          }
-        : undefined;
-
-      return {
-        ...prev,
-        heroStyleOverrides: heroOverrides,
-        about: prev.about
-          ? {
-              ...prev.about,
-              styleOverrides: stripAboutTextOverrides(
-                prev.about.styleOverrides,
-              ),
-            }
-          : prev.about,
-        features: prev.features
-          ? {
-              ...prev.features,
-              styleOverrides: stripTextOverrides(prev.features.styleOverrides),
-              cards: stripFeatureCardStyles(prev.features.cards) || [],
-            }
-          : prev.features,
-        productsConfig: prev.productsConfig
-          ? {
-              ...prev.productsConfig,
-              styleOverrides: stripProductsTextOverrides(
-                prev.productsConfig.styleOverrides,
-              ),
-              cardStyles: undefined,
-            }
-          : prev.productsConfig,
-        testimonials: prev.testimonials
-          ? {
-              ...prev.testimonials,
-              styleOverrides: stripTextOverrides(
-                prev.testimonials.styleOverrides,
-              ),
-            }
-          : prev.testimonials,
-        faq: prev.faq
-          ? {
-              ...prev.faq,
-              styleOverrides: stripTextOverrides(prev.faq.styleOverrides),
-            }
-          : prev.faq,
-        location: prev.location
-          ? {
-              ...prev.location,
-              styleOverrides: stripTextOverrides(prev.location.styleOverrides),
-            }
-          : prev.location,
-        gallery: prev.gallery
-          ? {
-              ...prev.gallery,
-              styleOverrides: stripTextOverrides(prev.gallery.styleOverrides),
-            }
-          : prev.gallery,
-        footer: prev.footer
-          ? {
-              ...prev.footer,
-              styleOverrides: stripTextOverrides(prev.footer.styleOverrides),
-            }
-          : prev.footer,
-      };
-    });
-
-    // Update snapshot to current palette
-    setConfig((prev) => {
-      paletteSnapshotRef.current = {
-        primary: prev.theme?.palette?.[500],
-        secondary: prev.theme?.palette?.secondary,
-        highlight: prev.theme?.palette?.highlight,
-      };
-      return prev;
-    });
-
-    setIsDirty(true);
-  }, []);
 
   // --- Logo handler (saves to tenant, not LP config) ---
   const handleLogoChange = useCallback(async (data: { imageUrl: string }) => {
@@ -2654,150 +2479,372 @@ export default function SimpleLandingPageEditor({
                 </button>
 
                 {showTypography && (
-                  <div className="mt-3">
-                    {/* Header Font */}
-                    <div className="mb-3">
-                      <label className="block text-[10px] text-gray-500 mb-1">
-                        Header Font
-                      </label>
-                      <div className="flex items-center gap-1.5">
-                        <select
-                          value={config.theme?.headerFont?.family || ""}
-                          onChange={(e) =>
-                            handleHeaderFontChange(e.target.value)
-                          }
-                          className="flex-1 min-w-0 px-2 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                        >
-                          {FONT_OPTIONS.map((opt) => (
-                            <option key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </option>
-                          ))}
-                        </select>
-                        {config.theme?.headerFont?.family && (
-                          <>
-                            <select
-                              value={config.theme?.headerFont?.size || 28}
-                              onChange={(e) =>
-                                handleHeaderFontSizeChange(
-                                  Number(e.target.value),
-                                )
-                              }
-                              className="w-[70px] px-1.5 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                            >
-                              {[24, 28, 32, 36, 40, 48, 56, 64, 72].map((s) => (
-                                <option key={s} value={s}>
-                                  {s}px
-                                </option>
-                              ))}
-                            </select>
-                            <ColorPickerPopover
-                              color={
-                                config.theme?.headerFont?.color || "#1a1a1a"
-                              }
-                              onChange={handleHeaderFontColorChange}
-                              palette={config.theme?.palette}
-                              customColors={config.customColors}
-                              onCustomColorsChange={handleCustomColorsChange}
-                            />
-                          </>
-                        )}
-                      </div>
-                    </div>
+                  <div className="mt-3 flex flex-col gap-1.5">
+                    {/* Built-in types as clickable rows */}
+                    {(
+                      [
+                        {
+                          key: "header",
+                          label: "Header",
+                          font: config.theme?.headerFont,
+                          defaultSize: 28,
+                          defaultWeight: 700,
+                          defaultColor: "#1a1a1a",
+                          sizes: [24, 28, 32, 36, 40, 48, 56, 64, 72],
+                          onFamilyChange: handleHeaderFontChange,
+                          onSizeChange: handleHeaderFontSizeChange,
+                          onWeightChange: handleHeaderFontWeightChange,
+                          onColorChange: handleHeaderFontColorChange,
+                        },
+                        {
+                          key: "sub-header",
+                          label: "Sub-Header",
+                          font: config.theme?.subHeaderFont,
+                          defaultSize: 22,
+                          defaultWeight: 400,
+                          defaultColor: "#1a1a1a",
+                          sizes: [16, 18, 20, 22, 24, 28, 32, 36],
+                          onFamilyChange: handleSubHeaderFontChange,
+                          onSizeChange: handleSubHeaderFontSizeChange,
+                          onWeightChange: handleSubHeaderFontWeightChange,
+                          onColorChange: handleSubHeaderFontColorChange,
+                        },
+                        {
+                          key: "body",
+                          label: "Body",
+                          font: config.theme?.bodyFont,
+                          defaultSize: 16,
+                          defaultWeight: 400,
+                          defaultColor: "#4b5563",
+                          sizes: [12, 13, 14, 15, 16, 18, 20, 24],
+                          onFamilyChange: handleBodyFontChange,
+                          onSizeChange: handleBodyFontSizeChange,
+                          onWeightChange: handleBodyFontWeightChange,
+                          onColorChange: handleBodyFontColorChange,
+                        },
+                      ] as const
+                    ).map((item) => {
+                      const isExpanded = expandedFontType === item.key;
+                      const fontLabel =
+                        FONT_OPTIONS.find(
+                          (o) => o.value === (item.font?.family || ""),
+                        )?.label || "System";
+                      const resolvedColor = resolveColorRef(
+                        item.font?.color,
+                        config.theme?.palette,
+                        config.customColors,
+                        item.defaultColor,
+                      );
+                      return (
+                        <div key={item.key}>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedFontType(isExpanded ? null : item.key)
+                            }
+                            className="w-full flex items-center justify-between px-2.5 py-2 rounded-md border border-gray-200 hover:bg-gray-50 transition-colors"
+                          >
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="w-4 h-4 rounded-sm border border-gray-200 flex-shrink-0"
+                                style={{
+                                  backgroundColor: resolvedColor,
+                                }}
+                              />
+                              <span
+                                className="font-medium truncate"
+                                style={{
+                                  fontFamily: item.font?.family || "inherit",
+                                  fontSize: Math.min(
+                                    (item.font?.size || item.defaultSize) *
+                                      0.45,
+                                    16,
+                                  ),
+                                  fontWeight:
+                                    item.font?.weight ?? item.defaultWeight,
+                                  color: resolvedColor,
+                                }}
+                              >
+                                {item.label}
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-gray-400">
+                              {fontLabel} &middot;{" "}
+                              {item.font?.size || item.defaultSize}px
+                            </span>
+                          </button>
+                          {isExpanded && (
+                            <div className="mt-1.5 mb-1 px-1">
+                              <select
+                                value={item.font?.family || ""}
+                                onChange={(e) =>
+                                  item.onFamilyChange(e.target.value)
+                                }
+                                className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                              >
+                                {FONT_OPTIONS.map((opt) => (
+                                  <option key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                  </option>
+                                ))}
+                              </select>
+                              <div className="flex items-center gap-1.5 mt-1.5">
+                                <select
+                                  value={item.font?.size || item.defaultSize}
+                                  onChange={(e) =>
+                                    item.onSizeChange(Number(e.target.value))
+                                  }
+                                  className="w-[70px] px-1.5 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                >
+                                  {item.sizes.map((s) => (
+                                    <option key={s} value={s}>
+                                      {s}px
+                                    </option>
+                                  ))}
+                                </select>
+                                <select
+                                  value={normalizeWeight(
+                                    item.font?.weight ?? item.defaultWeight,
+                                  )}
+                                  onChange={(e) =>
+                                    item.onWeightChange(Number(e.target.value))
+                                  }
+                                  className="flex-1 min-w-0 px-1.5 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                >
+                                  {getFontWeights(item.font?.family || "").map(
+                                    (w) => (
+                                      <option key={w} value={w}>
+                                        {WEIGHT_LABELS[w] || w}
+                                      </option>
+                                    ),
+                                  )}
+                                </select>
+                                <ColorPickerPopover
+                                  color={item.font?.color || item.defaultColor}
+                                  onChange={item.onColorChange}
+                                  palette={config.theme?.palette}
+                                  customColors={config.customColors}
+                                  onCustomColorsChange={
+                                    handleCustomColorsChange
+                                  }
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
 
-                    {/* Sub-Header Font */}
-                    <div className="mb-3">
-                      <label className="block text-[10px] text-gray-500 mb-1">
-                        Sub-Header Font
-                      </label>
-                      <div className="flex items-center gap-1.5">
-                        <select
-                          value={config.theme?.subHeaderFont?.family || ""}
-                          onChange={(e) =>
-                            handleSubHeaderFontChange(e.target.value)
-                          }
-                          className="flex-1 min-w-0 px-2 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                        >
-                          {FONT_OPTIONS.map((opt) => (
-                            <option key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </option>
-                          ))}
-                        </select>
-                        {config.theme?.subHeaderFont?.family && (
-                          <>
-                            <select
-                              value={config.theme?.subHeaderFont?.size || 22}
-                              onChange={(e) =>
-                                handleSubHeaderFontSizeChange(
-                                  Number(e.target.value),
-                                )
-                              }
-                              className="w-[70px] px-1.5 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                            >
-                              {[16, 18, 20, 22, 24, 28, 32, 36].map((s) => (
-                                <option key={s} value={s}>
-                                  {s}px
-                                </option>
-                              ))}
-                            </select>
-                            <ColorPickerPopover
-                              color={
-                                config.theme?.subHeaderFont?.color || "#1a1a1a"
-                              }
-                              onChange={handleSubHeaderFontColorChange}
-                              palette={config.theme?.palette}
-                              customColors={config.customColors}
-                              onCustomColorsChange={handleCustomColorsChange}
-                            />
-                          </>
-                        )}
-                      </div>
-                    </div>
+                    {/* Custom font types */}
+                    {(config.customFontTypes ?? []).map((ft, i) => {
+                      const customKey = `custom:${ft.name}`;
+                      const isExpanded = expandedFontType === customKey;
+                      const fontLabel =
+                        FONT_OPTIONS.find(
+                          (o) => o.value === (ft.font.family || ""),
+                        )?.label || "System";
+                      const resolvedCustomColor = resolveColorRef(
+                        ft.font.color,
+                        config.theme?.palette,
+                        config.customColors,
+                        "#4b5563",
+                      );
+                      return (
+                        <div key={ft.name}>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedFontType(isExpanded ? null : customKey)
+                            }
+                            className="w-full flex items-center justify-between px-2.5 py-2 rounded-md border border-gray-200 hover:bg-gray-50 transition-colors"
+                          >
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="w-4 h-4 rounded-sm border border-gray-200 flex-shrink-0"
+                                style={{
+                                  backgroundColor: resolvedCustomColor,
+                                }}
+                              />
+                              <span
+                                className="font-medium truncate"
+                                style={{
+                                  fontFamily: ft.font.family || "inherit",
+                                  fontSize: Math.min(
+                                    (ft.font.size || 16) * 0.45,
+                                    16,
+                                  ),
+                                  fontWeight: ft.font.weight ?? 400,
+                                  color: resolvedCustomColor,
+                                }}
+                              >
+                                {ft.name}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] text-gray-400">
+                                {fontLabel} &middot; {ft.font.size || 16}px
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const updated = (
+                                    config.customFontTypes ?? []
+                                  ).filter((_, idx) => idx !== i);
+                                  handleCustomFontTypesChange(updated);
+                                }}
+                                className="text-gray-300 hover:text-red-500 transition-colors"
+                                title="Delete"
+                              >
+                                <svg
+                                  width="11"
+                                  height="11"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                >
+                                  <line x1="18" y1="6" x2="6" y2="18" />
+                                  <line x1="6" y1="6" x2="18" y2="18" />
+                                </svg>
+                              </button>
+                            </div>
+                          </button>
+                          {isExpanded && (
+                            <div className="mt-1.5 mb-1 px-1">
+                              <select
+                                value={ft.font.family || ""}
+                                onChange={(e) => {
+                                  const updated = [
+                                    ...(config.customFontTypes ?? []),
+                                  ];
+                                  updated[i] = {
+                                    ...ft,
+                                    font: {
+                                      ...ft.font,
+                                      family: e.target.value,
+                                    },
+                                  };
+                                  handleCustomFontTypesChange(updated);
+                                }}
+                                className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                              >
+                                {FONT_OPTIONS.map((opt) => (
+                                  <option key={opt.value} value={opt.value}>
+                                    {opt.label}
+                                  </option>
+                                ))}
+                              </select>
+                              <div className="flex items-center gap-1.5 mt-1.5">
+                                <select
+                                  value={ft.font.size || 16}
+                                  onChange={(e) => {
+                                    const updated = [
+                                      ...(config.customFontTypes ?? []),
+                                    ];
+                                    updated[i] = {
+                                      ...ft,
+                                      font: {
+                                        ...ft.font,
+                                        size: Number(e.target.value),
+                                      },
+                                    };
+                                    handleCustomFontTypesChange(updated);
+                                  }}
+                                  className="w-[70px] px-1.5 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                >
+                                  {[
+                                    12, 13, 14, 15, 16, 18, 20, 24, 28, 32, 36,
+                                    48,
+                                  ].map((s) => (
+                                    <option key={s} value={s}>
+                                      {s}px
+                                    </option>
+                                  ))}
+                                </select>
+                                <select
+                                  value={normalizeWeight(ft.font.weight ?? 400)}
+                                  onChange={(e) => {
+                                    const updated = [
+                                      ...(config.customFontTypes ?? []),
+                                    ];
+                                    updated[i] = {
+                                      ...ft,
+                                      font: {
+                                        ...ft.font,
+                                        weight: Number(e.target.value),
+                                      },
+                                    };
+                                    handleCustomFontTypesChange(updated);
+                                  }}
+                                  className="flex-1 min-w-0 px-1.5 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                >
+                                  {getFontWeights(ft.font.family || "").map(
+                                    (w) => (
+                                      <option key={w} value={w}>
+                                        {WEIGHT_LABELS[w] || w}
+                                      </option>
+                                    ),
+                                  )}
+                                </select>
+                                <ColorPickerPopover
+                                  color={ft.font.color || "#4b5563"}
+                                  onChange={(color: string) => {
+                                    const updated = [
+                                      ...(config.customFontTypes ?? []),
+                                    ];
+                                    updated[i] = {
+                                      ...ft,
+                                      font: { ...ft.font, color },
+                                    };
+                                    handleCustomFontTypesChange(updated);
+                                  }}
+                                  palette={config.theme?.palette}
+                                  customColors={config.customColors}
+                                  onCustomColorsChange={
+                                    handleCustomColorsChange
+                                  }
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
 
-                    {/* Body Font */}
-                    <div>
-                      <label className="block text-[10px] text-gray-500 mb-1">
-                        Body Font
-                      </label>
-                      <div className="flex items-center gap-1.5">
-                        <select
-                          value={config.theme?.bodyFont?.family || ""}
-                          onChange={(e) => handleBodyFontChange(e.target.value)}
-                          className="flex-1 min-w-0 px-2 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                        >
-                          {FONT_OPTIONS.map((opt) => (
-                            <option key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </option>
-                          ))}
-                        </select>
-                        {config.theme?.bodyFont?.family && (
-                          <>
-                            <select
-                              value={config.theme?.bodyFont?.size || 16}
-                              onChange={(e) =>
-                                handleBodyFontSizeChange(Number(e.target.value))
-                              }
-                              className="w-[70px] px-1.5 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                            >
-                              {[12, 13, 14, 15, 16, 18, 20, 24].map((s) => (
-                                <option key={s} value={s}>
-                                  {s}px
-                                </option>
-                              ))}
-                            </select>
-                            <ColorPickerPopover
-                              color={config.theme?.bodyFont?.color || "#4b5563"}
-                              onChange={handleBodyFontColorChange}
-                              palette={config.theme?.palette}
-                              customColors={config.customColors}
-                              onCustomColorsChange={handleCustomColorsChange}
-                            />
-                          </>
-                        )}
-                      </div>
-                    </div>
+                    {/* Add font type */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const existing = config.customFontTypes ?? [];
+                        const name = `Type ${existing.length + 1}`;
+                        handleCustomFontTypesChange([
+                          ...existing,
+                          {
+                            name,
+                            font: {
+                              family: FONT_OPTIONS[1]?.value ?? "",
+                              weight: 400,
+                            },
+                          },
+                        ]);
+                        setExpandedFontType(`custom:${name}`);
+                      }}
+                      className="w-full px-2 py-1.5 text-xs text-gray-500 border border-dashed border-gray-300 rounded-md hover:bg-gray-50 hover:text-gray-700 transition-colors flex items-center justify-center gap-1"
+                    >
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                      Add font type
+                    </button>
                   </div>
                 )}
               </div>
@@ -3102,24 +3149,6 @@ export default function SimpleLandingPageEditor({
                       </div>
                     );
                   })()}
-              </div>
-
-              {/* Apply to All Sections */}
-              <div className="mt-4 pt-3 border-t border-gray-100">
-                <button
-                  onClick={handleApplyBrandToAllSections}
-                  disabled={!config.theme?.primaryColor}
-                  className={`w-full px-3 py-2 text-xs font-medium rounded-md transition-colors ${
-                    config.theme?.primaryColor
-                      ? "bg-blue-500 text-white hover:bg-blue-600"
-                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                  }`}
-                >
-                  Apply to All Sections
-                </button>
-                <p className="text-[10px] text-gray-400 mt-1.5 text-center">
-                  Updates fonts and palette colours across all sections
-                </p>
               </div>
             </div>
           )}
@@ -3553,6 +3582,7 @@ export default function SimpleLandingPageEditor({
                         headerFont={config.theme?.headerFont}
                         subHeaderFont={config.theme?.subHeaderFont}
                         bodyFont={config.theme?.bodyFont}
+                        customFontTypes={config.customFontTypes}
                       >
                         <HeroTemplateRenderer
                           config={previewConfig}
@@ -3646,6 +3676,7 @@ export default function SimpleLandingPageEditor({
                 headerFont={config.theme?.headerFont}
                 subHeaderFont={config.theme?.subHeaderFont}
                 bodyFont={config.theme?.bodyFont}
+                customFontTypes={config.customFontTypes}
               >
                 <HeroTemplateRenderer
                   config={previewConfig}
@@ -3676,6 +3707,7 @@ export default function SimpleLandingPageEditor({
                   onAboutImageZoomChange={handleAboutImageZoomChange}
                   onAboutRemoveBgComplete={handleAboutRemoveBgComplete}
                   onCustomColorsChange={handleCustomColorsChange}
+                  onCustomFontTypesChange={handleCustomFontTypesChange}
                   onFeaturesHeadingChange={handleFeaturesHeadingChange}
                   onFeaturesSubheadingChange={handleFeaturesSubheadingChange}
                   onFeatureCardChange={handleFeatureCardChange}

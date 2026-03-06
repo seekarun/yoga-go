@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import type { ColorPalette } from "@/lib/colorPalette";
-import type { BrandFont } from "@/types/landing-page";
+import type { BrandFont, CustomFontType } from "@/types/landing-page";
 import {
   DEFAULT_PALETTE,
   getContrastColor,
@@ -15,6 +15,7 @@ interface LandingPageThemeProviderProps {
   headerFont?: BrandFont;
   subHeaderFont?: BrandFont;
   bodyFont?: BrandFont;
+  customFontTypes?: CustomFontType[];
   children: ReactNode;
 }
 
@@ -32,6 +33,7 @@ export function LandingPageThemeProvider({
   headerFont,
   subHeaderFont,
   bodyFont,
+  customFontTypes,
   children,
 }: LandingPageThemeProviderProps) {
   // Collect Google Fonts links to load
@@ -47,6 +49,15 @@ export function LandingPageThemeProvider({
   if (bodyFont?.family) {
     const url = getGoogleFontsUrl(bodyFont.family);
     if (url && !fontLinks.includes(url)) fontLinks.push(url);
+  }
+  // Also load fonts for custom font types
+  if (customFontTypes) {
+    for (const ft of customFontTypes) {
+      if (ft.font.family) {
+        const url = getGoogleFontsUrl(ft.font.family);
+        if (url && !fontLinks.includes(url)) fontLinks.push(url);
+      }
+    }
   }
 
   if (!palette && fontLinks.length === 0) {

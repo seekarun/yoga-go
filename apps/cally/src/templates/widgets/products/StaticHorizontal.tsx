@@ -13,12 +13,13 @@ import type { Product, ProductImage } from "@/types";
 import type {
   ProductsStyleOverrides,
   ProductCardStyleOverride,
+  CustomFontType,
 } from "@/types/landing-page";
 import type { WidgetBrandConfig } from "../types";
 import { getContrastColor } from "@/lib/colorPalette";
 import ResizableText from "../../hero/ResizableText";
+import { fontForRole } from "../../hero/fontUtils";
 import ImageToolbar from "../../hero/ImageToolbar";
-import TextToolbar from "../../hero/TextToolbar";
 import { bgFilterToCSS } from "../../hero/layoutOptions";
 import { processRemoveBackground } from "../../hero/removeBackgroundUtil";
 
@@ -40,6 +41,7 @@ interface StaticHorizontalProps {
     productId: string,
     patch: Partial<ProductCardStyleOverride>,
   ) => void;
+  onAddCustomFontType?: (ft: CustomFontType) => void;
 }
 
 const SCOPE = "w-pr-sh";
@@ -76,13 +78,8 @@ function parsePosition(pos?: string): { x: number; y: number } {
   return { x: parts[0] ?? 50, y: parts[1] ?? 50 };
 }
 
-/** Selection state for card-level editing */
-type CardSelection =
-  | { type: "image"; productId: string }
-  | { type: "name"; productId: string }
-  | { type: "desc"; productId: string }
-  | { type: "price"; productId: string }
-  | null;
+/** Selection state for card-level editing (image only) */
+type CardSelection = { type: "image"; productId: string } | null;
 
 /**
  * Image carousel for horizontal product cards.
@@ -249,6 +246,7 @@ export default function StaticHorizontal({
   styleOverrides,
   cardStyles,
   onCardStyleChange,
+  onAddCustomFontType,
 }: StaticHorizontalProps) {
   const active = useMemo(() => products.filter((p) => p.isActive), [products]);
 
@@ -265,7 +263,6 @@ export default function StaticHorizontal({
 
   const sectionRef = useRef<HTMLElement>(null);
   const imgRefs = useRef<Map<string, HTMLDivElement>>(new Map());
-  const cardTextRefs = useRef<Map<string, HTMLElement>>(new Map());
   const portalRef = useRef<HTMLDivElement>(null);
 
   const [portalPos, setPortalPos] = useState<{
@@ -276,11 +273,7 @@ export default function StaticHorizontal({
 
   const getAnchorEl = useCallback((): HTMLElement | null => {
     if (!cardSel) return null;
-    if (cardSel.type === "image") {
-      return imgRefs.current.get(cardSel.productId) || null;
-    }
-    const key = `${cardSel.productId}-${cardSel.type}`;
-    return cardTextRefs.current.get(key) || null;
+    return imgRefs.current.get(cardSel.productId) || null;
   }, [cardSel]);
 
   useEffect(() => {
@@ -370,32 +363,41 @@ export default function StaticHorizontal({
 
   if (active.length === 0) return null;
 
+  const headingRole = styleOverrides?.headingTypography || "header";
+  const headingResolved = fontForRole(headingRole, brand);
   const headingStyle: React.CSSProperties = {
-    fontSize: styleOverrides?.headingFontSize ?? "clamp(1.75rem, 3vw, 2.5rem)",
-    fontWeight: styleOverrides?.headingFontWeight ?? 700,
-    fontStyle: styleOverrides?.headingFontStyle ?? "normal",
-    color: styleOverrides?.headingTextColor ?? "#1a1a1a",
+    fontSize: headingResolved.size,
+    fontWeight: headingResolved.weight ?? 700,
+    color: headingResolved.color ?? "#1a1a1a",
     textAlign: styleOverrides?.headingTextAlign ?? "center",
-    fontFamily:
-      styleOverrides?.headingFontFamily || brand.headerFont || "inherit",
+    fontFamily: headingResolved.font || "inherit",
     lineHeight: 1.15,
     margin: "0 0 12px",
   };
 
+  const subheadingRole = styleOverrides?.subheadingTypography || "sub-header";
+  const subheadingResolved = fontForRole(subheadingRole, brand);
+  const subAlign = styleOverrides?.subheadingTextAlign ?? "center";
   const subheadingStyle: React.CSSProperties = {
-    fontSize: styleOverrides?.subheadingFontSize ?? "1.1rem",
-    fontWeight: styleOverrides?.subheadingFontWeight ?? "normal",
-    fontStyle: styleOverrides?.subheadingFontStyle ?? "normal",
-    color: styleOverrides?.subheadingTextColor ?? "#6b7280",
-    textAlign: styleOverrides?.subheadingTextAlign ?? "center",
-    fontFamily:
-      styleOverrides?.subheadingFontFamily || brand.bodyFont || "inherit",
+    fontSize: subheadingResolved.size,
+    fontWeight: subheadingResolved.weight ?? "normal",
+    color: subheadingResolved.color ?? "#6b7280",
+    textAlign: subAlign,
+    fontFamily: subheadingResolved.font || "inherit",
     maxWidth: 600,
-    margin: "0 auto",
+    margin:
+      subAlign === "center"
+        ? "0 auto"
+        : subAlign === "right"
+          ? "0 0 0 auto"
+          : 0,
   };
 
   const primary = brand.primaryColor || "#6366f1";
   const secondary = brand.secondaryColor || primary;
+
+  const innerSubHeader = fontForRole("sub-header", brand);
+  const innerBody = fontForRole("body", brand);
 
   const renderPortalToolbar = () => {
     if (!isEditing || !cardSel || !portalPos) return null;
@@ -403,123 +405,36 @@ export default function StaticHorizontal({
     if (!product) return null;
     const cs = cardStyles?.[product.id];
 
-    let toolbarContent: React.ReactNode = null;
-
-    if (cardSel.type === "image") {
-      const pos = parsePosition(cs?.imagePosition ?? product.imagePosition);
-      const imgUrl = product.images?.[0]?.url || product.image;
-      toolbarContent = (
-        <ImageToolbar
-          borderRadius={0}
-          positionX={pos.x}
-          positionY={pos.y}
-          zoom={cs?.imageZoom ?? product.imageZoom ?? 100}
-          filter={cs?.imageFilter}
-          onBorderRadiusChange={() => {}}
-          onPositionChange={(x, y) =>
-            onCardStyleChange?.(product.id, {
-              imagePosition: `${x}% ${y}%`,
-            })
-          }
-          onZoomChange={(v) =>
-            onCardStyleChange?.(product.id, { imageZoom: v })
-          }
-          onFilterChange={(v) =>
-            onCardStyleChange?.(product.id, {
-              imageFilter: v === "none" ? undefined : v,
-            })
-          }
-          onReplaceImage={() => {}}
-          onRemoveBgClick={
-            imgUrl ? () => handleRemoveBg(product.id, imgUrl) : undefined
-          }
-          removingBg={removingBg && bgRemovedProductId === product.id}
-          bgRemoved={bgRemovedProductId === product.id && !removingBg}
-          onUndoRemoveBg={() => handleUndoRemoveBg(product.id)}
-        />
-      );
-    } else if (cardSel.type === "name") {
-      toolbarContent = (
-        <TextToolbar
-          fontSize={cs?.nameFontSize ?? 22}
-          fontFamily={cs?.nameFontFamily ?? ""}
-          fontWeight={cs?.nameFontWeight ?? "bold"}
-          fontStyle={cs?.nameFontStyle ?? "normal"}
-          color={cs?.nameColor ?? "#1a1a1a"}
-          textAlign={cs?.nameTextAlign ?? "left"}
-          onFontSizeChange={(v) =>
-            onCardStyleChange?.(product.id, { nameFontSize: v })
-          }
-          onFontFamilyChange={(v) =>
-            onCardStyleChange?.(product.id, { nameFontFamily: v })
-          }
-          onFontWeightChange={(v) =>
-            onCardStyleChange?.(product.id, { nameFontWeight: v })
-          }
-          onFontStyleChange={(v) =>
-            onCardStyleChange?.(product.id, { nameFontStyle: v })
-          }
-          onColorChange={(v) =>
-            onCardStyleChange?.(product.id, { nameColor: v })
-          }
-          onTextAlignChange={(v) =>
-            onCardStyleChange?.(product.id, { nameTextAlign: v })
-          }
-        />
-      );
-    } else if (cardSel.type === "desc") {
-      toolbarContent = (
-        <TextToolbar
-          fontSize={cs?.descFontSize ?? 16}
-          fontFamily={cs?.descFontFamily ?? ""}
-          fontWeight={cs?.descFontWeight ?? "normal"}
-          fontStyle={cs?.descFontStyle ?? "normal"}
-          color={cs?.descColor ?? "#6b7280"}
-          textAlign={cs?.descTextAlign ?? "left"}
-          onFontSizeChange={(v) =>
-            onCardStyleChange?.(product.id, { descFontSize: v })
-          }
-          onFontFamilyChange={(v) =>
-            onCardStyleChange?.(product.id, { descFontFamily: v })
-          }
-          onFontWeightChange={(v) =>
-            onCardStyleChange?.(product.id, { descFontWeight: v })
-          }
-          onFontStyleChange={(v) =>
-            onCardStyleChange?.(product.id, { descFontStyle: v })
-          }
-          onColorChange={(v) =>
-            onCardStyleChange?.(product.id, { descColor: v })
-          }
-          onTextAlignChange={(v) =>
-            onCardStyleChange?.(product.id, { descTextAlign: v })
-          }
-        />
-      );
-    } else if (cardSel.type === "price") {
-      toolbarContent = (
-        <TextToolbar
-          fontSize={cs?.priceFontSize ?? 24}
-          fontFamily=""
-          fontWeight="bold"
-          fontStyle="normal"
-          color={cs?.priceColor ?? "#1a1a1a"}
-          textAlign="left"
-          onFontSizeChange={(v) =>
-            onCardStyleChange?.(product.id, { priceFontSize: v })
-          }
-          onColorChange={(v) =>
-            onCardStyleChange?.(product.id, { priceColor: v })
-          }
-          onFontFamilyChange={() => {}}
-          onFontWeightChange={() => {}}
-          onFontStyleChange={() => {}}
-          onTextAlignChange={() => {}}
-        />
-      );
-    }
-
-    if (!toolbarContent) return null;
+    const pos = parsePosition(cs?.imagePosition ?? product.imagePosition);
+    const imgUrl = product.images?.[0]?.url || product.image;
+    const toolbarContent = (
+      <ImageToolbar
+        borderRadius={0}
+        positionX={pos.x}
+        positionY={pos.y}
+        zoom={cs?.imageZoom ?? product.imageZoom ?? 100}
+        filter={cs?.imageFilter}
+        onBorderRadiusChange={() => {}}
+        onPositionChange={(x, y) =>
+          onCardStyleChange?.(product.id, {
+            imagePosition: `${x}% ${y}%`,
+          })
+        }
+        onZoomChange={(v) => onCardStyleChange?.(product.id, { imageZoom: v })}
+        onFilterChange={(v) =>
+          onCardStyleChange?.(product.id, {
+            imageFilter: v === "none" ? undefined : v,
+          })
+        }
+        onReplaceImage={() => {}}
+        onRemoveBgClick={
+          imgUrl ? () => handleRemoveBg(product.id, imgUrl) : undefined
+        }
+        removingBg={removingBg && bgRemovedProductId === product.id}
+        bgRemoved={bgRemovedProductId === product.id && !removingBg}
+        onUndoRemoveBg={() => handleUndoRemoveBg(product.id)}
+      />
+    );
 
     return createPortal(
       <div
@@ -548,20 +463,23 @@ export default function StaticHorizontal({
         .${SCOPE}-header {
           text-align: center;
           margin-bottom: 56px;
+          max-width: 1200px;
+          margin-left: auto;
+          margin-right: auto;
         }
         .${SCOPE}-heading {
           font-size: clamp(1.75rem, 3vw, 2.5rem);
           font-weight: 700;
-          color: #1a1a1a;
+          color: ${innerSubHeader.color || "#1a1a1a"};
           margin: 0 0 12px;
-          font-family: ${brand.headerFont || "inherit"};
+          font-family: ${innerSubHeader.font || "inherit"};
         }
         .${SCOPE}-subheading {
           font-size: 1.1rem;
-          color: #6b7280;
+          color: ${innerBody.color || "#6b7280"};
           max-width: 600px;
           margin: 0 auto;
-          font-family: ${brand.bodyFont || "inherit"};
+          font-family: ${innerBody.font || "inherit"};
         }
 
         /* ---- stack ---- */
@@ -706,35 +624,31 @@ export default function StaticHorizontal({
           border-radius: 20px;
           width: fit-content;
           margin-bottom: 16px;
-          font-family: ${brand.bodyFont || "inherit"};
+          font-family: ${innerBody.font || "inherit"};
           letter-spacing: 0.02em;
         }
         .${SCOPE}-name {
-          font-size: clamp(1.25rem, 2.5vw, 1.75rem);
-          font-weight: 700;
-          color: #1a1a1a;
+          font-size: ${innerSubHeader.size}px;
+          font-weight: ${innerSubHeader.weight ?? 700};
+          color: ${innerSubHeader.color || "#1a1a1a"};
           margin: 0 0 12px;
-          font-family: ${brand.headerFont || "inherit"};
+          font-family: ${innerSubHeader.font || "inherit"};
           line-height: 1.3;
         }
         .${SCOPE}-desc {
-          font-size: 1rem;
-          color: #6b7280;
+          font-size: ${innerBody.size}px;
+          font-weight: ${innerBody.weight ?? 400};
+          color: ${innerBody.color || "#6b7280"};
           line-height: 1.7;
           margin: 0 0 24px;
-          font-family: ${brand.bodyFont || "inherit"};
+          font-family: ${innerBody.font || "inherit"};
         }
         .${SCOPE}-price {
           font-size: 1.5rem;
           font-weight: 800;
-          color: #1a1a1a;
+          color: ${innerSubHeader.color || "#1a1a1a"};
           margin: 0 0 20px;
-          font-family: ${brand.bodyFont || "inherit"};
-        }
-        .${SCOPE}-card-text--selected {
-          outline: 2px solid #3b82f6;
-          outline-offset: 4px;
-          border-radius: 6px;
+          font-family: ${innerBody.font || "inherit"};
         }
         .${SCOPE}-btn {
           display: inline-block;
@@ -747,7 +661,7 @@ export default function StaticHorizontal({
           transition: opacity 0.2s, transform 0.15s;
           color: ${brand.primaryButton?.textColor || getContrastColor(primary)};
           background: ${brand.primaryButton?.fillColor || primary};
-          font-family: ${brand.bodyFont || "inherit"};
+          font-family: ${innerBody.font || "inherit"};
           width: fit-content;
         }
         .${SCOPE}-btn:hover {
@@ -796,30 +710,21 @@ export default function StaticHorizontal({
               }}
               onDeselect={() => setHeadingSelected(false)}
               toolbarProps={{
-                fontSize: styleOverrides?.headingFontSize ?? 28,
-                fontFamily:
-                  styleOverrides?.headingFontFamily ||
-                  brand.subHeaderFont ||
-                  "",
-                fontWeight: styleOverrides?.headingFontWeight ?? "bold",
-                fontStyle: styleOverrides?.headingFontStyle ?? "normal",
-                color:
-                  styleOverrides?.headingTextColor ??
-                  brand.subHeaderFontColor ??
-                  "#1a1a1a",
+                typographyRole: styleOverrides?.headingTypography || "header",
+                onTypographyRoleChange: (v) =>
+                  emitOverride({ headingTypography: v }),
                 textAlign: styleOverrides?.headingTextAlign ?? "center",
-                onFontSizeChange: (v) => emitOverride({ headingFontSize: v }),
-                onFontFamilyChange: (v) =>
-                  emitOverride({ headingFontFamily: v }),
-                onFontWeightChange: (v) =>
-                  emitOverride({ headingFontWeight: v }),
-                onFontStyleChange: (v) => emitOverride({ headingFontStyle: v }),
-                onColorChange: (v) => emitOverride({ headingTextColor: v }),
                 onTextAlignChange: (v) => emitOverride({ headingTextAlign: v }),
+                customFontTypes: brand.customFontTypes,
+                onAddCustomFontType,
               }}
             />
           ) : (
-            heading && <h2 className={`${SCOPE}-heading`}>{heading}</h2>
+            heading && (
+              <h2 className={`${SCOPE}-heading`} style={headingStyle}>
+                {heading}
+              </h2>
+            )
           )}
           {isEditing ? (
             <ResizableText
@@ -835,31 +740,23 @@ export default function StaticHorizontal({
               }}
               onDeselect={() => setSubheadingSelected(false)}
               toolbarProps={{
-                fontSize: styleOverrides?.subheadingFontSize ?? 17,
-                fontFamily:
-                  styleOverrides?.subheadingFontFamily || brand.bodyFont || "",
-                fontWeight: styleOverrides?.subheadingFontWeight ?? "normal",
-                fontStyle: styleOverrides?.subheadingFontStyle ?? "normal",
-                color:
-                  styleOverrides?.subheadingTextColor ??
-                  brand.bodyFontColor ??
-                  "#6b7280",
+                typographyRole:
+                  styleOverrides?.subheadingTypography || "sub-header",
+                onTypographyRoleChange: (v) =>
+                  emitOverride({ subheadingTypography: v }),
                 textAlign: styleOverrides?.subheadingTextAlign ?? "center",
-                onFontSizeChange: (v) =>
-                  emitOverride({ subheadingFontSize: v }),
-                onFontFamilyChange: (v) =>
-                  emitOverride({ subheadingFontFamily: v }),
-                onFontWeightChange: (v) =>
-                  emitOverride({ subheadingFontWeight: v }),
-                onFontStyleChange: (v) =>
-                  emitOverride({ subheadingFontStyle: v }),
-                onColorChange: (v) => emitOverride({ subheadingTextColor: v }),
                 onTextAlignChange: (v) =>
                   emitOverride({ subheadingTextAlign: v }),
+                customFontTypes: brand.customFontTypes,
+                onAddCustomFontType,
               }}
             />
           ) : (
-            subheading && <p className={`${SCOPE}-subheading`}>{subheading}</p>
+            subheading && (
+              <p className={`${SCOPE}-subheading`} style={subheadingStyle}>
+                {subheading}
+              </p>
+            )
           )}
         </div>
       )}
@@ -869,38 +766,8 @@ export default function StaticHorizontal({
           const isWebinar = product.productType === "webinar";
           const reversed = index % 2 !== 0;
           const cs = cardStyles?.[product.id];
-
-          const isNameSel =
-            cardSel?.type === "name" && cardSel.productId === product.id;
-          const isDescSel =
-            cardSel?.type === "desc" && cardSel.productId === product.id;
-          const isPriceSel =
-            cardSel?.type === "price" && cardSel.productId === product.id;
           const isImgSel =
             cardSel?.type === "image" && cardSel.productId === product.id;
-
-          const nameStyle: React.CSSProperties = {
-            ...(cs?.nameFontSize ? { fontSize: cs.nameFontSize } : {}),
-            ...(cs?.nameFontWeight ? { fontWeight: cs.nameFontWeight } : {}),
-            ...(cs?.nameFontStyle ? { fontStyle: cs.nameFontStyle } : {}),
-            ...(cs?.nameColor ? { color: cs.nameColor } : {}),
-            ...(cs?.nameTextAlign ? { textAlign: cs.nameTextAlign } : {}),
-            ...(cs?.nameFontFamily ? { fontFamily: cs.nameFontFamily } : {}),
-          };
-
-          const descStyle: React.CSSProperties = {
-            ...(cs?.descFontSize ? { fontSize: cs.descFontSize } : {}),
-            ...(cs?.descFontWeight ? { fontWeight: cs.descFontWeight } : {}),
-            ...(cs?.descFontStyle ? { fontStyle: cs.descFontStyle } : {}),
-            ...(cs?.descColor ? { color: cs.descColor } : {}),
-            ...(cs?.descTextAlign ? { textAlign: cs.descTextAlign } : {}),
-            ...(cs?.descFontFamily ? { fontFamily: cs.descFontFamily } : {}),
-          };
-
-          const priceStyle: React.CSSProperties = {
-            ...(cs?.priceFontSize ? { fontSize: cs.priceFontSize } : {}),
-            ...(cs?.priceColor ? { color: cs.priceColor } : {}),
-          };
 
           return (
             <div
@@ -942,73 +809,11 @@ export default function StaticHorizontal({
                 <span className={`${SCOPE}-duration`}>
                   {formatDuration(product.durationMinutes)}
                 </span>
-                <h3
-                  ref={(el) => {
-                    if (el) cardTextRefs.current.set(`${product.id}-name`, el);
-                    else cardTextRefs.current.delete(`${product.id}-name`);
-                  }}
-                  className={`${SCOPE}-name${isNameSel ? ` ${SCOPE}-card-text--selected` : ""}`}
-                  style={nameStyle}
-                  onClick={
-                    isEditing
-                      ? () => {
-                          setCardSel({
-                            type: "name",
-                            productId: product.id,
-                          });
-                          setHeadingSelected(false);
-                          setSubheadingSelected(false);
-                        }
-                      : undefined
-                  }
-                >
-                  {product.name}
-                </h3>
+                <h3 className={`${SCOPE}-name`}>{product.name}</h3>
                 {product.description && (
-                  <p
-                    ref={(el) => {
-                      if (el)
-                        cardTextRefs.current.set(`${product.id}-desc`, el);
-                      else cardTextRefs.current.delete(`${product.id}-desc`);
-                    }}
-                    className={`${SCOPE}-desc${isDescSel ? ` ${SCOPE}-card-text--selected` : ""}`}
-                    style={descStyle}
-                    onClick={
-                      isEditing
-                        ? () => {
-                            setCardSel({
-                              type: "desc",
-                              productId: product.id,
-                            });
-                            setHeadingSelected(false);
-                            setSubheadingSelected(false);
-                          }
-                        : undefined
-                    }
-                  >
-                    {product.description}
-                  </p>
+                  <p className={`${SCOPE}-desc`}>{product.description}</p>
                 )}
-                <span
-                  ref={(el) => {
-                    if (el) cardTextRefs.current.set(`${product.id}-price`, el);
-                    else cardTextRefs.current.delete(`${product.id}-price`);
-                  }}
-                  className={`${SCOPE}-price${isPriceSel ? ` ${SCOPE}-card-text--selected` : ""}`}
-                  style={priceStyle}
-                  onClick={
-                    isEditing
-                      ? () => {
-                          setCardSel({
-                            type: "price",
-                            productId: product.id,
-                          });
-                          setHeadingSelected(false);
-                          setSubheadingSelected(false);
-                        }
-                      : undefined
-                  }
-                >
+                <span className={`${SCOPE}-price`}>
                   {product.price > 0
                     ? formatPrice(product.price, currency)
                     : "Free"}

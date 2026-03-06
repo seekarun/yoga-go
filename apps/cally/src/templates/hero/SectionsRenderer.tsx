@@ -3,6 +3,7 @@
 import type {
   SimpleLandingPageConfig,
   AboutStyleOverrides,
+  CustomFontType,
   ProductsStyleOverrides,
   SectionStyleOverrides,
   BrandFont,
@@ -33,6 +34,7 @@ interface SectionsRendererProps {
   onAboutImagePositionChange?: (position: string) => void;
   onAboutImageZoomChange?: (zoom: number) => void;
   onCustomColorsChange?: (colors: { name: string; hex: string }[]) => void;
+  onCustomFontTypesChange?: (fontTypes: CustomFontType[]) => void;
   // Features callbacks
   onFeaturesHeadingChange?: (heading: string) => void;
   onFeaturesSubheadingChange?: (subheading: string) => void;
@@ -121,6 +123,7 @@ export default function SectionsRenderer({
   onAboutImagePositionChange,
   onAboutImageZoomChange,
   onCustomColorsChange,
+  onCustomFontTypesChange,
   onFeaturesHeadingChange,
   onFeaturesSubheadingChange,
   onFeatureCardChange,
@@ -213,7 +216,9 @@ export default function SectionsRenderer({
                     palette={config.theme?.palette}
                     customColors={config.customColors}
                     brandFonts={brandFonts}
+                    customFontTypes={config.customFontTypes}
                     onCustomColorsChange={onCustomColorsChange}
+                    onCustomFontTypesChange={onCustomFontTypesChange}
                     onTitleChange={onAboutTitleChange}
                     onParagraphChange={onAboutParagraphChange}
                     onImageClick={onAboutImageClick}

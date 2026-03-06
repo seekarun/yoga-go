@@ -68,7 +68,7 @@ export default function FooterSection({
   });
 
   const containerStyle: React.CSSProperties = {
-    maxWidth: "1440px",
+    maxWidth: "1200px",
     margin: "0 auto",
     display: "flex",
     flexDirection: "column",

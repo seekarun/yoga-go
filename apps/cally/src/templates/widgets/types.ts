@@ -6,7 +6,8 @@
  * Templates pick which widget variant to use for each section.
  */
 
-import type { SectionId } from "@/types/landing-page";
+import type { SectionId, CustomFontType } from "@/types/landing-page";
+import type { FontWeight } from "@/types/landing-page";
 
 /** Resolved button style values (all hex, no refs) */
 export interface WidgetButtonStyle {
@@ -40,8 +41,18 @@ export interface WidgetBrandConfig {
   subHeaderFont?: string;
   /** Sub-header font size in px */
   subHeaderFontSize?: number;
+  /** Header font size in px */
+  headerFontSize?: number;
+  /** Header font weight */
+  headerFontWeight?: FontWeight;
+  /** Sub-header font weight */
+  subHeaderFontWeight?: FontWeight;
   /** Body/paragraph font family, e.g. "'Inter', sans-serif" */
   bodyFont?: string;
+  /** Body font size in px */
+  bodyFontSize?: number;
+  /** Body font weight */
+  bodyFontWeight?: FontWeight;
   /** Header font color override */
   headerFontColor?: string;
   /** Sub-header font color override */
@@ -54,6 +65,8 @@ export interface WidgetBrandConfig {
   secondaryButton?: WidgetButtonStyle;
   /** Card style overrides */
   cardStyle?: WidgetCardStyle;
+  /** User-defined custom font types */
+  customFontTypes?: CustomFontType[];
 }
 
 /**

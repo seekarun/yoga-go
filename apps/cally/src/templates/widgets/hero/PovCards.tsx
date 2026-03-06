@@ -1,12 +1,15 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import type { HeroStyleOverrides } from "@/types/landing-page";
+import type {
+  CustomFontType,
+  HeroStyleOverrides,
+  TypographyRole,
+} from "@/types/landing-page";
 import type { WidgetBrandConfig } from "../types";
 import { getContrastColor } from "@/lib/colorPalette";
 import ResizableText from "../../hero/ResizableText";
-import { renderSpans } from "../../hero/spanUtils";
-import { getSpanFontUrls } from "../../hero/fonts";
+import { fontForRole } from "../../hero/fontUtils";
 
 interface PovCardsProps {
   title?: string;
@@ -19,6 +22,7 @@ interface PovCardsProps {
   onTitleChange?: (title: string) => void;
   onSubtitleChange?: (subtitle: string) => void;
   onStyleOverrideChange?: (overrides: HeroStyleOverrides) => void;
+  onAddCustomFontType?: (ft: CustomFontType) => void;
 }
 
 const SCOPE = "w-hr-pc";
@@ -64,6 +68,7 @@ export default function PovCards({
   onTitleChange,
   onSubtitleChange,
   onStyleOverrideChange,
+  onAddCustomFontType,
 }: PovCardsProps) {
   const primary = brand.primaryColor || "#6366f1";
 
@@ -93,37 +98,32 @@ export default function PovCards({
     [overrides, onStyleOverrideChange],
   );
 
+  const titleRole: TypographyRole = overrides?.titleTypography || "header";
+  const titleResolved = fontForRole(titleRole, brand);
+  const subtitleRole: TypographyRole =
+    overrides?.subtitleTypography || "sub-header";
+  const subtitleResolved = fontForRole(subtitleRole, brand);
+
+  const innerSubHeader = fontForRole("sub-header", brand);
+  const innerBody = fontForRole("body", brand);
+
   const titleStyle: React.CSSProperties = {
-    fontSize: overrides?.titleFontSize ?? "clamp(2.4rem, 5.5vw, 3.8rem)",
-    fontWeight: overrides?.titleFontWeight ?? 700,
-    fontStyle: overrides?.titleFontStyle ?? "normal",
-    color: overrides?.titleTextColor ?? brand.headerFontColor ?? "#1a1a1a",
+    fontSize: titleResolved.size,
+    fontWeight: titleResolved.weight ?? 700,
+    color: titleResolved.color ?? "#1a1a1a",
     textAlign: overrides?.titleTextAlign ?? "center",
-    fontFamily: overrides?.titleFontFamily || brand.headerFont || "inherit",
+    fontFamily: titleResolved.font || "inherit",
     lineHeight: 1.1,
     letterSpacing: "-0.025em",
     margin: 0,
   };
 
   const subtitleStyle: React.CSSProperties = {
-    fontSize:
-      overrides?.subtitleFontSize ??
-      (brand.subHeaderFontSize
-        ? `${brand.subHeaderFontSize}px`
-        : "clamp(1rem, 2vw, 1.15rem)"),
-    fontWeight: overrides?.subtitleFontWeight ?? "normal",
-    fontStyle: overrides?.subtitleFontStyle ?? "normal",
-    color:
-      overrides?.subtitleTextColor ??
-      brand.subHeaderFontColor ??
-      brand.headerFontColor ??
-      "#5c5c5c",
+    fontSize: subtitleResolved.size,
+    fontWeight: subtitleResolved.weight ?? "normal",
+    color: subtitleResolved.color ?? "#5c5c5c",
     textAlign: overrides?.subtitleTextAlign ?? "center",
-    fontFamily:
-      overrides?.subtitleFontFamily ||
-      brand.subHeaderFont ||
-      brand.headerFont ||
-      "inherit",
+    fontFamily: subtitleResolved.font || "inherit",
     lineHeight: 1.65,
     margin: 0,
     maxWidth: 580,
@@ -173,7 +173,7 @@ export default function PovCards({
           transition: opacity 0.2s, transform 0.15s;
           color: ${brand.primaryButton?.textColor || getContrastColor(primary)};
           background: ${brand.primaryButton?.fillColor || primary};
-          font-family: ${brand.bodyFont || "inherit"};
+          font-family: ${innerBody.font || "inherit"};
           margin-top: 4px;
         }
         .${SCOPE}-btn:hover { opacity: 0.9; transform: scale(1.03); }
@@ -210,8 +210,8 @@ export default function PovCards({
         .${SCOPE}-card:nth-child(2) { left: 50%; transform: translateX(-50%) translateY(-30px); z-index: 1; background: #f0ecf8; }
         .${SCOPE}-card:nth-child(3) { right: 0; transform: rotate(8deg); z-index: 2; }
         .${SCOPE}-card-avatar { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); }
-        .${SCOPE}-card-question { font-size: 1.1rem; font-weight: 600; color: #1a1a1a; text-align: center; line-height: 1.35; margin: 0; font-family: ${brand.headerFont || "inherit"}; }
-        .${SCOPE}-card-stats { display: flex; gap: 16px; align-items: center; font-size: 0.85rem; color: #8b8b8b; font-family: ${brand.bodyFont || "inherit"}; }
+        .${SCOPE}-card-question { font-size: ${innerSubHeader.size}px; font-weight: ${innerSubHeader.weight ?? 600}; color: ${innerSubHeader.color || "#1a1a1a"}; text-align: center; line-height: 1.35; margin: 0; font-family: ${innerSubHeader.font || "inherit"}; }
+        .${SCOPE}-card-stats { display: flex; gap: 16px; align-items: center; font-size: ${innerBody.size}px; color: ${innerBody.color || "#8b8b8b"}; font-family: ${innerBody.font || "inherit"}; font-weight: ${innerBody.weight ?? "normal"}; }
         .${SCOPE}-card-stats span { display: flex; align-items: center; gap: 6px; }
         .${SCOPE}-card-dot { width: 8px; height: 8px; border-radius: 50%; background: ${primary}; opacity: 0.6; }
         @media (max-width: 768px) {
@@ -245,43 +245,17 @@ export default function PovCards({
             }}
             onDeselect={() => setTitleSelected(false)}
             toolbarProps={{
-              fontSize: overrides?.titleFontSize ?? 38,
-              fontFamily: overrides?.titleFontFamily || brand.headerFont || "",
-              fontWeight: overrides?.titleFontWeight ?? "bold",
-              fontStyle: overrides?.titleFontStyle ?? "normal",
-              color:
-                overrides?.titleTextColor ?? brand.headerFontColor ?? "#1a1a1a",
+              typographyRole: overrides?.titleTypography || "header",
+              onTypographyRoleChange: (v) =>
+                emitOverride({ titleTypography: v }),
               textAlign: overrides?.titleTextAlign ?? "center",
-              onFontSizeChange: (v) => emitOverride({ titleFontSize: v }),
-              onFontFamilyChange: (v) => emitOverride({ titleFontFamily: v }),
-              onFontWeightChange: (v) => emitOverride({ titleFontWeight: v }),
-              onFontStyleChange: (v) => emitOverride({ titleFontStyle: v }),
-              onColorChange: (v) => emitOverride({ titleTextColor: v }),
               onTextAlignChange: (v) => emitOverride({ titleTextAlign: v }),
+              customFontTypes: brand.customFontTypes,
+              onAddCustomFontType,
             }}
-            spans={overrides?.titleSpans}
-            onSpansChange={(spans) => emitOverride({ titleSpans: spans })}
-            isTitle
           />
         ) : (
-          title && (
-            <>
-              {getSpanFontUrls(overrides?.titleSpans).map((url) => (
-                <link key={url} rel="stylesheet" href={url} />
-              ))}
-              <h1 style={titleStyle}>
-                {overrides?.titleSpans && overrides.titleSpans.length > 0
-                  ? renderSpans(title, overrides.titleSpans, titleStyle).map(
-                      (s) => (
-                        <span key={s.startIndex} style={s.style}>
-                          {s.text}
-                        </span>
-                      ),
-                    )
-                  : title}
-              </h1>
-            </>
-          )
+          title && <h1 style={titleStyle}>{title}</h1>
         )}
 
         {isEditing ? (
@@ -297,28 +271,13 @@ export default function PovCards({
             }}
             onDeselect={() => setSubtitleSelected(false)}
             toolbarProps={{
-              fontSize: overrides?.subtitleFontSize ?? 16,
-              fontFamily:
-                overrides?.subtitleFontFamily ||
-                brand.subHeaderFont ||
-                brand.headerFont ||
-                "",
-              fontWeight: overrides?.subtitleFontWeight ?? "normal",
-              fontStyle: overrides?.subtitleFontStyle ?? "normal",
-              color:
-                overrides?.subtitleTextColor ??
-                brand.subHeaderFontColor ??
-                brand.headerFontColor ??
-                "#5c5c5c",
+              typographyRole: overrides?.subtitleTypography || "sub-header",
+              onTypographyRoleChange: (v) =>
+                emitOverride({ subtitleTypography: v }),
               textAlign: overrides?.subtitleTextAlign ?? "center",
-              onFontSizeChange: (v) => emitOverride({ subtitleFontSize: v }),
-              onFontFamilyChange: (v) =>
-                emitOverride({ subtitleFontFamily: v }),
-              onFontWeightChange: (v) =>
-                emitOverride({ subtitleFontWeight: v }),
-              onFontStyleChange: (v) => emitOverride({ subtitleFontStyle: v }),
-              onColorChange: (v) => emitOverride({ subtitleTextColor: v }),
               onTextAlignChange: (v) => emitOverride({ subtitleTextAlign: v }),
+              customFontTypes: brand.customFontTypes,
+              onAddCustomFontType,
             }}
           />
         ) : (

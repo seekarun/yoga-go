@@ -5,6 +5,8 @@
 import type {
   SimpleLandingPageConfig,
   AboutStyleOverrides,
+  CustomFontType,
+  FeatureCard,
   HeroStyleOverrides,
   ProductCardStyleOverride,
   ProductsStyleOverrides,
@@ -29,6 +31,7 @@ export interface HeroTemplateProps {
   onAboutImagePositionChange?: (position: string) => void;
   onAboutImageZoomChange?: (zoom: number) => void;
   onCustomColorsChange?: (colors: { name: string; hex: string }[]) => void;
+  onCustomFontTypesChange?: (fontTypes: CustomFontType[]) => void;
   // Features callbacks
   onFeaturesHeadingChange?: (heading: string) => void;
   onFeaturesSubheadingChange?: (subheading: string) => void;
@@ -42,7 +45,7 @@ export interface HeroTemplateProps {
   onFeatureCardImageZoomChange?: (cardId: string, zoom: number) => void;
   onFeatureCardStyleChange?: (
     cardId: string,
-    patch: Partial<import("@/types/landing-page").FeatureCard>,
+    patch: Partial<FeatureCard>,
   ) => void;
   onAddFeatureCard?: () => void;
   onRemoveFeatureCard?: (cardId: string) => void;

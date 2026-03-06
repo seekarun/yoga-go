@@ -4,14 +4,12 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import type { Product, ProductImage } from "@/types";
 import type {
   BrandFont,
-  FontWeight,
   ProductsConfig,
   ProductsStyleOverrides,
   TenantLandingPageData,
 } from "@/types/landing-page";
 import type { ColorPalette } from "@/lib/colorPalette";
 import SectionToolbar from "./SectionToolbar";
-import TextToolbar from "./TextToolbar";
 import { useDimOverlay } from "./useDimOverlay";
 
 /**
@@ -282,18 +280,8 @@ export default function ProductsSection({
   const [sectionSelected, setSectionSelected] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
 
-  // Track whether the heading text is selected
-  const [headingSelected, setHeadingSelected] = useState(false);
-  const headingContainerRef = useRef<HTMLDivElement>(null);
-
-  // Track whether the subheading text is selected
-  const [subheadingSelected, setSubheadingSelected] = useState(false);
-  const subheadingContainerRef = useRef<HTMLDivElement>(null);
-
-  // Dim the rest of the page when any sub-element is selected
-  useDimOverlay(
-    isEditing && (sectionSelected || headingSelected || subheadingSelected),
-  );
+  // Dim the rest of the page when section is selected
+  useDimOverlay(isEditing && sectionSelected);
 
   // Click-outside listener to deselect section
   useEffect(() => {
@@ -309,36 +297,6 @@ export default function ProductsSection({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [sectionSelected]);
-
-  // Click-outside listener to deselect heading
-  useEffect(() => {
-    if (!headingSelected) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        headingContainerRef.current &&
-        !headingContainerRef.current.contains(e.target as Node)
-      ) {
-        setHeadingSelected(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [headingSelected]);
-
-  // Click-outside listener to deselect subheading
-  useEffect(() => {
-    if (!subheadingSelected) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        subheadingContainerRef.current &&
-        !subheadingContainerRef.current.contains(e.target as Node)
-      ) {
-        setSubheadingSelected(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [subheadingSelected]);
 
   const showHandles = isEditing && !!onStyleOverrideChange;
 
@@ -397,92 +355,6 @@ export default function ProductsSection({
   const handlePaddingRightChange = useCallback(
     (val: number) => {
       onStyleOverrideChange?.({ ...overrides, paddingRight: val });
-    },
-    [overrides, onStyleOverrideChange],
-  );
-
-  // Heading text toolbar handlers
-  const handleHeadingFontSizeChange = useCallback(
-    (val: number) => {
-      onStyleOverrideChange?.({ ...overrides, headingFontSize: val });
-    },
-    [overrides, onStyleOverrideChange],
-  );
-
-  const handleHeadingFontFamilyChange = useCallback(
-    (val: string) => {
-      onStyleOverrideChange?.({ ...overrides, headingFontFamily: val });
-    },
-    [overrides, onStyleOverrideChange],
-  );
-
-  const handleHeadingFontWeightChange = useCallback(
-    (val: FontWeight) => {
-      onStyleOverrideChange?.({ ...overrides, headingFontWeight: val });
-    },
-    [overrides, onStyleOverrideChange],
-  );
-
-  const handleHeadingFontStyleChange = useCallback(
-    (val: "normal" | "italic") => {
-      onStyleOverrideChange?.({ ...overrides, headingFontStyle: val });
-    },
-    [overrides, onStyleOverrideChange],
-  );
-
-  const handleHeadingTextColorChange = useCallback(
-    (val: string) => {
-      onStyleOverrideChange?.({ ...overrides, headingTextColor: val });
-    },
-    [overrides, onStyleOverrideChange],
-  );
-
-  const handleHeadingTextAlignChange = useCallback(
-    (val: "left" | "center" | "right") => {
-      onStyleOverrideChange?.({ ...overrides, headingTextAlign: val });
-    },
-    [overrides, onStyleOverrideChange],
-  );
-
-  // Subheading text toolbar handlers
-  const handleSubheadingFontSizeChange = useCallback(
-    (val: number) => {
-      onStyleOverrideChange?.({ ...overrides, subheadingFontSize: val });
-    },
-    [overrides, onStyleOverrideChange],
-  );
-
-  const handleSubheadingFontFamilyChange = useCallback(
-    (val: string) => {
-      onStyleOverrideChange?.({ ...overrides, subheadingFontFamily: val });
-    },
-    [overrides, onStyleOverrideChange],
-  );
-
-  const handleSubheadingFontWeightChange = useCallback(
-    (val: FontWeight) => {
-      onStyleOverrideChange?.({ ...overrides, subheadingFontWeight: val });
-    },
-    [overrides, onStyleOverrideChange],
-  );
-
-  const handleSubheadingFontStyleChange = useCallback(
-    (val: "normal" | "italic") => {
-      onStyleOverrideChange?.({ ...overrides, subheadingFontStyle: val });
-    },
-    [overrides, onStyleOverrideChange],
-  );
-
-  const handleSubheadingTextColorChange = useCallback(
-    (val: string) => {
-      onStyleOverrideChange?.({ ...overrides, subheadingTextColor: val });
-    },
-    [overrides, onStyleOverrideChange],
-  );
-
-  const handleSubheadingTextAlignChange = useCallback(
-    (val: "left" | "center" | "right") => {
-      onStyleOverrideChange?.({ ...overrides, subheadingTextAlign: val });
     },
     [overrides, onStyleOverrideChange],
   );
@@ -549,18 +421,12 @@ export default function ProductsSection({
     paddingRight: 0,
     backgroundColor: overrides?.bgColor || theme.bg,
     position: "relative",
-    overflow:
-      sectionSelected || headingSelected || subheadingSelected
-        ? "visible"
-        : "hidden",
+    overflow: sectionSelected ? "visible" : "hidden",
     ...(showHandles
       ? {
           outline: "2px dashed rgba(59, 130, 246, 0.25)",
           outlineOffset: "-2px",
-          zIndex:
-            sectionSelected || headingSelected || subheadingSelected
-              ? 10
-              : undefined,
+          zIndex: sectionSelected ? 10 : undefined,
         }
       : {}),
   };
@@ -569,7 +435,7 @@ export default function ProductsSection({
   const BASE_HORIZONTAL_PADDING = 24;
 
   const containerStyle: React.CSSProperties = {
-    maxWidth: "1440px",
+    maxWidth: "1200px",
     margin: "0 auto",
     paddingLeft: `${BASE_HORIZONTAL_PADDING + resolvedPaddingLeft}px`,
     paddingRight: `${BASE_HORIZONTAL_PADDING + resolvedPaddingRight}px`,
@@ -584,44 +450,34 @@ export default function ProductsSection({
   };
 
   const headingStyle: React.CSSProperties = {
-    fontSize: overrides?.headingFontSize
-      ? `${overrides.headingFontSize}px`
-      : brandFonts?.subHeaderFont?.size
-        ? `${brandFonts.subHeaderFont.size}px`
-        : brandFonts?.headerFont?.size
-          ? `${brandFonts.headerFont.size}px`
-          : "clamp(1.75rem, 3vw, 2.5rem)",
+    fontSize: brandFonts?.subHeaderFont?.size
+      ? `${brandFonts.subHeaderFont.size}px`
+      : brandFonts?.headerFont?.size
+        ? `${brandFonts.headerFont.size}px`
+        : "clamp(1.75rem, 3vw, 2.5rem)",
     fontFamily:
-      overrides?.headingFontFamily ||
       brandFonts?.subHeaderFont?.family ||
       brandFonts?.headerFont?.family ||
       undefined,
-    fontWeight: overrides?.headingFontWeight ?? 700,
-    fontStyle: overrides?.headingFontStyle || undefined,
+    fontWeight:
+      brandFonts?.subHeaderFont?.weight ??
+      brandFonts?.headerFont?.weight ??
+      700,
     color:
-      overrides?.headingTextColor ||
       brandFonts?.subHeaderFont?.color ||
+      brandFonts?.headerFont?.color ||
       theme.heading,
     textAlign: overrides?.headingTextAlign || "center",
     marginBottom: "12px",
   };
 
   const subheadingStyle: React.CSSProperties = {
-    fontSize: overrides?.subheadingFontSize
-      ? `${overrides.subheadingFontSize}px`
-      : brandFonts?.bodyFont?.size
-        ? `${brandFonts.bodyFont.size}px`
-        : "1.1rem",
-    fontFamily:
-      overrides?.subheadingFontFamily ||
-      brandFonts?.bodyFont?.family ||
-      undefined,
-    fontWeight: overrides?.subheadingFontWeight || undefined,
-    fontStyle: overrides?.subheadingFontStyle || undefined,
-    color:
-      overrides?.subheadingTextColor ||
-      brandFonts?.bodyFont?.color ||
-      theme.subheading,
+    fontSize: brandFonts?.bodyFont?.size
+      ? `${brandFonts.bodyFont.size}px`
+      : "1.1rem",
+    fontFamily: brandFonts?.bodyFont?.family || undefined,
+    fontWeight: brandFonts?.bodyFont?.weight ?? undefined,
+    color: brandFonts?.bodyFont?.color || theme.subheading,
     textAlign: overrides?.subheadingTextAlign || "center",
     maxWidth: "600px",
     margin: "0 auto",
@@ -729,16 +585,8 @@ export default function ProductsSection({
       style={sectionStyle}
       onClick={
         showHandles
-          ? (e) => {
-              // Only activate section selection if click is NOT inside heading or subheading
-              if (
-                headingContainerRef.current?.contains(e.target as Node) ||
-                subheadingContainerRef.current?.contains(e.target as Node)
-              )
-                return;
+          ? () => {
               setSectionSelected(true);
-              setHeadingSelected(false);
-              setSubheadingSelected(false);
             }
           : undefined
       }
@@ -825,50 +673,8 @@ export default function ProductsSection({
       `}</style>
       <div style={containerStyle}>
         <div style={headerStyle}>
-          {/* Heading — independently selectable */}
-          <div
-            ref={headingContainerRef}
-            style={{
-              position: "relative",
-              ...(showHandles && headingSelected
-                ? {
-                    outline: "2px solid #3b82f6",
-                    outlineOffset: "4px",
-                    borderRadius: "4px",
-                  }
-                : {}),
-              ...(showHandles ? { cursor: "pointer" } : {}),
-            }}
-            onClick={
-              showHandles
-                ? () => {
-                    setHeadingSelected(true);
-                    setSubheadingSelected(false);
-                    setSectionSelected(false);
-                  }
-                : undefined
-            }
-          >
-            {showHandles && headingSelected && (
-              <TextToolbar
-                fontSize={overrides?.headingFontSize ?? 28}
-                fontFamily={overrides?.headingFontFamily ?? ""}
-                fontWeight={overrides?.headingFontWeight ?? "bold"}
-                fontStyle={overrides?.headingFontStyle ?? "normal"}
-                color={overrides?.headingTextColor ?? theme.heading}
-                textAlign={overrides?.headingTextAlign ?? "center"}
-                palette={palette}
-                customColors={customColors}
-                onFontSizeChange={handleHeadingFontSizeChange}
-                onFontFamilyChange={handleHeadingFontFamilyChange}
-                onFontWeightChange={handleHeadingFontWeightChange}
-                onFontStyleChange={handleHeadingFontStyleChange}
-                onColorChange={handleHeadingTextColorChange}
-                onTextAlignChange={handleHeadingTextAlignChange}
-                onCustomColorsChange={onCustomColorsChange}
-              />
-            )}
-            {isEditing ? (
+          {isEditing ? (
+            <>
               <div
                 className={editableClass}
                 contentEditable
@@ -884,57 +690,6 @@ export default function ProductsSection({
               >
                 {productsConfig?.heading || "Our Services"}
               </div>
-            ) : (
-              <h2 style={headingStyle}>
-                {productsConfig?.heading || "Our Services"}
-              </h2>
-            )}
-          </div>
-
-          {/* Subheading — independently selectable */}
-          <div
-            ref={subheadingContainerRef}
-            style={{
-              position: "relative",
-              ...(showHandles && subheadingSelected
-                ? {
-                    outline: "2px solid #3b82f6",
-                    outlineOffset: "4px",
-                    borderRadius: "4px",
-                  }
-                : {}),
-              ...(showHandles ? { cursor: "pointer" } : {}),
-            }}
-            onClick={
-              showHandles
-                ? () => {
-                    setSubheadingSelected(true);
-                    setHeadingSelected(false);
-                    setSectionSelected(false);
-                  }
-                : undefined
-            }
-          >
-            {showHandles && subheadingSelected && (
-              <TextToolbar
-                fontSize={overrides?.subheadingFontSize ?? 18}
-                fontFamily={overrides?.subheadingFontFamily ?? ""}
-                fontWeight={overrides?.subheadingFontWeight ?? "normal"}
-                fontStyle={overrides?.subheadingFontStyle ?? "normal"}
-                color={overrides?.subheadingTextColor ?? theme.subheading}
-                textAlign={overrides?.subheadingTextAlign ?? "center"}
-                palette={palette}
-                customColors={customColors}
-                onFontSizeChange={handleSubheadingFontSizeChange}
-                onFontFamilyChange={handleSubheadingFontFamilyChange}
-                onFontWeightChange={handleSubheadingFontWeightChange}
-                onFontStyleChange={handleSubheadingFontStyleChange}
-                onColorChange={handleSubheadingTextColorChange}
-                onTextAlignChange={handleSubheadingTextAlignChange}
-                onCustomColorsChange={onCustomColorsChange}
-              />
-            )}
-            {isEditing ? (
               <div
                 className={editableClass}
                 contentEditable
@@ -947,13 +702,18 @@ export default function ProductsSection({
                 {productsConfig?.subheading ||
                   "Browse our offerings and book your appointment"}
               </div>
-            ) : (
+            </>
+          ) : (
+            <>
+              <h2 style={headingStyle}>
+                {productsConfig?.heading || "Our Services"}
+              </h2>
               <p style={subheadingStyle}>
                 {productsConfig?.subheading ||
                   "Browse our offerings and book your appointment"}
               </p>
-            )}
-          </div>
+            </>
+          )}
         </div>
 
         <div style={gridStyle}>

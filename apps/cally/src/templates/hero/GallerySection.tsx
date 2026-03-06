@@ -96,6 +96,7 @@ export default function GallerySection({
 
   const theme = colors[variant];
   const images = gallery.images || [];
+  const overrides = gallery.styleOverrides;
 
   const {
     sectionRef,
@@ -110,7 +111,7 @@ export default function GallerySection({
     sectionStyle,
   } = useSectionToolbar({
     isEditing,
-    overrides: gallery.styleOverrides,
+    overrides,
     onStyleOverrideChange,
     defaultBg: theme.bg,
     onBgImageClick,
@@ -156,7 +157,7 @@ export default function GallerySection({
   }, []);
 
   const containerStyle: React.CSSProperties = {
-    maxWidth: "1440px",
+    maxWidth: "1200px",
     margin: "0 auto",
   };
 
@@ -166,28 +167,37 @@ export default function GallerySection({
   };
 
   const headingStyle: React.CSSProperties = {
-    fontFamily:
-      brandFonts?.subHeaderFont?.family ||
-      brandFonts?.headerFont?.family ||
-      undefined,
     fontSize: brandFonts?.subHeaderFont?.size
       ? `${brandFonts.subHeaderFont.size}px`
       : brandFonts?.headerFont?.size
         ? `${brandFonts.headerFont.size}px`
         : "clamp(1.75rem, 3vw, 2.5rem)",
-    fontWeight: 700,
-    color: brandFonts?.subHeaderFont?.color || theme.heading,
+    fontWeight:
+      brandFonts?.subHeaderFont?.weight ??
+      brandFonts?.headerFont?.weight ??
+      700,
+    color:
+      brandFonts?.subHeaderFont?.color ||
+      brandFonts?.headerFont?.color ||
+      theme.heading,
+    textAlign: overrides?.headingTextAlign ?? "center",
     marginBottom: "12px",
+    fontFamily:
+      brandFonts?.subHeaderFont?.family ||
+      brandFonts?.headerFont?.family ||
+      undefined,
   };
 
   const subheadingStyle: React.CSSProperties = {
-    fontFamily: brandFonts?.bodyFont?.family || undefined,
     fontSize: brandFonts?.bodyFont?.size
       ? `${brandFonts.bodyFont.size}px`
       : "1.1rem",
+    fontWeight: brandFonts?.bodyFont?.weight ?? undefined,
     color: brandFonts?.bodyFont?.color || theme.subheading,
+    textAlign: overrides?.subheadingTextAlign ?? "center",
     maxWidth: "600px",
     margin: "0 auto",
+    fontFamily: brandFonts?.bodyFont?.family || undefined,
   };
 
   const editableStyle: React.CSSProperties = isEditing

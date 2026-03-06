@@ -1,8 +1,10 @@
 "use client";
 
+import { useCallback } from "react";
 import type { HeroTemplateProps } from "./types";
 import type {
   BrandButtonStyle,
+  CustomFontType,
   HeroStyleOverrides,
   SectionStyleOverrides,
   AboutStyleOverrides,
@@ -92,9 +94,14 @@ function buildBrand(props: HeroTemplateProps): WidgetBrandConfig {
     primaryColor,
     secondaryColor,
     headerFont: props.config.theme?.headerFont?.family,
+    headerFontSize: props.config.theme?.headerFont?.size,
     subHeaderFont: props.config.theme?.subHeaderFont?.family,
     subHeaderFontSize: props.config.theme?.subHeaderFont?.size,
+    headerFontWeight: props.config.theme?.headerFont?.weight,
+    subHeaderFontWeight: props.config.theme?.subHeaderFont?.weight,
     bodyFont: props.config.theme?.bodyFont?.family,
+    bodyFontSize: props.config.theme?.bodyFont?.size,
+    bodyFontWeight: props.config.theme?.bodyFont?.weight,
     headerFontColor: rc(props.config.theme?.headerFont?.color, "#1a1a1a"),
     subHeaderFontColor: rc(props.config.theme?.subHeaderFont?.color, "#1a1a1a"),
     bodyFontColor: rc(props.config.theme?.bodyFont?.color, "#1a1a1a"),
@@ -116,12 +123,12 @@ function buildBrand(props: HeroTemplateProps): WidgetBrandConfig {
           bgColor: rc(props.config.theme.cardStyle.bgColor, ""),
         } as WidgetCardStyle)
       : undefined,
+    customFontTypes: props.config.customFontTypes,
   };
 }
 
 /**
  * Resolve colour-ref strings in hero style overrides so widgets get plain hex.
- * Also resolves colour refs inside titleSpans so per-word colours render correctly.
  */
 function resolveHeroOverrides(
   o: HeroStyleOverrides | undefined,
@@ -130,17 +137,7 @@ function resolveHeroOverrides(
   if (!o) return o;
   return {
     ...o,
-    titleTextColor: o.titleTextColor
-      ? rc(o.titleTextColor, "") || undefined
-      : undefined,
-    subtitleTextColor: o.subtitleTextColor
-      ? rc(o.subtitleTextColor, "") || undefined
-      : undefined,
     bgColor: o.bgColor ? rc(o.bgColor, "") || undefined : undefined,
-    titleSpans: o.titleSpans?.map((span) => ({
-      ...span,
-      color: span.color ? rc(span.color, "") || undefined : span.color,
-    })),
   };
 }
 
@@ -154,12 +151,6 @@ function resolveSectionOverrides(
   if (!o) return o;
   return {
     ...o,
-    headingTextColor: o.headingTextColor
-      ? rc(o.headingTextColor, "") || undefined
-      : undefined,
-    subheadingTextColor: o.subheadingTextColor
-      ? rc(o.subheadingTextColor, "") || undefined
-      : undefined,
     bgColor: o.bgColor ? rc(o.bgColor, "") || undefined : undefined,
   };
 }
@@ -174,10 +165,6 @@ function resolveAboutOverrides(
   if (!o) return o;
   return {
     ...o,
-    titleTextColor: o.titleTextColor
-      ? rc(o.titleTextColor, "") || undefined
-      : undefined,
-    textColor: o.textColor ? rc(o.textColor, "") || undefined : undefined,
     bgColor: o.bgColor ? rc(o.bgColor, "") || undefined : undefined,
   };
 }
@@ -192,12 +179,6 @@ function resolveProductsOverrides(
   if (!o) return o;
   return {
     ...o,
-    headingTextColor: o.headingTextColor
-      ? rc(o.headingTextColor, "") || undefined
-      : undefined,
-    subheadingTextColor: o.subheadingTextColor
-      ? rc(o.subheadingTextColor, "") || undefined
-      : undefined,
     bgColor: o.bgColor ? rc(o.bgColor, "") || undefined : undefined,
   };
 }
@@ -210,8 +191,17 @@ function resolveProductsOverrides(
  * select which widget variant renders for each section.
  */
 export default function PlaygroundTemplate(props: HeroTemplateProps) {
-  const { config, tenantData, products, currency } = props;
+  const { config, tenantData, products, currency, onCustomFontTypesChange } =
+    props;
   const brand = buildBrand(props);
+
+  const handleAddCustomFontType = useCallback(
+    (ft: CustomFontType) => {
+      const existing = config.customFontTypes ?? [];
+      onCustomFontTypesChange?.([...existing, ft]);
+    },
+    [config.customFontTypes, onCustomFontTypesChange],
+  );
 
   /** Resolve colour references to hex for display. */
   const rc = (v: string | undefined, fb: string) =>
@@ -236,6 +226,7 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
     onTitleChange: props.onTitleChange,
     onSubtitleChange: props.onSubtitleChange,
     onStyleOverrideChange: props.onHeroStyleOverrideChange,
+    onAddCustomFontType: handleAddCustomFontType,
   };
 
   /** Render the selected hero widget. */
@@ -274,6 +265,7 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
     onImagePositionChange: props.onAboutImagePositionChange,
     onImageZoomChange: props.onAboutImageZoomChange,
     onStyleOverrideChange: props.onAboutStyleOverrideChange,
+    onAddCustomFontType: handleAddCustomFontType,
   };
 
   /** Render the selected about widget. */
@@ -307,6 +299,7 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
     onCardImagePositionChange: props.onFeatureCardImagePositionChange,
     onCardImageZoomChange: props.onFeatureCardImageZoomChange,
     onCardStyleChange: props.onFeatureCardStyleChange,
+    onAddCustomFontType: handleAddCustomFontType,
   };
 
   /** Render the selected features widget. */
@@ -340,6 +333,7 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
     onSubheadingChange: props.onProductsSubheadingChange,
     onStyleOverrideChange: props.onProductsStyleOverrideChange,
     onCardStyleChange: props.onProductCardStyleChange,
+    onAddCustomFontType: handleAddCustomFontType,
   };
 
   /** Render the selected products widget. */
@@ -370,6 +364,7 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
     onHeadingChange: props.onTestimonialsHeadingChange,
     onSubheadingChange: props.onTestimonialsSubheadingChange,
     onStyleOverrideChange: props.onTestimonialsStyleOverrideChange,
+    onAddCustomFontType: handleAddCustomFontType,
   };
 
   /** Render the selected testimonials widget. */
@@ -403,6 +398,7 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
     onHeadingChange: props.onFAQHeadingChange,
     onSubheadingChange: props.onFAQSubheadingChange,
     onStyleOverrideChange: props.onFAQStyleOverrideChange,
+    onAddCustomFontType: handleAddCustomFontType,
   };
 
   /** Render the selected FAQ widget. */

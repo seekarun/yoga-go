@@ -1,12 +1,15 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import type { HeroStyleOverrides } from "@/types/landing-page";
+import type {
+  CustomFontType,
+  HeroStyleOverrides,
+  TypographyRole,
+} from "@/types/landing-page";
 import type { WidgetBrandConfig } from "../types";
 import { getContrastColor } from "@/lib/colorPalette";
 import ResizableText from "../../hero/ResizableText";
-import { renderSpans } from "../../hero/spanUtils";
-import { getSpanFontUrls } from "../../hero/fonts";
+import { fontForRole } from "../../hero/fontUtils";
 
 interface StatsBoxesProps {
   title?: string;
@@ -19,6 +22,7 @@ interface StatsBoxesProps {
   onTitleChange?: (title: string) => void;
   onSubtitleChange?: (subtitle: string) => void;
   onStyleOverrideChange?: (overrides: HeroStyleOverrides) => void;
+  onAddCustomFontType?: (ft: CustomFontType) => void;
 }
 
 const SCOPE = "w-hr-sb";
@@ -46,6 +50,7 @@ export default function StatsBoxes({
   onTitleChange,
   onSubtitleChange,
   onStyleOverrideChange,
+  onAddCustomFontType,
 }: StatsBoxesProps) {
   const primary = brand.primaryColor || "#6366f1";
 
@@ -75,35 +80,32 @@ export default function StatsBoxes({
     [overrides, onStyleOverrideChange],
   );
 
+  const titleRole: TypographyRole = overrides?.titleTypography || "header";
+  const titleResolved = fontForRole(titleRole, brand);
+  const subtitleRole: TypographyRole =
+    overrides?.subtitleTypography || "sub-header";
+  const subtitleResolved = fontForRole(subtitleRole, brand);
+
+  const innerHeader = fontForRole("header", brand);
+  const innerBody = fontForRole("body", brand);
+
   const titleStyle: React.CSSProperties = {
-    fontSize: overrides?.titleFontSize ?? "clamp(2.2rem, 5vw, 3.5rem)",
-    fontWeight: overrides?.titleFontWeight ?? 700,
-    fontStyle: overrides?.titleFontStyle ?? "normal",
-    color: overrides?.titleTextColor ?? brand.headerFontColor ?? "#111",
+    fontSize: titleResolved.size,
+    fontWeight: titleResolved.weight ?? 700,
+    color: titleResolved.color ?? "#111",
     textAlign: overrides?.titleTextAlign ?? "left",
-    fontFamily: overrides?.titleFontFamily || brand.headerFont || "inherit",
+    fontFamily: titleResolved.font || "inherit",
     lineHeight: 1.12,
     letterSpacing: "-0.02em",
     margin: 0,
   };
 
   const subtitleStyle: React.CSSProperties = {
-    fontSize:
-      overrides?.subtitleFontSize ??
-      (brand.subHeaderFontSize ? `${brand.subHeaderFontSize}px` : "1.1rem"),
-    fontWeight: overrides?.subtitleFontWeight ?? "normal",
-    fontStyle: overrides?.subtitleFontStyle ?? "normal",
-    color:
-      overrides?.subtitleTextColor ??
-      brand.subHeaderFontColor ??
-      brand.headerFontColor ??
-      "#6b7280",
+    fontSize: subtitleResolved.size,
+    fontWeight: subtitleResolved.weight ?? "normal",
+    color: subtitleResolved.color ?? "#6b7280",
     textAlign: overrides?.subtitleTextAlign ?? "left",
-    fontFamily:
-      overrides?.subtitleFontFamily ||
-      brand.subHeaderFont ||
-      brand.headerFont ||
-      "inherit",
+    fontFamily: subtitleResolved.font || "inherit",
     lineHeight: 1.7,
     margin: 0,
     maxWidth: 520,
@@ -114,7 +116,7 @@ export default function StatsBoxes({
       <style>{`
         .${SCOPE} {
           padding: 40px 24px;
-          max-width: 1280px;
+          max-width: 1200px;
           margin: 0 auto;
           display: grid;
           grid-template-columns: 1fr 1fr;
@@ -142,7 +144,7 @@ export default function StatsBoxes({
           transition: opacity 0.2s, transform 0.15s;
           color: ${brand.primaryButton?.textColor || getContrastColor(primary)};
           background: ${brand.primaryButton?.fillColor || primary};
-          font-family: ${brand.bodyFont || "inherit"};
+          font-family: ${innerBody.font || "inherit"};
         }
         .${SCOPE}-btn:hover {
           opacity: 0.9;
@@ -189,19 +191,19 @@ export default function StatsBoxes({
         .${SCOPE}-stat--warm { background: #ede8e3; }
         .${SCOPE}-stat-value {
           font-size: clamp(2rem, 4vw, 3rem);
-          font-weight: 700;
-          color: #111;
+          font-weight: ${innerHeader.weight ?? 700};
+          color: ${innerHeader.color || "#111"};
           margin: 0 0 4px;
-          font-family: ${brand.headerFont || "inherit"};
+          font-family: ${innerHeader.font || "inherit"};
           letter-spacing: -0.02em;
           line-height: 1.1;
         }
         .${SCOPE}-stat-label {
-          font-size: 0.95rem;
-          color: #6b7280;
+          font-size: ${innerBody.size}px;
+          color: ${innerBody.color || "#6b7280"};
           margin: 0;
-          font-family: ${brand.bodyFont || "inherit"};
-          font-weight: 500;
+          font-family: ${innerBody.font || "inherit"};
+          font-weight: ${innerBody.weight ?? 500};
         }
         @media (max-width: 900px) {
           .${SCOPE} { grid-template-columns: 1fr; padding: 48px 16px; gap: 32px; }
@@ -227,43 +229,17 @@ export default function StatsBoxes({
             }}
             onDeselect={() => setTitleSelected(false)}
             toolbarProps={{
-              fontSize: overrides?.titleFontSize ?? 36,
-              fontFamily: overrides?.titleFontFamily || brand.headerFont || "",
-              fontWeight: overrides?.titleFontWeight ?? "bold",
-              fontStyle: overrides?.titleFontStyle ?? "normal",
-              color:
-                overrides?.titleTextColor ?? brand.headerFontColor ?? "#111",
+              typographyRole: overrides?.titleTypography || "header",
+              onTypographyRoleChange: (v) =>
+                emitOverride({ titleTypography: v }),
               textAlign: overrides?.titleTextAlign ?? "left",
-              onFontSizeChange: (v) => emitOverride({ titleFontSize: v }),
-              onFontFamilyChange: (v) => emitOverride({ titleFontFamily: v }),
-              onFontWeightChange: (v) => emitOverride({ titleFontWeight: v }),
-              onFontStyleChange: (v) => emitOverride({ titleFontStyle: v }),
-              onColorChange: (v) => emitOverride({ titleTextColor: v }),
               onTextAlignChange: (v) => emitOverride({ titleTextAlign: v }),
+              customFontTypes: brand.customFontTypes,
+              onAddCustomFontType,
             }}
-            spans={overrides?.titleSpans}
-            onSpansChange={(spans) => emitOverride({ titleSpans: spans })}
-            isTitle
           />
         ) : (
-          title && (
-            <>
-              {getSpanFontUrls(overrides?.titleSpans).map((url) => (
-                <link key={url} rel="stylesheet" href={url} />
-              ))}
-              <h1 style={titleStyle}>
-                {overrides?.titleSpans && overrides.titleSpans.length > 0
-                  ? renderSpans(title, overrides.titleSpans, titleStyle).map(
-                      (s) => (
-                        <span key={s.startIndex} style={s.style}>
-                          {s.text}
-                        </span>
-                      ),
-                    )
-                  : title}
-              </h1>
-            </>
-          )
+          title && <h1 style={titleStyle}>{title}</h1>
         )}
 
         {isEditing ? (
@@ -279,28 +255,13 @@ export default function StatsBoxes({
             }}
             onDeselect={() => setSubtitleSelected(false)}
             toolbarProps={{
-              fontSize: overrides?.subtitleFontSize ?? 17,
-              fontFamily:
-                overrides?.subtitleFontFamily ||
-                brand.subHeaderFont ||
-                brand.headerFont ||
-                "",
-              fontWeight: overrides?.subtitleFontWeight ?? "normal",
-              fontStyle: overrides?.subtitleFontStyle ?? "normal",
-              color:
-                overrides?.subtitleTextColor ??
-                brand.subHeaderFontColor ??
-                brand.headerFontColor ??
-                "#6b7280",
+              typographyRole: overrides?.subtitleTypography || "sub-header",
+              onTypographyRoleChange: (v) =>
+                emitOverride({ subtitleTypography: v }),
               textAlign: overrides?.subtitleTextAlign ?? "left",
-              onFontSizeChange: (v) => emitOverride({ subtitleFontSize: v }),
-              onFontFamilyChange: (v) =>
-                emitOverride({ subtitleFontFamily: v }),
-              onFontWeightChange: (v) =>
-                emitOverride({ subtitleFontWeight: v }),
-              onFontStyleChange: (v) => emitOverride({ subtitleFontStyle: v }),
-              onColorChange: (v) => emitOverride({ subtitleTextColor: v }),
               onTextAlignChange: (v) => emitOverride({ subtitleTextAlign: v }),
+              customFontTypes: brand.customFontTypes,
+              onAddCustomFontType,
             }}
           />
         ) : (

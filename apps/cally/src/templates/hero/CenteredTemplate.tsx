@@ -6,10 +6,10 @@ import useHeroToolbarState from "./useHeroToolbarState";
 import SectionToolbar from "./SectionToolbar";
 import { HERO_LAYOUT_OPTIONS, bgFilterToCSS } from "./layoutOptions";
 import ResizableText from "./ResizableText";
-import { renderSpans } from "./spanUtils";
-import { getSpanFontUrls } from "./fonts";
 import BgDragOverlay from "./BgDragOverlay";
 import { resolveColorRef } from "@/lib/colorPalette";
+import { fontForRoleFromTheme } from "./fontUtils";
+import type { CustomFontType, TypographyRole } from "@/types/landing-page";
 
 const DEFAULT_OVERLAY = 50;
 const DEFAULT_PADDING_TOP = 40;
@@ -38,6 +38,7 @@ export default function CenteredTemplate(props: HeroTemplateProps) {
     onImageOffsetChange,
     onImageZoomChange,
     onCustomColorsChange,
+    onCustomFontTypesChange,
   } = props;
   const {
     title,
@@ -54,12 +55,6 @@ export default function CenteredTemplate(props: HeroTemplateProps) {
   // Helper to resolve color references (palette:primary etc.) to hex
   const rc = (val: string | undefined, fallback: string) =>
     resolveColorRef(val, config.theme?.palette, config.customColors, fallback);
-
-  // Resolve colour refs inside title spans so per-word colours render correctly
-  const resolvedTitleSpans = h?.titleSpans?.map((span) => ({
-    ...span,
-    color: span.color ? rc(span.color, "") || undefined : span.color,
-  }));
 
   const toolbar = useHeroToolbarState({
     isEditing,
@@ -127,18 +122,24 @@ export default function CenteredTemplate(props: HeroTemplateProps) {
     alignItems: alignMap[contentAlign],
   };
 
+  const handleAddCustomFontType = (ft: CustomFontType) => {
+    const existing = config.customFontTypes ?? [];
+    onCustomFontTypesChange?.([...existing, ft]);
+  };
+
+  const titleRole: TypographyRole = h?.titleTypography || "header";
+  const titleFont = fontForRoleFromTheme(
+    titleRole,
+    config.theme,
+    config.customFontTypes,
+  );
+
+  // Title style: ALL properties derived from typography role
   const titleStyle: React.CSSProperties = {
-    fontSize: h?.titleFontSize
-      ? `${h.titleFontSize}px`
-      : "clamp(2.5rem, 6vw, 4.5rem)",
-    fontWeight: h?.titleFontWeight === "normal" ? 400 : 700,
-    fontFamily:
-      h?.titleFontFamily || config.theme?.headerFont?.family || undefined,
-    fontStyle: h?.titleFontStyle || undefined,
-    color:
-      rc(h?.titleTextColor, "") ||
-      rc(config.theme?.headerFont?.color, "") ||
-      "#ffffff",
+    fontSize: `${titleFont.size}px`,
+    fontWeight: titleFont.weight ?? 700,
+    fontFamily: titleFont.family || undefined,
+    color: rc(titleFont.color, "") || "#ffffff",
     textAlign: h?.titleTextAlign || undefined,
     marginBottom: "20px",
     lineHeight: 1.1,
@@ -146,24 +147,19 @@ export default function CenteredTemplate(props: HeroTemplateProps) {
     whiteSpace: "pre-line",
   };
 
+  const subtitleRole: TypographyRole = h?.subtitleTypography || "sub-header";
+  const subtitleFont = fontForRoleFromTheme(
+    subtitleRole,
+    config.theme,
+    config.customFontTypes,
+  );
+
+  // Subtitle style: ALL properties derived from typography role
   const subtitleStyle: React.CSSProperties = {
-    fontSize: h?.subtitleFontSize
-      ? `${h.subtitleFontSize}px`
-      : config.theme?.subHeaderFont?.size
-        ? `${config.theme.subHeaderFont.size}px`
-        : "clamp(1.1rem, 2.5vw, 1.5rem)",
-    fontWeight: h?.subtitleFontWeight === "bold" ? 700 : 400,
-    fontFamily:
-      h?.subtitleFontFamily ||
-      config.theme?.subHeaderFont?.family ||
-      config.theme?.headerFont?.family ||
-      undefined,
-    fontStyle: h?.subtitleFontStyle || undefined,
-    color:
-      rc(h?.subtitleTextColor, "") ||
-      rc(config.theme?.subHeaderFont?.color, "") ||
-      rc(config.theme?.headerFont?.color, "") ||
-      "#ffffff",
+    fontSize: `${subtitleFont.size}px`,
+    fontWeight: subtitleFont.weight ?? 400,
+    fontFamily: subtitleFont.family || undefined,
+    color: rc(subtitleFont.color, "") || "#ffffff",
     textAlign: h?.subtitleTextAlign || undefined,
     opacity: 0.95,
     lineHeight: 1.6,
@@ -301,33 +297,13 @@ export default function CenteredTemplate(props: HeroTemplateProps) {
                   selected={toolbar.titleSelected}
                   onSelect={toolbar.handleTitleClick}
                   toolbarProps={{
-                    fontSize: h?.titleFontSize || 48,
-                    fontFamily:
-                      h?.titleFontFamily ||
-                      config.theme?.headerFont?.family ||
-                      "",
-                    fontWeight: h?.titleFontWeight || "bold",
-                    fontStyle: h?.titleFontStyle || "normal",
-                    color:
-                      rc(h?.titleTextColor, "") ||
-                      rc(config.theme?.headerFont?.color, "") ||
-                      "#ffffff",
+                    typographyRole: h?.titleTypography || "header",
                     textAlign: h?.titleTextAlign || "center",
-                    onFontSizeChange: toolbar.onTitleFontSizeChange,
-                    onFontFamilyChange: toolbar.onTitleFontFamilyChange,
-                    onFontWeightChange: toolbar.onTitleFontWeightChange,
-                    onFontStyleChange: toolbar.onTitleFontStyleChange,
-                    onColorChange: toolbar.onTitleTextColorChange,
+                    onTypographyRoleChange: toolbar.onTitleTypographyChange,
                     onTextAlignChange: toolbar.onTitleTextAlignChange,
+                    customFontTypes: config.customFontTypes,
+                    onAddCustomFontType: handleAddCustomFontType,
                   }}
-                  palette={config.theme?.palette}
-                  customColors={config.customColors}
-                  onCustomColorsChange={onCustomColorsChange}
-                  spans={resolvedTitleSpans}
-                  onSpansChange={(spans) =>
-                    onHeroStyleOverrideChange?.({ ...h, titleSpans: spans })
-                  }
-                  isTitle
                 />
 
                 <ResizableText
@@ -342,30 +318,13 @@ export default function CenteredTemplate(props: HeroTemplateProps) {
                   selected={toolbar.subtitleSelected}
                   onSelect={toolbar.handleSubtitleClick}
                   toolbarProps={{
-                    fontSize: h?.subtitleFontSize || 20,
-                    fontFamily:
-                      h?.subtitleFontFamily ||
-                      config.theme?.subHeaderFont?.family ||
-                      config.theme?.headerFont?.family ||
-                      "",
-                    fontWeight: h?.subtitleFontWeight || "normal",
-                    fontStyle: h?.subtitleFontStyle || "normal",
-                    color:
-                      rc(h?.subtitleTextColor, "") ||
-                      rc(config.theme?.subHeaderFont?.color, "") ||
-                      rc(config.theme?.headerFont?.color, "") ||
-                      "#ffffff",
+                    typographyRole: h?.subtitleTypography || "sub-header",
                     textAlign: h?.subtitleTextAlign || "center",
-                    onFontSizeChange: toolbar.onSubtitleFontSizeChange,
-                    onFontFamilyChange: toolbar.onSubtitleFontFamilyChange,
-                    onFontWeightChange: toolbar.onSubtitleFontWeightChange,
-                    onFontStyleChange: toolbar.onSubtitleFontStyleChange,
-                    onColorChange: toolbar.onSubtitleTextColorChange,
+                    onTypographyRoleChange: toolbar.onSubtitleTypographyChange,
                     onTextAlignChange: toolbar.onSubtitleTextAlignChange,
+                    customFontTypes: config.customFontTypes,
+                    onAddCustomFontType: handleAddCustomFontType,
                   }}
-                  palette={config.theme?.palette}
-                  customColors={config.customColors}
-                  onCustomColorsChange={onCustomColorsChange}
                 />
 
                 {button && (
@@ -407,24 +366,13 @@ export default function CenteredTemplate(props: HeroTemplateProps) {
               </>
             ) : (
               <>
-                {getSpanFontUrls(resolvedTitleSpans).map((url) => (
-                  <link key={url} rel="stylesheet" href={url} />
-                ))}
                 <h1
                   style={{
                     ...titleStyle,
                     maxWidth: `${h?.titleMaxWidth ?? DEFAULT_TITLE_MW}px`,
                   }}
                 >
-                  {resolvedTitleSpans && resolvedTitleSpans.length > 0
-                    ? renderSpans(title, resolvedTitleSpans, titleStyle).map(
-                        (s) => (
-                          <span key={s.startIndex} style={s.style}>
-                            {s.text}
-                          </span>
-                        ),
-                      )
-                    : title}
+                  {title}
                 </h1>
                 <p
                   style={{

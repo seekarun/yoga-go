@@ -136,6 +136,7 @@ export default function LandingPageRenderer({
       headerFont={config.theme?.headerFont}
       subHeaderFont={config.theme?.subHeaderFont}
       bodyFont={config.theme?.bodyFont}
+      customFontTypes={config.customFontTypes}
     >
       <LandingPageHeader
         logo={logo}

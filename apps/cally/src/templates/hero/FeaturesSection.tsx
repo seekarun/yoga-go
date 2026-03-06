@@ -96,6 +96,7 @@ export default function FeaturesSection({
   };
 
   const theme = colors[variant];
+  const overrides = features.styleOverrides;
 
   const {
     sectionRef,
@@ -120,7 +121,7 @@ export default function FeaturesSection({
   });
 
   const containerStyle: React.CSSProperties = {
-    maxWidth: "1440px",
+    maxWidth: "1200px",
     margin: "0 auto",
   };
 
@@ -135,8 +136,15 @@ export default function FeaturesSection({
       : brandFonts?.headerFont?.size
         ? `${brandFonts.headerFont.size}px`
         : "clamp(1.75rem, 3vw, 2.5rem)",
-    fontWeight: 700,
-    color: brandFonts?.subHeaderFont?.color || theme.heading,
+    fontWeight:
+      brandFonts?.subHeaderFont?.weight ??
+      brandFonts?.headerFont?.weight ??
+      700,
+    color:
+      brandFonts?.subHeaderFont?.color ||
+      brandFonts?.headerFont?.color ||
+      theme.heading,
+    textAlign: overrides?.headingTextAlign ?? "center",
     marginBottom: "12px",
     fontFamily:
       brandFonts?.subHeaderFont?.family ||
@@ -148,7 +156,9 @@ export default function FeaturesSection({
     fontSize: brandFonts?.bodyFont?.size
       ? `${brandFonts.bodyFont.size}px`
       : "1.1rem",
+    fontWeight: brandFonts?.bodyFont?.weight ?? undefined,
     color: brandFonts?.bodyFont?.color || theme.subheading,
+    textAlign: overrides?.subheadingTextAlign ?? "center",
     maxWidth: "600px",
     margin: "0 auto",
     fontFamily: brandFonts?.bodyFont?.family || undefined,

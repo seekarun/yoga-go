@@ -5,7 +5,7 @@ import type {
   AboutConfig,
   AboutStyleOverrides,
   BrandFont,
-  FontWeight,
+  CustomFontType,
   TenantLandingPageData,
 } from "@/types/landing-page";
 import type { ColorPalette } from "@/lib/colorPalette";
@@ -16,6 +16,7 @@ import BgDragOverlay from "./BgDragOverlay";
 import { ABOUT_LAYOUT_OPTIONS, bgFilterToCSS } from "./layoutOptions";
 import ResizableText from "./ResizableText";
 import { useDimOverlay } from "./useDimOverlay";
+import { fontForRoleFromTheme } from "./fontUtils";
 
 const DEFAULTS = {
   paddingTop: 80,
@@ -48,7 +49,9 @@ interface AboutSectionProps {
     subHeaderFont?: BrandFont;
     bodyFont?: BrandFont;
   };
+  customFontTypes?: CustomFontType[];
   onCustomColorsChange?: (colors: { name: string; hex: string }[]) => void;
+  onCustomFontTypesChange?: (fontTypes: CustomFontType[]) => void;
   onTitleChange?: (title: string) => void;
   onParagraphChange?: (paragraph: string) => void;
   onImageClick?: () => void;
@@ -66,7 +69,9 @@ export default function AboutSection({
   palette,
   customColors,
   brandFonts,
+  customFontTypes,
   onCustomColorsChange,
+  onCustomFontTypesChange,
   onTitleChange,
   onParagraphChange,
   onImageClick,
@@ -400,28 +405,7 @@ export default function AboutSection({
     [overrides, onStyleOverrideChange],
   );
 
-  // Title toolbar handlers
-  const handleTitleFontSizeChange = useCallback(
-    (val: number) => {
-      onStyleOverrideChange?.({ ...overrides, titleFontSize: val });
-    },
-    [overrides, onStyleOverrideChange],
-  );
-
-  const handleTitleFontFamilyChange = useCallback(
-    (val: string) => {
-      onStyleOverrideChange?.({ ...overrides, titleFontFamily: val });
-    },
-    [overrides, onStyleOverrideChange],
-  );
-
-  const handleTitleTextColorChange = useCallback(
-    (val: string) => {
-      onStyleOverrideChange?.({ ...overrides, titleTextColor: val });
-    },
-    [overrides, onStyleOverrideChange],
-  );
-
+  // Title text alignment handler
   const handleTitleTextAlignChange = useCallback(
     (val: "left" | "center" | "right") => {
       onStyleOverrideChange?.({ ...overrides, titleTextAlign: val });
@@ -429,59 +413,10 @@ export default function AboutSection({
     [overrides, onStyleOverrideChange],
   );
 
-  const handleTitleFontWeightChange = useCallback(
-    (val: FontWeight) => {
-      onStyleOverrideChange?.({ ...overrides, titleFontWeight: val });
-    },
-    [overrides, onStyleOverrideChange],
-  );
-
-  const handleTitleFontStyleChange = useCallback(
-    (val: "normal" | "italic") => {
-      onStyleOverrideChange?.({ ...overrides, titleFontStyle: val });
-    },
-    [overrides, onStyleOverrideChange],
-  );
-
-  // Body text toolbar handlers
-  const handleFontSizeChange = useCallback(
-    (val: number) => {
-      onStyleOverrideChange?.({ ...overrides, fontSize: val });
-    },
-    [overrides, onStyleOverrideChange],
-  );
-
-  const handleFontFamilyChange = useCallback(
-    (val: string) => {
-      onStyleOverrideChange?.({ ...overrides, fontFamily: val });
-    },
-    [overrides, onStyleOverrideChange],
-  );
-
-  const handleTextColorChange = useCallback(
-    (val: string) => {
-      onStyleOverrideChange?.({ ...overrides, textColor: val });
-    },
-    [overrides, onStyleOverrideChange],
-  );
-
+  // Body text alignment handler
   const handleTextAlignChange = useCallback(
     (val: "left" | "center" | "right") => {
       onStyleOverrideChange?.({ ...overrides, textAlign: val });
-    },
-    [overrides, onStyleOverrideChange],
-  );
-
-  const handleFontWeightChange = useCallback(
-    (val: FontWeight) => {
-      onStyleOverrideChange?.({ ...overrides, fontWeight: val });
-    },
-    [overrides, onStyleOverrideChange],
-  );
-
-  const handleFontStyleChange = useCallback(
-    (val: "normal" | "italic") => {
-      onStyleOverrideChange?.({ ...overrides, fontStyle: val });
     },
     [overrides, onStyleOverrideChange],
   );
@@ -768,7 +703,7 @@ export default function AboutSection({
   };
 
   const containerStyle: React.CSSProperties = {
-    maxWidth: "1440px",
+    maxWidth: "1200px",
     margin: "0 auto",
     width: "100%",
     display: "flex",
@@ -845,43 +780,33 @@ export default function AboutSection({
     ...(resolvedLayout === "image-right" ? { order: 1 } : {}),
   };
 
+  const titleFont = fontForRoleFromTheme(
+    overrides?.titleTypography || "sub-header",
+    brandFonts,
+    customFontTypes,
+  );
   const titleStyle: React.CSSProperties = {
-    fontSize: overrides?.titleFontSize
-      ? `${overrides.titleFontSize}px`
-      : brandFonts?.subHeaderFont?.size
-        ? `${brandFonts.subHeaderFont.size}px`
-        : brandFonts?.headerFont?.size
-          ? `${brandFonts.headerFont.size}px`
-          : "1.75rem",
-    fontWeight: overrides?.titleFontWeight ?? "bold",
+    fontSize: titleFont.size,
+    fontWeight: titleFont.weight ?? "bold",
     lineHeight: 1.3,
     marginBottom: "16px",
-    color:
-      overrides?.titleTextColor ||
-      brandFonts?.subHeaderFont?.color ||
-      theme.text,
+    color: titleFont.color || theme.text,
     textAlign: overrides?.titleTextAlign || "left",
-    fontFamily:
-      overrides?.titleFontFamily ||
-      brandFonts?.subHeaderFont?.family ||
-      brandFonts?.headerFont?.family ||
-      undefined,
-    fontStyle: overrides?.titleFontStyle || undefined,
+    fontFamily: titleFont.family || undefined,
   };
 
+  const bodyFont = fontForRoleFromTheme(
+    overrides?.bodyTypography || "body",
+    brandFonts,
+    customFontTypes,
+  );
   const paragraphStyle: React.CSSProperties = {
-    fontSize: overrides?.fontSize
-      ? `${overrides.fontSize}px`
-      : brandFonts?.bodyFont?.size
-        ? `${brandFonts.bodyFont.size}px`
-        : "1.1rem",
+    fontSize: bodyFont.size,
     lineHeight: 1.8,
-    color: overrides?.textColor || brandFonts?.bodyFont?.color || theme.text,
+    color: bodyFont.color || theme.text,
     textAlign: overrides?.textAlign || "left",
-    fontFamily:
-      overrides?.fontFamily || brandFonts?.bodyFont?.family || undefined,
-    fontWeight: overrides?.fontWeight || undefined,
-    fontStyle: overrides?.fontStyle || undefined,
+    fontFamily: bodyFont.family || undefined,
+    fontWeight: bodyFont.weight ?? undefined,
   };
 
   const editableClass =
@@ -1195,28 +1120,20 @@ export default function AboutSection({
                   : undefined
               }
               toolbarProps={{
-                fontSize: overrides?.titleFontSize ?? 28,
-                fontFamily:
-                  overrides?.titleFontFamily ||
-                  brandFonts?.subHeaderFont?.family ||
-                  "",
-                fontWeight: overrides?.titleFontWeight ?? "bold",
-                fontStyle: overrides?.titleFontStyle ?? "normal",
-                color:
-                  overrides?.titleTextColor ??
-                  brandFonts?.subHeaderFont?.color ??
-                  theme.text,
+                typographyRole: overrides?.titleTypography || "sub-header",
+                onTypographyRoleChange: (v) =>
+                  onStyleOverrideChange?.({
+                    ...overrides,
+                    titleTypography: v,
+                  }),
                 textAlign: overrides?.titleTextAlign ?? "left",
-                onFontSizeChange: handleTitleFontSizeChange,
-                onFontFamilyChange: handleTitleFontFamilyChange,
-                onFontWeightChange: handleTitleFontWeightChange,
-                onFontStyleChange: handleTitleFontStyleChange,
-                onColorChange: handleTitleTextColorChange,
                 onTextAlignChange: handleTitleTextAlignChange,
+                customFontTypes,
+                onAddCustomFontType: (ft) => {
+                  const existing = customFontTypes ?? [];
+                  onCustomFontTypesChange?.([...existing, ft]);
+                },
               }}
-              palette={palette}
-              customColors={customColors}
-              onCustomColorsChange={onCustomColorsChange}
               wrapperStyle={showHandles ? { cursor: "pointer" } : undefined}
             />
           ) : (
@@ -1248,26 +1165,20 @@ export default function AboutSection({
                   : undefined
               }
               toolbarProps={{
-                fontSize: overrides?.fontSize ?? 18,
-                fontFamily:
-                  overrides?.fontFamily || brandFonts?.bodyFont?.family || "",
-                fontWeight: overrides?.fontWeight ?? "normal",
-                fontStyle: overrides?.fontStyle ?? "normal",
-                color:
-                  overrides?.textColor ??
-                  brandFonts?.bodyFont?.color ??
-                  theme.text,
+                typographyRole: overrides?.bodyTypography || "body",
+                onTypographyRoleChange: (v) =>
+                  onStyleOverrideChange?.({
+                    ...overrides,
+                    bodyTypography: v,
+                  }),
                 textAlign: overrides?.textAlign ?? "left",
-                onFontSizeChange: handleFontSizeChange,
-                onFontFamilyChange: handleFontFamilyChange,
-                onFontWeightChange: handleFontWeightChange,
-                onFontStyleChange: handleFontStyleChange,
-                onColorChange: handleTextColorChange,
                 onTextAlignChange: handleTextAlignChange,
+                customFontTypes,
+                onAddCustomFontType: (ft) => {
+                  const existing = customFontTypes ?? [];
+                  onCustomFontTypesChange?.([...existing, ft]);
+                },
               }}
-              palette={palette}
-              customColors={customColors}
-              onCustomColorsChange={onCustomColorsChange}
               wrapperStyle={showHandles ? { cursor: "pointer" } : undefined}
             />
           ) : (

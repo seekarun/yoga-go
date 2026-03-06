@@ -1,9 +1,14 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import type { FAQItem, SectionStyleOverrides } from "@/types/landing-page";
+import type {
+  FAQItem,
+  SectionStyleOverrides,
+  CustomFontType,
+} from "@/types/landing-page";
 import type { WidgetBrandConfig } from "../types";
 import ResizableText from "../../hero/ResizableText";
+import { fontForRole } from "../../hero/fontUtils";
 
 interface ClassicCollapsibleProps {
   heading?: string;
@@ -15,6 +20,7 @@ interface ClassicCollapsibleProps {
   onSubheadingChange?: (subheading: string) => void;
   onStyleOverrideChange?: (overrides: SectionStyleOverrides) => void;
   styleOverrides?: SectionStyleOverrides;
+  onAddCustomFontType?: (ft: CustomFontType) => void;
 }
 
 const SCOPE = "w-fq-cc";
@@ -36,6 +42,7 @@ export default function ClassicCollapsible({
   onSubheadingChange,
   onStyleOverrideChange,
   styleOverrides,
+  onAddCustomFontType,
 }: ClassicCollapsibleProps) {
   const [headingSelected, setHeadingSelected] = useState(false);
   const [subheadingSelected, setSubheadingSelected] = useState(false);
@@ -63,63 +70,62 @@ export default function ClassicCollapsible({
     [styleOverrides, onStyleOverrideChange],
   );
 
+  const headingRole = styleOverrides?.headingTypography || "header";
+  const headingResolved = fontForRole(headingRole, brand);
   const headingStyle: React.CSSProperties = {
-    fontSize: styleOverrides?.headingFontSize ?? "clamp(1.8rem, 3.5vw, 2.5rem)",
-    fontWeight: styleOverrides?.headingFontWeight ?? 700,
-    fontStyle: styleOverrides?.headingFontStyle ?? "normal",
-    color:
-      styleOverrides?.headingTextColor ?? brand.subHeaderFontColor ?? "#1a1a1a",
+    fontSize: headingResolved.size,
+    fontWeight: headingResolved.weight ?? 700,
+    color: headingResolved.color ?? "#1a1a1a",
     textAlign: styleOverrides?.headingTextAlign ?? "left",
-    fontFamily:
-      styleOverrides?.headingFontFamily ||
-      brand.subHeaderFont ||
-      brand.headerFont ||
-      "inherit",
+    fontFamily: headingResolved.font || "inherit",
     lineHeight: 1.15,
     margin: "0 0 8px",
   };
 
+  const subheadingRole = styleOverrides?.subheadingTypography || "sub-header";
+  const subheadingResolved = fontForRole(subheadingRole, brand);
   const subheadingStyle: React.CSSProperties = {
-    fontSize: styleOverrides?.subheadingFontSize ?? "1rem",
-    fontWeight: styleOverrides?.subheadingFontWeight ?? "normal",
-    fontStyle: styleOverrides?.subheadingFontStyle ?? "normal",
-    color:
-      styleOverrides?.subheadingTextColor ?? brand.bodyFontColor ?? "#9ca3af",
+    fontSize: subheadingResolved.size,
+    fontWeight: subheadingResolved.weight ?? "normal",
+    color: subheadingResolved.color ?? "#9ca3af",
     textAlign: styleOverrides?.subheadingTextAlign ?? "left",
-    fontFamily:
-      styleOverrides?.subheadingFontFamily || brand.bodyFont || "inherit",
+    fontFamily: subheadingResolved.font || "inherit",
     margin: "0 0 48px",
   };
+
+  const innerSubHeader = fontForRole("sub-header", brand);
+  const innerBody = fontForRole("body", brand);
 
   return (
     <section ref={sectionRef} className={SCOPE}>
       <style>{`
         .${SCOPE} {
           padding: 64px 24px;
-          max-width: 800px;
+          max-width: 1200px;
           margin: 0 auto;
         }
 
         .${SCOPE}-heading {
           font-size: clamp(1.8rem, 3.5vw, 2.5rem);
           font-weight: 700;
-          color: ${brand.subHeaderFontColor || "#1a1a1a"};
+          color: ${innerSubHeader.color || "#1a1a1a"};
           margin: 0 0 8px;
-          font-family: ${brand.subHeaderFont || brand.headerFont || "inherit"};
+          font-family: ${innerSubHeader.font || "inherit"};
           line-height: 1.15;
         }
 
         .${SCOPE}-subheading {
           font-size: 1rem;
-          color: ${brand.bodyFontColor || "#9ca3af"};
+          color: ${innerBody.color || "#9ca3af"};
           margin: 0 0 48px;
-          font-family: ${brand.bodyFont || "inherit"};
+          font-family: ${innerBody.font || "inherit"};
         }
 
         .${SCOPE}-list {
           list-style: none;
           margin: 0;
           padding: 0;
+          max-width: 800px;
         }
 
         .${SCOPE}-item {
@@ -128,11 +134,11 @@ export default function ClassicCollapsible({
         }
 
         .${SCOPE}-item summary {
-          font-size: ${brand.subHeaderFontSize ? `${brand.subHeaderFontSize}px` : "1.1rem"};
-          font-weight: 600;
-          color: ${brand.subHeaderFontColor || "#1a1a1a"};
+          font-size: ${innerSubHeader.size}px;
+          font-weight: ${innerSubHeader.weight ?? 600};
+          color: ${innerSubHeader.color || "#1a1a1a"};
           cursor: pointer;
-          font-family: ${brand.subHeaderFont || brand.headerFont || "inherit"};
+          font-family: ${innerSubHeader.font || "inherit"};
           line-height: 1.4;
           padding: 0;
         }
@@ -146,11 +152,11 @@ export default function ClassicCollapsible({
         }
 
         .${SCOPE}-answer {
-          font-size: 1rem;
-          color: ${brand.bodyFontColor || "#6b7280"};
+          font-size: ${innerBody.size}px;
+          color: ${innerBody.color || "#6b7280"};
           line-height: 1.7;
           margin: 0;
-          font-family: ${brand.bodyFont || "inherit"};
+          font-family: ${innerBody.font || "inherit"};
         }
 
         @media (max-width: 768px) {
@@ -176,26 +182,21 @@ export default function ClassicCollapsible({
           }}
           onDeselect={() => setHeadingSelected(false)}
           toolbarProps={{
-            fontSize: styleOverrides?.headingFontSize ?? 28,
-            fontFamily:
-              styleOverrides?.headingFontFamily || brand.subHeaderFont || "",
-            fontWeight: styleOverrides?.headingFontWeight ?? "bold",
-            fontStyle: styleOverrides?.headingFontStyle ?? "normal",
-            color:
-              styleOverrides?.headingTextColor ??
-              brand.subHeaderFontColor ??
-              "#1a1a1a",
+            typographyRole: styleOverrides?.headingTypography || "header",
+            onTypographyRoleChange: (v) =>
+              emitOverride({ headingTypography: v }),
             textAlign: styleOverrides?.headingTextAlign ?? "left",
-            onFontSizeChange: (v) => emitOverride({ headingFontSize: v }),
-            onFontFamilyChange: (v) => emitOverride({ headingFontFamily: v }),
-            onFontWeightChange: (v) => emitOverride({ headingFontWeight: v }),
-            onFontStyleChange: (v) => emitOverride({ headingFontStyle: v }),
-            onColorChange: (v) => emitOverride({ headingTextColor: v }),
             onTextAlignChange: (v) => emitOverride({ headingTextAlign: v }),
+            customFontTypes: brand.customFontTypes,
+            onAddCustomFontType,
           }}
         />
       ) : (
-        heading && <h2 className={`${SCOPE}-heading`}>{heading}</h2>
+        heading && (
+          <h2 className={`${SCOPE}-heading`} style={headingStyle}>
+            {heading}
+          </h2>
+        )
       )}
       {isEditing ? (
         <ResizableText
@@ -210,28 +211,22 @@ export default function ClassicCollapsible({
           }}
           onDeselect={() => setSubheadingSelected(false)}
           toolbarProps={{
-            fontSize: styleOverrides?.subheadingFontSize ?? 16,
-            fontFamily:
-              styleOverrides?.subheadingFontFamily || brand.bodyFont || "",
-            fontWeight: styleOverrides?.subheadingFontWeight ?? "normal",
-            fontStyle: styleOverrides?.subheadingFontStyle ?? "normal",
-            color:
-              styleOverrides?.subheadingTextColor ??
-              brand.bodyFontColor ??
-              "#9ca3af",
+            typographyRole:
+              styleOverrides?.subheadingTypography || "sub-header",
+            onTypographyRoleChange: (v) =>
+              emitOverride({ subheadingTypography: v }),
             textAlign: styleOverrides?.subheadingTextAlign ?? "left",
-            onFontSizeChange: (v) => emitOverride({ subheadingFontSize: v }),
-            onFontFamilyChange: (v) =>
-              emitOverride({ subheadingFontFamily: v }),
-            onFontWeightChange: (v) =>
-              emitOverride({ subheadingFontWeight: v }),
-            onFontStyleChange: (v) => emitOverride({ subheadingFontStyle: v }),
-            onColorChange: (v) => emitOverride({ subheadingTextColor: v }),
             onTextAlignChange: (v) => emitOverride({ subheadingTextAlign: v }),
+            customFontTypes: brand.customFontTypes,
+            onAddCustomFontType,
           }}
         />
       ) : (
-        subheading && <p className={`${SCOPE}-subheading`}>{subheading}</p>
+        subheading && (
+          <p className={`${SCOPE}-subheading`} style={subheadingStyle}>
+            {subheading}
+          </p>
+        )
       )}
 
       <div className={`${SCOPE}-list`}>

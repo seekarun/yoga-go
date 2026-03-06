@@ -8,11 +8,15 @@ import {
   useLayoutEffect,
 } from "react";
 import { createPortal } from "react-dom";
-import type { FeatureCard, SectionStyleOverrides } from "@/types/landing-page";
+import type {
+  CustomFontType,
+  FeatureCard,
+  SectionStyleOverrides,
+} from "@/types/landing-page";
 import type { WidgetBrandConfig } from "../types";
 import ResizableText from "../../hero/ResizableText";
+import { fontForRole } from "../../hero/fontUtils";
 import ImageToolbar from "../../hero/ImageToolbar";
-import TextToolbar from "../../hero/TextToolbar";
 import { bgFilterToCSS } from "../../hero/layoutOptions";
 import { processRemoveBackground } from "../../hero/removeBackgroundUtil";
 
@@ -35,6 +39,7 @@ interface UnevenGridProps {
   onCardImagePositionChange?: (cardId: string, position: string) => void;
   onCardImageZoomChange?: (cardId: string, zoom: number) => void;
   onCardStyleChange?: (cardId: string, patch: Partial<FeatureCard>) => void;
+  onAddCustomFontType?: (ft: CustomFontType) => void;
 }
 
 const SCOPE = "w-ft-ug";
@@ -60,11 +65,11 @@ function parsePosition(pos?: string): { x: number; y: number } {
 }
 
 /** Selection state for card-level editing */
-type CardSelection =
-  | { type: "image"; cardId: string }
-  | { type: "title"; cardId: string }
-  | { type: "desc"; cardId: string }
-  | null;
+type CardSelection = { type: "image"; cardId: string } | null;
+type CardTextSelection = {
+  type: "title" | "desc";
+  cardId: string;
+} | null;
 
 export default function UnevenGrid({
   heading,
@@ -81,10 +86,12 @@ export default function UnevenGrid({
   onCardImagePositionChange,
   onCardImageZoomChange,
   onCardStyleChange,
+  onAddCustomFontType,
 }: UnevenGridProps) {
   const [headingSelected, setHeadingSelected] = useState(false);
   const [subheadingSelected, setSubheadingSelected] = useState(false);
   const [cardSel, setCardSel] = useState<CardSelection>(null);
+  const [cardTextSel, setCardTextSel] = useState<CardTextSelection>(null);
 
   // Remove-BG state — tracks the currently-selected card's image
   const [removingBg, setRemovingBg] = useState(false);
@@ -93,7 +100,6 @@ export default function UnevenGrid({
 
   const sectionRef = useRef<HTMLElement>(null);
   const imgColRefs = useRef<Map<string, HTMLDivElement>>(new Map());
-  const cardTextRefs = useRef<Map<string, HTMLElement>>(new Map());
   const portalRef = useRef<HTMLDivElement>(null);
 
   // Portal position tracking
@@ -106,11 +112,7 @@ export default function UnevenGrid({
   // Get the anchor element for current selection
   const getAnchorEl = useCallback((): HTMLElement | null => {
     if (!cardSel) return null;
-    if (cardSel.type === "image") {
-      return imgColRefs.current.get(cardSel.cardId) || null;
-    }
-    const key = `${cardSel.cardId}-${cardSel.type}`;
-    return cardTextRefs.current.get(key) || null;
+    return imgColRefs.current.get(cardSel.cardId) || null;
   }, [cardSel]);
 
   // Click-outside handler
@@ -123,6 +125,7 @@ export default function UnevenGrid({
         setHeadingSelected(false);
         setSubheadingSelected(false);
         setCardSel(null);
+        setCardTextSel(null);
         return;
       }
       if (cardSel) {
@@ -201,125 +204,88 @@ export default function UnevenGrid({
     brand.secondaryColor || getPastelTints(brand.primaryColor || "#6366f1")[0];
   const items = cards.length >= 4 ? cards.slice(0, 4) : cards;
 
+  const headingRole = styleOverrides?.headingTypography || "sub-header";
+  const headingResolved = fontForRole(headingRole, brand);
   const headingStyle: React.CSSProperties = {
-    fontSize: styleOverrides?.headingFontSize ?? "clamp(1.5rem, 3vw, 2rem)",
-    fontWeight: styleOverrides?.headingFontWeight ?? 700,
-    fontStyle: styleOverrides?.headingFontStyle ?? "normal",
-    color:
-      styleOverrides?.headingTextColor ?? brand.subHeaderFontColor ?? "#1a1a1a",
+    fontSize: headingResolved.size,
+    fontWeight: headingResolved.weight ?? 700,
+    color: headingResolved.color ?? "#1a1a1a",
     textAlign: styleOverrides?.headingTextAlign ?? "left",
-    fontFamily:
-      styleOverrides?.headingFontFamily ||
-      brand.subHeaderFont ||
-      brand.headerFont ||
-      "inherit",
+    fontFamily: headingResolved.font || "inherit",
     lineHeight: 1.15,
     margin: "0 0 8px",
   };
 
+  const subheadingRole = styleOverrides?.subheadingTypography || "body";
+  const subheadingResolved = fontForRole(subheadingRole, brand);
   const subheadingStyle: React.CSSProperties = {
-    fontSize: styleOverrides?.subheadingFontSize ?? "1rem",
-    fontWeight: styleOverrides?.subheadingFontWeight ?? "normal",
-    fontStyle: styleOverrides?.subheadingFontStyle ?? "normal",
-    color:
-      styleOverrides?.subheadingTextColor ?? brand.bodyFontColor ?? "#6b7280",
+    fontSize: subheadingResolved.size,
+    fontWeight: subheadingResolved.weight ?? "normal",
+    color: subheadingResolved.color ?? "#6b7280",
     textAlign: styleOverrides?.subheadingTextAlign ?? "left",
-    fontFamily:
-      styleOverrides?.subheadingFontFamily || brand.bodyFont || "inherit",
+    fontFamily: subheadingResolved.font || "inherit",
     margin: "0 0 40px",
   };
 
-  // Render floating portal toolbar for card selection
+  // Base resolved fonts for CSS template literals (section heading/subheading)
+  const innerSubHeader = fontForRole("sub-header", brand);
+  const innerBody = fontForRole("body", brand);
+
+  // Card-level typography (shared across all cards, configurable via toolbar)
+  const cardTitleRole = styleOverrides?.cardTitleTypography || "sub-header";
+  const cardTitleFont = fontForRole(cardTitleRole, brand);
+  const cardTitleStyle: React.CSSProperties = {
+    fontSize: cardTitleFont.size,
+    fontWeight: cardTitleFont.weight ?? 800,
+    color: cardTitleFont.color || "#1a1a1a",
+    fontFamily: cardTitleFont.font || "inherit",
+    lineHeight: 1.15,
+    margin: "0 0 8px",
+  };
+
+  const cardDescRole = styleOverrides?.cardDescTypography || "body";
+  const cardDescFont = fontForRole(cardDescRole, brand);
+  const cardDescStyle: React.CSSProperties = {
+    fontSize: cardDescFont.size,
+    fontWeight: cardDescFont.weight ?? "normal",
+    color: cardDescFont.color || "#4a4a4a",
+    fontFamily: cardDescFont.font || "inherit",
+    lineHeight: 1.6,
+    margin: 0,
+  };
+
+  // Render floating portal toolbar for card image selection
   const renderPortalToolbar = () => {
     if (!isEditing || !cardSel || !portalPos) return null;
+    if (cardSel.type !== "image") return null;
     const card = items.find((c) => c.id === cardSel.cardId);
-    if (!card) return null;
+    if (!card || !card.image) return null;
 
-    let toolbarContent: React.ReactNode = null;
-
-    if (cardSel.type === "image" && card.image) {
-      const pos = parsePosition(card.imagePosition);
-      toolbarContent = (
-        <ImageToolbar
-          borderRadius={0}
-          positionX={pos.x}
-          positionY={pos.y}
-          zoom={card.imageZoom || 100}
-          filter={card.imageFilter}
-          onBorderRadiusChange={() => {}}
-          onPositionChange={(x, y) =>
-            onCardImagePositionChange?.(card.id, `${x}% ${y}%`)
-          }
-          onZoomChange={(v) => onCardImageZoomChange?.(card.id, v)}
-          onFilterChange={(v) =>
-            onCardStyleChange?.(card.id, {
-              imageFilter: v === "none" ? undefined : v,
-            })
-          }
-          onReplaceImage={() => onCardImageClick?.(card.id)}
-          onRemoveBgClick={() => handleRemoveBg(card.id, card.image!)}
-          removingBg={removingBg && bgRemovedCardId === card.id}
-          bgRemoved={bgRemovedCardId === card.id && !removingBg}
-          onUndoRemoveBg={() => handleUndoRemoveBg(card.id)}
-        />
-      );
-    } else if (cardSel.type === "title") {
-      toolbarContent = (
-        <TextToolbar
-          fontSize={card.titleFontSize ?? 24}
-          fontFamily={card.titleFontFamily ?? ""}
-          fontWeight={card.titleFontWeight ?? "bold"}
-          fontStyle={card.titleFontStyle ?? "normal"}
-          color={card.titleColor ?? "#1a1a1a"}
-          textAlign={card.titleTextAlign ?? "left"}
-          onFontSizeChange={(v) =>
-            onCardStyleChange?.(card.id, { titleFontSize: v })
-          }
-          onFontFamilyChange={(v) =>
-            onCardStyleChange?.(card.id, { titleFontFamily: v })
-          }
-          onFontWeightChange={(v) =>
-            onCardStyleChange?.(card.id, { titleFontWeight: v })
-          }
-          onFontStyleChange={(v) =>
-            onCardStyleChange?.(card.id, { titleFontStyle: v })
-          }
-          onColorChange={(v) => onCardStyleChange?.(card.id, { titleColor: v })}
-          onTextAlignChange={(v) =>
-            onCardStyleChange?.(card.id, { titleTextAlign: v })
-          }
-        />
-      );
-    } else if (cardSel.type === "desc") {
-      toolbarContent = (
-        <TextToolbar
-          fontSize={card.descFontSize ?? 15}
-          fontFamily={card.descFontFamily ?? ""}
-          fontWeight={card.descFontWeight ?? "normal"}
-          fontStyle={card.descFontStyle ?? "normal"}
-          color={card.descColor ?? "#4a4a4a"}
-          textAlign={card.descTextAlign ?? "left"}
-          onFontSizeChange={(v) =>
-            onCardStyleChange?.(card.id, { descFontSize: v })
-          }
-          onFontFamilyChange={(v) =>
-            onCardStyleChange?.(card.id, { descFontFamily: v })
-          }
-          onFontWeightChange={(v) =>
-            onCardStyleChange?.(card.id, { descFontWeight: v })
-          }
-          onFontStyleChange={(v) =>
-            onCardStyleChange?.(card.id, { descFontStyle: v })
-          }
-          onColorChange={(v) => onCardStyleChange?.(card.id, { descColor: v })}
-          onTextAlignChange={(v) =>
-            onCardStyleChange?.(card.id, { descTextAlign: v })
-          }
-        />
-      );
-    }
-
-    if (!toolbarContent) return null;
+    const pos = parsePosition(card.imagePosition);
+    const toolbarContent = (
+      <ImageToolbar
+        borderRadius={0}
+        positionX={pos.x}
+        positionY={pos.y}
+        zoom={card.imageZoom || 100}
+        filter={card.imageFilter}
+        onBorderRadiusChange={() => {}}
+        onPositionChange={(x, y) =>
+          onCardImagePositionChange?.(card.id, `${x}% ${y}%`)
+        }
+        onZoomChange={(v) => onCardImageZoomChange?.(card.id, v)}
+        onFilterChange={(v) =>
+          onCardStyleChange?.(card.id, {
+            imageFilter: v === "none" ? undefined : v,
+          })
+        }
+        onReplaceImage={() => onCardImageClick?.(card.id)}
+        onRemoveBgClick={() => handleRemoveBg(card.id, card.image!)}
+        removingBg={removingBg && bgRemovedCardId === card.id}
+        bgRemoved={bgRemovedCardId === card.id && !removingBg}
+        onUndoRemoveBg={() => handleUndoRemoveBg(card.id)}
+      />
+    );
 
     return createPortal(
       <div
@@ -351,15 +317,15 @@ export default function UnevenGrid({
           font-size: clamp(1.5rem, 3vw, 2rem);
           font-weight: 700;
           margin: 0 0 8px;
-          font-family: ${brand.subHeaderFont || brand.headerFont || "inherit"};
-          color: ${brand.subHeaderFontColor || "#1a1a1a"};
+          font-family: ${innerSubHeader.font || "inherit"};
+          color: ${innerSubHeader.color || "#1a1a1a"};
         }
         .${SCOPE}-header { margin-bottom: 40px; }
         .${SCOPE}-subheading {
           font-size: 1rem;
-          color: ${brand.bodyFontColor || "#6b7280"};
+          color: ${innerBody.color || "#6b7280"};
           margin: 0 0 40px;
-          font-family: ${brand.bodyFont || "inherit"};
+          font-family: ${innerBody.font || "inherit"};
         }
         .${SCOPE}-grid {
           display: grid;
@@ -372,7 +338,7 @@ export default function UnevenGrid({
           display: flex;
           flex-direction: column;
           justify-content: space-between;
-          overflow: hidden;
+          overflow: ${isEditing ? "visible" : "hidden"};
           min-height: 220px;
           background: ${brand.cardStyle?.bgColor || cardBg};
         }
@@ -396,18 +362,13 @@ export default function UnevenGrid({
         }
         .${SCOPE}-card-text { padding: ${brand.cardStyle?.padding ?? 24}px ${brand.cardStyle?.padding ?? 24}px 0; }
         .${SCOPE}-card-title {
-          font-size: ${brand.subHeaderFontSize ? `${brand.subHeaderFontSize}px` : "clamp(1.3rem, 2.5vw, 1.8rem)"};
-          font-weight: 800; color: ${brand.subHeaderFontColor || "#1a1a1a"}; margin: 0 0 8px;
-          font-family: ${brand.subHeaderFont || brand.headerFont || "inherit"}; line-height: 1.15;
+          font-size: ${cardTitleFont.size}px;
+          font-weight: ${cardTitleFont.weight ?? 800}; color: ${cardTitleFont.color || "#1a1a1a"}; margin: 0 0 8px;
+          font-family: ${cardTitleFont.font || "inherit"}; line-height: 1.15;
         }
         .${SCOPE}-card-desc {
-          font-size: 0.95rem; color: ${brand.bodyFontColor || "#4a4a4a"}; line-height: 1.6; margin: 0;
-          font-family: ${brand.bodyFont || "inherit"};
-        }
-        .${SCOPE}-card-text-el--selected {
-          outline: 2px solid #3b82f6;
-          outline-offset: 4px;
-          border-radius: 6px;
+          font-size: ${cardDescFont.size}px; color: ${cardDescFont.color || "#4a4a4a"}; line-height: 1.6; margin: 0;
+          font-family: ${cardDescFont.font || "inherit"};
         }
         .${SCOPE}-card-img-col {
           position: relative; flex: 1; overflow: hidden; margin-top: 16px;
@@ -443,30 +404,22 @@ export default function UnevenGrid({
               }}
               onDeselect={() => setHeadingSelected(false)}
               toolbarProps={{
-                fontSize: styleOverrides?.headingFontSize ?? 28,
-                fontFamily:
-                  styleOverrides?.headingFontFamily ||
-                  brand.subHeaderFont ||
-                  "",
-                fontWeight: styleOverrides?.headingFontWeight ?? "bold",
-                fontStyle: styleOverrides?.headingFontStyle ?? "normal",
-                color:
-                  styleOverrides?.headingTextColor ??
-                  brand.subHeaderFontColor ??
-                  "#1a1a1a",
+                typographyRole:
+                  styleOverrides?.headingTypography || "sub-header",
+                onTypographyRoleChange: (v) =>
+                  emitOverride({ headingTypography: v }),
                 textAlign: styleOverrides?.headingTextAlign ?? "left",
-                onFontSizeChange: (v) => emitOverride({ headingFontSize: v }),
-                onFontFamilyChange: (v) =>
-                  emitOverride({ headingFontFamily: v }),
-                onFontWeightChange: (v) =>
-                  emitOverride({ headingFontWeight: v }),
-                onFontStyleChange: (v) => emitOverride({ headingFontStyle: v }),
-                onColorChange: (v) => emitOverride({ headingTextColor: v }),
                 onTextAlignChange: (v) => emitOverride({ headingTextAlign: v }),
+                customFontTypes: brand.customFontTypes,
+                onAddCustomFontType,
               }}
             />
           ) : (
-            heading && <h2 className={`${SCOPE}-heading`}>{heading}</h2>
+            heading && (
+              <h2 className={`${SCOPE}-heading`} style={headingStyle}>
+                {heading}
+              </h2>
+            )
           )}
           {isEditing ? (
             <ResizableText
@@ -482,31 +435,22 @@ export default function UnevenGrid({
               }}
               onDeselect={() => setSubheadingSelected(false)}
               toolbarProps={{
-                fontSize: styleOverrides?.subheadingFontSize ?? 16,
-                fontFamily:
-                  styleOverrides?.subheadingFontFamily || brand.bodyFont || "",
-                fontWeight: styleOverrides?.subheadingFontWeight ?? "normal",
-                fontStyle: styleOverrides?.subheadingFontStyle ?? "normal",
-                color:
-                  styleOverrides?.subheadingTextColor ??
-                  brand.bodyFontColor ??
-                  "#6b7280",
+                typographyRole: styleOverrides?.subheadingTypography || "body",
+                onTypographyRoleChange: (v) =>
+                  emitOverride({ subheadingTypography: v }),
                 textAlign: styleOverrides?.subheadingTextAlign ?? "left",
-                onFontSizeChange: (v) =>
-                  emitOverride({ subheadingFontSize: v }),
-                onFontFamilyChange: (v) =>
-                  emitOverride({ subheadingFontFamily: v }),
-                onFontWeightChange: (v) =>
-                  emitOverride({ subheadingFontWeight: v }),
-                onFontStyleChange: (v) =>
-                  emitOverride({ subheadingFontStyle: v }),
-                onColorChange: (v) => emitOverride({ subheadingTextColor: v }),
                 onTextAlignChange: (v) =>
                   emitOverride({ subheadingTextAlign: v }),
+                customFontTypes: brand.customFontTypes,
+                onAddCustomFontType,
               }}
             />
           ) : (
-            subheading && <p className={`${SCOPE}-subheading`}>{subheading}</p>
+            subheading && (
+              <p className={`${SCOPE}-subheading`} style={subheadingStyle}>
+                {subheading}
+              </p>
+            )
           )}
         </div>
       )}
@@ -518,101 +462,89 @@ export default function UnevenGrid({
           const MIN_POSITION_SCALE = 1.05;
           const cardUserScale = (card.imageZoom || 100) / 100;
           const zoomScale = Math.max(MIN_POSITION_SCALE, cardUserScale);
-          const isTitleSel =
-            cardSel?.type === "title" && cardSel.cardId === card.id;
-          const isDescSel =
-            cardSel?.type === "desc" && cardSel.cardId === card.id;
           const isImgSel =
             cardSel?.type === "image" && cardSel.cardId === card.id;
-
-          const titleStyle: React.CSSProperties = {
-            ...(card.titleFontSize ? { fontSize: card.titleFontSize } : {}),
-            ...(card.titleFontWeight
-              ? { fontWeight: card.titleFontWeight }
-              : {}),
-            ...(card.titleFontStyle ? { fontStyle: card.titleFontStyle } : {}),
-            ...(card.titleColor ? { color: card.titleColor } : {}),
-            ...(card.titleTextAlign ? { textAlign: card.titleTextAlign } : {}),
-            ...(card.titleFontFamily
-              ? { fontFamily: card.titleFontFamily }
-              : {}),
-            ...(isEditing
-              ? { cursor: "text", outline: "none", border: "none" }
-              : {}),
-          };
-
-          const descStyle: React.CSSProperties = {
-            ...(card.descFontSize ? { fontSize: card.descFontSize } : {}),
-            ...(card.descFontWeight ? { fontWeight: card.descFontWeight } : {}),
-            ...(card.descFontStyle ? { fontStyle: card.descFontStyle } : {}),
-            ...(card.descColor ? { color: card.descColor } : {}),
-            ...(card.descTextAlign ? { textAlign: card.descTextAlign } : {}),
-            ...(card.descFontFamily ? { fontFamily: card.descFontFamily } : {}),
-            ...(isEditing
-              ? { cursor: "text", outline: "none", border: "none" }
-              : {}),
-          };
 
           return (
             <div key={card.id} className={`${SCOPE}-card ${SCOPE}-card--${i}`}>
               <div className={`${SCOPE}-card-text`}>
                 {isEditing ? (
-                  <h3
-                    ref={(el) => {
-                      if (el) cardTextRefs.current.set(`${card.id}-title`, el);
-                      else cardTextRefs.current.delete(`${card.id}-title`);
-                    }}
-                    className={`${SCOPE}-card-title${isTitleSel ? ` ${SCOPE}-card-text-el--selected` : ""}`}
-                    contentEditable
-                    suppressContentEditableWarning
-                    style={titleStyle}
-                    onBlur={(e) =>
-                      onCardChange?.(
-                        card.id,
-                        "title",
-                        (e.currentTarget.innerText || "").replace(/\n$/, ""),
-                      )
+                  <ResizableText
+                    text={card.title || "Card Title"}
+                    isEditing
+                    onTextChange={(text) =>
+                      onCardChange?.(card.id, "title", text)
                     }
-                    onClick={() => {
-                      setCardSel({ type: "title", cardId: card.id });
+                    textStyle={cardTitleStyle}
+                    selected={
+                      cardTextSel?.type === "title" &&
+                      cardTextSel.cardId === card.id
+                    }
+                    onSelect={() => {
+                      setCardTextSel({ type: "title", cardId: card.id });
                       setHeadingSelected(false);
                       setSubheadingSelected(false);
+                      setCardSel(null);
                     }}
-                  >
-                    {card.title}
-                  </h3>
+                    onDeselect={() => {
+                      if (
+                        cardTextSel?.type === "title" &&
+                        cardTextSel.cardId === card.id
+                      )
+                        setCardTextSel(null);
+                    }}
+                    toolbarProps={{
+                      typographyRole: cardTitleRole,
+                      onTypographyRoleChange: (v) =>
+                        emitOverride({ cardTitleTypography: v }),
+                      textAlign: "left",
+                      onTextAlignChange: () => {},
+                      customFontTypes: brand.customFontTypes,
+                      onAddCustomFontType,
+                    }}
+                  />
                 ) : (
-                  <h3 className={`${SCOPE}-card-title`} style={titleStyle}>
+                  <h3 className={`${SCOPE}-card-title`} style={cardTitleStyle}>
                     {card.title}
                   </h3>
                 )}
                 {isEditing ? (
-                  <p
-                    ref={(el) => {
-                      if (el) cardTextRefs.current.set(`${card.id}-desc`, el);
-                      else cardTextRefs.current.delete(`${card.id}-desc`);
-                    }}
-                    className={`${SCOPE}-card-desc${isDescSel ? ` ${SCOPE}-card-text-el--selected` : ""}`}
-                    contentEditable
-                    suppressContentEditableWarning
-                    style={descStyle}
-                    onBlur={(e) =>
-                      onCardChange?.(
-                        card.id,
-                        "description",
-                        (e.currentTarget.innerText || "").replace(/\n$/, ""),
-                      )
+                  <ResizableText
+                    text={card.description || "Card description"}
+                    isEditing
+                    onTextChange={(text) =>
+                      onCardChange?.(card.id, "description", text)
                     }
-                    onClick={() => {
-                      setCardSel({ type: "desc", cardId: card.id });
+                    textStyle={cardDescStyle}
+                    selected={
+                      cardTextSel?.type === "desc" &&
+                      cardTextSel.cardId === card.id
+                    }
+                    onSelect={() => {
+                      setCardTextSel({ type: "desc", cardId: card.id });
                       setHeadingSelected(false);
                       setSubheadingSelected(false);
+                      setCardSel(null);
                     }}
-                  >
-                    {card.description}
-                  </p>
+                    onDeselect={() => {
+                      if (
+                        cardTextSel?.type === "desc" &&
+                        cardTextSel.cardId === card.id
+                      )
+                        setCardTextSel(null);
+                    }}
+                    toolbarProps={{
+                      typographyRole: cardDescRole,
+                      onTypographyRoleChange: (v) =>
+                        emitOverride({ cardDescTypography: v }),
+                      textAlign: "left",
+                      onTextAlignChange: () => {},
+                      customFontTypes: brand.customFontTypes,
+                      onAddCustomFontType,
+                    }}
+                  />
                 ) : (
-                  <p className={`${SCOPE}-card-desc`} style={descStyle}>
+                  <p className={`${SCOPE}-card-desc`} style={cardDescStyle}>
                     {card.description}
                   </p>
                 )}

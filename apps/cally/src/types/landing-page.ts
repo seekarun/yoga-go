@@ -9,6 +9,29 @@
 
 import type { ColorPalette } from "@/lib/colorPalette";
 
+/** Typography role for text elements — maps to brand-level font settings.
+ *  Built-in roles: "header" | "sub-header" | "body".
+ *  Custom roles use the prefix "custom:" e.g. "custom:Accent". */
+export type TypographyRole = string;
+
+/** The 3 built-in typography roles */
+export const BUILTIN_TYPOGRAPHY_ROLES: {
+  value: TypographyRole;
+  label: string;
+}[] = [
+  { value: "header", label: "Header" },
+  { value: "sub-header", label: "Sub-header" },
+  { value: "body", label: "Body" },
+];
+
+/**
+ * User-defined custom font type (analogous to custom colours).
+ */
+export interface CustomFontType {
+  name: string; // display name, e.g. "Accent"
+  font: BrandFont; // font settings for this type
+}
+
 /**
  * Font weight — accepts CSS numeric weights (100–900) or legacy keywords.
  */
@@ -21,6 +44,7 @@ export interface BrandFont {
   family: string; // e.g. "'Playfair Display', serif" (matches FONT_OPTIONS value)
   size?: number; // px
   color?: string; // hex color string
+  weight?: FontWeight; // CSS font-weight (100-900 or "normal"/"bold")
 }
 
 /**
@@ -145,20 +169,14 @@ export interface SectionStyleOverrides {
   paddingLeft?: number; // px, default 0
   paddingRight?: number; // px, default 0
   sectionHeight?: number; // px, optional fixed height
-  // Heading text overrides
-  headingFontSize?: number;
-  headingFontFamily?: string;
-  headingFontWeight?: FontWeight;
-  headingFontStyle?: "normal" | "italic";
-  headingTextColor?: string;
+  headingTypography?: TypographyRole;
   headingTextAlign?: "left" | "center" | "right";
-  // Subheading text overrides
-  subheadingFontSize?: number;
-  subheadingFontFamily?: string;
-  subheadingFontWeight?: FontWeight;
-  subheadingFontStyle?: "normal" | "italic";
-  subheadingTextColor?: string;
+  subheadingTypography?: TypographyRole;
   subheadingTextAlign?: "left" | "center" | "right";
+  /** Typography role for card titles (shared across all cards in this section) */
+  cardTitleTypography?: TypographyRole;
+  /** Typography role for card descriptions (shared across all cards) */
+  cardDescTypography?: TypographyRole;
 }
 
 export interface AboutStyleOverrides {
@@ -170,19 +188,9 @@ export interface AboutStyleOverrides {
   imageHeight?: number; // px, default 320
   imageOffsetY?: number; // px, default 0 — negative values push image above section
   borderRadius?: number; // px, default 16
-  // Body text overrides
-  fontSize?: number; // px, default 18
-  fontFamily?: string; // default: "" (system/inherit)
-  fontWeight?: FontWeight; // default: "normal"
-  fontStyle?: "normal" | "italic"; // default: "normal"
-  textColor?: string; // hex, default: theme.text
+  titleTypography?: TypographyRole;
   textAlign?: "left" | "center" | "right"; // default: "left"
-  // Title text overrides
-  titleFontSize?: number; // px, default 28
-  titleFontFamily?: string; // default: "" (system/inherit)
-  titleFontWeight?: FontWeight; // default: "bold"
-  titleFontStyle?: "normal" | "italic"; // default: "normal"
-  titleTextColor?: string; // hex, default: theme.text
+  bodyTypography?: TypographyRole;
   titleTextAlign?: "left" | "center" | "right"; // default: "left"
   titleMaxWidth?: number; // px, default 700 — title text max-width
   bodyMaxWidth?: number; // px, default 700 — body text max-width
@@ -201,32 +209,10 @@ export interface AboutStyleOverrides {
   layout?: "image-left" | "image-right" | "stacked"; // default: "image-left"
 }
 
-/**
- * Inline style span for a portion of text (title only).
- * Each span defines a character range and style overrides.
- */
-export interface TextSpan {
-  offset: number; // start character index
-  length: number; // number of characters
-  fontSize?: number;
-  fontFamily?: string;
-  fontWeight?: FontWeight;
-  fontStyle?: "normal" | "italic";
-  color?: string;
-}
-
 export interface HeroStyleOverrides {
-  titleFontSize?: number;
-  titleFontFamily?: string;
-  titleFontWeight?: FontWeight;
-  titleFontStyle?: "normal" | "italic";
-  titleTextColor?: string;
+  titleTypography?: TypographyRole;
   titleTextAlign?: "left" | "center" | "right";
-  subtitleFontSize?: number;
-  subtitleFontFamily?: string;
-  subtitleFontWeight?: FontWeight;
-  subtitleFontStyle?: "normal" | "italic";
-  subtitleTextColor?: string;
+  subtitleTypography?: TypographyRole;
   subtitleTextAlign?: "left" | "center" | "right";
   titleMaxWidth?: number; // px, draggable max-width for title wrapper
   subtitleMaxWidth?: number; // px, draggable max-width for subtitle wrapper
@@ -248,8 +234,6 @@ export interface HeroStyleOverrides {
   bgBlur?: number; // px, default 0 — blur on hero background image
   bgOpacity?: number; // 0-100, default 100 — opacity of hero background image
   bgFilter?: string; // CSS filter preset name: "grayscale" | "sepia" | "saturate" | "contrast" | "brightness" | "invert" | "none"
-  /** Inline styled spans for the hero title text */
-  titleSpans?: TextSpan[];
   // Mobile freeform position overrides (% of container, 0-100)
   mobileTitleX?: number;
   mobileTitleY?: number;
@@ -279,18 +263,6 @@ export interface FeatureCard {
   imageZoom?: number;
   title: string;
   description: string;
-  titleFontSize?: number;
-  titleFontFamily?: string;
-  titleFontWeight?: FontWeight;
-  titleFontStyle?: "normal" | "italic";
-  titleColor?: string;
-  titleTextAlign?: "left" | "center" | "right";
-  descFontSize?: number;
-  descFontFamily?: string;
-  descFontWeight?: FontWeight;
-  descFontStyle?: "normal" | "italic";
-  descColor?: string;
-  descTextAlign?: "left" | "center" | "right";
   imageFilter?: string; // CSS filter preset for card image
 }
 
@@ -369,19 +341,9 @@ export interface ProductsStyleOverrides {
   paddingBottom?: number; // px, default 80
   paddingLeft?: number; // px, default 0
   paddingRight?: number; // px, default 0
-  // Heading text overrides
-  headingFontSize?: number; // px
-  headingFontFamily?: string;
-  headingFontWeight?: FontWeight;
-  headingFontStyle?: "normal" | "italic";
-  headingTextColor?: string;
+  headingTypography?: TypographyRole;
   headingTextAlign?: "left" | "center" | "right";
-  // Subheading text overrides
-  subheadingFontSize?: number; // px
-  subheadingFontFamily?: string;
-  subheadingFontWeight?: FontWeight;
-  subheadingFontStyle?: "normal" | "italic";
-  subheadingTextColor?: string;
+  subheadingTypography?: TypographyRole;
   subheadingTextAlign?: "left" | "center" | "right";
 }
 
@@ -390,23 +352,6 @@ export interface ProductsStyleOverrides {
  * Keyed by product ID in ProductsConfig.cardStyles.
  */
 export interface ProductCardStyleOverride {
-  // Name/title
-  nameFontSize?: number;
-  nameFontFamily?: string;
-  nameFontWeight?: FontWeight;
-  nameFontStyle?: "normal" | "italic";
-  nameColor?: string;
-  nameTextAlign?: "left" | "center" | "right";
-  // Description
-  descFontSize?: number;
-  descFontFamily?: string;
-  descFontWeight?: FontWeight;
-  descFontStyle?: "normal" | "italic";
-  descColor?: string;
-  descTextAlign?: "left" | "center" | "right";
-  // Price
-  priceFontSize?: number;
-  priceColor?: string;
   // Image overrides
   imagePosition?: string;
   imageZoom?: number;
@@ -555,6 +500,8 @@ export interface SimpleLandingPageConfig {
   };
   /** User-defined custom colour swatches */
   customColors?: { name: string; hex: string }[];
+  /** User-defined custom font types (like custom colours but for typography) */
+  customFontTypes?: CustomFontType[];
   /** SEO configuration */
   seo?: SEOConfig;
 }

@@ -90,6 +90,7 @@ export default function FAQSection({
   };
 
   const theme = colors[variant];
+  const overrides = faq.styleOverrides;
 
   const {
     sectionRef,
@@ -104,7 +105,7 @@ export default function FAQSection({
     sectionStyle,
   } = useSectionToolbar({
     isEditing,
-    overrides: faq.styleOverrides,
+    overrides,
     onStyleOverrideChange,
     defaultBg: theme.bg,
     onBgImageClick,
@@ -142,8 +143,15 @@ export default function FAQSection({
       : brandFonts?.headerFont?.size
         ? `${brandFonts.headerFont.size}px`
         : "clamp(1.75rem, 3vw, 2.5rem)",
-    fontWeight: 700,
-    color: brandFonts?.subHeaderFont?.color || theme.heading,
+    fontWeight:
+      brandFonts?.subHeaderFont?.weight ??
+      brandFonts?.headerFont?.weight ??
+      700,
+    color:
+      brandFonts?.subHeaderFont?.color ||
+      brandFonts?.headerFont?.color ||
+      theme.heading,
+    textAlign: overrides?.headingTextAlign ?? "center",
     marginBottom: "12px",
     fontFamily:
       brandFonts?.subHeaderFont?.family ||
@@ -155,7 +163,9 @@ export default function FAQSection({
     fontSize: brandFonts?.bodyFont?.size
       ? `${brandFonts.bodyFont.size}px`
       : "1.1rem",
+    fontWeight: brandFonts?.bodyFont?.weight ?? undefined,
     color: brandFonts?.bodyFont?.color || theme.subheading,
+    textAlign: overrides?.subheadingTextAlign ?? "center",
     maxWidth: "600px",
     margin: "0 auto",
     fontFamily: brandFonts?.bodyFont?.family || undefined,
