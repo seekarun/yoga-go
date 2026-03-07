@@ -22,6 +22,7 @@ import { fontForRole } from "../../hero/fontUtils";
 import ImageToolbar from "../../hero/ImageToolbar";
 import { bgFilterToCSS } from "../../hero/layoutOptions";
 import { processRemoveBackground } from "../../hero/removeBackgroundUtil";
+import { getSectionTheme } from "../sectionTheme";
 
 interface StaticEcomProps {
   products: Product[];
@@ -261,6 +262,7 @@ export default function StaticEcom({
   onCardStyleChange,
   onAddCustomFontType,
 }: StaticEcomProps) {
+  const t = getSectionTheme(brand.colorMode);
   const active = useMemo(() => products.filter((p) => p.isActive), [products]);
   const useCarousel = active.length > 3;
 
@@ -404,7 +406,7 @@ export default function StaticEcom({
   const headingStyle: React.CSSProperties = {
     fontSize: headingResolved.size,
     fontWeight: headingResolved.weight ?? 700,
-    color: headingResolved.color ?? "#1a1a1a",
+    color: headingResolved.color ?? t.heading,
     textAlign: styleOverrides?.headingTextAlign ?? "center",
     fontFamily: headingResolved.font || "inherit",
     lineHeight: 1.15,
@@ -417,7 +419,7 @@ export default function StaticEcom({
   const subheadingStyle: React.CSSProperties = {
     fontSize: subheadingResolved.size,
     fontWeight: subheadingResolved.weight ?? "normal",
-    color: subheadingResolved.color ?? "#6b7280",
+    color: subheadingResolved.color ?? t.body,
     textAlign: subAlign,
     fontFamily: subheadingResolved.font || "inherit",
     maxWidth: 600,
@@ -582,13 +584,13 @@ export default function StaticEcom({
         .${SCOPE}-heading {
           font-size: clamp(1.75rem, 3vw, 2.5rem);
           font-weight: 700;
-          color: ${innerSubHeader.color || "#1a1a1a"};
+          color: ${innerSubHeader.color || t.heading};
           margin: 0 0 12px;
           font-family: ${innerSubHeader.font || "inherit"};
         }
         .${SCOPE}-subheading {
           font-size: 1.1rem;
-          color: ${innerBody.color || "#6b7280"};
+          color: ${innerBody.color || t.body};
           max-width: 600px;
           margin: 0 auto;
           font-family: ${innerBody.font || "inherit"};
@@ -631,7 +633,7 @@ export default function StaticEcom({
           height: 44px;
           border-radius: 50%;
           background: rgba(255, 255, 255, 0.95);
-          border: 1px solid #e5e7eb;
+          border: 1px solid ${t.border};
           cursor: pointer;
           display: flex;
           align-items: center;
@@ -687,7 +689,7 @@ export default function StaticEcom({
           position: relative;
           width: 100%;
           padding-top: 100%;
-          background: #eaeae5;
+          background: ${t.surfaceAlt};
           overflow: hidden;
           border-radius: 20px;
         }
@@ -701,7 +703,7 @@ export default function StaticEcom({
         .${SCOPE}-img-placeholder {
           width: 100%;
           padding-top: 100%;
-          background: #eaeae5;
+          background: ${t.surfaceAlt};
           border-radius: 20px;
           position: relative;
         }
@@ -838,7 +840,7 @@ export default function StaticEcom({
         .${SCOPE}-name {
           font-size: ${innerSubHeader.size}px;
           font-weight: ${innerSubHeader.weight ?? 700};
-          color: ${innerSubHeader.color || "#1a1a1a"};
+          color: ${innerSubHeader.color || t.heading};
           margin: 0;
           font-family: ${innerSubHeader.font || "inherit"};
           line-height: 1.3;
@@ -846,7 +848,7 @@ export default function StaticEcom({
         .${SCOPE}-desc {
           font-size: ${innerBody.size}px;
           font-weight: ${innerBody.weight ?? 400};
-          color: ${innerBody.color || "#374151"};
+          color: ${innerBody.color || t.body};
           margin: 0 0 12px;
           flex: 1;
           font-family: ${innerBody.font || "inherit"};
@@ -860,7 +862,7 @@ export default function StaticEcom({
         .${SCOPE}-price {
           font-size: 1.15rem;
           font-weight: 800;
-          color: #1a1a1a;
+          color: ${t.heading};
           font-family: ${innerBody.font || "inherit"};
         }
         .${SCOPE}-btn {

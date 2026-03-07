@@ -50,6 +50,7 @@ import {
 } from "../widgets";
 import FooterSection from "./FooterSection";
 import { BrandColorsProvider } from "./CustomColorsContext";
+import { getSectionTheme } from "../widgets/sectionTheme";
 
 const SCOPE = "tpl-playground";
 
@@ -214,12 +215,23 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
   const getWidgetId = (sectionId: string): string | undefined =>
     sections.find((s) => s.id === sectionId)?.widgetId;
 
+  /** Build a section-specific brand with colorMode from the section config. */
+  const sectionBrand = (sectionId: string): WidgetBrandConfig => {
+    const colorMode = sections.find((s) => s.id === sectionId)?.colorMode;
+    return colorMode ? { ...brand, colorMode } : brand;
+  };
+
+  /** Hero brand with heroColorMode. */
+  const heroBrand: WidgetBrandConfig = config.heroColorMode
+    ? { ...brand, colorMode: config.heroColorMode }
+    : brand;
+
   /** Common hero props passed to all hero widgets. */
   const heroProps = {
     title: config.title,
     subtitle: config.subtitle,
     buttonLabel: config.button?.label,
-    brand,
+    brand: heroBrand,
     onButtonClick: props.onButtonClick,
     isEditing: props.isEditing,
     styleOverrides: resolveHeroOverrides(config.heroStyleOverrides, rc),
@@ -238,11 +250,21 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
       case "pov-cards":
         return <HeroPovCards {...heroProps} />;
       case "doctor-profile":
-        return <HeroDoctorProfile {...heroProps} />;
+        return (
+          <HeroDoctorProfile
+            {...heroProps}
+            onPortraitImageClick={props.onHeroPortraitImageClick}
+          />
+        );
       case "vertical-image-scroll":
         return <HeroVerticalImageScroll {...heroProps} products={products} />;
       case "through-the-tear":
-        return <HeroThroughTheTear {...heroProps} />;
+        return (
+          <HeroThroughTheTear
+            {...heroProps}
+            onBgImageClick={props.onHeroBgImageClick}
+          />
+        );
       case "video-horizontal":
       default:
         return <HeroVideoHorizontal {...heroProps} />;
@@ -257,7 +279,7 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
     imagePosition: config.about?.imagePosition,
     imageZoom: config.about?.imageZoom,
     styleOverrides: resolveAboutOverrides(config.about?.styleOverrides, rc),
-    brand,
+    brand: sectionBrand("about"),
     isEditing: props.isEditing,
     onTitleChange: props.onAboutTitleChange,
     onParagraphChange: props.onAboutParagraphChange,
@@ -285,7 +307,7 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
     heading: config.features?.heading,
     subheading: config.features?.subheading,
     cards: config.features?.cards || [],
-    brand,
+    brand: sectionBrand("features"),
     isEditing: props.isEditing,
     styleOverrides: resolveSectionOverrides(
       config.features?.styleOverrides,
@@ -319,7 +341,7 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
     products: products || [],
     heading: config.productsConfig?.heading || "Services",
     subheading: config.productsConfig?.subheading,
-    brand,
+    brand: sectionBrand("products"),
     currency,
     onBookProduct: props.onBookProduct,
     onSignupWebinar: props.onSignupWebinar,
@@ -355,7 +377,7 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
     testimonials: config.testimonials?.testimonials || [],
     heading: config.testimonials?.heading || "What People Say",
     subheading: config.testimonials?.subheading,
-    brand,
+    brand: sectionBrand("testimonials"),
     isEditing: props.isEditing,
     styleOverrides: resolveSectionOverrides(
       config.testimonials?.styleOverrides,
@@ -392,7 +414,7 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
     heading: config.faq?.heading || "FAQ",
     subheading: config.faq?.subheading,
     items: config.faq?.items || [],
-    brand,
+    brand: sectionBrand("faq"),
     isEditing: props.isEditing,
     styleOverrides: resolveSectionOverrides(config.faq?.styleOverrides, rc),
     onHeadingChange: props.onFAQHeadingChange,
@@ -488,35 +510,58 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
       `}</style>
 
         {/* Hero — dynamic widget */}
-        {config.heroEnabled !== false && renderHero()}
+        {config.heroEnabled !== false && (
+          <div
+            style={
+              config.heroColorMode === "dark"
+                ? { background: getSectionTheme("dark").bg }
+                : undefined
+            }
+          >
+            {renderHero()}
+          </div>
+        )}
 
         {/* Render enabled sections in order */}
         {enabledSections.map((section) => {
+          const t = getSectionTheme(section.colorMode);
+          const sectionBg =
+            section.colorMode === "dark" ? { background: t.bg } : undefined;
           switch (section.id) {
             case "about":
               return config.about ? (
-                <div key="about">{renderAbout()}</div>
+                <div key="about" style={sectionBg}>
+                  {renderAbout()}
+                </div>
               ) : null;
 
             case "features":
               return config.features && config.features.cards.length > 0 ? (
-                <div key="features">{renderFeatures()}</div>
+                <div key="features" style={sectionBg}>
+                  {renderFeatures()}
+                </div>
               ) : null;
 
             case "products":
               return products && products.length > 0 ? (
-                <div key="products">{renderProducts()}</div>
+                <div key="products" style={sectionBg}>
+                  {renderProducts()}
+                </div>
               ) : null;
 
             case "testimonials":
               return config.testimonials &&
                 config.testimonials.testimonials.length > 0 ? (
-                <div key="testimonials">{renderTestimonials()}</div>
+                <div key="testimonials" style={sectionBg}>
+                  {renderTestimonials()}
+                </div>
               ) : null;
 
             case "faq":
               return config.faq && config.faq.items.length > 0 ? (
-                <div key="faq">{renderFaq()}</div>
+                <div key="faq" style={sectionBg}>
+                  {renderFaq()}
+                </div>
               ) : null;
 
             default:

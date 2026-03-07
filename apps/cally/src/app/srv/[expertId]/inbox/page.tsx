@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import type {
   EmailWithThread,
@@ -14,89 +14,23 @@ import EmailComposer from "@/components/inbox/EmailComposer";
 import BulkActionBar from "@/components/inbox/BulkActionBar";
 import LabelPicker from "@/components/inbox/LabelPicker";
 import LabelManager from "@/components/inbox/LabelManager";
-import AdvancedSearchPanel from "@/components/inbox/AdvancedSearchPanel";
-import {
-  parseSearchQuery,
-  serializeSearchQuery,
-} from "@/lib/searchQueryParser";
+import { parseSearchQuery } from "@/lib/searchQueryParser";
 
 type FilterType = "all" | "unread" | "starred";
 type FolderType = "inbox" | "sent" | "drafts" | "archive" | "trash";
 
-function ActiveFilterChips({
-  searchQuery,
-  onUpdate,
-}: {
-  searchQuery: string;
-  onUpdate: (query: string) => void;
-}) {
-  const parsed = parseSearchQuery(searchQuery);
-  const chips: { label: string; key: string }[] = [];
-
-  if (parsed.from) chips.push({ label: `From: ${parsed.from}`, key: "from" });
-  if (parsed.to) chips.push({ label: `To: ${parsed.to}`, key: "to" });
-  if (parsed.hasAttachment)
-    chips.push({ label: "Has attachment", key: "hasAttachment" });
-  if (parsed.after)
-    chips.push({ label: `After: ${parsed.after}`, key: "after" });
-  if (parsed.before)
-    chips.push({ label: `Before: ${parsed.before}`, key: "before" });
-  if (parsed.label)
-    chips.push({ label: `Label: ${parsed.label}`, key: "label" });
-
-  if (chips.length === 0) return null;
-
-  const removeFilter = (key: string) => {
-    const updated = { ...parsed, [key]: undefined };
-    if (key === "hasAttachment") updated.hasAttachment = undefined;
-    onUpdate(serializeSearchQuery(updated));
-  };
-
-  return (
-    <div className="flex flex-wrap gap-1.5 mt-2">
-      {chips.map((chip) => (
-        <span
-          key={chip.key}
-          className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 text-xs text-gray-700 rounded-full"
-        >
-          {chip.label}
-          <button
-            type="button"
-            onClick={() => removeFilter(chip.key)}
-            className="text-gray-400 hover:text-gray-600"
-          >
-            <svg
-              className="w-3 h-3"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        </span>
-      ))}
-    </div>
-  );
-}
-
 export default function InboxPage() {
   const params = useParams();
-  const router = useRouter();
+  const searchParams = useSearchParams();
   const expertId = params.expertId as string;
+  const folder = (searchParams.get("folder") as FolderType) || "inbox";
+  const filter = (searchParams.get("filter") as FilterType) || "all";
+  const debouncedQuery = searchParams.get("search") || "";
   const notifContext = useNotificationContextOptional();
   const [emails, setEmails] = useState<EmailWithThread[]>([]);
   const [drafts, setDrafts] = useState<EmailDraft[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<FilterType>("all");
-  const [folder, setFolder] = useState<FolderType>("inbox");
-  const [searchQuery, setSearchQuery] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
   const [lastKey, setLastKey] = useState<string | undefined>(undefined);
   const [hasMore, setHasMore] = useState(false);
@@ -114,11 +48,6 @@ export default function InboxPage() {
     null,
   );
 
-  // Advanced search state
-  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
-  const [debouncedQuery, setDebouncedQuery] = useState("");
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   // Bulk selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -134,6 +63,21 @@ export default function InboxPage() {
   });
   const [sigSaving, setSigSaving] = useState(false);
   const [sigMessage, setSigMessage] = useState<string | null>(null);
+
+  // Listen for settings/compose events from persistent layout bar
+  useEffect(() => {
+    const handleOpenSettings = () => setShowSettings(true);
+    const handleOpenCompose = () => {
+      setEditingDraft(null);
+      setShowCompose(true);
+    };
+    window.addEventListener("inbox-open-settings", handleOpenSettings);
+    window.addEventListener("inbox-open-compose", handleOpenCompose);
+    return () => {
+      window.removeEventListener("inbox-open-settings", handleOpenSettings);
+      window.removeEventListener("inbox-open-compose", handleOpenCompose);
+    };
+  }, []);
 
   // Fetch labels + signature + email status on mount
   useEffect(() => {
@@ -192,21 +136,6 @@ export default function InboxPage() {
       setSigSaving(false);
     }
   };
-
-  // Debounce search query changes
-  useEffect(() => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
-    debounceRef.current = setTimeout(() => {
-      setDebouncedQuery(searchQuery);
-    }, 300);
-    return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
-    };
-  }, [searchQuery]);
 
   const fetchEmails = useCallback(
     async (append = false) => {
@@ -336,23 +265,21 @@ export default function InboxPage() {
     prevUnreadEmailCountRef.current = currentCount;
   }, [notifContext?.unreadEmailCount, fetchEmails]);
 
-  const handleEmailClick = async (email: EmailWithThread) => {
+  const markAsReadOnNavigate = (email: EmailWithThread) => {
     if (!email.isRead && !email.isOutgoing) {
-      try {
-        await fetch(`/api/data/app/inbox/${email.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ isRead: true }),
-        });
-        setEmails((prev) =>
-          prev.map((e) => (e.id === email.id ? { ...e, isRead: true } : e)),
-        );
-        setUnreadCount((prev) => Math.max(0, prev - 1));
-      } catch (err) {
-        console.log("[DBG][inbox] Failed to mark as read:", err);
-      }
+      // Fire-and-forget: mark as read without blocking navigation
+      fetch(`/api/data/app/inbox/${email.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isRead: true }),
+      }).catch((err) =>
+        console.log("[DBG][inbox] Failed to mark as read:", err),
+      );
+      setEmails((prev) =>
+        prev.map((e) => (e.id === email.id ? { ...e, isRead: true } : e)),
+      );
+      setUnreadCount((prev) => Math.max(0, prev - 1));
     }
-    router.push(`/srv/${expertId}/inbox/${email.id}`);
   };
 
   const handleDraftClick = (draft: EmailDraft) => {
@@ -364,6 +291,7 @@ export default function InboxPage() {
     e: React.MouseEvent,
     email: EmailWithThread,
   ) => {
+    e.preventDefault();
     e.stopPropagation();
     try {
       await fetch(`/api/data/app/inbox/${email.id}`, {
@@ -382,6 +310,7 @@ export default function InboxPage() {
   };
 
   const handleDelete = async (e: React.MouseEvent, email: EmailWithThread) => {
+    e.preventDefault();
     e.stopPropagation();
     if (!confirm("Are you sure you want to delete this email?")) {
       return;
@@ -406,6 +335,7 @@ export default function InboxPage() {
   };
 
   const handleArchive = async (e: React.MouseEvent, email: EmailWithThread) => {
+    e.preventDefault();
     e.stopPropagation();
     try {
       await fetch(`/api/data/app/inbox/${email.id}`, {
@@ -420,6 +350,7 @@ export default function InboxPage() {
   };
 
   const handleRestore = async (e: React.MouseEvent, email: EmailWithThread) => {
+    e.preventDefault();
     e.stopPropagation();
     try {
       await fetch(`/api/data/app/inbox/${email.id}`, {
@@ -437,6 +368,7 @@ export default function InboxPage() {
     e: React.MouseEvent,
     email: EmailWithThread,
   ) => {
+    e.preventDefault();
     e.stopPropagation();
     try {
       await fetch(`/api/data/app/inbox/${email.id}`, {
@@ -451,6 +383,7 @@ export default function InboxPage() {
   };
 
   const handleDeleteDraft = async (e: React.MouseEvent, draft: EmailDraft) => {
+    e.preventDefault();
     e.stopPropagation();
     if (!confirm("Delete this draft?")) return;
     try {
@@ -518,6 +451,7 @@ export default function InboxPage() {
 
   // Selection helpers
   const handleToggleSelect = (e: React.MouseEvent, emailId: string) => {
+    e.preventDefault();
     e.stopPropagation();
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -574,7 +508,7 @@ export default function InboxPage() {
   // Compose overlay
   if (showCompose) {
     return (
-      <div className="px-6 lg:px-8 py-6">
+      <div className="py-6">
         <EmailComposer
           mode={editingDraft?.mode || "compose"}
           initialTo={editingDraft?.to}
@@ -602,7 +536,7 @@ export default function InboxPage() {
 
   if (emailReady === false) {
     return (
-      <div className="px-6 lg:px-8 py-20 text-center">
+      <div className="py-20 text-center">
         <svg
           className="w-16 h-16 mx-auto text-gray-300 mb-4"
           fill="none"
@@ -656,7 +590,7 @@ export default function InboxPage() {
   }
 
   return (
-    <div className="px-6 lg:px-8 py-6">
+    <>
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
           <div className="flex">
@@ -670,88 +604,7 @@ export default function InboxPage() {
         </div>
       )}
 
-      {/* Folder Tabs + Compose */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex gap-1 overflow-x-auto">
-          {(
-            [
-              { key: "inbox", label: "Inbox" },
-              { key: "sent", label: "Sent" },
-              { key: "drafts", label: "Drafts" },
-              { key: "archive", label: "Archive" },
-              { key: "trash", label: "Trash" },
-            ] as { key: FolderType; label: string }[]
-          ).map((f) => (
-            <button
-              key={f.key}
-              onClick={() => setFolder(f.key)}
-              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
-                folder === f.key
-                  ? "bg-[var(--color-primary)] text-white"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              {f.label}
-              {f.key === "inbox" && unreadCount > 0 && (
-                <span className="ml-1.5 px-1.5 py-0.5 bg-white/20 text-xs rounded-full">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
-          ))}
-          <button
-            onClick={() => setShowSettings(true)}
-            className={`p-1.5 rounded-lg transition-colors ${
-              showSettings
-                ? "bg-[var(--color-primary)] text-white"
-                : "text-gray-400 hover:text-gray-600 hover:bg-gray-100"
-            }`}
-            title="Email Settings"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-              />
-            </svg>
-          </button>
-        </div>
-        <button
-          onClick={() => {
-            setEditingDraft(null);
-            setShowCompose(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90 text-sm font-medium flex-shrink-0"
-        >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-          Compose
-        </button>
-      </div>
+      {/* (Compose + Settings buttons are in the persistent layout bar) */}
 
       {/* Label filter pills */}
       {labels.length > 0 && folder !== "drafts" && (
@@ -796,82 +649,20 @@ export default function InboxPage() {
         </div>
       )}
 
-      {/* Filters and Search */}
+      {/* Email List */}
       <div className="bg-white rounded-lg shadow mb-6">
-        {folder !== "drafts" && (
-          <div className="p-4 border-b border-gray-200">
-            <div className="flex flex-col sm:flex-row gap-4">
-              {/* Select All + Filter Tabs */}
-              <div className="flex items-center gap-2">
-                {emails.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={handleSelectAll}
-                    className="flex items-center justify-center w-5 h-5 border border-gray-300 rounded transition-colors hover:border-gray-400"
-                    title={
-                      selectedIds.size === emails.length
-                        ? "Deselect all"
-                        : "Select all"
-                    }
-                  >
-                    {selectedIds.size === emails.length &&
-                      emails.length > 0 && (
-                        <svg
-                          className="w-3.5 h-3.5 text-[var(--color-primary)]"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={3}
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
-                      )}
-                    {selectedIds.size > 0 &&
-                      selectedIds.size < emails.length && (
-                        <span className="w-2.5 h-0.5 bg-[var(--color-primary)] rounded" />
-                      )}
-                  </button>
-                )}
-                {(["all", "unread", "starred"] as FilterType[]).map((f) => (
-                  <button
-                    key={f}
-                    onClick={() => setFilter(f)}
-                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                      filter === f
-                        ? "bg-[var(--color-primary)] text-white"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                    }`}
-                  >
-                    {f === "all"
-                      ? "All"
-                      : f === "unread"
-                        ? "Unread"
-                        : "Starred"}
-                    {f === "unread" && unreadCount > 0 && (
-                      <span className="ml-2 px-1.5 py-0.5 bg-white/20 text-xs rounded-full">
-                        {unreadCount}
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-
-              {/* Search */}
-              <div className="flex-1">
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Search emails... (try from: to: has:attachment)"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
-                  />
+        {/* Select All row */}
+        {folder !== "drafts" && emails.length > 0 && (
+          <div className="px-4 py-2 border-b border-gray-200">
+            <button
+              type="button"
+              onClick={handleSelectAll}
+              className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              <span className="flex items-center justify-center w-5 h-5 border border-gray-300 rounded transition-colors hover:border-gray-400">
+                {selectedIds.size === emails.length && emails.length > 0 && (
                   <svg
-                    className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+                    className="w-3.5 h-3.5 text-[var(--color-primary)]"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -879,74 +670,17 @@ export default function InboxPage() {
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      strokeWidth={3}
+                      d="M5 13l4 4L19 7"
                     />
                   </svg>
-                  {/* Advanced search toggle */}
-                  <button
-                    type="button"
-                    onClick={() => setShowAdvancedSearch(!showAdvancedSearch)}
-                    className={`absolute right-3 top-1/2 -translate-y-1/2 transition-colors ${
-                      showAdvancedSearch
-                        ? "text-[var(--color-primary)]"
-                        : "text-gray-400 hover:text-gray-600"
-                    }`}
-                    title="Advanced search"
-                  >
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-                      />
-                    </svg>
-                  </button>
-                </div>
-
-                {/* Active filter chips */}
-                <ActiveFilterChips
-                  searchQuery={searchQuery}
-                  onUpdate={setSearchQuery}
-                />
-
-                {/* Advanced search panel */}
-                {showAdvancedSearch && (
-                  <AdvancedSearchPanel
-                    {...parseSearchQuery(searchQuery)}
-                    labelName={parseSearchQuery(searchQuery).label || ""}
-                    hasAttachment={
-                      parseSearchQuery(searchQuery).hasAttachment || false
-                    }
-                    after={parseSearchQuery(searchQuery).after || ""}
-                    before={parseSearchQuery(searchQuery).before || ""}
-                    from={parseSearchQuery(searchQuery).from || ""}
-                    to={parseSearchQuery(searchQuery).to || ""}
-                    labels={labels}
-                    onApply={(fields) => {
-                      const parsed = parseSearchQuery(searchQuery);
-                      const newQuery = serializeSearchQuery({
-                        from: fields.from || undefined,
-                        to: fields.to || undefined,
-                        hasAttachment: fields.hasAttachment || undefined,
-                        after: fields.after || undefined,
-                        before: fields.before || undefined,
-                        label: fields.labelName || undefined,
-                        freeText: parsed.freeText,
-                      });
-                      setSearchQuery(newQuery);
-                    }}
-                    onClose={() => setShowAdvancedSearch(false)}
-                  />
                 )}
-              </div>
-            </div>
+                {selectedIds.size > 0 && selectedIds.size < emails.length && (
+                  <span className="w-2.5 h-0.5 bg-[var(--color-primary)] rounded" />
+                )}
+              </span>
+              Select all
+            </button>
           </div>
         )}
 
@@ -965,7 +699,7 @@ export default function InboxPage() {
 
         {/* Drafts List */}
         {folder === "drafts" ? (
-          <div className="divide-y divide-gray-100">
+          <div>
             {drafts.length === 0 ? (
               <div className="p-12 text-center">
                 <p className="text-gray-500">No drafts</p>
@@ -975,52 +709,58 @@ export default function InboxPage() {
                 <div
                   key={draft.id}
                   onClick={() => handleDraftClick(draft)}
-                  className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                  className="group flex items-center gap-2 px-3 py-2 border-b border-gray-100 hover:shadow-[inset_0_0_0_999px_rgba(0,0,0,0.02)] cursor-pointer transition-colors"
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="flex flex-col gap-1 flex-shrink-0 mt-0.5">
-                      <button
-                        onClick={(e) => handleDeleteDraft(e, draft)}
-                        className="text-gray-300 hover:text-red-500 transition-colors"
-                        title="Delete draft"
+                  {/* Draft indicator */}
+                  <span className="flex-shrink-0 w-44 truncate text-sm">
+                    <span className="text-red-500 font-medium">Draft</span>
+                    <span className="text-gray-500">
+                      {" - "}
+                      {draft.to.length > 0
+                        ? draft.to.map((t) => t.name || t.email).join(", ")
+                        : "(no recipients)"}
+                    </span>
+                  </span>
+
+                  {/* Subject + Preview */}
+                  <span className="flex-1 min-w-0 truncate text-sm">
+                    <span className="text-gray-800">
+                      {draft.subject || "(no subject)"}
+                    </span>
+                    {draft.bodyText && (
+                      <span className="text-gray-400">
+                        {" "}
+                        - {draft.bodyText.substring(0, 120)}
+                      </span>
+                    )}
+                  </span>
+
+                  {/* Date */}
+                  <span className="flex-shrink-0 text-xs text-gray-500 w-16 text-right group-hover:hidden">
+                    {formatDate(draft.lastSavedAt)}
+                  </span>
+
+                  {/* Delete on hover */}
+                  <div className="flex-shrink-0 hidden group-hover:flex items-center w-16 justify-end">
+                    <button
+                      onClick={(e) => handleDeleteDraft(e, draft)}
+                      className="p-1 text-gray-400 hover:text-red-600 rounded transition-colors"
+                      title="Delete draft"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
                       >
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm text-gray-700 truncate">
-                          <span className="text-red-500 font-medium">
-                            Draft
-                          </span>
-                          {" - "}
-                          {draft.to.length > 0
-                            ? draft.to.map((t) => t.name || t.email).join(", ")
-                            : "(no recipients)"}
-                        </p>
-                        <span className="text-xs text-gray-500 flex-shrink-0">
-                          {formatDate(draft.lastSavedAt)}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600 mt-0.5 truncate">
-                        {draft.subject || "(no subject)"}
-                      </p>
-                      <p className="text-sm text-gray-500 mt-0.5 truncate">
-                        {draft.bodyText?.substring(0, 100) || "(no content)"}
-                      </p>
-                    </div>
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
+                      </svg>
+                    </button>
                   </div>
                 </div>
               ))
@@ -1028,7 +768,7 @@ export default function InboxPage() {
           </div>
         ) : (
           /* Email List */
-          <div className="divide-y divide-gray-100">
+          <div>
             {emails.length === 0 ? (
               <div className="p-12 text-center">
                 <svg
@@ -1075,56 +815,160 @@ export default function InboxPage() {
                 const emailLabels = (email.labels || [])
                   .map((lid) => labels.find((l) => l.id === lid))
                   .filter(Boolean) as EmailLabel[];
+                const preview = (
+                  isThread && email.threadMessages?.length
+                    ? email.threadMessages[email.threadMessages.length - 1]
+                        .bodyText
+                    : email.bodyText
+                )?.substring(0, 120);
 
                 return (
-                  <div
+                  <Link
                     key={email.id}
-                    onClick={() => handleEmailClick(email)}
-                    className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
+                    href={`/srv/${expertId}/inbox/${email.id}`}
+                    onClick={() => markAsReadOnNavigate(email)}
+                    className={`group flex items-center gap-2 px-3 py-2 border-b border-gray-100 transition-colors ${
                       isSelected
                         ? "bg-blue-50"
                         : hasUnread
-                          ? "bg-blue-50/50"
-                          : ""
+                          ? "bg-blue-50/30"
+                          : "hover:shadow-[inset_0_0_0_999px_rgba(0,0,0,0.02)]"
                     }`}
                   >
-                    <div className="flex items-start gap-3">
-                      {/* Checkbox + Action Buttons */}
-                      <div className="flex flex-col gap-1 flex-shrink-0 mt-0.5">
-                        {/* Selection checkbox */}
-                        <button
-                          type="button"
-                          onClick={(e) => handleToggleSelect(e, email.id)}
-                          className="flex items-center justify-center w-5 h-5 border border-gray-300 rounded transition-colors hover:border-gray-400"
+                    {/* Checkbox */}
+                    <button
+                      type="button"
+                      onClick={(e) => handleToggleSelect(e, email.id)}
+                      className="flex-shrink-0 flex items-center justify-center w-5 h-5 border border-gray-300 rounded transition-colors hover:border-gray-400"
+                    >
+                      {isSelected && (
+                        <svg
+                          className="w-3.5 h-3.5 text-[var(--color-primary)]"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
                         >
-                          {isSelected && (
-                            <svg
-                              className="w-3.5 h-3.5 text-[var(--color-primary)]"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={3}
-                                d="M5 13l4 4L19 7"
-                              />
-                            </svg>
-                          )}
-                        </button>
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={3}
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                      )}
+                    </button>
 
+                    {/* Star */}
+                    <button
+                      onClick={(e) => handleToggleStar(e, email)}
+                      className="flex-shrink-0"
+                      title={email.isStarred ? "Unstar" : "Star"}
+                    >
+                      <svg
+                        className={`w-5 h-5 ${
+                          email.isStarred
+                            ? "text-yellow-400 fill-current"
+                            : "text-gray-300 hover:text-gray-400"
+                        }`}
+                        fill={email.isStarred ? "currentColor" : "none"}
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
+                        />
+                      </svg>
+                    </button>
+
+                    {/* Sender */}
+                    <span
+                      className={`flex-shrink-0 w-44 truncate text-sm ${
+                        hasUnread
+                          ? "font-semibold text-gray-900"
+                          : "text-gray-700"
+                      }`}
+                    >
+                      {email.isOutgoing ? (
+                        <>
+                          <span className="text-gray-400">To: </span>
+                          {email.to[0]?.name || email.to[0]?.email}
+                        </>
+                      ) : (
+                        email.from.name || email.from.email
+                      )}
+                      {isThread && (
+                        <span className="ml-1 text-xs font-medium text-gray-500">
+                          ({email.threadCount})
+                        </span>
+                      )}
+                    </span>
+
+                    {/* Subject + Preview */}
+                    <span className="flex-1 min-w-0 truncate text-sm">
+                      <span
+                        className={
+                          hasUnread
+                            ? "font-semibold text-gray-900"
+                            : "text-gray-800"
+                        }
+                      >
+                        {email.subject || "(no subject)"}
+                      </span>
+                      {preview && (
+                        <span className="text-gray-400"> - {preview}</span>
+                      )}
+                    </span>
+
+                    {/* Label dots */}
+                    {emailLabels.length > 0 && (
+                      <div className="flex-shrink-0 flex items-center gap-0.5">
+                        {emailLabels.map((label) => (
+                          <span
+                            key={label.id}
+                            className="w-2 h-2 rounded-full"
+                            style={{ backgroundColor: label.color }}
+                            title={label.name}
+                          />
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Attachment icon */}
+                    {email.attachments && email.attachments.length > 0 && (
+                      <svg
+                        className="flex-shrink-0 w-4 h-4 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                        />
+                      </svg>
+                    )}
+
+                    {/* Date (visible by default, hidden on hover when actions show) */}
+                    <span className="flex-shrink-0 text-xs text-gray-500 w-16 text-right group-hover:hidden">
+                      {formatDate(displayDate)}
+                    </span>
+
+                    {/* Action icons (hidden by default, visible on hover) */}
+                    <div className="flex-shrink-0 hidden group-hover:flex items-center gap-1 w-16 justify-end">
+                      {folder === "trash" ? (
                         <button
-                          onClick={(e) => handleToggleStar(e, email)}
-                          title={email.isStarred ? "Unstar" : "Star"}
+                          onClick={(e) => handleRestore(e, email)}
+                          className="p-1 text-gray-400 hover:text-green-600 rounded transition-colors"
+                          title="Restore"
                         >
                           <svg
-                            className={`w-5 h-5 ${
-                              email.isStarred
-                                ? "text-yellow-400 fill-current"
-                                : "text-gray-300"
-                            }`}
-                            fill={email.isStarred ? "currentColor" : "none"}
+                            className="w-4 h-4"
+                            fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
                           >
@@ -1132,231 +976,119 @@ export default function InboxPage() {
                               strokeLinecap="round"
                               strokeLinejoin="round"
                               strokeWidth={2}
-                              d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
+                              d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
                             />
                           </svg>
                         </button>
-                        {/* Folder-specific actions */}
-                        {folder === "trash" ? (
-                          <button
-                            onClick={(e) => handleRestore(e, email)}
-                            className="text-gray-300 hover:text-green-500 transition-colors"
-                            title="Restore"
-                          >
-                            <svg
-                              className="w-5 h-5"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
-                              />
-                            </svg>
-                          </button>
-                        ) : folder === "archive" ? (
-                          <button
-                            onClick={(e) => handleUnarchive(e, email)}
-                            className="text-gray-300 hover:text-blue-500 transition-colors"
-                            title="Unarchive"
-                          >
-                            <svg
-                              className="w-5 h-5"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
-                              />
-                            </svg>
-                          </button>
-                        ) : (
-                          <>
-                            <button
-                              onClick={(e) => handleArchive(e, email)}
-                              className="text-gray-300 hover:text-blue-500 transition-colors"
-                              title="Archive"
-                            >
-                              <svg
-                                className="w-5 h-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
-                                />
-                              </svg>
-                            </button>
-                            <button
-                              onClick={(e) => handleDelete(e, email)}
-                              className="text-gray-300 hover:text-red-500 transition-colors"
-                              title="Delete"
-                            >
-                              <svg
-                                className="w-5 h-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                />
-                              </svg>
-                            </button>
-                          </>
-                        )}
-                      </div>
-
-                      {/* Email Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <p
-                              className={`text-sm truncate ${
-                                hasUnread
-                                  ? "font-semibold text-gray-900"
-                                  : "text-gray-700"
-                              }`}
-                            >
-                              {email.isOutgoing ? (
-                                <>
-                                  <span className="text-gray-400">To: </span>
-                                  {email.to[0]?.name || email.to[0]?.email}
-                                </>
-                              ) : (
-                                email.from.name || email.from.email
-                              )}
-                            </p>
-                            {isThread && (
-                              <span className="flex-shrink-0 px-1.5 py-0.5 text-xs font-medium bg-gray-200 text-gray-600 rounded">
-                                {email.threadCount}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            {/* Label dots */}
-                            {emailLabels.length > 0 && (
-                              <div className="flex items-center gap-0.5">
-                                {emailLabels.map((label) => (
-                                  <span
-                                    key={label.id}
-                                    className="w-2.5 h-2.5 rounded-full"
-                                    style={{ backgroundColor: label.color }}
-                                    title={label.name}
-                                  />
-                                ))}
-                              </div>
-                            )}
-                            <span className="text-xs text-gray-500">
-                              {formatDate(displayDate)}
-                            </span>
-                          </div>
-                        </div>
-                        <p
-                          className={`text-sm mt-0.5 truncate ${
-                            hasUnread
-                              ? "font-medium text-gray-800"
-                              : "text-gray-600"
-                          }`}
+                      ) : folder === "archive" ? (
+                        <button
+                          onClick={(e) => handleUnarchive(e, email)}
+                          className="p-1 text-gray-400 hover:text-blue-600 rounded transition-colors"
+                          title="Move to inbox"
                         >
-                          {email.subject || "(no subject)"}
-                        </p>
-                        <p className="text-sm text-gray-500 mt-0.5 truncate">
-                          {(isThread && email.threadMessages?.length
-                            ? email.threadMessages[
-                                email.threadMessages.length - 1
-                              ].bodyText
-                            : email.bodyText
-                          )?.substring(0, 100) || "(no content)"}
-                        </p>
-
-                        <div className="flex items-center gap-2 mt-1.5">
-                          {email.attachments &&
-                            email.attachments.length > 0 && (
-                              <div className="flex items-center gap-1">
-                                <svg
-                                  className="w-4 h-4 text-gray-400"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
-                                  />
-                                </svg>
-                                <span className="text-xs text-gray-500">
-                                  {email.attachments.length} attachment
-                                  {email.attachments.length !== 1 ? "s" : ""}
-                                </span>
-                              </div>
-                            )}
-                          {/* Label button */}
-                          {labels.length > 0 && (
-                            <div className="relative">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setLabelPickerEmailId(
-                                    labelPickerEmailId === email.id
-                                      ? null
-                                      : email.id,
-                                  );
-                                }}
-                                className="text-gray-300 hover:text-gray-500 transition-colors"
-                                title="Labels"
-                              >
-                                <svg
-                                  className="w-4 h-4"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
-                                  />
-                                </svg>
-                              </button>
-                              {labelPickerEmailId === email.id && (
-                                <LabelPicker
-                                  labels={labels}
-                                  selectedLabels={email.labels || []}
-                                  onToggle={(labelId) =>
-                                    handleToggleEmailLabel(email.id, labelId)
-                                  }
-                                  onManageLabels={() => {
-                                    setLabelPickerEmailId(null);
-                                    setShowLabelManager(true);
-                                  }}
-                                  onClose={() => setLabelPickerEmailId(null)}
-                                />
-                              )}
-                            </div>
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+                            />
+                          </svg>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={(e) => handleArchive(e, email)}
+                          className="p-1 text-gray-400 hover:text-blue-600 rounded transition-colors"
+                          title="Archive"
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+                            />
+                          </svg>
+                        </button>
+                      )}
+                      <button
+                        onClick={(e) => handleDelete(e, email)}
+                        className="p-1 text-gray-400 hover:text-red-600 rounded transition-colors"
+                        title="Delete"
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                      </button>
+                      {/* Label button */}
+                      {labels.length > 0 && (
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setLabelPickerEmailId(
+                                labelPickerEmailId === email.id
+                                  ? null
+                                  : email.id,
+                              );
+                            }}
+                            className="p-1 text-gray-400 hover:text-gray-600 rounded transition-colors"
+                            title="Labels"
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                              />
+                            </svg>
+                          </button>
+                          {labelPickerEmailId === email.id && (
+                            <LabelPicker
+                              labels={labels}
+                              selectedLabels={email.labels || []}
+                              onToggle={(labelId) =>
+                                handleToggleEmailLabel(email.id, labelId)
+                              }
+                              onManageLabels={() => {
+                                setLabelPickerEmailId(null);
+                                setShowLabelManager(true);
+                              }}
+                              onClose={() => setLabelPickerEmailId(null)}
+                            />
                           )}
                         </div>
-                      </div>
+                      )}
                     </div>
-                  </div>
+                  </Link>
                 );
               })
             )}
@@ -1506,6 +1238,6 @@ export default function InboxPage() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

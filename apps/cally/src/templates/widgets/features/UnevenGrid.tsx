@@ -19,6 +19,7 @@ import { fontForRole } from "../../hero/fontUtils";
 import ImageToolbar from "../../hero/ImageToolbar";
 import { bgFilterToCSS } from "../../hero/layoutOptions";
 import { processRemoveBackground } from "../../hero/removeBackgroundUtil";
+import { getSectionTheme } from "../sectionTheme";
 
 interface UnevenGridProps {
   heading?: string;
@@ -88,6 +89,7 @@ export default function UnevenGrid({
   onCardStyleChange,
   onAddCustomFontType,
 }: UnevenGridProps) {
+  const t = getSectionTheme(brand.colorMode);
   const [headingSelected, setHeadingSelected] = useState(false);
   const [subheadingSelected, setSubheadingSelected] = useState(false);
   const [cardSel, setCardSel] = useState<CardSelection>(null);
@@ -209,7 +211,7 @@ export default function UnevenGrid({
   const headingStyle: React.CSSProperties = {
     fontSize: headingResolved.size,
     fontWeight: headingResolved.weight ?? 700,
-    color: headingResolved.color ?? "#1a1a1a",
+    color: headingResolved.color ?? t.heading,
     textAlign: styleOverrides?.headingTextAlign ?? "left",
     fontFamily: headingResolved.font || "inherit",
     lineHeight: 1.15,
@@ -221,7 +223,7 @@ export default function UnevenGrid({
   const subheadingStyle: React.CSSProperties = {
     fontSize: subheadingResolved.size,
     fontWeight: subheadingResolved.weight ?? "normal",
-    color: subheadingResolved.color ?? "#6b7280",
+    color: subheadingResolved.color ?? t.body,
     textAlign: styleOverrides?.subheadingTextAlign ?? "left",
     fontFamily: subheadingResolved.font || "inherit",
     margin: "0 0 40px",
@@ -237,7 +239,7 @@ export default function UnevenGrid({
   const cardTitleStyle: React.CSSProperties = {
     fontSize: cardTitleFont.size,
     fontWeight: cardTitleFont.weight ?? 800,
-    color: cardTitleFont.color || "#1a1a1a",
+    color: cardTitleFont.color || t.heading,
     fontFamily: cardTitleFont.font || "inherit",
     lineHeight: 1.15,
     margin: "0 0 8px",
@@ -248,7 +250,7 @@ export default function UnevenGrid({
   const cardDescStyle: React.CSSProperties = {
     fontSize: cardDescFont.size,
     fontWeight: cardDescFont.weight ?? "normal",
-    color: cardDescFont.color || "#4a4a4a",
+    color: cardDescFont.color || t.body,
     fontFamily: cardDescFont.font || "inherit",
     lineHeight: 1.6,
     margin: 0,
@@ -318,12 +320,12 @@ export default function UnevenGrid({
           font-weight: 700;
           margin: 0 0 8px;
           font-family: ${innerSubHeader.font || "inherit"};
-          color: ${innerSubHeader.color || "#1a1a1a"};
+          color: ${innerSubHeader.color || t.heading};
         }
         .${SCOPE}-header { margin-bottom: 40px; }
         .${SCOPE}-subheading {
           font-size: 1rem;
-          color: ${innerBody.color || "#6b7280"};
+          color: ${innerBody.color || t.body};
           margin: 0 0 40px;
           font-family: ${innerBody.font || "inherit"};
         }
@@ -363,15 +365,23 @@ export default function UnevenGrid({
         .${SCOPE}-card-text { padding: ${brand.cardStyle?.padding ?? 24}px ${brand.cardStyle?.padding ?? 24}px 0; }
         .${SCOPE}-card-title {
           font-size: ${cardTitleFont.size}px;
-          font-weight: ${cardTitleFont.weight ?? 800}; color: ${cardTitleFont.color || "#1a1a1a"}; margin: 0 0 8px;
+          font-weight: ${cardTitleFont.weight ?? 800}; color: ${cardTitleFont.color || t.heading}; margin: 0 0 8px;
           font-family: ${cardTitleFont.font || "inherit"}; line-height: 1.15;
         }
         .${SCOPE}-card-desc {
-          font-size: ${cardDescFont.size}px; color: ${cardDescFont.color || "#4a4a4a"}; line-height: 1.6; margin: 0;
+          font-size: ${cardDescFont.size}px; color: ${cardDescFont.color || t.body}; line-height: 1.6; margin: 0;
           font-family: ${cardDescFont.font || "inherit"};
         }
         .${SCOPE}-card-img-col {
           position: relative; flex: 1; overflow: hidden; margin-top: 16px;
+          border-radius: 0 0 ${brand.cardStyle?.borderRadius ?? 20}px ${brand.cardStyle?.borderRadius ?? 20}px;
+        }
+        .${SCOPE}-card--1 .${SCOPE}-card-img-col,
+        .${SCOPE}-card--2 .${SCOPE}-card-img-col {
+          border-radius: ${brand.cardStyle?.borderRadius ?? 20}px ${brand.cardStyle?.borderRadius ?? 20}px 0 0;
+        }
+        .${SCOPE}-card--3 .${SCOPE}-card-img-col {
+          border-radius: 0 ${brand.cardStyle?.borderRadius ?? 20}px ${brand.cardStyle?.borderRadius ?? 20}px 0;
         }
         .${SCOPE}-card-img-col--selected {
           outline: 2px solid #3b82f6; outline-offset: -2px;

@@ -242,6 +242,28 @@ export interface HeroStyleOverrides {
   mobileButtonX?: number;
   mobileButtonY?: number;
   mobileSectionHeight?: number; // px
+  /** Widget-specific: namecard display name (DoctorProfile) */
+  namecardName?: string;
+  /** Widget-specific: namecard role/title (DoctorProfile) */
+  namecardRole?: string;
+  namecardNameTypography?: TypographyRole;
+  namecardNameTextAlign?: "left" | "center" | "right";
+  namecardRoleTypography?: TypographyRole;
+  namecardRoleTextAlign?: "left" | "center" | "right";
+  /** Widget-specific: portrait image URL (DoctorProfile) */
+  portraitImage?: string;
+  portraitPosition?: string;
+  portraitZoom?: number;
+  portraitFilter?: string;
+  portraitBorderRadius?: number;
+  proofText?: string;
+  proofTextTypography?: TypographyRole;
+  proofTextTextAlign?: "left" | "center" | "right";
+  /** Widget-specific: tear background image (ThroughTheTear) */
+  tearBgImage?: string;
+  tearBgPosition?: string;
+  tearBgZoom?: number;
+  tearBgFilter?: string;
 }
 
 export interface AboutConfig {
@@ -293,6 +315,8 @@ export interface SectionOrderItem {
   enabled: boolean;
   /** Selected widget variant ID (from widget catalogue) */
   widgetId?: string;
+  /** Light or dark color mode for this section */
+  colorMode?: "light" | "dark";
 }
 
 /**
@@ -504,6 +528,8 @@ export interface SimpleLandingPageConfig {
   customFontTypes?: CustomFontType[];
   /** SEO configuration */
   seo?: SEOConfig;
+  /** Hero section color mode (light/dark) */
+  heroColorMode?: "light" | "dark";
 }
 
 /**

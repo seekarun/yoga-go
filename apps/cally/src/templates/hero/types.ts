@@ -52,6 +52,7 @@ export interface HeroTemplateProps {
   // Hero style overrides
   onHeroStyleOverrideChange?: (overrides: HeroStyleOverrides) => void;
   onHeroBgImageClick?: () => void;
+  onHeroPortraitImageClick?: () => void;
   onImageOffsetChange?: (x: number, y: number) => void;
   onImageZoomChange?: (zoom: number) => void;
   onHeroRemoveBgComplete?: (newUrl: string) => void;

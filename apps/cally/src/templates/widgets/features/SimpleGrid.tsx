@@ -9,6 +9,7 @@ import type {
 import type { WidgetBrandConfig } from "../types";
 import ResizableText from "../../hero/ResizableText";
 import { fontForRole } from "../../hero/fontUtils";
+import { getSectionTheme } from "../sectionTheme";
 
 interface SimpleGridProps {
   heading?: string;
@@ -49,6 +50,7 @@ export default function SimpleGrid({
   onCardChange,
   onAddCustomFontType,
 }: SimpleGridProps) {
+  const t = getSectionTheme(brand.colorMode);
   const [headingSelected, setHeadingSelected] = useState(false);
   const [subheadingSelected, setSubheadingSelected] = useState(false);
   const [cardTextSel, setCardTextSel] = useState<{
@@ -88,7 +90,7 @@ export default function SimpleGrid({
   const headingStyle: React.CSSProperties = {
     fontSize: headingResolved.size,
     fontWeight: headingResolved.weight ?? 700,
-    color: headingResolved.color ?? "#1a1a1a",
+    color: headingResolved.color ?? t.heading,
     textAlign: styleOverrides?.headingTextAlign ?? "left",
     fontFamily: headingResolved.font || "inherit",
     lineHeight: 1.15,
@@ -100,7 +102,7 @@ export default function SimpleGrid({
   const subheadingStyle: React.CSSProperties = {
     fontSize: subheadingResolved.size,
     fontWeight: subheadingResolved.weight ?? "normal",
-    color: subheadingResolved.color ?? "#6b7280",
+    color: subheadingResolved.color ?? t.body,
     textAlign: styleOverrides?.subheadingTextAlign ?? "left",
     fontFamily: subheadingResolved.font || "inherit",
     margin: "0 0 40px",
@@ -115,7 +117,7 @@ export default function SimpleGrid({
   const cardTitleStyle: React.CSSProperties = {
     fontSize: cardTitleFont.size,
     fontWeight: cardTitleFont.weight ?? 700,
-    color: cardTitleFont.color || "#1a1a1a",
+    color: cardTitleFont.color || t.heading,
     fontFamily: cardTitleFont.font || "inherit",
     lineHeight: 1.3,
     margin: 0,
@@ -125,7 +127,7 @@ export default function SimpleGrid({
   const cardDescFont = fontForRole(cardDescRole, brand);
   const cardDescStyle: React.CSSProperties = {
     fontSize: cardDescFont.size,
-    color: cardDescFont.color || "#6b7280",
+    color: cardDescFont.color || t.body,
     fontFamily: cardDescFont.font || "inherit",
     lineHeight: 1.7,
     margin: 0,
@@ -149,12 +151,12 @@ export default function SimpleGrid({
           font-weight: 700;
           margin: 0 0 8px;
           font-family: ${innerSubHeader.font || "inherit"};
-          color: ${innerSubHeader.color || "#1a1a1a"};
+          color: ${innerSubHeader.color || t.heading};
         }
 
         .${SCOPE}-subheading {
           font-size: 1rem;
-          color: ${innerBody.color || "#6b7280"};
+          color: ${innerBody.color || t.body};
           margin: 0 0 40px;
           font-family: ${innerBody.font || "inherit"};
         }
@@ -175,7 +177,7 @@ export default function SimpleGrid({
           width: 48px;
           height: 48px;
           border-radius: 12px;
-          background: #f3f4f6;
+          background: ${t.iconBg};
           display: flex;
           align-items: center;
           justify-content: center;
@@ -185,7 +187,7 @@ export default function SimpleGrid({
         .${SCOPE}-title {
           font-size: ${cardTitleFont.size}px;
           font-weight: ${cardTitleFont.weight ?? 700};
-          color: ${cardTitleFont.color || "#1a1a1a"};
+          color: ${cardTitleFont.color || t.heading};
           margin: 0;
           line-height: 1.3;
           font-family: ${cardTitleFont.font || "inherit"};
@@ -193,7 +195,7 @@ export default function SimpleGrid({
 
         .${SCOPE}-desc {
           font-size: ${cardDescFont.size}px;
-          color: ${cardDescFont.color || "#6b7280"};
+          color: ${cardDescFont.color || t.body};
           line-height: 1.7;
           margin: 0;
           font-family: ${cardDescFont.font || "inherit"};

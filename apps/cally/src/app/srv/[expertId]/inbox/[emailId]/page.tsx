@@ -329,7 +329,7 @@ export default function EmailDetailPage() {
 
   if (error || !email) {
     return (
-      <div className="px-6 lg:px-8 py-8">
+      <div className="py-8">
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
           <p className="text-red-700">{error || "Email not found"}</p>
           <Link
@@ -347,7 +347,7 @@ export default function EmailDetailPage() {
   if (showComposer) {
     const composerData = getComposerInitialData();
     return (
-      <div className="px-6 lg:px-8 py-6">
+      <div className="py-6">
         <EmailComposer
           mode={replyMode}
           originalEmailId={emailId}
@@ -368,8 +368,8 @@ export default function EmailDetailPage() {
   return (
     <>
       {/* Header */}
-      <div className="bg-white shadow">
-        <div className="px-6 lg:px-8 py-4">
+      <div className="bg-white shadow rounded-lg">
+        <div className="py-4 px-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-4 min-w-0">
               <Link
@@ -417,7 +417,7 @@ export default function EmailDetailPage() {
         </div>
       </div>
 
-      <div className="px-6 lg:px-8 py-6">
+      <div className="py-6">
         <div className="bg-white rounded-lg shadow">
           {/* Thread Messages or Single Email */}
           {email.threadMessages && email.threadMessages.length > 1 ? (

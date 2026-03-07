@@ -8,6 +8,7 @@ import type {
 } from "@/types/landing-page";
 import type { WidgetBrandConfig } from "../types";
 import { fontForRole } from "../../hero/fontUtils";
+import { getSectionTheme } from "../sectionTheme";
 import ResizableText from "../../hero/ResizableText";
 
 interface Testimonial {
@@ -75,6 +76,7 @@ export default function CardMatrix3x2({
   styleOverrides,
   onAddCustomFontType,
 }: CardMatrix3x2Props) {
+  const t2 = getSectionTheme(brand.colorMode);
   const [headingSelected, setHeadingSelected] = useState(false);
   const [subheadingSelected, setSubheadingSelected] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
@@ -113,7 +115,7 @@ export default function CardMatrix3x2({
   const headingStyle: React.CSSProperties = {
     fontSize: headingResolved.size,
     fontWeight: headingResolved.weight ?? 700,
-    color: headingResolved.color ?? "#1a1a1a",
+    color: headingResolved.color ?? t2.heading,
     textAlign: styleOverrides?.headingTextAlign ?? "center",
     fontFamily: headingResolved.font || "inherit",
     lineHeight: 1.15,
@@ -126,7 +128,7 @@ export default function CardMatrix3x2({
   const subheadingStyle: React.CSSProperties = {
     fontSize: subheadingResolved.size,
     fontWeight: subheadingResolved.weight ?? "normal",
-    color: subheadingResolved.color ?? "#6b7280",
+    color: subheadingResolved.color ?? t2.body,
     textAlign: subAlign,
     fontFamily: subheadingResolved.font || "inherit",
     maxWidth: 600,
@@ -158,13 +160,13 @@ export default function CardMatrix3x2({
         .${SCOPE}-heading {
           font-size: clamp(1.75rem, 3vw, 2.5rem);
           font-weight: 700;
-          color: ${innerSubHeader.color || "#1a1a1a"};
+          color: ${innerSubHeader.color || t2.heading};
           margin: 0 0 12px;
           font-family: ${innerSubHeader.font || "inherit"};
         }
         .${SCOPE}-subheading {
           font-size: 1.1rem;
-          color: ${innerBody.color || "#6b7280"};
+          color: ${innerBody.color || t2.body};
           max-width: 600px;
           margin: 0 auto;
           font-family: ${innerBody.font || "inherit"};
@@ -188,7 +190,7 @@ export default function CardMatrix3x2({
           }
         }
         .${SCOPE}-card {
-          background: ${brand.cardStyle?.bgColor || brand.secondaryColor || "#ffffff"};
+          background: ${brand.cardStyle?.bgColor || brand.secondaryColor || t2.bg};
           border-radius: ${brand.cardStyle?.borderRadius ?? 16}px;
           padding: ${brand.cardStyle?.padding ?? 32}px;
           border: none;
@@ -215,7 +217,7 @@ export default function CardMatrix3x2({
         .${SCOPE}-quote-text {
           font-size: ${innerBody.size}px;
           line-height: 1.75;
-          color: #374151;
+          color: ${t2.body};
           flex: 1;
           margin-bottom: 24px;
           font-family: ${innerBody.font || "inherit"};
@@ -226,7 +228,7 @@ export default function CardMatrix3x2({
           gap: 12px;
           margin-top: auto;
           padding-top: 20px;
-          border-top: 1px solid #e5e7eb;
+          border-top: 1px solid ${t2.border};
         }
         .${SCOPE}-avatar {
           width: 44px;
@@ -243,12 +245,12 @@ export default function CardMatrix3x2({
         .${SCOPE}-author-name {
           font-weight: ${innerSubHeader.weight ?? 600};
           font-size: ${innerSubHeader.size}px;
-          color: #1a1a1a;
+          color: ${t2.heading};
           font-family: ${innerSubHeader.font || "inherit"};
         }
         .${SCOPE}-author-title {
           font-size: 0.8rem;
-          color: #9ca3af;
+          color: ${t2.muted};
           margin-top: 2px;
           font-family: ${innerBody.font || "inherit"};
         }

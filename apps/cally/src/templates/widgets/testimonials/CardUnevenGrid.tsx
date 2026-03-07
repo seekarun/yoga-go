@@ -8,6 +8,7 @@ import type {
 } from "@/types/landing-page";
 import type { WidgetBrandConfig } from "../types";
 import { fontForRole } from "../../hero/fontUtils";
+import { getSectionTheme } from "../sectionTheme";
 import ResizableText from "../../hero/ResizableText";
 
 interface Testimonial {
@@ -59,6 +60,7 @@ export default function CardUnevenGrid({
   styleOverrides,
   onAddCustomFontType,
 }: CardUnevenGridProps) {
+  const th = getSectionTheme(brand.colorMode);
   const [headingSelected, setHeadingSelected] = useState(false);
   const [subheadingSelected, setSubheadingSelected] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
@@ -98,7 +100,7 @@ export default function CardUnevenGrid({
   const headingStyle: React.CSSProperties = {
     fontSize: headingResolved.size,
     fontWeight: headingResolved.weight ?? 700,
-    color: headingResolved.color ?? "#1a1a1a",
+    color: headingResolved.color ?? th.heading,
     textAlign: styleOverrides?.headingTextAlign ?? "center",
     fontFamily: headingResolved.font || "inherit",
     lineHeight: 1.15,
@@ -111,7 +113,7 @@ export default function CardUnevenGrid({
   const subheadingStyle: React.CSSProperties = {
     fontSize: subheadingResolved.size,
     fontWeight: subheadingResolved.weight ?? "normal",
-    color: subheadingResolved.color ?? "#6b7280",
+    color: subheadingResolved.color ?? th.body,
     textAlign: subAlign,
     fontFamily: subheadingResolved.font || "inherit",
     maxWidth: 600,
@@ -143,13 +145,13 @@ export default function CardUnevenGrid({
         .${SCOPE}-heading {
           font-size: clamp(1.75rem, 3vw, 2.5rem);
           font-weight: 700;
-          color: ${innerSubHeader.color || "#1a1a1a"};
+          color: ${innerSubHeader.color || th.heading};
           margin: 0 0 12px;
           font-family: ${innerSubHeader.font || "inherit"};
         }
         .${SCOPE}-subheading {
           font-size: 1.1rem;
-          color: ${innerBody.color || "#6b7280"};
+          color: ${innerBody.color || th.body};
           max-width: 600px;
           margin: 0 auto;
           font-family: ${innerBody.font || "inherit"};
@@ -246,24 +248,24 @@ export default function CardUnevenGrid({
 
         /* ---- light cards ---- */
         .${SCOPE}-light {
-          background: ${brand.cardStyle?.bgColor || brand.secondaryColor || "#f9fafb"};
-          border: 1px solid #eee;
+          background: ${brand.cardStyle?.bgColor || brand.secondaryColor || th.surfaceAlt};
+          border: 1px solid ${th.border};
         }
         .${SCOPE}-light .${SCOPE}-avatar {
           background: ${primary};
           color: ${getContrastColor(primary)};
         }
         .${SCOPE}-light .${SCOPE}-rating {
-          color: #1a1a1a;
+          color: ${th.heading};
         }
         .${SCOPE}-light .${SCOPE}-quote {
-          color: #1f2937;
+          color: ${th.body};
         }
         .${SCOPE}-light .${SCOPE}-author-name {
-          color: #1a1a1a;
+          color: ${th.heading};
         }
         .${SCOPE}-light .${SCOPE}-author-title {
-          color: #6b7280;
+          color: ${th.body};
         }
 
         @media (max-width: 768px) {

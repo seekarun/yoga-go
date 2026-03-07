@@ -22,6 +22,7 @@ import { fontForRole } from "../../hero/fontUtils";
 import ImageToolbar from "../../hero/ImageToolbar";
 import { bgFilterToCSS } from "../../hero/layoutOptions";
 import { processRemoveBackground } from "../../hero/removeBackgroundUtil";
+import { getSectionTheme } from "../sectionTheme";
 
 interface StaticHorizontalProps {
   products: Product[];
@@ -248,6 +249,7 @@ export default function StaticHorizontal({
   onCardStyleChange,
   onAddCustomFontType,
 }: StaticHorizontalProps) {
+  const t = getSectionTheme(brand.colorMode);
   const active = useMemo(() => products.filter((p) => p.isActive), [products]);
 
   const [headingSelected, setHeadingSelected] = useState(false);
@@ -368,7 +370,7 @@ export default function StaticHorizontal({
   const headingStyle: React.CSSProperties = {
     fontSize: headingResolved.size,
     fontWeight: headingResolved.weight ?? 700,
-    color: headingResolved.color ?? "#1a1a1a",
+    color: headingResolved.color ?? t.heading,
     textAlign: styleOverrides?.headingTextAlign ?? "center",
     fontFamily: headingResolved.font || "inherit",
     lineHeight: 1.15,
@@ -381,7 +383,7 @@ export default function StaticHorizontal({
   const subheadingStyle: React.CSSProperties = {
     fontSize: subheadingResolved.size,
     fontWeight: subheadingResolved.weight ?? "normal",
-    color: subheadingResolved.color ?? "#6b7280",
+    color: subheadingResolved.color ?? t.body,
     textAlign: subAlign,
     fontFamily: subheadingResolved.font || "inherit",
     maxWidth: 600,
@@ -470,13 +472,13 @@ export default function StaticHorizontal({
         .${SCOPE}-heading {
           font-size: clamp(1.75rem, 3vw, 2.5rem);
           font-weight: 700;
-          color: ${innerSubHeader.color || "#1a1a1a"};
+          color: ${innerSubHeader.color || t.heading};
           margin: 0 0 12px;
           font-family: ${innerSubHeader.font || "inherit"};
         }
         .${SCOPE}-subheading {
           font-size: 1.1rem;
-          color: ${innerBody.color || "#6b7280"};
+          color: ${innerBody.color || t.body};
           max-width: 600px;
           margin: 0 auto;
           font-family: ${innerBody.font || "inherit"};
@@ -495,11 +497,11 @@ export default function StaticHorizontal({
         .${SCOPE}-card {
           display: flex;
           align-items: stretch;
-          background: ${brand.cardStyle?.bgColor || brand.secondaryColor || "#fff"};
+          background: ${brand.cardStyle?.bgColor || brand.secondaryColor || t.bg};
           border-radius: ${brand.cardStyle?.borderRadius ?? 20}px;
           overflow: hidden;
           box-shadow: 0 2px 20px rgba(0, 0, 0, 0.06);
-          border: 1px solid #f0f0f0;
+          border: 1px solid ${t.border};
           transition: box-shadow 0.3s ease;
         }
         .${SCOPE}-card:hover {
@@ -534,7 +536,7 @@ export default function StaticHorizontal({
         .${SCOPE}-img-placeholder {
           position: absolute;
           inset: 0;
-          background: #f3f4f6;
+          background: ${t.surfaceAlt};
           display: flex;
           align-items: center;
           justify-content: center;
@@ -630,7 +632,7 @@ export default function StaticHorizontal({
         .${SCOPE}-name {
           font-size: ${innerSubHeader.size}px;
           font-weight: ${innerSubHeader.weight ?? 700};
-          color: ${innerSubHeader.color || "#1a1a1a"};
+          color: ${innerSubHeader.color || t.heading};
           margin: 0 0 12px;
           font-family: ${innerSubHeader.font || "inherit"};
           line-height: 1.3;
@@ -638,7 +640,7 @@ export default function StaticHorizontal({
         .${SCOPE}-desc {
           font-size: ${innerBody.size}px;
           font-weight: ${innerBody.weight ?? 400};
-          color: ${innerBody.color || "#6b7280"};
+          color: ${innerBody.color || t.body};
           line-height: 1.7;
           margin: 0 0 24px;
           font-family: ${innerBody.font || "inherit"};
@@ -646,7 +648,7 @@ export default function StaticHorizontal({
         .${SCOPE}-price {
           font-size: 1.5rem;
           font-weight: 800;
-          color: ${innerSubHeader.color || "#1a1a1a"};
+          color: ${innerSubHeader.color || t.heading};
           margin: 0 0 20px;
           font-family: ${innerBody.font || "inherit"};
         }

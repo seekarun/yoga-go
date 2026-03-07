@@ -11,6 +11,7 @@ import type { WidgetBrandConfig } from "../types";
 import { getContrastColor } from "@/lib/colorPalette";
 import ResizableText from "../../hero/ResizableText";
 import { fontForRole } from "../../hero/fontUtils";
+import { getSectionTheme } from "../sectionTheme";
 
 interface VerticalImageScrollProps {
   title?: string;
@@ -60,6 +61,7 @@ export default function VerticalImageScroll({
   onStyleOverrideChange,
   onAddCustomFontType,
 }: VerticalImageScrollProps) {
+  const t = getSectionTheme(brand.colorMode);
   const primary = brand.primaryColor || "#1a1a1a";
 
   const [titleSelected, setTitleSelected] = useState(false);
@@ -131,7 +133,7 @@ export default function VerticalImageScroll({
   const titleStyle: React.CSSProperties = {
     fontSize: titleResolved.size,
     fontWeight: titleResolved.weight ?? 700,
-    color: titleResolved.color ?? "#1a1a1a",
+    color: titleResolved.color ?? t.heading,
     textAlign: overrides?.titleTextAlign ?? "left",
     fontFamily: titleResolved.font || "inherit",
     lineHeight: 1.08,
@@ -142,7 +144,7 @@ export default function VerticalImageScroll({
   const subtitleStyle: React.CSSProperties = {
     fontSize: subtitleResolved.size,
     fontWeight: subtitleResolved.weight ?? "normal",
-    color: subtitleResolved.color ?? "#6b7280",
+    color: subtitleResolved.color ?? t.body,
     textAlign: overrides?.subtitleTextAlign ?? "left",
     fontFamily: subtitleResolved.font || "inherit",
     lineHeight: 1.7,
@@ -173,8 +175,8 @@ export default function VerticalImageScroll({
         .${SCOPE}-scroll-wrap::before, .${SCOPE}-scroll-wrap::after {
           content: ""; position: absolute; left: 0; right: 0; height: 100px; z-index: 2; pointer-events: none;
         }
-        .${SCOPE}-scroll-wrap::before { top: 0; background: linear-gradient(to bottom, #fff, transparent); }
-        .${SCOPE}-scroll-wrap::after { bottom: 0; background: linear-gradient(to top, #fff, transparent); }
+        .${SCOPE}-scroll-wrap::before { top: 0; background: linear-gradient(to bottom, ${t.bg}, transparent); }
+        .${SCOPE}-scroll-wrap::after { bottom: 0; background: linear-gradient(to top, ${t.bg}, transparent); }
         .${SCOPE}-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; height: 100%; }
         .${SCOPE}-col { overflow: hidden; }
         .${SCOPE}-track { display: flex; flex-direction: column; gap: 12px; }

@@ -13,6 +13,7 @@ import type {
   CustomFontType,
 } from "@/types/landing-page";
 import { fontForRole } from "../../hero/fontUtils";
+import { getSectionTheme } from "../sectionTheme";
 import { getContrastColor } from "@/lib/colorPalette";
 import ResizableText from "../../hero/ResizableText";
 
@@ -82,6 +83,7 @@ export default function AnimatedCardScroll({
   styleOverrides,
   onAddCustomFontType,
 }: AnimatedCardScrollProps) {
+  const th = getSectionTheme(brand.colorMode);
   const limited = useMemo(() => testimonials.slice(0, 6), [testimonials]);
   const count = limited.length;
 
@@ -202,7 +204,7 @@ export default function AnimatedCardScroll({
   const headingStyle: React.CSSProperties = {
     fontSize: headingResolved.size,
     fontWeight: headingResolved.weight ?? 700,
-    color: headingResolved.color ?? "#1a1a1a",
+    color: headingResolved.color ?? th.heading,
     textAlign: styleOverrides?.headingTextAlign ?? "center",
     fontFamily: headingResolved.font || "inherit",
     lineHeight: 1.15,
@@ -215,7 +217,7 @@ export default function AnimatedCardScroll({
   const subheadingStyle: React.CSSProperties = {
     fontSize: subheadingResolved.size,
     fontWeight: subheadingResolved.weight ?? "normal",
-    color: subheadingResolved.color ?? "#6b7280",
+    color: subheadingResolved.color ?? th.body,
     textAlign: subAlign,
     fontFamily: subheadingResolved.font || "inherit",
     maxWidth: 600,
@@ -253,13 +255,13 @@ export default function AnimatedCardScroll({
         .${SCOPE}-heading {
           font-size: clamp(1.75rem, 3vw, 2.5rem);
           font-weight: 700;
-          color: ${innerSubHeader.color || "#1a1a1a"};
+          color: ${innerSubHeader.color || th.heading};
           margin: 0 0 12px;
           font-family: ${innerSubHeader.font || "inherit"};
         }
         .${SCOPE}-subheading {
           font-size: 1.1rem;
-          color: ${innerBody.color || "#6b7280"};
+          color: ${innerBody.color || th.body};
           max-width: 600px;
           margin: 0 auto;
           font-family: ${innerBody.font || "inherit"};
@@ -294,11 +296,11 @@ export default function AnimatedCardScroll({
         .${SCOPE}-card {
           flex-shrink: 0;
           width: var(--card-w);
-          background: ${brand.cardStyle?.bgColor || brand.secondaryColor || "#fff"};
+          background: ${brand.cardStyle?.bgColor || brand.secondaryColor || th.bg};
           border-radius: ${brand.cardStyle?.borderRadius ?? 20}px;
           padding: ${brand.cardStyle?.padding ?? 32}px;
           box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
-          border: 1px solid #f0f0f0;
+          border: 1px solid ${th.border};
           display: flex;
           flex-direction: column;
           opacity: 1;
@@ -333,7 +335,7 @@ export default function AnimatedCardScroll({
         .${SCOPE}-quote {
           font-size: ${innerBody.size}px;
           line-height: 1.7;
-          color: #1f2937;
+          color: ${th.body};
           font-weight: 500;
           margin: 0 0 24px;
           font-family: ${innerBody.font || "inherit"};
@@ -365,12 +367,12 @@ export default function AnimatedCardScroll({
         .${SCOPE}-author-name {
           font-weight: ${innerSubHeader.weight ?? 600};
           font-size: ${innerSubHeader.size}px;
-          color: #1a1a1a;
+          color: ${th.heading};
           font-family: ${innerSubHeader.font || "inherit"};
         }
         .${SCOPE}-author-title {
           font-size: 0.8rem;
-          color: #6b7280;
+          color: ${th.body};
           margin-top: 2px;
           font-family: ${innerBody.font || "inherit"};
         }
@@ -427,7 +429,7 @@ export default function AnimatedCardScroll({
           width: 8px;
           height: 8px;
           border-radius: 4px;
-          background: #d1d5db;
+          background: ${th.border};
           border: none;
           padding: 0;
           cursor: pointer;

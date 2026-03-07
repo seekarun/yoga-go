@@ -10,6 +10,7 @@ import type { WidgetBrandConfig } from "../types";
 import { getContrastColor } from "@/lib/colorPalette";
 import ResizableText from "../../hero/ResizableText";
 import { fontForRole } from "../../hero/fontUtils";
+import { getSectionTheme } from "../sectionTheme";
 
 interface StatsBoxesProps {
   title?: string;
@@ -52,6 +53,7 @@ export default function StatsBoxes({
   onStyleOverrideChange,
   onAddCustomFontType,
 }: StatsBoxesProps) {
+  const t = getSectionTheme(brand.colorMode);
   const primary = brand.primaryColor || "#6366f1";
 
   const [titleSelected, setTitleSelected] = useState(false);
@@ -92,7 +94,7 @@ export default function StatsBoxes({
   const titleStyle: React.CSSProperties = {
     fontSize: titleResolved.size,
     fontWeight: titleResolved.weight ?? 700,
-    color: titleResolved.color ?? "#111",
+    color: titleResolved.color ?? t.heading,
     textAlign: overrides?.titleTextAlign ?? "left",
     fontFamily: titleResolved.font || "inherit",
     lineHeight: 1.12,
@@ -103,7 +105,7 @@ export default function StatsBoxes({
   const subtitleStyle: React.CSSProperties = {
     fontSize: subtitleResolved.size,
     fontWeight: subtitleResolved.weight ?? "normal",
-    color: subtitleResolved.color ?? "#6b7280",
+    color: subtitleResolved.color ?? t.body,
     textAlign: overrides?.subtitleTextAlign ?? "left",
     fontFamily: subtitleResolved.font || "inherit",
     lineHeight: 1.7,
@@ -169,7 +171,7 @@ export default function StatsBoxes({
         .${SCOPE}-img-tile {
           border-radius: 20px;
           overflow: hidden;
-          background: #f0eee9;
+          background: ${t.surfaceAlt};
           aspect-ratio: 1;
           position: relative;
         }
@@ -187,12 +189,12 @@ export default function StatsBoxes({
           justify-content: flex-end;
           aspect-ratio: 1;
         }
-        .${SCOPE}-stat--light { background: #f5f5f0; }
-        .${SCOPE}-stat--warm { background: #ede8e3; }
+        .${SCOPE}-stat--light { background: ${t.surfaceAlt}; }
+        .${SCOPE}-stat--warm { background: ${t.iconBg}; }
         .${SCOPE}-stat-value {
           font-size: clamp(2rem, 4vw, 3rem);
           font-weight: ${innerHeader.weight ?? 700};
-          color: ${innerHeader.color || "#111"};
+          color: ${innerHeader.color || t.heading};
           margin: 0 0 4px;
           font-family: ${innerHeader.font || "inherit"};
           letter-spacing: -0.02em;
@@ -200,7 +202,7 @@ export default function StatsBoxes({
         }
         .${SCOPE}-stat-label {
           font-size: ${innerBody.size}px;
-          color: ${innerBody.color || "#6b7280"};
+          color: ${innerBody.color || t.body};
           margin: 0;
           font-family: ${innerBody.font || "inherit"};
           font-weight: ${innerBody.weight ?? 500};

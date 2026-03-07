@@ -14,6 +14,7 @@ import type {
   CustomFontType,
 } from "@/types/landing-page";
 import { fontForRole } from "../../hero/fontUtils";
+import { getSectionTheme } from "../sectionTheme";
 import ResizableText from "../../hero/ResizableText";
 
 interface Testimonial {
@@ -86,6 +87,7 @@ export default function AnimatedScrambledCards({
   styleOverrides,
   onAddCustomFontType,
 }: AnimatedScrambledCardsProps) {
+  const th = getSectionTheme(brand.colorMode);
   const limited = useMemo(() => testimonials.slice(0, 6), [testimonials]);
   const count = limited.length;
 
@@ -205,7 +207,7 @@ export default function AnimatedScrambledCards({
   const headingStyle: React.CSSProperties = {
     fontSize: headingResolved.size,
     fontWeight: headingResolved.weight ?? 700,
-    color: headingResolved.color ?? "#fff",
+    color: headingResolved.color ?? th.heading,
     textAlign: styleOverrides?.headingTextAlign ?? "center",
     fontFamily: headingResolved.font || "inherit",
     lineHeight: 1.15,
@@ -218,7 +220,7 @@ export default function AnimatedScrambledCards({
   const subheadingStyle: React.CSSProperties = {
     fontSize: subheadingResolved.size,
     fontWeight: subheadingResolved.weight ?? "normal",
-    color: subheadingResolved.color ?? "rgba(255,255,255,0.55)",
+    color: subheadingResolved.color ?? th.body,
     textAlign: subAlign,
     fontFamily: subheadingResolved.font || "inherit",
     maxWidth: 600,
@@ -254,13 +256,13 @@ export default function AnimatedScrambledCards({
         .${SCOPE}-heading {
           font-size: clamp(1.75rem, 3vw, 2.5rem);
           font-weight: 700;
-          color: ${innerSubHeader.color || "#fff"};
+          color: ${innerSubHeader.color || th.heading};
           margin: 0 0 12px;
           font-family: ${innerSubHeader.font || "inherit"};
         }
         .${SCOPE}-subheading {
           font-size: 1.1rem;
-          color: ${innerBody.color || "rgba(255,255,255,0.55)"};
+          color: ${innerBody.color || th.body};
           max-width: 600px;
           margin: 0 auto;
           font-family: ${innerBody.font || "inherit"};

@@ -8,6 +8,7 @@ import { fontForRole } from "../../hero/fontUtils";
 import ImageToolbar from "../../hero/ImageToolbar";
 import { bgFilterToCSS } from "../../hero/layoutOptions";
 import { processRemoveBackground } from "../../hero/removeBackgroundUtil";
+import { getSectionTheme } from "../sectionTheme";
 
 interface LeftImageProps {
   title?: string;
@@ -66,6 +67,7 @@ export default function LeftImage({
   onStyleOverrideChange,
   onAddCustomFontType,
 }: LeftImageProps) {
+  const t = getSectionTheme(brand.colorMode);
   const primary = brand.primaryColor || "#1a1a1a";
   const imgSrc = overrides?.bgRemovedImage || image || PLACEHOLDER_IMAGE;
 
@@ -159,7 +161,7 @@ export default function LeftImage({
   const paragraphStyle: React.CSSProperties = {
     fontSize: bodyResolved.size,
     fontWeight: bodyResolved.weight ?? "normal",
-    color: bodyResolved.color ?? "#4a4a4a",
+    color: bodyResolved.color ?? t.body,
     textAlign: overrides?.textAlign ?? "left",
     fontFamily: bodyResolved.font || "inherit",
     lineHeight: 1.8,
@@ -199,7 +201,7 @@ export default function LeftImage({
           display: grid;
           grid-template-columns: 1fr 1fr;
           min-height: 480px;
-          background: ${brand.cardStyle?.bgColor || brand.secondaryColor || "#faf6f1"};
+          background: ${brand.cardStyle?.bgColor || brand.secondaryColor || t.surfaceAlt};
           border-radius: 16px;
           overflow: hidden;
           max-width: 1200px;

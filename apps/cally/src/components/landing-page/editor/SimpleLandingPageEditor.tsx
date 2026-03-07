@@ -102,6 +102,8 @@ export default function SimpleLandingPageEditor({
   const [showButtonEditor, setShowButtonEditor] = useState(false);
   const [showAboutImageEditor, setShowAboutImageEditor] = useState(false);
   const [showFeatureImageEditor, setShowFeatureImageEditor] = useState(false);
+  const [showPortraitImageEditor, setShowPortraitImageEditor] = useState(false);
+  const [showTearBgImageEditor, setShowTearBgImageEditor] = useState(false);
   const [editingFeatureCardId, setEditingFeatureCardId] = useState<
     string | null
   >(null);
@@ -453,6 +455,7 @@ export default function SimpleLandingPageEditor({
           heroEnabled: landingPage.heroEnabled ?? true,
           heroWidgetId: landingPage.heroWidgetId,
           heroStyleOverrides: landingPage.heroStyleOverrides,
+          heroColorMode: landingPage.heroColorMode,
           productsConfig: landingPage.productsConfig,
           footerEnabled: landingPage.footerEnabled ?? true,
           sections: finalSections,
@@ -777,6 +780,39 @@ export default function SimpleLandingPageEditor({
           imagePosition: data.imagePosition,
           imageZoom: data.imageZoom,
         } as AboutConfig,
+      }));
+      setIsDirty(true);
+    },
+    [],
+  );
+
+  // Handle portrait image change (DoctorProfile hero widget)
+  const handlePortraitImageChange = useCallback(
+    (data: { imageUrl: string; imagePosition: string; imageZoom: number }) => {
+      setConfig((prev) => ({
+        ...prev,
+        heroStyleOverrides: {
+          ...prev.heroStyleOverrides,
+          portraitImage: data.imageUrl || undefined,
+          portraitPosition: data.imagePosition,
+          portraitZoom: data.imageZoom,
+        },
+      }));
+      setIsDirty(true);
+    },
+    [],
+  );
+
+  const handleTearBgImageChange = useCallback(
+    (data: { imageUrl: string; imagePosition: string; imageZoom: number }) => {
+      setConfig((prev) => ({
+        ...prev,
+        heroStyleOverrides: {
+          ...prev.heroStyleOverrides,
+          tearBgImage: data.imageUrl || undefined,
+          tearBgPosition: data.imagePosition,
+          tearBgZoom: data.imageZoom,
+        },
       }));
       setIsDirty(true);
     },
@@ -1715,6 +1751,27 @@ export default function SimpleLandingPageEditor({
     setIsDirty(true);
   }, []);
 
+  const handleHeroColorModeChange = useCallback((mode: "light" | "dark") => {
+    setConfig((prev) => ({
+      ...prev,
+      heroColorMode: mode,
+    }));
+    setIsDirty(true);
+  }, []);
+
+  const handleSectionColorModeChange = useCallback(
+    (sectionId: string, mode: "light" | "dark") => {
+      setConfig((prev) => ({
+        ...prev,
+        sections: (prev.sections || []).map((s) =>
+          s.id === sectionId ? { ...s, colorMode: mode } : s,
+        ),
+      }));
+      setIsDirty(true);
+    },
+    [],
+  );
+
   // Brand colour handlers
   const handleBrandColorChange = useCallback(
     (color: string) => {
@@ -2395,61 +2452,85 @@ export default function SimpleLandingPageEditor({
                 </p>
 
                 {/* Additional custom colours */}
-                {(config.customColors || []).length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-gray-100">
-                    <label className="text-xs text-gray-500 mb-2 block">
-                      Additional
-                    </label>
-                    <div className="flex flex-col gap-1.5">
-                      {(config.customColors || []).map((cc, i) => (
+                <div className="mt-3 pt-3 border-t border-gray-100">
+                  <label className="text-xs text-gray-500 mb-2 block">
+                    Additional
+                  </label>
+                  <div className="flex flex-col gap-1.5">
+                    {(config.customColors || []).map((cc, i) => (
+                      <div
+                        key={`${cc.name}-${i}`}
+                        className="flex items-center gap-2"
+                      >
                         <div
-                          key={`${cc.name}-${i}`}
-                          className="flex items-center gap-2"
+                          className="h-7 flex-1 rounded-md border border-gray-200 flex items-center gap-2 px-2"
+                          style={{ backgroundColor: cc.hex }}
                         >
-                          <div
-                            className="h-7 flex-1 rounded-md border border-gray-200 flex items-center gap-2 px-2"
-                            style={{ backgroundColor: cc.hex }}
+                          <span
+                            className="text-[11px] font-medium"
+                            style={{
+                              color:
+                                hexToHsl(cc.hex).l > 50 ? "#374151" : "#fff",
+                            }}
                           >
-                            <span
-                              className="text-[11px] font-medium"
-                              style={{
-                                color:
-                                  hexToHsl(cc.hex).l > 50 ? "#374151" : "#fff",
-                              }}
-                            >
-                              {cc.name}
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleCustomColorsChange(
-                                (config.customColors || []).filter(
-                                  (_, idx) => idx !== i,
-                                ),
-                              )
-                            }
-                            className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
-                            title="Remove colour"
-                          >
-                            <svg
-                              width="14"
-                              height="14"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                            >
-                              <line x1="18" y1="6" x2="6" y2="18" />
-                              <line x1="6" y1="6" x2="18" y2="18" />
-                            </svg>
-                          </button>
+                            {cc.name}
+                          </span>
                         </div>
-                      ))}
-                    </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleCustomColorsChange(
+                              (config.customColors || []).filter(
+                                (_, idx) => idx !== i,
+                              ),
+                            )
+                          }
+                          className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+                          title="Remove colour"
+                        >
+                          <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                          >
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const existing = config.customColors || [];
+                        const name = `Color ${existing.length + 1}`;
+                        handleCustomColorsChange([
+                          ...existing,
+                          { name, hex: "#6b7280" },
+                        ]);
+                      }}
+                      className="h-7 w-full rounded-md border border-dashed border-gray-300 flex items-center justify-center gap-1 text-[11px] text-gray-500 hover:border-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                    >
+                      <svg
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                      >
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                      Add colour
+                    </button>
                   </div>
-                )}
+                </div>
               </div>
 
               {/* Typography (collapsible sub-menu) */}
@@ -3524,6 +3605,9 @@ export default function SimpleLandingPageEditor({
             onSectionMoveDown={handleSectionMoveDown}
             onWidgetChange={handleWidgetChange}
             onHeroWidgetChange={handleHeroWidgetChange}
+            heroColorMode={config.heroColorMode}
+            onHeroColorModeChange={handleHeroColorModeChange}
+            onSectionColorModeChange={handleSectionColorModeChange}
           />
         )}
 
@@ -3693,7 +3777,14 @@ export default function SimpleLandingPageEditor({
                   onAboutParagraphChange={handleAboutParagraphChange}
                   onAboutImageClick={() => setShowAboutImageEditor(true)}
                   onHeroStyleOverrideChange={handleHeroStyleOverrideChange}
-                  onHeroBgImageClick={() => setShowImageEditor(true)}
+                  onHeroBgImageClick={() =>
+                    config.heroWidgetId === "through-the-tear"
+                      ? setShowTearBgImageEditor(true)
+                      : setShowImageEditor(true)
+                  }
+                  onHeroPortraitImageClick={() =>
+                    setShowPortraitImageEditor(true)
+                  }
                   onImageOffsetChange={handleImageOffsetChange}
                   onImageZoomChange={handleImageZoomChange}
                   onHeroRemoveBgComplete={handleHeroRemoveBgComplete}
@@ -3849,6 +3940,34 @@ export default function SimpleLandingPageEditor({
         title="Edit About Image"
         aspectRatio={currentTemplateImageConfig.aboutImage}
         defaultSearchQuery="portrait professional"
+        uploadEndpoint="/api/data/app/tenant/landing-page/upload"
+      />
+
+      {/* Portrait Image Editor Overlay (DoctorProfile hero widget) */}
+      <ImageEditorOverlay
+        isOpen={showPortraitImageEditor}
+        onClose={() => setShowPortraitImageEditor(false)}
+        onSave={handlePortraitImageChange}
+        currentImage={config.heroStyleOverrides?.portraitImage}
+        currentPosition={config.heroStyleOverrides?.portraitPosition}
+        currentZoom={config.heroStyleOverrides?.portraitZoom}
+        title="Edit Portrait Image"
+        aspectRatio="3/4"
+        defaultSearchQuery="portrait professional"
+        uploadEndpoint="/api/data/app/tenant/landing-page/upload"
+      />
+
+      {/* Tear Background Image Editor Overlay (ThroughTheTear hero widget) */}
+      <ImageEditorOverlay
+        isOpen={showTearBgImageEditor}
+        onClose={() => setShowTearBgImageEditor(false)}
+        onSave={handleTearBgImageChange}
+        currentImage={config.heroStyleOverrides?.tearBgImage}
+        currentPosition={config.heroStyleOverrides?.tearBgPosition}
+        currentZoom={config.heroStyleOverrides?.tearBgZoom}
+        title="Edit Tear Background Image"
+        aspectRatio="16/9"
+        defaultSearchQuery="landscape nature"
         uploadEndpoint="/api/data/app/tenant/landing-page/upload"
       />
 

@@ -8,6 +8,7 @@ import type {
 } from "@/types/landing-page";
 import type { WidgetBrandConfig } from "../types";
 import { fontForRole } from "../../hero/fontUtils";
+import { getSectionTheme } from "../sectionTheme";
 import ResizableText from "../../hero/ResizableText";
 
 interface Testimonial {
@@ -77,6 +78,7 @@ export default function SolidCards({
   styleOverrides,
   onAddCustomFontType,
 }: SolidCardsProps) {
+  const t2 = getSectionTheme(brand.colorMode);
   const [headingSelected, setHeadingSelected] = useState(false);
   const [subheadingSelected, setSubheadingSelected] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
@@ -120,7 +122,7 @@ export default function SolidCards({
   const headingStyle: React.CSSProperties = {
     fontSize: headingResolved.size,
     fontWeight: headingResolved.weight ?? 700,
-    color: headingResolved.color ?? "#1a1a1a",
+    color: headingResolved.color ?? t2.heading,
     textAlign: styleOverrides?.headingTextAlign ?? "center",
     fontFamily: headingResolved.font || "inherit",
     lineHeight: 1.15,
@@ -133,7 +135,7 @@ export default function SolidCards({
   const subheadingStyle: React.CSSProperties = {
     fontSize: subheadingResolved.size,
     fontWeight: subheadingResolved.weight ?? "normal",
-    color: subheadingResolved.color ?? "#6b7280",
+    color: subheadingResolved.color ?? t2.body,
     textAlign: subAlign,
     fontFamily: subheadingResolved.font || "inherit",
     maxWidth: 600,
@@ -165,13 +167,13 @@ export default function SolidCards({
         .${SCOPE}-heading {
           font-size: clamp(1.75rem, 3vw, 2.5rem);
           font-weight: 700;
-          color: ${innerSubHeader.color || "#1a1a1a"};
+          color: ${innerSubHeader.color || t2.heading};
           margin: 0 0 12px;
           font-family: ${innerSubHeader.font || "inherit"};
         }
         .${SCOPE}-subheading {
           font-size: 1.1rem;
-          color: ${innerBody.color || "#6b7280"};
+          color: ${innerBody.color || t2.body};
           max-width: 600px;
           margin: 0 auto;
           font-family: ${innerBody.font || "inherit"};

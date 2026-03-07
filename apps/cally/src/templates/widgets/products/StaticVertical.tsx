@@ -22,6 +22,7 @@ import { fontForRole } from "../../hero/fontUtils";
 import ImageToolbar from "../../hero/ImageToolbar";
 import { bgFilterToCSS } from "../../hero/layoutOptions";
 import { processRemoveBackground } from "../../hero/removeBackgroundUtil";
+import { getSectionTheme } from "../sectionTheme";
 
 interface StaticVerticalProps {
   products: Product[];
@@ -249,6 +250,7 @@ export default function StaticVertical({
   onCardStyleChange,
   onAddCustomFontType,
 }: StaticVerticalProps) {
+  const t = getSectionTheme(brand.colorMode);
   const active = useMemo(() => products.filter((p) => p.isActive), [products]);
   const useCarousel = active.length > 3;
 
@@ -528,7 +530,7 @@ export default function StaticVertical({
   const headingStyle: React.CSSProperties = {
     fontSize: headingResolved.size,
     fontWeight: headingResolved.weight ?? 700,
-    color: headingResolved.color ?? "#1a1a1a",
+    color: headingResolved.color ?? t.heading,
     textAlign: styleOverrides?.headingTextAlign ?? "center",
     fontFamily: headingResolved.font || "inherit",
     lineHeight: 1.15,
@@ -541,7 +543,7 @@ export default function StaticVertical({
   const subheadingStyle: React.CSSProperties = {
     fontSize: subheadingResolved.size,
     fontWeight: subheadingResolved.weight ?? "normal",
-    color: subheadingResolved.color ?? "#6b7280",
+    color: subheadingResolved.color ?? t.body,
     textAlign: subAlign,
     fontFamily: subheadingResolved.font || "inherit",
     maxWidth: 600,
@@ -574,13 +576,13 @@ export default function StaticVertical({
         .${SCOPE}-heading {
           font-size: clamp(1.75rem, 3vw, 2.5rem);
           font-weight: 700;
-          color: ${innerSubHeader.color || "#1a1a1a"};
+          color: ${innerSubHeader.color || t.heading};
           margin: 0 0 12px;
           font-family: ${innerSubHeader.font || "inherit"};
         }
         .${SCOPE}-subheading {
           font-size: 1.1rem;
-          color: ${innerBody.color || "#6b7280"};
+          color: ${innerBody.color || t.body};
           max-width: 600px;
           margin: 0 auto;
           font-family: ${innerBody.font || "inherit"};
@@ -623,7 +625,7 @@ export default function StaticVertical({
           height: 44px;
           border-radius: 50%;
           background: rgba(255, 255, 255, 0.95);
-          border: 1px solid #e5e7eb;
+          border: 1px solid ${t.border};
           cursor: pointer;
           display: flex;
           align-items: center;
@@ -651,11 +653,11 @@ export default function StaticVertical({
 
         /* ---- card ---- */
         .${SCOPE}-card {
-          background: ${brand.cardStyle?.bgColor || brand.secondaryColor || "#fff"};
+          background: ${brand.cardStyle?.bgColor || brand.secondaryColor || t.bg};
           border-radius: ${brand.cardStyle?.borderRadius ?? 20}px;
           overflow: hidden;
           box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
-          border: 1px solid #f0f0f0;
+          border: 1px solid ${t.border};
           display: flex;
           flex-direction: column;
           transition: transform 0.25s ease, box-shadow 0.25s ease;
@@ -683,7 +685,7 @@ export default function StaticVertical({
           position: relative;
           width: 100%;
           padding-top: 75%;
-          background: #f3f4f6;
+          background: ${t.surfaceAlt};
           overflow: hidden;
         }
         .${SCOPE}-img {
@@ -696,7 +698,7 @@ export default function StaticVertical({
         .${SCOPE}-img-placeholder {
           width: 100%;
           padding-top: 75%;
-          background: #f3f4f6;
+          background: ${t.surfaceAlt};
           position: relative;
         }
         .${SCOPE}-img-placeholder svg {
@@ -780,14 +782,14 @@ export default function StaticVertical({
         .${SCOPE}-name {
           font-size: ${innerSubHeader.size}px;
           font-weight: ${innerSubHeader.weight ?? 700};
-          color: ${innerSubHeader.color || "#1a1a1a"};
+          color: ${innerSubHeader.color || t.heading};
           margin: 0 0 6px;
           font-family: ${innerSubHeader.font || "inherit"};
         }
         .${SCOPE}-desc {
           font-size: ${innerBody.size}px;
           font-weight: ${innerBody.weight ?? 400};
-          color: ${innerBody.color || "#6b7280"};
+          color: ${innerBody.color || t.body};
           line-height: 1.6;
           margin: 0 0 16px;
           font-family: ${innerBody.font || "inherit"};
@@ -804,7 +806,7 @@ export default function StaticVertical({
           gap: 8px;
           margin-bottom: 8px;
           font-size: 0.8rem;
-          color: #9ca3af;
+          color: ${t.muted};
           font-family: ${innerBody.font || "inherit"};
         }
         .${SCOPE}-meta svg {
@@ -816,12 +818,12 @@ export default function StaticVertical({
           justify-content: space-between;
           margin-top: auto;
           padding-top: 16px;
-          border-top: 1px solid #f0f0f0;
+          border-top: 1px solid ${t.border};
         }
         .${SCOPE}-price {
           font-size: 1.3rem;
           font-weight: 800;
-          color: #1a1a1a;
+          color: ${t.heading};
           font-family: ${innerBody.font || "inherit"};
         }
         .${SCOPE}-btn {

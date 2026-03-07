@@ -30,6 +30,7 @@ interface ImageToolbarProps {
   removingBg?: boolean;
   bgRemoved?: boolean;
   onUndoRemoveBg?: () => void;
+  placement?: "above" | "below";
 }
 
 export default function ImageToolbar({
@@ -49,6 +50,7 @@ export default function ImageToolbar({
   removingBg = false,
   bgRemoved = false,
   onUndoRemoveBg,
+  placement,
 }: ImageToolbarProps) {
   const dividerStyle: React.CSSProperties = {
     width: "1px",
@@ -91,7 +93,7 @@ export default function ImageToolbar({
   };
 
   return (
-    <ToolbarContainer>
+    <ToolbarContainer placement={placement}>
       {/* Border Radius */}
       <div style={groupStyle}>
         <svg

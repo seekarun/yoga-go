@@ -8,6 +8,7 @@ import type {
   CustomFontType,
 } from "@/types/landing-page";
 import { fontForRole } from "../../hero/fontUtils";
+import { getSectionTheme } from "../sectionTheme";
 import ResizableText from "../../hero/ResizableText";
 
 interface Testimonial {
@@ -85,6 +86,7 @@ export default function AnimatedSingleCard({
   styleOverrides,
   onAddCustomFontType,
 }: AnimatedSingleCardProps) {
+  const th = getSectionTheme(brand.colorMode);
   const limited = testimonials.slice(0, 6);
   const [activeIndex, setActiveIndex] = useState(0);
   const [fading, setFading] = useState(false);
@@ -169,7 +171,7 @@ export default function AnimatedSingleCard({
   const headingStyle: React.CSSProperties = {
     fontSize: headingResolved.size,
     fontWeight: headingResolved.weight ?? 700,
-    color: headingResolved.color ?? "#1a1a1a",
+    color: headingResolved.color ?? th.heading,
     textAlign: styleOverrides?.headingTextAlign ?? "center",
     fontFamily: headingResolved.font || "inherit",
     lineHeight: 1.15,
@@ -182,7 +184,7 @@ export default function AnimatedSingleCard({
   const subheadingStyle: React.CSSProperties = {
     fontSize: subheadingResolved.size,
     fontWeight: subheadingResolved.weight ?? "normal",
-    color: subheadingResolved.color ?? "#6b7280",
+    color: subheadingResolved.color ?? th.body,
     textAlign: subAlign,
     fontFamily: subheadingResolved.font || "inherit",
     maxWidth: 600,
@@ -214,19 +216,19 @@ export default function AnimatedSingleCard({
         .${SCOPE}-heading {
           font-size: clamp(1.75rem, 3vw, 2.5rem);
           font-weight: 700;
-          color: ${innerSubHeader.color || "#1a1a1a"};
+          color: ${innerSubHeader.color || th.heading};
           margin: 0 0 12px;
           font-family: ${innerSubHeader.font || "inherit"};
         }
         .${SCOPE}-subheading {
           font-size: 1.1rem;
-          color: ${innerBody.color || "#6b7280"};
+          color: ${innerBody.color || th.body};
           max-width: 600px;
           margin: 0 auto;
           font-family: ${innerBody.font || "inherit"};
         }
         .${SCOPE}-card {
-          background: ${brand.cardStyle?.bgColor || brand.secondaryColor || "#f9fafb"};
+          background: ${brand.cardStyle?.bgColor || brand.secondaryColor || th.surfaceAlt};
           border-radius: ${brand.cardStyle?.borderRadius ?? 20}px;
           padding: ${brand.cardStyle?.padding ?? 48}px;
           text-align: center;
@@ -252,7 +254,7 @@ export default function AnimatedSingleCard({
         .${SCOPE}-quote {
           font-size: ${innerBody.size}px;
           line-height: 1.7;
-          color: #1f2937;
+          color: ${th.body};
           font-weight: 500;
           margin: 0 0 28px;
           font-family: ${innerBody.font || "inherit"};
@@ -266,12 +268,12 @@ export default function AnimatedSingleCard({
         .${SCOPE}-author-name {
           font-weight: ${innerSubHeader.weight ?? 700};
           font-size: ${innerSubHeader.size}px;
-          color: #1a1a1a;
+          color: ${th.heading};
           font-family: ${innerSubHeader.font || "inherit"};
         }
         .${SCOPE}-author-title {
           font-size: 0.85rem;
-          color: #6b7280;
+          color: ${th.body};
           margin-top: 4px;
           font-family: ${innerBody.font || "inherit"};
         }

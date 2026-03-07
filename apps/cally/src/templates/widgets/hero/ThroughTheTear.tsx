@@ -8,7 +8,10 @@ import type {
 } from "@/types/landing-page";
 import type { WidgetBrandConfig } from "../types";
 import ResizableText from "../../hero/ResizableText";
+import ImageToolbar from "../../hero/ImageToolbar";
 import { fontForRole } from "../../hero/fontUtils";
+import { bgFilterToCSS } from "../../hero/layoutOptions";
+import { getSectionTheme } from "../sectionTheme";
 
 interface ThroughTheTearProps {
   title?: string;
@@ -23,6 +26,7 @@ interface ThroughTheTearProps {
   onSubtitleChange?: (subtitle: string) => void;
   onStyleOverrideChange?: (overrides: HeroStyleOverrides) => void;
   onAddCustomFontType?: (ft: CustomFontType) => void;
+  onBgImageClick?: () => void;
 }
 
 const SCOPE = "w-hr-ttt";
@@ -49,13 +53,22 @@ export default function ThroughTheTear({
   onSubtitleChange,
   onStyleOverrideChange,
   onAddCustomFontType,
+  onBgImageClick,
 }: ThroughTheTearProps) {
+  const t = getSectionTheme(brand.colorMode);
   const primary = brand.primaryColor || "#e84233";
-  const imgSrc = backgroundImage || PLACEHOLDER_IMAGE;
+  const imgSrc = overrides?.tearBgImage || backgroundImage || PLACEHOLDER_IMAGE;
 
   const [titleSelected, setTitleSelected] = useState(false);
   const [subtitleSelected, setSubtitleSelected] = useState(false);
+  const [imageSelected, setImageSelected] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
+
+  const deselectAll = useCallback(() => {
+    setTitleSelected(false);
+    setSubtitleSelected(false);
+    setImageSelected(false);
+  }, []);
 
   useEffect(() => {
     if (!isEditing) return;
@@ -64,13 +77,22 @@ export default function ThroughTheTear({
         sectionRef.current &&
         !sectionRef.current.contains(e.target as Node)
       ) {
-        setTitleSelected(false);
-        setSubtitleSelected(false);
+        deselectAll();
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [isEditing]);
+  }, [isEditing, deselectAll]);
+
+  // Tear bg image positioning
+  const tearPos = (() => {
+    const pos = overrides?.tearBgPosition;
+    if (!pos) return { x: 50, y: 50 };
+    const parts = pos.split(/\s+/).map((p) => parseInt(p, 10));
+    return { x: parts[0] ?? 50, y: parts[1] ?? 50 };
+  })();
+  const tearZoom = (overrides?.tearBgZoom || 100) / 100;
+  const tearScale = Math.max(1, tearZoom);
 
   const emitOverride = useCallback(
     (patch: Partial<HeroStyleOverrides>) => {
@@ -87,35 +109,38 @@ export default function ThroughTheTear({
 
   const innerBody = fontForRole("body", brand);
 
+  const titleAlign = overrides?.titleTextAlign ?? "center";
+  const subtitleAlign = overrides?.subtitleTextAlign ?? "center";
+
   const titleStyle: React.CSSProperties = {
     fontSize: titleResolved.size,
     fontWeight: titleResolved.weight ?? 800,
-    color: titleResolved.color ?? "#1a1a1a",
-    textAlign: overrides?.titleTextAlign ?? "center",
+    color: titleResolved.color ?? t.heading,
+    textAlign: titleAlign,
     fontFamily: titleResolved.font || "inherit",
     lineHeight: 1.08,
     letterSpacing: "-0.02em",
-    maxWidth: 800,
-    margin: "0 0 16px",
+    margin: 0,
   };
 
   const subtitleStyle: React.CSSProperties = {
     fontSize: subtitleResolved.size,
     fontWeight: subtitleResolved.weight ?? "normal",
-    color: subtitleResolved.color ?? "#6b7280",
-    textAlign: overrides?.subtitleTextAlign ?? "center",
+    color: subtitleResolved.color ?? t.body,
+    textAlign: subtitleAlign,
     fontFamily: subtitleResolved.font || "inherit",
     lineHeight: 1.65,
-    maxWidth: 560,
-    margin: "0 0 32px",
+    margin: 0,
   };
 
   return (
     <section ref={sectionRef} className={SCOPE}>
       <style>{`
         .${SCOPE} { width: 100%; }
-        .${SCOPE}-band { position: relative; height: 420px; background: ${primary}; }
-        .${SCOPE}-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
+        .${SCOPE}-band { position: relative; height: 420px; background: ${primary}; cursor: ${isEditing ? "pointer" : "default"}; }
+        .${SCOPE}-band--selected { outline: 2px solid #3b82f6; outline-offset: -2px; }
+        .${SCOPE}-bg { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; overflow: hidden; }
+        .${SCOPE}-bg-inner { width: 100%; height: 100%; background-size: cover; background-repeat: no-repeat; }
         .${SCOPE}-overlay { position: absolute; inset: 0; background: ${primary}; opacity: 0.3; z-index: 1; }
         .${SCOPE}-grain {
           position: absolute; inset: 0; z-index: 2; opacity: 0.12;
@@ -123,7 +148,7 @@ export default function ThroughTheTear({
           pointer-events: none;
         }
         .${SCOPE}-tear-top, .${SCOPE}-tear-bottom {
-          position: absolute; left: 0; right: 0; top: 0; height: 100%; background: #fff; z-index: 4;
+          position: absolute; left: 0; right: 0; top: 0; height: 100%; background: ${t.bg}; z-index: 4;
         }
         .${SCOPE}-shadow-wrap {
           position: absolute; left: 0; right: 0; top: 0; height: 100%; z-index: 3; filter: blur(6px); pointer-events: none;
@@ -139,7 +164,7 @@ export default function ThroughTheTear({
         }
         .${SCOPE}-content {
           display: flex; flex-direction: column; align-items: center; text-align: center;
-          padding: 0px 24px 64px; background: #fff;
+          padding: 0px 24px 64px; background: ${t.bg};
         }
         .${SCOPE}-btn {
           display: inline-block; padding: 14px 40px; border-radius: ${brand.primaryButton?.borderRadius ?? 50}px;
@@ -155,9 +180,29 @@ export default function ThroughTheTear({
         }
       `}</style>
 
-      <div className={`${SCOPE}-band`}>
-        {/* eslint-disable-next-line @next/next/no-img-element -- hero background */}
-        <img className={`${SCOPE}-bg`} src={imgSrc} alt="" />
+      <div
+        className={`${SCOPE}-band${imageSelected ? ` ${SCOPE}-band--selected` : ""}`}
+        onClick={
+          isEditing
+            ? () => {
+                deselectAll();
+                setImageSelected(true);
+              }
+            : undefined
+        }
+      >
+        <div className={`${SCOPE}-bg`}>
+          <div
+            className={`${SCOPE}-bg-inner`}
+            style={{
+              backgroundImage: `url(${imgSrc})`,
+              backgroundPosition: `${tearPos.x}% ${tearPos.y}%`,
+              transform: `scale(${tearScale})`,
+              transformOrigin: `${tearPos.x}% ${tearPos.y}%`,
+              filter: bgFilterToCSS(overrides?.tearBgFilter) || "none",
+            }}
+          />
+        </div>
         <div className={`${SCOPE}-overlay`} />
         <div className={`${SCOPE}-grain`} />
         <div className={`${SCOPE}-shadow-wrap ${SCOPE}-shadow-wrap-top`}>
@@ -168,6 +213,25 @@ export default function ThroughTheTear({
         </div>
         <div className={`${SCOPE}-tear-top`} />
         <div className={`${SCOPE}-tear-bottom`} />
+        {isEditing && imageSelected && (
+          <ImageToolbar
+            borderRadius={0}
+            positionX={tearPos.x}
+            positionY={tearPos.y}
+            zoom={overrides?.tearBgZoom || 100}
+            filter={overrides?.tearBgFilter}
+            onBorderRadiusChange={() => {}}
+            onPositionChange={(x, y) =>
+              emitOverride({ tearBgPosition: `${x}% ${y}%` })
+            }
+            onZoomChange={(v) => emitOverride({ tearBgZoom: v })}
+            onFilterChange={(v) =>
+              emitOverride({ tearBgFilter: v === "none" ? undefined : v })
+            }
+            onReplaceImage={() => onBgImageClick?.()}
+            placement="below"
+          />
+        )}
       </div>
 
       <div className={`${SCOPE}-content`}>
@@ -177,10 +241,15 @@ export default function ThroughTheTear({
             isEditing
             onTextChange={onTitleChange}
             textStyle={titleStyle}
+            wrapperStyle={{
+              ...(titleAlign === "center"
+                ? { maxWidth: 800, margin: "0 auto 16px" }
+                : { margin: "0 0 16px" }),
+            }}
             selected={titleSelected}
             onSelect={() => {
+              deselectAll();
               setTitleSelected(true);
-              setSubtitleSelected(false);
             }}
             onDeselect={() => setTitleSelected(false)}
             toolbarProps={{
@@ -194,7 +263,17 @@ export default function ThroughTheTear({
             }}
           />
         ) : (
-          title && <h1 style={titleStyle}>{title}</h1>
+          title && (
+            <h1
+              style={{
+                ...titleStyle,
+                ...(titleAlign === "center" ? { maxWidth: 800 } : {}),
+                margin: "0 0 16px",
+              }}
+            >
+              {title}
+            </h1>
+          )
         )}
 
         {isEditing ? (
@@ -203,10 +282,15 @@ export default function ThroughTheTear({
             isEditing
             onTextChange={onSubtitleChange}
             textStyle={subtitleStyle}
+            wrapperStyle={{
+              ...(subtitleAlign === "center"
+                ? { maxWidth: 560, margin: "0 auto 32px" }
+                : { margin: "0 0 32px" }),
+            }}
             selected={subtitleSelected}
             onSelect={() => {
+              deselectAll();
               setSubtitleSelected(true);
-              setTitleSelected(false);
             }}
             onDeselect={() => setSubtitleSelected(false)}
             toolbarProps={{
@@ -220,7 +304,17 @@ export default function ThroughTheTear({
             }}
           />
         ) : (
-          subtitle && <p style={subtitleStyle}>{subtitle}</p>
+          subtitle && (
+            <p
+              style={{
+                ...subtitleStyle,
+                ...(subtitleAlign === "center" ? { maxWidth: 560 } : {}),
+                margin: "0 0 32px",
+              }}
+            >
+              {subtitle}
+            </p>
+          )
         )}
 
         {buttonLabel && (

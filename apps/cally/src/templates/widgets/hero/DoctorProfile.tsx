@@ -9,7 +9,10 @@ import type {
 import type { WidgetBrandConfig } from "../types";
 import { getContrastColor } from "@/lib/colorPalette";
 import ResizableText from "../../hero/ResizableText";
+import ImageToolbar from "../../hero/ImageToolbar";
 import { fontForRole } from "../../hero/fontUtils";
+import { bgFilterToCSS } from "../../hero/layoutOptions";
+import { getSectionTheme } from "../sectionTheme";
 
 interface DoctorProfileProps {
   title?: string;
@@ -23,6 +26,7 @@ interface DoctorProfileProps {
   onSubtitleChange?: (subtitle: string) => void;
   onStyleOverrideChange?: (overrides: HeroStyleOverrides) => void;
   onAddCustomFontType?: (ft: CustomFontType) => void;
+  onPortraitImageClick?: () => void;
 }
 
 const SCOPE = "w-hr-dp";
@@ -46,12 +50,27 @@ export default function DoctorProfile({
   onSubtitleChange,
   onStyleOverrideChange,
   onAddCustomFontType,
+  onPortraitImageClick,
 }: DoctorProfileProps) {
+  const t = getSectionTheme(brand.colorMode);
   const primary = brand.primaryColor || "#2a7a6f";
 
   const [titleSelected, setTitleSelected] = useState(false);
   const [subtitleSelected, setSubtitleSelected] = useState(false);
+  const [nameSelected, setNameSelected] = useState(false);
+  const [roleSelected, setRoleSelected] = useState(false);
+  const [imageSelected, setImageSelected] = useState(false);
+  const [proofSelected, setProofSelected] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
+
+  const deselectAll = useCallback(() => {
+    setTitleSelected(false);
+    setSubtitleSelected(false);
+    setNameSelected(false);
+    setRoleSelected(false);
+    setImageSelected(false);
+    setProofSelected(false);
+  }, []);
 
   useEffect(() => {
     if (!isEditing) return;
@@ -60,13 +79,12 @@ export default function DoctorProfile({
         sectionRef.current &&
         !sectionRef.current.contains(e.target as Node)
       ) {
-        setTitleSelected(false);
-        setSubtitleSelected(false);
+        deselectAll();
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [isEditing]);
+  }, [isEditing, deselectAll]);
 
   const emitOverride = useCallback(
     (patch: Partial<HeroStyleOverrides>) => {
@@ -81,13 +99,74 @@ export default function DoctorProfile({
     overrides?.subtitleTypography || "sub-header";
   const subtitleResolved = fontForRole(subtitleRole, brand);
 
-  const innerSubHeader = fontForRole("sub-header", brand);
   const innerBody = fontForRole("body", brand);
+
+  const nameRole: TypographyRole =
+    overrides?.namecardNameTypography || "sub-header";
+  const nameResolved = fontForRole(nameRole, brand);
+  const roleRole: TypographyRole = overrides?.namecardRoleTypography || "body";
+  const roleResolved = fontForRole(roleRole, brand);
+
+  const nameStyle: React.CSSProperties = {
+    fontSize: nameResolved.size,
+    fontWeight: nameResolved.weight ?? 700,
+    color: nameResolved.color ?? t.heading,
+    textAlign: overrides?.namecardNameTextAlign ?? "left",
+    fontFamily: nameResolved.font || "inherit",
+    lineHeight: 1.2,
+    margin: 0,
+  };
+
+  const roleStyle: React.CSSProperties = {
+    fontSize: roleResolved.size,
+    fontWeight: roleResolved.weight ?? "normal",
+    color: roleResolved.color ?? t.body,
+    textAlign: overrides?.namecardRoleTextAlign ?? "left",
+    fontFamily: roleResolved.font || "inherit",
+    lineHeight: 1.4,
+    margin: "4px 0 0",
+  };
+
+  const proofRole: TypographyRole = overrides?.proofTextTypography || "body";
+  const proofResolved = fontForRole(proofRole, brand);
+  const proofStyle: React.CSSProperties = {
+    fontSize: proofResolved.size,
+    fontWeight: proofResolved.weight ?? "normal",
+    color: proofResolved.color ?? t.heading,
+    textAlign: overrides?.proofTextTextAlign ?? "left",
+    fontFamily: proofResolved.font || "inherit",
+    lineHeight: 1.4,
+    margin: 0,
+  };
+
+  // Portrait image
+  const portraitSrc =
+    overrides?.portraitImage ||
+    "https://images.pexels.com/photos/5215024/pexels-photo-5215024.jpeg?auto=compress&cs=tinysrgb&w=800";
+  const portraitPos = (() => {
+    const pos = overrides?.portraitPosition;
+    if (!pos) return { x: 50, y: 50 };
+    const parts = pos.split(/\s+/).map((p) => parseInt(p, 10));
+    return { x: parts[0] ?? 50, y: parts[1] ?? 50 };
+  })();
+  const portraitZoom = (overrides?.portraitZoom || 100) / 100;
+  const portraitScale = Math.max(1.05, portraitZoom);
+  const portraitImgStyle: React.CSSProperties = {
+    width: "100%",
+    height: "100%",
+    backgroundImage: `url(${portraitSrc})`,
+    backgroundPosition: `${portraitPos.x}% ${portraitPos.y}%`,
+    backgroundSize: "cover",
+    backgroundRepeat: "no-repeat",
+    transform: `scale(${portraitScale})`,
+    transformOrigin: `${portraitPos.x}% ${portraitPos.y}%`,
+    filter: bgFilterToCSS(overrides?.portraitFilter) || "none",
+  };
 
   const titleStyle: React.CSSProperties = {
     fontSize: titleResolved.size,
     fontWeight: titleResolved.weight ?? 700,
-    color: titleResolved.color ?? "#1a1a1a",
+    color: titleResolved.color ?? t.heading,
     textAlign: overrides?.titleTextAlign ?? "left",
     fontFamily: titleResolved.font || "inherit",
     lineHeight: 1.1,
@@ -98,7 +177,7 @@ export default function DoctorProfile({
   const subtitleStyle: React.CSSProperties = {
     fontSize: subtitleResolved.size,
     fontWeight: subtitleResolved.weight ?? "normal",
-    color: subtitleResolved.color ?? "#5c5c5c",
+    color: subtitleResolved.color ?? t.body,
     textAlign: overrides?.subtitleTextAlign ?? "left",
     fontFamily: subtitleResolved.font || "inherit",
     lineHeight: 1.65,
@@ -120,7 +199,7 @@ export default function DoctorProfile({
         }
         .${SCOPE}-left {
           grid-row: 1 / 3;
-          background: #f5f5f3;
+          background: ${t.surfaceAlt};
           border-radius: 24px;
           padding: 60px 48px;
           display: flex;
@@ -154,21 +233,19 @@ export default function DoctorProfile({
         .${SCOPE}-btn-arrow svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
         .${SCOPE}-proof { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
         .${SCOPE}-avatars { display: flex; }
-        .${SCOPE}-avatars img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid #f5f5f3; margin-left: -10px; }
+        .${SCOPE}-avatars img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid ${t.surfaceAlt}; margin-left: -10px; }
         .${SCOPE}-avatars img:first-child { margin-left: 0; }
-        .${SCOPE}-proof-text { font-size: ${innerBody.size}px; color: ${innerBody.color || "#1a1a1a"}; font-family: ${innerBody.font || "inherit"}; font-weight: ${innerBody.weight ?? "normal"}; }
+        .${SCOPE}-proof-text { font-size: ${innerBody.size}px; color: ${innerBody.color || t.heading}; font-family: ${innerBody.font || "inherit"}; font-weight: ${innerBody.weight ?? "normal"}; }
         .${SCOPE}-proof-text strong { font-weight: 700; }
-        .${SCOPE}-portrait { grid-row: 1 / 2; border-radius: 24px; overflow: hidden; position: relative; }
-        .${SCOPE}-portrait img { width: 100%; height: 100%; object-fit: cover; display: block; }
-        .${SCOPE}-dots { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; }
-        .${SCOPE}-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255, 255, 255, 0.5); }
-        .${SCOPE}-dot--active { background: #fff; width: 20px; border-radius: 4px; }
+        .${SCOPE}-portrait { grid-row: 1 / 2; border-radius: ${overrides?.portraitBorderRadius ?? 24}px; position: relative; }
+        .${SCOPE}-portrait--selected { outline: 2px solid #3b82f6; outline-offset: -2px; }
+        .${SCOPE}-portrait-inner { width: 100%; height: 100%; overflow: hidden; border-radius: inherit; }
         .${SCOPE}-namecard {
-          grid-row: 2 / 3; background: #f5f5f3; border-radius: 24px;
+          grid-row: 2 / 3; background: ${t.surfaceAlt}; border-radius: 24px;
           padding: 20px 24px; display: flex; align-items: center; justify-content: space-between;
         }
-        .${SCOPE}-namecard-info h3 { font-size: ${innerSubHeader.size}px; font-weight: ${innerSubHeader.weight ?? 700}; color: ${innerSubHeader.color || "#1a1a1a"}; margin: 0; font-family: ${innerSubHeader.font || "inherit"}; }
-        .${SCOPE}-namecard-info p { font-size: ${innerBody.size}px; color: ${innerBody.color || "#6b7280"}; margin: 4px 0 0; font-family: ${innerBody.font || "inherit"}; font-weight: ${innerBody.weight ?? "normal"}; }
+        .${SCOPE}-namecard-info h3 { font-size: ${nameResolved.size}px; font-weight: ${nameResolved.weight ?? 700}; color: ${nameResolved.color || t.heading}; margin: 0; font-family: ${nameResolved.font || "inherit"}; }
+        .${SCOPE}-namecard-info p { font-size: ${roleResolved.size}px; color: ${roleResolved.color || t.body}; margin: 4px 0 0; font-family: ${roleResolved.font || "inherit"}; font-weight: ${roleResolved.weight ?? "normal"}; }
         .${SCOPE}-namecard-link {
           width: 44px; height: 44px; border-radius: 50%;
           background: ${primary}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
@@ -192,8 +269,8 @@ export default function DoctorProfile({
             textStyle={titleStyle}
             selected={titleSelected}
             onSelect={() => {
+              deselectAll();
               setTitleSelected(true);
-              setSubtitleSelected(false);
             }}
             onDeselect={() => setTitleSelected(false)}
             toolbarProps={{
@@ -218,8 +295,8 @@ export default function DoctorProfile({
             textStyle={subtitleStyle}
             selected={subtitleSelected}
             onSelect={() => {
+              deselectAll();
               setSubtitleSelected(true);
-              setTitleSelected(false);
             }}
             onDeselect={() => setSubtitleSelected(false)}
             toolbarProps={{
@@ -271,31 +348,136 @@ export default function DoctorProfile({
               alt=""
             />
           </div>
-          <p className={`${SCOPE}-proof-text`}>
-            <strong>300+</strong> Certified Experts
-          </p>
+          {isEditing ? (
+            <ResizableText
+              text={overrides?.proofText || "300+ Certified Experts"}
+              isEditing
+              onTextChange={(v) => emitOverride({ proofText: v })}
+              textStyle={proofStyle}
+              selected={proofSelected}
+              onSelect={() => {
+                deselectAll();
+                setProofSelected(true);
+              }}
+              onDeselect={() => setProofSelected(false)}
+              toolbarProps={{
+                typographyRole: overrides?.proofTextTypography || "body",
+                onTypographyRoleChange: (v) =>
+                  emitOverride({ proofTextTypography: v }),
+                textAlign: overrides?.proofTextTextAlign ?? "left",
+                onTextAlignChange: (v) =>
+                  emitOverride({ proofTextTextAlign: v }),
+                customFontTypes: brand.customFontTypes,
+                onAddCustomFontType,
+              }}
+            />
+          ) : (
+            <p className={`${SCOPE}-proof-text`}>
+              {overrides?.proofText || "300+ Certified Experts"}
+            </p>
+          )}
         </div>
       </div>
 
-      <div className={`${SCOPE}-portrait`}>
-        {/* eslint-disable-next-line @next/next/no-img-element -- placeholder portrait */}
-        <img
-          src="https://images.pexels.com/photos/5215024/pexels-photo-5215024.jpeg?auto=compress&cs=tinysrgb&w=800"
-          alt="Professional portrait"
-        />
-        <div className={`${SCOPE}-dots`}>
-          <span className={`${SCOPE}-dot ${SCOPE}-dot--active`} />
-          <span className={`${SCOPE}-dot`} />
-          <span className={`${SCOPE}-dot`} />
-          <span className={`${SCOPE}-dot`} />
-          <span className={`${SCOPE}-dot`} />
+      <div
+        className={`${SCOPE}-portrait${imageSelected ? ` ${SCOPE}-portrait--selected` : ""}`}
+        onClick={
+          isEditing
+            ? () => {
+                deselectAll();
+                setImageSelected(true);
+              }
+            : undefined
+        }
+        style={{ cursor: isEditing ? "pointer" : "default" }}
+      >
+        <div className={`${SCOPE}-portrait-inner`}>
+          <div
+            role="img"
+            aria-label="Professional portrait"
+            style={portraitImgStyle}
+          />
         </div>
+        {isEditing && imageSelected && (
+          <ImageToolbar
+            borderRadius={overrides?.portraitBorderRadius ?? 24}
+            positionX={portraitPos.x}
+            positionY={portraitPos.y}
+            zoom={overrides?.portraitZoom || 100}
+            filter={overrides?.portraitFilter}
+            onBorderRadiusChange={(v) =>
+              emitOverride({ portraitBorderRadius: v })
+            }
+            onPositionChange={(x, y) =>
+              emitOverride({ portraitPosition: `${x}% ${y}%` })
+            }
+            onZoomChange={(v) => emitOverride({ portraitZoom: v })}
+            onFilterChange={(v) =>
+              emitOverride({ portraitFilter: v === "none" ? undefined : v })
+            }
+            onReplaceImage={() => onPortraitImageClick?.()}
+            placement="below"
+          />
+        )}
       </div>
 
       <div className={`${SCOPE}-namecard`}>
         <div className={`${SCOPE}-namecard-info`}>
-          <h3>Dr. James Cart</h3>
-          <p>Neurologist</p>
+          {isEditing ? (
+            <ResizableText
+              text={overrides?.namecardName || "Dr. James Cart"}
+              isEditing
+              onTextChange={(v) => emitOverride({ namecardName: v })}
+              textStyle={nameStyle}
+              selected={nameSelected}
+              onSelect={() => {
+                deselectAll();
+                setNameSelected(true);
+              }}
+              onDeselect={() => setNameSelected(false)}
+              toolbarProps={{
+                typographyRole:
+                  overrides?.namecardNameTypography || "sub-header",
+                onTypographyRoleChange: (v) =>
+                  emitOverride({ namecardNameTypography: v }),
+                textAlign: overrides?.namecardNameTextAlign ?? "left",
+                onTextAlignChange: (v) =>
+                  emitOverride({ namecardNameTextAlign: v }),
+                customFontTypes: brand.customFontTypes,
+                onAddCustomFontType,
+              }}
+            />
+          ) : (
+            <h3 style={nameStyle}>
+              {overrides?.namecardName || "Dr. James Cart"}
+            </h3>
+          )}
+          {isEditing ? (
+            <ResizableText
+              text={overrides?.namecardRole || "Neurologist"}
+              isEditing
+              onTextChange={(v) => emitOverride({ namecardRole: v })}
+              textStyle={roleStyle}
+              selected={roleSelected}
+              onSelect={() => {
+                deselectAll();
+                setRoleSelected(true);
+              }}
+              onDeselect={() => setRoleSelected(false)}
+              toolbarProps={{
+                typographyRole: overrides?.namecardRoleTypography || "body",
+                onTypographyRoleChange: (v) =>
+                  emitOverride({ namecardRoleTypography: v }),
+                textAlign: overrides?.namecardRoleTextAlign ?? "left",
+                onTextAlignChange: (v) =>
+                  emitOverride({ namecardRoleTextAlign: v }),
+                customFontTypes: brand.customFontTypes,
+                onAddCustomFontType,
+              }}
+            />
+          ) : (
+            <p style={roleStyle}>{overrides?.namecardRole || "Neurologist"}</p>
+          )}
         </div>
         <span className={`${SCOPE}-namecard-link`}>
           <svg viewBox="0 0 24 24">

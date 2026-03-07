@@ -10,6 +10,7 @@ import type { WidgetBrandConfig } from "../types";
 import { getContrastColor } from "@/lib/colorPalette";
 import ResizableText from "../../hero/ResizableText";
 import { fontForRole } from "../../hero/fontUtils";
+import { getSectionTheme } from "../sectionTheme";
 
 interface PovCardsProps {
   title?: string;
@@ -70,6 +71,7 @@ export default function PovCards({
   onStyleOverrideChange,
   onAddCustomFontType,
 }: PovCardsProps) {
+  const t = getSectionTheme(brand.colorMode);
   const primary = brand.primaryColor || "#6366f1";
 
   const [titleSelected, setTitleSelected] = useState(false);
@@ -110,7 +112,7 @@ export default function PovCards({
   const titleStyle: React.CSSProperties = {
     fontSize: titleResolved.size,
     fontWeight: titleResolved.weight ?? 700,
-    color: titleResolved.color ?? "#1a1a1a",
+    color: titleResolved.color ?? t.heading,
     textAlign: overrides?.titleTextAlign ?? "center",
     fontFamily: titleResolved.font || "inherit",
     lineHeight: 1.1,
@@ -121,7 +123,7 @@ export default function PovCards({
   const subtitleStyle: React.CSSProperties = {
     fontSize: subtitleResolved.size,
     fontWeight: subtitleResolved.weight ?? "normal",
-    color: subtitleResolved.color ?? "#5c5c5c",
+    color: subtitleResolved.color ?? t.body,
     textAlign: overrides?.subtitleTextAlign ?? "center",
     fontFamily: subtitleResolved.font || "inherit",
     lineHeight: 1.65,
@@ -140,7 +142,7 @@ export default function PovCards({
           flex-direction: column;
           align-items: center;
           background: linear-gradient(160deg, #eae6f2 0%, #f0ecf4 20%, #f5f2f0 45%, #f3edd8 100%);
-          border-bottom: 1px solid #e0dbd4;
+          border-bottom: 1px solid ${t.border};
         }
         .${SCOPE}::before {
           content: "";
@@ -193,7 +195,7 @@ export default function PovCards({
           width: 240px;
           aspect-ratio: 5 / 7;
           flex-shrink: 0;
-          background: #fff;
+          background: ${t.bg};
           border-radius: 20px;
           padding: 32px 24px 32px;
           display: flex;
@@ -207,11 +209,11 @@ export default function PovCards({
           transform-origin: bottom center;
         }
         .${SCOPE}-card:nth-child(1) { left: 0; transform: rotate(-8deg); z-index: 2; }
-        .${SCOPE}-card:nth-child(2) { left: 50%; transform: translateX(-50%) translateY(-30px); z-index: 1; background: #f0ecf8; }
+        .${SCOPE}-card:nth-child(2) { left: 50%; transform: translateX(-50%) translateY(-30px); z-index: 1; background: ${t.surfaceAlt}; }
         .${SCOPE}-card:nth-child(3) { right: 0; transform: rotate(8deg); z-index: 2; }
-        .${SCOPE}-card-avatar { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); }
-        .${SCOPE}-card-question { font-size: ${innerSubHeader.size}px; font-weight: ${innerSubHeader.weight ?? 600}; color: ${innerSubHeader.color || "#1a1a1a"}; text-align: center; line-height: 1.35; margin: 0; font-family: ${innerSubHeader.font || "inherit"}; }
-        .${SCOPE}-card-stats { display: flex; gap: 16px; align-items: center; font-size: ${innerBody.size}px; color: ${innerBody.color || "#8b8b8b"}; font-family: ${innerBody.font || "inherit"}; font-weight: ${innerBody.weight ?? "normal"}; }
+        .${SCOPE}-card-avatar { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 2px solid ${t.bg}; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); }
+        .${SCOPE}-card-question { font-size: ${innerSubHeader.size}px; font-weight: ${innerSubHeader.weight ?? 600}; color: ${innerSubHeader.color || t.heading}; text-align: center; line-height: 1.35; margin: 0; font-family: ${innerSubHeader.font || "inherit"}; }
+        .${SCOPE}-card-stats { display: flex; gap: 16px; align-items: center; font-size: ${innerBody.size}px; color: ${innerBody.color || t.muted}; font-family: ${innerBody.font || "inherit"}; font-weight: ${innerBody.weight ?? "normal"}; }
         .${SCOPE}-card-stats span { display: flex; align-items: center; gap: 6px; }
         .${SCOPE}-card-dot { width: 8px; height: 8px; border-radius: 50%; background: ${primary}; opacity: 0.6; }
         @media (max-width: 768px) {

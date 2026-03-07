@@ -9,6 +9,7 @@ import type {
 import type { WidgetBrandConfig } from "../types";
 import ResizableText from "../../hero/ResizableText";
 import { fontForRole } from "../../hero/fontUtils";
+import { getSectionTheme } from "../sectionTheme";
 
 interface ClassicCollapsibleProps {
   heading?: string;
@@ -44,6 +45,7 @@ export default function ClassicCollapsible({
   styleOverrides,
   onAddCustomFontType,
 }: ClassicCollapsibleProps) {
+  const t = getSectionTheme(brand.colorMode);
   const [headingSelected, setHeadingSelected] = useState(false);
   const [subheadingSelected, setSubheadingSelected] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
@@ -75,7 +77,7 @@ export default function ClassicCollapsible({
   const headingStyle: React.CSSProperties = {
     fontSize: headingResolved.size,
     fontWeight: headingResolved.weight ?? 700,
-    color: headingResolved.color ?? "#1a1a1a",
+    color: headingResolved.color ?? t.heading,
     textAlign: styleOverrides?.headingTextAlign ?? "left",
     fontFamily: headingResolved.font || "inherit",
     lineHeight: 1.15,
@@ -87,7 +89,7 @@ export default function ClassicCollapsible({
   const subheadingStyle: React.CSSProperties = {
     fontSize: subheadingResolved.size,
     fontWeight: subheadingResolved.weight ?? "normal",
-    color: subheadingResolved.color ?? "#9ca3af",
+    color: subheadingResolved.color ?? t.muted,
     textAlign: styleOverrides?.subheadingTextAlign ?? "left",
     fontFamily: subheadingResolved.font || "inherit",
     margin: "0 0 48px",
@@ -108,7 +110,7 @@ export default function ClassicCollapsible({
         .${SCOPE}-heading {
           font-size: clamp(1.8rem, 3.5vw, 2.5rem);
           font-weight: 700;
-          color: ${innerSubHeader.color || "#1a1a1a"};
+          color: ${innerSubHeader.color || t.heading};
           margin: 0 0 8px;
           font-family: ${innerSubHeader.font || "inherit"};
           line-height: 1.15;
@@ -116,7 +118,7 @@ export default function ClassicCollapsible({
 
         .${SCOPE}-subheading {
           font-size: 1rem;
-          color: ${innerBody.color || "#9ca3af"};
+          color: ${innerBody.color || t.muted};
           margin: 0 0 48px;
           font-family: ${innerBody.font || "inherit"};
         }
@@ -129,14 +131,14 @@ export default function ClassicCollapsible({
         }
 
         .${SCOPE}-item {
-          border-bottom: 1px solid #e5e7eb;
+          border-bottom: 1px solid ${t.border};
           padding: 24px 0;
         }
 
         .${SCOPE}-item summary {
           font-size: ${innerSubHeader.size}px;
           font-weight: ${innerSubHeader.weight ?? 600};
-          color: ${innerSubHeader.color || "#1a1a1a"};
+          color: ${innerSubHeader.color || t.heading};
           cursor: pointer;
           font-family: ${innerSubHeader.font || "inherit"};
           line-height: 1.4;
@@ -144,7 +146,7 @@ export default function ClassicCollapsible({
         }
 
         .${SCOPE}-item summary::marker {
-          color: #9ca3af;
+          color: ${t.muted};
         }
 
         .${SCOPE}-item[open] summary {
@@ -153,7 +155,7 @@ export default function ClassicCollapsible({
 
         .${SCOPE}-answer {
           font-size: ${innerBody.size}px;
-          color: ${innerBody.color || "#6b7280"};
+          color: ${innerBody.color || t.body};
           line-height: 1.7;
           margin: 0;
           font-family: ${innerBody.font || "inherit"};

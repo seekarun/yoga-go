@@ -67,6 +67,8 @@ export interface WidgetBrandConfig {
   cardStyle?: WidgetCardStyle;
   /** User-defined custom font types */
   customFontTypes?: CustomFontType[];
+  /** Light or dark color mode for this section */
+  colorMode?: "light" | "dark";
 }
 
 /**

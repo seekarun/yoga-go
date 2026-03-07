@@ -166,9 +166,9 @@ export async function getEmailsByTenant(
       expressionValues[":false"] = false;
       break;
     default:
-      // Inbox: not deleted and not archived
+      // Inbox: incoming only, not deleted and not archived
       filterExpression =
-        "(attribute_not_exists(isDeleted) OR isDeleted = :false) AND (attribute_not_exists(isArchived) OR isArchived = :false)";
+        "(attribute_not_exists(isOutgoing) OR isOutgoing = :false) AND (attribute_not_exists(isDeleted) OR isDeleted = :false) AND (attribute_not_exists(isArchived) OR isArchived = :false)";
       expressionValues[":false"] = false;
       break;
   }

@@ -5,6 +5,7 @@ import type { AboutStyleOverrides, CustomFontType } from "@/types/landing-page";
 import type { WidgetBrandConfig } from "../types";
 import ResizableText from "../../hero/ResizableText";
 import { fontForRole } from "../../hero/fontUtils";
+import { getSectionTheme } from "../sectionTheme";
 
 interface LeftVideoProps {
   title?: string;
@@ -45,6 +46,7 @@ export default function LeftVideo({
   onStyleOverrideChange,
   onAddCustomFontType,
 }: LeftVideoProps) {
+  const t = getSectionTheme(brand.colorMode);
   const primary = brand.primaryColor || "#1a1a1a";
   const src = videoUrl || PLACEHOLDER_VIDEO;
 
@@ -160,7 +162,7 @@ export default function LeftVideo({
   const paragraphStyle: React.CSSProperties = {
     fontSize: bodyResolved.size,
     fontWeight: bodyResolved.weight ?? "normal",
-    color: bodyResolved.color ?? "#4a4a4a",
+    color: bodyResolved.color ?? t.body,
     textAlign: overrides?.textAlign ?? "left",
     fontFamily: bodyResolved.font || "inherit",
     lineHeight: 1.8,
@@ -179,7 +181,7 @@ export default function LeftVideo({
           display: grid;
           grid-template-columns: 1fr 1fr;
           min-height: 480px;
-          background: ${brand.cardStyle?.bgColor || brand.secondaryColor || "#faf6f1"};
+          background: ${brand.cardStyle?.bgColor || brand.secondaryColor || t.surfaceAlt};
           border-radius: 16px;
           overflow: hidden;
           max-width: 1200px;
