@@ -954,12 +954,12 @@ export default function InboxPage() {
                     )}
 
                     {/* Date (visible by default, hidden on hover when actions show) */}
-                    <span className="flex-shrink-0 text-xs text-gray-500 w-16 text-right group-hover:hidden">
+                    <span className="flex-shrink-0 text-xs text-gray-500 w-16 text-right group-hover:opacity-0 group-hover:pointer-events-none">
                       {formatDate(displayDate)}
                     </span>
 
                     {/* Action icons (hidden by default, visible on hover) */}
-                    <div className="flex-shrink-0 hidden group-hover:flex items-center gap-1 w-16 justify-end">
+                    <div className="flex-shrink-0 flex items-center gap-1 w-16 justify-end opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto -ml-16">
                       {folder === "trash" ? (
                         <button
                           onClick={(e) => handleRestore(e, email)}

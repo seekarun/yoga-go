@@ -83,7 +83,7 @@ export default function InboxLayout({
     <div className="px-6 lg:px-8 py-6">
       {/* Row 1: Folder Tabs + Actions */}
       <div className="flex items-end justify-between mb-4 border-b border-gray-200">
-        <div className="flex items-center gap-0 overflow-x-auto">
+        <div className="flex items-center gap-0">
           {FOLDERS.map((f) => (
             <Link
               key={f.key}
