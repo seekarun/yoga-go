@@ -116,7 +116,7 @@ export const TEMPLATES: TemplateInfo[] = [
       aboutImage: "1/1",
       featureCardImage: "16/9",
     },
-    status: "development",
+    status: "published",
   },
 ];
 
@@ -550,7 +550,7 @@ export const DEFAULT_LANDING_PAGE_CONFIG: SimpleLandingPageConfig = {
   about: {
     title: "About Me",
     image:
-      "https://images.pexels.com/photos/29852895/pexels-photo-29852895.jpeg?auto=compress&cs=tinysrgb&w=800",
+      "https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg?auto=compress&cs=tinysrgb&w=800",
     imagePosition: "50% 50%",
     imageZoom: 100,
     paragraph:

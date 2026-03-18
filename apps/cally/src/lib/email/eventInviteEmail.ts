@@ -14,6 +14,8 @@ export interface EventInviteEmailData {
   startTime: string; // ISO 8601
   endTime: string; // ISO 8601
   tenant: CallyTenant;
+  rsvpAcceptUrl?: string;
+  rsvpDeclineUrl?: string;
 }
 
 /**
@@ -30,6 +32,8 @@ export async function sendEventInviteEmail(
     startTime,
     endTime,
     tenant,
+    rsvpAcceptUrl,
+    rsvpDeclineUrl,
   } = data;
 
   const timezone = tenant.bookingConfig?.timezone || "Australia/Sydney";
@@ -99,6 +103,17 @@ export async function sendEventInviteEmail(
                 </table>
               </div>
 
+              ${
+                rsvpAcceptUrl && rsvpDeclineUrl
+                  ? `<!-- RSVP Buttons -->
+              <div style="text-align: center; margin-bottom: 25px;">
+                <p style="font-size: 14px; color: #666; margin: 0 0 12px 0;">Will you attend?</p>
+                <a href="${rsvpAcceptUrl}" style="display: inline-block; padding: 10px 28px; background: #22c55e; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; margin-right: 10px;">Accept</a>
+                <a href="${rsvpDeclineUrl}" style="display: inline-block; padding: 10px 28px; background: #e5e7eb; color: #374151; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px;">Decline</a>
+              </div>`
+                  : ""
+              }
+
               <p style="font-size: 13px; color: #999; margin: 0; text-align: center;">
                 This is an automated invitation from ${tenant.name}.
               </p>
@@ -120,6 +135,11 @@ export async function sendEventInviteEmail(
 </body>
 </html>`;
 
+    const rsvpText =
+      rsvpAcceptUrl && rsvpDeclineUrl
+        ? `\nRSVP\nAccept: ${rsvpAcceptUrl}\nDecline: ${rsvpDeclineUrl}\n`
+        : "";
+
     const text = `Hi ${attendeeName},
 
 ${tenant.name} has invited you to an event: ${eventTitle}.
@@ -129,7 +149,7 @@ Event: ${eventTitle}
 Date: ${start.dateStr}
 Time: ${start.timeStr} – ${end.timeStr}
 Timezone: ${timezone}
-
+${rsvpText}
 This is an automated invitation from ${tenant.name}.
 
 ---

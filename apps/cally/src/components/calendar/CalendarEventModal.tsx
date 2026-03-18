@@ -9,6 +9,21 @@ import AttendeeSelector from "@/components/calendar/AttendeeSelector";
 import type { CalendarItem, EventAttendee } from "@/types";
 import { formatDateForInput } from "@/lib/dateUtils";
 
+/** Build a simple string fingerprint of editable event fields for dirty detection. */
+function buildEditHash(
+  title: string,
+  description: string,
+  startTime: string,
+  endTime: string,
+  attendees: EventAttendee[],
+): string {
+  const emails = attendees
+    .map((a) => a.email.toLowerCase())
+    .sort()
+    .join(",");
+  return `${title}|${description}|${startTime}|${endTime}|${emails}`;
+}
+
 interface CalendarEventModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -129,6 +144,9 @@ export default function CalendarEventModal({
   const [editStartTime, setEditStartTime] = useState("");
   const [editEndTime, setEditEndTime] = useState("");
   const [editAttendees, setEditAttendees] = useState<EventAttendee[]>([]);
+  const [editNotifyAttendees, setEditNotifyAttendees] = useState(true);
+  // Snapshot of editable fields at last save/load for dirty detection
+  const [savedHash, setSavedHash] = useState("");
 
   // Reset state when event changes
   useEffect(() => {
@@ -138,7 +156,18 @@ export default function CalendarEventModal({
       setEditLocation(event.extendedProps.location || "");
       setEditStartTime(formatDateForInput(new Date(event.start)));
       setEditEndTime(formatDateForInput(new Date(event.end)));
-      setEditAttendees(event.extendedProps.attendees || []);
+      const attendeesList = event.extendedProps.attendees || [];
+      setEditAttendees(attendeesList);
+      setEditNotifyAttendees(true);
+      setSavedHash(
+        buildEditHash(
+          event.title,
+          event.extendedProps.description || "",
+          formatDateForInput(new Date(event.start)),
+          formatDateForInput(new Date(event.end)),
+          attendeesList,
+        ),
+      );
       setIsEditing(false);
       setIsDeleting(false);
       setIsSaving(false);
@@ -147,6 +176,16 @@ export default function CalendarEventModal({
       setError("");
     }
   }, [event]);
+
+  // Dirty detection: compare current edit state against the saved snapshot
+  const currentHash = buildEditHash(
+    editTitle,
+    editDescription,
+    editStartTime,
+    editEndTime,
+    editAttendees,
+  );
+  const hasChanges = currentHash !== savedHash;
 
   const handleDelete = async () => {
     if (!event) return;
@@ -237,6 +276,9 @@ export default function CalendarEventModal({
             startTime: new Date(editStartTime).toISOString(),
             endTime: new Date(editEndTime).toISOString(),
             attendees: editAttendees,
+            notifyAttendees:
+              editAttendees.length > 0 ? editNotifyAttendees : false,
+            hasDetailsChanged: hasChanges,
           }),
         },
       );
@@ -247,6 +289,16 @@ export default function CalendarEventModal({
       }
 
       console.log("[DBG][CalendarEventModal] Updated event:", event.id);
+      // Update the saved hash so subsequent edits start from the new baseline
+      setSavedHash(
+        buildEditHash(
+          editTitle,
+          editDescription,
+          editStartTime,
+          editEndTime,
+          editAttendees,
+        ),
+      );
       setIsEditing(false);
       onEventUpdated();
     } catch (err) {
@@ -390,7 +442,7 @@ export default function CalendarEventModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      maxWidth="max-w-md"
+      maxWidth="max-w-xl"
       padding={false}
     >
       <ModalHeader onClose={onClose} className="px-6 pt-6">
@@ -428,30 +480,68 @@ export default function CalendarEventModal({
 
         {/* Time */}
         {isEditing ? (
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700">
-                Start
-              </label>
-              <input
-                type="datetime-local"
-                value={editStartTime}
-                onChange={(e) => setEditStartTime(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary,#6366f1)] focus:border-transparent"
-              />
+          <>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1 text-gray-700">
+                  Start
+                </label>
+                <input
+                  type="datetime-local"
+                  value={editStartTime}
+                  onChange={(e) => {
+                    const newStart = e.target.value;
+                    setEditStartTime(newStart);
+                    const startDate = new Date(newStart);
+                    const currentEnd = new Date(editEndTime);
+                    if (
+                      !isNaN(startDate.getTime()) &&
+                      currentEnd <= startDate
+                    ) {
+                      const endDate = new Date(
+                        startDate.getTime() + 30 * 60000,
+                      );
+                      setEditEndTime(formatDateForInput(endDate));
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary,#6366f1)] focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1 text-gray-700">
+                  End
+                </label>
+                <input
+                  type="datetime-local"
+                  value={editEndTime}
+                  onChange={(e) => setEditEndTime(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary,#6366f1)] focus:border-transparent"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1 text-gray-700">
-                End
-              </label>
-              <input
-                type="datetime-local"
-                value={editEndTime}
-                onChange={(e) => setEditEndTime(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary,#6366f1)] focus:border-transparent"
-              />
-            </div>
-          </div>
+            {editStartTime &&
+              editEndTime &&
+              (() => {
+                const s = new Date(editStartTime);
+                const e = new Date(editEndTime);
+                const diffMs = e.getTime() - s.getTime();
+                if (isNaN(diffMs) || diffMs <= 0) return null;
+                const mins = Math.round(diffMs / 60000);
+                const h = Math.floor(mins / 60);
+                const m = mins % 60;
+                const label =
+                  h > 0
+                    ? m > 0
+                      ? `${h}h ${m}m`
+                      : `${h} hour${h > 1 ? "s" : ""}`
+                    : `${m} min`;
+                return (
+                  <p className="text-xs text-gray-400 -mt-2">
+                    Duration: {label}
+                  </p>
+                );
+              })()}
+          </>
         ) : (
           <div className="flex items-start gap-3">
             <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
@@ -516,54 +606,31 @@ export default function CalendarEventModal({
           </div>
         ) : null}
 
-        {/* Location */}
-        {isEditing ? (
-          <div>
-            <label className="block text-sm font-medium mb-1 text-gray-700">
-              Location
-            </label>
-            <input
-              type="text"
-              value={editLocation}
-              onChange={(e) => setEditLocation(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary,#6366f1)] focus:border-transparent"
-            />
-          </div>
-        ) : event.extendedProps.location ? (
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center shrink-0">
-              <svg
-                className="w-5 h-5 text-gray-500"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                />
-              </svg>
-            </div>
-            <p className="text-sm text-gray-700">
-              {event.extendedProps.location}
-            </p>
-          </div>
-        ) : null}
-
         {/* Attendees */}
         {isEditing ? (
-          <AttendeeSelector
-            selectedAttendees={editAttendees}
-            onChange={setEditAttendees}
-          />
+          <>
+            <AttendeeSelector
+              selectedAttendees={editAttendees}
+              onChange={setEditAttendees}
+            />
+            {editAttendees.length > 0 && (
+              <div className="flex items-center gap-2 -mt-2">
+                <input
+                  type="checkbox"
+                  id="editNotifyAttendees"
+                  checked={editNotifyAttendees}
+                  onChange={(e) => setEditNotifyAttendees(e.target.checked)}
+                  className="w-4 h-4 rounded text-[var(--color-primary,#6366f1)] focus:ring-[var(--color-primary,#6366f1)]"
+                />
+                <label
+                  htmlFor="editNotifyAttendees"
+                  className="text-sm text-gray-700"
+                >
+                  Email participants event details
+                </label>
+              </div>
+            )}
+          </>
         ) : event.extendedProps.attendees &&
           event.extendedProps.attendees.length > 0 ? (
           <div className="flex items-start gap-3">
@@ -587,15 +654,73 @@ export default function CalendarEventModal({
                 Attendees
               </p>
               <div className="flex flex-wrap gap-1.5">
-                {event.extendedProps.attendees.map((attendee) => (
-                  <span
-                    key={attendee.email}
-                    className="inline-flex items-center px-2 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs font-medium"
-                    title={attendee.email}
-                  >
-                    {attendee.name}
-                  </span>
-                ))}
+                {event.extendedProps.attendees.map((attendee) => {
+                  const status = attendee.rsvpStatus || "pending";
+                  const pillStyles = {
+                    accepted: "bg-green-50 text-green-700",
+                    declined: "bg-red-50 text-red-600",
+                    pending: "bg-indigo-50 text-indigo-700",
+                  };
+                  const iconColors = {
+                    accepted: "text-green-600",
+                    declined: "text-red-500",
+                    pending: "text-indigo-400",
+                  };
+                  return (
+                    <span
+                      key={attendee.email}
+                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${pillStyles[status]}`}
+                      title={`${attendee.email} — ${status}`}
+                    >
+                      {attendee.name}
+                      {status === "accepted" && (
+                        <svg
+                          className={`w-3.5 h-3.5 ${iconColors.accepted}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={3}
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                      )}
+                      {status === "declined" && (
+                        <svg
+                          className={`w-3.5 h-3.5 ${iconColors.declined}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={3}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      )}
+                      {status === "pending" && (
+                        <svg
+                          className={`w-3.5 h-3.5 ${iconColors.pending}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2.5}
+                            d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01"
+                          />
+                        </svg>
+                      )}
+                    </span>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -813,13 +938,13 @@ export default function CalendarEventModal({
               <>
                 <SecondaryButton
                   onClick={() => handleSaveEdit(false)}
-                  disabled={isSaving}
+                  disabled={isSaving || !hasChanges}
                 >
                   {isSaving ? "Saving..." : "Save This Event"}
                 </SecondaryButton>
                 <PrimaryButton
                   onClick={() => handleSaveEdit(true)}
-                  disabled={isSaving}
+                  disabled={isSaving || !hasChanges}
                 >
                   {isSaving ? "Saving..." : "Save Future Events"}
                 </PrimaryButton>
@@ -827,7 +952,7 @@ export default function CalendarEventModal({
             ) : (
               <PrimaryButton
                 onClick={() => handleSaveEdit(false)}
-                disabled={isSaving}
+                disabled={isSaving || !hasChanges}
               >
                 {isSaving ? "Saving..." : "Save Changes"}
               </PrimaryButton>

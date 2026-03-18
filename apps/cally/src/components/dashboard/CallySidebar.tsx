@@ -346,6 +346,27 @@ export default function CallySidebar({ expertId }: CallySidebarProps) {
         collapsed ? "w-16" : "w-56"
       }`}
     >
+      {/* Collapse/Expand toggle - sits on the sidebar border */}
+      <button
+        onClick={toggleCollapsed}
+        className="absolute top-5 -right-3 z-50 w-6 h-6 flex items-center justify-center bg-white border border-gray-300 rounded-full hover:bg-gray-50 transition-colors shadow-sm"
+        title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+      >
+        <svg
+          className={`w-3 h-3 text-gray-500 transition-transform ${collapsed ? "rotate-180" : ""}`}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2.5}
+            d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
+          />
+        </svg>
+      </button>
+
       {/* Header */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-[var(--color-border)]">
         {!collapsed && (
@@ -358,27 +379,8 @@ export default function CallySidebar({ expertId }: CallySidebarProps) {
             </span>
           </div>
         )}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center">
           <NotificationBell />
-          <button
-            onClick={toggleCollapsed}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            <svg
-              className={`w-5 h-5 text-gray-500 transition-transform ${collapsed ? "rotate-180" : ""}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
-              />
-            </svg>
-          </button>
         </div>
       </div>
 

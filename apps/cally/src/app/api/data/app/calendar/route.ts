@@ -35,6 +35,7 @@ import { pushCreateToOutlook } from "@/lib/outlook-calendar-sync";
 import { getOutlookClient, listOutlookEvents } from "@/lib/outlook-calendar";
 import { expandRecurrence } from "@/lib/recurrence";
 import { sendEventInviteEmail } from "@/lib/email/eventInviteEmail";
+import { buildRsvpUrls } from "@/lib/rsvp-token";
 
 // Color constant for general events
 const EVENT_COLOR = "#6366f1"; // Indigo - matches cally design
@@ -445,8 +446,12 @@ export async function POST(request: Request) {
       );
 
       // Send invite emails once for the series (not per occurrence)
-      if (attendees.length > 0) {
+      if (attendees.length > 0 && body.notifyAttendees !== false) {
+        const firstEventId = events[0]?.id;
         for (const attendee of attendees) {
+          const rsvpUrls = firstEventId
+            ? buildRsvpUrls(tenant, firstEventId, attendee.email)
+            : undefined;
           sendEventInviteEmail({
             attendeeName: attendee.name,
             attendeeEmail: attendee.email,
@@ -454,6 +459,8 @@ export async function POST(request: Request) {
             startTime,
             endTime,
             tenant,
+            rsvpAcceptUrl: rsvpUrls?.acceptUrl,
+            rsvpDeclineUrl: rsvpUrls?.declineUrl,
           }).catch((err) =>
             console.warn("[DBG][calendar] Invite email failed:", err),
           );
@@ -600,8 +607,9 @@ export async function POST(request: Request) {
     console.log("[DBG][calendar] Created event:", event.id);
 
     // Send invite emails to attendees (fire-and-forget)
-    if (attendees.length > 0) {
+    if (attendees.length > 0 && body.notifyAttendees !== false) {
       for (const attendee of attendees) {
+        const rsvpUrls = buildRsvpUrls(tenant, event.id, attendee.email);
         sendEventInviteEmail({
           attendeeName: attendee.name,
           attendeeEmail: attendee.email,
@@ -609,6 +617,8 @@ export async function POST(request: Request) {
           startTime,
           endTime,
           tenant,
+          rsvpAcceptUrl: rsvpUrls.acceptUrl,
+          rsvpDeclineUrl: rsvpUrls.declineUrl,
         }).catch((err) =>
           console.warn("[DBG][calendar] Invite email failed:", err),
         );

@@ -52,7 +52,7 @@ export default function CreateEventModal({
   const [description, setDescription] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
-  const [location, setLocation] = useState("");
+  const [location] = useState("");
   const [color, setColor] = useState(EVENT_COLORS[0].value);
   const [isAllDay, setIsAllDay] = useState(false);
   const [notes, setNotes] = useState("");
@@ -61,6 +61,7 @@ export default function CreateEventModal({
     null,
   );
   const [attendees, setAttendees] = useState<EventAttendee[]>([]);
+  const [notifyAttendees, setNotifyAttendees] = useState(true);
 
   const isRecurring = recurrenceRule !== null;
 
@@ -93,13 +94,13 @@ export default function CreateEventModal({
       setDescription("");
       setStartTime(formatDateForInput(start));
       setEndTime(formatDateForInput(end));
-      setLocation("");
       setColor(EVENT_COLORS[0].value);
       setIsAllDay(false);
       setNotes("");
       setHasVideoConference(false);
       setRecurrenceRule(null);
       setAttendees([]);
+      setNotifyAttendees(true);
       setError("");
     }
   }, [isOpen, initialDate, defaultDurationMinutes]);
@@ -108,9 +109,10 @@ export default function CreateEventModal({
   const handleStartTimeChange = (newStart: string) => {
     setStartTime(newStart);
 
-    // Auto-set end time based on default duration
+    // Auto-set end time only if current end is behind the new start
     const startDate = new Date(newStart);
-    if (!isNaN(startDate.getTime())) {
+    const currentEnd = new Date(endTime);
+    if (!isNaN(startDate.getTime()) && currentEnd <= startDate) {
       const endDate = addMinutes(startDate, defaultDurationMinutes);
       setEndTime(formatDateForInput(endDate));
     }
@@ -156,8 +158,12 @@ export default function CreateEventModal({
         attendees: attendees.length > 0 ? attendees : undefined,
       };
 
-      // Include recurrence rule in the request body if set
-      const body = recurrenceRule ? { ...input, recurrenceRule } : input;
+      // Include recurrence rule and notify flag in the request body
+      const body = {
+        ...input,
+        ...(recurrenceRule ? { recurrenceRule } : {}),
+        notifyAttendees: attendees.length > 0 ? notifyAttendees : false,
+      };
 
       const response = await fetch("/api/data/app/calendar", {
         method: "POST",
@@ -228,6 +234,25 @@ export default function CreateEventModal({
             onChange={setAttendees}
           />
 
+          {/* Notify attendees */}
+          {attendees.length > 0 && (
+            <div className="flex items-center gap-2 -mt-2">
+              <input
+                type="checkbox"
+                id="notifyAttendees"
+                checked={notifyAttendees}
+                onChange={(e) => setNotifyAttendees(e.target.checked)}
+                className="w-4 h-4 rounded text-[var(--color-primary,#6366f1)] focus:ring-[var(--color-primary,#6366f1)]"
+              />
+              <label
+                htmlFor="notifyAttendees"
+                className="text-sm text-gray-700"
+              >
+                Email participants event details
+              </label>
+            </div>
+          )}
+
           {/* Date & Time */}
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -255,6 +280,26 @@ export default function CreateEventModal({
               />
             </div>
           </div>
+          {startTime &&
+            endTime &&
+            (() => {
+              const s = new Date(startTime);
+              const e = new Date(endTime);
+              const diffMs = e.getTime() - s.getTime();
+              if (isNaN(diffMs) || diffMs <= 0) return null;
+              const mins = Math.round(diffMs / 60000);
+              const h = Math.floor(mins / 60);
+              const m = mins % 60;
+              const label =
+                h > 0
+                  ? m > 0
+                    ? `${h}h ${m}m`
+                    : `${h} hour${h > 1 ? "s" : ""}`
+                  : `${m} min`;
+              return (
+                <p className="text-xs text-gray-400 -mt-2">Duration: {label}</p>
+              );
+            })()}
 
           {/* All Day */}
           <div className="flex items-center gap-2">
@@ -307,20 +352,6 @@ export default function CreateEventModal({
                     : "(CallyGo video room will be created)"}
               </span>
             )}
-          </div>
-
-          {/* Location */}
-          <div>
-            <label className="block text-sm font-medium mb-1 text-gray-700">
-              Location
-            </label>
-            <input
-              type="text"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="e.g., Zoom, Office, etc."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary,#6366f1)] focus:border-transparent"
-            />
           </div>
 
           {/* Color */}

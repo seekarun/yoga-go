@@ -28,6 +28,8 @@ import {
   pushUpdateToOutlook,
   pushDeleteToOutlook,
 } from "@/lib/outlook-calendar-sync";
+import { sendEventInviteEmail } from "@/lib/email/eventInviteEmail";
+import { buildRsvpUrls } from "@/lib/rsvp-token";
 import { buildCancelUrl } from "@/lib/cancel-token";
 import { getPaymentIntent, createFullRefund } from "@/lib/stripe";
 
@@ -421,6 +423,53 @@ export async function PUT(request: Request, { params }: RouteParams) {
       } else if (body.status === "scheduled" || body.status === "cancelled") {
         console.warn(
           "[DBG][calendar/events/[eventId]] Could not parse visitor info for booking email",
+        );
+      }
+    }
+
+    // Send invite/update emails to attendees (fire-and-forget)
+    if (
+      body.notifyAttendees &&
+      updatedEvent.attendees &&
+      updatedEvent.attendees.length > 0
+    ) {
+      const previousEmails = new Set(
+        (currentEvent.attendees || []).map((a) => a.email.toLowerCase()),
+      );
+      const newAttendees = updatedEvent.attendees.filter(
+        (a) => !previousEmails.has(a.email.toLowerCase()),
+      );
+      // If event details changed (title, description, times), also notify existing attendees
+      const existingAttendees = body.hasDetailsChanged
+        ? updatedEvent.attendees.filter((a) =>
+            previousEmails.has(a.email.toLowerCase()),
+          )
+        : [];
+
+      const recipientList = [...newAttendees, ...existingAttendees];
+
+      for (const attendee of recipientList) {
+        const rsvpUrls = buildRsvpUrls(tenant, eventId, attendee.email);
+        sendEventInviteEmail({
+          attendeeName: attendee.name,
+          attendeeEmail: attendee.email,
+          eventTitle: updatedEvent.title,
+          startTime: updatedEvent.startTime,
+          endTime: updatedEvent.endTime,
+          tenant,
+          rsvpAcceptUrl: rsvpUrls.acceptUrl,
+          rsvpDeclineUrl: rsvpUrls.declineUrl,
+        }).catch((err) =>
+          console.warn(
+            "[DBG][calendar/events/[eventId]] Invite email failed:",
+            err,
+          ),
+        );
+      }
+
+      if (recipientList.length > 0) {
+        console.log(
+          `[DBG][calendar/events/[eventId]] Sent invites to ${newAttendees.length} new + ${existingAttendees.length} existing attendee(s)`,
         );
       }
     }

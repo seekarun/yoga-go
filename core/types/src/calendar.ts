@@ -39,11 +39,17 @@ export interface RecurrenceRule {
 }
 
 /**
+ * RSVP status for an event attendee
+ */
+export type RsvpStatus = "pending" | "accepted" | "declined";
+
+/**
  * Event attendee
  */
 export interface EventAttendee {
   email: string;
   name: string;
+  rsvpStatus?: RsvpStatus;
 }
 
 /**
