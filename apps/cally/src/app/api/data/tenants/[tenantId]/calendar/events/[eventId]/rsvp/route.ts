@@ -6,6 +6,7 @@
  */
 import { NextResponse } from "next/server";
 import * as calendarEventRepository from "@/lib/repositories/calendarEventRepository";
+import { getTenantById } from "@/lib/repositories/tenantRepository";
 import { verifyRsvpToken } from "@/lib/rsvp-token";
 import type { EventAttendee } from "@/types";
 
@@ -91,9 +92,12 @@ export async function GET(request: Request, { params }: RouteParams) {
     `[DBG][rsvp] ${payload.email} responded "${payload.response}" for event ${eventId}`,
   );
 
-  // Redirect to a confirmation page
+  // Redirect to a confirmation page using tenant's custom domain if available
+  const tenant = await getTenantById(tenantId);
   const baseUrl =
-    process.env.NEXT_PUBLIC_APP_URL || "https://proj-cally.vercel.app";
+    tenant?.domainConfig?.domain && tenant.domainConfig.vercelVerified
+      ? `https://${tenant.domainConfig.domain}`
+      : process.env.NEXT_PUBLIC_APP_URL || "https://proj-cally.vercel.app";
   const redirectUrl = `${baseUrl}/rsvp/confirmed?response=${payload.response}&event=${encodeURIComponent(event.title)}`;
 
   return NextResponse.redirect(redirectUrl);
