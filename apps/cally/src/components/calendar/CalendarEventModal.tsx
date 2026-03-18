@@ -5,8 +5,18 @@ import { useRouter, useParams } from "next/navigation";
 import Modal, { ModalHeader, ModalFooter } from "@/components/Modal";
 import { PrimaryButton, SecondaryButton } from "@/components/Button";
 import TranscriptViewer from "@/components/TranscriptViewer";
+import ConfirmModal from "@/components/ConfirmModal";
 import AttendeeSelector from "@/components/calendar/AttendeeSelector";
 import type { CalendarItem, EventAttendee } from "@/types";
+import type {
+  DateFormatOption,
+  TimeFormatOption,
+} from "@/lib/formatPreferences";
+import {
+  formatDateTime as formatDateTimePref,
+  DEFAULT_DATE_FORMAT,
+  DEFAULT_TIME_FORMAT,
+} from "@/lib/formatPreferences";
 import { formatDateForInput } from "@/lib/dateUtils";
 
 /** Build a simple string fingerprint of editable event fields for dirty detection. */
@@ -30,19 +40,8 @@ interface CalendarEventModalProps {
   event: CalendarItem | null;
   tenantId: string;
   onEventUpdated: () => void;
-}
-
-function formatDateTime(isoString: string): string {
-  const date = new Date(isoString);
-  return date.toLocaleString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
+  dateFormat?: DateFormatOption;
+  timeFormat?: TimeFormatOption;
 }
 
 function formatDuration(start: string, end: string): string {
@@ -103,6 +102,8 @@ export default function CalendarEventModal({
   event,
   tenantId: _tenantId,
   onEventUpdated,
+  dateFormat = DEFAULT_DATE_FORMAT,
+  timeFormat = DEFAULT_TIME_FORMAT,
 }: CalendarEventModalProps) {
   const router = useRouter();
   const params = useParams();
@@ -117,6 +118,9 @@ export default function CalendarEventModal({
   const [showCancelForm, setShowCancelForm] = useState(false);
   const [isDeletingSeries, setIsDeletingSeries] = useState(false);
   const [error, setError] = useState("");
+  const [confirmAction, setConfirmAction] = useState<
+    "delete" | "deleteSeries" | null
+  >(null);
 
   // Check if event is recurring
   const isRecurring = !!event?.extendedProps?.recurrenceGroupId;
@@ -173,6 +177,7 @@ export default function CalendarEventModal({
       setIsSaving(false);
       setShowCancelForm(false);
       setIsDeletingSeries(false);
+      setConfirmAction(null);
       setError("");
     }
   }, [event]);
@@ -561,7 +566,7 @@ export default function CalendarEventModal({
             </div>
             <div>
               <p className="font-medium text-gray-900">
-                {formatDateTime(event.start)}
+                {formatDateTimePref(event.start, dateFormat, timeFormat)}
               </p>
               <p className="text-sm text-gray-500">
                 Duration: {formatDuration(event.start, event.end)}
@@ -987,19 +992,19 @@ export default function CalendarEventModal({
             {/* Left: destructive actions */}
             <div className="flex gap-2">
               <button
-                onClick={handleDelete}
+                onClick={() => setConfirmAction("delete")}
                 disabled={isDeleting || isDeletingSeries || isCancelling}
                 className="px-3 py-2 rounded-lg border border-red-200 bg-white text-red-600 font-medium text-sm hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isDeleting ? "Deleting..." : "Delete"}
+                Delete
               </button>
               {isRecurring && (
                 <button
-                  onClick={handleDeleteSeries}
+                  onClick={() => setConfirmAction("deleteSeries")}
                   disabled={isDeleting || isDeletingSeries || isCancelling}
                   className="px-3 py-2 rounded-lg bg-red-600 text-white font-medium text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isDeletingSeries ? "Deleting..." : "Delete Series"}
+                  Delete Series
                 </button>
               )}
               {isScheduled && isBooking && !showCancelForm && (
@@ -1042,6 +1047,36 @@ export default function CalendarEventModal({
           </div>
         )}
       </ModalFooter>
+
+      {/* Delete confirmation */}
+      <ConfirmModal
+        isOpen={confirmAction === "delete"}
+        onClose={() => setConfirmAction(null)}
+        onConfirm={() => {
+          setConfirmAction(null);
+          handleDelete();
+        }}
+        title="Delete Event"
+        message="Are you sure you want to delete this event? This action cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+        isLoading={isDeleting}
+      />
+
+      {/* Delete series confirmation */}
+      <ConfirmModal
+        isOpen={confirmAction === "deleteSeries"}
+        onClose={() => setConfirmAction(null)}
+        onConfirm={() => {
+          setConfirmAction(null);
+          handleDeleteSeries();
+        }}
+        title="Delete All Events in Series"
+        message="Are you sure you want to delete all events in this recurring series? This action cannot be undone."
+        confirmLabel="Delete Series"
+        variant="danger"
+        isLoading={isDeletingSeries}
+      />
     </Modal>
   );
 }

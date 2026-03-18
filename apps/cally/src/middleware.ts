@@ -26,6 +26,7 @@ function isSystemPath(pathname: string): boolean {
     pathname.startsWith("/auth/") ||
     pathname.startsWith("/srv/") ||
     pathname.startsWith("/embed/") ||
+    pathname.startsWith("/rsvp/") ||
     pathname.startsWith("/_next/") ||
     /\.(ico|png|jpg|jpeg|svg|css|js|woff|woff2)$/.test(pathname)
   );

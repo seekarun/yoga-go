@@ -18,6 +18,16 @@ import {
   updateTenant,
 } from "@/lib/repositories/tenantRepository";
 import { isValidTimezone } from "@/lib/timezones";
+import {
+  VALID_DATE_FORMATS,
+  VALID_TIME_FORMATS,
+  DEFAULT_DATE_FORMAT,
+  DEFAULT_TIME_FORMAT,
+} from "@/lib/formatPreferences";
+import type {
+  DateFormatOption,
+  TimeFormatOption,
+} from "@/lib/formatPreferences";
 
 interface PreferencesData {
   name: string;
@@ -27,6 +37,8 @@ interface PreferencesData {
   videoCallPreference: "cally" | "google_meet" | "zoom";
   defaultEventDuration: number;
   currency: string;
+  dateFormat: DateFormatOption;
+  timeFormat: TimeFormatOption;
   googleCalendarConnected: boolean;
   zoomConnected: boolean;
   weeklySchedule: WeeklySchedule;
@@ -102,6 +114,10 @@ export async function GET(
         videoCallPreference: tenant.videoCallPreference ?? "cally",
         defaultEventDuration: tenant.defaultEventDuration ?? 30,
         currency: tenant.currency ?? "AUD",
+        dateFormat:
+          (tenant.dateFormat as DateFormatOption) ?? DEFAULT_DATE_FORMAT,
+        timeFormat:
+          (tenant.timeFormat as TimeFormatOption) ?? DEFAULT_TIME_FORMAT,
         googleCalendarConnected: !!tenant.googleCalendarConfig,
         zoomConnected: !!tenant.zoomConfig,
         weeklySchedule:
@@ -174,6 +190,8 @@ export async function PUT(
       videoCallPreference,
       defaultEventDuration,
       currency,
+      dateFormat,
+      timeFormat,
       weeklySchedule,
       cancellationConfig,
     } = body;
@@ -334,6 +352,34 @@ export async function PUT(
       updates.currency = currency;
     }
 
+    // Validate dateFormat if provided
+    if (dateFormat !== undefined) {
+      if (!VALID_DATE_FORMATS.includes(dateFormat)) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `dateFormat must be one of: ${VALID_DATE_FORMATS.join(", ")}`,
+          },
+          { status: 400 },
+        );
+      }
+      updates.dateFormat = dateFormat;
+    }
+
+    // Validate timeFormat if provided
+    if (timeFormat !== undefined) {
+      if (!VALID_TIME_FORMATS.includes(timeFormat)) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `timeFormat must be one of: ${VALID_TIME_FORMATS.join(", ")}`,
+          },
+          { status: 400 },
+        );
+      }
+      updates.timeFormat = timeFormat;
+    }
+
     // Validate weeklySchedule if provided
     if (weeklySchedule !== undefined) {
       if (typeof weeklySchedule !== "object" || weeklySchedule === null) {
@@ -487,6 +533,10 @@ export async function PUT(
         videoCallPreference: updated.videoCallPreference ?? "cally",
         defaultEventDuration: updated.defaultEventDuration ?? 30,
         currency: updated.currency ?? "AUD",
+        dateFormat:
+          (updated.dateFormat as DateFormatOption) ?? DEFAULT_DATE_FORMAT,
+        timeFormat:
+          (updated.timeFormat as TimeFormatOption) ?? DEFAULT_TIME_FORMAT,
         googleCalendarConnected: !!tenant.googleCalendarConfig,
         zoomConnected: !!tenant.zoomConfig,
         weeklySchedule:

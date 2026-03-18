@@ -66,6 +66,8 @@ export interface CallyTenant {
   defaultEventDuration?: number;
   currency?: string;
   address?: string;
+  dateFormat?: string;
+  timeFormat?: string;
   createdAt: string;
   updatedAt: string;
 }

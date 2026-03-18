@@ -1,8 +1,18 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { SUPPORTED_TIMEZONES, getTimezoneLabel } from "@/lib/timezones";
+import {
+  DATE_FORMAT_OPTIONS,
+  TIME_FORMAT_OPTIONS,
+  DEFAULT_DATE_FORMAT,
+  DEFAULT_TIME_FORMAT,
+} from "@/lib/formatPreferences";
+import type {
+  DateFormatOption,
+  TimeFormatOption,
+} from "@/lib/formatPreferences";
 import { ImageEditorOverlay } from "@core/components";
 import type { ImageEditorData } from "@core/components";
 
@@ -20,10 +30,16 @@ export default function ProfilePage() {
   const [address, setAddress] = useState("");
   const [timezone, setTimezone] = useState("");
   const [currency, setCurrency] = useState("AUD");
+  const [dateFormat, setDateFormat] =
+    useState<DateFormatOption>(DEFAULT_DATE_FORMAT);
+  const [timeFormat, setTimeFormat] =
+    useState<TimeFormatOption>(DEFAULT_TIME_FORMAT);
   const [savingName, setSavingName] = useState(false);
   const [savingAddress, setSavingAddress] = useState(false);
   const [savingTimezone, setSavingTimezone] = useState(false);
   const [savingCurrency, setSavingCurrency] = useState(false);
+  const [savingDateFormat, setSavingDateFormat] = useState(false);
+  const [savingTimeFormat, setSavingTimeFormat] = useState(false);
   const [nameFeedback, setNameFeedback] = useState<{
     type: "success" | "error";
     message: string;
@@ -37,6 +53,14 @@ export default function ProfilePage() {
     message: string;
   } | null>(null);
   const [currencyFeedback, setCurrencyFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+  const [dateFormatFeedback, setDateFormatFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+  const [timeFormatFeedback, setTimeFormatFeedback] = useState<{
     type: "success" | "error";
     message: string;
   } | null>(null);
@@ -60,6 +84,8 @@ export default function ProfilePage() {
         if (data.data.address !== undefined) setAddress(data.data.address);
         if (data.data.timezone) setTimezone(data.data.timezone);
         if (data.data.currency) setCurrency(data.data.currency);
+        if (data.data.dateFormat) setDateFormat(data.data.dateFormat);
+        if (data.data.timeFormat) setTimeFormat(data.data.timeFormat);
       }
     } catch (err) {
       console.error("[DBG][profile] Failed to fetch preferences:", err);
@@ -173,6 +199,34 @@ export default function ProfilePage() {
     );
     setSavingCurrency(false);
   };
+
+  const handleDateFormatChange = async (newFormat: DateFormatOption) => {
+    setDateFormat(newFormat);
+    setSavingDateFormat(true);
+    setDateFormatFeedback(null);
+    await savePreference(
+      { dateFormat: newFormat },
+      setDateFormatFeedback,
+      "Date format updated",
+      "Failed to update date format",
+    );
+    setSavingDateFormat(false);
+  };
+
+  const handleTimeFormatChange = async (newFormat: TimeFormatOption) => {
+    setTimeFormat(newFormat);
+    setSavingTimeFormat(true);
+    setTimeFormatFeedback(null);
+    await savePreference(
+      { timeFormat: newFormat },
+      setTimeFormatFeedback,
+      "Time format updated",
+      "Failed to update time format",
+    );
+    setSavingTimeFormat(false);
+  };
+
+  const now = useMemo(() => new Date(), []);
 
   const handleChangePassword = async () => {
     setPasswordFeedback(null);
@@ -467,6 +521,90 @@ export default function ProfilePage() {
                 className={`text-sm ${currencyFeedback.type === "success" ? "text-green-600" : "text-red-600"}`}
               >
                 {currencyFeedback.message}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Date Format */}
+        <div>
+          <label
+            htmlFor="dateformat-select"
+            className="block text-sm font-medium text-[var(--text-muted)] mb-1"
+          >
+            Date Format
+          </label>
+          <p className="text-sm text-[var(--text-muted)] mb-2">
+            Used across calendar views and event emails.
+          </p>
+          <div className="flex items-center gap-3">
+            <select
+              id="dateformat-select"
+              value={dateFormat}
+              onChange={(e) =>
+                handleDateFormatChange(e.target.value as DateFormatOption)
+              }
+              disabled={savingDateFormat}
+              className="border border-[var(--color-border)] rounded-lg px-3 py-2 text-[var(--text-main)] bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] disabled:opacity-50"
+            >
+              {DATE_FORMAT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label} — {opt.example(now)}
+                </option>
+              ))}
+            </select>
+            {savingDateFormat && (
+              <span className="text-sm text-[var(--text-muted)]">
+                Saving...
+              </span>
+            )}
+            {dateFormatFeedback && (
+              <span
+                className={`text-sm ${dateFormatFeedback.type === "success" ? "text-green-600" : "text-red-600"}`}
+              >
+                {dateFormatFeedback.message}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Time Format */}
+        <div>
+          <label
+            htmlFor="timeformat-select"
+            className="block text-sm font-medium text-[var(--text-muted)] mb-1"
+          >
+            Time Format
+          </label>
+          <p className="text-sm text-[var(--text-muted)] mb-2">
+            Used across calendar views and event emails.
+          </p>
+          <div className="flex items-center gap-3">
+            <select
+              id="timeformat-select"
+              value={timeFormat}
+              onChange={(e) =>
+                handleTimeFormatChange(e.target.value as TimeFormatOption)
+              }
+              disabled={savingTimeFormat}
+              className="border border-[var(--color-border)] rounded-lg px-3 py-2 text-[var(--text-main)] bg-white focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] disabled:opacity-50"
+            >
+              {TIME_FORMAT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label} — {opt.example(now)}
+                </option>
+              ))}
+            </select>
+            {savingTimeFormat && (
+              <span className="text-sm text-[var(--text-muted)]">
+                Saving...
+              </span>
+            )}
+            {timeFormatFeedback && (
+              <span
+                className={`text-sm ${timeFormatFeedback.type === "success" ? "text-green-600" : "text-red-600"}`}
+              >
+                {timeFormatFeedback.message}
               </span>
             )}
           </div>

@@ -10,6 +10,10 @@ import type {
   EventAttendee,
   RecurrenceRule,
 } from "@/types";
+import type {
+  DateFormatOption,
+  TimeFormatOption,
+} from "@/lib/formatPreferences";
 import { formatDateForInput } from "@/lib/dateUtils";
 
 interface CreateEventModalProps {
@@ -20,6 +24,8 @@ interface CreateEventModalProps {
   onEventCreated: () => void;
   videoCallPreference?: "cally" | "google_meet" | "zoom";
   defaultDurationMinutes?: number;
+  dateFormat?: DateFormatOption;
+  timeFormat?: TimeFormatOption;
 }
 
 // Predefined colors for events
@@ -46,6 +52,8 @@ export default function CreateEventModal({
   onEventCreated,
   videoCallPreference = "cally",
   defaultDurationMinutes = 30,
+  dateFormat: _dateFormat,
+  timeFormat: _timeFormat,
 }: CreateEventModalProps) {
   // Form state
   const [title, setTitle] = useState("");

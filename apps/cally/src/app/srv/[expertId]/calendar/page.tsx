@@ -10,6 +10,14 @@ import type { EventClickArg, DatesSetArg } from "@fullcalendar/core";
 import type { CalendarItem } from "@/types";
 import type { WeeklySchedule } from "@/types/booking";
 import { DEFAULT_BOOKING_CONFIG } from "@/types/booking";
+import type {
+  DateFormatOption,
+  TimeFormatOption,
+} from "@/lib/formatPreferences";
+import {
+  DEFAULT_DATE_FORMAT,
+  DEFAULT_TIME_FORMAT,
+} from "@/lib/formatPreferences";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import CreateEventModal from "@/components/calendar/CreateEventModal";
 import CalendarEventModal from "@/components/calendar/CalendarEventModal";
@@ -30,6 +38,10 @@ export default function CalendarPage() {
     "cally" | "google_meet" | "zoom"
   >("cally");
   const [defaultEventDuration, setDefaultEventDuration] = useState(30);
+  const [dateFormat, setDateFormat] =
+    useState<DateFormatOption>(DEFAULT_DATE_FORMAT);
+  const [timeFormat, setTimeFormat] =
+    useState<TimeFormatOption>(DEFAULT_TIME_FORMAT);
   const [weeklySchedule, setWeeklySchedule] = useState<WeeklySchedule>(
     DEFAULT_BOOKING_CONFIG.weeklySchedule,
   );
@@ -60,6 +72,12 @@ export default function CalendarPage() {
           }
           if (data.data.weeklySchedule) {
             setWeeklySchedule(data.data.weeklySchedule);
+          }
+          if (data.data.dateFormat) {
+            setDateFormat(data.data.dateFormat);
+          }
+          if (data.data.timeFormat) {
+            setTimeFormat(data.data.timeFormat);
           }
         }
       } catch (err) {
@@ -419,6 +437,8 @@ export default function CalendarPage() {
         onEventCreated={handleEventCreated}
         videoCallPreference={videoCallPreference}
         defaultDurationMinutes={defaultEventDuration}
+        dateFormat={dateFormat}
+        timeFormat={timeFormat}
       />
 
       {/* View/Edit Event Modal */}
@@ -428,6 +448,8 @@ export default function CalendarPage() {
         event={selectedEvent}
         tenantId={expertId}
         onEventUpdated={handleEventUpdated}
+        dateFormat={dateFormat}
+        timeFormat={timeFormat}
       />
     </div>
   );
