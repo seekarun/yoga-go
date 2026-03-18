@@ -81,17 +81,18 @@ export function verifyRsvpToken(token: string): RsvpTokenPayload | null {
 }
 
 /**
- * Build RSVP URLs for an attendee
+ * Build RSVP URLs for an attendee.
+ * Uses the tenant's custom domain if verified, else falls back to the app URL.
  */
 export function buildRsvpUrls(
   tenant: CallyTenant,
   eventId: string,
   attendeeEmail: string,
 ): { acceptUrl: string; declineUrl: string } {
-  // Use the app base URL (not the tenant landing page URL) since the RSVP
-  // route is an API endpoint on the cally app itself.
   const appBaseUrl =
-    process.env.NEXT_PUBLIC_APP_URL || "https://proj-cally.vercel.app";
+    tenant.domainConfig?.domain && tenant.domainConfig.vercelVerified
+      ? `https://${tenant.domainConfig.domain}`
+      : process.env.NEXT_PUBLIC_APP_URL || "https://proj-cally.vercel.app";
   const apiPath = `/api/data/tenants/${tenant.id}/calendar/events/${eventId}/rsvp`;
 
   const acceptToken = generateRsvpToken({

@@ -22,6 +22,77 @@ export interface EventInviteEmailData {
  * Send an event invite email to an attendee.
  * Errors are caught internally so they don't break the API response.
  */
+/**
+ * Format a Date to YYYYMMDDTHHmmssZ (Google Calendar format).
+ */
+function toGoogleCalDate(iso: string): string {
+  return new Date(iso)
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d{3}/, "");
+}
+
+/**
+ * Build a Google Calendar "Add Event" URL.
+ */
+function buildGoogleCalendarUrl(
+  title: string,
+  startIso: string,
+  endIso: string,
+  description: string,
+): string {
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: title,
+    dates: `${toGoogleCalDate(startIso)}/${toGoogleCalDate(endIso)}`,
+    details: description,
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+/**
+ * Build an Outlook Web "Add Event" URL.
+ */
+function buildOutlookCalendarUrl(
+  title: string,
+  startIso: string,
+  endIso: string,
+  description: string,
+): string {
+  const params = new URLSearchParams({
+    subject: title,
+    startdt: new Date(startIso).toISOString(),
+    enddt: new Date(endIso).toISOString(),
+    body: description,
+    path: "/calendar/action/compose",
+  });
+  return `https://outlook.live.com/calendar/0/action/compose?${params.toString()}`;
+}
+
+/**
+ * Build a data-URI .ics link for Apple Calendar / other ICS-compatible apps.
+ */
+function buildIcsDataUri(
+  title: string,
+  startIso: string,
+  endIso: string,
+  description: string,
+): string {
+  const ics = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Cally//Event Invite//EN",
+    "BEGIN:VEVENT",
+    `DTSTART:${toGoogleCalDate(startIso)}`,
+    `DTEND:${toGoogleCalDate(endIso)}`,
+    `SUMMARY:${title}`,
+    `DESCRIPTION:${description.replace(/\n/g, "\\n")}`,
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].join("\r\n");
+  return `data:text/calendar;charset=utf8,${encodeURIComponent(ics)}`;
+}
+
 export async function sendEventInviteEmail(
   data: EventInviteEmailData,
 ): Promise<void> {
@@ -40,6 +111,26 @@ export async function sendEventInviteEmail(
   const from = getFromEmail(tenant);
   const start = formatTime(startTime, timezone);
   const end = formatTime(endTime, timezone);
+
+  const calDescription = `${eventTitle} — hosted by ${tenant.name}`;
+  const googleCalUrl = buildGoogleCalendarUrl(
+    eventTitle,
+    startTime,
+    endTime,
+    calDescription,
+  );
+  const outlookCalUrl = buildOutlookCalendarUrl(
+    eventTitle,
+    startTime,
+    endTime,
+    calDescription,
+  );
+  const icsDataUri = buildIcsDataUri(
+    eventTitle,
+    startTime,
+    endTime,
+    calDescription,
+  );
 
   try {
     console.log(
@@ -114,6 +205,16 @@ export async function sendEventInviteEmail(
                   : ""
               }
 
+              <!-- Add to Calendar -->
+              <div style="text-align: center; margin-bottom: 20px;">
+                <p style="font-size: 13px; color: #888; margin: 0 0 8px 0;">Add to your calendar:</p>
+                <a href="${googleCalUrl}" target="_blank" style="font-size: 13px; color: #6366f1; text-decoration: underline; margin: 0 8px;">Google</a>
+                <span style="color: #ccc;">|</span>
+                <a href="${outlookCalUrl}" target="_blank" style="font-size: 13px; color: #6366f1; text-decoration: underline; margin: 0 8px;">Outlook</a>
+                <span style="color: #ccc;">|</span>
+                <a href="${icsDataUri}" download="event.ics" style="font-size: 13px; color: #6366f1; text-decoration: underline; margin: 0 8px;">Apple Calendar (.ics)</a>
+              </div>
+
               <p style="font-size: 13px; color: #999; margin: 0; text-align: center;">
                 This is an automated invitation from ${tenant.name}.
               </p>
@@ -150,6 +251,10 @@ Date: ${start.dateStr}
 Time: ${start.timeStr} – ${end.timeStr}
 Timezone: ${timezone}
 ${rsvpText}
+ADD TO CALENDAR
+Google Calendar: ${googleCalUrl}
+Outlook: ${outlookCalUrl}
+
 This is an automated invitation from ${tenant.name}.
 
 ---
