@@ -213,6 +213,7 @@ export default async function TenantLandingPage({ params }: PageProps) {
         address={tenant.address}
         logo={tenant.logo}
         tenantName={tenant.name}
+        contactForms={tenant.contactForms}
       />
       <ChatWidgetWrapper
         tenantId={tenantId}

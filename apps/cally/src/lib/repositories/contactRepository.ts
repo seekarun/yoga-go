@@ -54,6 +54,8 @@ export async function createContact(
     flaggedAsSpam?: boolean;
     emailValidationReason?: string;
     visitorInfo?: VisitorInfo;
+    formId?: string;
+    formFields?: Record<string, string>;
   },
 ): Promise<ContactSubmission> {
   const id = generateId();
@@ -76,6 +78,8 @@ export async function createContact(
       emailValidationReason: data.emailValidationReason,
     }),
     ...(data.visitorInfo && { visitorInfo: data.visitorInfo }),
+    ...(data.formId && { formId: data.formId }),
+    ...(data.formFields && { formFields: data.formFields }),
   };
 
   const item: DynamoDBContactItem = {

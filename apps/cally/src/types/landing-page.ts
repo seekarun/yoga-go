@@ -123,7 +123,7 @@ export const TEMPLATES: TemplateInfo[] = [
 /**
  * Action button types
  */
-export type ButtonAction = "booking" | "contact" | "chat";
+export type ButtonAction = "booking" | "contact" | "chat" | "form";
 
 export interface ButtonConfig {
   label: string;

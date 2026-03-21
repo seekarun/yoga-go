@@ -10,6 +10,7 @@ export * from "./phone-calling";
 export * from "./booking";
 export * from "./subscriber";
 export * from "./contact";
+export * from "./contact-form";
 export * from "./product";
 export * from "./webinar";
 export * from "./feedback";

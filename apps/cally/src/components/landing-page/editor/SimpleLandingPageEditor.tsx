@@ -151,6 +151,11 @@ export default function SimpleLandingPageEditor({
     { id: string; title: string }[]
   >([]);
 
+  // Contact forms state (for button action dropdown)
+  const [contactForms, setContactForms] = useState<
+    { id: string; name: string }[]
+  >([]);
+
   // Brand colour picker state
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [colorHarmony, setColorHarmony] =
@@ -586,6 +591,28 @@ export default function SimpleLandingPageEditor({
       }
     };
     fetchSurveys();
+
+    // Fetch contact forms for button action dropdown
+    const fetchContactForms = async () => {
+      try {
+        const res = await fetch("/api/data/app/contact-forms");
+        const json = await res.json();
+        if (json.success && json.data) {
+          setContactForms(
+            json.data.map((f: { id: string; name: string }) => ({
+              id: f.id,
+              name: f.name,
+            })),
+          );
+        }
+      } catch (err) {
+        console.error(
+          "[DBG][SimpleLandingPageEditor] Failed to fetch contact forms:",
+          err,
+        );
+      }
+    };
+    fetchContactForms();
   }, []);
 
   // Backfill gallery images: prefer product images, fallback to Pexels defaults.
@@ -3913,6 +3940,12 @@ export default function SimpleLandingPageEditor({
             id: `survey:${s.id}`,
             name: `Survey: ${s.title}`,
             description: "Opens this survey as a popup on the landing page",
+          })),
+          ...contactForms.map((f) => ({
+            id: `form:${f.id}`,
+            name: `Form: ${f.name}`,
+            description:
+              "Opens this contact form as a popup on the landing page",
           })),
         ]}
       />

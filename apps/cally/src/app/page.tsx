@@ -1,10 +1,9 @@
 "use client";
 
-import { useAuth } from "@/contexts/AuthContext";
-import Link from "next/link";
+import { useState, useCallback } from "react";
 import { PRICING_TIERS } from "@/lib/pricing";
-import type { SubscriptionTier } from "@/types/subscription";
-import LaunchingSoon from "./launching-soon";
+import DynamicContactForm from "@/components/contact/DynamicContactForm";
+import { EXPRESS_INTEREST_FORM_CONFIG } from "@/lib/expressInterestFormConfig";
 
 /* ─── icon components ─── */
 
@@ -225,93 +224,135 @@ function HeroMockup() {
   );
 }
 
-/* ─── pricing card ─── */
+/* ─── express interest modal ─── */
 
-function PricingCard({
-  name,
-  price,
-  description,
-  features,
-  highlighted,
-  trialLabel,
-  cta,
-  onCtaClick,
+function ExpressInterestModal({
+  isOpen,
+  onClose,
 }: {
-  name: string;
-  price: number;
-  description: string;
-  features: string[];
-  highlighted?: boolean;
-  trialLabel: string;
-  cta: string;
-  onCtaClick: () => void;
+  isOpen: boolean;
+  onClose: () => void;
 }) {
+  const [status, setStatus] = useState<
+    "form" | "submitting" | "success" | "error"
+  >("form");
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const handleSubmit = useCallback(
+    async (data: {
+      fields: Record<string, string>;
+      _hp: string;
+      _t: string;
+    }) => {
+      setStatus("submitting");
+      try {
+        const res = await fetch("/api/data/express-interest", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fields: data.fields }),
+        });
+        const body = await res.json();
+        if (!res.ok) throw new Error(body?.error || "Something went wrong");
+        setStatus("success");
+      } catch (err) {
+        setErrorMsg(
+          err instanceof Error ? err.message : "Something went wrong",
+        );
+        setStatus("error");
+      }
+    },
+    [],
+  );
+
+  const handleClose = () => {
+    onClose();
+    // Reset after close animation
+    setTimeout(() => {
+      setStatus("form");
+      setErrorMsg("");
+    }, 200);
+  };
+
+  if (!isOpen) return null;
+
   return (
-    <div
-      className={`relative rounded-2xl p-8 flex flex-col transition-shadow duration-300 ${
-        highlighted
-          ? "bg-[var(--color-primary)] text-white shadow-xl shadow-[var(--color-primary)]/20 scale-[1.02]"
-          : "bg-white border border-[var(--color-border)] hover:shadow-lg"
-      }`}
-    >
-      {highlighted && (
-        <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[var(--color-accent)] text-white text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wide">
-          Most Popular
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        onClick={handleClose}
+      />
+      {/* Modal */}
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-border)]">
+          <h2 className="text-lg font-bold text-[var(--text-main)]">
+            Express Interest
+          </h2>
+          <button
+            onClick={handleClose}
+            className="p-1 text-gray-400 hover:text-gray-600"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
         </div>
-      )}
-      <div className="mb-6">
-        <h3
-          className={`text-lg font-semibold mb-1 ${highlighted ? "text-white" : "text-[var(--text-main)]"}`}
-        >
-          {name}
-        </h3>
-        <p
-          className={`text-sm ${highlighted ? "text-white/70" : "text-[var(--text-muted)]"}`}
-        >
-          {description}
-        </p>
+        {/* Body */}
+        <div className="px-6 py-5">
+          {status === "success" ? (
+            <div className="text-center py-6">
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <IconCheck />
+              </div>
+              <h3 className="text-lg font-semibold text-[var(--text-main)] mb-2">
+                Thanks for your interest!
+              </h3>
+              <p className="text-sm text-[var(--text-body)] mb-4">
+                We&apos;ll be in touch soon. First 30 adopters get 6 months
+                free!
+              </p>
+              <button
+                onClick={handleClose}
+                className="px-6 py-2.5 bg-[var(--color-primary)] text-white text-sm font-semibold rounded-lg hover:opacity-90 transition-colors"
+              >
+                Done
+              </button>
+            </div>
+          ) : (
+            <>
+              {status === "error" && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                  {errorMsg}
+                </div>
+              )}
+              <p className="text-sm text-[var(--text-body)] mb-4">
+                First 30 adopters get{" "}
+                <strong className="text-[var(--color-primary)]">
+                  6 months free
+                </strong>
+                . Tell us about yourself and we&apos;ll reach out when CallyGo
+                is ready for you.
+              </p>
+              <DynamicContactForm
+                config={EXPRESS_INTEREST_FORM_CONFIG}
+                onSubmit={handleSubmit}
+                submitting={status === "submitting"}
+              />
+            </>
+          )}
+        </div>
       </div>
-      <div className="mb-2">
-        <span
-          className={`text-4xl font-bold ${highlighted ? "text-white" : "text-[var(--text-main)]"}`}
-        >
-          ${price}
-        </span>
-        <span
-          className={`text-sm ${highlighted ? "text-white/70" : "text-[var(--text-muted)]"}`}
-        >
-          /month
-        </span>
-      </div>
-      <p className="text-sm font-medium mb-6 text-[var(--color-accent)]">
-        {trialLabel}
-      </p>
-      <ul className="space-y-3 mb-8 flex-1">
-        {features.map((feature) => (
-          <li key={feature} className="flex items-start gap-3">
-            <span
-              className={`mt-0.5 shrink-0 ${highlighted ? "text-[var(--color-accent)]" : "text-[var(--color-primary)]"}`}
-            >
-              <IconCheck />
-            </span>
-            <span
-              className={`text-sm ${highlighted ? "text-white/90" : "text-[var(--text-body)]"}`}
-            >
-              {feature}
-            </span>
-          </li>
-        ))}
-      </ul>
-      <button
-        onClick={onCtaClick}
-        className={`w-full py-3.5 px-4 rounded-lg font-medium transition-all duration-300 min-h-[48px] ${
-          highlighted
-            ? "bg-white text-[var(--color-primary)] hover:bg-white/90 hover:shadow-[0_10px_15px_-3px_rgba(255,255,255,0.3)]"
-            : "bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)] hover:shadow-[0_10px_15px_-3px_rgba(0,128,128,0.3)]"
-        }`}
-      >
-        {cta}
-      </button>
     </div>
   );
 }
@@ -319,37 +360,7 @@ function PricingCard({
 /* ─── main page ─── */
 
 export default function HomePage() {
-  const { isAuthenticated, isLoading, login } = useAuth();
-
-  // Show "Launching Soon" page unless NEXT_PUBLIC_LAUNCHED is set to "true"
-  if (process.env.NEXT_PUBLIC_LAUNCHED !== "true") {
-    return <LaunchingSoon />;
-  }
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-primary)]" />
-      </div>
-    );
-  }
-
-  const handleGetStarted = () => {
-    if (isAuthenticated) {
-      window.location.href = "/srv";
-    } else {
-      login("/srv");
-    }
-  };
-
-  const handleSelectPlan = (tier: SubscriptionTier) => {
-    const checkoutUrl = `/api/data/app/subscription/checkout-redirect?tier=${tier}`;
-    if (isAuthenticated) {
-      window.location.href = checkoutUrl;
-    } else {
-      login(checkoutUrl);
-    }
-  };
+  const [showExpressInterest, setShowExpressInterest] = useState(false);
 
   return (
     <div className="min-h-screen bg-[var(--color-bg-main)]">
@@ -377,31 +388,12 @@ export default function HomePage() {
                 Pricing
               </a>
             </nav>
-            <div className="flex items-center gap-3">
-              {isAuthenticated ? (
-                <Link
-                  href="/srv"
-                  className="px-5 py-2.5 bg-[var(--color-primary)] text-white text-sm font-medium rounded-lg hover:bg-[var(--color-primary-hover)] hover:shadow-[0_10px_15px_-3px_rgba(0,128,128,0.3)] transition-all min-h-[48px] flex items-center"
-                >
-                  Dashboard
-                </Link>
-              ) : (
-                <>
-                  <Link
-                    href="/auth/signin"
-                    className="px-4 py-2.5 text-sm font-medium text-[var(--text-body)] hover:text-[var(--color-primary)] transition-all min-h-[48px] flex items-center"
-                  >
-                    Log In
-                  </Link>
-                  <button
-                    onClick={() => login("/srv")}
-                    className="px-5 py-2.5 bg-[var(--color-primary)] text-white text-sm font-medium rounded-lg hover:bg-[var(--color-primary-hover)] hover:shadow-[0_10px_15px_-3px_rgba(0,128,128,0.3)] transition-all min-h-[48px]"
-                  >
-                    Get Started
-                  </button>
-                </>
-              )}
-            </div>
+            <button
+              onClick={() => setShowExpressInterest(true)}
+              className="px-5 py-2.5 bg-[var(--color-primary)] text-white text-sm font-medium rounded-lg hover:bg-[var(--color-primary-hover)] hover:shadow-[0_10px_15px_-3px_rgba(0,128,128,0.3)] transition-all min-h-[48px]"
+            >
+              Express Interest
+            </button>
           </div>
         </div>
       </header>
@@ -412,9 +404,8 @@ export default function HomePage() {
           <div className="grid md:grid-cols-2 gap-12 md:gap-[80px] items-center">
             {/* Left — copy */}
             <div className="text-center md:text-left">
-              <div className="inline-flex items-center gap-2 bg-[var(--color-secondary)] text-[var(--color-primary)] text-sm font-semibold px-4 py-2 rounded-full mb-6">
-                <IconSparkles />
-                <span>AI-powered for solopreneurs</span>
+              <div className="inline-flex items-center gap-2 bg-[var(--color-accent)]/10 text-[var(--color-accent)] text-sm font-semibold px-4 py-2 rounded-full mb-6">
+                <span>Coming Soon</span>
               </div>
               <h1 className="text-[2rem] sm:text-5xl lg:text-[3.25rem] font-bold text-[var(--text-main)] mb-6">
                 Run your business.
@@ -424,19 +415,17 @@ export default function HomePage() {
                 </span>
               </h1>
               <p className="text-lg text-[var(--text-body)] mb-8 leading-relaxed max-w-lg">
-                The all-in-one assistant for solopreneurs. Landing pages,
+                The all-in-one AI assistant for solopreneurs. Landing pages,
                 scheduling, and customer management&mdash;simplified by AI.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <button
-                  onClick={handleGetStarted}
-                  className="px-8 py-4 bg-[var(--color-primary)] text-white rounded-xl hover:bg-[var(--color-primary-hover)] hover:shadow-[0_10px_15px_-3px_rgba(0,128,128,0.3)] transition-all text-base font-semibold shadow-lg shadow-[var(--color-primary)]/20 min-h-[48px]"
-                >
-                  Start Your 14-Day Free Trial
-                </button>
-              </div>
+              <button
+                onClick={() => setShowExpressInterest(true)}
+                className="px-8 py-4 bg-[var(--color-primary)] text-white rounded-xl hover:bg-[var(--color-primary-hover)] hover:shadow-[0_10px_15px_-3px_rgba(0,128,128,0.3)] transition-all text-base font-semibold shadow-lg shadow-[var(--color-primary)]/20 min-h-[48px]"
+              >
+                Express Interest
+              </button>
               <p className="mt-4 text-sm text-[var(--text-muted)]">
-                No credit card required. Set up in under 5 minutes.
+                First 30 adopters get 6 months free.
               </p>
             </div>
 
@@ -782,36 +771,91 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Pricing ── */}
+      {/* ── Pricing (informational only) ── */}
       <section id="pricing" className="max-w-6xl mx-auto px-6 py-20 md:py-28">
         <div className="text-center mb-14">
           <h2 className="text-3xl sm:text-4xl font-bold text-[var(--text-main)] mb-4">
             Simple, transparent pricing
           </h2>
           <p className="text-lg text-[var(--text-body)] max-w-xl mx-auto">
-            Start free, upgrade when you&apos;re ready. No hidden fees. Cancel
-            anytime.
+            Plans to fit every stage of your business. No hidden fees.
           </p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto items-start">
           {PRICING_TIERS.map((tier) => (
-            <PricingCard
+            <div
               key={tier.tier}
-              name={tier.name}
-              price={tier.price}
-              description={tier.description}
-              features={tier.features}
-              highlighted={tier.highlighted}
-              trialLabel={tier.trialLabel}
-              cta="Start Free Trial"
-              onCtaClick={() => handleSelectPlan(tier.tier)}
-            />
+              className={`relative rounded-2xl p-8 flex flex-col transition-shadow duration-300 ${
+                tier.highlighted
+                  ? "bg-[var(--color-primary)] text-white shadow-xl shadow-[var(--color-primary)]/20 scale-[1.02]"
+                  : "bg-white border border-[var(--color-border)] hover:shadow-lg"
+              }`}
+            >
+              {tier.highlighted && (
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[var(--color-accent)] text-white text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wide">
+                  Most Popular
+                </div>
+              )}
+              <div className="mb-6">
+                <h3
+                  className={`text-lg font-semibold mb-1 ${tier.highlighted ? "text-white" : "text-[var(--text-main)]"}`}
+                >
+                  {tier.name}
+                </h3>
+                <p
+                  className={`text-sm ${tier.highlighted ? "text-white/70" : "text-[var(--text-muted)]"}`}
+                >
+                  {tier.description}
+                </p>
+              </div>
+              <div className="mb-2">
+                <span
+                  className={`text-4xl font-bold ${tier.highlighted ? "text-white" : "text-[var(--text-main)]"}`}
+                >
+                  ${tier.price}
+                </span>
+                <span
+                  className={`text-sm ${tier.highlighted ? "text-white/70" : "text-[var(--text-muted)]"}`}
+                >
+                  /month
+                </span>
+              </div>
+              <p className="text-sm font-medium mb-6 text-[var(--color-accent)]">
+                {tier.trialLabel}
+              </p>
+              <ul className="space-y-3 mb-8 flex-1">
+                {tier.features.map((feature) => (
+                  <li key={feature} className="flex items-start gap-3">
+                    <span
+                      className={`mt-0.5 shrink-0 ${tier.highlighted ? "text-[var(--color-accent)]" : "text-[var(--color-primary)]"}`}
+                    >
+                      <IconCheck />
+                    </span>
+                    <span
+                      className={`text-sm ${tier.highlighted ? "text-white/90" : "text-[var(--text-body)]"}`}
+                    >
+                      {feature}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={() => setShowExpressInterest(true)}
+                className={`w-full py-3.5 px-4 rounded-lg font-medium transition-all duration-300 min-h-[48px] ${
+                  tier.highlighted
+                    ? "bg-white text-[var(--color-primary)] hover:bg-white/90 hover:shadow-[0_10px_15px_-3px_rgba(255,255,255,0.3)]"
+                    : "bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)] hover:shadow-[0_10px_15px_-3px_rgba(0,128,128,0.3)]"
+                }`}
+              >
+                Express Interest
+              </button>
+            </div>
           ))}
         </div>
       </section>
 
-      {/* ── Final CTA ── */}
+      {/* ── CTA Section ── */}
       <section className="max-w-6xl mx-auto px-6 pb-20 md:pb-28">
         <div className="bg-[var(--color-primary)] rounded-3xl p-12 md:p-16 text-center relative overflow-hidden">
           {/* Decorative circles */}
@@ -820,24 +864,28 @@ export default function HomePage() {
 
           <div className="relative">
             <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-              Ready to go?
+              Be the first to try CallyGo
             </h2>
             <p className="text-lg text-white/80 mb-8 max-w-lg mx-auto">
-              Join CallyGo today and turn your solo business into a
-              well-organized, client-friendly operation.
+              We&apos;re launching soon. First 30 adopters get{" "}
+              <strong>6 months free</strong>. Express your interest and
+              we&apos;ll reach out.
             </p>
             <button
-              onClick={handleGetStarted}
-              className="px-10 py-4 bg-white text-[var(--color-primary)] rounded-xl font-semibold text-lg hover:bg-white/90 hover:shadow-[0_10px_15px_-3px_rgba(255,255,255,0.3)] transition-all shadow-lg min-h-[48px]"
+              onClick={() => setShowExpressInterest(true)}
+              className="px-8 py-4 bg-white text-[var(--color-primary)] rounded-xl hover:bg-white/90 transition-all text-base font-semibold shadow-lg min-h-[48px]"
             >
-              Join CallyGo Today
+              Express Interest
             </button>
-            <p className="mt-4 text-sm text-white/60">
-              No credit card required
-            </p>
           </div>
         </div>
       </section>
+
+      {/* Express Interest Modal */}
+      <ExpressInterestModal
+        isOpen={showExpressInterest}
+        onClose={() => setShowExpressInterest(false)}
+      />
 
       {/* ── Footer ── */}
       <footer className="border-t border-[var(--color-border)] bg-white">
@@ -863,12 +911,6 @@ export default function HomePage() {
                 >
                   Pricing
                 </a>
-                <Link
-                  href="/auth/signin"
-                  className="hover:text-[var(--color-primary)] transition-colors"
-                >
-                  Log In
-                </Link>
               </div>
             </div>
             <p className="text-sm text-[var(--text-muted)]">

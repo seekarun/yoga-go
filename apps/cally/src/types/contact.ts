@@ -14,4 +14,8 @@ export interface ContactSubmission {
   flaggedAsSpam?: boolean;
   emailValidationReason?: string;
   visitorInfo?: VisitorInfo;
+  /** ID of the configurable contact form (if submitted via one) */
+  formId?: string;
+  /** Dynamic field values keyed by field ID */
+  formFields?: Record<string, string>;
 }

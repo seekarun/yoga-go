@@ -127,7 +127,16 @@ export default async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Allow auth routes
+  // Block auth routes when app is not launched (waitlist mode)
+  // Users can still access the landing page and waitlist signup
+  if (
+    pathname.startsWith("/auth") &&
+    process.env.NEXT_PUBLIC_LAUNCHED !== "true"
+  ) {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+
+  // Allow auth routes when launched
   if (pathname.startsWith("/auth")) {
     return NextResponse.next();
   }

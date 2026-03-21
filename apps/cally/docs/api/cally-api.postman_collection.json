@@ -24,6 +24,173 @@
   ],
   "item": [
     {
+      "name": "Waitlist",
+      "description": "Public CallyGo waitlist signup",
+      "item": [
+        {
+          "name": "Join Waitlist",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"name\": \"Jane Smith\",\n  \"business\": \"Yoga teacher\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/waitlist",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "waitlist"]
+            },
+            "description": "Submit a waitlist signup. Only email is required. Idempotent — duplicate emails return success. Stores in DynamoDB cally-main table with PK=WAITLIST#CALLYGO."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Express Interest",
+      "description": "CallyGo Express Interest signup (richer than waitlist)",
+      "item": [
+        {
+          "name": "Submit Express Interest",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fields\": {\n    \"_name\": \"Jane Smith\",\n    \"_email\": \"jane@example.com\",\n    \"_mobile\": \"0412345678\",\n    \"businessType\": \"Yoga / Fitness\",\n    \"comments\": \"Interested in CallyGo for my yoga studio\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/express-interest",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "express-interest"]
+            },
+            "description": "Submit an Express Interest form. Stores in DynamoDB with PK=WAITLIST#CALLYGO. Overwrites existing waitlist entry with richer data."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Contact Forms (Authenticated)",
+      "description": "CRUD for configurable contact forms stored on the tenant record",
+      "item": [
+        {
+          "name": "List Contact Forms",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/contact-forms",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "contact-forms"]
+            },
+            "description": "List all contact forms for the authenticated tenant."
+          }
+        },
+        {
+          "name": "Create Contact Form",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Consultation Request\",\n  \"fields\": [\n    { \"id\": \"name\", \"name\": \"Name\", \"type\": \"text\", \"required\": true, \"placeholder\": \"Your full name\" },\n    { \"id\": \"email\", \"name\": \"Email\", \"type\": \"email\", \"required\": true, \"placeholder\": \"you@example.com\" },\n    { \"id\": \"phone\", \"name\": \"Phone\", \"type\": \"phone\", \"required\": false },\n    { \"id\": \"service\", \"name\": \"Service\", \"type\": \"dropdown\", \"required\": true, \"options\": [\"Haircut\", \"Colour\", \"Styling\"] },\n    { \"id\": \"message\", \"name\": \"Message\", \"type\": \"textarea\", \"required\": false }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/contact-forms",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "contact-forms"]
+            },
+            "description": "Create a new configurable contact form. Stored on tenant.contactForms array."
+          }
+        },
+        {
+          "name": "Update Contact Form",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Form Name\",\n  \"fields\": [\n    { \"id\": \"name\", \"name\": \"Full Name\", \"type\": \"text\", \"required\": true }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/contact-forms/{{formId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "contact-forms", "{{formId}}"]
+            },
+            "description": "Update an existing contact form by ID."
+          }
+        },
+        {
+          "name": "Delete Contact Form",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/contact-forms/{{formId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "contact-forms", "{{formId}}"]
+            },
+            "description": "Delete a contact form by ID."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Contact Form Submissions (Public)",
+      "description": "Public endpoint for submitting configurable contact forms",
+      "item": [
+        {
+          "name": "Submit Dynamic Contact Form",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fields\": {\n    \"name\": \"Jane Smith\",\n    \"email\": \"jane@example.com\",\n    \"phone\": \"0412345678\",\n    \"service\": \"Haircut\",\n    \"message\": \"I'd like to book a consultation\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/tenants/{{tenantId}}/contact/{{formId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "data",
+                "tenants",
+                "{{tenantId}}",
+                "contact",
+                "{{formId}}"
+              ]
+            },
+            "description": "Submit a configurable contact form. Validates required fields against the form config, then creates a contact submission with formId and formFields."
+          }
+        }
+      ]
+    },
+    {
       "name": "Auth",
       "item": [
         {

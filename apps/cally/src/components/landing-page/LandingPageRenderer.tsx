@@ -15,6 +15,8 @@ import LandingPageHeader, {
 import BookingWidget from "@/components/booking/BookingWidget";
 import WebinarSignup from "@/components/webinar/WebinarSignup";
 import SurveyOverlay from "@/components/landing-page/SurveyOverlay";
+import DynamicContactWidget from "@/components/contact/DynamicContactWidget";
+import type { ContactFormConfig } from "@/types";
 
 interface LandingPageRendererProps {
   config: SimpleLandingPageConfig;
@@ -25,6 +27,7 @@ interface LandingPageRendererProps {
   address?: string;
   logo?: string;
   tenantName: string;
+  contactForms?: ContactFormConfig[];
 }
 
 declare const CallyEmbed:
@@ -45,6 +48,7 @@ export default function LandingPageRenderer({
   address,
   logo,
   tenantName,
+  contactForms,
 }: LandingPageRendererProps) {
   const searchParams = useSearchParams();
   const hasWaitlistParam = !!searchParams.get("waitlist");
@@ -61,6 +65,8 @@ export default function LandingPageRenderer({
     string | undefined
   >();
   const [selectedSurveyId, setSelectedSurveyId] = useState<string | null>(null);
+  const [selectedFormConfig, setSelectedFormConfig] =
+    useState<ContactFormConfig | null>(null);
 
   // Auto-open booking widget when returning from waitlist email
   useEffect(() => {
@@ -101,13 +107,28 @@ export default function LandingPageRenderer({
       return;
     }
 
+    // If the action is a configurable form, open the dynamic contact widget
+    if (action.startsWith("form:")) {
+      const formId = action.replace("form:", "");
+      const formConfig = (contactForms || []).find((f) => f.id === formId);
+      if (formConfig) {
+        setSelectedFormConfig(formConfig);
+      } else {
+        console.error(
+          "[DBG][LandingPageRenderer] Form config not found:",
+          formId,
+        );
+      }
+      return;
+    }
+
     // Otherwise open CallyEmbed for booking/contact/chat
     if (typeof CallyEmbed !== "undefined") {
       CallyEmbed.open(action);
     } else {
       console.error("[DBG][LandingPageRenderer] CallyEmbed not loaded yet");
     }
-  }, [config.button?.action]);
+  }, [config.button?.action, contactForms]);
 
   const handleBookProduct = useCallback(
     (productId: string) => {
@@ -189,6 +210,16 @@ export default function LandingPageRenderer({
           tenantId={tenantId}
           surveyId={selectedSurveyId}
           onClose={() => setSelectedSurveyId(null)}
+        />
+      )}
+
+      {/* Dynamic contact form overlay */}
+      {selectedFormConfig && (
+        <DynamicContactWidget
+          tenantId={tenantId}
+          formConfig={selectedFormConfig}
+          isOpen={!!selectedFormConfig}
+          onClose={() => setSelectedFormConfig(null)}
         />
       )}
     </LandingPageThemeProvider>

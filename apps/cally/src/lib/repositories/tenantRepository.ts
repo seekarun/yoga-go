@@ -33,6 +33,7 @@ import type { OutlookCalendarConfig } from "@/types/outlook-calendar";
 import type { StripeConfig } from "@/types/stripe";
 import type { SubscriptionConfig } from "@/types/subscription";
 import type { GoogleBusinessConfig } from "@/types/google-business";
+import type { ContactFormConfig } from "@/types/contact-form";
 
 /**
  * CallyGo Tenant Entity
@@ -60,6 +61,7 @@ export interface CallyTenant {
   stripeConfig?: StripeConfig;
   subscriptionConfig?: SubscriptionConfig;
   googleBusinessConfig?: GoogleBusinessConfig;
+  contactForms?: ContactFormConfig[];
   videoCallPreference?: "cally" | "google_meet" | "zoom";
   emailDisplayName?: string;
   timezone?: string;
