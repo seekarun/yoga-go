@@ -16,8 +16,17 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 
 // Initialize DynamoDB client
+// Trim credentials to guard against trailing newlines in env vars (common when pasting in Vercel dashboard)
 const ddbClient = new DynamoDBClient({
   region: process.env.AWS_REGION || "ap-southeast-2",
+  ...(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY
+    ? {
+        credentials: {
+          accessKeyId: process.env.AWS_ACCESS_KEY_ID.trim(),
+          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY.trim(),
+        },
+      }
+    : {}),
 });
 
 // Create document client with marshalling options
