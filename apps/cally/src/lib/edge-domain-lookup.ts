@@ -3,16 +3,59 @@
  *
  * Middleware runs in Edge Runtime which doesn't support the full DynamoDB
  * Document Client (Node.js APIs). This module uses the low-level
- * DynamoDBClient with a custom request handler that avoids Edge Runtime
- * header validation issues.
+ * DynamoDBClient with a patched Headers constructor that handles
+ * multi-line header values from the AWS SDK.
  *
  * Vercel strips AWS_* env vars from Edge functions, so we use EDGE_AWS_*
  * prefixed vars and pass credentials explicitly.
  */
+
+// Patch Headers to sanitize values containing \r\n before they reach
+// Edge Runtime's strict validation. Must run before any AWS SDK code.
+const OriginalHeaders = globalThis.Headers;
+if (OriginalHeaders && !("__edge_patched" in globalThis)) {
+  (globalThis as Record<string, unknown>).__edge_patched = true;
+  globalThis.Headers = class PatchedHeaders extends OriginalHeaders {
+    constructor(init?: HeadersInit) {
+      if (
+        init &&
+        typeof init === "object" &&
+        !(init instanceof OriginalHeaders)
+      ) {
+        const sanitized: Record<string, string> = {};
+        const entries = Array.isArray(init) ? init : Object.entries(init);
+        for (const [key, value] of entries) {
+          sanitized[key] =
+            typeof value === "string"
+              ? value.replace(/[\r\n]+/g, " ").trim()
+              : value;
+        }
+        super(sanitized);
+        return;
+      }
+      super(init);
+    }
+    append(name: string, value: string): void {
+      super.append(
+        name,
+        typeof value === "string"
+          ? value.replace(/[\r\n]+/g, " ").trim()
+          : value,
+      );
+    }
+    set(name: string, value: string): void {
+      super.set(
+        name,
+        typeof value === "string"
+          ? value.replace(/[\r\n]+/g, " ").trim()
+          : value,
+      );
+    }
+  } as typeof Headers;
+}
+
 import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb";
-import type { HttpHandlerOptions, RequestHandlerOutput } from "@smithy/types";
-import type { HttpRequest, HttpResponse } from "@smithy/protocol-http";
-import { buildQueryString } from "@smithy/querystring-builder";
+import { FetchHttpHandler } from "@smithy/fetch-http-handler";
 
 const TABLE_NAME = "yoga-go-core";
 const REGION = process.env.EDGE_AWS_REGION || "ap-southeast-2";
@@ -22,57 +65,6 @@ const cache = new Map<string, { tenantId: string; expiresAt: number }>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 let client: DynamoDBClient | null = null;
-
-/**
- * Minimal Edge-safe HTTP handler for AWS SDK.
- *
- * The default FetchHttpHandler passes headers through `new Headers()`,
- * which in Vercel Edge Runtime rejects values containing \r\n.
- * This handler passes headers as a plain Record to fetch(), bypassing
- * the Headers constructor entirely.
- */
-class EdgeSafeHandler {
-  async handle(
-    request: HttpRequest,
-    _options?: HttpHandlerOptions,
-  ): Promise<RequestHandlerOutput<HttpResponse>> {
-    let path = request.path;
-    const qs = buildQueryString(request.query || {});
-    if (qs) path += `?${qs}`;
-
-    const { port, method } = request;
-    const url = `${request.protocol}//${request.hostname}${port ? `:${port}` : ""}${path}`;
-    const body =
-      method === "GET" || method === "HEAD" ? undefined : request.body;
-
-    // Pass headers as plain object — avoids Edge Runtime's strict Headers constructor
-    const response = await fetch(url, {
-      method,
-      headers: request.headers as Record<string, string>,
-      body,
-    });
-
-    const responseHeaders: Record<string, string> = {};
-    response.headers.forEach((value, key) => {
-      responseHeaders[key] = value;
-    });
-
-    return {
-      response: {
-        statusCode: response.status,
-        reason: response.statusText,
-        headers: responseHeaders,
-        body: response.body,
-      } as HttpResponse,
-    };
-  }
-
-  updateHttpClientConfig() {}
-  httpHandlerConfigs() {
-    return {};
-  }
-  destroy() {}
-}
 
 function getClient(): DynamoDBClient {
   if (!client) {
@@ -88,8 +80,7 @@ function getClient(): DynamoDBClient {
     client = new DynamoDBClient({
       region: REGION,
       credentials: { accessKeyId, secretAccessKey },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- EdgeSafeHandler implements the HttpHandler interface but TypeScript can't infer it
-      requestHandler: new EdgeSafeHandler() as any,
+      requestHandler: new FetchHttpHandler(),
     });
   }
   return client;

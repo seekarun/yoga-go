@@ -429,6 +429,53 @@ export async function getEmailThread(threadId: string): Promise<Email[]> {
 }
 
 /**
+ * Get ALL emails for export (inbox + sent + archived, excluding deleted).
+ * Paginates through all results. Returns chronologically (oldest first).
+ */
+export async function getAllEmailsForExport(
+  tenantId: string,
+): Promise<Email[]> {
+  console.log(
+    "[DBG][emailRepository] Getting all emails for export, tenant:",
+    tenantId,
+  );
+
+  const allEmails: Email[] = [];
+  let lastKey: Record<string, unknown> | undefined;
+
+  do {
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: Tables.EMAILS,
+        KeyConditionExpression: "PK = :pk",
+        FilterExpression:
+          "attribute_not_exists(isDeleted) OR isDeleted = :false",
+        ExpressionAttributeValues: {
+          ":pk": EmailPK.INBOX(tenantId),
+          ":false": false,
+        },
+        ScanIndexForward: true, // Oldest first for chronological export
+        ExclusiveStartKey: lastKey,
+      }),
+    );
+
+    const emails = (result.Items || []).map((item) =>
+      toEmail(item as DynamoDBEmailItem),
+    );
+    allEmails.push(...emails);
+    lastKey = result.LastEvaluatedKey;
+  } while (lastKey);
+
+  console.log(
+    "[DBG][emailRepository] Export: found",
+    allEmails.length,
+    "emails",
+  );
+
+  return allEmails;
+}
+
+/**
  * Get all emails for a specific contact (by email address).
  * Queries all tenant emails and filters for those where the contact
  * appears in `from.email` or any `to[].email`.

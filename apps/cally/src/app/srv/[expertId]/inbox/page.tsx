@@ -63,6 +63,7 @@ export default function InboxPage() {
   });
   const [sigSaving, setSigSaving] = useState(false);
   const [sigMessage, setSigMessage] = useState<string | null>(null);
+  const [exportStatus, setExportStatus] = useState<string>("idle");
 
   // Listen for settings/compose events from persistent layout bar
   useEffect(() => {
@@ -1233,6 +1234,62 @@ export default function InboxPage() {
                     {sigMessage}
                   </span>
                 )}
+              </div>
+
+              {/* Export Emails */}
+              <div className="border-t border-gray-200 pt-4 mt-4">
+                <h4 className="text-sm font-semibold text-gray-900 mb-1">
+                  Export Emails
+                </h4>
+                <p className="text-xs text-gray-500 mb-3">
+                  Download all your emails as a ZIP of .eml files. You can
+                  import them into Thunderbird, Apple Mail, Outlook, or Gmail.
+                </p>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={async () => {
+                      setExportStatus("exporting");
+                      try {
+                        const res = await fetch("/api/data/app/inbox/export");
+                        if (!res.ok) {
+                          const body = await res.json().catch(() => null);
+                          throw new Error(
+                            body?.error || `Export failed (${res.status})`,
+                          );
+                        }
+                        const blob = await res.blob();
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download =
+                          res.headers
+                            .get("Content-Disposition")
+                            ?.match(/filename="(.+)"/)?.[1] ||
+                          "emails-export.zip";
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        URL.revokeObjectURL(url);
+                        setExportStatus("idle");
+                      } catch (err) {
+                        console.error("[DBG][inbox] Export error:", err);
+                        setExportStatus(
+                          err instanceof Error ? err.message : "Export failed",
+                        );
+                        setTimeout(() => setExportStatus("idle"), 4000);
+                      }
+                    }}
+                    disabled={exportStatus === "exporting"}
+                    className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 text-sm font-medium disabled:opacity-50"
+                  >
+                    {exportStatus === "exporting"
+                      ? "Exporting..."
+                      : "Export All Emails"}
+                  </button>
+                  {exportStatus !== "idle" && exportStatus !== "exporting" && (
+                    <span className="text-sm text-red-600">{exportStatus}</span>
+                  )}
+                </div>
               </div>
             </div>
           </div>

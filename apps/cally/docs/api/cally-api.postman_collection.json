@@ -2786,6 +2786,19 @@
             },
             "description": "Get a presigned S3 PUT URL for uploading an attachment to include in a reply. URL expires in 10 minutes. Max file size: 10MB. Returns { uploadUrl, attachmentId, s3Key, filename, contentType, expiresIn }."
           }
+        },
+        {
+          "name": "Export All Emails",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/inbox/export",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "inbox", "export"]
+            },
+            "description": "Export all emails as a ZIP archive of .eml files. Each email is a self-contained RFC 2822 .eml file with embedded base64 attachments. Compatible with Thunderbird, Apple Mail, Outlook, and Gmail. Returns application/zip with Content-Disposition header. Attachments are skipped if total size exceeds 8MB (a _README.txt is included in the ZIP explaining this)."
+          }
         }
       ]
     },
