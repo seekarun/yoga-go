@@ -32,7 +32,7 @@ interface LeftImageProps {
 const SCOPE = "w-ab-li";
 
 const PLACEHOLDER_IMAGE =
-  "https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=600";
+  "https://images.pexels.com/photos/3184418/pexels-photo-3184418.jpeg?auto=compress&cs=tinysrgb&w=600";
 
 /** Parse "x% y%" position string into numbers. */
 function parsePosition(pos?: string): { x: number; y: number } {
