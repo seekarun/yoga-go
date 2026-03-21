@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { useMemo } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { usePathname } from "next/navigation";
 import type {
   SimpleLandingPageConfig,
   TemplateId,
@@ -72,6 +72,8 @@ const AUTO_SAVE_DELAY = 1500;
 export default function SimpleLandingPageEditor({
   tenantId,
 }: SimpleLandingPageEditorProps) {
+  const pathname = usePathname();
+
   // Loading and error states
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -212,6 +214,14 @@ export default function SimpleLandingPageEditor({
   const savedIndicatorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isInitialLoadRef = useRef(true);
   const galleryBackfilledRef = useRef(false);
+
+  // Refs for save-on-leave (closures need current values)
+  const isDirtyRef = useRef(isDirty);
+  isDirtyRef.current = isDirty;
+  const configRef = useRef(config);
+  configRef.current = config;
+  const savingRef = useRef(saving);
+  savingRef.current = saving;
 
   // Close colour picker on outside click
   useEffect(() => {
@@ -461,6 +471,7 @@ export default function SimpleLandingPageEditor({
           heroWidgetId: landingPage.heroWidgetId,
           heroStyleOverrides: landingPage.heroStyleOverrides,
           heroColorMode: landingPage.heroColorMode,
+          colorMode: landingPage.colorMode,
           productsConfig: landingPage.productsConfig,
           footerEnabled: landingPage.footerEnabled ?? true,
           sections: finalSections,
@@ -695,6 +706,31 @@ export default function SimpleLandingPageEditor({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config, isDirty]);
+
+  // Flush unsaved changes via keepalive fetch (works during unload and navigation)
+  const flushSave = useCallback(() => {
+    if (!isDirtyRef.current || savingRef.current) return;
+    fetch("/api/data/app/tenant/landing-page", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(configRef.current),
+      keepalive: true,
+    }).catch(() => {});
+  }, []);
+
+  // Save on browser close / hard navigation
+  useEffect(() => {
+    window.addEventListener("beforeunload", flushSave);
+    return () => window.removeEventListener("beforeunload", flushSave);
+  }, [flushSave]);
+
+  // Save on client-side navigation (Next.js Link clicks)
+  const initialPathnameRef = useRef(pathname);
+  useEffect(() => {
+    if (pathname !== initialPathnameRef.current) {
+      flushSave();
+    }
+  }, [pathname, flushSave]);
 
   // Saved indicator effect
   useEffect(() => {
@@ -1714,14 +1750,6 @@ export default function SimpleLandingPageEditor({
     setIsDirty(true);
   }, []);
 
-  const handleFooterToggle = useCallback((enabled: boolean) => {
-    setConfig((prev) => ({
-      ...prev,
-      footerEnabled: enabled,
-    }));
-    setIsDirty(true);
-  }, []);
-
   const handleSectionToggle = useCallback(
     (sectionId: string, enabled: boolean) => {
       setConfig((prev) => ({
@@ -1778,26 +1806,18 @@ export default function SimpleLandingPageEditor({
     setIsDirty(true);
   }, []);
 
-  const handleHeroColorModeChange = useCallback((mode: "light" | "dark") => {
+  const handleColorModeChange = useCallback((mode: "light" | "dark") => {
     setConfig((prev) => ({
       ...prev,
+      colorMode: mode,
       heroColorMode: mode,
+      sections: (prev.sections || []).map((s) => ({
+        ...s,
+        colorMode: mode,
+      })),
     }));
     setIsDirty(true);
   }, []);
-
-  const handleSectionColorModeChange = useCallback(
-    (sectionId: string, mode: "light" | "dark") => {
-      setConfig((prev) => ({
-        ...prev,
-        sections: (prev.sections || []).map((s) =>
-          s.id === sectionId ? { ...s, colorMode: mode } : s,
-        ),
-      }));
-      setIsDirty(true);
-    },
-    [],
-  );
 
   // Brand colour handlers
   const handleBrandColorChange = useCallback(
@@ -3471,6 +3491,56 @@ export default function SimpleLandingPageEditor({
           )}
         </div>
 
+        {/* Light / Dark Mode Toggle */}
+        <div className="flex items-center border border-[var(--color-border)] rounded-lg overflow-hidden">
+          <button
+            type="button"
+            onClick={() => handleColorModeChange("light")}
+            className={`p-2 transition-colors ${config.colorMode !== "dark" ? "bg-gray-100 text-[var(--text-main)]" : "text-[var(--text-muted)] hover:bg-gray-50"}`}
+            title="Light mode"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="12" cy="12" r="5" />
+              <line x1="12" y1="1" x2="12" y2="3" />
+              <line x1="12" y1="21" x2="12" y2="23" />
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+              <line x1="1" y1="12" x2="3" y2="12" />
+              <line x1="21" y1="12" x2="23" y2="12" />
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleColorModeChange("dark")}
+            className={`p-2 transition-colors ${config.colorMode === "dark" ? "bg-gray-700 text-yellow-400" : "text-[var(--text-muted)] hover:bg-gray-50"}`}
+            title="Dark mode"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+            </svg>
+          </button>
+        </div>
+
         {/* Desktop / Mobile Toggle */}
         <div className="flex items-center border border-[var(--color-border)] rounded-lg overflow-hidden">
           <button
@@ -3622,19 +3692,14 @@ export default function SimpleLandingPageEditor({
         {config.template !== "salon" && (
           <SectionToolbar
             heroEnabled={config.heroEnabled !== false}
-            footerEnabled={config.footerEnabled !== false}
             sections={config.sections || DEFAULT_LANDING_PAGE_CONFIG.sections!}
             heroWidgetId={config.heroWidgetId}
             onHeroToggle={handleHeroToggle}
-            onFooterToggle={handleFooterToggle}
             onSectionToggle={handleSectionToggle}
             onSectionMoveUp={handleSectionMoveUp}
             onSectionMoveDown={handleSectionMoveDown}
             onWidgetChange={handleWidgetChange}
             onHeroWidgetChange={handleHeroWidgetChange}
-            heroColorMode={config.heroColorMode}
-            onHeroColorModeChange={handleHeroColorModeChange}
-            onSectionColorModeChange={handleSectionColorModeChange}
           />
         )}
 

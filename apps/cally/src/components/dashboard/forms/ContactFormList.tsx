@@ -14,6 +14,7 @@ interface ContactFormListProps {
   forms: ContactFormConfig[];
   onEdit: (form: ContactFormConfig) => void;
   onDelete: (formId: string) => void;
+  onViewSubmissions: (form: ContactFormConfig) => void;
   deleting: string | null;
 }
 
@@ -21,6 +22,7 @@ export default function ContactFormList({
   forms,
   onEdit,
   onDelete,
+  onViewSubmissions,
   deleting,
 }: ContactFormListProps) {
   if (forms.length === 0) {
@@ -64,6 +66,12 @@ export default function ContactFormList({
             </p>
           </div>
           <div className="flex items-center gap-2 ml-4">
+            <button
+              onClick={() => onViewSubmissions(form)}
+              className="px-3 py-1.5 text-xs font-medium text-[var(--color-primary)] border border-[var(--color-primary)]/30 rounded-lg hover:bg-[var(--color-primary)]/5 transition-colors"
+            >
+              Submissions
+            </button>
             <button
               onClick={() => onEdit(form)}
               className="px-3 py-1.5 text-xs font-medium border border-[var(--color-border)] rounded-lg hover:bg-gray-50 transition-colors"

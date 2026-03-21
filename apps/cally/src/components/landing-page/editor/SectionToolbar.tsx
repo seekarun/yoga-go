@@ -6,22 +6,14 @@ import { WIDGET_CATALOGUE, type WidgetSectionType } from "@/templates/widgets";
 
 interface SectionToolbarProps {
   heroEnabled: boolean;
-  footerEnabled: boolean;
   sections: SectionOrderItem[];
   heroWidgetId?: string;
-  heroColorMode?: "light" | "dark";
   onHeroToggle: (enabled: boolean) => void;
-  onFooterToggle: (enabled: boolean) => void;
   onSectionToggle: (sectionId: string, enabled: boolean) => void;
   onSectionMoveUp: (sectionId: string) => void;
   onSectionMoveDown: (sectionId: string) => void;
   onWidgetChange?: (sectionId: string, widgetId: string) => void;
   onHeroWidgetChange?: (widgetId: string) => void;
-  onHeroColorModeChange?: (mode: "light" | "dark") => void;
-  onSectionColorModeChange?: (
-    sectionId: string,
-    mode: "light" | "dark",
-  ) => void;
 }
 
 const SECTION_LABELS: Record<string, string> = {
@@ -41,25 +33,22 @@ const WIDGET_SECTIONS: Record<string, WidgetSectionType> = {
   products: "products",
   testimonials: "testimonials",
   faq: "faq",
+  location: "location",
+  gallery: "gallery",
 };
 
 const DISABLED_VALUE = "__disabled__";
 
 export default function SectionToolbar({
   heroEnabled,
-  footerEnabled,
   sections,
   heroWidgetId,
-  heroColorMode,
   onHeroToggle,
-  onFooterToggle,
   onSectionToggle,
   onSectionMoveUp,
   onSectionMoveDown,
   onWidgetChange,
   onHeroWidgetChange,
-  onHeroColorModeChange,
-  onSectionColorModeChange,
 }: SectionToolbarProps) {
   const [collapsed, setCollapsed] = useState(false);
   // y=null means "use CSS centering"; once dragged, y becomes a pixel value
@@ -236,78 +225,13 @@ export default function SectionToolbar({
     cursor: "default",
   };
 
-  const colorModeBtnStyle = (isDark: boolean): React.CSSProperties => ({
-    background: isDark ? "#374151" : "none",
-    border: isDark ? "1px solid #4b5563" : "1px solid #d1d5db",
-    borderRadius: "4px",
-    cursor: "pointer",
-    padding: "2px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    width: "22px",
-    height: "22px",
+  const fixedLabelStyle: React.CSSProperties = {
+    fontSize: "0.6rem",
+    color: "#9ca3af",
+    width: "36px",
+    textAlign: "center",
     flexShrink: 0,
-    color: isDark ? "#fbbf24" : "#6b7280",
-    transition: "all 0.2s",
-  });
-
-  /** Moon/sun toggle icon. Moon = currently light (click for dark). Sun = currently dark (click for light). */
-  const renderColorModeBtn = (
-    isDark: boolean,
-    onClick: () => void,
-    enabled: boolean,
-  ) => {
-    if (!enabled) return null;
-    return (
-      <button
-        type="button"
-        title={isDark ? "Switch to light mode" : "Switch to dark mode"}
-        style={colorModeBtnStyle(isDark)}
-        onClick={(e) => {
-          e.stopPropagation();
-          onClick();
-        }}
-      >
-        {isDark ? (
-          /* Sun icon — currently dark, click for light */
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="12" cy="12" r="5" />
-            <line x1="12" y1="1" x2="12" y2="3" />
-            <line x1="12" y1="21" x2="12" y2="23" />
-            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-            <line x1="1" y1="12" x2="3" y2="12" />
-            <line x1="21" y1="12" x2="23" y2="12" />
-            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-          </svg>
-        ) : (
-          /* Moon icon — currently light, click for dark */
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-          </svg>
-        )}
-      </button>
-    );
+    fontStyle: "italic",
   };
 
   const selectStyle = (enabled: boolean): React.CSSProperties => ({
@@ -317,7 +241,7 @@ export default function SectionToolbar({
     border: "1px solid #e5e7eb",
     background: "#fff",
     color: enabled ? "#374151" : "#9ca3af",
-    maxWidth: "120px",
+    width: "130px",
     flexShrink: 0,
     cursor: "pointer",
   });
@@ -422,14 +346,6 @@ export default function SectionToolbar({
       {/* Hero — combined widget + enable/disable dropdown */}
       <div style={rowStyle}>
         <span style={labelStyle}>Hero</span>
-        {renderColorModeBtn(
-          heroColorMode === "dark",
-          () =>
-            onHeroColorModeChange?.(
-              heroColorMode === "dark" ? "light" : "dark",
-            ),
-          heroEnabled,
-        )}
         {renderWidgetSelect(
           "hero",
           heroWidgetId,
@@ -437,6 +353,7 @@ export default function SectionToolbar({
           (widgetId) => onHeroWidgetChange?.(widgetId),
           onHeroToggle,
         )}
+        <span style={fixedLabelStyle}>fixed</span>
       </div>
 
       {/* Divider */}
@@ -456,17 +373,6 @@ export default function SectionToolbar({
             >
               {SECTION_LABELS[section.id] || section.id}
             </span>
-
-            {/* Color mode toggle */}
-            {renderColorModeBtn(
-              section.colorMode === "dark",
-              () =>
-                onSectionColorModeChange?.(
-                  section.id,
-                  section.colorMode === "dark" ? "light" : "dark",
-                ),
-              section.enabled,
-            )}
 
             {/* Widget + toggle dropdown for sections with widgets */}
             {widgetSection &&
@@ -539,16 +445,22 @@ export default function SectionToolbar({
       {/* Divider */}
       <div style={{ borderTop: "1px solid #e5e7eb", margin: "6px 0" }} />
 
-      {/* Footer - fixed at bottom, toggle only */}
+      {/* Footer - always enabled, widget dropdown */}
       <div style={rowStyle}>
         <span style={labelStyle}>Footer</span>
-        <button
-          type="button"
-          style={toggleStyle(footerEnabled)}
-          onClick={() => onFooterToggle(!footerEnabled)}
+        <select
+          style={selectStyle(true)}
+          value="simple"
+          onChange={() => {}}
+          onClick={(e) => e.stopPropagation()}
         >
-          <div style={toggleKnobStyle(footerEnabled)} />
-        </button>
+          {WIDGET_CATALOGUE.footer.map((w) => (
+            <option key={w.id} value={w.id}>
+              {w.name}
+            </option>
+          ))}
+        </select>
+        <span style={fixedLabelStyle}>fixed</span>
       </div>
     </div>
   );

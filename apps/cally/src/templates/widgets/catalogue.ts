@@ -175,6 +175,30 @@ export const WIDGET_CATALOGUE: WidgetCatalogue = {
       section: "about",
     },
   ],
+  location: [
+    {
+      id: "full-screen",
+      name: "Full Screen",
+      description: "Full-width map with address and business details.",
+      section: "location",
+    },
+  ],
+  gallery: [
+    {
+      id: "horizontal-carousel",
+      name: "Horizontal Carousel",
+      description: "Horizontally scrolling image gallery carousel.",
+      section: "gallery",
+    },
+  ],
+  footer: [
+    {
+      id: "simple",
+      name: "Simple",
+      description: "Simple footer with links and copyright.",
+      section: "footer",
+    },
+  ],
 };
 
 /**

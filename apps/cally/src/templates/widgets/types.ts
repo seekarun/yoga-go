@@ -78,9 +78,16 @@ export interface WidgetBrandConfig {
 export type WidgetSectionType =
   | Extract<
       SectionId,
-      "testimonials" | "products" | "about" | "features" | "faq"
+      | "testimonials"
+      | "products"
+      | "about"
+      | "features"
+      | "faq"
+      | "location"
+      | "gallery"
     >
-  | "hero";
+  | "hero"
+  | "footer";
 
 /**
  * Metadata for a single widget variant.

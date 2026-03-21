@@ -1,19 +1,71 @@
 /**
+ * GET    /api/data/app/contact-forms/[formId] — get submissions for a form
  * PUT    /api/data/app/contact-forms/[formId] — update a contact form
  * DELETE /api/data/app/contact-forms/[formId] — delete a contact form
  */
 
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import type { ApiResponse, ContactFormConfig, ContactFormField } from "@/types";
+import type {
+  ApiResponse,
+  ContactFormConfig,
+  ContactFormField,
+  ContactSubmission,
+} from "@/types";
 import { auth } from "@/auth";
 import {
   getTenantByUserId,
   updateTenant,
 } from "@/lib/repositories/tenantRepository";
+import { getContactsByFormId } from "@/lib/repositories/contactRepository";
 
 interface RouteParams {
   params: Promise<{ formId: string }>;
+}
+
+export async function GET(_request: NextRequest, { params }: RouteParams) {
+  try {
+    const { formId } = await params;
+    console.log(`[DBG][contact-forms] GET submissions for form ${formId}`);
+
+    const session = await auth();
+    if (!session?.user?.cognitoSub) {
+      return NextResponse.json<ApiResponse<ContactSubmission[]>>(
+        { success: false, error: "Unauthorized" },
+        { status: 401 },
+      );
+    }
+
+    const tenant = await getTenantByUserId(session.user.cognitoSub);
+    if (!tenant) {
+      return NextResponse.json<ApiResponse<ContactSubmission[]>>(
+        { success: false, error: "Tenant not found" },
+        { status: 404 },
+      );
+    }
+
+    const submissions = await getContactsByFormId(tenant.id, formId);
+    console.log(
+      `[DBG][contact-forms] Found ${submissions.length} submissions for form ${formId}`,
+    );
+
+    return NextResponse.json<ApiResponse<ContactSubmission[]>>({
+      success: true,
+      data: submissions,
+    });
+  } catch (error) {
+    console.error("[DBG][contact-forms] GET submissions Error:", error);
+    return NextResponse.json<ApiResponse<ContactSubmission[]>>(
+      {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to fetch submissions",
+      },
+      { status: 500 },
+    );
+  }
 }
 
 export async function PUT(request: NextRequest, { params }: RouteParams) {

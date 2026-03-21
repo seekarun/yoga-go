@@ -192,6 +192,40 @@ export async function createContactsBatch(
 }
 
 /**
+ * Get contacts for a specific form within a tenant
+ */
+export async function getContactsByFormId(
+  tenantId: string,
+  formId: string,
+): Promise<ContactSubmission[]> {
+  console.log(
+    `[DBG][contactRepository] Getting contacts for form ${formId} in tenant ${tenantId}`,
+  );
+
+  const command = new QueryCommand({
+    TableName: Tables.CORE,
+    KeyConditionExpression: "PK = :pk AND begins_with(SK, :skPrefix)",
+    FilterExpression: "formId = :formId",
+    ExpressionAttributeValues: {
+      ":pk": TenantPK.TENANT(tenantId),
+      ":skPrefix": TenantPK.CONTACT_PREFIX,
+      ":formId": formId,
+    },
+    ScanIndexForward: false,
+  });
+
+  const result = await docClient.send(command);
+  const contacts = (result.Items || []).map((item) =>
+    toContact(item as DynamoDBContactItem),
+  );
+
+  console.log(
+    `[DBG][contactRepository] Found ${contacts.length} contacts for form ${formId}`,
+  );
+  return contacts;
+}
+
+/**
  * Get contacts for a specific email within a tenant
  */
 export async function getContactsByEmail(

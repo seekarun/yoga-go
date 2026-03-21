@@ -49,6 +49,8 @@ import {
   AboutLeftVideo,
 } from "../widgets";
 import FooterSection from "./FooterSection";
+import LocationSection from "./LocationSection";
+import GallerySection from "./GallerySection";
 import { BrandColorsProvider } from "./CustomColorsContext";
 import { getSectionTheme } from "../widgets/sectionTheme";
 
@@ -561,6 +563,45 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
               return config.faq && config.faq.items.length > 0 ? (
                 <div key="faq" style={sectionBg}>
                   {renderFaq()}
+                </div>
+              ) : null;
+
+            case "location":
+              return config.location ? (
+                <div key="location" style={sectionBg}>
+                  <LocationSection
+                    location={config.location}
+                    tenantData={tenantData}
+                    address={props.address}
+                    isEditing={props.isEditing}
+                    onHeadingChange={props.onLocationHeadingChange}
+                    onSubheadingChange={props.onLocationSubheadingChange}
+                    onStyleOverrideChange={props.onLocationStyleOverrideChange}
+                    onBgImageClick={props.onLocationBgImageClick}
+                    palette={config.theme?.palette}
+                    customColors={config.customColors}
+                    onCustomColorsChange={props.onCustomColorsChange}
+                  />
+                </div>
+              ) : null;
+
+            case "gallery":
+              return config.gallery ? (
+                <div key="gallery" style={sectionBg}>
+                  <GallerySection
+                    gallery={config.gallery}
+                    tenantData={tenantData}
+                    isEditing={props.isEditing}
+                    onHeadingChange={props.onGalleryHeadingChange}
+                    onSubheadingChange={props.onGallerySubheadingChange}
+                    onAddImage={props.onGalleryAddImage}
+                    onRemoveImage={props.onGalleryRemoveImage}
+                    onStyleOverrideChange={props.onGalleryStyleOverrideChange}
+                    onBgImageClick={props.onGalleryBgImageClick}
+                    palette={config.theme?.palette}
+                    customColors={config.customColors}
+                    onCustomColorsChange={props.onCustomColorsChange}
+                  />
                 </div>
               ) : null;
 

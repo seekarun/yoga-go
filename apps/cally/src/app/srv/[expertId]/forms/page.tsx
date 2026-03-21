@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback } from "react";
 import type { ContactFormConfig, ContactFormField } from "@/types";
 import ContactFormEditor from "@/components/dashboard/forms/ContactFormEditor";
 import ContactFormList from "@/components/dashboard/forms/ContactFormList";
+import ContactFormSubmissions from "@/components/dashboard/forms/ContactFormSubmissions";
 
-type ViewMode = "list" | "create" | "edit";
+type ViewMode = "list" | "create" | "edit" | "submissions";
 
 export default function FormsPage() {
   const [forms, setForms] = useState<ContactFormConfig[]>([]);
@@ -13,6 +14,9 @@ export default function FormsPage() {
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [editingForm, setEditingForm] = useState<ContactFormConfig | null>(
+    null,
+  );
+  const [viewingForm, setViewingForm] = useState<ContactFormConfig | null>(
     null,
   );
   const [saving, setSaving] = useState(false);
@@ -116,27 +120,34 @@ export default function FormsPage() {
     setViewMode("edit");
   };
 
+  const handleViewSubmissions = (form: ContactFormConfig) => {
+    setViewingForm(form);
+    setViewMode("submissions");
+  };
+
   return (
     <div className="max-w-3xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-bold text-[var(--text-main)]">
-            Contact Forms
-          </h1>
-          <p className="text-sm text-[var(--text-muted)] mt-1">
-            Create custom forms and wire them to CTA buttons on your landing
-            page
-          </p>
+      {viewMode !== "submissions" && (
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-xl font-bold text-[var(--text-main)]">
+              Contact Forms
+            </h1>
+            <p className="text-sm text-[var(--text-muted)] mt-1">
+              Create custom forms and wire them to CTA buttons on your landing
+              page
+            </p>
+          </div>
+          {viewMode === "list" && (
+            <button
+              onClick={() => setViewMode("create")}
+              className="px-4 py-2 bg-[var(--color-primary)] text-white text-sm font-semibold rounded-lg hover:opacity-90 transition-colors"
+            >
+              + New Form
+            </button>
+          )}
         </div>
-        {viewMode === "list" && (
-          <button
-            onClick={() => setViewMode("create")}
-            className="px-4 py-2 bg-[var(--color-primary)] text-white text-sm font-semibold rounded-lg hover:opacity-90 transition-colors"
-          >
-            + New Form
-          </button>
-        )}
-      </div>
+      )}
 
       {error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
@@ -161,6 +172,7 @@ export default function FormsPage() {
           forms={forms}
           onEdit={handleEdit}
           onDelete={handleDelete}
+          onViewSubmissions={handleViewSubmissions}
           deleting={deleting}
         />
       )}
@@ -182,6 +194,16 @@ export default function FormsPage() {
             setEditingForm(null);
           }}
           saving={saving}
+        />
+      )}
+
+      {viewMode === "submissions" && viewingForm && (
+        <ContactFormSubmissions
+          formConfig={viewingForm}
+          onBack={() => {
+            setViewMode("list");
+            setViewingForm(null);
+          }}
         />
       )}
     </div>

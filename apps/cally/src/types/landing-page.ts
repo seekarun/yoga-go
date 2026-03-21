@@ -530,6 +530,8 @@ export interface SimpleLandingPageConfig {
   seo?: SEOConfig;
   /** Hero section color mode (light/dark) */
   heroColorMode?: "light" | "dark";
+  /** Page-level color mode — all sections inherit this unless overridden */
+  colorMode?: "light" | "dark";
 }
 
 /**
