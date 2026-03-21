@@ -1,0 +1,30 @@
+BEGIN:VCARD
+VERSION:3.0
+FN:Lakshmi Venkatesh
+EMAIL:lakshmi.venkatesh@example.com
+TEL:+61 400 123 456
+END:VCARD
+BEGIN:VCARD
+VERSION:3.0
+FN:Rahul Mehta
+EMAIL:rahul.mehta@example.com
+TEL:+61 400 234 567
+END:VCARD
+BEGIN:VCARD
+VERSION:3.0
+FN:Divya Krishnan
+EMAIL:divya.krishnan@example.com
+TEL:+61 400 345 678
+END:VCARD
+BEGIN:VCARD
+VERSION:3.0
+FN:Suresh Pillai
+EMAIL:suresh.pillai@example.com
+TEL:+61 400 456 789
+END:VCARD
+BEGIN:VCARD
+VERSION:3.0
+FN:Kavitha Rajan
+EMAIL:kavitha.rajan@example.com
+TEL:+61 400 567 890
+END:VCARD

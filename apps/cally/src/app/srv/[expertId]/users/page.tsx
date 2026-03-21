@@ -8,6 +8,7 @@ import type { VisitorInfo } from "@core/types";
 import Modal, { ModalHeader, ModalFooter } from "@/components/Modal";
 import { PrimaryButton, SecondaryButton } from "@/components/Button";
 import { useToast } from "@/components/Toast";
+import ImportContactsModal from "@/components/ImportContactsModal";
 
 type FilterType = "all" | UserType;
 
@@ -23,6 +24,7 @@ export default function UsersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
   const [showComposeModal, setShowComposeModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [hideAnonymous, setHideAnonymous] = useState(false);
 
   const { showToast } = useToast();
@@ -129,6 +131,14 @@ export default function UsersPage() {
     clearSelection();
   };
 
+  const handleImportComplete = (created: number, skipped: number) => {
+    const parts = [`${created} contact${created !== 1 ? "s" : ""} imported`];
+    if (skipped > 0) parts.push(`${skipped} skipped (already exist)`);
+    showToast(parts.join(", "), "success");
+    setShowImportModal(false);
+    fetchUsers();
+  };
+
   return (
     <div className="p-6">
       <div className="mb-8 flex items-center justify-between">
@@ -138,11 +148,19 @@ export default function UsersPage() {
             Registered subscribers and booking visitors.
           </p>
         </div>
-        {!loading && users.length > 0 && (
-          <span className="inline-flex items-center rounded-full bg-[var(--color-primary)]/10 px-3 py-1 text-sm font-medium text-[var(--color-primary)]">
-            {users.length} user{users.length !== 1 ? "s" : ""}
-          </span>
-        )}
+        <div className="flex items-center gap-3">
+          <SecondaryButton
+            size="default"
+            onClick={() => setShowImportModal(true)}
+          >
+            Import Contacts
+          </SecondaryButton>
+          {!loading && users.length > 0 && (
+            <span className="inline-flex items-center rounded-full bg-[var(--color-primary)]/10 px-3 py-1 text-sm font-medium text-[var(--color-primary)]">
+              {users.length} user{users.length !== 1 ? "s" : ""}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Filter pills and search */}
@@ -376,6 +394,13 @@ export default function UsersPage() {
         onClose={() => setShowComposeModal(false)}
         emails={Array.from(selectedEmails)}
         onSendComplete={handleSendComplete}
+      />
+
+      {/* Import contacts modal */}
+      <ImportContactsModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImportComplete={handleImportComplete}
       />
     </div>
   );

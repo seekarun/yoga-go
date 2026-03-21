@@ -9,7 +9,11 @@
  * - Filter by email: Query + FilterExpression on email attribute
  */
 
-import { PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  PutCommand,
+  QueryCommand,
+  BatchWriteCommand,
+} from "@aws-sdk/lib-dynamodb";
 import { docClient, Tables, TenantPK, EntityType } from "../dynamodb";
 import type { ContactSubmission } from "@/types";
 import type { VisitorInfo } from "@core/types";
@@ -121,6 +125,66 @@ export async function getContactsByTenant(
 
   console.log(`[DBG][contactRepository] Found ${contacts.length} contacts`);
   return contacts;
+}
+
+/**
+ * Batch create contacts for a tenant (used by contact import)
+ * Skips contacts whose email already exists as a contact
+ */
+export async function createContactsBatch(
+  tenantId: string,
+  contacts: { name: string; email: string; message: string }[],
+): Promise<{ created: number; skipped: number }> {
+  console.log(
+    `[DBG][contactRepository] Batch creating ${contacts.length} contacts for tenant ${tenantId}`,
+  );
+
+  const BATCH_SIZE = 25;
+  let created = 0;
+
+  const existing = await getContactsByTenant(tenantId);
+  const existingEmails = new Set(
+    existing.map((c) => c.email.toLowerCase().trim()),
+  );
+
+  const newContacts = contacts.filter(
+    (c) => !existingEmails.has(c.email.toLowerCase().trim()),
+  );
+  const skipped = contacts.length - newContacts.length;
+
+  for (let i = 0; i < newContacts.length; i += BATCH_SIZE) {
+    const batch = newContacts.slice(i, i + BATCH_SIZE);
+    const putRequests = batch.map((contact) => {
+      const id = generateId();
+      const submittedAt = new Date().toISOString();
+      return {
+        PutRequest: {
+          Item: {
+            PK: TenantPK.TENANT(tenantId),
+            SK: TenantPK.CONTACT(submittedAt, id),
+            entityType: EntityType.CONTACT,
+            id,
+            email: contact.email.toLowerCase().trim(),
+            name: contact.name.trim(),
+            message: contact.message,
+            submittedAt,
+          },
+        },
+      };
+    });
+
+    await docClient.send(
+      new BatchWriteCommand({
+        RequestItems: { [Tables.CORE]: putRequests },
+      }),
+    );
+    created += batch.length;
+  }
+
+  console.log(
+    `[DBG][contactRepository] Batch created ${created}, skipped ${skipped} duplicates`,
+  );
+  return { created, skipped };
 }
 
 /**

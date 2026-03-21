@@ -203,13 +203,14 @@ export default function LeftImage({
           min-height: 480px;
           background: ${brand.cardStyle?.bgColor || brand.secondaryColor || t.surfaceAlt};
           border-radius: 16px;
-          overflow: hidden;
+          overflow: ${isEditing && (imageSelected || titleSelected || paragraphSelected) ? "visible" : "hidden"};
           max-width: 1200px;
           margin: 0 auto;
         }
         .${SCOPE}-img-col {
           position: relative;
           min-height: 480px;
+          overflow: ${isEditing && imageSelected ? "visible" : "hidden"};
         }
         .${SCOPE}-img-wrap {
           width: 100%;
