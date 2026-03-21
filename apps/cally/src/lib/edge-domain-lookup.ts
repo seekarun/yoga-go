@@ -68,8 +68,8 @@ async function dynamoDBRequest(
   body: string,
   target: string,
 ): Promise<Record<string, unknown>> {
-  const accessKeyId = process.env.EDGE_AWS_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.EDGE_AWS_SECRET_ACCESS_KEY;
+  const accessKeyId = process.env.EDGE_AWS_ACCESS_KEY_ID?.trim();
+  const secretAccessKey = process.env.EDGE_AWS_SECRET_ACCESS_KEY?.trim();
 
   if (!accessKeyId || !secretAccessKey) {
     throw new Error(
