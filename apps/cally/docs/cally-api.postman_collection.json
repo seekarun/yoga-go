@@ -2698,6 +2698,34 @@
             },
             "description": "Export all emails as a ZIP archive of .eml files. Each email is a self-contained RFC 2822 .eml file with embedded base64 attachments. Compatible with Thunderbird, Apple Mail, Outlook, and Gmail. Returns application/zip with Content-Disposition header. Attachments are skipped if total size exceeds 8MB (a _README.txt is included in the ZIP explaining this)."
           }
+        },
+        {
+          "name": "Import Emails",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "multipart/form-data"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "files",
+                  "type": "file",
+                  "description": "One or more .eml or .mbox files to import"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/data/app/inbox/import",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "data", "app", "inbox", "import"]
+            },
+            "description": "Import emails from .eml or .mbox files. Accepts multipart/form-data with one or more files. Parses emails, uploads attachments to S3, and creates email records in DynamoDB. Max upload size: 25MB. Max 500 emails per import. Returns { imported, failed, total, capped, errors }."
+          }
         }
       ]
     },

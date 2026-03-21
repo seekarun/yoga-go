@@ -1,89 +1,147 @@
 /**
  * Edge-compatible domain lookup for middleware
  *
- * Middleware runs in Edge Runtime which doesn't support the full DynamoDB
- * Document Client (Node.js APIs). This module uses the low-level
- * DynamoDBClient with a patched Headers constructor that handles
- * multi-line header values from the AWS SDK.
+ * Uses raw fetch + manual AWS Signature V4 signing to call DynamoDB.
+ * This avoids the AWS SDK's FetchHttpHandler which creates Headers objects
+ * that Vercel Edge Runtime rejects due to multi-line header values.
  *
  * Vercel strips AWS_* env vars from Edge functions, so we use EDGE_AWS_*
- * prefixed vars and pass credentials explicitly.
+ * prefixed vars.
  */
-
-// Patch Headers to sanitize values containing \r\n before they reach
-// Edge Runtime's strict validation. Must run before any AWS SDK code.
-const OriginalHeaders = globalThis.Headers;
-if (OriginalHeaders && !("__edge_patched" in globalThis)) {
-  (globalThis as Record<string, unknown>).__edge_patched = true;
-  globalThis.Headers = class PatchedHeaders extends OriginalHeaders {
-    constructor(init?: HeadersInit) {
-      if (
-        init &&
-        typeof init === "object" &&
-        !(init instanceof OriginalHeaders)
-      ) {
-        const sanitized: Record<string, string> = {};
-        const entries = Array.isArray(init) ? init : Object.entries(init);
-        for (const [key, value] of entries) {
-          sanitized[key] =
-            typeof value === "string"
-              ? value.replace(/[\r\n]+/g, " ").trim()
-              : value;
-        }
-        super(sanitized);
-        return;
-      }
-      super(init);
-    }
-    append(name: string, value: string): void {
-      super.append(
-        name,
-        typeof value === "string"
-          ? value.replace(/[\r\n]+/g, " ").trim()
-          : value,
-      );
-    }
-    set(name: string, value: string): void {
-      super.set(
-        name,
-        typeof value === "string"
-          ? value.replace(/[\r\n]+/g, " ").trim()
-          : value,
-      );
-    }
-  } as typeof Headers;
-}
-
-import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb";
-import { FetchHttpHandler } from "@smithy/fetch-http-handler";
 
 const TABLE_NAME = "yoga-go-core";
 const REGION = process.env.EDGE_AWS_REGION || "ap-southeast-2";
+const SERVICE = "dynamodb";
 
 // In-memory cache: domain → { tenantId, expiresAt }
 const cache = new Map<string, { tenantId: string; expiresAt: number }>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
-let client: DynamoDBClient | null = null;
+// --- AWS Signature V4 helpers using Web Crypto API ---
 
-function getClient(): DynamoDBClient {
-  if (!client) {
-    const accessKeyId = process.env.EDGE_AWS_ACCESS_KEY_ID;
-    const secretAccessKey = process.env.EDGE_AWS_SECRET_ACCESS_KEY;
+const encoder = new TextEncoder();
 
-    if (!accessKeyId || !secretAccessKey) {
-      throw new Error(
-        "EDGE_AWS_ACCESS_KEY_ID and EDGE_AWS_SECRET_ACCESS_KEY must be set",
-      );
-    }
+async function hmacSHA256(
+  key: ArrayBuffer | Uint8Array,
+  message: string,
+): Promise<ArrayBuffer> {
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    key,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  return crypto.subtle.sign("HMAC", cryptoKey, encoder.encode(message));
+}
 
-    client = new DynamoDBClient({
-      region: REGION,
-      credentials: { accessKeyId, secretAccessKey },
-      requestHandler: new FetchHttpHandler(),
-    });
+async function sha256Hex(data: string): Promise<string> {
+  const hash = await crypto.subtle.digest("SHA-256", encoder.encode(data));
+  return bufToHex(hash);
+}
+
+function bufToHex(buf: ArrayBuffer): string {
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function getSignatureKey(
+  secretKey: string,
+  dateStamp: string,
+  region: string,
+  service: string,
+): Promise<ArrayBuffer> {
+  const kDate = await hmacSHA256(encoder.encode("AWS4" + secretKey), dateStamp);
+  const kRegion = await hmacSHA256(kDate, region);
+  const kService = await hmacSHA256(kRegion, service);
+  return hmacSHA256(kService, "aws4_request");
+}
+
+/**
+ * Make a signed request to DynamoDB using AWS Signature V4.
+ */
+async function dynamoDBRequest(
+  body: string,
+  target: string,
+): Promise<Record<string, unknown>> {
+  const accessKeyId = process.env.EDGE_AWS_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.EDGE_AWS_SECRET_ACCESS_KEY;
+
+  if (!accessKeyId || !secretAccessKey) {
+    throw new Error(
+      "EDGE_AWS_ACCESS_KEY_ID and EDGE_AWS_SECRET_ACCESS_KEY must be set",
+    );
   }
-  return client;
+
+  const host = `dynamodb.${REGION}.amazonaws.com`;
+  const url = `https://${host}/`;
+  const now = new Date();
+  const amzDate = now
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d{3}/, "");
+  const dateStamp = amzDate.slice(0, 8);
+
+  const payloadHash = await sha256Hex(body);
+
+  // Canonical headers — must be sorted by lowercase header name
+  const canonicalHeaders =
+    `content-type:application/x-amz-json-1.0\n` +
+    `host:${host}\n` +
+    `x-amz-date:${amzDate}\n` +
+    `x-amz-target:DynamoDB_20120810.${target}\n`;
+
+  const signedHeaders = "content-type;host;x-amz-date;x-amz-target";
+
+  const canonicalRequest = [
+    "POST",
+    "/",
+    "", // query string
+    canonicalHeaders,
+    signedHeaders,
+    payloadHash,
+  ].join("\n");
+
+  const credentialScope = `${dateStamp}/${REGION}/${SERVICE}/aws4_request`;
+  const stringToSign = [
+    "AWS4-HMAC-SHA256",
+    amzDate,
+    credentialScope,
+    await sha256Hex(canonicalRequest),
+  ].join("\n");
+
+  const signingKey = await getSignatureKey(
+    secretAccessKey,
+    dateStamp,
+    REGION,
+    SERVICE,
+  );
+  const signatureBuf = await hmacSHA256(signingKey, stringToSign);
+  const signature = bufToHex(signatureBuf);
+
+  // Build Authorization header as a single line — no newlines
+  const authorization = `AWS4-HMAC-SHA256 Credential=${accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-amz-json-1.0",
+      "X-Amz-Date": amzDate,
+      "X-Amz-Target": `DynamoDB_20120810.${target}`,
+      Authorization: authorization,
+    },
+    body,
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(
+      `DynamoDB ${target} failed (${response.status}): ${errorBody}`,
+    );
+  }
+
+  return response.json();
 }
 
 /**
@@ -103,8 +161,8 @@ export async function lookupTenantByDomain(
   }
 
   try {
-    const result = await getClient().send(
-      new GetItemCommand({
+    const result = await dynamoDBRequest(
+      JSON.stringify({
         TableName: TABLE_NAME,
         Key: {
           PK: { S: `TENANT#DOMAIN#${normalizedDomain}` },
@@ -112,9 +170,12 @@ export async function lookupTenantByDomain(
         },
         ProjectionExpression: "tenantId",
       }),
+      "GetItem",
     );
 
-    if (!result.Item?.tenantId?.S) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- raw DynamoDB JSON response
+    const item = result.Item as any;
+    if (!item?.tenantId?.S) {
       console.log(
         "[DBG][edge-domain-lookup] No tenant found for domain:",
         normalizedDomain,
@@ -122,7 +183,7 @@ export async function lookupTenantByDomain(
       return null;
     }
 
-    const tenantId = result.Item.tenantId.S;
+    const tenantId = item.tenantId.S as string;
 
     // Cache the result
     cache.set(normalizedDomain, {

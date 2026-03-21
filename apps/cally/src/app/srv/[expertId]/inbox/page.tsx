@@ -64,6 +64,8 @@ export default function InboxPage() {
   const [sigSaving, setSigSaving] = useState(false);
   const [sigMessage, setSigMessage] = useState<string | null>(null);
   const [exportStatus, setExportStatus] = useState<string>("idle");
+  const [importStatus, setImportStatus] = useState<string>("idle");
+  const [importFiles, setImportFiles] = useState<File[]>([]);
 
   // Listen for settings/compose events from persistent layout bar
   useEffect(() => {
@@ -1289,6 +1291,102 @@ export default function InboxPage() {
                   {exportStatus !== "idle" && exportStatus !== "exporting" && (
                     <span className="text-sm text-red-600">{exportStatus}</span>
                   )}
+                </div>
+              </div>
+
+              {/* Import Emails */}
+              <div className="border-t border-gray-200 pt-4 mt-4">
+                <h4 className="text-sm font-semibold text-gray-900 mb-1">
+                  Import Emails
+                </h4>
+                <p className="text-xs text-gray-500 mb-3">
+                  Import emails from another provider. Supports .eml files
+                  (individual emails) and .mbox archives (Thunderbird, Gmail
+                  Takeout, etc.).
+                </p>
+                <div className="flex flex-col gap-2">
+                  <input
+                    type="file"
+                    accept=".eml,.mbox"
+                    multiple
+                    onChange={(e) => {
+                      const files = e.target.files;
+                      if (!files || files.length === 0) return;
+                      setImportFiles(Array.from(files));
+                    }}
+                    className="text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200"
+                  />
+                  {importFiles.length > 0 && (
+                    <p className="text-xs text-gray-500">
+                      {importFiles.length} file
+                      {importFiles.length !== 1 ? "s" : ""} selected (
+                      {Math.round(
+                        importFiles.reduce((s, f) => s + f.size, 0) / 1024,
+                      )}
+                      KB)
+                    </p>
+                  )}
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={async () => {
+                        if (importFiles.length === 0) return;
+                        setImportStatus("importing");
+                        try {
+                          const formData = new FormData();
+                          for (const file of importFiles) {
+                            formData.append("files", file);
+                          }
+                          const res = await fetch(
+                            "/api/data/app/inbox/import",
+                            { method: "POST", body: formData },
+                          );
+                          const body = await res.json();
+                          if (!res.ok) {
+                            throw new Error(
+                              body?.error || `Import failed (${res.status})`,
+                            );
+                          }
+                          const d = body.data;
+                          setImportStatus(
+                            `Imported ${d.imported} email${d.imported !== 1 ? "s" : ""}${d.failed > 0 ? ` (${d.failed} failed)` : ""}`,
+                          );
+                          setImportFiles([]);
+                          // Refresh inbox after import
+                          setTimeout(() => {
+                            window.location.reload();
+                          }, 2000);
+                        } catch (err) {
+                          console.error("[DBG][inbox] Import error:", err);
+                          setImportStatus(
+                            err instanceof Error
+                              ? err.message
+                              : "Import failed",
+                          );
+                        }
+                        setTimeout(() => setImportStatus("idle"), 5000);
+                      }}
+                      disabled={
+                        importFiles.length === 0 || importStatus === "importing"
+                      }
+                      className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 text-sm font-medium disabled:opacity-50"
+                    >
+                      {importStatus === "importing"
+                        ? "Importing..."
+                        : "Import Emails"}
+                    </button>
+                    {importStatus !== "idle" &&
+                      importStatus !== "importing" && (
+                        <span
+                          className={`text-sm ${
+                            importStatus.startsWith("Imported")
+                              ? "text-green-600"
+                              : "text-red-600"
+                          }`}
+                        >
+                          {importStatus}
+                        </span>
+                      )}
+                  </div>
                 </div>
               </div>
             </div>
