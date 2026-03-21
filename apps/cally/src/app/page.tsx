@@ -5,6 +5,7 @@
  * landing page to render at `/`. Falls back to a "Coming Soon" splash
  * if the tenant doesn't exist or hasn't published yet.
  */
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { getTenantById } from "@/lib/repositories/tenantRepository";
 import {
@@ -14,6 +15,8 @@ import {
 import LandingPageRenderer from "@/components/landing-page/LandingPageRenderer";
 import { ChatWidgetWrapper } from "@/components/ai";
 import ComingSoonFallback from "@/components/landing-page/ComingSoonFallback";
+
+export const dynamic = "force-dynamic";
 
 const PLATFORM_TENANT_ID = process.env.PLATFORM_TENANT_ID;
 
@@ -44,17 +47,19 @@ export default async function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <LandingPageRenderer
-        config={landingPage}
-        tenantId={PLATFORM_TENANT_ID}
-        tenantData={tenantData}
-        products={activeProducts}
-        currency={tenant.currency ?? "AUD"}
-        address={tenant.address}
-        logo={tenant.logo}
-        tenantName={tenant.name}
-        contactForms={tenant.contactForms}
-      />
+      <Suspense>
+        <LandingPageRenderer
+          config={landingPage}
+          tenantId={PLATFORM_TENANT_ID}
+          tenantData={tenantData}
+          products={activeProducts}
+          currency={tenant.currency ?? "AUD"}
+          address={tenant.address}
+          logo={tenant.logo}
+          tenantName={tenant.name}
+          contactForms={tenant.contactForms}
+        />
+      </Suspense>
       <ChatWidgetWrapper
         tenantId={PLATFORM_TENANT_ID}
         config={tenant.aiAssistantConfig}
