@@ -22,12 +22,12 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const encoder = new TextEncoder();
 
 async function hmacSHA256(
-  key: ArrayBuffer | Uint8Array,
+  key: ArrayBuffer,
   message: string,
 ): Promise<ArrayBuffer> {
   const cryptoKey = await crypto.subtle.importKey(
     "raw",
-    key,
+    key as ArrayBuffer,
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"],
@@ -52,7 +52,10 @@ async function getSignatureKey(
   region: string,
   service: string,
 ): Promise<ArrayBuffer> {
-  const kDate = await hmacSHA256(encoder.encode("AWS4" + secretKey), dateStamp);
+  const kDate = await hmacSHA256(
+    encoder.encode("AWS4" + secretKey).buffer as ArrayBuffer,
+    dateStamp,
+  );
   const kRegion = await hmacSHA256(kDate, region);
   const kService = await hmacSHA256(kRegion, service);
   return hmacSHA256(kService, "aws4_request");
