@@ -175,7 +175,8 @@
       "WebFetch(domain:api.pexels.com)",
       "mcp__plugin_playwright_playwright__browser_close",
       "Bash(npx:*)",
-      "Bash(find /Users/arunsubramaniam/garage/yoga-go/apps/cally/src -type f \\\\\\(-name *inbox* -o -name *email* \\\\\\))"
+      "Bash(find /Users/arunsubramaniam/garage/yoga-go/apps/cally/src -type f \\\\\\(-name *inbox* -o -name *email* \\\\\\))",
+      "Bash(git diff:*)"
     ],
     "deny": [],
     "ask": []
