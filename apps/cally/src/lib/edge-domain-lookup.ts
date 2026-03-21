@@ -3,13 +3,16 @@
  *
  * Middleware runs in Edge Runtime which doesn't support the full DynamoDB
  * Document Client (Node.js APIs). This module uses the low-level
- * DynamoDBClient with FetchHttpHandler instead.
+ * DynamoDBClient with a custom request handler that sanitizes headers
+ * for Edge Runtime compatibility.
  *
  * Vercel strips AWS_* env vars from Edge functions, so we use EDGE_AWS_*
  * prefixed vars and pass credentials explicitly.
  */
 import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb";
 import { FetchHttpHandler } from "@smithy/fetch-http-handler";
+import type { HttpHandlerOptions } from "@smithy/types";
+import type { HttpRequest, HttpResponse } from "@smithy/protocol-http";
 
 const TABLE_NAME = "yoga-go-core";
 const REGION = process.env.EDGE_AWS_REGION || "ap-southeast-2";
@@ -19,6 +22,29 @@ const cache = new Map<string, { tenantId: string; expiresAt: number }>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 let client: DynamoDBClient | null = null;
+
+/**
+ * Custom handler that wraps FetchHttpHandler and sanitizes header values
+ * before they reach the Edge Runtime's Headers constructor.
+ * Edge Runtime rejects header values containing \r\n characters,
+ * but the AWS SDK can produce multi-line Authorization headers.
+ */
+class EdgeSafeFetchHandler extends FetchHttpHandler {
+  async handle(
+    request: HttpRequest,
+    options?: HttpHandlerOptions,
+  ): Promise<{ response: HttpResponse }> {
+    // Sanitize all header values — strip \r and \n
+    if (request.headers) {
+      for (const [key, value] of Object.entries(request.headers)) {
+        if (typeof value === "string" && /[\r\n]/.test(value)) {
+          request.headers[key] = value.replace(/[\r\n]/g, " ");
+        }
+      }
+    }
+    return super.handle(request, options);
+  }
+}
 
 function getClient(): DynamoDBClient {
   if (!client) {
@@ -34,7 +60,7 @@ function getClient(): DynamoDBClient {
     client = new DynamoDBClient({
       region: REGION,
       credentials: { accessKeyId, secretAccessKey },
-      requestHandler: new FetchHttpHandler(),
+      requestHandler: new EdgeSafeFetchHandler(),
     });
   }
   return client;
