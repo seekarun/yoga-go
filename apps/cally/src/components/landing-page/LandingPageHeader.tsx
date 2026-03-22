@@ -18,6 +18,7 @@ interface LandingPageHeaderProps {
   tenantName: string;
   sections: { id: string; label: string }[];
   tenantId: string;
+  colorMode?: "light" | "dark";
 }
 
 export default function LandingPageHeader({
@@ -25,7 +26,13 @@ export default function LandingPageHeader({
   tenantName,
   sections,
   tenantId,
+  colorMode = "light",
 }: LandingPageHeaderProps) {
+  const isDark = colorMode === "dark";
+  const textColor = isDark ? "text-white" : "text-gray-800";
+  const scrolledBg = isDark ? "rgba(0,0,0,0.5)" : "rgba(255,255,255,0.85)";
+  const mobileBg = isDark ? "rgba(0,0,0,0.7)" : "rgba(255,255,255,0.95)";
+  const textShadow = isDark ? "0 1px 3px rgba(0,0,0,0.3)" : "none";
   const [visible, setVisible] = useState(true);
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -60,7 +67,7 @@ export default function LandingPageHeader({
         transform: visible ? "translateY(0)" : "translateY(-100%)",
         backdropFilter: scrolled ? "blur(8px)" : "none",
         WebkitBackdropFilter: scrolled ? "blur(8px)" : "none",
-        background: scrolled ? "rgba(0,0,0,0.15)" : "transparent",
+        background: scrolled ? scrolledBg : "transparent",
       }}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -80,7 +87,7 @@ export default function LandingPageHeader({
               <button
                 type="button"
                 onClick={() => scrollTo("hero")}
-                className="text-white hover:opacity-80 transition-opacity"
+                className={`${textColor} hover:opacity-80 transition-opacity`}
                 aria-label="Home"
               >
                 <svg
@@ -107,8 +114,8 @@ export default function LandingPageHeader({
                 key={s.id}
                 type="button"
                 onClick={() => scrollTo(s.id)}
-                className="text-white text-sm font-medium uppercase tracking-wider hover:opacity-80 transition-opacity"
-                style={{ textShadow: "0 1px 3px rgba(0,0,0,0.3)" }}
+                className={`${textColor} text-sm font-medium uppercase tracking-wider hover:opacity-80 transition-opacity`}
+                style={{ textShadow }}
               >
                 {s.label}
               </button>
@@ -120,7 +127,7 @@ export default function LandingPageHeader({
             {/* Mobile hamburger */}
             <button
               type="button"
-              className="md:hidden text-white p-1"
+              className={`md:hidden ${textColor} p-1`}
               onClick={() => setMobileMenuOpen((prev) => !prev)}
               aria-label="Toggle menu"
             >
@@ -163,7 +170,7 @@ export default function LandingPageHeader({
           opacity: mobileMenuOpen ? 1 : 0,
           backdropFilter: "blur(12px)",
           WebkitBackdropFilter: "blur(12px)",
-          background: mobileMenuOpen ? "rgba(0,0,0,0.7)" : "transparent",
+          background: mobileMenuOpen ? mobileBg : "transparent",
         }}
       >
         <nav className="px-4 py-2 flex flex-col">
@@ -172,7 +179,7 @@ export default function LandingPageHeader({
               key={s.id}
               type="button"
               onClick={() => scrollTo(s.id)}
-              className="text-white text-sm font-medium uppercase tracking-wider py-3 text-left hover:opacity-80 transition-opacity"
+              className={`${textColor} text-sm font-medium uppercase tracking-wider py-3 text-left hover:opacity-80 transition-opacity`}
             >
               {s.label}
             </button>

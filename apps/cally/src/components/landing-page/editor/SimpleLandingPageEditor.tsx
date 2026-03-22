@@ -43,6 +43,9 @@ import type {
   FontWeight,
 } from "@/types/landing-page";
 import HeroTemplateRenderer from "@/templates/hero";
+import LandingPageHeader, {
+  SECTION_NAV_LABELS,
+} from "@/components/landing-page/LandingPageHeader";
 import SectionToolbar from "./SectionToolbar";
 import MobilePreviewFrame from "./MobilePreviewFrame";
 import {
@@ -3872,6 +3875,28 @@ export default function SimpleLandingPageEditor({
                         bodyFont={config.theme?.bodyFont}
                         customFontTypes={config.customFontTypes}
                       >
+                        <div
+                          style={{
+                            position: "sticky",
+                            top: 0,
+                            zIndex: 40,
+                            transform: "translateZ(0)",
+                            pointerEvents: "none",
+                          }}
+                        >
+                          <LandingPageHeader
+                            logo={tenantLogo || undefined}
+                            tenantName=""
+                            sections={(config.sections || [])
+                              .filter((s) => s.enabled)
+                              .map((s) => ({
+                                id: s.id,
+                                label: SECTION_NAV_LABELS[s.id] || s.id,
+                              }))}
+                            tenantId={tenantId}
+                            colorMode={config.colorMode || config.heroColorMode}
+                          />
+                        </div>
                         <HeroTemplateRenderer
                           config={previewConfig}
                           isEditing={false}
@@ -3966,6 +3991,29 @@ export default function SimpleLandingPageEditor({
                 bodyFont={config.theme?.bodyFont}
                 customFontTypes={config.customFontTypes}
               >
+                {/* Preview-only header — transform creates a new stacking context so fixed positioning is contained */}
+                <div
+                  style={{
+                    position: "sticky",
+                    top: 0,
+                    zIndex: 40,
+                    transform: "translateZ(0)",
+                    pointerEvents: "none",
+                  }}
+                >
+                  <LandingPageHeader
+                    logo={tenantLogo || undefined}
+                    tenantName=""
+                    sections={(config.sections || [])
+                      .filter((s) => s.enabled)
+                      .map((s) => ({
+                        id: s.id,
+                        label: SECTION_NAV_LABELS[s.id] || s.id,
+                      }))}
+                    tenantId={tenantId}
+                    colorMode={config.colorMode || config.heroColorMode}
+                  />
+                </div>
                 <HeroTemplateRenderer
                   config={previewConfig}
                   isEditing={true}

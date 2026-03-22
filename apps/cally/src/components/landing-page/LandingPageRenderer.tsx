@@ -169,6 +169,7 @@ export default function LandingPageRenderer({
             label: SECTION_NAV_LABELS[s.id] || s.id,
           }))}
         tenantId={tenantId}
+        colorMode={config.colorMode || config.heroColorMode}
       />
       <div id="section-hero">
         <HeroTemplateRenderer

@@ -514,11 +514,12 @@ export default function PlaygroundTemplate(props: HeroTemplateProps) {
         {/* Hero — dynamic widget */}
         {config.heroEnabled !== false && (
           <div
-            style={
-              config.heroColorMode === "dark"
+            style={{
+              paddingTop: "64px",
+              ...(config.heroColorMode === "dark"
                 ? { background: getSectionTheme("dark").bg }
-                : undefined
-            }
+                : {}),
+            }}
           >
             {renderHero()}
           </div>
