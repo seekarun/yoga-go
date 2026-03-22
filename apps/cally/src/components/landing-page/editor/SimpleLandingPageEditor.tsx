@@ -55,6 +55,7 @@ import type { ColorHarmonyType } from "@/lib/colorPalette";
 import {
   generatePalette,
   getHarmonyColors,
+  getNeutralColors,
   hexToHsl,
   HARMONY_OPTIONS,
   resolveColorRef,
@@ -165,6 +166,12 @@ export default function SimpleLandingPageEditor({
   const [editingBrandColor, setEditingBrandColor] = useState<
     "primary" | "secondary" | "highlight" | null
   >(null);
+  const [editingCustomColorIdx, setEditingCustomColorIdx] = useState<
+    number | null
+  >(null);
+  const [addingCustomColor, setAddingCustomColor] = useState(false);
+  const [newColorName, setNewColorName] = useState("");
+  const [newColorHex, setNewColorHex] = useState("#6b7280");
   const [showTypography, setShowTypography] = useState(false);
   const [expandedFontType, setExpandedFontType] = useState<string | null>(null);
   const [showButtons, setShowButtons] = useState(false);
@@ -475,7 +482,10 @@ export default function SimpleLandingPageEditor({
           productsConfig: landingPage.productsConfig,
           footerEnabled: landingPage.footerEnabled ?? true,
           sections: finalSections,
-          customColors: landingPage.customColors || [],
+          customColors:
+            landingPage.customColors && landingPage.customColors.length > 0
+              ? landingPage.customColors
+              : getNeutralColors(landingPage.theme?.primaryColor || "#667eea"),
           theme:
             landingPage.theme ||
             (() => {
@@ -1824,19 +1834,29 @@ export default function SimpleLandingPageEditor({
     (color: string) => {
       const palette = generatePalette(color);
       const harmonyColors = getHarmonyColors(color, colorHarmony);
-      setConfig((prev) => ({
-        ...prev,
-        theme: {
-          ...prev.theme,
-          primaryColor: color,
-          palette: {
-            ...palette,
-            secondary: harmonyColors.secondary,
-            highlight: harmonyColors.highlight,
-            harmonyType: colorHarmony,
+      const neutrals = getNeutralColors(color);
+      setConfig((prev) => {
+        // Replace existing neutral colors (White, Light Grey, Dark Grey, Black)
+        // while preserving any user-added custom colors
+        const neutralNames = new Set(neutrals.map((n) => n.name));
+        const userColors = (prev.customColors || []).filter(
+          (c) => !neutralNames.has(c.name),
+        );
+        return {
+          ...prev,
+          theme: {
+            ...prev.theme,
+            primaryColor: color,
+            palette: {
+              ...palette,
+              secondary: harmonyColors.secondary,
+              highlight: harmonyColors.highlight,
+              harmonyType: colorHarmony,
+            },
           },
-        },
-      }));
+          customColors: [...neutrals, ...userColors],
+        };
+      });
       setIsDirty(true);
     },
     [colorHarmony],
@@ -2313,7 +2333,7 @@ export default function SimpleLandingPageEditor({
           </button>
 
           {showColorPicker && (
-            <div className="absolute top-full left-0 mt-1 bg-white border border-[var(--color-border)] rounded-lg shadow-lg p-4 z-50 w-[240px]">
+            <div className="absolute top-full left-0 mt-1 bg-white border border-[var(--color-border)] rounded-lg shadow-lg p-4 z-50 w-[280px]">
               {/* Logo Section */}
               <div className="mb-4 pb-3 border-b border-gray-100">
                 <div className="text-xs font-medium text-gray-700 mb-2">
@@ -2481,7 +2501,7 @@ export default function SimpleLandingPageEditor({
                                 <HslColorPicker
                                   color={swatch.hex}
                                   onChange={swatch.onChange}
-                                  width={208}
+                                  width={238}
                                 />
                               </div>
                             )}
@@ -2504,78 +2524,170 @@ export default function SimpleLandingPageEditor({
                     Additional
                   </label>
                   <div className="flex flex-col gap-1.5">
-                    {(config.customColors || []).map((cc, i) => (
-                      <div
-                        key={`${cc.name}-${i}`}
-                        className="flex items-center gap-2"
-                      >
-                        <div
-                          className="h-7 flex-1 rounded-md border border-gray-200 flex items-center gap-2 px-2"
-                          style={{ backgroundColor: cc.hex }}
-                        >
-                          <span
-                            className="text-[11px] font-medium"
-                            style={{
-                              color:
-                                hexToHsl(cc.hex).l > 50 ? "#374151" : "#fff",
-                            }}
-                          >
-                            {cc.name}
-                          </span>
+                    {(config.customColors || []).map((cc, i) => {
+                      const isEditing = editingCustomColorIdx === i;
+                      return (
+                        <div key={`${cc.name}-${i}`}>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setEditingCustomColorIdx(isEditing ? null : i)
+                              }
+                              className={`flex-1 h-8 rounded-lg border flex items-center justify-between px-3 transition-all ${
+                                isEditing
+                                  ? "border-blue-400 ring-1 ring-blue-200"
+                                  : "border-gray-200 hover:border-gray-300"
+                              }`}
+                              style={{ backgroundColor: cc.hex }}
+                            >
+                              <span
+                                className="text-xs font-medium"
+                                style={{
+                                  color:
+                                    hexToHsl(cc.hex).l > 50
+                                      ? "#374151"
+                                      : "#fff",
+                                }}
+                              >
+                                {cc.name}
+                              </span>
+                              <svg
+                                width="10"
+                                height="10"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke={
+                                  hexToHsl(cc.hex).l > 50
+                                    ? "#6b7280"
+                                    : "rgba(255,255,255,0.7)"
+                                }
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                style={{
+                                  transform: isEditing
+                                    ? "rotate(180deg)"
+                                    : "none",
+                                  transition: "transform 0.15s ease",
+                                }}
+                              >
+                                <polyline points="6 9 12 15 18 9" />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (isEditing) setEditingCustomColorIdx(null);
+                                handleCustomColorsChange(
+                                  (config.customColors || []).filter(
+                                    (_, idx) => idx !== i,
+                                  ),
+                                );
+                              }}
+                              className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+                              title="Remove colour"
+                            >
+                              <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                              >
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                              </svg>
+                            </button>
+                          </div>
+                          {isEditing && (
+                            <div className="mt-2 mb-1">
+                              <HslColorPicker
+                                color={cc.hex}
+                                onChange={(hex) => {
+                                  const updated = [
+                                    ...(config.customColors || []),
+                                  ];
+                                  updated[i] = { ...updated[i], hex };
+                                  handleCustomColorsChange(updated);
+                                }}
+                                width={238}
+                              />
+                            </div>
+                          )}
                         </div>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleCustomColorsChange(
-                              (config.customColors || []).filter(
-                                (_, idx) => idx !== i,
-                              ),
-                            )
-                          }
-                          className="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
-                          title="Remove colour"
-                        >
-                          <svg
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
+                      );
+                    })}
+                    {addingCustomColor ? (
+                      <div>
+                        <input
+                          type="text"
+                          value={newColorName}
+                          onChange={(e) => setNewColorName(e.target.value)}
+                          placeholder="Colour name"
+                          className="w-full text-xs px-2 py-1.5 rounded border border-gray-200 mb-2 focus:outline-none focus:border-blue-400"
+                          autoFocus
+                        />
+                        <HslColorPicker
+                          color={newColorHex}
+                          onChange={setNewColorHex}
+                          width={238}
+                        />
+                        <div className="flex gap-2 mt-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const name =
+                                newColorName.trim() ||
+                                `Color ${(config.customColors || []).length + 1}`;
+                              handleCustomColorsChange([
+                                ...(config.customColors || []),
+                                { name, hex: newColorHex },
+                              ]);
+                              setAddingCustomColor(false);
+                              setNewColorName("");
+                              setNewColorHex("#6b7280");
+                            }}
+                            className="flex-1 text-[11px] font-medium py-1.5 rounded bg-blue-500 text-white hover:bg-blue-600 transition-colors"
                           >
-                            <line x1="18" y1="6" x2="6" y2="18" />
-                            <line x1="6" y1="6" x2="18" y2="18" />
-                          </svg>
-                        </button>
+                            Add
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAddingCustomColor(false);
+                              setNewColorName("");
+                              setNewColorHex("#6b7280");
+                            }}
+                            className="flex-1 text-[11px] font-medium py-1.5 rounded border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
                       </div>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const existing = config.customColors || [];
-                        const name = `Color ${existing.length + 1}`;
-                        handleCustomColorsChange([
-                          ...existing,
-                          { name, hex: "#6b7280" },
-                        ]);
-                      }}
-                      className="h-7 w-full rounded-md border border-dashed border-gray-300 flex items-center justify-center gap-1 text-[11px] text-gray-500 hover:border-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
-                    >
-                      <svg
-                        width="12"
-                        height="12"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setAddingCustomColor(true)}
+                        className="h-7 w-full rounded-md border border-dashed border-gray-300 flex items-center justify-center gap-1 text-[11px] text-gray-500 hover:border-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
                       >
-                        <line x1="12" y1="5" x2="12" y2="19" />
-                        <line x1="5" y1="12" x2="19" y2="12" />
-                      </svg>
-                      Add colour
-                    </button>
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                        >
+                          <line x1="12" y1="5" x2="12" y2="19" />
+                          <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                        Add colour
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

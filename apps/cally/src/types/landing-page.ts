@@ -83,30 +83,6 @@ export interface TemplateInfo {
  */
 export const TEMPLATES: TemplateInfo[] = [
   {
-    id: "centered",
-    name: "Centered",
-    description:
-      "Classic centered layout with title and subtitle over the background",
-    imageConfig: {
-      heroBackground: "16/9",
-      aboutImage: "1/1",
-      featureCardImage: "16/9",
-    },
-    status: "published",
-  },
-  {
-    id: "salon",
-    name: "Salon",
-    description:
-      "Premium salon layout with warm earth tones and elegant serif typography",
-    imageConfig: {
-      heroBackground: "16/9",
-      aboutImage: "3/4",
-      featureCardImage: "1/1",
-    },
-    status: "published",
-  },
-  {
     id: "playground",
     name: "Playground",
     description:

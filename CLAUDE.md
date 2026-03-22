@@ -49,6 +49,53 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Client-side auth state is managed by `AuthContext` (`src/contexts/AuthContext.tsx`)
 - API routes use `getSession()` from `src/lib/auth.ts` to verify authentication
 
+## Stripe Setup
+
+To set up Stripe for a new environment (e.g. new Stripe account):
+
+### 1. Create Products & Prices
+
+In Stripe Dashboard → **Product catalog** → **Add product**, create three recurring monthly products:
+
+| Product | Price |
+|---|---|
+| Starter | $12/month |
+| Professional | $30/month |
+| Business | $120/month |
+
+Copy each `price_xxx` ID and set the env vars:
+```
+STRIPE_PRICE_STARTER=price_<starter_id>
+STRIPE_PRICE_PROFESSIONAL=price_<professional_id>
+STRIPE_PRICE_BUSINESS=price_<business_id>
+```
+
+### 2. Create Webhooks
+
+In Stripe Dashboard → **Developers** → **Webhooks** → **Add endpoint**, create two webhooks:
+
+**Webhook 1 — Booking payments:**
+- URL: `https://<your-domain>/api/stripe/webhook`
+- Events: `checkout.session.completed`, `checkout.session.expired`
+- Copy signing secret → `STRIPE_WEBHOOK_SECRET`
+
+**Webhook 2 — Subscriptions:**
+- URL: `https://<your-domain>/api/stripe/subscription-webhook`
+- Events: `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `customer.subscription.trial_will_end`, `invoice.payment_failed`
+- Copy signing secret → `STRIPE_SUBSCRIPTION_WEBHOOK_SECRET`
+
+### 3. Required Env Vars
+
+```
+STRIPE_SECRET_KEY=sk_...
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_...
+STRIPE_PRICE_STARTER=price_...
+STRIPE_PRICE_PROFESSIONAL=price_...
+STRIPE_PRICE_BUSINESS=price_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_SUBSCRIPTION_WEBHOOK_SECRET=whsec_...
+```
+
 ## Architecture
 
 ### Monorepo Structure

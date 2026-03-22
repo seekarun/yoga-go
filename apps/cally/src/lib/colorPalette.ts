@@ -288,6 +288,25 @@ export const HARMONY_OPTIONS: {
 ];
 
 /**
+ * Generate 4 neutral colors (White, Light Grey, Dark Grey, Black) derived from
+ * the complementary hue of the primary color, with 90% desaturation.
+ */
+export function getNeutralColors(
+  hexColor: string,
+): { name: string; hex: string }[] {
+  const hsl = hexToHsl(hexColor);
+  const compHue = (hsl.h + 180) % 360;
+  const s = Math.max(3, hsl.s * 0.1); // 90% desaturated
+
+  return [
+    { name: "White", hex: hslToHex(compHue, s, 97) },
+    { name: "Light Grey", hex: hslToHex(compHue, s, 85) },
+    { name: "Dark Grey", hex: hslToHex(compHue, s, 35) },
+    { name: "Black", hex: hslToHex(compHue, s, 12) },
+  ];
+}
+
+/**
  * Validate hex color format
  */
 export function isValidHexColor(hex: string): boolean {

@@ -1,8 +1,7 @@
 /**
  * Shared typography role resolution utilities.
  *
- * Used by CenteredTemplate (BrandFont objects) and all widgets
- * (flattened WidgetBrandConfig) to resolve a TypographyRole to font settings.
+ * Used by templates and widgets to resolve a TypographyRole to font settings.
  *
  * When a typography role is set, ALL visual properties (family, size, weight,
  * color) are derived from the role — consumers should not add their own
@@ -82,7 +81,6 @@ export function fontForRole(
 
 /**
  * Resolve a typography role to a BrandFont from theme settings.
- * Used by CenteredTemplate which works with raw BrandFont objects.
  * Always returns a BrandFont with `size` populated (from theme or role default).
  */
 export function fontForRoleFromTheme(

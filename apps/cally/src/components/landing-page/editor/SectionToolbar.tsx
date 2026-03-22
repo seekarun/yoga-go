@@ -156,7 +156,7 @@ export default function SectionToolbar({
     boxShadow: isDragging
       ? "0 8px 24px rgba(0,0,0,0.18)"
       : "0 4px 16px rgba(0,0,0,0.1)",
-    width: "280px",
+    width: "300px",
     userSelect: "none",
   };
 

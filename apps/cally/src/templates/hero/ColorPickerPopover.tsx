@@ -77,6 +77,7 @@ export default function ColorPickerPopover({
   const handleSwatchClick = useCallback(
     (val: string) => {
       onChange(val);
+      setOpen(false);
     },
     [onChange],
   );

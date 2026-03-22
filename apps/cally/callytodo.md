@@ -8,19 +8,20 @@ x if user signed up, show profile icon
 x collect feedback/testimonials from users after appointment
 x sync calendar events to google calendar
 x zoom integration for video calls
-x email reply
-x products and services
-x recurring events in calendar
-x user favicon and meta data for SEO
-x SEO help
 x user preferences (password, email)
 x accept payments for calendar events
 x tenant subscription
 x more templates
-x feat: add images for products
 x tech: alerts
 x booking wait list
 x review DB structure for scaling
+x links in welcome/booking email, to sts audio, pdf.
+x gifting options.
+x fix typography colour change persistence when user change brand change
+x UPI payment handled by user
+x widget width fix
+x guided get started flow for new users
+x
 
 ========================================
 
@@ -33,7 +34,7 @@ x review DB structure for scaling
 - chat for video calls 100ms
   5 mins danny- add phone number + whatsapp support for booking
 - handle 404
-- dark/light theme for all widgets
+-
 
 - AI security review
 - use existing domain host - set records only

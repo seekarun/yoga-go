@@ -334,6 +334,64 @@ aws cognito-idp update-identity-provider \
   --region ap-southeast-2 --profile myg
 ```
 
+### Stripe Setup for New Account
+
+**Prerequisites:**
+
+- A Stripe account (test or live mode)
+- Access to Stripe Dashboard → Developers
+
+**Step 1: Create Products & Prices**
+
+In Stripe Dashboard → **Product catalog** → **Add product**, create three recurring monthly products:
+
+| Product | Price |
+|---|---|
+| Starter | $12/month |
+| Professional | $30/month |
+| Business | $120/month |
+
+Copy each `price_xxx` ID from the created prices.
+
+**Step 2: Create Webhooks**
+
+In Stripe Dashboard → **Developers** → **Webhooks** → **Add endpoint**, create two webhooks:
+
+**Webhook 1 — Booking payments:**
+
+- Endpoint URL: `https://<your-domain>/api/stripe/webhook`
+- Listen to: **Your account** events
+- Events to select:
+  - `checkout.session.completed`
+  - `checkout.session.expired`
+- After creating, copy the signing secret (`whsec_xxx`) → this is `STRIPE_WEBHOOK_SECRET`
+
+**Webhook 2 — Subscriptions:**
+
+- Endpoint URL: `https://<your-domain>/api/stripe/subscription-webhook`
+- Listen to: **Your account** events
+- Events to select:
+  - `customer.subscription.created`
+  - `customer.subscription.updated`
+  - `customer.subscription.deleted`
+  - `customer.subscription.trial_will_end`
+  - `invoice.payment_failed`
+- After creating, copy the signing secret (`whsec_xxx`) → this is `STRIPE_SUBSCRIPTION_WEBHOOK_SECRET`
+
+**Step 3: Set Environment Variables**
+
+Add the following to `.env.local` and Vercel:
+
+```
+STRIPE_SECRET_KEY=sk_...
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_...
+STRIPE_PRICE_STARTER=price_...
+STRIPE_PRICE_PROFESSIONAL=price_...
+STRIPE_PRICE_BUSINESS=price_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_SUBSCRIPTION_WEBHOOK_SECRET=whsec_...
+```
+
 ### Troubleshooting & Lessons Learned
 
 **Cognito custom domain stuck after failed deploy:**

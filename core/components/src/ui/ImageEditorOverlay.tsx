@@ -530,19 +530,18 @@ export function ImageEditorOverlay({
                 </button>
               </div>
 
-              {/* Change/Remove Image */}
+              {/* Replace Image */}
               <div
                 style={{
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: "16px",
                   paddingTop: "16px",
                   borderTop: "1px solid #f3f4f6",
                 }}
               >
                 <button
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={handleRemove}
                   style={{
                     fontSize: "14px",
                     color: "#2563eb",
@@ -551,20 +550,7 @@ export function ImageEditorOverlay({
                     cursor: "pointer",
                   }}
                 >
-                  Change Image
-                </button>
-                <span style={{ color: "#d1d5db" }}>|</span>
-                <button
-                  onClick={handleRemove}
-                  style={{
-                    fontSize: "14px",
-                    color: "#dc2626",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                  }}
-                >
-                  Remove Image
+                  Replace Image
                 </button>
               </div>
             </div>
