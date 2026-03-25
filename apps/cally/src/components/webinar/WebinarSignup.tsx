@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Modal, { ModalHeader } from "@/components/Modal";
 import type { WebinarSession } from "@/lib/webinar/schedule";
+import { useVisitorInfo } from "@/hooks/useVisitorInfo";
 
 interface WebinarSignupProps {
   tenantId: string;
@@ -36,9 +37,12 @@ export default function WebinarSignup({
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Visitor info from localStorage
+  const { visitorInfo, saveVisitorInfo } = useVisitorInfo();
+
   // Form state
-  const [visitorName, setVisitorName] = useState("");
-  const [visitorEmail, setVisitorEmail] = useState("");
+  const [visitorName, setVisitorName] = useState(visitorInfo.name);
+  const [visitorEmail, setVisitorEmail] = useState(visitorInfo.email);
   const [note, setNote] = useState("");
   const [honeypot, setHoneypot] = useState("");
   const [formLoadedAt] = useState(Date.now());
@@ -50,8 +54,8 @@ export default function WebinarSignup({
     setLoading(true);
     setError(null);
     setStep("details");
-    setVisitorName("");
-    setVisitorEmail("");
+    setVisitorName(visitorInfo.name);
+    setVisitorEmail(visitorInfo.email);
     setNote("");
 
     fetch(`/api/data/tenants/${tenantId}/webinar/${productId}`)
@@ -65,6 +69,7 @@ export default function WebinarSignup({
       })
       .catch(() => setError("Failed to load webinar"))
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only pre-fill from localStorage when modal opens, not on every visitor info change
   }, [isOpen, tenantId, productId]);
 
   const handleSubmit = useCallback(
@@ -105,6 +110,10 @@ export default function WebinarSignup({
           return;
         }
 
+        saveVisitorInfo({
+          name: visitorName.trim(),
+          email: visitorEmail.trim(),
+        });
         setStep("confirmed");
       } catch {
         setError("Failed to sign up");
@@ -121,6 +130,7 @@ export default function WebinarSignup({
       note,
       honeypot,
       formLoadedAt,
+      saveVisitorInfo,
     ],
   );
 

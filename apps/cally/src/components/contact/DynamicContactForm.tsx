@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import type { ContactFormConfig, ContactFormField } from "@/types";
 import { useSpamProtection } from "@core/hooks";
-import { useOptionalAuth } from "@/contexts/AuthContext";
+import { useVisitorInfo } from "@/hooks/useVisitorInfo";
 
 interface DynamicContactFormProps {
   config: ContactFormConfig;
@@ -142,25 +142,20 @@ export default function DynamicContactForm({
   onSubmit,
   submitting,
 }: DynamicContactFormProps) {
-  const auth = useOptionalAuth();
+  const { visitorInfo, saveVisitorInfo } = useVisitorInfo();
   const { honeypotProps, getSpamFields } = useSpamProtection();
   const [fieldValues, setFieldValues] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {};
     for (const field of config.fields) {
-      // Pre-populate email/name from auth if available
-      if (
-        field.type === "email" &&
-        auth?.isAuthenticated &&
-        auth.user?.profile.email
-      ) {
-        initial[field.id] = auth.user.profile.email;
+      // Pre-populate email/name from visitor localStorage
+      if (field.type === "email" && visitorInfo.email) {
+        initial[field.id] = visitorInfo.email;
       } else if (
         field.type === "text" &&
         field.name.toLowerCase().includes("name") &&
-        auth?.isAuthenticated &&
-        auth.user?.profile.name
+        visitorInfo.name
       ) {
-        initial[field.id] = auth.user.profile.name;
+        initial[field.id] = visitorInfo.name;
       } else {
         initial[field.id] = "";
       }
@@ -209,6 +204,23 @@ export default function DynamicContactForm({
     const trimmed: Record<string, string> = {};
     for (const [key, val] of Object.entries(fieldValues)) {
       trimmed[key] = val.trim();
+    }
+
+    // Save visitor info from email/name fields for future form pre-fill
+    const updates: Record<string, string> = {};
+    for (const field of config.fields) {
+      if (field.type === "email" && trimmed[field.id]) {
+        updates.email = trimmed[field.id];
+      } else if (
+        field.type === "text" &&
+        field.name.toLowerCase().includes("name") &&
+        trimmed[field.id]
+      ) {
+        updates.name = trimmed[field.id];
+      }
+    }
+    if (Object.keys(updates).length > 0) {
+      saveVisitorInfo(updates);
     }
 
     onSubmit({ fields: trimmed, ...getSpamFields() });

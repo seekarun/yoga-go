@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useSpamProtection } from "@core/hooks";
-import { useOptionalAuth } from "@/contexts/AuthContext";
+import { useVisitorInfo } from "@/hooks/useVisitorInfo";
 
 interface BookingFormProps {
   onSubmit: (data: {
@@ -19,33 +19,12 @@ export default function BookingForm({
   onSubmit,
   submitting,
 }: BookingFormProps) {
-  const auth = useOptionalAuth();
+  const { visitorInfo, saveVisitorInfo } = useVisitorInfo();
   const { honeypotProps, getSpamFields } = useSpamProtection();
-  const [name, setName] = useState(
-    auth?.isAuthenticated && auth.user?.profile.name
-      ? auth.user.profile.name
-      : "",
-  );
-  const [email, setEmail] = useState(
-    auth?.isAuthenticated && auth.user?.profile.email
-      ? auth.user.profile.email
-      : "",
-  );
+  const [name, setName] = useState(visitorInfo.name);
+  const [email, setEmail] = useState(visitorInfo.email);
   const [note, setNote] = useState("");
   const [emailError, setEmailError] = useState<string | null>(null);
-
-  // Auto-populate from authenticated user when auth loads
-  useEffect(() => {
-    if (auth?.isAuthenticated && auth.user) {
-      if (auth.user.profile.name && !name) {
-        setName(auth.user.profile.name);
-      }
-      if (auth.user.profile.email && !email) {
-        setEmail(auth.user.profile.email);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only run when auth state changes, not when name/email change
-  }, [auth?.isAuthenticated, auth?.user]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,6 +37,7 @@ export default function BookingForm({
     }
 
     setEmailError(null);
+    saveVisitorInfo({ name: name.trim(), email: email.trim() });
     onSubmit({
       visitorName: name.trim(),
       visitorEmail: email.trim(),

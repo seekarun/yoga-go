@@ -157,7 +157,11 @@ export default function LandingPageHeader({
             </button>
 
             {/* Profile icon */}
-            <ProfileIconDropdown tenantId={tenantId} inline />
+            <ProfileIconDropdown
+              tenantId={tenantId}
+              inline
+              colorMode={colorMode}
+            />
           </div>
         </div>
       </div>

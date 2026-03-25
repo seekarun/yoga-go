@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import type { ChatMessage, AiAssistantConfig } from "@/types/ai-assistant";
 import { DEFAULT_AI_ASSISTANT_CONFIG } from "@/types/ai-assistant";
-import { useOptionalAuth } from "@/contexts/AuthContext";
+import { useVisitorInfo } from "@/hooks/useVisitorInfo";
 import { useVisitorTimezone } from "@/hooks/useVisitorTimezone";
 
 interface ChatWidgetProps {
@@ -19,7 +19,7 @@ export default function ChatWidget({
   isDemo = false,
   apiEndpoint,
 }: ChatWidgetProps) {
-  const auth = useOptionalAuth();
+  const { visitorInfo: storedVisitor } = useVisitorInfo();
   const [visitorTimezone] = useVisitorTimezone();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -37,18 +37,14 @@ export default function ChatWidget({
       ? "/api/data/app/ai/chat"
       : `/api/data/tenants/${tenantId}/ai/chat`);
 
-  // Build visitor info from auth state + user-selected timezone
+  // Build visitor info from localStorage + user-selected timezone
   const visitorInfo = useMemo(() => {
     const info: { name?: string; email?: string; timezone?: string } = {};
-    if (auth?.isAuthenticated && auth.user) {
-      if (auth.user.profile.name) info.name = auth.user.profile.name;
-      if (auth.user.profile.email) info.email = auth.user.profile.email;
-    }
-    if (visitorTimezone) {
-      info.timezone = visitorTimezone;
-    }
+    if (storedVisitor.name) info.name = storedVisitor.name;
+    if (storedVisitor.email) info.email = storedVisitor.email;
+    if (visitorTimezone) info.timezone = visitorTimezone;
     return Object.keys(info).length > 0 ? info : undefined;
-  }, [auth?.isAuthenticated, auth?.user, visitorTimezone]);
+  }, [storedVisitor.name, storedVisitor.email, visitorTimezone]);
 
   // Scroll to bottom when messages change
   useEffect(() => {

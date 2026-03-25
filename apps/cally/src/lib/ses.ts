@@ -12,12 +12,45 @@ import {
   DeleteEmailIdentityCommand,
   PutEmailIdentityMailFromAttributesCommand,
 } from "@aws-sdk/client-sesv2";
+import {
+  SESClient,
+  DescribeActiveReceiptRuleSetCommand,
+} from "@aws-sdk/client-ses";
 import type { TenantDnsRecord, DkimStatus } from "@/types";
 
 // SES is in us-west-2 for email receiving capability
 const ses = new SESv2Client({ region: "us-west-2" });
+const sesV1 = new SESClient({ region: "us-west-2" });
 
 const SES_REGION = "us-west-2";
+
+// One-time startup check for SES receipt rule set
+let _receiptRuleSetChecked = false;
+
+async function checkReceiptRuleSetActive(): Promise<void> {
+  if (_receiptRuleSetChecked) return;
+  _receiptRuleSetChecked = true;
+
+  try {
+    const result = await sesV1.send(
+      new DescribeActiveReceiptRuleSetCommand({}),
+    );
+    if (!result.Metadata?.Name) {
+      console.error(
+        "[CRITICAL][ses] No active SES receipt rule set! Inbound emails will bounce with '550 mailbox unavailable'.",
+      );
+      console.error(
+        "[CRITICAL][ses] Fix: aws ses set-active-receipt-rule-set --rule-set-name yoga-go-inbound --region us-west-2 --profile <your-profile>",
+      );
+    } else {
+      console.log(
+        `[DBG][ses] Active receipt rule set: ${result.Metadata.Name}`,
+      );
+    }
+  } catch (err) {
+    console.error("[DBG][ses] Failed to check receipt rule set status:", err);
+  }
+}
 
 export interface CreateDomainIdentityResult {
   dkimTokens: string[];
@@ -43,6 +76,9 @@ export async function createDomainIdentity(
   domain: string,
 ): Promise<CreateDomainIdentityResult> {
   console.log(`[DBG][ses] Creating SES identity for domain: ${domain}`);
+
+  // Check receipt rule set is active (one-time, non-blocking)
+  checkReceiptRuleSetActive().catch(() => {});
 
   try {
     const command = new CreateEmailIdentityCommand({
